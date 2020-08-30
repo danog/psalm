@@ -83,7 +83,6 @@
  - [MethodSignatureMustOmitReturnType](issues/MethodSignatureMustOmitReturnType.md)
  - [MismatchingDocblockParamType](issues/MismatchingDocblockParamType.md)
  - [MismatchingDocblockReturnType](issues/MismatchingDocblockReturnType.md)
- - [MisplacedRequiredParam](issues/MisplacedRequiredParam.md)
  - [MissingClosureParamType](issues/MissingClosureParamType.md)
  - [MissingClosureReturnType](issues/MissingClosureReturnType.md)
  - [MissingConstructor](issues/MissingConstructor.md)
