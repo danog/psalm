@@ -198,4 +198,7 @@ class FunctionDocblockComment
      * @var bool
      */
     public $no_named_args = false;
+
+    /** @var bool */
+    public $stub_override = false;
 }
