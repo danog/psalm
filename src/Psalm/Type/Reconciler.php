@@ -304,7 +304,10 @@ class Reconciler
                 continue;
             }
 
-            if ($statements_analyzer->control_flow_graph) {
+            if ($statements_analyzer->control_flow_graph
+                && ($codebase->find_unused_variables
+                    || $result_type->hasString())
+            ) {
                 if ($before_adjustment && $before_adjustment->parent_nodes) {
                     $result_type->parent_nodes = $before_adjustment->parent_nodes;
                 } elseif (!$did_type_exist && $code_location) {

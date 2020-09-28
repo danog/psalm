@@ -58,7 +58,13 @@ class CastAnalyzer
 
             if ($as_int) {
                 $type = Type::getInt();
-                $type->parent_nodes = $maybe_type ? $maybe_type->parent_nodes : [];
+
+                if ($statements_analyzer->control_flow_graph
+                    && !$statements_analyzer->control_flow_graph instanceof \Psalm\Internal\Codebase\TaintFlowGraph
+                ) {
+                    $type->parent_nodes = $maybe_type ? $maybe_type->parent_nodes : [];
+                }
+
                 $statements_analyzer->node_data->setType($stmt, $type);
             }
 
