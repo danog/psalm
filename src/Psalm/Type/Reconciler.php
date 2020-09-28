@@ -304,12 +304,18 @@ class Reconciler
                 continue;
             }
 
-            if ($before_adjustment
-                && $before_adjustment->parent_nodes
-                && !$result_type->isInt()
-                && !$result_type->isFloat()
-            ) {
-                $result_type->parent_nodes = $before_adjustment->parent_nodes;
+            if ($statements_analyzer->control_flow_graph) {
+                if ($before_adjustment && $before_adjustment->parent_nodes) {
+                    $result_type->parent_nodes = $before_adjustment->parent_nodes;
+                } elseif (!$did_type_exist && $code_location) {
+                    $result_type->parent_nodes = $statements_analyzer->getParentNodesForPossiblyUndefinedVariable(
+                        $key
+                    );
+                }
+            }
+
+            if ($before_adjustment && $before_adjustment->by_ref) {
+                $result_type->by_ref = true;
             }
 
             $type_changed = !$before_adjustment || !$result_type->equals($before_adjustment);

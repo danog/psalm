@@ -81,8 +81,6 @@ class IncDecExpressionAnalyzer
                             $var_id,
                             $location
                         );
-
-                        $context->unreferenced_vars[$var_id] = [$location->getHash() => $location];
                     }
                 }
 

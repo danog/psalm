@@ -1266,7 +1266,7 @@ class UnusedVariableTest extends TestCase
                         return "hello";
                     }',
             ],
-            'SKIPPED-useTryAndCatchAssignedVariableInsideFinally' => [
+            'useTryAndCatchAssignedVariableInsideFinally' => [
                 '<?php
                     function foo() : void {
                         try {
@@ -1472,6 +1472,20 @@ class UnusedVariableTest extends TestCase
                     function takes_ref(?array &$p): void {
                         $p = [0];
                     }'
+            ],
+            'passedByRefSimpleDefinedBeforeWithExtract' => [
+                '<?php
+                    function foo(array $arr) : void {
+                        while (rand(0, 1)) {
+                            /** @psalm-suppress MixedArgument */
+                            extract($arr);
+                            $a = [];
+                            takes_ref($a);
+                        }
+                    }
+
+                    /** @param mixed $p */
+                    function takes_ref(&$p): void {}'
             ],
             'passedByRefArrayOffset' => [
                 '<?php
@@ -1919,6 +1933,16 @@ class UnusedVariableTest extends TestCase
                         return $arr;
                     }',
             ],
+            'explodeSource' => [
+                '<?php
+                    $start = microtime();
+                    $start = explode(" ", $start);
+                    /**
+                     * @psalm-suppress InvalidOperand
+                     */
+                    $start = $start[1] + $start[0];
+                    echo $start;'
+            ],
             'csvByRefForeach' => [
                 '<?php
                     function foo(string $value) : array {
@@ -1929,6 +1953,22 @@ class UnusedVariableTest extends TestCase
                         }
 
                         return $arr;
+                    }'
+            ],
+            'memoryFree' => [
+                '<?php
+                    function verifyLoad(string $free) : void {
+                        $free = explode("\n", $free);
+
+                        $parts_mem = preg_split("/\s+/", $free[1]);
+
+                        $free_mem = $parts_mem[3];
+                        $total_mem = $parts_mem[1];
+
+                        /** @psalm-suppress InvalidOperand */
+                        $used_mem  = ($total_mem - $free_mem)  / $total_mem;
+
+                        echo $used_mem;
                     }'
             ],
             'returnNotBool' => [
@@ -2828,6 +2868,14 @@ class UnusedVariableTest extends TestCase
                         echo $c;
                     }',
                 'error_message' => 'UnusedClosureParam',
+            ],
+            'noUseOfInstantArrayAssignment' => [
+                '<?php
+                    function foo() : void {
+                        /** @psalm-suppress PossiblyUndefinedVariable */
+                        $arr["foo"] = 1;
+                    }',
+                'error_message' => 'UnusedVariable',
             ],
         ];
     }

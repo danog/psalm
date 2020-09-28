@@ -144,9 +144,12 @@ class ArrayAnalyzer
             if ($item->key) {
                 $all_list = false;
 
+                $was_inside_use = $context->inside_use;
+                $context->inside_use = true;
                 if (ExpressionAnalyzer::analyze($statements_analyzer, $item->key, $context) === false) {
                     return false;
                 }
+                $context->inside_use = $was_inside_use;
 
                 if ($item_key_type = $statements_analyzer->node_data->getType($item->key)) {
                     $key_type = $item_key_type;
@@ -226,7 +229,7 @@ class ArrayAnalyzer
                             );
                         }
 
-                        $parent_taint_nodes[$new_parent_node->id] = $new_parent_node;
+                        $parent_taint_nodes += [$new_parent_node->id => $new_parent_node];
                     }
                 }
             }

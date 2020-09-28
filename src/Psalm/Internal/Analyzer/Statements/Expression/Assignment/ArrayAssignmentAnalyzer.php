@@ -152,6 +152,9 @@ class ArrayAssignmentAnalyzer
             $dim_value = null;
 
             if ($child_stmt->dim) {
+                $was_inside_use = $context->inside_use;
+                $context->inside_use = true;
+
                 if (ExpressionAnalyzer::analyze(
                     $statements_analyzer,
                     $child_stmt->dim,
@@ -159,6 +162,8 @@ class ArrayAssignmentAnalyzer
                 ) === false) {
                     return false;
                 }
+
+                $context->inside_use = $was_inside_use;
 
                 if (!($child_stmt_dim_type = $statements_analyzer->node_data->getType($child_stmt->dim))) {
                     return null;

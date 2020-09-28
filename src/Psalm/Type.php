@@ -493,6 +493,10 @@ abstract class Type
             $combined_type->parent_nodes = $type_1->parent_nodes + $type_2->parent_nodes;
         }
 
+        if ($type_1->by_ref || $type_2->by_ref) {
+            $combined_type->by_ref = true;
+        }
+
         return $combined_type;
     }
 

@@ -112,9 +112,14 @@ class InstancePropertyAssignmentAnalyzer
 
             $var_id = '$this->' . $prop_name;
         } else {
+            $was_inside_use = $context->inside_use;
+            $context->inside_use = true;
+
             if (ExpressionAnalyzer::analyze($statements_analyzer, $stmt->var, $context) === false) {
                 return false;
             }
+
+            $context->inside_use = $was_inside_use;
 
             $lhs_type = $statements_analyzer->node_data->getType($stmt->var);
 

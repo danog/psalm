@@ -75,8 +75,13 @@ class ArrayFetchAnalyzer
             $statements_analyzer
         );
 
-        if ($stmt->dim && ExpressionAnalyzer::analyze($statements_analyzer, $stmt->dim, $context) === false) {
-            return false;
+        if ($stmt->dim) {
+            $was_inside_use = $context->inside_use;
+            $context->inside_use = true;
+            if (ExpressionAnalyzer::analyze($statements_analyzer, $stmt->dim, $context) === false) {
+                return false;
+            }
+            $context->inside_use = $was_inside_use;
         }
 
         $keyed_array_var_id = ExpressionIdentifier::getArrayVarId(
@@ -253,7 +258,7 @@ class ArrayFetchAnalyzer
         }
 
         if ($keyed_array_var_id
-            && $context->hasVariable($keyed_array_var_id, $statements_analyzer)
+            && $context->hasVariable($keyed_array_var_id)
             && (!($stmt_type = $statements_analyzer->node_data->getType($stmt)) || $stmt_type->isVanillaMixed())
         ) {
             $statements_analyzer->node_data->setType($stmt, $context->vars_in_scope[$keyed_array_var_id]);
@@ -291,7 +296,7 @@ class ArrayFetchAnalyzer
             $context->vars_possibly_in_scope[$keyed_array_var_id] = true;
 
             // reference the variable too
-            $context->hasVariable($keyed_array_var_id, $statements_analyzer);
+            $context->hasVariable($keyed_array_var_id);
         }
 
         self::taintArrayFetch(
@@ -342,6 +347,14 @@ class ArrayFetchAnalyzer
                     $new_parent_node,
                     'array-fetch' . ($dim_value !== null ? '-\'' . $dim_value . '\'' : '')
                 );
+
+                if ($stmt_type->by_ref) {
+                    $statements_analyzer->control_flow_graph->addPath(
+                        $new_parent_node,
+                        $parent_node,
+                        'array-assignment' . ($dim_value !== null ? '-\'' . $dim_value . '\'' : '')
+                    );
+                }
             }
 
             $stmt_type->parent_nodes = [$new_parent_node->id => $new_parent_node];
@@ -1465,6 +1478,10 @@ class ArrayFetchAnalyzer
         if ($array_access_type === null) {
             // shouldn’t happen, but don’t crash
             return Type::getMixed();
+        }
+
+        if ($array_type->by_ref) {
+            $array_access_type->by_ref = true;
         }
 
         if ($in_assignment) {
