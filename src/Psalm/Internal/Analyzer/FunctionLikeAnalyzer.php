@@ -1221,7 +1221,9 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                     $statements_analyzer->control_flow_graph->addPath($type_source, $param_assignment, 'param');
                 }
 
-                if ($function_param->by_ref) {
+                if ($function_param->by_ref
+                    && $codebase->find_unused_variables
+                ) {
                     $statements_analyzer->control_flow_graph->addPath(
                         $param_assignment,
                         new ControlFlowNode('variable-use', 'variable use', null),
@@ -1229,7 +1231,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                     );
                 }
 
-                $var_type->parent_nodes = [$param_assignment->id => $param_assignment];
+                $var_type->parent_nodes += [$param_assignment->id => $param_assignment];
             }
 
             $context->vars_in_scope['$' . $function_param->name] = $var_type;

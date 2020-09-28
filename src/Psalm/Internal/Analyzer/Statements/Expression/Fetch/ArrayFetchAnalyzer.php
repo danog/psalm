@@ -310,6 +310,9 @@ class ArrayFetchAnalyzer
         return true;
     }
 
+    /**
+     * Used to create a path between a variable $foo and $foo["a"]
+     */
     public static function taintArrayFetch(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr $var,
