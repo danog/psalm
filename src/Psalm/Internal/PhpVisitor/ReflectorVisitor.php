@@ -3428,7 +3428,7 @@ class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements FileSour
 
         if ($type_string) {
             $atomic_types = $type->getAtomicTypes();
-            $atomic_type = reset($atomic_types);
+            $atomic_type = \reset($atomic_types);
             $atomic_type->text = $type_string;
         }
 
