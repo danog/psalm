@@ -886,7 +886,9 @@ class CommentAnalyzer
 
         if (isset($parsed_docblock->combined_tags['extends'])) {
             foreach ($parsed_docblock->combined_tags['extends'] as $template_line) {
-                $info->template_extends[] = trim(preg_replace('@^[ \t]*\*@m', '', $template_line));
+                $doc_line_parts = self::splitDocLine($template_line);
+                $doc_line_parts[0] = self::sanitizeDocblockType($doc_line_parts[0]);
+                $info->template_extends[] = $doc_line_parts[0];
             }
         }
 
@@ -911,7 +913,9 @@ class CommentAnalyzer
 
         if (isset($parsed_docblock->combined_tags['implements'])) {
             foreach ($parsed_docblock->combined_tags['implements'] as $template_line) {
-                $info->template_implements[] = trim(preg_replace('@^[ \t]*\*@m', '', $template_line));
+                $doc_line_parts = self::splitDocLine($template_line);
+                $doc_line_parts[0] = self::sanitizeDocblockType($doc_line_parts[0]);
+                $info->template_implements[] = $doc_line_parts[0];
             }
         }
 
