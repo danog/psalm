@@ -25,6 +25,7 @@ use Psalm\Storage\Assertion;
 use Psalm\Type;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TKeyedList;
 use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\Atomic\TNonEmptyArray;
@@ -86,7 +87,7 @@ class ArrayMapReturnTypeProvider implements FunctionReturnTypeProviderInterface
                 if ($call_arg_type
                     && $call_arg_type->isSingle()
                     && ($call_arg_atomic = $call_arg_type->getSingleAtomic()) instanceof TKeyedArray
-                    && $call_arg_atomic->fallback_params === null
+                    && $call_arg_atomic->fallback_value === null
                 ) {
                     $array_arg_types []= array_values($call_arg_atomic->properties);
                 } else {
@@ -103,13 +104,13 @@ class ArrayMapReturnTypeProvider implements FunctionReturnTypeProviderInterface
                         fn (?Union $t) => $t ?? $null,
                         $sub
                     );
-                    return new Union([new TKeyedArray($sub, null, null, true)]);
+                    return new Union([new TKeyedList($sub)]);
                 },
                 $array_arg_types
             );
             assert(count($array_arg_types));
 
-            return new Union([new TKeyedArray($array_arg_types, null, null, true)]);
+            return new Union([new TKeyedList($array_arg_types)]);
         }
 
         $array_arg = $call_args[1] ?? null;
@@ -209,17 +210,25 @@ class ArrayMapReturnTypeProvider implements FunctionReturnTypeProviderInterface
 
         if ($mapping_return_type && $generic_key_type) {
             if ($array_arg_atomic_type instanceof TKeyedArray && count($call_args) === 2) {
-                $atomic_type = new TKeyedArray(
-                    array_map(
-                        static fn(Union $_): Union => $mapping_return_type,
-                        $array_arg_atomic_type->properties
-                    ),
-                    null,
-                    $array_arg_atomic_type->fallback_params === null
-                        ? null
-                        : [$array_arg_atomic_type->fallback_params[0], $mapping_return_type],
-                    $array_arg_atomic_type->is_list
-                );
+                $atomic_type = $array_arg_atomic_type instanceof \Psalm\Type\Atomic\TKeyedList
+                    ? new TKeyedList(
+                        array_map(
+                            static fn(Union $_): Union => $mapping_return_type,
+                            $array_arg_atomic_type->properties,
+                        ),
+                        $array_arg_atomic_type->fallback_value ?? null
+                    )
+                    : new TKeyedArray(
+                        array_map(
+                            static fn(Union $_): Union => $mapping_return_type,
+                            $array_arg_atomic_type->properties
+                        ),
+                        null,
+                        $array_arg_atomic_type->fallback_value === null
+                            ? null
+                            : [$array_arg_atomic_type->getFallbackKey(), $mapping_return_type],
+                    )
+                ;
 
                 return new Union([$atomic_type]);
             }
@@ -259,7 +268,7 @@ class ArrayMapReturnTypeProvider implements FunctionReturnTypeProviderInterface
             ]);
         }
 
-        return count($call_args) === 2 && !($array_arg_type->is_list ?? false)
+        return count($call_args) === 2 && !($array_arg_type instanceof \Psalm\Type\Atomic\TKeyedList ?? false)
             ? new Union([
                 new TArray([
                     $array_arg_type->key ?? Type::getArrayKey(),

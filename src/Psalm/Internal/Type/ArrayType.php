@@ -47,7 +47,7 @@ class ArrayType
             return new self(
                 $type->getGenericKeyType(),
                 $type->getGenericValueType(),
-                $type->is_list
+                $type instanceof \Psalm\Type\Atomic\TKeyedList
             );
         }
 

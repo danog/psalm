@@ -44,6 +44,7 @@ use Psalm\Type\Atomic\TClassStringMap;
 use Psalm\Type\Atomic\TFalse;
 use Psalm\Type\Atomic\TInt;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TKeyedList;
 use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TMixed;
 use Psalm\Type\Atomic\TNamedObject;
@@ -782,9 +783,9 @@ class Reconciler
                             $key_parts_key = str_replace('\'', '', $array_key);
 
                             if (!isset($array_properties[$key_parts_key])) {
-                                if ($existing_key_type_part->fallback_params !== null) {
+                                if ($existing_key_type_part->fallback_value !== null) {
                                     $new_base_type_candidate = $existing_key_type_part
-                                        ->fallback_params[1]->setDifferent(true);
+                                        ->fallback_value->setDifferent(true);
                                 } else {
                                     return null;
                                 }
@@ -1145,16 +1146,13 @@ class Reconciler
                             $fallback_key_type->isNever() ? null : [$fallback_key_type, $fallback_value_type]
                         );
                     } elseif ($base_atomic_type instanceof TList) {
-                        $fallback_key_type = Type::getInt();
                         $fallback_value_type = $base_atomic_type->type_param;
 
-                        $base_atomic_type = new TKeyedArray(
+                        $base_atomic_type = new TKeyedList(
                             [
                                 $array_key_offset => $result_type,
                             ],
-                            null,
-                            [$fallback_key_type, $fallback_value_type],
-                            true
+                            $fallback_value_type,
                         );
                     } elseif ($base_atomic_type instanceof TClassStringMap) {
                         // do nothing

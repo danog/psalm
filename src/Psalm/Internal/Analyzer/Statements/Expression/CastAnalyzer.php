@@ -29,6 +29,7 @@ use Psalm\Type\Atomic\TFalse;
 use Psalm\Type\Atomic\TFloat;
 use Psalm\Type\Atomic\TInt;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TKeyedList;
 use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TLiteralFloat;
 use Psalm\Type\Atomic\TLiteralInt;
@@ -246,7 +247,7 @@ class CastAnalyzer
 
                 foreach ($stmt_expr_type->getAtomicTypes() as $type) {
                     if ($type instanceof Scalar) {
-                        $keyed_array = new TKeyedArray([new Union([$type])], null, null, true);
+                        $keyed_array = new TKeyedList([new Union([$type])]);
                         $permissible_atomic_types[] = $keyed_array;
                     } elseif ($type instanceof TNull) {
                         $permissible_atomic_types[] = new TArray([Type::getNever(), Type::getNever()]);

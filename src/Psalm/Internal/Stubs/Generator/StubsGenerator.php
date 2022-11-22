@@ -392,7 +392,7 @@ class StubsGenerator
                 $new_items = [];
 
                 foreach ($atomic_type->properties as $property_name => $property_type) {
-                    if ($atomic_type->is_list) {
+                    if ($atomic_type instanceof \Psalm\Type\Atomic\TKeyedList) {
                         $key_type = null;
                     } elseif (is_int($property_name)) {
                         $key_type = new VirtualLNumber($property_name);

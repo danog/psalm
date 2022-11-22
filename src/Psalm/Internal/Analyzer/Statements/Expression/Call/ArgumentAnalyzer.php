@@ -490,7 +490,7 @@ class ArgumentAnalyzer
                         && isset($unpacked_atomic_array->properties[$function_param->name])
                     ) {
                         $arg_value_type = $unpacked_atomic_array->properties[$function_param->name];
-                    } elseif ($unpacked_atomic_array->is_list
+                    } elseif ($unpacked_atomic_array instanceof \Psalm\Type\Atomic\TKeyedList
                         && isset($unpacked_atomic_array->properties[$unpacked_argument_offset])
                     ) {
                         $arg_value_type = $unpacked_atomic_array->properties[$unpacked_argument_offset];
@@ -1441,7 +1441,7 @@ class ArgumentAnalyzer
 
                     $context->vars_in_scope[$var_id] = new Union([$unpacked_atomic_array]);
                 } elseif ($unpacked_atomic_array instanceof TKeyedArray
-                    && $unpacked_atomic_array->is_list
+                    && $unpacked_atomic_array instanceof \Psalm\Type\Atomic\TKeyedList
                 ) {
                     if ($unpacked_atomic_array->isNonEmpty()) {
                         $unpacked_atomic_array = Type::getNonEmptyListAtomic($input_type);

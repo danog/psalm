@@ -615,13 +615,13 @@ class ArrayAssignmentAnalyzer
                     /** @psalm-suppress InaccessibleProperty We just created this object */
                     $array_atomic_type->count = $atomic_root_types['array']->count;
                 } elseif ($atomic_root_types['array'] instanceof TKeyedArray
-                    && $atomic_root_types['array']->fallback_params === null
+                    && $atomic_root_types['array']->fallback_value === null
                 ) {
                     /** @psalm-suppress InaccessibleProperty We just created this object */
                     $array_atomic_type->count = count($atomic_root_types['array']->properties);
                     $from_countable_object_like = true;
 
-                    if ($atomic_root_types['array']->is_list
+                    if ($atomic_root_types['array'] instanceof \Psalm\Type\Atomic\TKeyedList
                         && $array_atomic_type instanceof TList
                     ) {
                         $array_atomic_type = $atomic_root_types['array'];

@@ -30,6 +30,7 @@ use Psalm\Type\Atomic\TCallable;
 use Psalm\Type\Atomic\TClosure;
 use Psalm\Type\Atomic\TEnumCase;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TKeyedList;
 use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\Atomic\TNull;
 use Psalm\Type\Atomic\TTemplateParam;
@@ -625,7 +626,7 @@ class Methods
                     $types[] = new Union([new TEnumCase($original_fq_class_name, $case_name)]);
                 }
 
-                $list = new TKeyedArray($types, null, null, true);
+                $list = new TKeyedList($types);
                 return new Union([$list]);
             }
         }

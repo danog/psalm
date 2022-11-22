@@ -50,7 +50,7 @@ class ArrayPadReturnTypeProvider implements FunctionReturnTypeProviderInterface
             );
 
             return new Union([
-                $array_type->is_list
+                $array_type instanceof \Psalm\Type\Atomic\TKeyedList
                     ? (
                         $can_return_empty
                             ? Type::getListAtomic($value_type)

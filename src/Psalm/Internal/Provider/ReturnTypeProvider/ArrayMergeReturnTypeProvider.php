@@ -11,6 +11,7 @@ use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TFalse;
 use Psalm\Type\Atomic\TInt;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TKeyedList;
 use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TMixed;
 use Psalm\Type\Atomic\TNonEmptyArray;
@@ -141,11 +142,11 @@ class ArrayMergeReturnTypeProvider implements FunctionReturnTypeProviderInterfac
                                 }
                             }
 
-                            if (!$unpacked_type_part->is_list) {
+                            if (!$unpacked_type_part instanceof \Psalm\Type\Atomic\TKeyedList) {
                                 $all_nonempty_lists = false;
                             }
 
-                            if ($unpacked_type_part->fallback_params === null) {
+                            if ($unpacked_type_part->fallback_value === null) {
                                 $any_nonempty = true;
                             }
 
@@ -239,14 +240,20 @@ class ArrayMergeReturnTypeProvider implements FunctionReturnTypeProviderInterfac
             && ($generic_property_count < $max_keyed_array_size * 2
                 || $generic_property_count < 16)
         ) {
-            $objectlike = new TKeyedArray(
-                $generic_properties,
-                $class_strings ?: null,
-                $all_keyed_arrays || $inner_key_type === null || $inner_value_type === null
-                    ? null
-                    : [$inner_key_type, $inner_value_type],
-                $all_nonempty_lists || $all_int_offsets
-            );
+            $objectlike = $all_nonempty_lists || $all_int_offsets
+                ? new TKeyedList(
+                    $generic_properties,
+                    $all_keyed_arrays || $inner_key_type === null || $inner_value_type === null
+                        ? null
+                        : $inner_value_type,
+                ) : new TKeyedArray(
+                    $generic_properties,
+                    $class_strings ?: null,
+                    $all_keyed_arrays || $inner_key_type === null || $inner_value_type === null
+                        ? null
+                        : [$inner_key_type, $inner_value_type]
+                )
+            ;
 
             return new Union([$objectlike]);
         }

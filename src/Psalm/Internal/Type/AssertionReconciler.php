@@ -41,6 +41,7 @@ use Psalm\Type\Atomic\TInt;
 use Psalm\Type\Atomic\TIntRange;
 use Psalm\Type\Atomic\TIterable;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TKeyedList;
 use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TLiteralFloat;
 use Psalm\Type\Atomic\TLiteralInt;
@@ -645,11 +646,9 @@ class AssertionReconciler extends Reconciler
                     return null;
                 }
 
-                return new TKeyedArray(
+                return new TKeyedList(
                     $type_2_atomic->properties,
-                    null,
-                    [Type::getInt(), $type_2_value],
-                    true
+                    $type_2_value
                 );
             }
         } elseif ($type_1_atomic instanceof TKeyedArray
@@ -671,11 +670,9 @@ class AssertionReconciler extends Reconciler
                     return null;
                 }
 
-                return new TKeyedArray(
+                return new TKeyedList(
                     $type_1_atomic->properties,
-                    null,
-                    [Type::getInt(), $type_1_value],
-                    true
+                    $type_1_value
                 );
             }
         }

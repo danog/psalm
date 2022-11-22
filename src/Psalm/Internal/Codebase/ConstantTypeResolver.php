@@ -28,6 +28,7 @@ use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TFalse;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TKeyedList;
 use Psalm\Type\Atomic\TLiteralClassString;
 use Psalm\Type\Atomic\TLiteralFloat;
 use Psalm\Type\Atomic\TLiteralInt;
@@ -265,7 +266,9 @@ class ConstantTypeResolver
                     new Union([new TNever()]),
                 ]);
             } else {
-                $resolved_type = new TKeyedArray($properties, null, null, $is_list);
+                $resolved_type = $is_list
+                    ? new TKeyedList($properties)
+                    : new TKeyedArray($properties, null, null, $is_list);
             }
 
             return $resolved_type;

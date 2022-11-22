@@ -46,6 +46,7 @@ use Psalm\Type\Atomic\TInt;
 use Psalm\Type\Atomic\TIntRange;
 use Psalm\Type\Atomic\TIterable;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TKeyedList;
 use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TLiteralInt;
 use Psalm\Type\Atomic\TLiteralString;
@@ -622,7 +623,7 @@ class SimpleAssertionReconciler extends Reconciler
                 }
 
                 if ($assertion instanceof HasAtLeastCount) {
-                    if ($array_atomic_type->fallback_params === null) {
+                    if ($array_atomic_type->fallback_value === null) {
                         // count($a) > 3
                         // count($a) >= 4
 
@@ -658,7 +659,7 @@ class SimpleAssertionReconciler extends Reconciler
                         } else {
                             $redundant = false;
                         }
-                    } elseif ($array_atomic_type->is_list
+                    } elseif ($array_atomic_type instanceof \Psalm\Type\Atomic\TKeyedList
                         && $prop_min_count === $prop_max_count
                     ) {
                         if ($assertion->count <= $prop_min_count) {
@@ -668,7 +669,7 @@ class SimpleAssertionReconciler extends Reconciler
                             $properties = $array_atomic_type->properties;
                             for ($i = $prop_max_count; $i < $assertion->count; $i++) {
                                 $properties[$i]
-                                    = $array_atomic_type->fallback_params[1];
+                                    = $array_atomic_type->fallback_value;
                             }
                             $array_atomic_type = $array_atomic_type->setProperties($properties);
                             $existing_var_type->removeType('array');
@@ -734,7 +735,7 @@ class SimpleAssertionReconciler extends Reconciler
                     $non_empty_list
                 );
             } elseif ($array_atomic_type instanceof TKeyedArray) {
-                if ($array_atomic_type->fallback_params === null) {
+                if ($array_atomic_type->fallback_value === null) {
                     if (count($array_atomic_type->properties) === $count) {
                         $existing_var_type->removeType('array');
                         $existing_var_type->addType($array_atomic_type->setProperties(
@@ -1666,18 +1667,25 @@ class SimpleAssertionReconciler extends Reconciler
                         ]
                     ));
                 } else {
-                    $atomic_type = new TKeyedArray(
-                        array_merge(
-                            $atomic_type->properties,
-                            [$assertion => Type::getMixed()]
-                        ),
-                        $is_class_string ? array_merge(
-                            $atomic_type->class_strings ?? [],
-                            [$assertion => true]
-                        ) : $atomic_type->class_strings,
-                        $atomic_type->fallback_params,
-                        $atomic_type->is_list
-                    );
+                    $atomic_type = $atomic_type instanceof \Psalm\Type\Atomic\TKeyedList
+                        ? new TKeyedList(
+                            array_merge(
+                                $atomic_type->properties,
+                                [$assertion => Type::getMixed()]
+                            ),
+                            $atomic_type->fallback_value,
+                        )
+                        : new TKeyedArray(
+                            array_merge(
+                                $atomic_type->properties,
+                                [$assertion => Type::getMixed()]
+                            ),
+                            $is_class_string ? array_merge(
+                                $atomic_type->class_strings ?? [],
+                                [$assertion => true]
+                            ) : $atomic_type->class_strings,
+                            $atomic_type->getFallbackParams()
+                        );
                 }
             }
         }
@@ -2094,7 +2102,7 @@ class SimpleAssertionReconciler extends Reconciler
 
         foreach ($existing_var_atomic_types as $type) {
             if ($type instanceof TList
-                || ($type instanceof TKeyedArray && $type->is_list)
+                || ($type instanceof TKeyedArray && $type instanceof \Psalm\Type\Atomic\TKeyedList)
             ) {
                 if ($is_non_empty && $type instanceof TList && !$type instanceof TNonEmptyList) {
                     $array_types[] = Type::getNonEmptyListAtomic($type->type_param);
@@ -2103,7 +2111,7 @@ class SimpleAssertionReconciler extends Reconciler
                     $array_types[] = $type;
                 }
             } elseif ($type instanceof TArray
-                || ($type instanceof TKeyedArray && $type->fallback_params !== null)
+                || ($type instanceof TKeyedArray && $type->fallback_value !== null)
             ) {
                 if ($type instanceof TKeyedArray) {
                     $type = $type->getGenericArrayType();

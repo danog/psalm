@@ -34,6 +34,7 @@ use Psalm\Type\Atomic\TFalse;
 use Psalm\Type\Atomic\TInt;
 use Psalm\Type\Atomic\TIntRange;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TKeyedList;
 use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TLiteralInt;
 use Psalm\Type\Atomic\TLiteralString;
@@ -326,10 +327,10 @@ class FunctionCallReturnTypeFetcher
         if (!$call_args) {
             switch ($call_map_key) {
                 case 'hrtime':
-                    $keyed_array = new TKeyedArray([
+                    $keyed_array = new TKeyedList([
                         Type::getInt(),
                         Type::getInt()
-                    ], null, null, true);
+                    ]);
                     return new Union([$keyed_array]);
 
                 case 'get_called_class':
@@ -401,7 +402,7 @@ class FunctionCallReturnTypeFetcher
                                         }
                                     }
 
-                                    if ($atomic_types['array']->fallback_params === null) {
+                                    if ($atomic_types['array']->fallback_value === null) {
                                         //the KeyedArray is sealed, we can use the min and max
                                         if ($min === $max) {
                                             return new Union([new TLiteralInt($max)]);
@@ -435,10 +436,10 @@ class FunctionCallReturnTypeFetcher
                             return Type::getInt(true);
                         }
 
-                        $keyed_array = new TKeyedArray([
+                        $keyed_array = new TKeyedList([
                             Type::getInt(),
                             Type::getInt()
-                        ], null, null, true);
+                        ]);
 
                         if ((string) $first_arg_type === 'false') {
                             return new Union([$keyed_array]);

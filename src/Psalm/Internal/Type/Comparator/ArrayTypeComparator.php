@@ -86,7 +86,7 @@ class ArrayTypeComparator
         if ($container_type_part instanceof TList
             && $input_type_part instanceof TKeyedArray
         ) {
-            if ($input_type_part->is_list) {
+            if ($input_type_part instanceof \Psalm\Type\Atomic\TKeyedList) {
                 /** @var TList|TNonEmptyList */
                 $input_type_part = $input_type_part->isNonEmpty()
                     ? Type::getNonEmptyListAtomic($input_type_part->getGenericValueType())
@@ -147,7 +147,7 @@ class ArrayTypeComparator
         }
 
         if ($container_type_part instanceof TKeyedArray) {
-            if ($container_type_part->is_list) {
+            if ($container_type_part instanceof \Psalm\Type\Atomic\TKeyedList) {
                 /** @var TList|TNonEmptyList */
                 $container_type_part = $container_type_part->isNonEmpty()
                     ? Type::getNonEmptyListAtomic($container_type_part->getGenericValueType())

@@ -1144,8 +1144,8 @@ class ArrayFetchAnalyzer
                     return;
                 }
             } elseif ($type instanceof TKeyedArray
-                && $type->fallback_params !== null
-                && $type->fallback_params[1]->isMixed()
+                && $type->fallback_value !== null
+                && $type->fallback_value->isMixed()
                 && count($key_values) === 1
             ) {
                 $properties = $type->properties;
@@ -1524,7 +1524,7 @@ class ArrayFetchAnalyzer
     ): void {
         $generic_key_type = $type->getGenericKeyType();
 
-        if (!$stmt->dim && $type->fallback_params === null && $type->is_list) {
+        if (!$stmt->dim && $type->fallback_value === null && $type instanceof \Psalm\Type\Atomic\TKeyedList) {
             $key_values[] = new TLiteralInt(count($type->properties));
         }
 
@@ -1552,7 +1552,7 @@ class ArrayFetchAnalyzer
                         $array_access_type,
                         $properties[$key_value->value]
                     );
-                } elseif ($type->fallback_params !== null) {
+                } elseif ($type->fallback_value !== null) {
                     if ($codebase->config->ensure_array_string_offsets_exist) {
                         self::checkLiteralStringArrayOffset(
                             $offset_type,
@@ -1575,9 +1575,9 @@ class ArrayFetchAnalyzer
                         );
                     }
 
-                    $properties[$key_value->value] = $type->fallback_params[1];
+                    $properties[$key_value->value] = $type->fallback_value;
 
-                    $array_access_type = $type->fallback_params[1];
+                    $array_access_type = $type->fallback_value;
                 } elseif ($hasMixed) {
                     $has_valid_offset = true;
 
@@ -1654,7 +1654,7 @@ class ArrayFetchAnalyzer
                         $offset_type->isMixed() ? Type::getArrayKey() : $offset_type->freeze()
                     );
 
-                    $property_count = $type->fallback_params === null
+                    $property_count = $type->fallback_value === null
                         ? count($type->properties)
                         : null;
 
@@ -1665,7 +1665,7 @@ class ArrayFetchAnalyzer
                             $generic_params,
                         ], $property_count);
                     } else {
-                        if (!$stmt->dim && $type->is_list) {
+                        if (!$stmt->dim && $type instanceof \Psalm\Type\Atomic\TKeyedList) {
                             /** @var TList */
                             $type = Type::getListAtomic($generic_params);
                         } else {
@@ -1690,7 +1690,7 @@ class ArrayFetchAnalyzer
                 $has_valid_offset = true;
             } else {
                 if (!$context->inside_isset
-                    || ($type->fallback_params === null && !$union_comparison_results->type_coerced)
+                    || ($type->fallback_value === null && !$union_comparison_results->type_coerced)
                 ) {
                     $expected_offset_types[] = $generic_key_type->getId();
                 }

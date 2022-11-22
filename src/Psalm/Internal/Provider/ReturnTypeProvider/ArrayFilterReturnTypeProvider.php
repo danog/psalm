@@ -20,6 +20,7 @@ use Psalm\Type;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TInt;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TKeyedList;
 use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TString;
 use Psalm\Type\Reconciler;
@@ -85,7 +86,7 @@ class ArrayFilterReturnTypeProvider implements FunctionReturnTypeProviderInterfa
             $inner_type = $first_arg_array->getGenericValueType();
             $key_type = $first_arg_array->getGenericKeyType();
 
-            if (!isset($call_args[1]) && $first_arg_array->fallback_params === null) {
+            if (!isset($call_args[1]) && $first_arg_array->fallback_value === null) {
                 $had_one = count($first_arg_array->properties) === 1;
 
                 $new_properties = array_filter(
@@ -115,12 +116,18 @@ class ArrayFilterReturnTypeProvider implements FunctionReturnTypeProviderInterfa
                     return Type::getEmptyArray();
                 }
 
-                return new Union([new TKeyedArray(
-                    $new_properties,
-                    null,
-                    $first_arg_array->fallback_params,
-                    $first_arg_array->is_list && $had_one
-                )]);
+                return new Union([
+                    $first_arg_array instanceof \Psalm\Type\Atomic\TKeyedList && $had_one
+                        ? new TKeyedList(
+                            $new_properties,
+                            $first_arg_array->fallback_value
+                        )
+                        : new TKeyedArray(
+                            $new_properties,
+                            null,
+                            $first_arg_array->getFallbackParams(),
+                        )
+                ]);
             }
         }
 
@@ -137,7 +144,7 @@ class ArrayFilterReturnTypeProvider implements FunctionReturnTypeProviderInterfa
             );
 
             if ($first_arg_array instanceof TKeyedArray
-                && $first_arg_array->is_list
+                && $first_arg_array instanceof \Psalm\Type\Atomic\TKeyedList
                 && $key_type->isSingleIntLiteral()
                 && $key_type->getSingleIntLiteral()->value === 0
             ) {

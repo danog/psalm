@@ -9,6 +9,7 @@ use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Type;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TKeyedList;
 use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TMixed;
 use Psalm\Type\Atomic\TNever;
@@ -70,7 +71,7 @@ class UnsetAnalyzer
                             }
                             if ($key_value !== null) {
                                 $properties = $atomic_root_type->properties;
-                                $is_list = $atomic_root_type->is_list;
+                                $is_list = $atomic_root_type instanceof \Psalm\Type\Atomic\TKeyedList;
                                 if (isset($properties[$key_value])) {
                                     if ($is_list
                                         && $key_value !== count($properties)-1
@@ -82,12 +83,11 @@ class UnsetAnalyzer
 
                                 /** @psalm-suppress DocblockTypeContradiction https://github.com/vimeo/psalm/issues/8518 */
                                 if (!$properties) {
-                                    if ($atomic_root_type->fallback_params) {
+                                    if ($atomic_root_type->fallback_value) {
                                         $root_types [] =
-                                            new TArray([
-                                                $atomic_root_type->fallback_params[0],
-                                                $atomic_root_type->fallback_params[1],
-                                            ])
+                                            new TArray(
+                                                $atomic_root_type->getFallbackParams()
+                                            )
                                         ;
                                     } else {
                                         $root_types [] =
@@ -98,12 +98,16 @@ class UnsetAnalyzer
                                         ;
                                     }
                                 } else {
-                                    $root_types []= new TKeyedArray(
-                                        $properties,
-                                        null,
-                                        $atomic_root_type->fallback_params,
-                                        $is_list
-                                    );
+                                    $root_types []= $is_list
+                                        ? new TKeyedList(
+                                            $properties,
+                                            $atomic_root_type->fallback_value
+                                        )
+                                        : new TKeyedArray(
+                                            $properties,
+                                            null,
+                                            $atomic_root_type->getFallbackParams()
+                                        );
                                 }
                             } else {
                                 $properties = [];
@@ -113,8 +117,7 @@ class UnsetAnalyzer
                                 $root_types []= new TKeyedArray(
                                     $properties,
                                     null,
-                                    $atomic_root_type->fallback_params,
-                                    false,
+                                    $atomic_root_type->getFallbackParams()
                                 );
                             }
                         } elseif ($atomic_root_type instanceof TNonEmptyArray) {

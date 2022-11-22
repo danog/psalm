@@ -1274,7 +1274,7 @@ class AssignmentAnalyzer
                         continue;
                     }
 
-                    if ($assign_value_atomic_type->fallback_params === null) {
+                    if ($assign_value_atomic_type->fallback_value === null) {
                         IssueBuffer::maybeAdd(
                             new InvalidArrayOffset(
                                 'Cannot access value with offset ' . $offset,
@@ -1451,7 +1451,7 @@ class AssignmentAnalyzer
                             );
                         }
 
-                        $can_be_empty = $assign_value_atomic_type->fallback_params !== null;
+                        $can_be_empty = $assign_value_atomic_type->fallback_value !== null;
                     } elseif ($assign_value_atomic_type->hasArrayAccessInterface($codebase)) {
                         ForeachAnalyzer::getKeyValueParamsForTraversableObject(
                             $assign_value_atomic_type,

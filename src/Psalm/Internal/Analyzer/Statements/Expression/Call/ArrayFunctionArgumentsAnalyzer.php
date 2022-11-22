@@ -229,7 +229,7 @@ class ArrayFunctionArgumentsAnalyzer
             $objectlike_list = null;
 
             if ($array_type instanceof TKeyedArray) {
-                if ($array_type->is_list) {
+                if ($array_type instanceof \Psalm\Type\Atomic\TKeyedList) {
                     $objectlike_list = $array_type;
                 }
 
@@ -277,7 +277,7 @@ class ArrayFunctionArgumentsAnalyzer
 
                     foreach ($arg_value_type->getAtomicTypes() as $arg_value_atomic_type) {
                         if ($arg_value_atomic_type instanceof TKeyedArray) {
-                            $was_list = $arg_value_atomic_type->is_list;
+                            $was_list = $arg_value_atomic_type instanceof \Psalm\Type\Atomic\TKeyedList;
 
                             $arg_value_atomic_type = $arg_value_atomic_type->getGenericArrayType();
 
@@ -439,7 +439,7 @@ class ArrayFunctionArgumentsAnalyzer
             $array_type = $array_arg_type->getAtomicTypes()['array'];
 
             if ($array_type instanceof TKeyedArray) {
-                if ($array_type->is_list) {
+                if ($array_type instanceof \Psalm\Type\Atomic\TKeyedList) {
                     $array_type = Type::getNonEmptyListAtomic($array_type->getGenericValueType());
                 } else {
                     $array_type = $array_type->getGenericArrayType();
@@ -464,7 +464,7 @@ class ArrayFunctionArgumentsAnalyzer
             $replacement_array_type = $replacement_arg_type->getAtomicTypes()['array'];
 
             if ($replacement_array_type instanceof TKeyedArray) {
-                $was_list = $replacement_array_type->is_list;
+                $was_list = $replacement_array_type instanceof \Psalm\Type\Atomic\TKeyedList;
 
                 $replacement_array_type = $replacement_array_type->getGenericArrayType();
 
@@ -525,7 +525,7 @@ class ArrayFunctionArgumentsAnalyzer
 
                 foreach ($context->vars_in_scope[$var_id]->getAtomicTypes() as $array_atomic_type) {
                     if ($array_atomic_type instanceof TKeyedArray) {
-                        if ($is_array_shift && $array_atomic_type->is_list) {
+                        if ($is_array_shift && $array_atomic_type instanceof \Psalm\Type\Atomic\TKeyedList) {
                             $array_properties = $array_atomic_type->properties;
 
                             array_shift($array_properties);

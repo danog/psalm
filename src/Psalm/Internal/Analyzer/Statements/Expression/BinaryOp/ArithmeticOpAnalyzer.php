@@ -576,31 +576,32 @@ class ArithmeticOpAnalyzer
                     }
                 }
 
-                if ($left_type_part->fallback_params !== null) {
+                if ($left_type_part->fallback_value !== null) {
                     foreach ($definitely_existing_mixed_right_properties as $key => $type) {
                         $properties[$key] = Type::combineUnionTypes(Type::getMixed(), $type);
                     }
                 }
 
-                if ($left_type_part->fallback_params === null
-                    && $right_type_part->fallback_params === null
+                if ($left_type_part->fallback_value === null
+                    && $right_type_part->fallback_value === null
                 ) {
                     $fallback_params = null;
-                } elseif ($left_type_part->fallback_params !== null
-                    && $right_type_part->fallback_params !== null
+                } elseif ($left_type_part->fallback_value !== null
+                    && $right_type_part->fallback_value !== null
                 ) {
                     $fallback_params = [
                         Type::combineUnionTypes(
-                            $left_type_part->fallback_params[0],
-                            $right_type_part->fallback_params[0]
+                            $left_type_part->getFallbackKey(),
+                            $right_type_part->getFallbackKey()
                         ),
                         Type::combineUnionTypes(
-                            $left_type_part->fallback_params[1],
-                            $right_type_part->fallback_params[1]
+                            $left_type_part->fallback_value,
+                            $right_type_part->fallback_value
                         ),
                     ];
                 } else {
-                    $fallback_params = $left_type_part->fallback_params ?: $right_type_part->fallback_params;
+                    $fallback_params = $left_type_part->getFallbackParams() ??
+                        $right_type_part->getFallbackParams();
                 }
 
                 $new_keyed_array = new TKeyedArray(

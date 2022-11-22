@@ -28,11 +28,11 @@ class KeyedArrayComparator
         ?TypeComparisonResult $atomic_comparison_result
     ): bool {
         $container_sealed = $container_type_part instanceof TKeyedArray
-            && $container_type_part->fallback_params === null;
+            && $container_type_part->fallback_value === null;
 
         if ($container_sealed
             && $input_type_part instanceof TKeyedArray
-            && $input_type_part->fallback_params !== null
+            && $input_type_part->fallback_value !== null
         ) {
             return false;
         }

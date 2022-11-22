@@ -29,6 +29,7 @@ use Psalm\Type\Atomic\TFalse;
 use Psalm\Type\Atomic\TFloat;
 use Psalm\Type\Atomic\TInt;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TKeyedList;
 use Psalm\Type\Atomic\TLiteralClassString;
 use Psalm\Type\Atomic\TLiteralFloat;
 use Psalm\Type\Atomic\TLiteralInt;
@@ -119,14 +120,21 @@ class ArrayAnalyzer
 
         // if this array looks like an object-like array, let's return that instead
         if (count($array_creation_info->property_types) !== 0) {
-            $atomic_type = new TKeyedArray(
-                $array_creation_info->property_types,
-                $array_creation_info->class_strings,
-                $array_creation_info->can_create_objectlike
-                    ? null :
-                    [$item_key_type ?? Type::getArrayKey(), $item_value_type ?? Type::getMixed()],
-                $array_creation_info->all_list
-            );
+            $atomic_type = $array_creation_info->all_list
+                ? new TKeyedList(
+                    $array_creation_info->property_types,
+                    $array_creation_info->can_create_objectlike
+                        ? null
+                        : $item_value_type ?? Type::getMixed()
+                )
+                : new TKeyedArray(
+                    $array_creation_info->property_types,
+                    $array_creation_info->class_strings,
+                    $array_creation_info->can_create_objectlike
+                        ? null :
+                        [$item_key_type ?? Type::getArrayKey(), $item_value_type ?? Type::getMixed()]
+                )
+            ;
 
             $stmt_type = new Union([$atomic_type], [
                 'parent_nodes' => $array_creation_info->parent_taint_nodes

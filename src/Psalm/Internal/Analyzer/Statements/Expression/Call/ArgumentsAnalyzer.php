@@ -1692,7 +1692,7 @@ class ArgumentsAnalyzer
                         if ($arg_value_type->isSingle()
                             && ($atomic_arg_type = $arg_value_type->getSingleAtomic())
                             && $atomic_arg_type instanceof TKeyedArray
-                            && !$atomic_arg_type->is_list
+                            && !$atomic_arg_type instanceof \Psalm\Type\Atomic\TKeyedList
                         ) {
                             //if we have a single shape, we'll check param names
                             foreach ($atomic_arg_type->properties as $property_name => $_property_type) {
@@ -1713,7 +1713,7 @@ class ArgumentsAnalyzer
                             ) {
                                 $packed_var_definite_args_tmp[] = 2;
                             } elseif ($atomic_arg_type instanceof TKeyedArray) {
-                                if ($atomic_arg_type->fallback_params !== null) {
+                                if ($atomic_arg_type->fallback_value !== null) {
                                     return;
                                 }
 

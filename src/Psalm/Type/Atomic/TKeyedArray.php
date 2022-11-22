@@ -46,14 +46,16 @@ class TKeyedArray extends Atomic
     /**
      * If the shape has fallback params then they are here
      *
-     * @var ?list{Union, Union}
+     * @var ?Union
      */
-    public $fallback_params;
+    protected $fallback_key;
 
     /**
-     * @var bool - if this is a list of sequential elements
+     * If the shape has fallback params then they are here
+     *
+     * @var ?Union
      */
-    public $is_list = false;
+    public $fallback_value;
 
     /** @var non-empty-lowercase-string */
     protected const NAME_ARRAY = 'array';
@@ -71,14 +73,35 @@ class TKeyedArray extends Atomic
         array $properties,
         ?array $class_strings = null,
         ?array $fallback_params = null,
-        bool $is_list = false,
         bool $from_docblock = false
     ) {
         $this->properties = $properties;
         $this->class_strings = $class_strings;
-        $this->fallback_params = $fallback_params;
-        $this->is_list = $is_list;
+        if ($fallback_params) {
+            $this->fallback_key = $fallback_params[0];
+            $this->fallback_value = $fallback_params[1];
+        }
         $this->from_docblock = $from_docblock;
+    }
+
+    public function getFallbackKey(): ?Union
+    {
+        return $this->fallback_key;
+    }
+
+    public function getFallbackValue(): ?Union
+    {
+        return $this->fallback_key;
+    }
+
+    /**
+     * @return list{Union, Union}|null
+     */
+    public function getFallbackParams(): ?array
+    {
+        return $this->fallback_value
+            ? [$this->getFallbackKey(), $this->fallback_value]
+            : null;
     }
 
     /**
@@ -101,11 +124,12 @@ class TKeyedArray extends Atomic
      */
     public function makeSealed(): self
     {
-        if ($this->fallback_params === null) {
+        if ($this->fallback_value === null) {
             return $this;
         }
         $cloned = clone $this;
-        $cloned->fallback_params = null;
+        $cloned->fallback_key = null;
+        $cloned->fallback_value = null;
         return $cloned;
     }
 
@@ -113,7 +137,7 @@ class TKeyedArray extends Atomic
     {
         $property_strings = [];
 
-        if ($this->is_list) {
+        if ($this instanceof TKeyedList) {
             $use_list_syntax = true;
             foreach ($this->properties as $property) {
                 if ($property->possibly_undefined) {
@@ -142,16 +166,16 @@ class TKeyedArray extends Atomic
                 . ': ' . $type->getId($exact);
         }
 
-        if ($this->is_list) {
+        if ($this instanceof TKeyedList) {
             $key = static::NAME_LIST;
         } else {
             $key = static::NAME_ARRAY;
             sort($property_strings);
         }
 
-        $params_part = $this->fallback_params !== null
-            ? ', ...<' . $this->fallback_params[0]->getId($exact) . ', '
-                . $this->fallback_params[1]->getId($exact) . '>'
+        $params_part = $this->fallback_value !== null
+            ? ', ...<' . $this->getFallbackKey()->getId($exact) . ', '
+                . $this->fallback_value->getId($exact) . '>'
             : '';
 
         return $key . '{' . implode(', ', $property_strings) . $params_part . '}';
@@ -178,7 +202,7 @@ class TKeyedArray extends Atomic
 
         $suffixed_properties = [];
 
-        if ($this->is_list) {
+        if ($this instanceof TKeyedList) {
             $use_list_syntax = true;
             foreach ($this->properties as $property) {
                 if ($property->possibly_undefined) {
@@ -217,9 +241,9 @@ class TKeyedArray extends Atomic
                 );
         }
 
-        $params_part = $this->fallback_params !== null ? ',...' : '';
+        $params_part = $this->fallback_value !== null ? ',...' : '';
 
-        return  ($this->is_list ? static::NAME_LIST : static::NAME_ARRAY)
+        return  ($this instanceof TKeyedList ? static::NAME_LIST : static::NAME_ARRAY)
                 . '{' . implode(', ', $suffixed_properties) . $params_part . '}';
     }
 
@@ -259,11 +283,11 @@ class TKeyedArray extends Atomic
         /** @psalm-suppress InaccessibleProperty We just created this type */
         $key_type->possibly_undefined = $possibly_undefined;
 
-        if ($this->fallback_params === null) {
+        if ($this->fallback_value === null) {
             return $key_type;
         }
 
-        return Type::combineUnionTypes($this->fallback_params[0], $key_type);
+        return Type::combineUnionTypes($this->getFallbackKey(), $key_type);
     }
 
     public function getGenericValueType(bool $possibly_undefined = false): Union
@@ -275,7 +299,7 @@ class TKeyedArray extends Atomic
         }
 
         return Type::combineUnionTypes(
-            $this->fallback_params[1] ?? null,
+            $this->fallback_value ?? null,
             $value_type,
             null,
             false,
@@ -313,14 +337,14 @@ class TKeyedArray extends Atomic
 
         $key_type = TypeCombiner::combine($key_types);
 
-        if ($this->fallback_params !== null) {
-            $key_type = Type::combineUnionTypes($this->fallback_params[0], $key_type);
-            $value_type = Type::combineUnionTypes($this->fallback_params[1], $value_type);
+        if ($this->fallback_value !== null) {
+            $key_type = Type::combineUnionTypes($this->getFallbackKey(), $key_type);
+            $value_type = Type::combineUnionTypes($this->fallback_value, $value_type);
         }
 
         $value_type = $value_type->setPossiblyUndefined(false);
 
-        if ($has_defined_keys || $this->fallback_params !== null) {
+        if ($has_defined_keys || $this->fallback_value !== null) {
             $array_type = new TNonEmptyArray([$key_type, $value_type]);
         } else {
             $array_type = new TArray([$key_type, $value_type]);
@@ -433,16 +457,16 @@ class TKeyedArray extends Atomic
             return false;
         }
 
-        if (($this->fallback_params === null) !== ($other_type->fallback_params === null)) {
+        if (($this->fallback_value === null) !== ($other_type->fallback_value === null)) {
             return false;
         }
 
-        if ($this->fallback_params !== null && $other_type->fallback_params !== null) {
-            if (!$this->fallback_params[0]->equals($other_type->fallback_params[0])) {
+        if ($this->fallback_value !== null && $other_type->fallback_value !== null) {
+            if (!$this->getFallbackKey()->equals($other_type->getFallbackKey())) {
                 return false;
             }
 
-            if (!$this->fallback_params[1]->equals($other_type->fallback_params[1])) {
+            if (!$this->fallback_value->equals($other_type->fallback_value)) {
                 return false;
             }
         }
@@ -462,7 +486,7 @@ class TKeyedArray extends Atomic
 
     public function getAssertionString(): string
     {
-        return $this->is_list ? 'list' : 'array';
+        return $this instanceof TKeyedList ? 'list' : 'array';
     }
 
     /**

@@ -26,6 +26,7 @@ use Psalm\Type\Atomic\TInt;
 use Psalm\Type\Atomic\TIntRange;
 use Psalm\Type\Atomic\TIterable;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TKeyedList;
 use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TLiteralClassString;
 use Psalm\Type\Atomic\TLiteralFloat;
@@ -679,17 +680,17 @@ class TypeCombiner
             $existing_objectlike_entries = (bool) $combination->objectlike_entries;
             $missing_entries = $combination->objectlike_entries;
             $combination->objectlike_sealed = $combination->objectlike_sealed
-                && $type->fallback_params === null;
+                && $type->fallback_value === null;
 
-            if ($type->fallback_params) {
+            if ($type->fallback_value) {
                 $combination->objectlike_key_type = Type::combineUnionTypes(
-                    $type->fallback_params[0],
+                    $type->getFallbackKey(),
                     $combination->objectlike_key_type,
                     $codebase,
                     $overwrite_empty_array
                 );
                 $combination->objectlike_value_type = Type::combineUnionTypes(
-                    $type->fallback_params[1],
+                    $type->fallback_value,
                     $combination->objectlike_value_type,
                     $codebase,
                     $overwrite_empty_array
@@ -744,7 +745,7 @@ class TypeCombiner
                     ->setPossiblyUndefined(true);
             }
 
-            if (!$type->is_list) {
+            if (!$type instanceof \Psalm\Type\Atomic\TKeyedList) {
                 $combination->all_arrays_lists = false;
             } elseif ($combination->all_arrays_lists !== false) {
                 $combination->all_arrays_lists = true;
@@ -1394,17 +1395,20 @@ class TypeCombiner
                         $sealed || $fallback_key_type === null || $fallback_value_type === null
                             ? null
                             : [$fallback_key_type, $fallback_value_type],
-                        (bool)$combination->all_arrays_lists
                     );
                 } else {
-                    $objectlike = new TKeyedArray(
-                        $combination->objectlike_entries,
-                        null,
-                        $sealed || $fallback_key_type === null || $fallback_value_type === null
-                            ? null
-                            : [$fallback_key_type, $fallback_value_type],
-                        (bool)$combination->all_arrays_lists
-                    );
+                    $objectlike = $combination->all_arrays_lists
+                        ? new TKeyedList(
+                            $combination->objectlike_entries,
+                            $fallback_value_type,
+                        )
+                        : new TKeyedArray(
+                            $combination->objectlike_entries,
+                            null,
+                            $sealed || $fallback_key_type === null || $fallback_value_type === null
+                                ? null
+                                : [$fallback_key_type, $fallback_value_type],
+                        );
                 }
 
                 $new_types[] = $objectlike;
@@ -1514,11 +1518,9 @@ class TypeCombiner
                     && $combination->objectlike_sealed
                     && isset($combination->array_type_params[1])
                 ) {
-                    $array_type = new TKeyedArray(
+                    $array_type = new TKeyedList(
                         [$generic_type_params[1]],
-                        null,
-                        [Type::getInt(), $combination->array_type_params[1]],
-                        true
+                        $combination->array_type_params[1]
                     );
                 } else {
                     /** @psalm-suppress ArgumentTypeCoercion */

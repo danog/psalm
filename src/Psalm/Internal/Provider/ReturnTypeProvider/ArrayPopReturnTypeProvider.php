@@ -73,12 +73,12 @@ class ArrayPopReturnTypeProvider implements FunctionReturnTypeProviderInterface
             }
         } else {
             // special case where we know the type of the first element
-            if ($function_id === 'array_shift' && $first_arg_array->is_list && isset($first_arg_array->properties[0])) {
+            if ($function_id === 'array_shift' && $first_arg_array instanceof \Psalm\Type\Atomic\TKeyedList && isset($first_arg_array->properties[0])) {
                 $value_type = $first_arg_array->properties[0];
             } else {
                 $value_type = $first_arg_array->getGenericValueType();
 
-                if ($first_arg_array->fallback_params === null) {
+                if ($first_arg_array->fallback_value === null) {
                     $nullable = true;
                 }
             }
@@ -92,7 +92,7 @@ class ArrayPopReturnTypeProvider implements FunctionReturnTypeProviderInterface
             if ($codebase->config->ignore_internal_nullable_issues) {
                 $value_type->ignore_nullable_issues = true;
             }
-            
+
             $value_type = $value_type->freeze();
         }
 

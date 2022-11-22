@@ -44,6 +44,7 @@ use Psalm\Type\Atomic\TIntRange;
 use Psalm\Type\Atomic\TIterable;
 use Psalm\Type\Atomic\TKeyOf;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TKeyedList;
 use Psalm\Type\Atomic\TLiteralClassString;
 use Psalm\Type\Atomic\TLiteralFloat;
 use Psalm\Type\Atomic\TLiteralInt;
@@ -1129,7 +1130,7 @@ class TypeParser
             /** @var TKeyedArray $intersection_type */
             foreach ($intersection_types as $intersection_type) {
                 foreach ($intersection_type->properties as $property => $property_type) {
-                    if ($intersection_type->fallback_params !== null) {
+                    if ($intersection_type->fallback_value !== null) {
                         $all_sealed = false;
                     }
 
@@ -1174,7 +1175,6 @@ class TypeParser
                 $properties,
                 null,
                 $fallback_params,
-                false,
                 $from_docblock
             );
         }
@@ -1489,6 +1489,13 @@ class TypeParser
             return new TArray([Type::getNever($from_docblock), Type::getNever($from_docblock)], $from_docblock);
         }
 
+        if ($type === 'list') {
+            return new TKeyedList(
+                $properties,
+                $sealed ? null : Type::getMixed(),
+                $from_docblock
+            );
+        }
         return new $class(
             $properties,
             $class_strings,

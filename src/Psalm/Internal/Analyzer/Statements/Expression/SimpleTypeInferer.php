@@ -19,6 +19,7 @@ use Psalm\Type;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TInt;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TKeyedList;
 use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TLiteralClassString;
 use Psalm\Type\Atomic\TLiteralFloat;
@@ -573,12 +574,14 @@ class SimpleTypeInferer
             && $array_creation_info->can_create_objectlike
             && $array_creation_info->property_types
         ) {
-            $objectlike = new TKeyedArray(
-                $array_creation_info->property_types,
-                $array_creation_info->class_strings,
-                null,
-                $array_creation_info->all_list
-            );
+            $objectlike = $array_creation_info->all_list
+                ? new TKeyedList($array_creation_info->property_types)
+                : new TKeyedArray(
+                    $array_creation_info->property_types,
+                    $array_creation_info->class_strings,
+                    null,
+                )
+            ;
             return new Union([$objectlike]);
         }
 
