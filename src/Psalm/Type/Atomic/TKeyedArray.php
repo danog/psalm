@@ -398,7 +398,7 @@ class TKeyedArray extends Atomic
     {
         if ($this->is_list) {
             foreach ($this->properties as $k => $property) {
-                if ($property->possibly_undefined) {
+                if ($property->possibly_undefined || $property->isNever()) {
                     /** @var int<0, max> */
                     return $k;
                 }
@@ -407,7 +407,7 @@ class TKeyedArray extends Atomic
         }
         $prop_min_count = 0;
         foreach ($this->properties as $property) {
-            if (!$property->possibly_undefined) {
+            if (!($property->possibly_undefined || $property->isNever())) {
                 $prop_min_count++;
             }
         }
