@@ -1140,7 +1140,10 @@ class Reconciler
                     } else {
                         $properties = $base_atomic_type->properties;
                         $properties[$array_key_offset] = $result_type;
-                        if ($base_atomic_type->is_list && !isset($properties[$array_key_offset-1])) {
+                        if ($base_atomic_type->is_list
+                            && $array_key_offset
+                            && !isset($properties[$array_key_offset-1])
+                        ) {
                             $base_atomic_type = new TKeyedArray(
                                 $properties,
                                 null,
