@@ -1141,9 +1141,11 @@ class Reconciler
                         $properties = $base_atomic_type->properties;
                         $properties[$array_key_offset] = $result_type;
                         if ($base_atomic_type->is_list
-                            && is_numeric($array_key_offset)
-                            && $array_key_offset
-                            && !isset($properties[$array_key_offset-1])
+                            && (!is_numeric($array_key_offset)
+                                || ($array_key_offset
+                                    && !isset($properties[$array_key_offset-1])
+                                )
+                            )
                         ) {
                             $base_atomic_type = new TKeyedArray(
                                 $properties,
