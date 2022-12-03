@@ -100,9 +100,6 @@ class ArrayMergeReturnTypeProvider implements FunctionReturnTypeProviderInterfac
                         continue;
                     }
 
-                    if ($unpacked_type_part instanceof TKeyedArray && !$all_keyed_arrays) {
-                        $unpacked_type_part = $unpacked_type_part->getGenericArrayType();
-                    }
                     if ($unpacked_type_part instanceof TKeyedArray) {
                         $max_keyed_array_size = max(
                             $max_keyed_array_size,
