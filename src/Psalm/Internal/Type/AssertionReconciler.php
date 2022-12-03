@@ -625,7 +625,7 @@ class AssertionReconciler extends Reconciler
         }
 
         /*if ($type_2_atomic instanceof TKeyedArray
-            && $type_1_atomic instanceof TList
+            && $type_1_atomic instanceof \Psalm\Type\Atomic\TList
         ) {
             $type_2_key = $type_2_atomic->getGenericKeyType();
             $type_2_value = $type_2_atomic->getGenericValueType();
@@ -652,7 +652,7 @@ class AssertionReconciler extends Reconciler
                 );
             }
         } elseif ($type_1_atomic instanceof TKeyedArray
-            && $type_2_atomic instanceof TList
+            && $type_2_atomic instanceof \Psalm\Type\Atomic\TList
         ) {
             $type_1_key = $type_1_atomic->getGenericKeyType();
             $type_1_value = $type_1_atomic->getGenericValueType();
@@ -731,7 +731,7 @@ class AssertionReconciler extends Reconciler
         //we filter the second part of a list with the second part of standard iterables
         /*if (($type_2_atomic instanceof TArray
                 || $type_2_atomic instanceof TIterable)
-            && $type_1_atomic instanceof TList
+            && $type_1_atomic instanceof \Psalm\Type\Atomic\TList
         ) {
             $type_2_param = $type_2_atomic->type_params[1];
             $type_1_param = $type_1_atomic->type_param;

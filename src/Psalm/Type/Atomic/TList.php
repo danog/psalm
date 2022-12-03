@@ -9,55 +9,60 @@ use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
 use Psalm\Type;
 use Psalm\Type\Atomic;
-use Psalm\Type\Atomic\TList;
 use Psalm\Type\Union;
 
 use function get_class;
 
 /**
- * Represents an array where the type of each value
- * is a function of its string key value
+ * @deprecated Will be removed in Psalm v6, please use TKeyedArrays with is_list=true instead.
+ *
+ * Represents an array that has some particularities:
+ * - its keys are integers
+ * - they start at 0
+ * - they are consecutive and go upwards (no negative int)
+ *
  * @psalm-immutable
  */
-final class TClassStringMap extends Atomic
+class TList extends Atomic
 {
-    /**
-     * @var string
-     */
-    public $param_name;
-
-    public ?TNamedObject $as_type;
-
     /**
      * @var Union
      */
-    public $value_param;
+    public $type_param;
+
+    /** @var non-empty-lowercase-string */
+    public const KEY = 'list';
 
     /**
      * Constructs a new instance of a list
      */
-    public function __construct(
-        string $param_name,
-        ?TNamedObject $as_type,
-        Union $value_param,
-        bool $from_docblock = false
-    ) {
-        $this->param_name = $param_name;
-        $this->as_type = $as_type;
-        $this->value_param = $value_param;
+    public function __construct(Union $type_param, bool $from_docblock = false)
+    {
+        $this->type_param = $type_param;
         $this->from_docblock = $from_docblock;
+    }
+
+    /**
+     * @return static
+     */
+    public function setTypeParam(Union $type_param): self
+    {
+        if ($type_param === $this->type_param) {
+            return $this;
+        }
+        $cloned = clone $this;
+        $cloned->type_param = $type_param;
+        return $cloned;
+    }
+
+    public function getKeyedArray(): TKeyedArray
+    {
+        return Type::getListAtomic($this->type_param);
     }
 
     public function getId(bool $exact = true, bool $nested = false): string
     {
-        return 'class-string-map'
-            . '<'
-            . $this->param_name
-            . ' as '
-            . ($this->as_type ? $this->as_type->getId($exact) : 'object')
-            . ', '
-            . $this->value_param->getId($exact)
-            . '>';
+        return static::KEY . '<' . $this->type_param->getId($exact) . '>';
     }
 
     /**
@@ -71,7 +76,7 @@ final class TClassStringMap extends Atomic
         bool $use_phpdoc_format
     ): string {
         if ($use_phpdoc_format) {
-            return (new TArray([Type::getString(), $this->value_param]))
+            return (new TArray([Type::getInt(), $this->type_param]))
                 ->toNamespacedString(
                     $namespace,
                     $aliased_classes,
@@ -80,12 +85,9 @@ final class TClassStringMap extends Atomic
                 );
         }
 
-        return 'class-string-map'
+        return static::KEY
             . '<'
-            . $this->param_name
-            . ($this->as_type ? ' as ' . $this->as_type : '')
-            . ', '
-            . $this->value_param->toNamespacedString(
+            . $this->type_param->toNamespacedString(
                 $namespace,
                 $aliased_classes,
                 $this_class,
@@ -134,12 +136,8 @@ final class TClassStringMap extends Atomic
     ): self {
         $cloned = null;
 
-        foreach ([Type::getString(), $this->value_param] as $offset => $type_param) {
+        foreach ([Type::getInt(), $this->type_param] as $offset => $type_param) {
             $input_type_param = null;
-
-            if ($input_type instanceof TList) {
-                $input_type = $input_type->getKeyedArray();
-            }
 
             if (($input_type instanceof TGenericObject
                     || $input_type instanceof TIterable
@@ -150,16 +148,19 @@ final class TClassStringMap extends Atomic
                 $input_type_param = $input_type->type_params[$offset];
             } elseif ($input_type instanceof TKeyedArray) {
                 if ($offset === 0) {
-                    if ($input_type->is_list) {
-                        continue;
-                    }
                     $input_type_param = $input_type->getGenericKeyType();
                 } else {
                     $input_type_param = $input_type->getGenericValueType();
                 }
+            } elseif ($input_type instanceof TList) {
+                if ($offset === 0) {
+                    continue;
+                }
+
+                $input_type_param = $input_type->type_param;
             }
 
-            $value_param = TemplateStandinTypeReplacer::replace(
+            $type_param = TemplateStandinTypeReplacer::replace(
                 $type_param,
                 $template_result,
                 $codebase,
@@ -174,9 +175,9 @@ final class TClassStringMap extends Atomic
                 $depth + 1
             );
 
-            if ($offset === 1 && ($cloned || $this->value_param !== $value_param)) {
+            if ($offset === 1 && ($cloned || $this->type_param !== $type_param)) {
                 $cloned ??= clone $this;
-                $cloned->value_param = $value_param;
+                $cloned->type_param = $type_param;
             }
         }
 
@@ -190,24 +191,11 @@ final class TClassStringMap extends Atomic
         TemplateResult $template_result,
         ?Codebase $codebase
     ): self {
-        $value_param = TemplateInferredTypeReplacer::replace(
-            $this->value_param,
+        return $this->setTypeParam(TemplateInferredTypeReplacer::replace(
+            $this->type_param,
             $template_result,
             $codebase
-        );
-        if ($value_param === $this->value_param) {
-            return $this;
-        }
-        return new static(
-            $this->param_name,
-            $this->as_type,
-            $value_param
-        );
-    }
-
-    protected function getChildNodeKeys(): array
-    {
-        return ['value_param'];
+        ));
     }
 
     public function equals(Atomic $other_type, bool $ensure_source_equality): bool
@@ -216,7 +204,7 @@ final class TClassStringMap extends Atomic
             return false;
         }
 
-        if (!$this->value_param->equals($other_type->value_param, $ensure_source_equality)) {
+        if (!$this->type_param->equals($other_type->type_param, $ensure_source_equality)) {
             return false;
         }
 
@@ -225,18 +213,15 @@ final class TClassStringMap extends Atomic
 
     public function getAssertionString(): string
     {
-        return $this->getKey();
+        if ($this->type_param->isMixed()) {
+            return 'list';
+        }
+
+        return $this->getId();
     }
 
-    public function getStandinKeyParam(): Union
+    protected function getChildNodeKeys(): array
     {
-        return new Union([
-            new TTemplateParamClass(
-                $this->param_name,
-                $this->as_type->value ?? 'object',
-                $this->as_type,
-                'class-string-map'
-            )
-        ]);
+        return ['type_param'];
     }
 }

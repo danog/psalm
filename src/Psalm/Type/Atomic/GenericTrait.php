@@ -9,6 +9,7 @@ use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
 use Psalm\Type;
 use Psalm\Type\Atomic;
+use Psalm\Type\Atomic\TList;
 use Psalm\Type\Union;
 
 use function array_map;
@@ -172,6 +173,10 @@ trait GenericTrait
         bool $add_lower_bound = false,
         int $depth = 0
     ): ?array {
+        if ($input_type instanceof TList) {
+            $input_type = $input_type->getKeyedArray();
+        }
+
         $input_object_type_params = [];
 
         $container_type_params_covariant = [];

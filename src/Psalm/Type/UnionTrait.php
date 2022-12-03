@@ -25,6 +25,7 @@ use Psalm\Type\Atomic\TFalse;
 use Psalm\Type\Atomic\TInt;
 use Psalm\Type\Atomic\TIntRange;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TLiteralFloat;
 use Psalm\Type\Atomic\TLiteralInt;
 use Psalm\Type\Atomic\TLiteralString;
@@ -397,6 +398,17 @@ trait UnionTrait
     public function hasArray(): bool
     {
         return isset($this->types['array']);
+    }
+
+    /**
+     * @return TArray|TKeyedArray|TClassStringMap
+     */
+    public function getArray(): Atomic
+    {
+        if ($this->types['array'] instanceof TList) {
+            return $this->types['array']->getKeyedArray();
+        }
+        return $this->types['array'];
     }
 
     /**

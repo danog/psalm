@@ -33,6 +33,7 @@ use Psalm\Type\Atomic\TFalse;
 use Psalm\Type\Atomic\TInt;
 use Psalm\Type\Atomic\TIntRange;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TLiteralInt;
 use Psalm\Type\Atomic\TLiteralString;
 use Psalm\Type\Atomic\TNamedObject;
@@ -358,6 +359,9 @@ class FunctionCallReturnTypeFetcher
 
                         if (count($atomic_types) === 1) {
                             if (isset($atomic_types['array'])) {
+                                if ($atomic_types['array'] instanceof TList) {
+                                    $atomic_types['array'] = $atomic_types['array']->getKeyedArray();
+                                }
                                 if ($atomic_types['array'] instanceof TCallableArray
                                     || $atomic_types['array'] instanceof TCallableKeyedArray
                                 ) {
@@ -447,8 +451,7 @@ class FunctionCallReturnTypeFetcher
 
                         if ($first_arg_type = $statements_analyzer->node_data->getType($first_arg)) {
                             if ($first_arg_type->hasArray()) {
-                                /** @psalm-suppress PossiblyUndefinedStringArrayOffset */
-                                $array_type = $first_arg_type->getAtomicTypes()['array'];
+                                $array_type = $first_arg_type->getArray();
                                 if ($array_type instanceof TKeyedArray) {
                                     return $array_type->getGenericValueType();
                                 }

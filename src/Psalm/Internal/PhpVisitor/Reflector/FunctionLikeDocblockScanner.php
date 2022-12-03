@@ -829,10 +829,9 @@ class FunctionLikeDocblockScanner
 
             if (!$docblock_param_variadic && $storage_param->is_variadic && $new_param_type->hasArray()) {
                 /**
-                 * @psalm-suppress PossiblyUndefinedStringArrayOffset
                  * @var TArray|TKeyedArray
                  */
-                $array_type = $new_param_type->getAtomicTypes()['array'];
+                $array_type = $new_param_type->getArray();
 
                 if ($array_type instanceof TKeyedArray) {
                     $new_param_type = $array_type->getGenericValueType();

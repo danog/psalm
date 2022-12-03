@@ -45,7 +45,7 @@ class ArrayColumnReturnTypeProvider implements FunctionReturnTypeProviderInterfa
             && $first_arg_type->isSingle()
             && $first_arg_type->hasArray()
         ) {
-            $input_array = $first_arg_type->getAtomicTypes()['array'];
+            $input_array = $first_arg_type->getArray();
             if ($input_array instanceof TKeyedArray) {
                 $row_type = $input_array->getGenericValueType();
             } elseif ($input_array instanceof TArray) {
@@ -54,7 +54,7 @@ class ArrayColumnReturnTypeProvider implements FunctionReturnTypeProviderInterfa
 
             if ($row_type && $row_type->isSingle()) {
                 if ($row_type->hasArray()) {
-                    $row_shape = $row_type->getAtomicTypes()['array'];
+                    $row_shape = $row_type->getArray();
                 } elseif ($row_type->hasObjectType()) {
                     $row_shape_union = GetObjectVarsReturnTypeProvider::getGetObjectVarsReturnType(
                         $row_type,

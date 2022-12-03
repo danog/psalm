@@ -25,6 +25,7 @@ use Psalm\Type\Atomic\TIntMaskOf;
 use Psalm\Type\Atomic\TIterable;
 use Psalm\Type\Atomic\TKeyOf;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TLiteralClassString;
 use Psalm\Type\Atomic\TLiteralInt;
 use Psalm\Type\Atomic\TNamedObject;
@@ -493,6 +494,9 @@ class TypeExpander
                 $expand_templates,
                 $throw_on_unresolvable_constant,
             );
+        }
+        if ($return_type instanceof TList) {
+            $return_type = $return_type->getKeyedArray();
         }
 
         if ($return_type instanceof TArray

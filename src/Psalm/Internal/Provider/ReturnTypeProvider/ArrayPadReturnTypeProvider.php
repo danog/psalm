@@ -39,7 +39,7 @@ class ArrayPadReturnTypeProvider implements FunctionReturnTypeProviderInterface
             && ($value_arg_type = $type_provider->getType($call_args[2]->value))
             && $array_arg_type->isSingle()
             && $array_arg_type->hasArray()
-            && ($array_type = ArrayType::infer($array_arg_type->getAtomicTypes()['array']))
+            && ($array_type = ArrayType::infer($array_arg_type->getArray()))
         ) {
             $codebase = $statements_source->getCodebase();
             $key_type = Type::combineUnionTypes($array_type->key, Type::getInt(), $codebase);

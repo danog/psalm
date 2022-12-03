@@ -61,6 +61,7 @@ use Psalm\Type\Atomic\TFalse;
 use Psalm\Type\Atomic\TFloat;
 use Psalm\Type\Atomic\TInt;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TLiteralClassString;
 use Psalm\Type\Atomic\TLiteralFloat;
 use Psalm\Type\Atomic\TLiteralInt;
@@ -228,11 +229,7 @@ class ArrayFetchAnalyzer
             );
 
             if ($stmt->dim && $stmt_var_type->hasArray()) {
-                /**
-                 * @psalm-suppress PossiblyUndefinedStringArrayOffset
-                 * @var TArray|TKeyedArray|TClassStringMap
-                 */
-                $array_type = $stmt_var_type->getAtomicTypes()['array'];
+                $array_type = $stmt_var_type->getArray();
 
                 if ($array_type instanceof TClassStringMap) {
                     $array_value_type = Type::getMixed();
@@ -257,10 +254,9 @@ class ArrayFetchAnalyzer
                     || $stmt->var instanceof PhpParser\Node\Expr\ConstFetch)
             ) {
                 /**
-                 * @psalm-suppress PossiblyUndefinedStringArrayOffset
                  * @var TArray|TKeyedArray
                  */
-                $array_type = $stmt_var_type->getAtomicTypes()['array'];
+                $array_type = $stmt_var_type->getArray();
 
                 if ($array_type instanceof TArray) {
                     $const_array_key_type = $array_type->type_params[0];

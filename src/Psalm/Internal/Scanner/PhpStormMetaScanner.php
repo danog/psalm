@@ -223,10 +223,9 @@ class PhpStormMetaScanner
                             && $call_arg_type->hasArray()
                         ) {
                             /**
-                             * @psalm-suppress PossiblyUndefinedStringArrayOffset
                              * @var TArray|TKeyedArray
                              */
-                            $array_atomic_type = $call_arg_type->getAtomicTypes()['array'];
+                            $array_atomic_type = $call_arg_type->getArray();
 
                             if ($array_atomic_type instanceof TKeyedArray) {
                                 return $array_atomic_type->getGenericValueType();
@@ -363,10 +362,9 @@ class PhpStormMetaScanner
                             && $call_arg_type->hasArray()
                         ) {
                             /**
-                             * @psalm-suppress PossiblyUndefinedStringArrayOffset
                              * @var TArray|TKeyedArray
                              */
-                            $array_atomic_type = $call_arg_type->getAtomicTypes()['array'];
+                            $array_atomic_type = $call_arg_type->getArray();
 
                             if ($array_atomic_type instanceof TKeyedArray) {
                                 return $array_atomic_type->getGenericValueType();

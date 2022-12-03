@@ -65,7 +65,7 @@ class MinMaxReturnTypeProvider implements FunctionReturnTypeProviderInterface
                     if (!$arg_type->isSingle() || !$arg_type->isArray()) {
                         return Type::getMixed();
                     } else {
-                        $array_arg_type = $arg_type->getSingleAtomic();
+                        $array_arg_type = $arg_type->getArray();
                         if ($array_arg_type instanceof TKeyedArray) {
                             $possibly_unpacked_arg_types = $array_arg_type->properties;
                         } else {

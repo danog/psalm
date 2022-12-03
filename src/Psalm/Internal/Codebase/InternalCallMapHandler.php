@@ -164,10 +164,9 @@ class InternalCallMapHandler
                 if ($arg->unpack && !$function_param->is_variadic) {
                     if ($arg_type->hasArray()) {
                         /**
-                         * @psalm-suppress PossiblyUndefinedStringArrayOffset
                          * @var TArray|TKeyedArray
                          */
-                        $array_atomic_type = $arg_type->getAtomicTypes()['array'];
+                        $array_atomic_type = $arg_type->getArray();
 
                         if ($array_atomic_type instanceof TKeyedArray) {
                             $arg_type = $array_atomic_type->getGenericValueType();

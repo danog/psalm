@@ -48,6 +48,7 @@ use Psalm\Type\Atomic\TCallableObject;
 use Psalm\Type\Atomic\TCallableString;
 use Psalm\Type\Atomic\TClosure;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TLiteralString;
 use Psalm\Type\Atomic\TMixed;
 use Psalm\Type\Atomic\TNamedObject;
@@ -660,6 +661,10 @@ class FunctionCallAnalyzer extends CallAnalyzer
                 if ($var_type_part instanceof TTemplateParam) {
                     $var_atomic_types = array_merge($var_atomic_types, $var_type_part->as->getAtomicTypes());
                     continue;
+                }
+
+                if ($var_type_part instanceof TList) {
+                    $var_type_part = $var_type_part->getKeyedArray();
                 }
 
                 if ($var_type_part instanceof TClosure || $var_type_part instanceof TCallable) {

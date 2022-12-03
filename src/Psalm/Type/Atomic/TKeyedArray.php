@@ -16,6 +16,7 @@ use Psalm\Type\Atomic\TLiteralInt;
 use Psalm\Type\Atomic\TLiteralString;
 use Psalm\Type\Atomic\TNonEmptyArray;
 use Psalm\Type\Union;
+use UnexpectedValueException;
 
 use function addslashes;
 use function assert;
@@ -598,6 +599,20 @@ class TKeyedArray extends Atomic
     public function getAssertionString(): string
     {
         return $this->is_list ? 'list' : 'array';
+    }
+
+    /**
+     * @deprecated Will be removed in Psalm v6 along with the TList type.
+     */
+    public function getList(): TList
+    {
+        if (!$this->is_list) {
+            throw new UnexpectedValueException('Object-like array must be a list for conversion');
+        }
+
+        return $this->isNonEmpty()
+            ? new TNonEmptyList($this->getGenericValueType())
+            : new TList($this->getGenericValueType());
     }
 
     /**

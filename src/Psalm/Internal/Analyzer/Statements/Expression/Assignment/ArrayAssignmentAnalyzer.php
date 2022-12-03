@@ -24,6 +24,7 @@ use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TClassStringMap;
 use Psalm\Type\Atomic\TIntRange;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TLiteralClassString;
 use Psalm\Type\Atomic\TLiteralInt;
 use Psalm\Type\Atomic\TLiteralString;
@@ -301,6 +302,9 @@ class ArrayAssignmentAnalyzer
         $changed = false;
         $types = [];
         foreach ($child_stmt_type->getAtomicTypes() as $type) {
+            if ($type instanceof TList) {
+                $type = $type->getKeyedArray();
+            }
             $old_type = $type;
             if ($type instanceof TTemplateParam) {
                 $type = $type->replaceAs(self::updateTypeWithKeyValues(
@@ -525,9 +529,8 @@ class ArrayAssignmentAnalyzer
                 ) {
                     /**
                      * @var TClassStringMap
-                     * @psalm-suppress PossiblyUndefinedStringArrayOffset
                      */
-                    $class_string_map = $parent_type->getAtomicTypes()['array'];
+                    $class_string_map = $parent_type->getArray();
                     /**
                      * @var TTemplateParamClass
                      */
@@ -586,28 +589,33 @@ class ArrayAssignmentAnalyzer
             $atomic_root_types = $root_type->getAtomicTypes();
 
             if (isset($atomic_root_types['array'])) {
+                $atomic_root_type_array = $atomic_root_types['array'];
+                if ($atomic_root_type_array instanceof TList) {
+                    $atomic_root_type_array = $atomic_root_type_array->getKeyedArray();
+                }
+
                 if ($array_atomic_type_class_string) {
                     $array_atomic_type = new TNonEmptyArray([
                         $array_atomic_type_class_string->getStandinKeyParam(),
                         $array_atomic_type_class_string->value_param
                     ]);
-                } elseif ($atomic_root_types['array'] instanceof TKeyedArray
-                    && $atomic_root_types['array']->is_list
-                    && $atomic_root_types['array']->fallback_params === null
+                } elseif ($atomic_root_type_array instanceof TKeyedArray
+                    && $atomic_root_type_array->is_list
+                    && $atomic_root_type_array->fallback_params === null
                 ) {
-                    $array_atomic_type = $atomic_root_types['array'];
-                } elseif ($atomic_root_types['array'] instanceof TNonEmptyArray
-                    || ($atomic_root_types['array'] instanceof TKeyedArray
-                        && $atomic_root_types['array']->is_list
-                        && $atomic_root_types['array']->isNonEmpty()
+                    $array_atomic_type = $atomic_root_type_array;
+                } elseif ($atomic_root_type_array instanceof TNonEmptyArray
+                    || ($atomic_root_type_array instanceof TKeyedArray
+                        && $atomic_root_type_array->is_list
+                        && $atomic_root_type_array->isNonEmpty()
                     )
                 ) {
                     $prop_count = null;
-                    if ($atomic_root_types['array'] instanceof TNonEmptyArray) {
-                        $prop_count = $atomic_root_types['array']->count;
+                    if ($atomic_root_type_array instanceof TNonEmptyArray) {
+                        $prop_count = $atomic_root_type_array->count;
                     } else {
-                        $min_count = $atomic_root_types['array']->getMinCount();
-                        if ($min_count === $atomic_root_types['array']->getMaxCount()) {
+                        $min_count = $atomic_root_type_array->getMinCount();
+                        if ($min_count === $atomic_root_type_array->getMaxCount()) {
                             $prop_count = $min_count;
                         }
                     }
@@ -632,16 +640,16 @@ class ArrayAssignmentAnalyzer
                             true
                         );
                     }
-                } elseif ($atomic_root_types['array'] instanceof TKeyedArray
-                    && $atomic_root_types['array']->fallback_params === null
+                } elseif ($atomic_root_type_array instanceof TKeyedArray
+                    && $atomic_root_type_array->fallback_params === null
                 ) {
                     if ($array_atomic_type_array) {
                         $array_atomic_type = new TNonEmptyArray(
                             $array_atomic_type_array,
-                            count($atomic_root_types['array']->properties)
+                            count($atomic_root_type_array->properties)
                         );
-                    } elseif ($atomic_root_types['array']->is_list) {
-                        $array_atomic_type = $atomic_root_types['array'];
+                    } elseif ($atomic_root_type_array->is_list) {
+                        $array_atomic_type = $atomic_root_type_array;
                         $new_child_type = new Union([$array_atomic_type], [
                             'parent_nodes' => $root_type->parent_nodes
                         ]);
@@ -650,7 +658,7 @@ class ArrayAssignmentAnalyzer
                         $array_atomic_type = new TKeyedArray(
                             array_fill(
                                 0,
-                                count($atomic_root_types['array']->properties),
+                                count($atomic_root_type_array->properties),
                                 $array_atomic_type_list
                             ),
                             null,
@@ -706,15 +714,20 @@ class ArrayAssignmentAnalyzer
             $atomic_root_types = $new_child_type->getAtomicTypes();
 
             if (isset($atomic_root_types['array'])) {
-                if ($atomic_root_types['array'] instanceof TNonEmptyArray
-                    && $atomic_root_types['array']->count !== null
+                $atomic_root_type_array = $atomic_root_types['array'];
+                if ($atomic_root_type_array instanceof TList) {
+                    $atomic_root_type_array = $atomic_root_type_array->getKeyedArray();
+                }
+
+                if ($atomic_root_type_array instanceof TNonEmptyArray
+                    && $atomic_root_type_array->count !== null
                 ) {
                     $atomic_root_types['array'] =
-                        $atomic_root_types['array']->setCount($atomic_root_types['array']->count+1);
+                        $atomic_root_type_array->setCount($atomic_root_type_array->count+1);
                     $new_child_type = new Union($atomic_root_types);
-                } elseif ($atomic_root_types['array'] instanceof TKeyedArray
-                    && $atomic_root_types['array']->is_list) {
-                    $properties = $atomic_root_types['array']->properties;
+                } elseif ($atomic_root_type_array instanceof TKeyedArray
+                    && $atomic_root_type_array->is_list) {
+                    $properties = $atomic_root_type_array->properties;
                     $had_undefined = false;
                     foreach ($properties as &$property) {
                         if ($property->possibly_undefined) {
@@ -724,12 +737,12 @@ class ArrayAssignmentAnalyzer
                         }
                     }
 
-                    if (!$had_undefined && $atomic_root_types['array']->fallback_params) {
-                        $properties []= $atomic_root_types['array']->fallback_params[1];
+                    if (!$had_undefined && $atomic_root_type_array->fallback_params) {
+                        $properties []= $atomic_root_type_array->fallback_params[1];
                     }
 
                     $atomic_root_types['array'] =
-                        $atomic_root_types['array']->setProperties($properties);
+                        $atomic_root_type_array->setProperties($properties);
 
                     $new_child_type = new Union($atomic_root_types);
                 }

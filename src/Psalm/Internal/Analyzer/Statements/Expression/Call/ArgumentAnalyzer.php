@@ -55,6 +55,7 @@ use Psalm\Type\Atomic\TClassStringMap;
 use Psalm\Type\Atomic\TGenericObject;
 use Psalm\Type\Atomic\TIterable;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TLiteralString;
 use Psalm\Type\Atomic\TMixed;
 use Psalm\Type\Atomic\TNamedObject;
@@ -121,11 +122,7 @@ class ArgumentAnalyzer
                     && $param_type
                     && $param_type->hasArray()
                 ) {
-                    /**
-                     * @psalm-suppress PossiblyUndefinedStringArrayOffset
-                     * @var TKeyedArray|TArray
-                     */
-                    $array_type = $param_type->getAtomicTypes()['array'];
+                    $array_type = $param_type->getArray();
 
                     if ($array_type instanceof TKeyedArray && $array_type->is_list) {
                         $param_type = $array_type->getGenericValueType();
@@ -330,6 +327,10 @@ class ArgumentAnalyzer
                 $arg_type_param = null;
 
                 foreach ($arg_value_type->getAtomicTypes() as $arg_atomic_type) {
+                    if ($arg_atomic_type instanceof TList) {
+                        $arg_atomic_type = $arg_atomic_type->getKeyedArray();
+                    }
+
                     if ($arg_atomic_type instanceof TArray
                         || $arg_atomic_type instanceof TKeyedArray
                     ) {
@@ -468,11 +469,7 @@ class ArgumentAnalyzer
             }
 
             if ($arg_value_type->hasArray()) {
-                /**
-                 * @psalm-suppress PossiblyUndefinedStringArrayOffset
-                 * @var TArray|TKeyedArray|TClassStringMap
-                 */
-                $unpacked_atomic_array = $arg_value_type->getAtomicTypes()['array'];
+                $unpacked_atomic_array = $arg_value_type->getArray();
                 $arg_key_allowed = true;
 
                 if ($unpacked_atomic_array instanceof TKeyedArray) {
@@ -902,6 +899,10 @@ class ArgumentAnalyzer
             $potential_method_ids = [];
 
             foreach ($input_type->getAtomicTypes() as $input_type_part) {
+                if ($input_type_part instanceof TList) {
+                    $input_type_part = $input_type_part->getKeyedArray();
+                }
+
                 if ($input_type_part instanceof TKeyedArray) {
                     $potential_method_id = CallableTypeComparator::getCallableMethodIdFromTKeyedArray(
                         $input_type_part,
@@ -1212,10 +1213,7 @@ class ArgumentAnalyzer
             } elseif ($param_type_part instanceof TCallable) {
                 $can_be_callable_like_array = false;
                 if ($param_type->hasArray()) {
-                    /**
-                     * @psalm-suppress PossiblyUndefinedStringArrayOffset
-                     */
-                    $param_array_type = $param_type->getAtomicTypes()['array'];
+                    $param_array_type = $param_type->getArray();
 
                     $row_type = null;
                     if ($param_array_type instanceof TArray) {

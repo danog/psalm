@@ -35,6 +35,7 @@ use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TCallable;
 use Psalm\Type\Atomic\TClosure;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TNonEmptyArray;
 use Psalm\Type\Union;
 use UnexpectedValueException;
@@ -79,13 +80,11 @@ class ArrayFunctionArgumentsAnalyzer
             }
 
             /**
-             * @psalm-suppress PossiblyUndefinedStringArrayOffset
              * @var TKeyedArray|TArray|null
              */
             $array_arg_type = ($arg_value_type = $statements_analyzer->node_data->getType($arg->value))
-                    && ($types = $arg_value_type->getAtomicTypes())
-                    && isset($types['array'])
-                ? $types['array']
+                    && $arg_value_type->hasArray()
+                ? $arg_value_type->getArray()
                 : null;
 
             if ($array_arg_type instanceof TKeyedArray) {
@@ -215,11 +214,7 @@ class ArrayFunctionArgumentsAnalyzer
         if (($array_arg_type = $statements_analyzer->node_data->getType($array_arg))
             && $array_arg_type->hasArray()
         ) {
-            /**
-             * @psalm-suppress PossiblyUndefinedStringArrayOffset
-             * @var TArray|TKeyedArray
-             */
-            $array_type = $array_arg_type->getAtomicTypes()['array'];
+            $array_type = $array_arg_type->getArray();
 
             $objectlike_list = null;
 
@@ -413,10 +408,9 @@ class ArrayFunctionArgumentsAnalyzer
             && $replacement_arg_type->hasArray()
         ) {
             /**
-             * @psalm-suppress PossiblyUndefinedStringArrayOffset
              * @var TArray|TKeyedArray
              */
-            $array_type = $array_arg_type->getAtomicTypes()['array'];
+            $array_type = $array_arg_type->getArray();
 
             if ($array_type instanceof TKeyedArray) {
                 if ($array_type->is_list) {
@@ -438,10 +432,9 @@ class ArrayFunctionArgumentsAnalyzer
             }
 
             /**
-             * @psalm-suppress PossiblyUndefinedStringArrayOffset
              * @var TArray|TKeyedArray
              */
-            $replacement_array_type = $replacement_arg_type->getAtomicTypes()['array'];
+            $replacement_array_type = $replacement_arg_type->getArray();
 
             if ($replacement_array_type instanceof TKeyedArray) {
                 $was_list = $replacement_array_type->is_list;
@@ -504,6 +497,10 @@ class ArrayFunctionArgumentsAnalyzer
                 $array_atomic_types = [];
 
                 foreach ($context->vars_in_scope[$var_id]->getAtomicTypes() as $array_atomic_type) {
+                    if ($array_atomic_type instanceof TList) {
+                        $array_atomic_type = $array_atomic_type->getKeyedArray();
+                    }
+
                     if ($array_atomic_type instanceof TKeyedArray) {
                         if ($is_array_shift && $array_atomic_type->is_list
                             && !$context->inside_loop

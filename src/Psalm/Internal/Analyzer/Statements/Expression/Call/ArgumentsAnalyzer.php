@@ -44,6 +44,7 @@ use Psalm\Type\Atomic\TCallableArray;
 use Psalm\Type\Atomic\TCallableKeyedArray;
 use Psalm\Type\Atomic\TClosure;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TLiteralString;
 use Psalm\Type\Atomic\TNonEmptyArray;
 use Psalm\Type\Atomic\TTemplateParam;
@@ -889,10 +890,9 @@ class ArgumentsAnalyzer
                 if (($arg_value_type = $statements_analyzer->node_data->getType($arg->value))
                     && $arg_value_type->hasArray()) {
                     /**
-                     * @psalm-suppress PossiblyUndefinedStringArrayOffset
                      * @var TArray|TKeyedArray
                      */
-                    $array_type = $arg_value_type->getAtomicTypes()['array'];
+                    $array_type = $arg_value_type->getArray();
 
                     if ($array_type instanceof TKeyedArray) {
                         $array_type = $array_type->getGenericArrayType();
@@ -1479,10 +1479,9 @@ class ArgumentsAnalyzer
                 && $arg_value_type->hasArray()
             ) {
                 /**
-                 * @psalm-suppress PossiblyUndefinedStringArrayOffset
                  * @var TArray|TKeyedArray
                  */
-                $array_type = $arg_value_type->getAtomicTypes()['array'];
+                $array_type = $arg_value_type->getArray();
 
                 if ($array_type instanceof TKeyedArray) {
                     $array_type = $array_type->getGenericArrayType();
@@ -1699,6 +1698,10 @@ class ArgumentsAnalyzer
                         }
 
                         foreach ($arg_value_type->getAtomicTypes() as $atomic_arg_type) {
+                            if ($atomic_arg_type instanceof TList) {
+                                $atomic_arg_type = $atomic_arg_type->getKeyedArray();
+                            }
+
                             $packed_var_definite_args_tmp = [];
                             if ($atomic_arg_type instanceof TCallableArray ||
                                 $atomic_arg_type instanceof TCallableKeyedArray

@@ -26,6 +26,7 @@ use Psalm\Type\Atomic\TInt;
 use Psalm\Type\Atomic\TIntRange;
 use Psalm\Type\Atomic\TIterable;
 use Psalm\Type\Atomic\TKeyedArray;
+use Psalm\Type\Atomic\TList;
 use Psalm\Type\Atomic\TLiteralClassString;
 use Psalm\Type\Atomic\TLiteralFloat;
 use Psalm\Type\Atomic\TLiteralInt;
@@ -390,6 +391,9 @@ class TypeCombiner
         bool $allow_mixed_union,
         int $literal_limit
     ): ?Union {
+        if ($type instanceof TList) {
+            $type = $type->getKeyedArray();
+        }
         if ($type instanceof TMixed) {
             if ($type->from_loop_isset) {
                 if ($combination->mixed_from_loop_isset === null) {
