@@ -1147,13 +1147,24 @@ class Reconciler
                                 )
                             )
                         ) {
-                            $base_atomic_type = new TKeyedArray(
-                                $properties,
-                                null,
-                                $base_atomic_type->fallback_params,
-                                false,
-                                $base_atomic_type->from_docblock
-                            );
+                            if ($base_atomic_type->fallback_params && is_numeric($array_key_offset)) {
+                                $fallback = $base_atomic_type->fallback_params[1]->setPossiblyUndefined(
+                                    $result_type->isNever()
+                                );
+                                for ($x = 0; $x < $array_key_offset; $x++) {
+                                    $properties[$x] = $fallback;
+                                }
+                                ksort($properties);
+                                $base_atomic_type = $base_atomic_type->setProperties($properties);
+                            } else {
+                                $base_atomic_type = new TKeyedArray(
+                                    $properties,
+                                    null,
+                                    $base_atomic_type->fallback_params,
+                                    false,
+                                    $base_atomic_type->from_docblock
+                                );
+                            }
                         } else {
                             $base_atomic_type = $base_atomic_type->setProperties($properties);
                         }
