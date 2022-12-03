@@ -564,6 +564,11 @@
       <code>replace</code>
     </ImpureMethodCall>
   </file>
+  <file src="src/Psalm/Type/Atomic/TDependentListKey.php">
+    <PossiblyUnusedMethod occurrences="1">
+      <code>__construct</code>
+    </PossiblyUnusedMethod>
+  </file>
   <file src="src/Psalm/Type/Atomic/TKeyedArray.php">
     <DeprecatedClass occurrences="3">
       <code>TList</code>
