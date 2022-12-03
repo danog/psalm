@@ -292,7 +292,7 @@ class ObjectComparator
                 $intersection_container_type_lower
             )
         ) {
-            if ($container_was_static && !$input_was_static) {
+            if (!$container_was_static && $input_was_static) {
                 if ($atomic_comparison_result) {
                     $atomic_comparison_result->type_coerced = true;
                 }

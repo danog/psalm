@@ -299,18 +299,31 @@ class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
 
         if ($method_storage) {
             if ($method_storage->if_this_is_type) {
-                $class_type = new Union([$lhs_type_part]);
                 $if_this_is_type = TemplateInferredTypeReplacer::replace(
                     $method_storage->if_this_is_type,
                     $template_result,
                     $codebase
                 );
+                $if_this_is_type = TypeExpander::expandUnion(
+                    $codebase,
+                    $if_this_is_type,
+                    $fq_class_name,
+                    $static_type,
+                    $class_storage->parent_class,
+                    true,
+                    false,
+                    $static_type instanceof TNamedObject
+                        && $codebase->classlike_storage_provider->get($static_type->value)->final,
+                    true
+                );
+
+                $class_type = new Union([$lhs_type_part]);
 
                 if (!UnionTypeComparator::isContainedBy($codebase, $class_type, $if_this_is_type)) {
                     IssueBuffer::maybeAdd(
                         new IfThisIsMismatch(
-                            'Class type must be ' . $method_storage->if_this_is_type->getId()
-                            . ' current type ' . $class_type->getId(),
+                            'Class type ' . $if_this_is_type->getId()
+                            . ' does not contain ' . $class_type->getId(),
                             new CodeLocation($source, $stmt->name)
                         ),
                         $statements_analyzer->getSuppressedIssues()
