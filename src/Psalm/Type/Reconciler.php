@@ -1152,7 +1152,7 @@ class Reconciler
                                     $result_type->isNever()
                                 );
                                 for ($x = 0; $x < $array_key_offset; $x++) {
-                                    $properties[$x] = $fallback;
+                                    $properties[$x] ??= $fallback;
                                 }
                                 ksort($properties);
                                 $base_atomic_type = $base_atomic_type->setProperties($properties);
