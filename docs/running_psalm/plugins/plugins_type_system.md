@@ -165,8 +165,6 @@ if (true === $first) {
 
 `TArray` - denotes a simple array of the form `array<TKey, TValue>`. It expects an array with two elements, both union types.
 
-`TList` - Represents an array that has some particularities: its keys are integers, they start at 0, they are consecutive and go upwards (no negative int)
-
 `TNonEmptyArray` - as above, but denotes an array known to be non-empty.
 
 `TKeyedArray` represents an 'object-like array' - an array with known keys.
@@ -175,6 +173,8 @@ if (true === $first) {
 $x = ["a" => 1, "b" => 2]; // is TKeyedArray, array{a: int, b: int}
 $y = rand(0, 1) ? ["a" => null] : ["a" => 1, "b" => "b"]; // is TKeyedArray with optional keys/values, array{a: ?int, b?: string}
 ```
+
+This type is also used to represent lists (instead of the now-deprecated `TList` type).  
 
 Note that not all associative arrays are considered object-like. If the keys are not known, the array is treated as a mapping between two types.
 
