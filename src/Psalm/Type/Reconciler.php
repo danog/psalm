@@ -1157,14 +1157,14 @@ class Reconciler
                                 ksort($properties);
                                 $base_atomic_type = $base_atomic_type->setProperties($properties);
                             } else {
-                                //
-                                /*$base_atomic_type = new TKeyedArray(
+                                // This should actually be a paradox
+                                $base_atomic_type = new TKeyedArray(
                                     $properties,
                                     null,
                                     $base_atomic_type->fallback_params,
                                     false,
                                     $base_atomic_type->from_docblock
-                                );*/
+                                );
                             }
                         } else {
                             $base_atomic_type = $base_atomic_type->setProperties($properties);
