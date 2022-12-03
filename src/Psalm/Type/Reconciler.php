@@ -210,7 +210,7 @@ class Reconciler
 
             $has_object_array_access = false;
 
-            $result_type = $existing_types[$key] ?? self::getValueForKey(
+            $result_type = $existing_types[$key] ?? (self::getValueForKey(
                 $codebase,
                 $key,
                 $existing_types,
@@ -221,9 +221,9 @@ class Reconciler
                 $has_empty,
                 $inside_loop,
                 $has_object_array_access
-            );
+            ) ?? Type::getNever());
 
-            if ($result_type && $result_type->isUnionEmpty()) {
+            if ($result_type->isUnionEmpty()) {
                 throw new InvalidArgumentException('Union::$types cannot be empty after get value for ' . $key);
             }
 
@@ -307,7 +307,7 @@ class Reconciler
                         || ($result_type->hasString() && !$result_type->hasLiteralString())))
                 || $statements_analyzer->data_flow_graph instanceof VariableUseGraph
             ) {
-                if ($before_adjustment && $before_adjustment->parent_nodes) {
+                if ($before_adjustment->parent_nodes) {
                     $result_type = $result_type->setParentNodes($before_adjustment->parent_nodes);
                 } elseif (!$did_type_exist && $code_location) {
                     $result_type = $result_type->setParentNodes(
@@ -318,12 +318,11 @@ class Reconciler
                 }
             }
 
-            if ($before_adjustment && $before_adjustment->by_ref) {
+            if ($before_adjustment->by_ref) {
                 $result_type = $result_type->setByRef(true);
             }
 
-            $type_changed = !$before_adjustment
-                || !$result_type->equals($before_adjustment)
+            $type_changed = !$result_type->equals($before_adjustment)
                 || $result_type->different
                 || $before_adjustment->different;
 
@@ -771,7 +770,9 @@ class Reconciler
                             $key_parts_key = str_replace('\'', '', $array_key);
 
                             if (!isset($array_properties[$key_parts_key])) {
-                                if ($existing_key_type_part->fallback_params !== null) {
+                                if ($existing_key_type_part->fallback_params !== null
+                                    && !(!is_numeric($key_parts_key) && $existing_key_type_part->is_list)
+                                ) {
                                     $new_base_type_candidate = $existing_key_type_part
                                         ->fallback_params[1]->setDifferent(true);
                                 } else {
