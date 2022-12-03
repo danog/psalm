@@ -22,6 +22,7 @@ use Psalm\IssueBuffer;
 use Psalm\Type;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TClassStringMap;
+use Psalm\Type\Atomic\TDependentListKey;
 use Psalm\Type\Atomic\TIntRange;
 use Psalm\Type\Atomic\TKeyedArray;
 use Psalm\Type\Atomic\TList;
@@ -482,9 +483,11 @@ class ArrayAssignmentAnalyzer
                 if ($key_type->isSingle()) {
                     $key_type_type = $key_type->getSingleAtomic();
 
-                    if ($key_type_type instanceof TIntRange
+                    if (($key_type_type instanceof TIntRange
                         && $key_type_type->dependent_list_key === $parent_var_id
-                    ) {
+                    ) || ($key_type_type instanceof TDependentListKey
+                        && $key_type_type->var_id === $parent_var_id
+                    )) {
                         $offset_already_existed = true;
                     }
 
