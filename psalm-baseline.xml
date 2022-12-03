@@ -397,6 +397,9 @@
     </PossiblyUndefinedIntArrayOffset>
   </file>
   <file src="src/Psalm/Internal/Type/Comparator/AtomicTypeComparator.php">
+    <ComplexMethod occurrences="1">
+      <code>isContainedBy</code>
+    </ComplexMethod>
     <PossiblyUndefinedIntArrayOffset occurrences="2">
       <code>$array-&gt;properties[0]</code>
       <code>$array-&gt;properties[0]</code>
@@ -468,11 +471,6 @@
       <code>$type_tokens[$i - 2]</code>
     </PossiblyInvalidArrayOffset>
   </file>
-  <file src="src/Psalm/Storage/Assertion/HasArrayKey.php">
-    <PossiblyUnusedMethod occurrences="1">
-      <code>__construct</code>
-    </PossiblyUnusedMethod>
-  </file>
   <file src="src/Psalm/Storage/ClassConstantStorage.php">
     <MutableDependency occurrences="1">
       <code>CustomMetadataTrait</code>
@@ -487,10 +485,9 @@
     </ImpureMethodCall>
   </file>
   <file src="src/Psalm/Type.php">
-    <ImpureMethodCall occurrences="2">
-      <code>getListKey</code>
-      <code>getListKey</code>
-    </ImpureMethodCall>
+    <ImpureStaticProperty occurrences="1">
+      <code>self::$listKey</code>
+    </ImpureStaticProperty>
   </file>
   <file src="src/Psalm/Type/Atomic.php">
     <ImpureMethodCall occurrences="12">
@@ -541,6 +538,11 @@
       <code>getMostSpecificTypeFromBounds</code>
     </ImpureMethodCall>
   </file>
+  <file src="src/Psalm/Type/Atomic/TCallableList.php">
+    <DeprecatedClass occurrences="1">
+      <code>TNonEmptyList</code>
+    </DeprecatedClass>
+  </file>
   <file src="src/Psalm/Type/Atomic/TClassString.php">
     <ImpureMethodCall occurrences="1">
       <code>replace</code>
@@ -563,7 +565,12 @@
     </ImpureMethodCall>
   </file>
   <file src="src/Psalm/Type/Atomic/TKeyedArray.php">
-    <ImpureMethodCall occurrences="14">
+    <DeprecatedClass occurrences="3">
+      <code>TList</code>
+      <code>new TList($this-&gt;getGenericValueType())</code>
+      <code>new TNonEmptyList($this-&gt;getGenericValueType())</code>
+    </DeprecatedClass>
+    <ImpureMethodCall occurrences="13">
       <code>combine</code>
       <code>combine</code>
       <code>combineUnionTypes</code>
@@ -573,7 +580,6 @@
       <code>combineUnionTypes</code>
       <code>combineUnionTypes</code>
       <code>combineUnionTypes</code>
-      <code>getListKey</code>
       <code>replace</code>
       <code>replace</code>
       <code>replace</code>
@@ -591,6 +597,26 @@
       <code>$this-&gt;properties[0]</code>
       <code>$this-&gt;properties[0]</code>
     </PossiblyUndefinedIntArrayOffset>
+    <PossiblyUnusedMethod occurrences="1">
+      <code>getList</code>
+    </PossiblyUnusedMethod>
+  </file>
+  <file src="src/Psalm/Type/Atomic/TList.php">
+    <ImpureMethodCall occurrences="2">
+      <code>replace</code>
+      <code>replace</code>
+    </ImpureMethodCall>
+    <ImpurePropertyAssignment occurrences="1">
+      <code>$cloned-&gt;type_param</code>
+    </ImpurePropertyAssignment>
+  </file>
+  <file src="src/Psalm/Type/Atomic/TNonEmptyList.php">
+    <DeprecatedClass occurrences="1">
+      <code>TList</code>
+    </DeprecatedClass>
+    <PossiblyUnusedMethod occurrences="1">
+      <code>setCount</code>
+    </PossiblyUnusedMethod>
   </file>
   <file src="src/Psalm/Type/Atomic/TObjectWithProperties.php">
     <ImpureMethodCall occurrences="2">
@@ -653,6 +679,12 @@
       <code>traverseArray</code>
       <code>traverseArray</code>
     </ImpureMethodCall>
+    <MoreSpecificReturnType occurrences="1">
+      <code>TArray|TKeyedArray|TClassStringMap</code>
+    </MoreSpecificReturnType>
+    <PossiblyUndefinedStringArrayOffset occurrences="1">
+      <code>$this-&gt;types['array']</code>
+    </PossiblyUndefinedStringArrayOffset>
     <PossiblyUnusedMethod occurrences="2">
       <code>allFloatLiterals</code>
       <code>allFloatLiterals</code>

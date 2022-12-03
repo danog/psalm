@@ -4,6 +4,8 @@ namespace Psalm\Type\Atomic;
 
 use Psalm\Type;
 
+use function array_fill;
+
 /**
  * @deprecated Will be removed in Psalm v6, please use TKeyedArrays with is_list=true instead.
  *
