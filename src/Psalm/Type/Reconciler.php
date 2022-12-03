@@ -1140,7 +1140,17 @@ class Reconciler
                     } else {
                         $properties = $base_atomic_type->properties;
                         $properties[$array_key_offset] = $result_type;
-                        $base_atomic_type = $base_atomic_type->setProperties($properties);
+                        if ($base_atomic_type->is_list && !isset($properties[$array_key_offset-1])) {
+                            $base_atomic_type = new TKeyedArray(
+                                $properties,
+                                null,
+                                $base_atomic_type->fallback_params,
+                                false,
+                                $base_atomic_type->from_docblock
+                            );
+                        } else {
+                            $base_atomic_type = $base_atomic_type->setProperties($properties);
+                        }
                     }
 
                     $new_base_type = $new_base_type->getBuilder()->addType($base_atomic_type)->freeze();
