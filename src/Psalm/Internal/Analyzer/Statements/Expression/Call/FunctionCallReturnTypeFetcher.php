@@ -377,33 +377,13 @@ class FunctionCallReturnTypeFetcher
                                 }
 
                                 if ($atomic_types['array'] instanceof TKeyedArray) {
-                                    $min = 0;
-                                    $max = 0;
-                                    foreach ($atomic_types['array']->properties as $property) {
-                                        // empty, never and possibly undefined can't count for min value
-                                        if (!$property->possibly_undefined
-                                            && !$property->isNever()
-                                        ) {
-                                            $min++;
-                                        }
+                                    $min = $atomic_types['array']->getMinCount();
+                                    $max = $atomic_types['array']->getMaxCount();
 
-                                        //never can't count for max value because we know keys are undefined
-                                        if (!$property->isNever()) {
-                                            $max++;
-                                        }
+                                    if ($min === $max) {
+                                        return new Union([new TLiteralInt($max)]);
                                     }
-
-                                    if ($atomic_types['array']->fallback_params === null) {
-                                        //the KeyedArray is sealed, we can use the min and max
-                                        if ($min === $max) {
-                                            return new Union([new TLiteralInt($max)]);
-                                        }
-
-                                        return new Union([new TIntRange($min, $max)]);
-                                    }
-
-                                    //the type is not sealed, we can only use the min
-                                    return new Union([new TIntRange($min, null)]);
+                                    return new Union([new TIntRange($min, $max)]);
                                 }
 
                                 if ($atomic_types['array'] instanceof TArray

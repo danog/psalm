@@ -403,6 +403,7 @@ class TKeyedArray extends Atomic
                     return $k;
                 }
             }
+            return count($this->properties);
         }
         $prop_min_count = 0;
         foreach ($this->properties as $property) {
