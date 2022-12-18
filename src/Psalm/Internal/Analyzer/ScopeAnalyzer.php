@@ -36,7 +36,7 @@ class ScopeAnalyzer
      */
     public static function getControlActions(
         array $stmts,
-        ?NodeDataProvider $nodes,
+        NodeDataProvider $nodes,
         array $break_types,
         bool $return_is_exit = true
     ): array {
@@ -83,7 +83,10 @@ class ScopeAnalyzer
             if ($stmt instanceof PhpParser\Node\Stmt\Continue_) {
                 $count = !$stmt->num
                     ? 1
-                    : ($stmt->num instanceof PhpParser\Node\Scalar\LNumber ? $stmt->num->value : null);
+                    : (($cnt_type = $nodes->getType($stmt->num))
+                        && $cnt_type->isSingleIntLiteral()
+                        ? $cnt_type->getSingleLiteral()->value
+                        : null);
 
                 if ($break_types && $count !== null && count($break_types) >= $count) {
                     /** @psalm-suppress InvalidArrayOffset Some int-range improvements are needed */
@@ -100,7 +103,10 @@ class ScopeAnalyzer
             if ($stmt instanceof PhpParser\Node\Stmt\Break_) {
                 $count = !$stmt->num
                     ? 1
-                    : ($stmt->num instanceof PhpParser\Node\Scalar\LNumber ? $stmt->num->value : null);
+                    : (($cnt_type = $nodes->getType($stmt->num))
+                        && $cnt_type->isSingleIntLiteral()
+                        ? $cnt_type->getSingleLiteral()->value
+                        : null);
 
                 if ($break_types && $count !== null && count($break_types) >= $count) {
                     /** @psalm-suppress InvalidArrayOffset Some int-range improvements are needed */
