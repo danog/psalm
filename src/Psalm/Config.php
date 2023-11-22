@@ -1,6 +1,5 @@
 <?php
 
-
 namespace Psalm;
 
 use Composer\Autoload\ClassLoader;
