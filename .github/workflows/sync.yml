@@ -8,13 +8,20 @@ jobs:
   merge:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Merge upstream
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Merge upstream      
+        env:
+          TOKEN: ${{ secrets.TOKEN }}
         run: |
           git config --global user.name 'Daniil Gentili'
           git config --global user.email 'danog@users.noreply.github.com'
 
-          git pull --unshallow
+          git remote rm origin
+          git remote add origin "https://$TOKEN@github.com/danog/psalm.git"
+          git pull origin --unshallow
 
           git remote add upstream https://github.com/vimeo/psalm.git
           git fetch upstream
