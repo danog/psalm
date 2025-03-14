@@ -1,6 +1,7 @@
 
 name: Merge upstream branches
 on:
+  push:
   schedule:
     - cron:  '5 * * * *'
 jobs:
