@@ -1,7 +1,7 @@
 
 name: Merge upstream branches
 on:
-  push:
+  workflow_dispatch:
   schedule:
     - cron:  '5 * * * *'
 jobs:
@@ -29,3 +29,6 @@ jobs:
 
           git push origin --tags
 
+          git checkout --track origin/sync
+          git merge --no-edit upstream/master
+          git push origin sync
