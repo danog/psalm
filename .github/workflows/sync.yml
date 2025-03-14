@@ -29,6 +29,6 @@ jobs:
 
           git push origin --tags
 
-          git checkout --track origin/sync
+          git checkout sync
           git merge --no-edit upstream/master
           git push origin sync
