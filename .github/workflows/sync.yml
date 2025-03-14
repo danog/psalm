@@ -28,3 +28,4 @@ jobs:
           git push origin 6.x
 
           git push origin --tags
+
