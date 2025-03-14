@@ -19,8 +19,7 @@ jobs:
           git config --global user.name 'Daniil Gentili'
           git config --global user.email 'danog@users.noreply.github.com'
 
-          git remote rm origin
-          git remote add origin "https://$TOKEN@github.com/danog/psalm.git"
+          git remote set-url origin "https://$TOKEN@github.com/danog/psalm.git"
           git pull origin --unshallow
 
           git remote add upstream https://github.com/vimeo/psalm.git
