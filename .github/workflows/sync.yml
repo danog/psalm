@@ -1,0 +1,29 @@
+
+name: Merge upstream branches
+on:
+  schedule:
+    - cron:  '* * * * *'
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Merge upstream
+        run: |
+          git config --global user.name 'Daniil Gentili'
+          git config --global user.email 'danog@users.noreply.github.com'
+
+          git pull --unshallow
+
+          git remote add upstream https://github.com/vimeo/psalm.git
+          git fetch upstream
+
+          git checkout master
+          git merge --no-edit upstream/master
+          git push origin master
+
+          git checkout 6.x
+          git merge --no-edit upstream/6.x
+          git push origin 6.x
+
+          git push origin --tags
