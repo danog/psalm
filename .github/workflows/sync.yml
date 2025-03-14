@@ -19,11 +19,11 @@ jobs:
           git remote add upstream https://github.com/vimeo/psalm.git
           git fetch upstream
 
-          git checkout master --track origin/master
+          git checkout --track origin/master
           git merge --no-edit upstream/master
           git push origin master
 
-          git checkout 6.x --track origin/6.x
+          git checkout --track origin/6.x
           git merge --no-edit upstream/6.x
           git push origin 6.x
 
