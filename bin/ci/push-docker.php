@@ -13,8 +13,8 @@ function r(string $cmd): void
 }
 
 $user = getenv('ACTOR');
-$ref = substr(getenv('REF'), strlen('refs/heads/'));
-$is_tag = getenv('EVENT_NAME') === 'release';
+$is_tag = str_starts_with(getenv('REF'), 'refs/tags/');
+$ref = str_replace(['refs/heads/', 'refs/tags/'], '', getenv('REF'));
 
 $ref = escapeshellarg($ref);
 
@@ -23,8 +23,6 @@ r("docker pull ghcr.io/$user/psalm:$ref-amd64 --platform amd64");
 
 r("docker buildx imagetools create -t ghcr.io/$user/psalm:$ref ghcr.io/$user/psalm:$ref-arm64 ghcr.io/$user/psalm:$ref-amd64");
 
-if ($is_tag) {
-    r("docker pull ghcr.io/$user/psalm:$ref");
-    r("docker tag ghcr.io/$user/psalm:$ref ghcr.io/$user/psalm:latest");
-    r("docker push ghcr.io/$user/psalm:latest");
+if ($is_tag && !str_contains($ref, 'beta')) {
+    r("docker buildx imagetools create -t ghcr.io/$user/psalm:latest ghcr.io/$user/psalm:$ref-arm64 ghcr.io/$user/psalm:$ref-amd64");
 }
