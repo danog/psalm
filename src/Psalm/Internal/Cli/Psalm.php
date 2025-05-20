@@ -143,6 +143,7 @@ final class Psalm
         'no-cache',
         'no-reflection-cache',
         'no-file-cache',
+        'no-reference-cache',
         'output-format:',
         'plugin:',
         'report:',
@@ -241,10 +242,11 @@ final class Psalm
         IssueBuffer::captureServer($_SERVER);
 
         $include_collector = new IncludeCollector();
-        $first_autoloader = $include_collector->runAndCollect(
+        $autoloaders = $include_collector->runAndCollect(
             // we ignore the FQN because of a hack in scoper.inc that needs full path
             // phpcs:ignore SlevomatCodingStandard.Namespaces.ReferenceUsedNamesOnly.ReferenceViaFullyQualifiedName
-            static fn(): ?\Composer\Autoload\ClassLoader =>
+            /** @return list<ClassLoader> */
+            static fn(): array =>
                 CliUtils::requireAutoloaders($current_dir, isset($options['r']), $vendor_dir),
         );
 
@@ -261,7 +263,7 @@ final class Psalm
             $current_dir,
             $args,
             $vendor_dir,
-            $first_autoloader,
+            $autoloaders,
             $path_to_config,
             $output_format,
             $run_taint_analysis,
@@ -608,11 +610,12 @@ final class Psalm
         }
     }
 
+    /** @param list<ClassLoader> $autoloaders */
     private static function loadConfig(
         ?string $path_to_config,
         string $current_dir,
         string $output_format,
-        ?ClassLoader $first_autoloader,
+        array $autoloaders,
         bool $run_taint_analysis,
         array $options,
     ): Config {
@@ -620,7 +623,7 @@ final class Psalm
             $path_to_config,
             $current_dir,
             $output_format,
-            $first_autoloader,
+            $autoloaders,
             $run_taint_analysis,
         );
 
@@ -672,26 +675,23 @@ final class Psalm
         if ($config->cache_directory === null || isset($options['i'])) {
             $providers = new Providers(
                 new FileProvider,
+                new ParserCacheProvider($config, Composer::getLockFile($current_dir), true),
+                new FileStorageCacheProvider($config, Composer::getLockFile($current_dir), true),
+                new ClassLikeStorageCacheProvider($config, Composer::getLockFile($current_dir), true),
+                new FileReferenceCacheProvider($config, Composer::getLockFile($current_dir), true),
             );
         } else {
             $no_reflection_cache = isset($options['no-reflection-cache']);
             $no_file_cache = isset($options['no-file-cache']);
-
-            $file_storage_cache_provider = $no_reflection_cache
-                ? null
-                : new FileStorageCacheProvider($config);
-
-            $classlike_storage_cache_provider = $no_reflection_cache
-                ? null
-                : new ClassLikeStorageCacheProvider($config);
+            $no_reference_cache = isset($options['no-reference-cache']);
 
             $providers = new Providers(
                 new FileProvider,
-                new ParserCacheProvider($config, !$no_file_cache),
-                $file_storage_cache_provider,
-                $classlike_storage_cache_provider,
-                new FileReferenceCacheProvider($config),
-                new ProjectCacheProvider(Composer::getLockFilePath($current_dir)),
+                new ParserCacheProvider($config, Composer::getLockFile($current_dir), $no_file_cache),
+                new FileStorageCacheProvider($config, Composer::getLockFile($current_dir), $no_reflection_cache),
+                new ClassLikeStorageCacheProvider($config, Composer::getLockFile($current_dir), $no_reflection_cache),
+                new FileReferenceCacheProvider($config, Composer::getLockFile($current_dir), $no_reference_cache),
+                new ProjectCacheProvider(),
             );
         }
         return $providers;
@@ -1098,13 +1098,14 @@ final class Psalm
 
     /**
      * @param array<int, string> $args
+     * @param list<ClassLoader> $autoloaders
      * @return array{Config,?string}
      */
     private static function initConfig(
         string $current_dir,
         array $args,
         string $vendor_dir,
-        ?ClassLoader $first_autoloader,
+        array $autoloaders,
         ?string $path_to_config,
         string $output_format,
         bool $run_taint_analysis,
@@ -1120,13 +1121,13 @@ final class Psalm
             echo "Calculating best config level based on project files\n";
             Creator::createBareConfig($current_dir, $init_source_dir, $vendor_dir);
             $config = Config::getInstance();
-            $config->setComposerClassLoader($first_autoloader);
+            $config->setComposerClassLoader($autoloaders);
         } else {
             $config = self::loadConfig(
                 $path_to_config,
                 $current_dir,
                 $output_format,
-                $first_autoloader,
+                $autoloaders,
                 $run_taint_analysis,
                 $options,
             );

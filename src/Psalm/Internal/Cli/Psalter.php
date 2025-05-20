@@ -17,7 +17,6 @@ use Psalm\Internal\Preloader;
 use Psalm\Internal\Provider\ClassLikeStorageCacheProvider;
 use Psalm\Internal\Provider\FileProvider;
 use Psalm\Internal\Provider\FileStorageCacheProvider;
-use Psalm\Internal\Provider\ParserCacheProvider;
 use Psalm\Internal\Provider\ProjectCacheProvider;
 use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\Scanner\ParsedDocblock;
@@ -225,10 +224,11 @@ final class Psalter
         IssueBuffer::captureServer($_SERVER);
 
         $include_collector = new IncludeCollector();
-        $first_autoloader = $include_collector->runAndCollect(
+        $autoloaders = $include_collector->runAndCollect(
             // we ignore the FQN because of a hack in scoper.inc that needs full path
             // phpcs:ignore SlevomatCodingStandard.Namespaces.ReferenceUsedNamesOnly.ReferenceViaFullyQualifiedName
-            static fn(): ?\Composer\Autoload\ClassLoader =>
+            /** @return list<ClassLoader> */
+            static fn(): array =>
                 CliUtils::requireAutoloaders($current_dir, isset($options['r']), $vendor_dir),
         );
         $ini_handler = new PsalmRestarter('PSALTER');
@@ -254,7 +254,7 @@ final class Psalter
             $path_to_config,
             $current_dir,
             Report::TYPE_CONSOLE,
-            $first_autoloader,
+            $autoloaders,
         );
 
         if (isset($options['no-cache'])) {
@@ -280,11 +280,11 @@ final class Psalter
         } else {
             $providers = new Providers(
                 new FileProvider(),
-                new ParserCacheProvider($config, false),
-                new FileStorageCacheProvider($config),
-                new ClassLikeStorageCacheProvider($config),
                 null,
-                new ProjectCacheProvider(Composer::getLockFilePath($current_dir)),
+                new FileStorageCacheProvider($config, Composer::getLockFile($current_dir)),
+                new ClassLikeStorageCacheProvider($config, Composer::getLockFile($current_dir)),
+                null,
+                new ProjectCacheProvider(),
             );
         }
 
