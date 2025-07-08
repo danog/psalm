@@ -92,6 +92,7 @@ use const PHP_INT_MAX;
  *      class_property_locations: array<string, array<int, CodeLocation>>,
  *      possible_method_param_types: array<string, array<int, Union>>,
  *      taint_data: ?TaintFlowGraph,
+ *      used_data: ?ClassUseGraph,
  *      unused_suppressions: array<string, array<int, int>>,
  *      used_suppressions: array<string, array<int, bool>>,
  *      function_docblock_manipulators: array<string, array<int, FunctionDocblockManipulator>>,
@@ -343,6 +344,9 @@ final class Analyzer
 
                 if ($codebase->taint_flow_graph && $pool_data['taint_data']) {
                     $codebase->taint_flow_graph->addGraph($pool_data['taint_data']);
+                }
+                if ($codebase->class_use_graph && $pool_data['used_data']) {
+                    $codebase->class_use_graph->addGraph($pool_data['used_data']);
                 }
 
                 $codebase->file_reference_provider->addNonMethodReferencesToClasses(

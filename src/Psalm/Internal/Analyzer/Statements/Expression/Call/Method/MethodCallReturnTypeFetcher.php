@@ -384,7 +384,7 @@ final class MethodCallReturnTypeFetcher
                         strtolower((string) $method_id),
                         $cased_method_id,
                         $is_declaring ? ($method_storage->signature_return_type_location
-                            ?: $method_storage->location) : null,
+                            ?? $method_storage->location) : null,
                         $parent_node->specialization_key,
                     );
 

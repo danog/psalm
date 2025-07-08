@@ -715,6 +715,7 @@ final class ClassLikeNodeScanner
             }
 
             $storage->public_api = $docblock_info->public_api;
+            $this->codebase->class_use_graph?->markClassAsUsed($fq_classlike_name_lc);
         }
 
         foreach ($node->stmts as $node_stmt) {

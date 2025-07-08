@@ -343,6 +343,9 @@ final class Scanner
                 if ($this->codebase->taint_flow_graph && $pool_data['taint_data']) {
                     $this->codebase->taint_flow_graph->addGraph($pool_data['taint_data']);
                 }
+                if ($this->codebase->class_use_graph && $pool_data['used_data']) {
+                    $this->codebase->class_use_graph->addGraph($pool_data['used_data']);
+                }
 
                 $this->codebase->file_storage_provider->addMore($pool_data['file_storage']);
                 $this->codebase->classlike_storage_provider->addMore($pool_data['classlike_storage']);

@@ -61,6 +61,7 @@ final class ShutdownAnalyzerTask implements Task
             'class_property_locations'                   => $file_reference_provider->getAllClassPropertyLocations(),
             'possible_method_param_types'                => $analyzer->getPossibleMethodParamTypes(),
             'taint_data'                                 => $codebase->taint_flow_graph,
+            'used_data'                                  => $codebase->class_use_graph,
             'unused_suppressions'                        => $codebase->track_unused_suppressions ? IssueBuffer::getUnusedSuppressions() : [],
             'used_suppressions'                          => $codebase->track_unused_suppressions ? IssueBuffer::getUsedSuppressions() : [],
             'function_docblock_manipulators'             => FunctionDocblockManipulator::getManipulators(),

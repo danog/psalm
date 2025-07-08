@@ -334,6 +334,7 @@ final class Codebase
 
         $this->classlikes = new ClassLikes(
             $this->config,
+            $this,
             $providers->classlike_storage_provider,
             $providers->file_reference_provider,
             $this->scanner,
@@ -341,12 +342,14 @@ final class Codebase
 
         $this->properties = new Properties(
             $providers->classlike_storage_provider,
+            $this,
             $providers->file_reference_provider,
             $this->classlikes,
         );
 
         $this->methods = new Methods(
             $providers->classlike_storage_provider,
+            $this,
             $providers->file_reference_provider,
             $this->classlikes,
         );

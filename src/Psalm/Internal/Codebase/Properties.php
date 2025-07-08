@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Codebase;
 
+use Psalm\Codebase;
 use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
@@ -38,6 +39,7 @@ final class Properties
 
     public function __construct(
         private readonly ClassLikeStorageProvider $classlike_storage_provider,
+        private readonly Codebase $codebase,
         public FileReferenceProvider $file_reference_provider,
         private readonly ClassLikes $classlikes,
     ) {
@@ -90,12 +92,12 @@ final class Properties
             && !$context->collect_mutations
         ) {
             if ($context->calling_method_id) {
-                $this->file_reference_provider->addMethodReferenceToClass(
+                $this->codebase->class_use_graph?->addMethodReferenceToClass(
                     $context->calling_method_id,
                     $fq_class_name_lc,
                 );
             } else {
-                $this->file_reference_provider->addNonMethodReferenceToClass(
+                $this->codebase->class_use_graph?->addNonMethodReferenceToClass(
                     $source->getFilePath(),
                     $fq_class_name_lc,
                 );

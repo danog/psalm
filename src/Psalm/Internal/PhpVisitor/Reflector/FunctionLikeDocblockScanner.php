@@ -427,6 +427,9 @@ final class FunctionLikeDocblockScanner
         }
 
         $storage->public_api = $docblock_info->public_api;
+
+        if ($storage->cased_name !== null)
+        $codebase->class_use_graph?->markMethodAsUsed(strtolower($storage->cased_name));
     }
 
     /**

@@ -69,6 +69,7 @@ final class Methods
 
     public function __construct(
         private readonly ClassLikeStorageProvider $classlike_storage_provider,
+        private readonly Codebase $codebase,
         public FileReferenceProvider $file_reference_provider,
         private readonly ClassLikes $classlikes,
     ) {
@@ -154,12 +155,12 @@ final class Methods
 
             if ($declaring_fq_class_name !== strtolower((string) $calling_class_name)) {
                 if ($calling_method_id) {
-                    $this->file_reference_provider->addMethodReferenceToClass(
+                    $this->codebase->class_use_graph?->addMethodReferenceToClass(
                         $calling_method_id,
                         $declaring_fq_class_name,
                     );
                 } elseif ($source_file_path) {
-                    $this->file_reference_provider->addNonMethodReferenceToClass(
+                    $this->codebase->class_use_graph?->addNonMethodReferenceToClass(
                         $source_file_path,
                         $declaring_fq_class_name,
                     );
@@ -271,12 +272,12 @@ final class Methods
 
         if ($source_file_path && $fq_class_name !== strtolower((string) $calling_class_name)) {
             if ($calling_method_id) {
-                $this->file_reference_provider->addMethodReferenceToClass(
+                $this->codebase->class_use_graph?->addMethodReferenceToClass(
                     $calling_method_id,
                     $fq_class_name,
                 );
             } else {
-                $this->file_reference_provider->addNonMethodReferenceToClass(
+                $this->codebase->class_use_graph?->addNonMethodReferenceToClass(
                     $source_file_path,
                     $fq_class_name,
                 );
