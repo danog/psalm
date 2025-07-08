@@ -27,7 +27,7 @@ final class ClassUseGraph extends DataFlowGraph
     }
 
     /**
-     * @param int-mask-of<Path::TYPE_*> $type
+     * @param int-mask-of<Path::TYPE_*> $path_type
      * @param array<string> $added_taints
      * @param array<string> $removed_taints
      */
@@ -36,8 +36,8 @@ final class ClassUseGraph extends DataFlowGraph
         DataFlowNode $from,
         DataFlowNode $to,
         int $path_type,
-        ?array $added_taints = null,
-        ?array $removed_taints = null,
+        int $added_taints = 0,
+        int $removed_taints = 0,
     ): void {
         $from_id = $from->id;
         $to_id = $to->id;
