@@ -28,7 +28,7 @@ final class CombinedFlowGraph extends DataFlowGraph
     public function addPath(
         DataFlowNode $from,
         DataFlowNode $to,
-        int $path_type,
+        string $path_type,
         int $added_taints = 0,
         int $removed_taints = 0,
     ): void {
