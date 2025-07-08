@@ -30,6 +30,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\Fetch\VariableFetchAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Codebase\Analyzer;
 use Psalm\Internal\Codebase\ClassLikes;
+use Psalm\Internal\Codebase\ClassUseGraph;
 use Psalm\Internal\Codebase\Functions;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\Codebase\Methods;
@@ -171,6 +172,8 @@ final class Codebase
     public Populator $populator;
 
     public ?TaintFlowGraph $taint_flow_graph = null;
+    
+    public ?ClassUseGraph $class_use_graph = null;
 
     public bool $server_mode = false;
 
@@ -419,6 +422,7 @@ final class Codebase
         $this->classlikes->collect_references = true;
         $this->find_unused_code = $find_unused_code;
         $this->find_unused_variables = true;
+        $this->class_use_graph = new ClassUseGraph;
     }
 
     public function reportUnusedVariables(): void
