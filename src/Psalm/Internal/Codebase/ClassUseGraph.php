@@ -27,6 +27,7 @@ final class ClassUseGraph extends DataFlowGraph
     }
 
     /**
+     * @param int-mask-of<Path::TYPE_*> $type
      * @param array<string> $added_taints
      * @param array<string> $removed_taints
      */
@@ -34,7 +35,7 @@ final class ClassUseGraph extends DataFlowGraph
     public function addPath(
         DataFlowNode $from,
         DataFlowNode $to,
-        string $path_type,
+        int $path_type,
         ?array $added_taints = null,
         ?array $removed_taints = null,
     ): void {

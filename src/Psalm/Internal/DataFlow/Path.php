@@ -17,7 +17,6 @@ final class Path
     public const TYPE_CLOSURE_USE = (1 << 0);
     public const TYPE_CLOSURE_RETURN = (1 << 1);
     public const TYPE_CLOSURE_THIS = (1 << 2);
-    public const TYPE_CLOSURE_THIS = (1 << 2);
 
     /**
      * @param int-mask-of<self::TYPE_*> $type
