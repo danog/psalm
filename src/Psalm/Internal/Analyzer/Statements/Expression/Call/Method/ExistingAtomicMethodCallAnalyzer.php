@@ -94,7 +94,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
 
         if ($context->collect_initializations && $context->calling_method_id) {
             [$calling_method_class] = explode('::', $context->calling_method_id);
-            $codebase->file_reference_provider->addMethodReferenceToClassMember(
+            $codebase->class_use_graph?->addMethodReferenceToClassMember(
                 $calling_method_class . '::__construct',
                 strtolower((string) $method_id),
                 false,
@@ -147,7 +147,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
 
         if ($context->collect_initializations && $context->calling_method_id) {
             [$calling_method_class] = explode('::', $context->calling_method_id);
-            $codebase->file_reference_provider->addMethodReferenceToClassMember(
+            $codebase->class_use_graph?->addMethodReferenceToClassMember(
                 $calling_method_class . '::__construct',
                 strtolower((string) $method_id),
                 false,

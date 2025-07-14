@@ -129,7 +129,7 @@ final class StaticCallAnalyzer extends CallAnalyzer
                 if ($context->calling_method_id
                     && !$stmt->class instanceof PhpParser\Node\Name\FullyQualified
                 ) {
-                    $codebase->file_reference_provider->addMethodReferenceToClassMember(
+                    $codebase->class_use_graph?->addMethodReferenceToClassMember(
                         $context->calling_method_id,
                         'use:' . $stmt->class->getFirst() . ':' . md5($statements_analyzer->getFilePath()),
                         false,

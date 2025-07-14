@@ -327,7 +327,7 @@ final class ClassConstAnalyzer
             }
 
             if ($context->calling_method_id) {
-                $codebase->file_reference_provider->addMethodReferenceToClassMember(
+                $codebase->class_use_graph?->addMethodReferenceToClassMember(
                     $context->calling_method_id,
                     $fq_class_name_lc . '::' . $stmt->name->name,
                     false,
@@ -631,7 +631,7 @@ final class ClassConstAnalyzer
             }
 
             if ($context->calling_method_id) {
-                $codebase->file_reference_provider->addMethodReferenceToClassMember(
+                $codebase->class_use_graph?->addMethodReferenceToClassMember(
                     $context->calling_method_id,
                     strtolower($fq_class_name) . '::' . $stmt->name->name,
                     false,

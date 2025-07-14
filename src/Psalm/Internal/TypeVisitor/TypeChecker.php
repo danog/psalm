@@ -124,7 +124,7 @@ final class TypeChecker extends TypeVisitor
         if ($this->calling_method_id
             && $atomic->text !== null
         ) {
-            $codebase->file_reference_provider->addMethodReferenceToClassMember(
+            $codebase->class_use_graph?->addMethodReferenceToClassMember(
                 $this->calling_method_id,
                 'use:' . $atomic->text . ':' . md5($this->source->getFilePath()),
                 false,

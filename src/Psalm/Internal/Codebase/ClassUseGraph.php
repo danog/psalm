@@ -28,68 +28,112 @@ final class ClassUseGraph extends DataFlowGraph
         $this->nodes[$node->id] = $node;
     }
 
+    /**
+     * @param lowercase-string $id
+     */
+    private function addNodeSimple(
+        string $id,
+        string $label
+    ): DataFlowNode {
+        if (isset($this->nodes[$id])) {
+            $this->nodes[$id];
+        }
+        return $this->nodes[$id] = DataFlowNode::make(
+            $id,
+            $label,
+            null
+        );
+    }
+
+    public function addClassConstOrPropertyNode(string $id): DataFlowNode {
+        $f = explode('::', $id, 2);
+        $class = $this->addClassLikeNode($f[1]);
+        $member = $this->addNodeSimple($id, 'member');
+        $this->addPath(
+            $class,
+            $member,
+            'member-of-class',
+        );
+        return $member;
+    }
+
+
+    /**
+     * @param lowercase-string $function_id
+     */
+    public function addFunctionLikeNode(string $function_id): DataFlowNode {
+        $f = explode('::', $function_id, 2);
+        if (count($f) === 1) {
+            return $this->addNodeSimple('function-'.$function_id, 'function');
+        }
+        $class = $this->addClassLikeNode($f[1]);
+        $method = $this->addNodeSimple($function_id, 'method');
+        $this->addPath(
+            $class,
+            $method,
+            'method-of-class',
+        );
+        return $method;
+    }
+
+    /**
+     * @param lowercase-string $fq_class_name_lc
+     */
+    public function addClassLikeNode(string $fq_class_name_lc): DataFlowNode
+    {
+        return $this->addNodeSimple($fq_class_name_lc, 'class');
+    }
 
     /**
      * @param lowercase-string $fq_class_name_lc
      */
     public function addMethodReferenceToClass(string $calling_function_id, string $fq_class_name_lc): void
     {
-        [, $class] = explode('::', $calling_function_id, 2);
-        if (!isset($this->nodes[$class])) {
-            $this->nodes[$class] = DataFlowNode::make(
-                $class,
-                'class',
-                null,
-            );
-        }
-        if (!isset($this->nodes[$calling_function_id])) {
-            $this->nodes[$calling_function_id] = DataFlowNode::make(
-                $calling_function_id,
-                'method',
-                null,
-            );
-            $this->addPath(
-                $this->nodes[$calling_function_id],
-                $this->nodes[$class],
-                'method-of-class',
-            );
-        }
-        if (!isset($this->nodes[$fq_class_name_lc])) {
-            $this->nodes[$fq_class_name_lc] = DataFlowNode::make(
-                $fq_class_name_lc,
-                'class',
-                null,
-            );
-        }
+        $caller = $this->addFunctionLikeNode($calling_function_id);
+        $class = $this->addClassLikeNode($fq_class_name_lc);
         $this->addPath(
-            $this->nodes[$calling_function_id],
-            $this->nodes[$fq_class_name_lc],
+            $class,
+            $caller,
             'method-call',
         );
     }
+
     /**
      * @param lowercase-string $fq_class_name_lc
      */
     public function addNonMethodReferenceToClass(string $source_file, string $fq_class_name_lc): void
     {
-        if (!isset($this->nodes[$source_file])) {
-            $this->nodes[$source_file] = DataFlowNode::make(
-                $source_file,
-                'nonmethod-reference',
-                null,
-            );
-        }
-        if (!isset($this->nodes[$fq_class_name_lc])) {
-            $this->nodes[$fq_class_name_lc] = DataFlowNode::make(
-                $fq_class_name_lc,
-                'class',
-                null,
-            );
-        }
+        $src = $this->addNodeSimple(
+            $source_file,
+            'file',
+        );
+        $class = $this->addClassLikeNode($fq_class_name_lc);
         $this->addPath(
-            $this->nodes[$source_file],
-            $this->nodes[$fq_class_name_lc],
+            $class,
+            $src,
             'nonmethod-reference',
+        );
+    }
+
+    public function addMethodReferenceToClassMember(string $calling_function_id, string $member): void
+    {
+        $caller = $this->addFunctionLikeNode($calling_function_id);
+        $class = $this->addClassConstOrPropertyNode($member);
+        $this->addPath(
+            $class,
+            $caller,
+            'member-usage',
+        );
+    }
+
+    public function addFileReferenceToClassMember(string $source_file, string $member): void
+    {
+        $src = $this->addNodeSimple($source_file, 'file');
+        $class = $this->addClassConstOrPropertyNode($member);
+        $this->addPath(
+            $class,
+            $src,
+            'nonmethod-usage',
         );
     }
 
@@ -99,24 +143,9 @@ final class ClassUseGraph extends DataFlowGraph
     public function markClassAsUsed(
         string $fq_class_name_lc,
     ): void {
-        if (!isset($this->nodes[$fq_class_name_lc])) {
-            $this->nodes[$fq_class_name_lc] = DataFlowNode::make(
-                $fq_class_name_lc,
-                'class',
-                null,
-            );
-        }
-        if (!isset($this->nodes[''])) {
-            $this->nodes[''] = DataFlowNode::make(
-                '',
-                'psalm-api',
-                null,
-            );
-        }
-        
         $this->addPath(
-            $this->nodes[$fq_class_name_lc],
-            $this->nodes[''],
+            $this->addClassLikeNode($fq_class_name_lc),
+            $this->addNodeSimple('', 'psalm-api'),
             'psalm-api',
         );
     }
@@ -127,85 +156,11 @@ final class ClassUseGraph extends DataFlowGraph
     public function markMethodAsUsed(
         string $function_id,
     ): void {
-        $split = explode('::', $function_id, 2);
-        if (count($split) === 1) {
-            // Todo handle functions with same name as class
-            if (!isset($this->nodes[$function_id])) {
-                $this->nodes[$function_id] = DataFlowNode::make(
-                    $function_id,
-                    'function',
-                    null,
-                );
-            }
-        } else {
-            $class = $split[0];
-            if (!isset($this->nodes[$class])) {
-                $this->nodes[$class] = DataFlowNode::make(
-                    $class,
-                    'class',
-                    null,
-                );
-            }
-            if (!isset($this->nodes[$function_id])) {
-                $this->nodes[$function_id] = DataFlowNode::make(
-                    $function_id,
-                    'method',
-                    null,
-                );
-                $this->addPath(
-                    $this->nodes[$function_id],
-                    $this->nodes[$class],
-                    'method-of-class',
-                );
-            }
-        }
-        
-        if (!isset($this->nodes[''])) {
-            $this->nodes[''] = DataFlowNode::make(
-                '',
-                'psalm-api',
-                null,
-            );
-        }
-
         $this->addPath(
-            $this->nodes[$function_id],
-            $this->nodes[''],
+            $this->addFunctionLikeNode($function_id),
+            $this->addNodeSimple('', 'psalm-api'),
             'psalm-api',
         );
-    }
-
-    /**
-     * @param array<string> $added_taints
-     * @param array<string> $removed_taints
-     */
-    #[Override]
-    public function addPath(
-        DataFlowNode $from,
-        DataFlowNode $to,
-        string $path_type,
-        int $added_taints = 0,
-        int $removed_taints = 0,
-    ): void {
-        $from_id = $from->id;
-        $to_id = $to->id;
-
-        if ($from_id === $to_id) {
-            return;
-        }
-
-        $length = 0;
-
-        if ($from->code_location
-            && $to->code_location
-            && $from->code_location->file_path === $to->code_location->file_path
-        ) {
-            $to_line = $to->code_location->raw_line_number;
-            $from_line = $from->code_location->raw_line_number;
-            $length = abs($to_line - $from_line);
-        }
-
-        $this->forward_edges[$from_id][$to_id] = new Path($path_type, $length);
     }
 
     /**
@@ -216,10 +171,10 @@ final class ClassUseGraph extends DataFlowGraph
         if (!isset($this->nodes[$name_lc])) {
             return false;
         }
-        if ($name_lc === strtolower(Aliases::class)) {
-            var_dump("here");
-        }
 
+        if (str_ends_with($name_lc, 'setpossiblyundefined')) {
+            var_dump('here');
+        }
         $node = $this->nodes[$name_lc];
 
         $visited_source_ids = [];
@@ -278,7 +233,7 @@ final class ClassUseGraph extends DataFlowGraph
         }
 
         foreach ($this->forward_edges[$generated_source->id] as $to_id => $path) {
-            if ($path->type === 'psalm-api') {
+            if ($path->type === 'psalm-api' || $path->type === 'nonmethod-reference') {
                 return null;
             }
 
