@@ -80,11 +80,6 @@ final class InternalCallMapHandlerTest extends TestCase
      */
     private static array $ignoredFunctions = [
         'datefmt_create' => ['8.0'],
-        'imagefilledpolygon',
-        'imagegd',
-        'imagegd2',
-        'imageopenpolygon',
-        'imagepolygon',
         'lzf_compress',
         'lzf_decompress',
         'mailparse_msg_extract_part',
@@ -531,7 +526,7 @@ final class InternalCallMapHandlerTest extends TestCase
 
             // Read the reference mode
             if ($normalizedEntry['byRef']) {
-                $parts = explode('_', $normalizedKey, 2);
+                $parts = explode(' ', $normalizedKey, 2);
                 if (count($parts) === 2) {
                     if (!($parts[0] === 'rw' || $parts[0] === 'w' || $parts[0] === 'r')) {
                         throw new InvalidArgumentException('Invalid refMode: '.$parts[0]);
