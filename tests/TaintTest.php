@@ -9,8 +9,10 @@ use Psalm\Context;
 use Psalm\Exception\CodeException;
 use Psalm\Internal\Analyzer\IssueData;
 use Psalm\IssueBuffer;
+use Psalm\Type\TaintKind;
 
 use function array_filter;
+use function array_flip;
 use function array_map;
 use function array_values;
 use function in_array;
@@ -34,6 +36,17 @@ final class TaintTest extends TestCase
         'MixedArrayAssignment', 'InvalidReturnStatement', 'InvalidArrayOffset', 'UndefinedFunction', 'ImplicitToStringCast',
         'InvalidArgument', 'UndefinedVariable',
     ];
+    public function testTaintKindNoHoles(): void
+    {
+        $constants = array_flip(TaintKind::TAINT_NAMES);
+
+        for ($i = 0; $i < TaintKind::BUILTIN_TAINT_COUNT; $i++) {
+            $current = 1 << $i;
+            if (!isset($constants[$current])) {
+                $this->fail('TaintKind is missing value for bit ' . $i);
+            }
+        }
+    }
     /**
      * @dataProvider providerValidCodeParse
      */
@@ -260,29 +273,15 @@ final class TaintTest extends TestCase
             ],
             'taintFilterVar' => [
                 'code' => '<?php
-                    $args = [
-                        filter_var($_GET["bad"], FILTER_VALIDATE_INT),
-                        filter_var($_GET["bad"], FILTER_VALIDATE_BOOLEAN),
-                        filter_var($_GET["bad"], FILTER_VALIDATE_FLOAT),
-                        filter_var($_GET["bad"], FILTER_SANITIZE_NUMBER_INT),
-                        filter_var($_GET["bad"], FILTER_SANITIZE_NUMBER_FLOAT),
-                    ];
+                    /** @psalm-taint-sink input_except_sleep $value */
+                    function taintSink(mixed $value): void {}
 
-                    foreach($args as $arg){
-                        new $arg;
-                        unserialize($arg);
-                        require_once $arg;
-                        eval($arg);
-                        ldap_connect($arg);
-                        ldap_search("", "", $arg);
-                        mysqli_query($conn, $arg);
-                        echo $arg;
-                        system($arg);
-                        curl_init($arg);
-                        file_get_contents($arg);
-                        setcookie($arg);
-                        header($arg);
-                    }',
+                    taintSink(filter_var($_GET["bad"], FILTER_VALIDATE_INT));
+                    taintSink(filter_var($_GET["bad"], FILTER_VALIDATE_BOOLEAN));
+                    taintSink(filter_var($_GET["bad"], FILTER_VALIDATE_FLOAT));
+                    taintSink(filter_var($_GET["bad"], FILTER_SANITIZE_NUMBER_INT));
+                    taintSink(filter_var($_GET["bad"], FILTER_SANITIZE_NUMBER_FLOAT));
+                ',
             ],
             'taintLdapEscape' => [
                 'code' => '<?php
@@ -2116,7 +2115,7 @@ final class TaintTest extends TestCase
             ],
             'taintedFile' => [
                 'code' => '<?php
-                file_get_contents($_GET[\'taint\']);',
+                fopen($_GET[\'taint\'], "r");',
             'error_message' => 'TaintedFile',
             ],
             'taintedHeader' => [
@@ -2795,6 +2794,7 @@ final class TaintTest extends TestCase
                     'TaintedHtml{ echo $value; }',
                     'TaintedTextWithQuotes{ echo $value; }',
                     'TaintedShell{ exec($value); }',
+                    'TaintedSSRF{ file_get_contents($value); }',
                     'TaintedFile{ file_get_contents($value); }',
                 ],
             ],
