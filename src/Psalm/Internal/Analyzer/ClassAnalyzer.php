@@ -22,6 +22,7 @@ use Psalm\Internal\Analyzer\FunctionLike\ReturnTypeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\ClassTemplateParamCollector;
 use Psalm\Internal\Analyzer\Statements\Expression\ClassConstAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\AtomicPropertyFetchAnalyzer;
+use Psalm\Internal\Codebase\ClassLikes;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\FileManipulation\PropertyDocblockManipulator;
 use Psalm\Internal\MethodIdentifier;
@@ -48,7 +49,6 @@ use Psalm\Issue\InvalidTraversableImplementation;
 use Psalm\Issue\MethodSignatureMismatch;
 use Psalm\Issue\MismatchingDocblockPropertyType;
 use Psalm\Issue\MissingConstructor;
-use Psalm\Issue\MissingImmutableAnnotation;
 use Psalm\Issue\MissingPropertyType;
 use Psalm\Issue\MutableDependency;
 use Psalm\Issue\NoEnumProperties;
@@ -76,6 +76,7 @@ use Psalm\StatementsSource;
 use Psalm\Storage\ClassLikeStorage;
 use Psalm\Storage\FunctionLikeParameter;
 use Psalm\Storage\MethodStorage;
+use Psalm\Storage\Mutations;
 use Psalm\Type;
 use Psalm\Type\Atomic\TGenericObject;
 use Psalm\Type\Atomic\TLiteralInt;
@@ -1128,7 +1129,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             $uninitialized_variables[] = '$this->' . $property_name;
             $uninitialized_properties[$property_class_name . '::$' . $property_name] = $property;
 
-            if ($property->type) {
+            if ($property->type && !$property->hook_get) {
                 // Complain about all natively typed properties and all non-mixed docblock typed properties
                 if (!$property->type->from_docblock || !$property->type->isMixed()) {
                     $uninitialized_typed_properties[$property_class_name . '::$' . $property_name] = $property;
@@ -1428,6 +1429,8 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             $fq_trait_name_resolved = $codebase->classlikes->getUnAliasedName($fq_trait_name);
             $trait_storage = $codebase->classlike_storage_provider->get($fq_trait_name_resolved);
 
+            $trait_storage->trait_used = true;
+
             if ($trait_storage->deprecated) {
                 IssueBuffer::maybeAdd(
                     new DeprecatedTrait(
@@ -1472,15 +1475,18 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 }
             }
 
-            if ($storage->mutation_free && !$trait_storage->mutation_free) {
+            if ($storage->allowed_mutations < $trait_storage->allowed_mutations) {
                 IssueBuffer::maybeAdd(
                     new MutableDependency(
-                        $storage->name . ' is marked @psalm-immutable but ' . $fq_trait_name . ' is not',
+                        $storage->name . ' is marked '.Mutations::TO_ATTRIBUTE_CLASS[
+                            $storage->allowed_mutations
+                        ].' but ' . $fq_trait_name . ' is not',
                         new CodeLocation($previous_trait_analyzer ?? $this, $trait_name),
                     ),
                     $storage->suppressed_issues + $this->getSuppressedIssues(),
                 );
             }
+            $codebase->analyzer->addMutableClass($storage->name, $trait_storage->allowed_mutations);
 
             $trait_file_analyzer = $project_analyzer->getFileAnalyzerForClassLike($fq_trait_name_resolved);
             $trait_node = $codebase->classlikes->getTraitNode($fq_trait_name_resolved);
@@ -1859,6 +1865,9 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         return $method_analyzer;
     }
 
+    /**
+     * @psalm-mutation-free
+     */
     private static function getThisObjectType(
         ClassLikeStorage $class_storage,
         string $original_fq_classlike_name,
@@ -2186,16 +2195,23 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 );
             }
 
-            if ($interface_storage->external_mutation_free
-                && !$storage->external_mutation_free
+            if ($interface_storage->allowed_mutations
+                < $storage->allowed_mutations
             ) {
-                IssueBuffer::maybeAdd(
-                    new MissingImmutableAnnotation(
-                        $fq_interface_name . ' is marked @psalm-immutable, but '
-                        . $fq_class_name . ' is not marked @psalm-immutable',
-                        $code_location,
-                    ),
-                    $storage->suppressed_issues + $this->getSuppressedIssues(),
+                $project_analyzer = ProjectAnalyzer::getInstance();
+                $change = $codebase->alter_code
+                    && isset($project_analyzer->getIssuesToFix()['MissingImmutableAnnotation']);
+
+                ClassLikes::makeImmutable(
+                    $change,
+                    $storage,
+                    $class,
+                    $project_analyzer,
+                    $fq_interface_name . ' is marked with @'.Mutations::TO_ATTRIBUTE_CLASS[
+                            $interface_storage->allowed_mutations
+                        ].', but '
+                        . $fq_class_name . ' is not,'
+                        .' run with --alter --issues=MissingImmutableAnnotation to fix this',
                 );
             }
 
@@ -2427,30 +2443,38 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 );
             }
 
-            if ($parent_class_storage->external_mutation_free
-                && !$storage->external_mutation_free
+            if ($parent_class_storage->allowed_mutations
+                < $storage->allowed_mutations
             ) {
-                IssueBuffer::maybeAdd(
-                    new MissingImmutableAnnotation(
-                        $parent_fq_class_name . ' is marked @psalm-immutable, but '
-                        . $fq_class_name . ' is not marked @psalm-immutable',
-                        $code_location,
-                    ),
-                    $storage->suppressed_issues + $this->getSuppressedIssues(),
-                );
-            }
+                $project_analyzer = ProjectAnalyzer::getInstance();
+                $change = $codebase->alter_code
+                    && isset($project_analyzer->getIssuesToFix()['MissingImmutableAnnotation']);
 
-            if ($storage->mutation_free
-                && !$parent_class_storage->mutation_free
+                ClassLikes::makeImmutable(
+                    $change,
+                    $storage,
+                    $class,
+                    $project_analyzer,
+                    $parent_fq_class_name . ' is marked with @'.Mutations::TO_ATTRIBUTE_CLASS[
+                        $parent_class_storage->allowed_mutations
+                    ].', but '
+                    . $fq_class_name . ' is not, run with --alter --issues=MissingImmutableAnnotation to fix this',
+                );
+            } elseif ($parent_class_storage->allowed_mutations
+                > $storage->allowed_mutations
             ) {
                 IssueBuffer::maybeAdd(
                     new MutableDependency(
-                        $fq_class_name . ' is marked @psalm-immutable but ' . $parent_fq_class_name . ' is not',
+                        $fq_class_name . ' is marked with @'.Mutations::TO_ATTRIBUTE_CLASS[
+                            $storage->allowed_mutations
+                        ].', but parent class '
+                        . $parent_fq_class_name . ' is not',
                         $code_location,
                     ),
                     $storage->suppressed_issues + $this->getSuppressedIssues(),
                 );
             }
+            $codebase->analyzer->addMutableClass($storage->name, $parent_class_storage->allowed_mutations);
 
             if ($codebase->store_node_types) {
                 $codebase->analyzer->addNodeReference(

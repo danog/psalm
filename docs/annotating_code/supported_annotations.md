@@ -370,7 +370,9 @@ class D {
 
 ### `@psalm-external-mutation-free`
 
-Used to annotate a class method that does not mutate state externally of the class's scope.
+Used to annotate a class method that does not mutate state externally of the class's scope.  
+
+Can also be used on classes to propagate the same annotation to all of its methods.
 
 ```php
 <?php
@@ -441,6 +443,10 @@ $anonymous = new /** @psalm-immutable */ class extends Foo
 };
 ```
 
+### `@psalm-mutable`
+
+Used to annotate a class where at least one property is mutable: this is the default behavior, but it can be explicitly marked for clarity.
+
 ### `@psalm-pure`
 
 Used to annotate a [pure function](https://en.wikipedia.org/wiki/Pure_function) - one whose output is just a function of its input.
@@ -483,6 +489,15 @@ foo(
     fn($p) => random_int(1, 2)
 );
 ```
+
+### `@psalm-impure`
+
+Used to annotate a function that is not pure (nor mutation free, nor externally mutation free): this is the default, but Psalm always asks to explicitly annotate **abstract** methods with one of these four annotations:
+
+- `@psalm-pure`
+- `@psalm-mutation-free`
+- `@psalm-external-mutation-free`
+- `@psalm-impure`
 
 ### `@psalm-allow-private-mutation`
 

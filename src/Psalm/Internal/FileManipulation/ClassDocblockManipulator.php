@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\FileManipulation;
 
-use PhpParser\Node\Stmt\Class_;
+use PhpParser\Node\Stmt\ClassLike;
 use Psalm\DocComment;
 use Psalm\FileManipulation;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
@@ -37,7 +37,7 @@ final class ClassDocblockManipulator
     public static function getForClass(
         ProjectAnalyzer $project_analyzer,
         string $file_path,
-        Class_ $stmt,
+        ClassLike $stmt,
     ): self {
         if (isset(self::$manipulators[$file_path][$stmt->getLine()])) {
             return self::$manipulators[$file_path][$stmt->getLine()];
@@ -52,7 +52,7 @@ final class ClassDocblockManipulator
 
     private function __construct(
         ProjectAnalyzer $project_analyzer,
-        private readonly Class_ $stmt,
+        private readonly ClassLike $stmt,
         string $file_path,
     ) {
         $docblock = $stmt->getDocComment();
@@ -70,6 +70,9 @@ final class ClassDocblockManipulator
         $this->indentation = str_replace(ltrim($first_line), '', $first_line);
     }
 
+    /**
+     * @psalm-external-mutation-free
+     */
     public function makeImmutable(): void
     {
         $this->immutable = true;
@@ -93,7 +96,11 @@ final class ClassDocblockManipulator
 
         if ($this->immutable) {
             $modified_docblock = true;
+            unset($parsed_docblock->tags['psalm-mutable']);
             $parsed_docblock->tags['psalm-immutable'] = [''];
+        } else {
+            unset($parsed_docblock->tags['psalm-immutable']);
+            $parsed_docblock->tags['psalm-mutable'] = [''];
         }
 
         if (!$modified_docblock) {
@@ -127,6 +134,9 @@ final class ClassDocblockManipulator
         return $file_manipulations;
     }
 
+    /**
+     * @psalm-external-mutation-free
+     */
     public static function clearCache(): void
     {
         self::$manipulators = [];
