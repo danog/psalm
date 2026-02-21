@@ -38,6 +38,7 @@ use UnexpectedValueException;
 use function Amp\Future\await;
 use function array_filter;
 use function array_intersect_key;
+use function array_key_exists;
 use function array_merge;
 use function array_values;
 use function count;
@@ -407,7 +408,14 @@ final class Analyzer
                 );
 
                 foreach ($pool_data['mutable_classes'] as $class => $level) {
-                    $this->mutable_classes[$class] = max($this->mutable_classes[$class] ?? 0, $level);
+                    if (array_key_exists($class, $this->mutable_classes)) {
+                        $this->mutable_classes[$class] = max(
+                            $this->mutable_classes[$class],
+                            $level,
+                        );
+                    } else {
+                        $this->mutable_classes[$class] = $level;
+                    }
                 }
 
                 FunctionDocblockManipulator::addManipulators($pool_data['function_docblock_manipulators']);
@@ -1202,6 +1210,7 @@ final class Analyzer
 
     /**
      * @return array{int, int}
+     * @psalm-external-mutation-free
      */
     public function getTotalTypeCoverage(Codebase $codebase): array
     {
@@ -1224,6 +1233,9 @@ final class Analyzer
         return [$mixed_count, $nonmixed_count];
     }
 
+    /**
+     * @psalm-external-mutation-free
+     */
     public function getTypeInferenceSummary(Codebase $codebase): string
     {
         $all_deep_scanned_files = [];
@@ -1506,7 +1518,14 @@ final class Analyzer
     public function addMutableClass(string $fqcln, int $allowed_mutations): void
     {
         $fqcln = strtolower($fqcln);
-        $this->mutable_classes[$fqcln] = max($this->mutable_classes[$fqcln] ?? 0, $allowed_mutations);
+        if (array_key_exists($fqcln, $this->mutable_classes)) {
+            $this->mutable_classes[$fqcln] = max(
+                $this->mutable_classes[$fqcln],
+                $allowed_mutations,
+            );
+        } else {
+            $this->mutable_classes[$fqcln] = $allowed_mutations;
+        }
     }
 
     /**

@@ -12,8 +12,14 @@ use Psalm\Report;
 
 use function substr;
 
+/**
+ * @psalm-external-mutation-free
+ */
 final class PhpStormReport extends Report
 {
+    /**
+     * @psalm-mutation-free
+     */
     #[Override]
     public function create(): string
     {

@@ -21,9 +21,13 @@ use function md5;
  * @see https://docs.gitlab.com/ee/user/project/merge_requests/code_quality.html
  * @see https://github.com/codeclimate/platform/blob/master/spec/analyzers/SPEC.md#data-types
  * @author Olivier Doucet <webmaster@ajeux.com>
+ * @psalm-external-mutation-free
  */
 final class CodeClimateReport extends Report
 {
+    /**
+     * @psalm-mutation-free
+     */
     #[Override]
     public function create(): string
     {

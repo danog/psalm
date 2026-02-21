@@ -966,9 +966,9 @@ final class ClassLikes
                     continue;
                 }
 
-                $mut = $codebase->analyzer->mutable_classes[$fq_class_name_lc] ?? Mutations::LEVEL_NONE;
-                if ($mut <= Mutations::LEVEL_INTERNAL_READ
-                    && !$classlike_storage->isExternalMutationFree()
+                $mut = $codebase->analyzer->mutable_classes[$fq_class_name_lc]
+                    ?? Mutations::LEVEL_NONE;
+                if ($mut !== Mutations::LEVEL_ALL
                     && !$classlike_storage->has_mutations_annotation
                 ) {
                     $change = $codebase->alter_code
@@ -986,6 +986,7 @@ final class ClassLikes
                                         === $fq_class_name_lc
                                 ) {
                                     self::makeImmutable(
+                                        $mut,
                                         $change,
                                         $classlike_storage,
                                         $namespace_stmt,
@@ -997,6 +998,7 @@ final class ClassLikes
                             && strtolower((string) $stmt->name) === $fq_class_name_lc
                         ) {
                             self::makeImmutable(
+                                $mut,
                                 $change,
                                 $classlike_storage,
                                 $stmt,
@@ -1009,7 +1011,11 @@ final class ClassLikes
         }
     }
 
+    /**
+     * @param Mutations::LEVEL_* $allowed_mutations
+     */
     public static function makeImmutable(
+        int $allowed_mutations,
         bool $change,
         ClassLikeStorage $storage,
         ClassLike $class_stmt,
@@ -1042,12 +1048,14 @@ final class ClassLikes
                 $class_stmt,
             );
 
-            $manipulator->makeImmutable();
+            $manipulator->setAllowedMutations($allowed_mutations);
         }
 
         IssueBuffer::maybeAdd(
             new MissingImmutableAnnotation(
-                $msg ?? ($storage->name . ' must be marked @psalm-immutable to aid security analysis,'
+                $msg ?? ($storage->name . ' must be marked '.Mutations::TO_ATTRIBUTE_CLASS[
+                    $allowed_mutations
+                ].' to aid security analysis,'
                     .' run with --alter --issues=MissingImmutableAnnotation to fix this'),
                 $storage->location,
             ),

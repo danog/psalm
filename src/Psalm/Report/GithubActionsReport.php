@@ -11,8 +11,14 @@ use Psalm\Report;
 use function sprintf;
 use function strtr;
 
+/**
+ * @psalm-external-mutation-free
+ */
 final class GithubActionsReport extends Report
 {
+    /**
+     * @psalm-mutation-free
+     */
     #[Override]
     public function create(): string
     {
