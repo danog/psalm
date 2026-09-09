@@ -533,7 +533,7 @@ impl TestCase {
     if ((!Some(self.clone()).and_then(|__b| Some(__b.p_expectedExceptionMessageRegExp_get())).flatten().is_none()) && (!truthy(&preg_match(&self.p_expectedExceptionMessageRegExp_get().unwrap_or_default(), &e.clone().getMessage()?, 0)?))) {
         return Err(cast::<crate::g::Throwable>(crate::phpunit::framework::AssertionFailedError::new(concat(concat(concat(concat(Str::from_static("Failed asserting that exception message '"), e.clone().getMessage()?), Str::from_static("' matches '")), self.p_expectedExceptionMessageRegExp_get().unwrap_or_default()), Str::from_static("'.")), 0i64, { let _ = (); None::<crate::g::Throwable> })?));
     }
-    if ((!Some(self.clone()).and_then(|__b| Some(__b.p_expectedExceptionCode_get())).flatten().is_none()) && (!(e.clone().getCode()? == self.p_expectedExceptionCode_get().unwrap_or_default()))) {
+    if ((!Some(self.clone()).and_then(|__b| Some(__b.p_expectedExceptionCode_get())).flatten().is_none()) && (!identical(&Some(e.clone().getCode()?), &self.p_expectedExceptionCode_get()))) {
         return Err(cast::<crate::g::Throwable>(crate::phpunit::framework::AssertionFailedError::new(concat(concat(concat(concat(Str::from_static("Failed asserting that exception code "), cast::<Str>(e.clone().getCode()?)), Str::from_static(" is ")), cast::<Str>(self.p_expectedExceptionCode_get().unwrap_or_default())), Str::from_static(".")), 0i64, { let _ = (); None::<crate::g::Throwable> })?));
     }
     #[allow(unreachable_code)] Ok(())
@@ -796,7 +796,7 @@ impl Assert {
         return Ok(loose_eq(&expected.clone(), &actual.clone()));
     }
     if (expected.clone().is_string() && actual.clone().is_string()) {
-        return Ok(identical(&cast::<Str>(expected.clone()), &cast::<Str>(actual.clone())));
+        return Ok(identical(&expected.clone(), &actual.clone()));
     }
     return Ok(loose_eq(&expected.clone(), &actual.clone()));
     }

@@ -928,6 +928,25 @@ impl<'a> Lexer<'a> {
             self.emit_len(T_NULLSAFE_OBJECT_OPERATOR, 3);
             return;
         }
+        // comments keep the state: `->/* c */name` is still a property name
+        if (c == b'#' && !r.starts_with(b"#[")) || r.starts_with(b"//") {
+            let mut n = 0;
+            while n < r.len() {
+                match r[n] {
+                    b'\n' | b'\r' => break,
+                    b'?' if r.get(n + 1) == Some(&b'>') => break,
+                    _ => n += 1,
+                }
+            }
+            self.emit_len(T_COMMENT, n);
+            return;
+        }
+        if r.starts_with(b"/*") {
+            let is_doc = r.starts_with(b"/**") && r.get(3).map_or(false, |c| is_ws(*c));
+            let end = crate::string::find_bytes(r, b"*/", 2).map(|p| p + 2).unwrap_or(r.len());
+            self.emit_len(if is_doc { T_DOC_COMMENT } else { T_COMMENT }, end);
+            return;
+        }
         if is_label_start(c) {
             let mut n = 0;
             while n < r.len() && is_label_char(r[n]) {

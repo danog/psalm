@@ -95,7 +95,7 @@ trait ExprTrait
             if ($v->type->kind === RustType::INT) {
                 return new Val('(' . $v->code . ').wrapping_neg()', RustType::int());
             }
-            return new Val('(-to_float(&' . $v->code . '))', RustType::float());
+            return new Val('num_mul(to_num(&' . $this->casts->convert($v->code, $v->type, RustType::mixed()) . '), Num::Int(-1)).to_mixed()', RustType::mixed());
         }
         if ($e instanceof Expr\UnaryPlus) {
             return $this->expr($e->expr);
@@ -769,8 +769,9 @@ trait ExprTrait
      */
     private function commonOperands(Expr $left, Expr $right, bool $numeric): array
     {
-        $l = $this->expr($left);
-        $r = $this->expr($right);
+        // declared (not narrowed) types: a value contradicting Psalm's narrowing must still compare, not unwrap
+        $l = $this->rawValue($left);
+        $r = $this->rawValue($right);
         $t = $this->commonType($l->type, $r->type, $numeric);
         return [$this->casts->convert($l->code, $l->type, $t), $this->casts->convert($r->code, $r->type, $t), $t];
     }

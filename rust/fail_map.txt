@@ -1,26 +1,20 @@
 tests::PhpParser_BuilderFactoryTest__testIntegration :: PHPUnit\Framework\AssertionFailedError: Failed asserting that '<?php
-tests::PhpParser_BuilderHelpersTest__testNormalizeType :: internal error: entered unreachable code: property read on U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name
 tests::PhpParser_Builder_InterfaceTest__testFullFunctional :: internal error: entered unreachable code: eval
-tests::PhpParser_Builder_ParamTest__testVoidTypeError :: AssertionError: Failed asserting that exception of type "LogicException" is thrown
-tests::PhpParser_ConstExprEvaluatorTest__testEvaluateFails :: AssertionError: Failed asserting that exception of type "PhpParser\ConstExprEvaluationException" is thrown
 tests::PhpParser_ConstExprEvaluatorTest__testEvaluateFallbackPipeOperator :: internal error: entered unreachable code: closure without record
 tests::PhpParser_JsonDecoderTest__testDecodingError :: PHPUnit\Framework\AssertionFailedError: Failed asserting that exception message 'ReflectionClass::newInstanceWithoutConstructor() is not supported' contains 'Attributes m
-tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterObjectOperatorWithComment :: PHPUnit\Framework\AssertionFailedError: Failed asserting that array (
-tests::PhpParser_NodeAbstractTest__testAttributes :: internal error: entered unreachable code: unknown method getMockForAbstractClass
 tests::PhpParser_NodeAbstractTest__testChange :: PHPUnit\Framework\AssertionFailedError: Failed asserting that 'newValue' is identical to 'newNewValue'.
+tests::PhpParser_NodeAbstractTest__testAttributes :: internal error: entered unreachable code: unknown method getMockForAbstractClass
 tests::PhpParser_NodeTraverserTest__testInvalidDeepArray :: not implemented: cast ((crate::php_parser::node::scalar::String_,),) => crate::php_parser::Node
 tests::PhpParser_NodeTraverserTest__testInvalidReturn :: Mixed value narrowed to int but was "foobar"
 tests::PhpParser_NodeTraverserTest__testRemovingVisitor :: internal error: entered unreachable code: transpiler error in testRemovingVisitor
-tests::PhpParser_NodeVisitor_NameResolverTest__testAddDeclarationNamespacedName :: cannot cast PhpParser\Node\Expr\New_ to PhpParser\Node\Stmt
+tests::PhpParser_JsonDecoderTest__testRoundTrip :: RuntimeException: ReflectionClass::newInstanceWithoutConstructor() is not supported
 tests::PhpParser_NodeVisitor_NameResolverTest__testAddOriginalNames :: cannot cast PhpParser\Node\Expr\ClassConstFetch to PhpParser\Node\Stmt
+tests::PhpParser_NodeVisitor_NameResolverTest__testAddDeclarationNamespacedName :: cannot cast PhpParser\Node\Expr\New_ to PhpParser\Node\Stmt
 tests::PhpParser_NodeVisitor_NameResolverTest__testAddRuntimeResolvedNamespacedName :: cannot cast PhpParser\Node\Expr\FuncCall to PhpParser\Node\Stmt
 tests::PhpParser_NodeVisitor_NameResolverTest__testAttributeOnlyMode :: cannot cast PhpParser\Node\Expr\ClassConstFetch to PhpParser\Node\Stmt
 tests::PhpParser_NodeAbstractTest__testJsonSerialization :: PHPUnit\Framework\AssertionFailedError: Failed asserting that '[
-tests::PhpParser_JsonDecoderTest__testRoundTrip :: PHPUnit\Framework\AssertionFailedError: Failed asserting that array (
 tests::PhpParser_NodeVisitor_NameResolverTest__testClassNameIsCaseInsensitive :: PhpParser\Error: No code may exist outside of namespace {} on line 3
 tests::PhpParser_NodeVisitor_NameResolverTest__testSpecialClassNamesAreCaseInsensitive :: PhpParser\Error: No code may exist outside of namespace {} on line 4
-tests::PhpParser_NodeVisitor_NodeConnectingVisitorTest__testWeakReferences :: PHPUnit\Framework\AssertionFailedError: Failed asserting that NULL is an instance of class "WeakReference".
-tests::PhpParser_ConstExprEvaluatorTest__testEvaluate :: PHPUnit\Framework\AssertionFailedError: Failed asserting that -1.0 is identical to -1.
 tests::PhpParser_Node_Stmt_ClassMethodTest__testFunctionLike :: PHPUnit\Framework\AssertionFailedError: Failed asserting that array (
 tests::PhpParser_Node_Stmt_ClassTest__testGetTraitUses :: cannot cast PhpParser\Node\Stmt\Trait_ to PhpParser\Node\Name
 tests::PhpParser_NodeVisitor_NameResolverTest__testResolveLocations :: PhpParser\Error: No code may exist outside of namespace {} on line 4

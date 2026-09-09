@@ -490,7 +490,7 @@ trait LValueTrait
         if ($bt->kind === RustType::RT_GENERIC && $bt->name === 'StdClass') {
             return $this->narrowOptional(new Val($base->code . '.get(' . Names::strLit($name) . ')', RustType::option(RustType::mixed())), $e);
         }
-        if ($bt->kind === RustType::MIXED || $bt->kind === RustType::ANY_OBJECT) {
+        if ($bt->kind === RustType::MIXED || $bt->kind === RustType::ANY_OBJECT || $bt->kind === RustType::UNION) {
             $code = 'mixed_prop(&' . $this->casts->convert($base->code, $bt, RustType::mixed()) . ', &' . Names::strLit($name) . ')';
             return $this->narrowOptional(new Val($code, RustType::option(RustType::mixed())), $e);
         }

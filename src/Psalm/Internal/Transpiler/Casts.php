@@ -86,7 +86,8 @@ final class Casts
         }
         if ($tk === RustType::MIXED) {
             if ($fk === RustType::UNIT) {
-                return 'Mixed::Null';
+                // keep the side effects of the unit-typed expression (a call returning void)
+                return $code === '()' ? 'Mixed::Null' : '{ let _ = ' . $code . '; Mixed::Null }';
             }
             if ($fk === RustType::TUPLE) {
                 $t = $this->tmp();
