@@ -9,3 +9,4 @@ name = "php_rt"
 [dependencies]
 hashbrown = "0.15"
 pcre2 = "0.2"
+foldhash = "0.1"

@@ -8,11 +8,9 @@ use std::fmt;
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::rc::Rc;
 
-type Hb = hashbrown::DefaultHashBuilder;
-
 #[inline]
 fn hash_of<Q: Hash + ?Sized>(q: &Q) -> u64 {
-    let mut h = Hb::default().build_hasher();
+    let mut h = foldhash::fast::FixedState::with_seed(0x5eed_1234_abcd_9876).build_hasher();
     q.hash(&mut h);
     h.finish()
 }
