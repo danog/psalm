@@ -185,6 +185,46 @@ macro_rules! impl_enum_handle {
     };
 }
 
+// ---------------------------------------------------------------- escape variants
+
+/// A non-object value stored where a class was declared (`Other__` variants of class enums):
+/// answers the object protocol with PHP's type name and no members.
+pub struct NonObject(pub Mixed);
+impl PhpObject for NonObject {
+    fn class_name(&self) -> &'static str {
+        match &self.0 {
+            Mixed::Null => "null",
+            Mixed::Bool(_) => "bool",
+            Mixed::Int(_) => "int",
+            Mixed::Float(_) => "float",
+            Mixed::Str(_) => "string",
+            Mixed::Arr(_) => "array",
+            Mixed::Closure(_) => "Closure",
+            Mixed::Obj(_) => "object",
+        }
+    }
+    fn class_ancestors(&self) -> &'static [&'static str] {
+        &[]
+    }
+    fn obj_id(&self) -> usize {
+        0
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn php_to_string(&self) -> Option<Str> {
+        Some(crate::traits::to_str(&self.0))
+    }
+}
+
+/// The object behind a `Mixed` held by an escape variant, or a [`NonObject`] view of a scalar.
+pub fn other_obj(m: &Mixed) -> AnyObj {
+    match m {
+        Mixed::Obj(o) => o.clone(),
+        other => Rc::new(NonObject(other.clone())),
+    }
+}
+
 // ---------------------------------------------------------------- Mixed helpers
 
 impl Mixed {

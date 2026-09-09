@@ -446,8 +446,12 @@ trait ExprTrait
                     ));
                 }
                 [$ft, $opt] = $target->fields[$key];
-                $code = $this->exprTo($item->value, $ft);
-                $fields[Names::field($key)] = $opt ? $this->casts->convert($code, $ft, RustType::shapeField($ft, true)) : $code;
+                if ($opt) {
+                    $v = $this->expr($item->value);
+                    $fields[Names::field($key)] = $this->casts->convert($v->code, $v->type, RustType::shapeField($ft, true));
+                } else {
+                    $fields[Names::field($key)] = $this->exprTo($item->value, $ft);
+                }
                 $seen[$key] = true;
             }
             foreach ($target->fields as $k => [$ft, $opt]) {

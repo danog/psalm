@@ -49,6 +49,9 @@ final class BodyEmitter
     /** @var array<string, bool> locals bound by reference (`$x = &...`): stored as PhpRef<T> */
     public array $refvars = [];
 
+    /** @var array<string, RustType> parameters the body re-assigns with a wider type: re-declared with the joined type */
+    public array $rebound = [];
+
     /** @var array<string, true> locals already declared by the enclosing code (closure captures) */
     public array $predeclared = [];
 
@@ -156,7 +159,26 @@ final class BodyEmitter
         }
         foreach ($this->record->var_types as $var_id => $types) {
             $name = substr($var_id, 1);
-            if ($name === 'this' || isset($params[$name]) || isset($this->predeclared[$name])) {
+            if ($name === 'this' || isset($this->predeclared[$name])) {
+                continue;
+            }
+            if (isset($params[$name])) {
+                if (!empty($this->byref[$name]) || !empty($this->cells[$name]) || !empty($this->refvars[$name])) {
+                    continue;
+                }
+                $declared = null;
+                foreach ($this->record->storage->params as $sp) {
+                    if ($sp->name === $name) {
+                        $declared = $sp->type;
+                    }
+                }
+                $joined = $this->types()->join($declared !== null ? [$declared, ...$types] : $types);
+                $rust = $this->types()->map($joined);
+                if ($rust->toRust() !== $params[$name]->toRust()) {
+                    $this->rebound[$name] = $params[$name];
+                    $this->vars[$name] = $rust;
+                    $this->late[$name] = false;
+                }
                 continue;
             }
             $joined = $this->types()->join($types);
@@ -207,6 +229,10 @@ final class BodyEmitter
         foreach ($this->vars as $name => $type) {
             $rn = Names::var($name);
             if (isset($params[$name])) {
+                if (isset($this->rebound[$name])) {
+                    $this->w->line('let mut ' . $rn . ': ' . $type->toRust() . ' = ' . $this->casts->convert($rn, $this->rebound[$name], $type) . ';');
+                    continue;
+                }
                 // parameters captured/bound by reference are re-wrapped
                 if (!empty($this->cells[$name])) {
                     $this->w->line('let ' . $rn . ': PhpCell<' . $type->toRust() . '> = cell_of(' . $rn . ');');

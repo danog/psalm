@@ -492,7 +492,15 @@ final class Casts
         for ($i = count($to->params); $i < count($from->params); $i++) {
             $args[] = $this->defaultOf($from->params[$i]);
         }
-        $body = $this->convert($t . '(' . implode(', ', $args) . ')?', $from->ret, $to->ret);
+        $call = $t . '(' . implode(', ', $args) . ')?';
+        // a mixed return flowing into a scalar-returning callable is coerced, as PHP does for callbacks
+        $body = match (true) {
+            $from->ret->kind === RustType::MIXED && $to->ret->kind === RustType::STR => 'to_str(&' . $call . ')',
+            $from->ret->kind === RustType::MIXED && $to->ret->kind === RustType::INT => 'to_num(&' . $call . ').to_i64()',
+            $from->ret->kind === RustType::MIXED && $to->ret->kind === RustType::FLOAT => 'to_num(&' . $call . ').to_f64()',
+            $from->ret->kind === RustType::MIXED && $to->ret->kind === RustType::BOOL => 'truthy(&' . $call . ')',
+            default => $this->convert($call, $from->ret, $to->ret),
+        };
         return '{ let ' . $t . ' = ' . $code . '; Rc::new(move |' . implode(', ', $params) . '| -> Result<' . $to->ret->toRust() . ', Throw> { Ok(' . $body . ') }) as ' . $to->toRust() . ' }';
     }
 
