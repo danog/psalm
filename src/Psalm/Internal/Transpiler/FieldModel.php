@@ -34,10 +34,17 @@ final class FieldModel
         return 'p_' . Names::field($this->name);
     }
 
-    /** Fields without a default and without a Rust Default impl are stored as Late<T>. */
+    /**
+     * Fields that start uninitialized are stored as Late<T>: typed properties without a default
+     * (PHP leaves them uninitialized: absent from get_object_vars, an Error when read), and fields
+     * whose Rust type has no Default.
+     */
     public function isLate(): bool
     {
-        return !$this->has_default && !$this->type->hasDefault();
+        if ($this->has_default) {
+            return false;
+        }
+        return !$this->type->hasDefault() || ($this->storage->signature_type !== null && !$this->is_static);
     }
 
     public function storageType(): string

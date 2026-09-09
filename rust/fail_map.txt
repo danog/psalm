@@ -1,17 +1,14 @@
-tests::PhpParser_Builder_InterfaceTest__testFullFunctional :: internal error: entered unreachable code: eval
-tests::PhpParser_ConstExprEvaluatorTest__testEvaluateFallbackPipeOperator :: internal error: entered unreachable code: closure without record
-tests::PhpParser_JsonDecoderTest__testDecodingError :: PHPUnit\Framework\AssertionFailedError: Failed asserting that exception message 'ReflectionClass::newInstanceWithoutConstructor() is not supported' contains 'Attributes m
+tests::PhpParser_Builder_InterfaceTest__testFullFunctional :: Error: eval(): unsupported code: interface
+tests::PhpParser_CodeParsingTest__testParse :: Mixed value narrowed to string but was -9223372036854775808
 tests::PhpParser_NodeAbstractTest__testAttributes :: internal error: entered unreachable code: unknown method getMockForAbstractClass
-tests::PhpParser_NodeAbstractTest__testChange :: PHPUnit\Framework\AssertionFailedError: Failed asserting that 'newValue' is identical to 'newNewValue'.
 tests::PhpParser_NodeTraverserTest__testInvalidDeepArray :: not implemented: cast ((crate::php_parser::node::scalar::String_,),) => crate::php_parser::Node
 tests::PhpParser_NodeTraverserTest__testRemovingVisitor :: internal error: entered unreachable code: transpiler error in testRemovingVisitor
 tests::PhpParser_NodeVisitor_NameResolverTest__testAddDeclarationNamespacedName :: cannot cast PhpParser\Node\Expr\New_ to PhpParser\Node\Stmt
 tests::PhpParser_NodeVisitor_NameResolverTest__testAddOriginalNames :: cannot cast PhpParser\Node\Expr\ClassConstFetch to PhpParser\Node\Stmt
 tests::PhpParser_NodeVisitor_NameResolverTest__testAddRuntimeResolvedNamespacedName :: cannot cast PhpParser\Node\Expr\FuncCall to PhpParser\Node\Stmt
 tests::PhpParser_NodeVisitor_NameResolverTest__testAttributeOnlyMode :: cannot cast PhpParser\Node\Expr\ClassConstFetch to PhpParser\Node\Stmt
-tests::PhpParser_JsonDecoderTest__testRoundTrip :: RuntimeException: ReflectionClass::newInstanceWithoutConstructor() is not supported
-tests::PhpParser_NodeAbstractTest__testJsonSerialization :: PHPUnit\Framework\AssertionFailedError: Failed asserting that '[
-tests::PhpParser_NodeVisitor_NameResolverTest__testClassNameIsCaseInsensitive :: PhpParser\Error: No code may exist outside of namespace {} on line 3
-tests::PhpParser_NodeVisitor_NameResolverTest__testSpecialClassNamesAreCaseInsensitive :: PhpParser\Error: No code may exist outside of namespace {} on line 4
 tests::PhpParser_Node_Stmt_ClassTest__testGetTraitUses :: cannot cast PhpParser\Node\Stmt\Trait_ to PhpParser\Node\Name
-tests::PhpParser_NodeVisitor_NameResolverTest__testResolveLocations :: PhpParser\Error: No code may exist outside of namespace {} on line 4
+tests::PhpParser_PrettyPrinterTest__testFormatPreservingPrint :: called `Option::unwrap()` on a `None` value
+tests::PhpParser_PrettyPrinterTest__testPrettyPrint :: called `Option::unwrap()` on a `None` value
+tests::PhpParser_PrettyPrinterTest__testPrettyPrintFile :: called `Option::unwrap()` on a `None` value
+tests::PhpParser_PrettyPrinterTest__testRoundTripPrint :: Mixed value narrowed to string but was -9223372036854775808

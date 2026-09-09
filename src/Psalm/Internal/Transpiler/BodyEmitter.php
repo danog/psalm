@@ -46,6 +46,9 @@ final class BodyEmitter
     /** @var array<string, bool> locals stored as Rc<RefCell<T>> (captured by reference) */
     public array $cells = [];
 
+    /** @var array<string, bool> locals bound by reference (`$x = &...`): stored as PhpRef<T> */
+    public array $refvars = [];
+
     /** @var array<string, true> locals already declared by the enclosing code (closure captures) */
     public array $predeclared = [];
 
@@ -163,14 +166,66 @@ final class BodyEmitter
         }
     }
 
+    /** Whether a local can be used as a `&mut T` place (reference variables can't). */
+    public function hasMutPlace(string $name): bool
+    {
+        return empty($this->refvars[$name]);
+    }
+
+    /**
+     * Find locals that need reference semantics: those bound by `$x = &...` (reference variables),
+     * and those aliased by such a binding or captured with `use (&$x)` (shared cells).
+     *
+     * @param list<Stmt> $stmts
+     */
+    private function scanReferences(array $stmts): void
+    {
+        $finder = new \PhpParser\NodeFinder();
+        foreach ($finder->findInstanceOf($stmts, Expr\AssignRef::class) as $assign) {
+            if ($assign->var instanceof Expr\Variable && is_string($assign->var->name)) {
+                $this->refvars[$assign->var->name] = true;
+                if ($assign->expr instanceof Expr\Variable && is_string($assign->expr->name) && $assign->expr->name !== 'this') {
+                    $this->cells[$assign->expr->name] = true;
+                }
+            }
+        }
+        foreach ($finder->findInstanceOf($stmts, Closure::class) as $closure) {
+            foreach ($closure->uses as $use) {
+                if ($use->byRef && is_string($use->var->name)) {
+                    $this->cells[$use->var->name] = true;
+                }
+            }
+        }
+        foreach ($this->refvars as $name => $_) {
+            unset($this->cells[$name]);
+        }
+    }
+
     /** Emit `let` declarations for locals that are not parameters. */
     public function emitLocalDecls(array $params): void
     {
         foreach ($this->vars as $name => $type) {
-            if (isset($params[$name]) || isset($this->predeclared[$name])) {
+            $rn = Names::var($name);
+            if (isset($params[$name])) {
+                // parameters captured/bound by reference are re-wrapped
+                if (!empty($this->cells[$name])) {
+                    $this->w->line('let ' . $rn . ': PhpCell<' . $type->toRust() . '> = cell_of(' . $rn . ');');
+                } elseif (!empty($this->refvars[$name])) {
+                    $this->w->line('let mut ' . $rn . ': PhpRef<' . $type->toRust() . '> = PhpRef::of(' . $rn . ');');
+                }
                 continue;
             }
-            $rn = Names::var($name);
+            if (isset($this->predeclared[$name])) {
+                continue;
+            }
+            if (!empty($this->cells[$name])) {
+                $this->w->line('let ' . $rn . ': PhpCell<' . $type->toRust() . '> = new_cell();');
+                continue;
+            }
+            if (!empty($this->refvars[$name])) {
+                $this->w->line('let mut ' . $rn . ': PhpRef<' . $type->toRust() . '> = PhpRef::detached();');
+                continue;
+            }
             if (!empty($this->late[$name])) {
                 $this->w->line('let mut ' . $rn . ': Late<' . $type->toRust() . '> = Late::uninit();');
             } else {
@@ -220,7 +275,10 @@ final class BodyEmitter
         $t = $this->vars[$name];
         $rn = Names::var($name);
         if (!empty($this->cells[$name])) {
-            return new Val($rn . '.borrow().clone()', $t);
+            return new Val($rn . '.borrow().get().clone()', $t);
+        }
+        if (!empty($this->refvars[$name])) {
+            return new Val($rn . '.get()', $t);
         }
         if (!empty($this->byref[$name])) {
             return new Val('(*' . $rn . ').clone()', $t);
@@ -239,7 +297,10 @@ final class BodyEmitter
     {
         $rn = Names::var($name);
         if (!empty($this->cells[$name])) {
-            return '*' . $rn . '.borrow_mut() = ' . $code . ';';
+            return $rn . '.borrow_mut().set(' . $code . ');';
+        }
+        if (!empty($this->refvars[$name])) {
+            return $rn . '.set(' . $code . ');';
         }
         if (!empty($this->byref[$name])) {
             return '*' . $rn . ' = ' . $code . ';';
@@ -255,7 +316,7 @@ final class BodyEmitter
     {
         $rn = Names::var($name);
         if (!empty($this->cells[$name])) {
-            return '(*' . $rn . '.borrow_mut())';
+            return '(*' . $rn . '.borrow_mut().get_mut())';
         }
         if (!empty($this->byref[$name])) {
             return '(*' . $rn . ')';
@@ -410,6 +471,7 @@ final class BodyEmitter
             $this->gen_val = $ret_type->params[1];
         }
 
+        $this->scanReferences($stmts ?? []);
         $this->declareLocals($params);
         $this->emitLocalDecls($params);
         if ($this->is_generator) {

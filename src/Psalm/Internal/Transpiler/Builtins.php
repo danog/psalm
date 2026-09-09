@@ -2016,6 +2016,12 @@ final class Builtins
         return $this->f_array_flip($b, $call, $args);
     }
 
+    /** runtime hook: an instance of the named class without running its constructor (null if unknown) */
+    private function f___rt_new_uninit(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        return new Val('php_rt::registry::new_uninit(' . $b->exprTo($args[0]->value, RustType::str()) . '.as_bytes())', RustType::option(RustType::mixed()));
+    }
+
     private function f_extract(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
         $b->warn('extract', $call);

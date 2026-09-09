@@ -310,6 +310,54 @@ final class Program
                 $model->fields[$name] = $field;
             }
         }
+        $this->widenFieldsByAssignments($model);
+    }
+
+    /**
+     * A property whose docblock omits `null` but which the class itself assigns a nullable value
+     * (`/** @var Stmt[] *\/ public $stmts;` set from a `?array` parameter) becomes nullable, so that
+     * `null` survives instead of turning into a default value.
+     */
+    private function widenFieldsByAssignments(ClassModel $model): void
+    {
+        if ($model->node === null) {
+            return;
+        }
+        $finder = new \PhpParser\NodeFinder();
+        foreach ($model->node->getMethods() as $mnode) {
+            $record = $this->transpiler->getFunctionRecord($mnode, $model->fqcn);
+            if ($record === null || $mnode->stmts === null) {
+                continue;
+            }
+            foreach ($finder->findInstanceOf($mnode->stmts, \PhpParser\Node\Expr\Assign::class) as $assign) {
+                $target = $assign->var;
+                if (!$target instanceof \PhpParser\Node\Expr\PropertyFetch
+                    || !$target->var instanceof \PhpParser\Node\Expr\Variable
+                    || $target->var->name !== 'this'
+                    || !$target->name instanceof \PhpParser\Node\Identifier
+                ) {
+                    continue;
+                }
+                $name = $target->name->name;
+                $field = $model->fields[$name] ?? null;
+                if ($field === null || $field->declaring !== $model || $field->type->kind === RustType::OPTION || $field->type->kind === RustType::MIXED) {
+                    continue;
+                }
+                $assigned = $record->node_data->getType($assign->expr);
+                if ($assigned === null || !$assigned->isNullable()) {
+                    continue;
+                }
+                $model->fields[$name] = new FieldModel(
+                    $field->name,
+                    RustType::option($field->type),
+                    $field->declaring,
+                    $field->storage,
+                    $field->default,
+                    $field->has_default,
+                    $field->is_static,
+                );
+            }
+        }
     }
 
     private function buildConstants(ClassModel $model): void

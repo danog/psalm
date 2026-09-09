@@ -38,7 +38,11 @@ class ReflectionClass
 
     public function newInstanceWithoutConstructor(): object
     {
-        throw new RuntimeException('ReflectionClass::newInstanceWithoutConstructor() is not supported');
+        $object = __rt_new_uninit($this->name);
+        if ($object === null) {
+            throw new ReflectionException('Class "' . $this->name . '" does not exist');
+        }
+        return $object;
     }
 
     public function isInstantiable(): bool

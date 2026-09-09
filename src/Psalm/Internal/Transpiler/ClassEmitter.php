@@ -136,7 +136,7 @@ final class ClassEmitter
             $w->line('pub fn ' . $rn . '(&self) -> Ref<\'_, ' . $t . '> { Ref::map(self.0.borrow(), |o| o.' . $fld . '.get()) }');
             $w->line('pub fn ' . $rn . '_get(&self) -> ' . $t . ' { self.0.borrow().' . $fld . '.get().clone() }');
             $w->line('pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { self.0.borrow().' . $fld . '.as_option().cloned() }');
-            $w->line('pub fn ' . $rn . '_mut(&self) -> RefMut<\'_, ' . $t . '> { RefMut::map(self.0.borrow_mut(), |o| o.' . $fld . '.get_mut()) }');
+            $w->line('pub fn ' . $rn . '_mut(&self) -> RefMut<\'_, ' . $t . '> { RefMut::map(self.0.borrow_mut(), |o| o.' . $fld . ($f->type->hasDefault() ? '.get_or_default_mut()' : '.get_mut()') . ') }');
             $w->line('pub fn set_' . $rn . '(&self, v: ' . $t . ') { self.0.borrow_mut().' . $fld . '.set(v); }');
         } else {
             $w->line('pub fn ' . $rn . '(&self) -> Ref<\'_, ' . $t . '> { Ref::map(self.0.borrow(), |o| &o.' . $fld . ') }');
@@ -212,11 +212,24 @@ final class ClassEmitter
     {
         $own = $cls->ownHandle();
         $obj = $cls->objStruct();
+        $body = $this->constExprEmitter($cls);
+        $inits = [];
+        foreach ($cls->fields as $f) {
+            $inits[] = $f->rustName() . ': ' . $this->fieldInit($f, $body) . ',';
+        }
+        // an instance with initialized defaults but without running the constructor
+        // (ReflectionClass::newInstanceWithoutConstructor, unserialize)
+        $w->open('pub fn new_uninit() -> ' . $own . ' {');
+        $w->open($own . '(Rc::new(RefCell::new(' . $obj . ' {');
+        foreach ($inits as $line) {
+            $w->line($line);
+        }
+        $w->close('})))');
+        $w->close();
         $w->open('pub fn new' . $this->ctorSig($cls) . ' -> Result<' . $own . ', Throw> {');
         $w->open('let this = ' . $own . '(Rc::new(RefCell::new(' . $obj . ' {');
-        $body = $this->constExprEmitter($cls);
-        foreach ($cls->fields as $f) {
-            $w->line($f->rustName() . ': ' . $this->fieldInit($f, $body) . ',');
+        foreach ($inits as $line) {
+            $w->line($line);
         }
         $w->close('})));');
         $ctor = $this->program->findMethod($cls, '__construct');
@@ -429,6 +442,20 @@ final class ClassEmitter
         } catch (\Throwable $e) {
             $this->diag->warn('transpiler error: ' . $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine(), $m->node, $m->record->file_path);
             return "    unreachable!(\"transpiler error in " . $m->name . "\")\n";
+        }
+        if (strtolower($m->name) === '__construct') {
+            // constructor property promotion: the parameters initialize the properties first
+            $pre = '';
+            foreach ($m->storage->params as $i => $p) {
+                $field = $p->promoted_property ? ($cls->fields[$p->name] ?? null) : null;
+                if ($field === null) {
+                    continue;
+                }
+                $pt = $m->param_types[$i] ?? RustType::mixed();
+                $val = $p->by_ref ? '(*' . Names::var($p->name) . ').clone()' : Names::var($p->name) . '.clone()';
+                $pre .= 'self.set_' . $field->acc() . '(' . $this->casts->convert($val, $pt, $field->type) . ");\n";
+            }
+            $code = $pre . $code;
         }
         return $this->indent($code);
     }

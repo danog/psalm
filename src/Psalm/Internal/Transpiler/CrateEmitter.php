@@ -235,6 +235,9 @@ final class CrateEmitter
                 $names[] = strtolower($a->fqcn);
             }
             $w->line('php_rt::registry::register_class(' . Names::rustStringLiteral($cls->fqcn) . ', &[' . implode(', ', array_map(fn($n) => Names::rustStringLiteral($n), $names)) . '], ' . ($cls->isInterface() ? 'true' : 'false') . ');');
+            if ($cls->isConcrete() && !$cls->isEnum()) {
+                $w->line('php_rt::registry::register_factory(' . Names::rustStringLiteral($cls->fqcn) . ', Box::new(|| ' . $this->casts->convert($cls->ownPath() . '::new_uninit()', RustType::class($cls->fqcn), RustType::mixed()) . '));');
+            }
         }
         foreach ($this->program->uniqueClasses() as $cls) {
             if (!$cls->is_project || $cls->isTrait()) {

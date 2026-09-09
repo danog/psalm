@@ -13,6 +13,11 @@ impl Collecting {
     pub fn p_errors_opt(&self) -> Option<Map<ArrayKey, crate::php_parser::Error>> { Some(self.0.borrow().errors.clone()) }
     pub fn p_errors_mut(&self) -> RefMut<'_, Map<ArrayKey, crate::php_parser::Error>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.errors) }
     pub fn set_p_errors(&self, v: Map<ArrayKey, crate::php_parser::Error>) { self.0.borrow_mut().errors = v; }
+    pub fn new_uninit() -> Collecting {
+        Collecting(Rc::new(RefCell::new(CollectingObj {
+            errors: Map::<ArrayKey, crate::php_parser::Error>::new(),
+        })))
+    }
     pub fn new() -> Result<Collecting, Throw> {
         let this = Collecting(Rc::new(RefCell::new(CollectingObj {
             errors: Map::<ArrayKey, crate::php_parser::Error>::new(),
@@ -55,6 +60,10 @@ pub struct ThrowingObj {
 #[derive(Clone)]
 pub struct Throwing(pub Rc<RefCell<ThrowingObj>>);
 impl Throwing {
+    pub fn new_uninit() -> Throwing {
+        Throwing(Rc::new(RefCell::new(ThrowingObj {
+        })))
+    }
     pub fn new() -> Result<Throwing, Throw> {
         let this = Throwing(Rc::new(RefCell::new(ThrowingObj {
         })));
@@ -115,6 +124,15 @@ impl CollectingTest {
     pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
     pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
     pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new_uninit() -> CollectingTest {
+        CollectingTest(Rc::new(RefCell::new(CollectingTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })))
+    }
     pub fn new(mut name: Str) -> Result<CollectingTest, Throw> {
         let this = CollectingTest(Rc::new(RefCell::new(CollectingTestObj {
             expectedException: { let _ = (); None::<Str> },
@@ -136,7 +154,7 @@ impl CollectingTest {
     errorHandler.get().clone().handleError({ let __t1 = crate::php_parser::Error::new(Str::from_static("Test 1"), Map::<Str, Mixed>::new())?; e1.set(__t1.clone()); __t1 })?;
     errorHandler.get().clone().handleError({ let __t2 = crate::php_parser::Error::new(Str::from_static("Test 2"), Map::<Str, Mixed>::new())?; e2.set(__t2.clone()); __t2 })?;
     { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>(errorHandler.get().clone().hasErrors()?), Str::from_static(""))? };
-    { let _ = self; crate::phpunit::framework::Assert::assertSame({ let __c1234 = (e1.get().clone(), e2.get().clone()); let mut __m: Map<ArrayKey, Mixed> = Map::new(); __m.push(cast::<Mixed>(__c1234.0)); __m.push(cast::<Mixed>(__c1234.1)); Mixed::Arr(__m) }, cast::<Mixed>(errorHandler.get().clone().getErrors()?), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertSame({ let __c1235 = (e1.get().clone(), e2.get().clone()); let mut __m: Map<ArrayKey, Mixed> = Map::new(); __m.push(cast::<Mixed>(__c1235.0)); __m.push(cast::<Mixed>(__c1235.1)); Mixed::Arr(__m) }, cast::<Mixed>(errorHandler.get().clone().getErrors()?), Str::from_static(""))? };
     errorHandler.get().clone().clearErrors()?;
     { let _ = self; crate::phpunit::framework::Assert::assertFalse(cast::<Mixed>(errorHandler.get().clone().hasErrors()?), Str::from_static(""))? };
     { let _ = self; crate::phpunit::framework::Assert::assertEmpty(cast::<Mixed>(errorHandler.get().clone().getErrors()?), Str::from_static(""))? };
@@ -257,6 +275,15 @@ impl ThrowingTest {
     pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
     pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
     pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new_uninit() -> ThrowingTest {
+        ThrowingTest(Rc::new(RefCell::new(ThrowingTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })))
+    }
     pub fn new(mut name: Str) -> Result<ThrowingTest, Throw> {
         let this = ThrowingTest(Rc::new(RefCell::new(ThrowingTestObj {
             expectedException: { let _ = (); None::<Str> },

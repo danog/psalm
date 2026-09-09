@@ -239,6 +239,10 @@ class RuntimeException extends Exception
 {
 }
 
+class ReflectionException extends Exception
+{
+}
+
 class OutOfBoundsException extends RuntimeException
 {
 }

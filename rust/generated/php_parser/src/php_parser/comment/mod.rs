@@ -3,61 +3,72 @@ use crate::generated::*;
 use crate::Throw;
 use crate::AnyObject;
 pub struct DocObj {
-    pub text: Str,
-    pub startLine: i64,
-    pub startFilePos: i64,
-    pub startTokenPos: i64,
-    pub endLine: i64,
-    pub endFilePos: i64,
-    pub endTokenPos: i64,
+    pub text: Late<Str>,
+    pub startLine: Late<i64>,
+    pub startFilePos: Late<i64>,
+    pub startTokenPos: Late<i64>,
+    pub endLine: Late<i64>,
+    pub endFilePos: Late<i64>,
+    pub endTokenPos: Late<i64>,
 }
 #[derive(Clone)]
 pub struct Doc(pub Rc<RefCell<DocObj>>);
 impl Doc {
-    pub fn p_text(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| &o.text) }
-    pub fn p_text_get(&self) -> Str { self.0.borrow().text.clone() }
-    pub fn p_text_opt(&self) -> Option<Str> { Some(self.0.borrow().text.clone()) }
-    pub fn p_text_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.text) }
-    pub fn set_p_text(&self, v: Str) { self.0.borrow_mut().text = v; }
-    pub fn p_startLine(&self) -> Ref<'_, i64> { Ref::map(self.0.borrow(), |o| &o.startLine) }
-    pub fn p_startLine_get(&self) -> i64 { self.0.borrow().startLine.clone() }
-    pub fn p_startLine_opt(&self) -> Option<i64> { Some(self.0.borrow().startLine.clone()) }
-    pub fn p_startLine_mut(&self) -> RefMut<'_, i64> { RefMut::map(self.0.borrow_mut(), |o| &mut o.startLine) }
-    pub fn set_p_startLine(&self, v: i64) { self.0.borrow_mut().startLine = v; }
-    pub fn p_startFilePos(&self) -> Ref<'_, i64> { Ref::map(self.0.borrow(), |o| &o.startFilePos) }
-    pub fn p_startFilePos_get(&self) -> i64 { self.0.borrow().startFilePos.clone() }
-    pub fn p_startFilePos_opt(&self) -> Option<i64> { Some(self.0.borrow().startFilePos.clone()) }
-    pub fn p_startFilePos_mut(&self) -> RefMut<'_, i64> { RefMut::map(self.0.borrow_mut(), |o| &mut o.startFilePos) }
-    pub fn set_p_startFilePos(&self, v: i64) { self.0.borrow_mut().startFilePos = v; }
-    pub fn p_startTokenPos(&self) -> Ref<'_, i64> { Ref::map(self.0.borrow(), |o| &o.startTokenPos) }
-    pub fn p_startTokenPos_get(&self) -> i64 { self.0.borrow().startTokenPos.clone() }
-    pub fn p_startTokenPos_opt(&self) -> Option<i64> { Some(self.0.borrow().startTokenPos.clone()) }
-    pub fn p_startTokenPos_mut(&self) -> RefMut<'_, i64> { RefMut::map(self.0.borrow_mut(), |o| &mut o.startTokenPos) }
-    pub fn set_p_startTokenPos(&self, v: i64) { self.0.borrow_mut().startTokenPos = v; }
-    pub fn p_endLine(&self) -> Ref<'_, i64> { Ref::map(self.0.borrow(), |o| &o.endLine) }
-    pub fn p_endLine_get(&self) -> i64 { self.0.borrow().endLine.clone() }
-    pub fn p_endLine_opt(&self) -> Option<i64> { Some(self.0.borrow().endLine.clone()) }
-    pub fn p_endLine_mut(&self) -> RefMut<'_, i64> { RefMut::map(self.0.borrow_mut(), |o| &mut o.endLine) }
-    pub fn set_p_endLine(&self, v: i64) { self.0.borrow_mut().endLine = v; }
-    pub fn p_endFilePos(&self) -> Ref<'_, i64> { Ref::map(self.0.borrow(), |o| &o.endFilePos) }
-    pub fn p_endFilePos_get(&self) -> i64 { self.0.borrow().endFilePos.clone() }
-    pub fn p_endFilePos_opt(&self) -> Option<i64> { Some(self.0.borrow().endFilePos.clone()) }
-    pub fn p_endFilePos_mut(&self) -> RefMut<'_, i64> { RefMut::map(self.0.borrow_mut(), |o| &mut o.endFilePos) }
-    pub fn set_p_endFilePos(&self, v: i64) { self.0.borrow_mut().endFilePos = v; }
-    pub fn p_endTokenPos(&self) -> Ref<'_, i64> { Ref::map(self.0.borrow(), |o| &o.endTokenPos) }
-    pub fn p_endTokenPos_get(&self) -> i64 { self.0.borrow().endTokenPos.clone() }
-    pub fn p_endTokenPos_opt(&self) -> Option<i64> { Some(self.0.borrow().endTokenPos.clone()) }
-    pub fn p_endTokenPos_mut(&self) -> RefMut<'_, i64> { RefMut::map(self.0.borrow_mut(), |o| &mut o.endTokenPos) }
-    pub fn set_p_endTokenPos(&self, v: i64) { self.0.borrow_mut().endTokenPos = v; }
+    pub fn p_text(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| o.text.get()) }
+    pub fn p_text_get(&self) -> Str { self.0.borrow().text.get().clone() }
+    pub fn p_text_opt(&self) -> Option<Str> { self.0.borrow().text.as_option().cloned() }
+    pub fn p_text_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| o.text.get_or_default_mut()) }
+    pub fn set_p_text(&self, v: Str) { self.0.borrow_mut().text.set(v); }
+    pub fn p_startLine(&self) -> Ref<'_, i64> { Ref::map(self.0.borrow(), |o| o.startLine.get()) }
+    pub fn p_startLine_get(&self) -> i64 { self.0.borrow().startLine.get().clone() }
+    pub fn p_startLine_opt(&self) -> Option<i64> { self.0.borrow().startLine.as_option().cloned() }
+    pub fn p_startLine_mut(&self) -> RefMut<'_, i64> { RefMut::map(self.0.borrow_mut(), |o| o.startLine.get_or_default_mut()) }
+    pub fn set_p_startLine(&self, v: i64) { self.0.borrow_mut().startLine.set(v); }
+    pub fn p_startFilePos(&self) -> Ref<'_, i64> { Ref::map(self.0.borrow(), |o| o.startFilePos.get()) }
+    pub fn p_startFilePos_get(&self) -> i64 { self.0.borrow().startFilePos.get().clone() }
+    pub fn p_startFilePos_opt(&self) -> Option<i64> { self.0.borrow().startFilePos.as_option().cloned() }
+    pub fn p_startFilePos_mut(&self) -> RefMut<'_, i64> { RefMut::map(self.0.borrow_mut(), |o| o.startFilePos.get_or_default_mut()) }
+    pub fn set_p_startFilePos(&self, v: i64) { self.0.borrow_mut().startFilePos.set(v); }
+    pub fn p_startTokenPos(&self) -> Ref<'_, i64> { Ref::map(self.0.borrow(), |o| o.startTokenPos.get()) }
+    pub fn p_startTokenPos_get(&self) -> i64 { self.0.borrow().startTokenPos.get().clone() }
+    pub fn p_startTokenPos_opt(&self) -> Option<i64> { self.0.borrow().startTokenPos.as_option().cloned() }
+    pub fn p_startTokenPos_mut(&self) -> RefMut<'_, i64> { RefMut::map(self.0.borrow_mut(), |o| o.startTokenPos.get_or_default_mut()) }
+    pub fn set_p_startTokenPos(&self, v: i64) { self.0.borrow_mut().startTokenPos.set(v); }
+    pub fn p_endLine(&self) -> Ref<'_, i64> { Ref::map(self.0.borrow(), |o| o.endLine.get()) }
+    pub fn p_endLine_get(&self) -> i64 { self.0.borrow().endLine.get().clone() }
+    pub fn p_endLine_opt(&self) -> Option<i64> { self.0.borrow().endLine.as_option().cloned() }
+    pub fn p_endLine_mut(&self) -> RefMut<'_, i64> { RefMut::map(self.0.borrow_mut(), |o| o.endLine.get_or_default_mut()) }
+    pub fn set_p_endLine(&self, v: i64) { self.0.borrow_mut().endLine.set(v); }
+    pub fn p_endFilePos(&self) -> Ref<'_, i64> { Ref::map(self.0.borrow(), |o| o.endFilePos.get()) }
+    pub fn p_endFilePos_get(&self) -> i64 { self.0.borrow().endFilePos.get().clone() }
+    pub fn p_endFilePos_opt(&self) -> Option<i64> { self.0.borrow().endFilePos.as_option().cloned() }
+    pub fn p_endFilePos_mut(&self) -> RefMut<'_, i64> { RefMut::map(self.0.borrow_mut(), |o| o.endFilePos.get_or_default_mut()) }
+    pub fn set_p_endFilePos(&self, v: i64) { self.0.borrow_mut().endFilePos.set(v); }
+    pub fn p_endTokenPos(&self) -> Ref<'_, i64> { Ref::map(self.0.borrow(), |o| o.endTokenPos.get()) }
+    pub fn p_endTokenPos_get(&self) -> i64 { self.0.borrow().endTokenPos.get().clone() }
+    pub fn p_endTokenPos_opt(&self) -> Option<i64> { self.0.borrow().endTokenPos.as_option().cloned() }
+    pub fn p_endTokenPos_mut(&self) -> RefMut<'_, i64> { RefMut::map(self.0.borrow_mut(), |o| o.endTokenPos.get_or_default_mut()) }
+    pub fn set_p_endTokenPos(&self, v: i64) { self.0.borrow_mut().endTokenPos.set(v); }
+    pub fn new_uninit() -> Doc {
+        Doc(Rc::new(RefCell::new(DocObj {
+            text: Late::uninit(),
+            startLine: Late::uninit(),
+            startFilePos: Late::uninit(),
+            startTokenPos: Late::uninit(),
+            endLine: Late::uninit(),
+            endFilePos: Late::uninit(),
+            endTokenPos: Late::uninit(),
+        })))
+    }
     pub fn new(mut text: Str, mut startLine: i64, mut startFilePos: i64, mut startTokenPos: i64, mut endLine: i64, mut endFilePos: i64, mut endTokenPos: i64) -> Result<Doc, Throw> {
         let this = Doc(Rc::new(RefCell::new(DocObj {
-            text: Default::default(),
-            startLine: Default::default(),
-            startFilePos: Default::default(),
-            startTokenPos: Default::default(),
-            endLine: Default::default(),
-            endFilePos: Default::default(),
-            endTokenPos: Default::default(),
+            text: Late::uninit(),
+            startLine: Late::uninit(),
+            startFilePos: Late::uninit(),
+            startTokenPos: Late::uninit(),
+            endLine: Late::uninit(),
+            endFilePos: Late::uninit(),
+            endTokenPos: Late::uninit(),
         })));
         this.magic__construct(text, startLine, startFilePos, startTokenPos, endLine, endFilePos, endTokenPos)?;
         Ok(this)
@@ -80,7 +91,7 @@ impl php_rt::PhpObject for Doc {
     fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\comment\\doc", "phpparser\\comment", "jsonserializable", "stringable"] }
     fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_text_get()) { out.push((Str::from_static("text"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_startLine_get()) { out.push((Str::from_static("startLine"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_startFilePos_get()) { out.push((Str::from_static("startFilePos"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_startTokenPos_get()) { out.push((Str::from_static("startTokenPos"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_endLine_get()) { out.push((Str::from_static("endLine"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_endFilePos_get()) { out.push((Str::from_static("endFilePos"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_endTokenPos_get()) { out.push((Str::from_static("endTokenPos"), cast::<Mixed>(v))); } out }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = self.p_text_opt() { out.push((Str::from_static("text"), cast::<Mixed>(v))); } if let Some(v) = self.p_startLine_opt() { out.push((Str::from_static("startLine"), cast::<Mixed>(v))); } if let Some(v) = self.p_startFilePos_opt() { out.push((Str::from_static("startFilePos"), cast::<Mixed>(v))); } if let Some(v) = self.p_startTokenPos_opt() { out.push((Str::from_static("startTokenPos"), cast::<Mixed>(v))); } if let Some(v) = self.p_endLine_opt() { out.push((Str::from_static("endLine"), cast::<Mixed>(v))); } if let Some(v) = self.p_endFilePos_opt() { out.push((Str::from_static("endFilePos"), cast::<Mixed>(v))); } if let Some(v) = self.p_endTokenPos_opt() { out.push((Str::from_static("endTokenPos"), cast::<Mixed>(v))); } out }
     fn public_props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new();  out }
     fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "text" => { self.set_p_text(cast::<Str>(value)); true }, "startLine" => { self.set_p_startLine(cast::<i64>(value)); true }, "startFilePos" => { self.set_p_startFilePos(cast::<i64>(value)); true }, "startTokenPos" => { self.set_p_startTokenPos(cast::<i64>(value)); true }, "endLine" => { self.set_p_endLine(cast::<i64>(value)); true }, "endFilePos" => { self.set_p_endFilePos(cast::<i64>(value)); true }, "endTokenPos" => { self.set_p_endTokenPos(cast::<i64>(value)); true }, _ => false } }
     fn php_to_string(&self) -> Option<Str> { self.magic__toString().ok() }

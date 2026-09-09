@@ -7,6 +7,10 @@ pub struct AsymmetricVisibilityTokenEmulatorObj {
 #[derive(Clone)]
 pub struct AsymmetricVisibilityTokenEmulator(pub Rc<RefCell<AsymmetricVisibilityTokenEmulatorObj>>);
 impl AsymmetricVisibilityTokenEmulator {
+    pub fn new_uninit() -> AsymmetricVisibilityTokenEmulator {
+        AsymmetricVisibilityTokenEmulator(Rc::new(RefCell::new(AsymmetricVisibilityTokenEmulatorObj {
+        })))
+    }
     pub fn new() -> Result<AsymmetricVisibilityTokenEmulator, Throw> {
         let this = AsymmetricVisibilityTokenEmulator(Rc::new(RefCell::new(AsymmetricVisibilityTokenEmulatorObj {
         })));
@@ -120,6 +124,10 @@ pub struct AttributeEmulatorObj {
 #[derive(Clone)]
 pub struct AttributeEmulator(pub Rc<RefCell<AttributeEmulatorObj>>);
 impl AttributeEmulator {
+    pub fn new_uninit() -> AttributeEmulator {
+        AttributeEmulator(Rc::new(RefCell::new(AttributeEmulatorObj {
+        })))
+    }
     pub fn new() -> Result<AttributeEmulator, Throw> {
         let this = AttributeEmulator(Rc::new(RefCell::new(AttributeEmulatorObj {
         })));
@@ -189,6 +197,10 @@ pub struct EnumTokenEmulatorObj {
 #[derive(Clone)]
 pub struct EnumTokenEmulator(pub Rc<RefCell<EnumTokenEmulatorObj>>);
 impl EnumTokenEmulator {
+    pub fn new_uninit() -> EnumTokenEmulator {
+        EnumTokenEmulator(Rc::new(RefCell::new(EnumTokenEmulatorObj {
+        })))
+    }
     pub fn new() -> Result<EnumTokenEmulator, Throw> {
         let this = EnumTokenEmulator(Rc::new(RefCell::new(EnumTokenEmulatorObj {
         })));
@@ -232,6 +244,10 @@ pub struct ExplicitOctalEmulatorObj {
 #[derive(Clone)]
 pub struct ExplicitOctalEmulator(pub Rc<RefCell<ExplicitOctalEmulatorObj>>);
 impl ExplicitOctalEmulator {
+    pub fn new_uninit() -> ExplicitOctalEmulator {
+        ExplicitOctalEmulator(Rc::new(RefCell::new(ExplicitOctalEmulatorObj {
+        })))
+    }
     pub fn new() -> Result<ExplicitOctalEmulator, Throw> {
         let this = ExplicitOctalEmulator(Rc::new(RefCell::new(ExplicitOctalEmulatorObj {
         })));
@@ -299,6 +315,10 @@ pub struct FnTokenEmulatorObj {
 #[derive(Clone)]
 pub struct FnTokenEmulator(pub Rc<RefCell<FnTokenEmulatorObj>>);
 impl FnTokenEmulator {
+    pub fn new_uninit() -> FnTokenEmulator {
+        FnTokenEmulator(Rc::new(RefCell::new(FnTokenEmulatorObj {
+        })))
+    }
     pub fn new() -> Result<FnTokenEmulator, Throw> {
         let this = FnTokenEmulator(Rc::new(RefCell::new(FnTokenEmulatorObj {
         })));
@@ -430,6 +450,10 @@ pub struct MatchTokenEmulatorObj {
 #[derive(Clone)]
 pub struct MatchTokenEmulator(pub Rc<RefCell<MatchTokenEmulatorObj>>);
 impl MatchTokenEmulator {
+    pub fn new_uninit() -> MatchTokenEmulator {
+        MatchTokenEmulator(Rc::new(RefCell::new(MatchTokenEmulatorObj {
+        })))
+    }
     pub fn new() -> Result<MatchTokenEmulator, Throw> {
         let this = MatchTokenEmulator(Rc::new(RefCell::new(MatchTokenEmulatorObj {
         })));
@@ -471,6 +495,10 @@ pub struct NullsafeTokenEmulatorObj {
 #[derive(Clone)]
 pub struct NullsafeTokenEmulator(pub Rc<RefCell<NullsafeTokenEmulatorObj>>);
 impl NullsafeTokenEmulator {
+    pub fn new_uninit() -> NullsafeTokenEmulator {
+        NullsafeTokenEmulator(Rc::new(RefCell::new(NullsafeTokenEmulatorObj {
+        })))
+    }
     pub fn new() -> Result<NullsafeTokenEmulator, Throw> {
         let this = NullsafeTokenEmulator(Rc::new(RefCell::new(NullsafeTokenEmulatorObj {
         })));
@@ -543,6 +571,10 @@ pub struct PipeOperatorEmulatorObj {
 #[derive(Clone)]
 pub struct PipeOperatorEmulator(pub Rc<RefCell<PipeOperatorEmulatorObj>>);
 impl PipeOperatorEmulator {
+    pub fn new_uninit() -> PipeOperatorEmulator {
+        PipeOperatorEmulator(Rc::new(RefCell::new(PipeOperatorEmulatorObj {
+        })))
+    }
     pub fn new() -> Result<PipeOperatorEmulator, Throw> {
         let this = PipeOperatorEmulator(Rc::new(RefCell::new(PipeOperatorEmulatorObj {
         })));
@@ -620,6 +652,10 @@ pub struct PropertyTokenEmulatorObj {
 #[derive(Clone)]
 pub struct PropertyTokenEmulator(pub Rc<RefCell<PropertyTokenEmulatorObj>>);
 impl PropertyTokenEmulator {
+    pub fn new_uninit() -> PropertyTokenEmulator {
+        PropertyTokenEmulator(Rc::new(RefCell::new(PropertyTokenEmulatorObj {
+        })))
+    }
     pub fn new() -> Result<PropertyTokenEmulator, Throw> {
         let this = PropertyTokenEmulator(Rc::new(RefCell::new(PropertyTokenEmulatorObj {
         })));
@@ -661,6 +697,10 @@ pub struct ReadonlyFunctionTokenEmulatorObj {
 #[derive(Clone)]
 pub struct ReadonlyFunctionTokenEmulator(pub Rc<RefCell<ReadonlyFunctionTokenEmulatorObj>>);
 impl ReadonlyFunctionTokenEmulator {
+    pub fn new_uninit() -> ReadonlyFunctionTokenEmulator {
+        ReadonlyFunctionTokenEmulator(Rc::new(RefCell::new(ReadonlyFunctionTokenEmulatorObj {
+        })))
+    }
     pub fn new() -> Result<ReadonlyFunctionTokenEmulator, Throw> {
         let this = ReadonlyFunctionTokenEmulator(Rc::new(RefCell::new(ReadonlyFunctionTokenEmulatorObj {
         })));
@@ -704,6 +744,10 @@ pub struct ReadonlyTokenEmulatorObj {
 #[derive(Clone)]
 pub struct ReadonlyTokenEmulator(pub Rc<RefCell<ReadonlyTokenEmulatorObj>>);
 impl ReadonlyTokenEmulator {
+    pub fn new_uninit() -> ReadonlyTokenEmulator {
+        ReadonlyTokenEmulator(Rc::new(RefCell::new(ReadonlyTokenEmulatorObj {
+        })))
+    }
     pub fn new() -> Result<ReadonlyTokenEmulator, Throw> {
         let this = ReadonlyTokenEmulator(Rc::new(RefCell::new(ReadonlyTokenEmulatorObj {
         })));
@@ -756,6 +800,11 @@ impl ReverseEmulator {
     pub fn p_emulator_opt(&self) -> Option<crate::php_parser::lexer::token_emulator::TokenEmulator> { self.0.borrow().emulator.as_option().cloned() }
     pub fn p_emulator_mut(&self) -> RefMut<'_, crate::php_parser::lexer::token_emulator::TokenEmulator> { RefMut::map(self.0.borrow_mut(), |o| o.emulator.get_mut()) }
     pub fn set_p_emulator(&self, v: crate::php_parser::lexer::token_emulator::TokenEmulator) { self.0.borrow_mut().emulator.set(v); }
+    pub fn new_uninit() -> ReverseEmulator {
+        ReverseEmulator(Rc::new(RefCell::new(ReverseEmulatorObj {
+            emulator: Late::uninit(),
+        })))
+    }
     pub fn new(mut emulator: crate::php_parser::lexer::token_emulator::TokenEmulator) -> Result<ReverseEmulator, Throw> {
         let this = ReverseEmulator(Rc::new(RefCell::new(ReverseEmulatorObj {
             emulator: Late::uninit(),
@@ -844,6 +893,10 @@ pub struct VoidCastEmulatorObj {
 #[derive(Clone)]
 pub struct VoidCastEmulator(pub Rc<RefCell<VoidCastEmulatorObj>>);
 impl VoidCastEmulator {
+    pub fn new_uninit() -> VoidCastEmulator {
+        VoidCastEmulator(Rc::new(RefCell::new(VoidCastEmulatorObj {
+        })))
+    }
     pub fn new() -> Result<VoidCastEmulator, Throw> {
         let this = VoidCastEmulator(Rc::new(RefCell::new(VoidCastEmulatorObj {
         })));

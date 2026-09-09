@@ -8,6 +8,7 @@ pub mod list;
 pub mod map;
 pub mod conv;
 pub mod late;
+pub mod refs;
 pub mod mixed;
 pub mod error;
 pub mod traits;
@@ -27,6 +28,7 @@ pub use key::ArrayKey;
 pub use list::List;
 pub use map::Map;
 pub use late::Late;
+pub use refs::{PhpRef, Cell as PhpCell, new_cell, cell_of};
 pub use mixed::{Mixed, AnyObj, PhpObject};
 pub use error::{RtError, Flow, R, Never, never};
 pub use traits::*;
@@ -40,6 +42,7 @@ pub use builtins::*;
 
 pub mod prelude {
     pub use crate::{Str, ArrayKey, List, Map, Late, Mixed, AnyObj, PhpObject, RtError, Flow, R, Never, never, Num};
+    pub use crate::refs::{PhpRef, Cell as PhpCell, new_cell, cell_of};
     pub use crate::{list, map, cat, sfmt, sprintf, impl_enum_handle};
     pub use crate::traits::*;
     pub use crate::ops::*;

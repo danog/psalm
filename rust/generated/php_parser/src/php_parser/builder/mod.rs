@@ -37,6 +37,15 @@ impl ClassConst {
     pub fn p_type__opt(&self) -> Option<Option<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>> { Some(self.0.borrow().type_.clone()) }
     pub fn p_type__mut(&self) -> RefMut<'_, Option<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.type_) }
     pub fn set_p_type_(&self, v: Option<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>) { self.0.borrow_mut().type_ = v; }
+    pub fn new_uninit() -> ClassConst {
+        ClassConst(Rc::new(RefCell::new(ClassConstObj {
+            flags: 0i64,
+            attributes: Map::<Str, Mixed>::new(),
+            constants: List::<crate::php_parser::node::Const_>::new(),
+            attributeGroups: List::<crate::php_parser::node::AttributeGroup>::new(),
+            type_: { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> },
+        })))
+    }
     pub fn new(mut name: U_PhpParser_Node_Identifier_or_Str, mut value: Option<U_Bool_or_Float_or_Int_or_Map_ArrayKey_Mixed_or_PhpParser_Node_Expr_or_Str_or_UnitEnum>) -> Result<ClassConst, Throw> {
         let this = ClassConst(Rc::new(RefCell::new(ClassConstObj {
             flags: 0i64,
@@ -106,7 +115,7 @@ impl ClassConst {
 }
 pub struct Class_Obj {
     pub attributes: Map<Str, Mixed>,
-    pub name: Str,
+    pub name: Late<Str>,
     pub extends: Option<crate::php_parser::node::Name>,
     pub implements: List<crate::php_parser::node::Name>,
     pub flags: i64,
@@ -124,11 +133,11 @@ impl Class_ {
     pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
     pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
     pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
-    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| &o.name) }
-    pub fn p_name_get(&self) -> Str { self.0.borrow().name.clone() }
-    pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
-    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
-    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| o.name.get()) }
+    pub fn p_name_get(&self) -> Str { self.0.borrow().name.get().clone() }
+    pub fn p_name_opt(&self) -> Option<Str> { self.0.borrow().name.as_option().cloned() }
+    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| o.name.get_or_default_mut()) }
+    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name.set(v); }
     pub fn p_extends(&self) -> Ref<'_, Option<crate::php_parser::node::Name>> { Ref::map(self.0.borrow(), |o| &o.extends) }
     pub fn p_extends_get(&self) -> Option<crate::php_parser::node::Name> { self.0.borrow().extends.clone() }
     pub fn p_extends_opt(&self) -> Option<Option<crate::php_parser::node::Name>> { Some(self.0.borrow().extends.clone()) }
@@ -169,10 +178,24 @@ impl Class_ {
     pub fn p_attributeGroups_opt(&self) -> Option<List<crate::php_parser::node::AttributeGroup>> { Some(self.0.borrow().attributeGroups.clone()) }
     pub fn p_attributeGroups_mut(&self) -> RefMut<'_, List<crate::php_parser::node::AttributeGroup>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributeGroups) }
     pub fn set_p_attributeGroups(&self, v: List<crate::php_parser::node::AttributeGroup>) { self.0.borrow_mut().attributeGroups = v; }
+    pub fn new_uninit() -> Class_ {
+        Class_(Rc::new(RefCell::new(Class_Obj {
+            attributes: Map::<Str, Mixed>::new(),
+            name: Late::uninit(),
+            extends: { let _ = (); None::<crate::php_parser::node::Name> },
+            implements: List::<crate::php_parser::node::Name>::new(),
+            flags: 0i64,
+            uses: List::<crate::php_parser::node::stmt::TraitUse>::new(),
+            constants: List::<crate::php_parser::node::stmt::ClassConst>::new(),
+            properties: List::<crate::php_parser::node::stmt::Property>::new(),
+            methods: List::<crate::php_parser::node::stmt::ClassMethod>::new(),
+            attributeGroups: List::<crate::php_parser::node::AttributeGroup>::new(),
+        })))
+    }
     pub fn new(mut name: Str) -> Result<Class_, Throw> {
         let this = Class_(Rc::new(RefCell::new(Class_Obj {
             attributes: Map::<Str, Mixed>::new(),
-            name: Default::default(),
+            name: Late::uninit(),
             extends: { let _ = (); None::<crate::php_parser::node::Name> },
             implements: List::<crate::php_parser::node::Name>::new(),
             flags: 0i64,
@@ -244,7 +267,7 @@ impl php_rt::PhpObject for Class_ {
     fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\builder\\class_", "phpparser\\builder\\declaration", "phpparser\\builder"] }
     fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_name_get()) { out.push((Str::from_static("name"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_extends_get()) { out.push((Str::from_static("extends"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_implements_get()) { out.push((Str::from_static("implements"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_flags_get()) { out.push((Str::from_static("flags"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_uses_get()) { out.push((Str::from_static("uses"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_constants_get()) { out.push((Str::from_static("constants"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_properties_get()) { out.push((Str::from_static("properties"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_methods_get()) { out.push((Str::from_static("methods"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_attributeGroups_get()) { out.push((Str::from_static("attributeGroups"), cast::<Mixed>(v))); } out }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_name_opt() { out.push((Str::from_static("name"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_extends_get()) { out.push((Str::from_static("extends"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_implements_get()) { out.push((Str::from_static("implements"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_flags_get()) { out.push((Str::from_static("flags"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_uses_get()) { out.push((Str::from_static("uses"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_constants_get()) { out.push((Str::from_static("constants"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_properties_get()) { out.push((Str::from_static("properties"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_methods_get()) { out.push((Str::from_static("methods"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_attributeGroups_get()) { out.push((Str::from_static("attributeGroups"), cast::<Mixed>(v))); } out }
     fn public_props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new();  out }
     fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "name" => { self.set_p_name(cast::<Str>(value)); true }, "extends" => { self.set_p_extends(value.to_option().map(|__m| cast::<crate::php_parser::node::Name>(__m))); true }, "implements" => { self.set_p_implements(cast::<List<crate::php_parser::node::Name>>(value)); true }, "flags" => { self.set_p_flags(cast::<i64>(value)); true }, "uses" => { self.set_p_uses(cast::<List<crate::php_parser::node::stmt::TraitUse>>(value)); true }, "constants" => { self.set_p_constants(cast::<List<crate::php_parser::node::stmt::ClassConst>>(value)); true }, "properties" => { self.set_p_properties(cast::<List<crate::php_parser::node::stmt::Property>>(value)); true }, "methods" => { self.set_p_methods(cast::<List<crate::php_parser::node::stmt::ClassMethod>>(value)); true }, "attributeGroups" => { self.set_p_attributeGroups(cast::<List<crate::php_parser::node::AttributeGroup>>(value)); true }, _ => false } }
     fn call_method(&self, name: &str, args: Vec<Mixed>) -> Result<Mixed, DynError> { match name { "__construct" => { let __r = self.magic__construct((match args.get(0) { Some(__a) => cast::<Str>(__a.clone()), None => <Str>::default() })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(__r) }, "extend" => { let __r = self.extend((match args.get(0) { Some(__a) => cast::<U_PhpParser_Node_Name_or_Str>(__a.clone()), None => unreachable!("no default for U_PhpParser_Node_Name_or_Str") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makeabstract" => { let __r = self.makeAbstract().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makefinal" => { let __r = self.makeFinal().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makereadonly" => { let __r = self.makeReadonly().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "addstmt" => { let __r = self.addStmt((match args.get(0) { Some(__a) => cast::<U_PhpParser_Builder_or_PhpParser_Node_Stmt>(__a.clone()), None => unreachable!("no default for U_PhpParser_Builder_or_PhpParser_Node_Stmt") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "addattribute" => { let __r = self.addAttribute((match args.get(0) { Some(__a) => cast::<U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup>(__a.clone()), None => unreachable!("no default for U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "getnode" => { let __r = self.getNode().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "addstmts" => { let __r = self.addStmts((match args.get(0) { Some(__a) => cast::<Map<ArrayKey, U_PhpParser_Builder_or_PhpParser_Node_Stmt>>(__a.clone()), None => <Map<ArrayKey, U_PhpParser_Builder_or_PhpParser_Node_Stmt>>::default() })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "setdoccomment" => { let __r = self.setDocComment((match args.get(0) { Some(__a) => cast::<U_PhpParser_Comment_Doc_or_Str>(__a.clone()), None => unreachable!("no default for U_PhpParser_Comment_Doc_or_Str") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, _ => Err(DynError::Rt(RtError::error(format!("Call to undefined method {}::{}()", "PhpParser\\Builder\\Class_", name)))) } }
@@ -330,6 +353,14 @@ impl EnumCase {
     pub fn p_attributeGroups_opt(&self) -> Option<List<crate::php_parser::node::AttributeGroup>> { Some(self.0.borrow().attributeGroups.clone()) }
     pub fn p_attributeGroups_mut(&self) -> RefMut<'_, List<crate::php_parser::node::AttributeGroup>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributeGroups) }
     pub fn set_p_attributeGroups(&self, v: List<crate::php_parser::node::AttributeGroup>) { self.0.borrow_mut().attributeGroups = v; }
+    pub fn new_uninit() -> EnumCase {
+        EnumCase(Rc::new(RefCell::new(EnumCaseObj {
+            name: Late::uninit(),
+            value: { let _ = (); None::<crate::php_parser::node::Expr> },
+            attributes: Map::<Str, Mixed>::new(),
+            attributeGroups: List::<crate::php_parser::node::AttributeGroup>::new(),
+        })))
+    }
     pub fn new(mut name: U_PhpParser_Node_Identifier_or_Str) -> Result<EnumCase, Throw> {
         let this = EnumCase(Rc::new(RefCell::new(EnumCaseObj {
             name: Late::uninit(),
@@ -378,7 +409,7 @@ impl EnumCase {
 }
 pub struct Enum_Obj {
     pub attributes: Map<Str, Mixed>,
-    pub name: Str,
+    pub name: Late<Str>,
     pub scalarType: Option<crate::php_parser::node::Identifier>,
     pub implements: List<crate::php_parser::node::Name>,
     pub uses: List<crate::php_parser::node::stmt::TraitUse>,
@@ -395,11 +426,11 @@ impl Enum_ {
     pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
     pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
     pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
-    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| &o.name) }
-    pub fn p_name_get(&self) -> Str { self.0.borrow().name.clone() }
-    pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
-    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
-    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| o.name.get()) }
+    pub fn p_name_get(&self) -> Str { self.0.borrow().name.get().clone() }
+    pub fn p_name_opt(&self) -> Option<Str> { self.0.borrow().name.as_option().cloned() }
+    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| o.name.get_or_default_mut()) }
+    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name.set(v); }
     pub fn p_scalarType(&self) -> Ref<'_, Option<crate::php_parser::node::Identifier>> { Ref::map(self.0.borrow(), |o| &o.scalarType) }
     pub fn p_scalarType_get(&self) -> Option<crate::php_parser::node::Identifier> { self.0.borrow().scalarType.clone() }
     pub fn p_scalarType_opt(&self) -> Option<Option<crate::php_parser::node::Identifier>> { Some(self.0.borrow().scalarType.clone()) }
@@ -435,10 +466,23 @@ impl Enum_ {
     pub fn p_attributeGroups_opt(&self) -> Option<List<crate::php_parser::node::AttributeGroup>> { Some(self.0.borrow().attributeGroups.clone()) }
     pub fn p_attributeGroups_mut(&self) -> RefMut<'_, List<crate::php_parser::node::AttributeGroup>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributeGroups) }
     pub fn set_p_attributeGroups(&self, v: List<crate::php_parser::node::AttributeGroup>) { self.0.borrow_mut().attributeGroups = v; }
+    pub fn new_uninit() -> Enum_ {
+        Enum_(Rc::new(RefCell::new(Enum_Obj {
+            attributes: Map::<Str, Mixed>::new(),
+            name: Late::uninit(),
+            scalarType: { let _ = (); None::<crate::php_parser::node::Identifier> },
+            implements: List::<crate::php_parser::node::Name>::new(),
+            uses: List::<crate::php_parser::node::stmt::TraitUse>::new(),
+            enumCases: List::<crate::php_parser::node::stmt::EnumCase>::new(),
+            constants: List::<crate::php_parser::node::stmt::ClassConst>::new(),
+            methods: List::<crate::php_parser::node::stmt::ClassMethod>::new(),
+            attributeGroups: List::<crate::php_parser::node::AttributeGroup>::new(),
+        })))
+    }
     pub fn new(mut name: Str) -> Result<Enum_, Throw> {
         let this = Enum_(Rc::new(RefCell::new(Enum_Obj {
             attributes: Map::<Str, Mixed>::new(),
-            name: Default::default(),
+            name: Late::uninit(),
             scalarType: { let _ = (); None::<crate::php_parser::node::Identifier> },
             implements: List::<crate::php_parser::node::Name>::new(),
             uses: List::<crate::php_parser::node::stmt::TraitUse>::new(),
@@ -497,7 +541,7 @@ impl php_rt::PhpObject for Enum_ {
     fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\builder\\enum_", "phpparser\\builder\\declaration", "phpparser\\builder"] }
     fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_name_get()) { out.push((Str::from_static("name"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_scalarType_get()) { out.push((Str::from_static("scalarType"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_implements_get()) { out.push((Str::from_static("implements"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_uses_get()) { out.push((Str::from_static("uses"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_enumCases_get()) { out.push((Str::from_static("enumCases"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_constants_get()) { out.push((Str::from_static("constants"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_methods_get()) { out.push((Str::from_static("methods"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_attributeGroups_get()) { out.push((Str::from_static("attributeGroups"), cast::<Mixed>(v))); } out }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_name_opt() { out.push((Str::from_static("name"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_scalarType_get()) { out.push((Str::from_static("scalarType"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_implements_get()) { out.push((Str::from_static("implements"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_uses_get()) { out.push((Str::from_static("uses"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_enumCases_get()) { out.push((Str::from_static("enumCases"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_constants_get()) { out.push((Str::from_static("constants"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_methods_get()) { out.push((Str::from_static("methods"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_attributeGroups_get()) { out.push((Str::from_static("attributeGroups"), cast::<Mixed>(v))); } out }
     fn public_props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new();  out }
     fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "name" => { self.set_p_name(cast::<Str>(value)); true }, "scalarType" => { self.set_p_scalarType(value.to_option().map(|__m| cast::<crate::php_parser::node::Identifier>(__m))); true }, "implements" => { self.set_p_implements(cast::<List<crate::php_parser::node::Name>>(value)); true }, "uses" => { self.set_p_uses(cast::<List<crate::php_parser::node::stmt::TraitUse>>(value)); true }, "enumCases" => { self.set_p_enumCases(cast::<List<crate::php_parser::node::stmt::EnumCase>>(value)); true }, "constants" => { self.set_p_constants(cast::<List<crate::php_parser::node::stmt::ClassConst>>(value)); true }, "methods" => { self.set_p_methods(cast::<List<crate::php_parser::node::stmt::ClassMethod>>(value)); true }, "attributeGroups" => { self.set_p_attributeGroups(cast::<List<crate::php_parser::node::AttributeGroup>>(value)); true }, _ => false } }
     fn call_method(&self, name: &str, args: Vec<Mixed>) -> Result<Mixed, DynError> { match name { "__construct" => { let __r = self.magic__construct((match args.get(0) { Some(__a) => cast::<Str>(__a.clone()), None => <Str>::default() })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(__r) }, "setscalartype" => { let __r = self.setScalarType((match args.get(0) { Some(__a) => cast::<U_PhpParser_Node_Identifier_or_Str>(__a.clone()), None => unreachable!("no default for U_PhpParser_Node_Identifier_or_Str") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "addstmt" => { let __r = self.addStmt((match args.get(0) { Some(__a) => cast::<U_PhpParser_Builder_or_PhpParser_Node_Stmt>(__a.clone()), None => unreachable!("no default for U_PhpParser_Builder_or_PhpParser_Node_Stmt") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "addattribute" => { let __r = self.addAttribute((match args.get(0) { Some(__a) => cast::<U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup>(__a.clone()), None => unreachable!("no default for U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "getnode" => { let __r = self.getNode().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "addstmts" => { let __r = self.addStmts((match args.get(0) { Some(__a) => cast::<Map<ArrayKey, U_PhpParser_Builder_or_PhpParser_Node_Stmt>>(__a.clone()), None => <Map<ArrayKey, U_PhpParser_Builder_or_PhpParser_Node_Stmt>>::default() })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "setdoccomment" => { let __r = self.setDocComment((match args.get(0) { Some(__a) => cast::<U_PhpParser_Comment_Doc_or_Str>(__a.clone()), None => unreachable!("no default for U_PhpParser_Comment_Doc_or_Str") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, _ => Err(DynError::Rt(RtError::error(format!("Call to undefined method {}::{}()", "PhpParser\\Builder\\Enum_", name)))) } }
@@ -587,7 +631,7 @@ pub struct Function_Obj {
     pub returnByRef: bool,
     pub params: Map<ArrayKey, crate::php_parser::node::Param>,
     pub returnType: Option<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>,
-    pub name: Str,
+    pub name: Late<Str>,
     pub stmts: List<crate::php_parser::node::Stmt>,
     pub attributeGroups: List<crate::php_parser::node::AttributeGroup>,
 }
@@ -614,11 +658,11 @@ impl Function_ {
     pub fn p_returnType_opt(&self) -> Option<Option<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>> { Some(self.0.borrow().returnType.clone()) }
     pub fn p_returnType_mut(&self) -> RefMut<'_, Option<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.returnType) }
     pub fn set_p_returnType(&self, v: Option<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>) { self.0.borrow_mut().returnType = v; }
-    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| &o.name) }
-    pub fn p_name_get(&self) -> Str { self.0.borrow().name.clone() }
-    pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
-    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
-    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| o.name.get()) }
+    pub fn p_name_get(&self) -> Str { self.0.borrow().name.get().clone() }
+    pub fn p_name_opt(&self) -> Option<Str> { self.0.borrow().name.as_option().cloned() }
+    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| o.name.get_or_default_mut()) }
+    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name.set(v); }
     pub fn p_stmts(&self) -> Ref<'_, List<crate::php_parser::node::Stmt>> { Ref::map(self.0.borrow(), |o| &o.stmts) }
     pub fn p_stmts_get(&self) -> List<crate::php_parser::node::Stmt> { self.0.borrow().stmts.clone() }
     pub fn p_stmts_opt(&self) -> Option<List<crate::php_parser::node::Stmt>> { Some(self.0.borrow().stmts.clone()) }
@@ -629,13 +673,24 @@ impl Function_ {
     pub fn p_attributeGroups_opt(&self) -> Option<List<crate::php_parser::node::AttributeGroup>> { Some(self.0.borrow().attributeGroups.clone()) }
     pub fn p_attributeGroups_mut(&self) -> RefMut<'_, List<crate::php_parser::node::AttributeGroup>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributeGroups) }
     pub fn set_p_attributeGroups(&self, v: List<crate::php_parser::node::AttributeGroup>) { self.0.borrow_mut().attributeGroups = v; }
+    pub fn new_uninit() -> Function_ {
+        Function_(Rc::new(RefCell::new(Function_Obj {
+            attributes: Map::<Str, Mixed>::new(),
+            returnByRef: false,
+            params: Map::<ArrayKey, crate::php_parser::node::Param>::new(),
+            returnType: { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> },
+            name: Late::uninit(),
+            stmts: List::<crate::php_parser::node::Stmt>::new(),
+            attributeGroups: List::<crate::php_parser::node::AttributeGroup>::new(),
+        })))
+    }
     pub fn new(mut name: Str) -> Result<Function_, Throw> {
         let this = Function_(Rc::new(RefCell::new(Function_Obj {
             attributes: Map::<Str, Mixed>::new(),
             returnByRef: false,
             params: Map::<ArrayKey, crate::php_parser::node::Param>::new(),
             returnType: { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> },
-            name: Default::default(),
+            name: Late::uninit(),
             stmts: List::<crate::php_parser::node::Stmt>::new(),
             attributeGroups: List::<crate::php_parser::node::AttributeGroup>::new(),
         })));
@@ -670,7 +725,7 @@ impl php_rt::PhpObject for Function_ {
     fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\builder\\function_", "phpparser\\builder\\functionlike", "phpparser\\builder\\declaration", "phpparser\\builder"] }
     fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_returnByRef_get()) { out.push((Str::from_static("returnByRef"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_params_get()) { out.push((Str::from_static("params"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_returnType_get()) { out.push((Str::from_static("returnType"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_name_get()) { out.push((Str::from_static("name"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_stmts_get()) { out.push((Str::from_static("stmts"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_attributeGroups_get()) { out.push((Str::from_static("attributeGroups"), cast::<Mixed>(v))); } out }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_returnByRef_get()) { out.push((Str::from_static("returnByRef"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_params_get()) { out.push((Str::from_static("params"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_returnType_get()) { out.push((Str::from_static("returnType"), cast::<Mixed>(v))); } if let Some(v) = self.p_name_opt() { out.push((Str::from_static("name"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_stmts_get()) { out.push((Str::from_static("stmts"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_attributeGroups_get()) { out.push((Str::from_static("attributeGroups"), cast::<Mixed>(v))); } out }
     fn public_props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new();  out }
     fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "returnByRef" => { self.set_p_returnByRef(cast::<bool>(value)); true }, "params" => { self.set_p_params(cast::<Map<ArrayKey, crate::php_parser::node::Param>>(value)); true }, "returnType" => { self.set_p_returnType(value.to_option().map(|__m| cast::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>(__m))); true }, "name" => { self.set_p_name(cast::<Str>(value)); true }, "stmts" => { self.set_p_stmts(cast::<List<crate::php_parser::node::Stmt>>(value)); true }, "attributeGroups" => { self.set_p_attributeGroups(cast::<List<crate::php_parser::node::AttributeGroup>>(value)); true }, _ => false } }
     fn call_method(&self, name: &str, args: Vec<Mixed>) -> Result<Mixed, DynError> { match name { "__construct" => { let __r = self.magic__construct((match args.get(0) { Some(__a) => cast::<Str>(__a.clone()), None => <Str>::default() })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(__r) }, "addstmt" => { let __r = self.addStmt((match args.get(0) { Some(__a) => cast::<U_PhpParser_Builder_or_PhpParser_Node>(__a.clone()), None => unreachable!("no default for U_PhpParser_Builder_or_PhpParser_Node") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "addattribute" => { let __r = self.addAttribute((match args.get(0) { Some(__a) => cast::<U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup>(__a.clone()), None => unreachable!("no default for U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "getnode" => { let __r = self.getNode().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makereturnbyref" => { let __r = self.makeReturnByRef().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "addparam" => { let __r = self.addParam((match args.get(0) { Some(__a) => cast::<U_PhpParser_Builder_Param_or_PhpParser_Node_Param>(__a.clone()), None => unreachable!("no default for U_PhpParser_Builder_Param_or_PhpParser_Node_Param") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "addparams" => { let __r = self.addParams((match args.get(0) { Some(__a) => cast::<Map<ArrayKey, U_PhpParser_Builder_Param_or_PhpParser_Node_Param>>(__a.clone()), None => <Map<ArrayKey, U_PhpParser_Builder_Param_or_PhpParser_Node_Param>>::default() })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "setreturntype" => { let __r = self.setReturnType((match args.get(0) { Some(__a) => cast::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name_or_Str>(__a.clone()), None => unreachable!("no default for U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name_or_Str") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "addstmts" => { let __r = self.addStmts((match args.get(0) { Some(__a) => cast::<Map<ArrayKey, U_PhpParser_Builder_or_PhpParser_Node_Stmt>>(__a.clone()), None => <Map<ArrayKey, U_PhpParser_Builder_or_PhpParser_Node_Stmt>>::default() })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "setdoccomment" => { let __r = self.setDocComment((match args.get(0) { Some(__a) => cast::<U_PhpParser_Comment_Doc_or_Str>(__a.clone()), None => unreachable!("no default for U_PhpParser_Comment_Doc_or_Str") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, _ => Err(DynError::Rt(RtError::error(format!("Call to undefined method {}::{}()", "PhpParser\\Builder\\Function_", name)))) } }
@@ -682,7 +737,7 @@ impl Function_ {
 }
 pub struct Interface_Obj {
     pub attributes: Map<Str, Mixed>,
-    pub name: Str,
+    pub name: Late<Str>,
     pub extends: List<crate::php_parser::node::Name>,
     pub constants: List<crate::php_parser::node::stmt::ClassConst>,
     pub methods: List<crate::php_parser::node::stmt::ClassMethod>,
@@ -696,11 +751,11 @@ impl Interface_ {
     pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
     pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
     pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
-    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| &o.name) }
-    pub fn p_name_get(&self) -> Str { self.0.borrow().name.clone() }
-    pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
-    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
-    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| o.name.get()) }
+    pub fn p_name_get(&self) -> Str { self.0.borrow().name.get().clone() }
+    pub fn p_name_opt(&self) -> Option<Str> { self.0.borrow().name.as_option().cloned() }
+    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| o.name.get_or_default_mut()) }
+    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name.set(v); }
     pub fn p_extends(&self) -> Ref<'_, List<crate::php_parser::node::Name>> { Ref::map(self.0.borrow(), |o| &o.extends) }
     pub fn p_extends_get(&self) -> List<crate::php_parser::node::Name> { self.0.borrow().extends.clone() }
     pub fn p_extends_opt(&self) -> Option<List<crate::php_parser::node::Name>> { Some(self.0.borrow().extends.clone()) }
@@ -721,10 +776,20 @@ impl Interface_ {
     pub fn p_attributeGroups_opt(&self) -> Option<List<crate::php_parser::node::AttributeGroup>> { Some(self.0.borrow().attributeGroups.clone()) }
     pub fn p_attributeGroups_mut(&self) -> RefMut<'_, List<crate::php_parser::node::AttributeGroup>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributeGroups) }
     pub fn set_p_attributeGroups(&self, v: List<crate::php_parser::node::AttributeGroup>) { self.0.borrow_mut().attributeGroups = v; }
+    pub fn new_uninit() -> Interface_ {
+        Interface_(Rc::new(RefCell::new(Interface_Obj {
+            attributes: Map::<Str, Mixed>::new(),
+            name: Late::uninit(),
+            extends: List::<crate::php_parser::node::Name>::new(),
+            constants: List::<crate::php_parser::node::stmt::ClassConst>::new(),
+            methods: List::<crate::php_parser::node::stmt::ClassMethod>::new(),
+            attributeGroups: List::<crate::php_parser::node::AttributeGroup>::new(),
+        })))
+    }
     pub fn new(mut name: Str) -> Result<Interface_, Throw> {
         let this = Interface_(Rc::new(RefCell::new(Interface_Obj {
             attributes: Map::<Str, Mixed>::new(),
-            name: Default::default(),
+            name: Late::uninit(),
             extends: List::<crate::php_parser::node::Name>::new(),
             constants: List::<crate::php_parser::node::stmt::ClassConst>::new(),
             methods: List::<crate::php_parser::node::stmt::ClassMethod>::new(),
@@ -773,7 +838,7 @@ impl php_rt::PhpObject for Interface_ {
     fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\builder\\interface_", "phpparser\\builder\\declaration", "phpparser\\builder"] }
     fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_name_get()) { out.push((Str::from_static("name"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_extends_get()) { out.push((Str::from_static("extends"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_constants_get()) { out.push((Str::from_static("constants"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_methods_get()) { out.push((Str::from_static("methods"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_attributeGroups_get()) { out.push((Str::from_static("attributeGroups"), cast::<Mixed>(v))); } out }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_name_opt() { out.push((Str::from_static("name"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_extends_get()) { out.push((Str::from_static("extends"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_constants_get()) { out.push((Str::from_static("constants"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_methods_get()) { out.push((Str::from_static("methods"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_attributeGroups_get()) { out.push((Str::from_static("attributeGroups"), cast::<Mixed>(v))); } out }
     fn public_props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new();  out }
     fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "name" => { self.set_p_name(cast::<Str>(value)); true }, "extends" => { self.set_p_extends(cast::<List<crate::php_parser::node::Name>>(value)); true }, "constants" => { self.set_p_constants(cast::<List<crate::php_parser::node::stmt::ClassConst>>(value)); true }, "methods" => { self.set_p_methods(cast::<List<crate::php_parser::node::stmt::ClassMethod>>(value)); true }, "attributeGroups" => { self.set_p_attributeGroups(cast::<List<crate::php_parser::node::AttributeGroup>>(value)); true }, _ => false } }
     fn call_method(&self, name: &str, args: Vec<Mixed>) -> Result<Mixed, DynError> { match name { "__construct" => { let __r = self.magic__construct((match args.get(0) { Some(__a) => cast::<Str>(__a.clone()), None => <Str>::default() })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(__r) }, "addstmt" => { let __r = self.addStmt((match args.get(0) { Some(__a) => cast::<U_PhpParser_Builder_or_PhpParser_Node_Stmt>(__a.clone()), None => unreachable!("no default for U_PhpParser_Builder_or_PhpParser_Node_Stmt") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "addattribute" => { let __r = self.addAttribute((match args.get(0) { Some(__a) => cast::<U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup>(__a.clone()), None => unreachable!("no default for U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "getnode" => { let __r = self.getNode().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "addstmts" => { let __r = self.addStmts((match args.get(0) { Some(__a) => cast::<Map<ArrayKey, U_PhpParser_Builder_or_PhpParser_Node_Stmt>>(__a.clone()), None => <Map<ArrayKey, U_PhpParser_Builder_or_PhpParser_Node_Stmt>>::default() })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "setdoccomment" => { let __r = self.setDocComment((match args.get(0) { Some(__a) => cast::<U_PhpParser_Comment_Doc_or_Str>(__a.clone()), None => unreachable!("no default for U_PhpParser_Comment_Doc_or_Str") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, _ => Err(DynError::Rt(RtError::error(format!("Call to undefined method {}::{}()", "PhpParser\\Builder\\Interface_", name)))) } }
@@ -788,7 +853,7 @@ pub struct MethodObj {
     pub returnByRef: bool,
     pub params: Map<ArrayKey, crate::php_parser::node::Param>,
     pub returnType: Option<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>,
-    pub name: Str,
+    pub name: Late<Str>,
     pub flags: i64,
     pub stmts: Option<List<crate::php_parser::node::Stmt>>,
     pub attributeGroups: List<crate::php_parser::node::AttributeGroup>,
@@ -816,11 +881,11 @@ impl Method {
     pub fn p_returnType_opt(&self) -> Option<Option<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>> { Some(self.0.borrow().returnType.clone()) }
     pub fn p_returnType_mut(&self) -> RefMut<'_, Option<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.returnType) }
     pub fn set_p_returnType(&self, v: Option<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>) { self.0.borrow_mut().returnType = v; }
-    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| &o.name) }
-    pub fn p_name_get(&self) -> Str { self.0.borrow().name.clone() }
-    pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
-    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
-    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| o.name.get()) }
+    pub fn p_name_get(&self) -> Str { self.0.borrow().name.get().clone() }
+    pub fn p_name_opt(&self) -> Option<Str> { self.0.borrow().name.as_option().cloned() }
+    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| o.name.get_or_default_mut()) }
+    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name.set(v); }
     pub fn p_flags(&self) -> Ref<'_, i64> { Ref::map(self.0.borrow(), |o| &o.flags) }
     pub fn p_flags_get(&self) -> i64 { self.0.borrow().flags.clone() }
     pub fn p_flags_opt(&self) -> Option<i64> { Some(self.0.borrow().flags.clone()) }
@@ -836,13 +901,25 @@ impl Method {
     pub fn p_attributeGroups_opt(&self) -> Option<List<crate::php_parser::node::AttributeGroup>> { Some(self.0.borrow().attributeGroups.clone()) }
     pub fn p_attributeGroups_mut(&self) -> RefMut<'_, List<crate::php_parser::node::AttributeGroup>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributeGroups) }
     pub fn set_p_attributeGroups(&self, v: List<crate::php_parser::node::AttributeGroup>) { self.0.borrow_mut().attributeGroups = v; }
+    pub fn new_uninit() -> Method {
+        Method(Rc::new(RefCell::new(MethodObj {
+            attributes: Map::<Str, Mixed>::new(),
+            returnByRef: false,
+            params: Map::<ArrayKey, crate::php_parser::node::Param>::new(),
+            returnType: { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> },
+            name: Late::uninit(),
+            flags: 0i64,
+            stmts: Some(List::<crate::php_parser::node::Stmt>::new()),
+            attributeGroups: List::<crate::php_parser::node::AttributeGroup>::new(),
+        })))
+    }
     pub fn new(mut name: Str) -> Result<Method, Throw> {
         let this = Method(Rc::new(RefCell::new(MethodObj {
             attributes: Map::<Str, Mixed>::new(),
             returnByRef: false,
             params: Map::<ArrayKey, crate::php_parser::node::Param>::new(),
             returnType: { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> },
-            name: Default::default(),
+            name: Late::uninit(),
             flags: 0i64,
             stmts: Some(List::<crate::php_parser::node::Stmt>::new()),
             attributeGroups: List::<crate::php_parser::node::AttributeGroup>::new(),
@@ -909,7 +986,7 @@ impl php_rt::PhpObject for Method {
     fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\builder\\method", "phpparser\\builder\\functionlike", "phpparser\\builder\\declaration", "phpparser\\builder"] }
     fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_returnByRef_get()) { out.push((Str::from_static("returnByRef"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_params_get()) { out.push((Str::from_static("params"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_returnType_get()) { out.push((Str::from_static("returnType"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_name_get()) { out.push((Str::from_static("name"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_flags_get()) { out.push((Str::from_static("flags"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_stmts_get()) { out.push((Str::from_static("stmts"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_attributeGroups_get()) { out.push((Str::from_static("attributeGroups"), cast::<Mixed>(v))); } out }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_returnByRef_get()) { out.push((Str::from_static("returnByRef"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_params_get()) { out.push((Str::from_static("params"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_returnType_get()) { out.push((Str::from_static("returnType"), cast::<Mixed>(v))); } if let Some(v) = self.p_name_opt() { out.push((Str::from_static("name"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_flags_get()) { out.push((Str::from_static("flags"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_stmts_get()) { out.push((Str::from_static("stmts"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_attributeGroups_get()) { out.push((Str::from_static("attributeGroups"), cast::<Mixed>(v))); } out }
     fn public_props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new();  out }
     fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "returnByRef" => { self.set_p_returnByRef(cast::<bool>(value)); true }, "params" => { self.set_p_params(cast::<Map<ArrayKey, crate::php_parser::node::Param>>(value)); true }, "returnType" => { self.set_p_returnType(value.to_option().map(|__m| cast::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>(__m))); true }, "name" => { self.set_p_name(cast::<Str>(value)); true }, "flags" => { self.set_p_flags(cast::<i64>(value)); true }, "stmts" => { self.set_p_stmts(value.to_option().map(|__m| cast::<List<crate::php_parser::node::Stmt>>(__m))); true }, "attributeGroups" => { self.set_p_attributeGroups(cast::<List<crate::php_parser::node::AttributeGroup>>(value)); true }, _ => false } }
     fn call_method(&self, name: &str, args: Vec<Mixed>) -> Result<Mixed, DynError> { match name { "__construct" => { let __r = self.magic__construct((match args.get(0) { Some(__a) => cast::<Str>(__a.clone()), None => <Str>::default() })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(__r) }, "makepublic" => { let __r = self.makePublic().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makeprotected" => { let __r = self.makeProtected().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makeprivate" => { let __r = self.makePrivate().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makestatic" => { let __r = self.makeStatic().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makeabstract" => { let __r = self.makeAbstract().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makefinal" => { let __r = self.makeFinal().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "addstmt" => { let __r = self.addStmt((match args.get(0) { Some(__a) => cast::<U_PhpParser_Builder_or_PhpParser_Node>(__a.clone()), None => unreachable!("no default for U_PhpParser_Builder_or_PhpParser_Node") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "addattribute" => { let __r = self.addAttribute((match args.get(0) { Some(__a) => cast::<U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup>(__a.clone()), None => unreachable!("no default for U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "getnode" => { let __r = self.getNode().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makereturnbyref" => { let __r = self.makeReturnByRef().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "addparam" => { let __r = self.addParam((match args.get(0) { Some(__a) => cast::<U_PhpParser_Builder_Param_or_PhpParser_Node_Param>(__a.clone()), None => unreachable!("no default for U_PhpParser_Builder_Param_or_PhpParser_Node_Param") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "addparams" => { let __r = self.addParams((match args.get(0) { Some(__a) => cast::<Map<ArrayKey, U_PhpParser_Builder_Param_or_PhpParser_Node_Param>>(__a.clone()), None => <Map<ArrayKey, U_PhpParser_Builder_Param_or_PhpParser_Node_Param>>::default() })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "setreturntype" => { let __r = self.setReturnType((match args.get(0) { Some(__a) => cast::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name_or_Str>(__a.clone()), None => unreachable!("no default for U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name_or_Str") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "addstmts" => { let __r = self.addStmts((match args.get(0) { Some(__a) => cast::<Map<ArrayKey, U_PhpParser_Builder_or_PhpParser_Node_Stmt>>(__a.clone()), None => <Map<ArrayKey, U_PhpParser_Builder_or_PhpParser_Node_Stmt>>::default() })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "setdoccomment" => { let __r = self.setDocComment((match args.get(0) { Some(__a) => cast::<U_PhpParser_Comment_Doc_or_Str>(__a.clone()), None => unreachable!("no default for U_PhpParser_Comment_Doc_or_Str") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, _ => Err(DynError::Rt(RtError::error(format!("Call to undefined method {}::{}()", "PhpParser\\Builder\\Method", name)))) } }
@@ -921,7 +998,7 @@ impl Method {
 }
 pub struct Namespace_Obj {
     pub attributes: Map<Str, Mixed>,
-    pub name: Option<crate::php_parser::node::Name>,
+    pub name: Late<Option<crate::php_parser::node::Name>>,
     pub stmts: Map<ArrayKey, crate::php_parser::node::Stmt>,
 }
 #[derive(Clone)]
@@ -932,20 +1009,27 @@ impl Namespace_ {
     pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
     pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
     pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
-    pub fn p_name(&self) -> Ref<'_, Option<crate::php_parser::node::Name>> { Ref::map(self.0.borrow(), |o| &o.name) }
-    pub fn p_name_get(&self) -> Option<crate::php_parser::node::Name> { self.0.borrow().name.clone() }
-    pub fn p_name_opt(&self) -> Option<Option<crate::php_parser::node::Name>> { Some(self.0.borrow().name.clone()) }
-    pub fn p_name_mut(&self) -> RefMut<'_, Option<crate::php_parser::node::Name>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
-    pub fn set_p_name(&self, v: Option<crate::php_parser::node::Name>) { self.0.borrow_mut().name = v; }
+    pub fn p_name(&self) -> Ref<'_, Option<crate::php_parser::node::Name>> { Ref::map(self.0.borrow(), |o| o.name.get()) }
+    pub fn p_name_get(&self) -> Option<crate::php_parser::node::Name> { self.0.borrow().name.get().clone() }
+    pub fn p_name_opt(&self) -> Option<Option<crate::php_parser::node::Name>> { self.0.borrow().name.as_option().cloned() }
+    pub fn p_name_mut(&self) -> RefMut<'_, Option<crate::php_parser::node::Name>> { RefMut::map(self.0.borrow_mut(), |o| o.name.get_or_default_mut()) }
+    pub fn set_p_name(&self, v: Option<crate::php_parser::node::Name>) { self.0.borrow_mut().name.set(v); }
     pub fn p_stmts(&self) -> Ref<'_, Map<ArrayKey, crate::php_parser::node::Stmt>> { Ref::map(self.0.borrow(), |o| &o.stmts) }
     pub fn p_stmts_get(&self) -> Map<ArrayKey, crate::php_parser::node::Stmt> { self.0.borrow().stmts.clone() }
     pub fn p_stmts_opt(&self) -> Option<Map<ArrayKey, crate::php_parser::node::Stmt>> { Some(self.0.borrow().stmts.clone()) }
     pub fn p_stmts_mut(&self) -> RefMut<'_, Map<ArrayKey, crate::php_parser::node::Stmt>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.stmts) }
     pub fn set_p_stmts(&self, v: Map<ArrayKey, crate::php_parser::node::Stmt>) { self.0.borrow_mut().stmts = v; }
+    pub fn new_uninit() -> Namespace_ {
+        Namespace_(Rc::new(RefCell::new(Namespace_Obj {
+            attributes: Map::<Str, Mixed>::new(),
+            name: Late::uninit(),
+            stmts: Map::<ArrayKey, crate::php_parser::node::Stmt>::new(),
+        })))
+    }
     pub fn new(mut name: Option<U_PhpParser_Node_Name_or_Str>) -> Result<Namespace_, Throw> {
         let this = Namespace_(Rc::new(RefCell::new(Namespace_Obj {
             attributes: Map::<Str, Mixed>::new(),
-            name: Default::default(),
+            name: Late::uninit(),
             stmts: Map::<ArrayKey, crate::php_parser::node::Stmt>::new(),
         })));
         this.magic__construct(name)?;
@@ -971,7 +1055,7 @@ impl php_rt::PhpObject for Namespace_ {
     fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\builder\\namespace_", "phpparser\\builder\\declaration", "phpparser\\builder"] }
     fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_name_get()) { out.push((Str::from_static("name"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_stmts_get()) { out.push((Str::from_static("stmts"), cast::<Mixed>(v))); } out }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_name_opt() { out.push((Str::from_static("name"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_stmts_get()) { out.push((Str::from_static("stmts"), cast::<Mixed>(v))); } out }
     fn public_props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new();  out }
     fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "name" => { self.set_p_name(value.to_option().map(|__m| cast::<crate::php_parser::node::Name>(__m))); true }, "stmts" => { self.set_p_stmts(cast::<Map<ArrayKey, crate::php_parser::node::Stmt>>(value)); true }, _ => false } }
     fn call_method(&self, name: &str, args: Vec<Mixed>) -> Result<Mixed, DynError> { match name { "__construct" => { let __r = self.magic__construct((match args.get(0) { Some(__a) => __a.clone().to_option().map(|__m| cast::<U_PhpParser_Node_Name_or_Str>(__m)), None => <Option<U_PhpParser_Node_Name_or_Str>>::default() })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(__r) }, "addstmt" => { let __r = self.addStmt((match args.get(0) { Some(__a) => cast::<U_PhpParser_Builder_or_PhpParser_Node>(__a.clone()), None => unreachable!("no default for U_PhpParser_Builder_or_PhpParser_Node") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "getnode" => { let __r = self.getNode().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "addstmts" => { let __r = self.addStmts((match args.get(0) { Some(__a) => cast::<Map<ArrayKey, U_PhpParser_Builder_or_PhpParser_Node_Stmt>>(__a.clone()), None => <Map<ArrayKey, U_PhpParser_Builder_or_PhpParser_Node_Stmt>>::default() })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "setdoccomment" => { let __r = self.setDocComment((match args.get(0) { Some(__a) => cast::<U_PhpParser_Comment_Doc_or_Str>(__a.clone()), None => unreachable!("no default for U_PhpParser_Comment_Doc_or_Str") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, _ => Err(DynError::Rt(RtError::error(format!("Call to undefined method {}::{}()", "PhpParser\\Builder\\Namespace_", name)))) } }
@@ -982,7 +1066,7 @@ impl Clone for Namespace_Obj { fn clone(&self) -> Self { Namespace_Obj { attribu
 impl Namespace_ {
 }
 pub struct ParamObj {
-    pub name: Str,
+    pub name: Late<Str>,
     pub default: Option<crate::php_parser::node::Expr>,
     pub type_: Option<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>,
     pub byRef: bool,
@@ -993,11 +1077,11 @@ pub struct ParamObj {
 #[derive(Clone)]
 pub struct Param(pub Rc<RefCell<ParamObj>>);
 impl Param {
-    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| &o.name) }
-    pub fn p_name_get(&self) -> Str { self.0.borrow().name.clone() }
-    pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
-    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
-    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| o.name.get()) }
+    pub fn p_name_get(&self) -> Str { self.0.borrow().name.get().clone() }
+    pub fn p_name_opt(&self) -> Option<Str> { self.0.borrow().name.as_option().cloned() }
+    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| o.name.get_or_default_mut()) }
+    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name.set(v); }
     pub fn p_default(&self) -> Ref<'_, Option<crate::php_parser::node::Expr>> { Ref::map(self.0.borrow(), |o| &o.default) }
     pub fn p_default_get(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().default.clone() }
     pub fn p_default_opt(&self) -> Option<Option<crate::php_parser::node::Expr>> { Some(self.0.borrow().default.clone()) }
@@ -1028,9 +1112,20 @@ impl Param {
     pub fn p_attributeGroups_opt(&self) -> Option<List<crate::php_parser::node::AttributeGroup>> { Some(self.0.borrow().attributeGroups.clone()) }
     pub fn p_attributeGroups_mut(&self) -> RefMut<'_, List<crate::php_parser::node::AttributeGroup>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributeGroups) }
     pub fn set_p_attributeGroups(&self, v: List<crate::php_parser::node::AttributeGroup>) { self.0.borrow_mut().attributeGroups = v; }
+    pub fn new_uninit() -> Param {
+        Param(Rc::new(RefCell::new(ParamObj {
+            name: Late::uninit(),
+            default: { let _ = (); None::<crate::php_parser::node::Expr> },
+            type_: { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> },
+            byRef: false,
+            flags: 0i64,
+            variadic: false,
+            attributeGroups: List::<crate::php_parser::node::AttributeGroup>::new(),
+        })))
+    }
     pub fn new(mut name: Str) -> Result<Param, Throw> {
         let this = Param(Rc::new(RefCell::new(ParamObj {
-            name: Default::default(),
+            name: Late::uninit(),
             default: { let _ = (); None::<crate::php_parser::node::Expr> },
             type_: { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> },
             byRef: false,
@@ -1102,7 +1197,7 @@ impl php_rt::PhpObject for Param {
     fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\builder\\param", "phpparser\\builder"] }
     fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_name_get()) { out.push((Str::from_static("name"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_default_get()) { out.push((Str::from_static("default"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_type__get()) { out.push((Str::from_static("type"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_byRef_get()) { out.push((Str::from_static("byRef"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_flags_get()) { out.push((Str::from_static("flags"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_variadic_get()) { out.push((Str::from_static("variadic"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_attributeGroups_get()) { out.push((Str::from_static("attributeGroups"), cast::<Mixed>(v))); } out }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = self.p_name_opt() { out.push((Str::from_static("name"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_default_get()) { out.push((Str::from_static("default"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_type__get()) { out.push((Str::from_static("type"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_byRef_get()) { out.push((Str::from_static("byRef"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_flags_get()) { out.push((Str::from_static("flags"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_variadic_get()) { out.push((Str::from_static("variadic"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_attributeGroups_get()) { out.push((Str::from_static("attributeGroups"), cast::<Mixed>(v))); } out }
     fn public_props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new();  out }
     fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "name" => { self.set_p_name(cast::<Str>(value)); true }, "default" => { self.set_p_default(value.to_option().map(|__m| cast::<crate::php_parser::node::Expr>(__m))); true }, "type" => { self.set_p_type_(value.to_option().map(|__m| cast::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>(__m))); true }, "byRef" => { self.set_p_byRef(cast::<bool>(value)); true }, "flags" => { self.set_p_flags(cast::<i64>(value)); true }, "variadic" => { self.set_p_variadic(cast::<bool>(value)); true }, "attributeGroups" => { self.set_p_attributeGroups(cast::<List<crate::php_parser::node::AttributeGroup>>(value)); true }, _ => false } }
     fn call_method(&self, name: &str, args: Vec<Mixed>) -> Result<Mixed, DynError> { match name { "__construct" => { let __r = self.magic__construct((match args.get(0) { Some(__a) => cast::<Str>(__a.clone()), None => <Str>::default() })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(__r) }, "setdefault" => { let __r = self.setDefault((match args.get(0) { Some(__a) => __a.clone(), None => <Mixed>::default() })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "settype" => { let __r = self.setType((match args.get(0) { Some(__a) => cast::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name_or_Str>(__a.clone()), None => unreachable!("no default for U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name_or_Str") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makebyref" => { let __r = self.makeByRef().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makevariadic" => { let __r = self.makeVariadic().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makepublic" => { let __r = self.makePublic().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makeprotected" => { let __r = self.makeProtected().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makeprivate" => { let __r = self.makePrivate().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makereadonly" => { let __r = self.makeReadonly().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makeprivateset" => { let __r = self.makePrivateSet().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makeprotectedset" => { let __r = self.makeProtectedSet().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "addattribute" => { let __r = self.addAttribute((match args.get(0) { Some(__a) => cast::<U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup>(__a.clone()), None => unreachable!("no default for U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "getnode" => { let __r = self.getNode().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, _ => Err(DynError::Rt(RtError::error(format!("Call to undefined method {}::{}()", "PhpParser\\Builder\\Param", name)))) } }
@@ -1113,7 +1208,7 @@ impl Clone for ParamObj { fn clone(&self) -> Self { ParamObj { name: self.name.c
 impl Param {
 }
 pub struct PropertyObj {
-    pub name: Str,
+    pub name: Late<Str>,
     pub flags: i64,
     pub default: Option<crate::php_parser::node::Expr>,
     pub attributes: Map<Str, Mixed>,
@@ -1124,11 +1219,11 @@ pub struct PropertyObj {
 #[derive(Clone)]
 pub struct Property(pub Rc<RefCell<PropertyObj>>);
 impl Property {
-    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| &o.name) }
-    pub fn p_name_get(&self) -> Str { self.0.borrow().name.clone() }
-    pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
-    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
-    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| o.name.get()) }
+    pub fn p_name_get(&self) -> Str { self.0.borrow().name.get().clone() }
+    pub fn p_name_opt(&self) -> Option<Str> { self.0.borrow().name.as_option().cloned() }
+    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| o.name.get_or_default_mut()) }
+    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name.set(v); }
     pub fn p_flags(&self) -> Ref<'_, i64> { Ref::map(self.0.borrow(), |o| &o.flags) }
     pub fn p_flags_get(&self) -> i64 { self.0.borrow().flags.clone() }
     pub fn p_flags_opt(&self) -> Option<i64> { Some(self.0.borrow().flags.clone()) }
@@ -1159,9 +1254,20 @@ impl Property {
     pub fn p_hooks_opt(&self) -> Option<List<crate::php_parser::node::PropertyHook>> { Some(self.0.borrow().hooks.clone()) }
     pub fn p_hooks_mut(&self) -> RefMut<'_, List<crate::php_parser::node::PropertyHook>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.hooks) }
     pub fn set_p_hooks(&self, v: List<crate::php_parser::node::PropertyHook>) { self.0.borrow_mut().hooks = v; }
+    pub fn new_uninit() -> Property {
+        Property(Rc::new(RefCell::new(PropertyObj {
+            name: Late::uninit(),
+            flags: 0i64,
+            default: { let _ = (); None::<crate::php_parser::node::Expr> },
+            attributes: Map::<Str, Mixed>::new(),
+            type_: { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> },
+            attributeGroups: List::<crate::php_parser::node::AttributeGroup>::new(),
+            hooks: List::<crate::php_parser::node::PropertyHook>::new(),
+        })))
+    }
     pub fn new(mut name: Str) -> Result<Property, Throw> {
         let this = Property(Rc::new(RefCell::new(PropertyObj {
-            name: Default::default(),
+            name: Late::uninit(),
             flags: 0i64,
             default: { let _ = (); None::<crate::php_parser::node::Expr> },
             attributes: Map::<Str, Mixed>::new(),
@@ -1245,7 +1351,7 @@ impl php_rt::PhpObject for Property {
     fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\builder\\property", "phpparser\\builder"] }
     fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_name_get()) { out.push((Str::from_static("name"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_flags_get()) { out.push((Str::from_static("flags"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_default_get()) { out.push((Str::from_static("default"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_type__get()) { out.push((Str::from_static("type"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_attributeGroups_get()) { out.push((Str::from_static("attributeGroups"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_hooks_get()) { out.push((Str::from_static("hooks"), cast::<Mixed>(v))); } out }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = self.p_name_opt() { out.push((Str::from_static("name"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_flags_get()) { out.push((Str::from_static("flags"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_default_get()) { out.push((Str::from_static("default"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_type__get()) { out.push((Str::from_static("type"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_attributeGroups_get()) { out.push((Str::from_static("attributeGroups"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_hooks_get()) { out.push((Str::from_static("hooks"), cast::<Mixed>(v))); } out }
     fn public_props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new();  out }
     fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "name" => { self.set_p_name(cast::<Str>(value)); true }, "flags" => { self.set_p_flags(cast::<i64>(value)); true }, "default" => { self.set_p_default(value.to_option().map(|__m| cast::<crate::php_parser::node::Expr>(__m))); true }, "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "type" => { self.set_p_type_(value.to_option().map(|__m| cast::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>(__m))); true }, "attributeGroups" => { self.set_p_attributeGroups(cast::<List<crate::php_parser::node::AttributeGroup>>(value)); true }, "hooks" => { self.set_p_hooks(cast::<List<crate::php_parser::node::PropertyHook>>(value)); true }, _ => false } }
     fn call_method(&self, name: &str, args: Vec<Mixed>) -> Result<Mixed, DynError> { match name { "__construct" => { let __r = self.magic__construct((match args.get(0) { Some(__a) => cast::<Str>(__a.clone()), None => <Str>::default() })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(__r) }, "makepublic" => { let __r = self.makePublic().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makeprotected" => { let __r = self.makeProtected().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makeprivate" => { let __r = self.makePrivate().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makestatic" => { let __r = self.makeStatic().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makereadonly" => { let __r = self.makeReadonly().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makeabstract" => { let __r = self.makeAbstract().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makefinal" => { let __r = self.makeFinal().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makeprivateset" => { let __r = self.makePrivateSet().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makeprotectedset" => { let __r = self.makeProtectedSet().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "setdefault" => { let __r = self.setDefault((match args.get(0) { Some(__a) => __a.clone(), None => <Mixed>::default() })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "setdoccomment" => { let __r = self.setDocComment((match args.get(0) { Some(__a) => cast::<U_PhpParser_Comment_Doc_or_Str>(__a.clone()), None => unreachable!("no default for U_PhpParser_Comment_Doc_or_Str") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "settype" => { let __r = self.setType((match args.get(0) { Some(__a) => cast::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name_or_Str>(__a.clone()), None => unreachable!("no default for U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name_or_Str") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "addattribute" => { let __r = self.addAttribute((match args.get(0) { Some(__a) => cast::<U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup>(__a.clone()), None => unreachable!("no default for U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "addhook" => { let __r = self.addHook((match args.get(0) { Some(__a) => cast::<crate::php_parser::node::PropertyHook>(__a.clone()), None => unreachable!("no default for crate::php_parser::node::PropertyHook") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "getnode" => { let __r = self.getNode().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, _ => Err(DynError::Rt(RtError::error(format!("Call to undefined method {}::{}()", "PhpParser\\Builder\\Property", name)))) } }
@@ -1272,6 +1378,12 @@ impl TraitUse {
     pub fn p_adaptations_opt(&self) -> Option<Map<ArrayKey, crate::php_parser::node::stmt::TraitUseAdaptation>> { Some(self.0.borrow().adaptations.clone()) }
     pub fn p_adaptations_mut(&self) -> RefMut<'_, Map<ArrayKey, crate::php_parser::node::stmt::TraitUseAdaptation>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.adaptations) }
     pub fn set_p_adaptations(&self, v: Map<ArrayKey, crate::php_parser::node::stmt::TraitUseAdaptation>) { self.0.borrow_mut().adaptations = v; }
+    pub fn new_uninit() -> TraitUse {
+        TraitUse(Rc::new(RefCell::new(TraitUseObj {
+            traits: Map::<ArrayKey, crate::php_parser::node::Name>::new(),
+            adaptations: Map::<ArrayKey, crate::php_parser::node::stmt::TraitUseAdaptation>::new(),
+        })))
+    }
     pub fn new(mut traits: List<U_PhpParser_Node_Name_or_Str>) -> Result<TraitUse, Throw> {
         let this = TraitUse(Rc::new(RefCell::new(TraitUseObj {
             traits: Map::<ArrayKey, crate::php_parser::node::Name>::new(),
@@ -1322,8 +1434,8 @@ impl Clone for TraitUseObj { fn clone(&self) -> Self { TraitUseObj { traits: sel
 impl TraitUse {
 }
 pub struct TraitUseAdaptationObj {
-    pub type_: i64,
-    pub trait_: Option<crate::php_parser::node::Name>,
+    pub type_: Late<i64>,
+    pub trait_: Late<Option<crate::php_parser::node::Name>>,
     pub method: Late<crate::php_parser::node::Identifier>,
     pub modifier: Option<i64>,
     pub alias: Option<crate::php_parser::node::Identifier>,
@@ -1332,16 +1444,16 @@ pub struct TraitUseAdaptationObj {
 #[derive(Clone)]
 pub struct TraitUseAdaptation(pub Rc<RefCell<TraitUseAdaptationObj>>);
 impl TraitUseAdaptation {
-    pub fn p_type_(&self) -> Ref<'_, i64> { Ref::map(self.0.borrow(), |o| &o.type_) }
-    pub fn p_type__get(&self) -> i64 { self.0.borrow().type_.clone() }
-    pub fn p_type__opt(&self) -> Option<i64> { Some(self.0.borrow().type_.clone()) }
-    pub fn p_type__mut(&self) -> RefMut<'_, i64> { RefMut::map(self.0.borrow_mut(), |o| &mut o.type_) }
-    pub fn set_p_type_(&self, v: i64) { self.0.borrow_mut().type_ = v; }
-    pub fn p_trait_(&self) -> Ref<'_, Option<crate::php_parser::node::Name>> { Ref::map(self.0.borrow(), |o| &o.trait_) }
-    pub fn p_trait__get(&self) -> Option<crate::php_parser::node::Name> { self.0.borrow().trait_.clone() }
-    pub fn p_trait__opt(&self) -> Option<Option<crate::php_parser::node::Name>> { Some(self.0.borrow().trait_.clone()) }
-    pub fn p_trait__mut(&self) -> RefMut<'_, Option<crate::php_parser::node::Name>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.trait_) }
-    pub fn set_p_trait_(&self, v: Option<crate::php_parser::node::Name>) { self.0.borrow_mut().trait_ = v; }
+    pub fn p_type_(&self) -> Ref<'_, i64> { Ref::map(self.0.borrow(), |o| o.type_.get()) }
+    pub fn p_type__get(&self) -> i64 { self.0.borrow().type_.get().clone() }
+    pub fn p_type__opt(&self) -> Option<i64> { self.0.borrow().type_.as_option().cloned() }
+    pub fn p_type__mut(&self) -> RefMut<'_, i64> { RefMut::map(self.0.borrow_mut(), |o| o.type_.get_or_default_mut()) }
+    pub fn set_p_type_(&self, v: i64) { self.0.borrow_mut().type_.set(v); }
+    pub fn p_trait_(&self) -> Ref<'_, Option<crate::php_parser::node::Name>> { Ref::map(self.0.borrow(), |o| o.trait_.get()) }
+    pub fn p_trait__get(&self) -> Option<crate::php_parser::node::Name> { self.0.borrow().trait_.get().clone() }
+    pub fn p_trait__opt(&self) -> Option<Option<crate::php_parser::node::Name>> { self.0.borrow().trait_.as_option().cloned() }
+    pub fn p_trait__mut(&self) -> RefMut<'_, Option<crate::php_parser::node::Name>> { RefMut::map(self.0.borrow_mut(), |o| o.trait_.get_or_default_mut()) }
+    pub fn set_p_trait_(&self, v: Option<crate::php_parser::node::Name>) { self.0.borrow_mut().trait_.set(v); }
     pub fn p_method(&self) -> Ref<'_, crate::php_parser::node::Identifier> { Ref::map(self.0.borrow(), |o| o.method.get()) }
     pub fn p_method_get(&self) -> crate::php_parser::node::Identifier { self.0.borrow().method.get().clone() }
     pub fn p_method_opt(&self) -> Option<crate::php_parser::node::Identifier> { self.0.borrow().method.as_option().cloned() }
@@ -1362,10 +1474,20 @@ impl TraitUseAdaptation {
     pub fn p_insteadof_opt(&self) -> Option<Map<ArrayKey, crate::php_parser::node::Name>> { Some(self.0.borrow().insteadof.clone()) }
     pub fn p_insteadof_mut(&self) -> RefMut<'_, Map<ArrayKey, crate::php_parser::node::Name>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.insteadof) }
     pub fn set_p_insteadof(&self, v: Map<ArrayKey, crate::php_parser::node::Name>) { self.0.borrow_mut().insteadof = v; }
+    pub fn new_uninit() -> TraitUseAdaptation {
+        TraitUseAdaptation(Rc::new(RefCell::new(TraitUseAdaptationObj {
+            type_: Late::uninit(),
+            trait_: Late::uninit(),
+            method: Late::uninit(),
+            modifier: { let _ = (); None::<i64> },
+            alias: { let _ = (); None::<crate::php_parser::node::Identifier> },
+            insteadof: Map::<ArrayKey, crate::php_parser::node::Name>::new(),
+        })))
+    }
     pub fn new(mut trait_: Option<U_PhpParser_Node_Name_or_Str>, mut method: U_PhpParser_Node_Identifier_or_Str) -> Result<TraitUseAdaptation, Throw> {
         let this = TraitUseAdaptation(Rc::new(RefCell::new(TraitUseAdaptationObj {
-            type_: Default::default(),
-            trait_: Default::default(),
+            type_: Late::uninit(),
+            trait_: Late::uninit(),
             method: Late::uninit(),
             modifier: { let _ = (); None::<i64> },
             alias: { let _ = (); None::<crate::php_parser::node::Identifier> },
@@ -1456,7 +1578,7 @@ impl php_rt::PhpObject for TraitUseAdaptation {
     fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\builder\\traituseadaptation", "phpparser\\builder"] }
     fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_type__get()) { out.push((Str::from_static("type"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_trait__get()) { out.push((Str::from_static("trait"), cast::<Mixed>(v))); } if let Some(v) = self.p_method_opt() { out.push((Str::from_static("method"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_modifier_get()) { out.push((Str::from_static("modifier"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_alias_get()) { out.push((Str::from_static("alias"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_insteadof_get()) { out.push((Str::from_static("insteadof"), cast::<Mixed>(v))); } out }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = self.p_type__opt() { out.push((Str::from_static("type"), cast::<Mixed>(v))); } if let Some(v) = self.p_trait__opt() { out.push((Str::from_static("trait"), cast::<Mixed>(v))); } if let Some(v) = self.p_method_opt() { out.push((Str::from_static("method"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_modifier_get()) { out.push((Str::from_static("modifier"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_alias_get()) { out.push((Str::from_static("alias"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_insteadof_get()) { out.push((Str::from_static("insteadof"), cast::<Mixed>(v))); } out }
     fn public_props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new();  out }
     fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "type" => { self.set_p_type_(cast::<i64>(value)); true }, "trait" => { self.set_p_trait_(value.to_option().map(|__m| cast::<crate::php_parser::node::Name>(__m))); true }, "method" => { self.set_p_method(cast::<crate::php_parser::node::Identifier>(value)); true }, "modifier" => { self.set_p_modifier(value.to_option().map(|__m| cast::<i64>(__m))); true }, "alias" => { self.set_p_alias(value.to_option().map(|__m| cast::<crate::php_parser::node::Identifier>(__m))); true }, "insteadof" => { self.set_p_insteadof(cast::<Map<ArrayKey, crate::php_parser::node::Name>>(value)); true }, _ => false } }
     fn call_method(&self, name: &str, args: Vec<Mixed>) -> Result<Mixed, DynError> { match name { "__construct" => { let __r = self.magic__construct((match args.get(0) { Some(__a) => __a.clone().to_option().map(|__m| cast::<U_PhpParser_Node_Name_or_Str>(__m)), None => <Option<U_PhpParser_Node_Name_or_Str>>::default() }), (match args.get(1) { Some(__a) => cast::<U_PhpParser_Node_Identifier_or_Str>(__a.clone()), None => unreachable!("no default for U_PhpParser_Node_Identifier_or_Str") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(__r) }, "as" => { let __r = self.as_((match args.get(0) { Some(__a) => cast::<U_PhpParser_Node_Identifier_or_Str>(__a.clone()), None => unreachable!("no default for U_PhpParser_Node_Identifier_or_Str") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makepublic" => { let __r = self.makePublic().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makeprotected" => { let __r = self.makeProtected().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "makeprivate" => { let __r = self.makePrivate().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "setmodifier" => { let __r = self.setModifier((match args.get(0) { Some(__a) => cast::<i64>(__a.clone()), None => <i64>::default() })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok({ let _ = __r; Mixed::Null }) }, "getnode" => { let __r = self.getNode().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, _ => Err(DynError::Rt(RtError::error(format!("Call to undefined method {}::{}()", "PhpParser\\Builder\\TraitUseAdaptation", name)))) } }
@@ -1471,7 +1593,7 @@ impl TraitUseAdaptation {
 }
 pub struct Trait_Obj {
     pub attributes: Map<Str, Mixed>,
-    pub name: Str,
+    pub name: Late<Str>,
     pub uses: List<crate::php_parser::node::stmt::TraitUse>,
     pub constants: List<crate::php_parser::node::stmt::ClassConst>,
     pub properties: List<crate::php_parser::node::stmt::Property>,
@@ -1486,11 +1608,11 @@ impl Trait_ {
     pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
     pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
     pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
-    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| &o.name) }
-    pub fn p_name_get(&self) -> Str { self.0.borrow().name.clone() }
-    pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
-    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
-    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| o.name.get()) }
+    pub fn p_name_get(&self) -> Str { self.0.borrow().name.get().clone() }
+    pub fn p_name_opt(&self) -> Option<Str> { self.0.borrow().name.as_option().cloned() }
+    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| o.name.get_or_default_mut()) }
+    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name.set(v); }
     pub fn p_uses(&self) -> Ref<'_, List<crate::php_parser::node::stmt::TraitUse>> { Ref::map(self.0.borrow(), |o| &o.uses) }
     pub fn p_uses_get(&self) -> List<crate::php_parser::node::stmt::TraitUse> { self.0.borrow().uses.clone() }
     pub fn p_uses_opt(&self) -> Option<List<crate::php_parser::node::stmt::TraitUse>> { Some(self.0.borrow().uses.clone()) }
@@ -1516,10 +1638,21 @@ impl Trait_ {
     pub fn p_attributeGroups_opt(&self) -> Option<List<crate::php_parser::node::AttributeGroup>> { Some(self.0.borrow().attributeGroups.clone()) }
     pub fn p_attributeGroups_mut(&self) -> RefMut<'_, List<crate::php_parser::node::AttributeGroup>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributeGroups) }
     pub fn set_p_attributeGroups(&self, v: List<crate::php_parser::node::AttributeGroup>) { self.0.borrow_mut().attributeGroups = v; }
+    pub fn new_uninit() -> Trait_ {
+        Trait_(Rc::new(RefCell::new(Trait_Obj {
+            attributes: Map::<Str, Mixed>::new(),
+            name: Late::uninit(),
+            uses: List::<crate::php_parser::node::stmt::TraitUse>::new(),
+            constants: List::<crate::php_parser::node::stmt::ClassConst>::new(),
+            properties: List::<crate::php_parser::node::stmt::Property>::new(),
+            methods: List::<crate::php_parser::node::stmt::ClassMethod>::new(),
+            attributeGroups: List::<crate::php_parser::node::AttributeGroup>::new(),
+        })))
+    }
     pub fn new(mut name: Str) -> Result<Trait_, Throw> {
         let this = Trait_(Rc::new(RefCell::new(Trait_Obj {
             attributes: Map::<Str, Mixed>::new(),
-            name: Default::default(),
+            name: Late::uninit(),
             uses: List::<crate::php_parser::node::stmt::TraitUse>::new(),
             constants: List::<crate::php_parser::node::stmt::ClassConst>::new(),
             properties: List::<crate::php_parser::node::stmt::Property>::new(),
@@ -1564,7 +1697,7 @@ impl php_rt::PhpObject for Trait_ {
     fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\builder\\trait_", "phpparser\\builder\\declaration", "phpparser\\builder"] }
     fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_name_get()) { out.push((Str::from_static("name"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_uses_get()) { out.push((Str::from_static("uses"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_constants_get()) { out.push((Str::from_static("constants"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_properties_get()) { out.push((Str::from_static("properties"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_methods_get()) { out.push((Str::from_static("methods"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_attributeGroups_get()) { out.push((Str::from_static("attributeGroups"), cast::<Mixed>(v))); } out }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_name_opt() { out.push((Str::from_static("name"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_uses_get()) { out.push((Str::from_static("uses"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_constants_get()) { out.push((Str::from_static("constants"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_properties_get()) { out.push((Str::from_static("properties"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_methods_get()) { out.push((Str::from_static("methods"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_attributeGroups_get()) { out.push((Str::from_static("attributeGroups"), cast::<Mixed>(v))); } out }
     fn public_props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new();  out }
     fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "name" => { self.set_p_name(cast::<Str>(value)); true }, "uses" => { self.set_p_uses(cast::<List<crate::php_parser::node::stmt::TraitUse>>(value)); true }, "constants" => { self.set_p_constants(cast::<List<crate::php_parser::node::stmt::ClassConst>>(value)); true }, "properties" => { self.set_p_properties(cast::<List<crate::php_parser::node::stmt::Property>>(value)); true }, "methods" => { self.set_p_methods(cast::<List<crate::php_parser::node::stmt::ClassMethod>>(value)); true }, "attributeGroups" => { self.set_p_attributeGroups(cast::<List<crate::php_parser::node::AttributeGroup>>(value)); true }, _ => false } }
     fn call_method(&self, name: &str, args: Vec<Mixed>) -> Result<Mixed, DynError> { match name { "__construct" => { let __r = self.magic__construct((match args.get(0) { Some(__a) => cast::<Str>(__a.clone()), None => <Str>::default() })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(__r) }, "addstmt" => { let __r = self.addStmt((match args.get(0) { Some(__a) => cast::<U_PhpParser_Builder_or_PhpParser_Node_Stmt>(__a.clone()), None => unreachable!("no default for U_PhpParser_Builder_or_PhpParser_Node_Stmt") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "addattribute" => { let __r = self.addAttribute((match args.get(0) { Some(__a) => cast::<U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup>(__a.clone()), None => unreachable!("no default for U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "getnode" => { let __r = self.getNode().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "addstmts" => { let __r = self.addStmts((match args.get(0) { Some(__a) => cast::<Map<ArrayKey, U_PhpParser_Builder_or_PhpParser_Node_Stmt>>(__a.clone()), None => <Map<ArrayKey, U_PhpParser_Builder_or_PhpParser_Node_Stmt>>::default() })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "setdoccomment" => { let __r = self.setDocComment((match args.get(0) { Some(__a) => cast::<U_PhpParser_Comment_Doc_or_Str>(__a.clone()), None => unreachable!("no default for U_PhpParser_Comment_Doc_or_Str") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, _ => Err(DynError::Rt(RtError::error(format!("Call to undefined method {}::{}()", "PhpParser\\Builder\\Trait_", name)))) } }
@@ -1576,7 +1709,7 @@ impl Trait_ {
 }
 pub struct Use_Obj {
     pub name: Late<crate::php_parser::node::Name>,
-    pub type_: Mixed,
+    pub type_: Late<Mixed>,
     pub alias: Option<Str>,
 }
 #[derive(Clone)]
@@ -1587,20 +1720,27 @@ impl Use_ {
     pub fn p_name_opt(&self) -> Option<crate::php_parser::node::Name> { self.0.borrow().name.as_option().cloned() }
     pub fn p_name_mut(&self) -> RefMut<'_, crate::php_parser::node::Name> { RefMut::map(self.0.borrow_mut(), |o| o.name.get_mut()) }
     pub fn set_p_name(&self, v: crate::php_parser::node::Name) { self.0.borrow_mut().name.set(v); }
-    pub fn p_type_(&self) -> Ref<'_, Mixed> { Ref::map(self.0.borrow(), |o| &o.type_) }
-    pub fn p_type__get(&self) -> Mixed { self.0.borrow().type_.clone() }
-    pub fn p_type__opt(&self) -> Option<Mixed> { Some(self.0.borrow().type_.clone()) }
-    pub fn p_type__mut(&self) -> RefMut<'_, Mixed> { RefMut::map(self.0.borrow_mut(), |o| &mut o.type_) }
-    pub fn set_p_type_(&self, v: Mixed) { self.0.borrow_mut().type_ = v; }
+    pub fn p_type_(&self) -> Ref<'_, Mixed> { Ref::map(self.0.borrow(), |o| o.type_.get()) }
+    pub fn p_type__get(&self) -> Mixed { self.0.borrow().type_.get().clone() }
+    pub fn p_type__opt(&self) -> Option<Mixed> { self.0.borrow().type_.as_option().cloned() }
+    pub fn p_type__mut(&self) -> RefMut<'_, Mixed> { RefMut::map(self.0.borrow_mut(), |o| o.type_.get_or_default_mut()) }
+    pub fn set_p_type_(&self, v: Mixed) { self.0.borrow_mut().type_.set(v); }
     pub fn p_alias(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.alias) }
     pub fn p_alias_get(&self) -> Option<Str> { self.0.borrow().alias.clone() }
     pub fn p_alias_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().alias.clone()) }
     pub fn p_alias_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.alias) }
     pub fn set_p_alias(&self, v: Option<Str>) { self.0.borrow_mut().alias = v; }
+    pub fn new_uninit() -> Use_ {
+        Use_(Rc::new(RefCell::new(Use_Obj {
+            name: Late::uninit(),
+            type_: Late::uninit(),
+            alias: { let _ = (); None::<Str> },
+        })))
+    }
     pub fn new(mut name: U_PhpParser_Node_Name_or_Str, mut type_: Mixed) -> Result<Use_, Throw> {
         let this = Use_(Rc::new(RefCell::new(Use_Obj {
             name: Late::uninit(),
-            type_: Default::default(),
+            type_: Late::uninit(),
             alias: { let _ = (); None::<Str> },
         })));
         this.magic__construct(name, type_)?;
@@ -1625,7 +1765,7 @@ impl php_rt::PhpObject for Use_ {
     fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\builder\\use_", "phpparser\\builder"] }
     fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = self.p_name_opt() { out.push((Str::from_static("name"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_type__get()) { out.push((Str::from_static("type"), v)); } if let Some(v) = Some(self.p_alias_get()) { out.push((Str::from_static("alias"), cast::<Mixed>(v))); } out }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = self.p_name_opt() { out.push((Str::from_static("name"), cast::<Mixed>(v))); } if let Some(v) = self.p_type__opt() { out.push((Str::from_static("type"), v)); } if let Some(v) = Some(self.p_alias_get()) { out.push((Str::from_static("alias"), cast::<Mixed>(v))); } out }
     fn public_props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new();  out }
     fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "name" => { self.set_p_name(cast::<crate::php_parser::node::Name>(value)); true }, "type" => { self.set_p_type_(value); true }, "alias" => { self.set_p_alias(value.to_option().map(|__m| cast::<Str>(__m))); true }, _ => false } }
     fn call_method(&self, name: &str, args: Vec<Mixed>) -> Result<Mixed, DynError> { match name { "__construct" => { let __r = self.magic__construct((match args.get(0) { Some(__a) => cast::<U_PhpParser_Node_Name_or_Str>(__a.clone()), None => unreachable!("no default for U_PhpParser_Node_Name_or_Str") }), (match args.get(1) { Some(__a) => __a.clone(), None => <Mixed>::default() })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(__r) }, "as" => { let __r = self.as_((match args.get(0) { Some(__a) => cast::<Str>(__a.clone()), None => <Str>::default() })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "getnode" => { let __r = self.getNode().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, _ => Err(DynError::Rt(RtError::error(format!("Call to undefined method {}::{}()", "PhpParser\\Builder\\Use_", name)))) } }
@@ -1670,6 +1810,15 @@ impl ClassConstTest {
     pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
     pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
     pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new_uninit() -> ClassConstTest {
+        ClassConstTest(Rc::new(RefCell::new(ClassConstTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })))
+    }
     pub fn new(mut name: Str) -> Result<ClassConstTest, Throw> {
         let this = ClassConstTest(Rc::new(RefCell::new(ClassConstTestObj {
             expectedException: { let _ = (); None::<Str> },
@@ -1848,6 +1997,15 @@ impl ClassTest {
     pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
     pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
     pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new_uninit() -> ClassTest {
+        ClassTest(Rc::new(RefCell::new(ClassTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })))
+    }
     pub fn new(mut name: Str) -> Result<ClassTest, Throw> {
         let this = ClassTest(Rc::new(RefCell::new(ClassTestObj {
             expectedException: { let _ = (); None::<Str> },
@@ -2059,6 +2217,15 @@ impl EnumCaseTest {
     pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
     pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
     pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new_uninit() -> EnumCaseTest {
+        EnumCaseTest(Rc::new(RefCell::new(EnumCaseTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })))
+    }
     pub fn new(mut name: Str) -> Result<EnumCaseTest, Throw> {
         let this = EnumCaseTest(Rc::new(RefCell::new(EnumCaseTestObj {
             expectedException: { let _ = (); None::<Str> },
@@ -2213,6 +2380,15 @@ impl EnumTest {
     pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
     pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
     pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new_uninit() -> EnumTest {
+        EnumTest(Rc::new(RefCell::new(EnumTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })))
+    }
     pub fn new(mut name: Str) -> Result<EnumTest, Throw> {
         let this = EnumTest(Rc::new(RefCell::new(EnumTestObj {
             expectedException: { let _ = (); None::<Str> },
@@ -2412,6 +2588,15 @@ impl FunctionTest {
     pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
     pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
     pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new_uninit() -> FunctionTest {
+        FunctionTest(Rc::new(RefCell::new(FunctionTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })))
+    }
     pub fn new(mut name: Str) -> Result<FunctionTest, Throw> {
         let this = FunctionTest(Rc::new(RefCell::new(FunctionTestObj {
             expectedException: { let _ = (); None::<Str> },
@@ -2611,6 +2796,15 @@ impl InterfaceTest {
     pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
     pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
     pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new_uninit() -> InterfaceTest {
+        InterfaceTest(Rc::new(RefCell::new(InterfaceTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })))
+    }
     pub fn new(mut name: Str) -> Result<InterfaceTest, Throw> {
         let this = InterfaceTest(Rc::new(RefCell::new(InterfaceTestObj {
             expectedException: { let _ = (); None::<Str> },
@@ -2699,7 +2893,7 @@ impl InterfaceTest {
     const_.set(crate::php_parser::node::stmt::ClassConst::new({ let mut __m1: Map<ArrayKey, crate::php_parser::node::Const_> = Map::new(); __m1.push(crate::php_parser::node::Const_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("SPEED_OF_LIGHT")), cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Float_::new((299792458i64 as f64), Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?); __m1 }, 0i64, Map::<Str, Mixed>::new(), List::<crate::php_parser::node::AttributeGroup>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> })?);
     method.set(crate::php_parser::node::stmt::ClassMethod::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("doSomething")), Shape_flagsq_Int_byRefq_Bool_paramsq_Map_ArrayKey_PhpParser_Node_Param_e750c04559 { flags: None, byRef: None, params: None, returnType: None, stmts: None, attrGroups: None, type_: None }, Map::<Str, Mixed>::new())?);
     contract.set(self.createInterfaceBuilder()?.addStmt(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(method.get().clone())))?.addStmt(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(const_.get().clone())))?.getNode()?);
-    { let _ = self.dump(cast::<Mixed>(contract.get().clone()))?; unreachable!("eval") };
+    let _: Mixed = php_eval(&self.dump(cast::<Mixed>(contract.get().clone()))?)?;
     { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>(interface_exists(&Str::from_static("Contract"), false)), Str::from_static(""))? };
     #[allow(unreachable_code)] Ok(())
     }
@@ -2818,6 +3012,15 @@ impl MethodTest {
     pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
     pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
     pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new_uninit() -> MethodTest {
+        MethodTest(Rc::new(RefCell::new(MethodTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })))
+    }
     pub fn new(mut name: Str) -> Result<MethodTest, Throw> {
         let this = MethodTest(Rc::new(RefCell::new(MethodTestObj {
             expectedException: { let _ = (); None::<Str> },
@@ -3027,6 +3230,15 @@ impl NamespaceTest {
     pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
     pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
     pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new_uninit() -> NamespaceTest {
+        NamespaceTest(Rc::new(RefCell::new(NamespaceTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })))
+    }
     pub fn new(mut name: Str) -> Result<NamespaceTest, Throw> {
         let this = NamespaceTest(Rc::new(RefCell::new(NamespaceTestObj {
             expectedException: { let _ = (); None::<Str> },
@@ -3059,7 +3271,7 @@ impl NamespaceTest {
     { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(expected.get().clone()), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
     node.set(self.createNamespaceBuilder(Mixed::Null)?.getNode()?);
     { let _ = self; crate::phpunit::framework::Assert::assertNull(cast::<Mixed>(node.get().clone().p_name_get()), Str::from_static(""))? };
-    { let _ = self; crate::phpunit::framework::Assert::assertEmpty(cast::<Mixed>(node.get().clone().p_stmts_get()), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertEmpty(cast::<Mixed>(node.get().clone().p_stmts_get().unwrap_or_default()), Str::from_static(""))? };
     #[allow(unreachable_code)] Ok(())
     }
     pub fn magic__construct(&self, mut name: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).magic__construct__impl(name) }
@@ -3177,6 +3389,15 @@ impl ParamTest {
     pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
     pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
     pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new_uninit() -> ParamTest {
+        ParamTest(Rc::new(RefCell::new(ParamTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })))
+    }
     pub fn new(mut name: Str) -> Result<ParamTest, Throw> {
         let this = ParamTest(Rc::new(RefCell::new(ParamTestObj {
             expectedException: { let _ = (); None::<Str> },
@@ -3400,6 +3621,15 @@ impl PropertyTest {
     pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
     pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
     pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new_uninit() -> PropertyTest {
+        PropertyTest(Rc::new(RefCell::new(PropertyTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })))
+    }
     pub fn new(mut name: Str) -> Result<PropertyTest, Throw> {
         let this = PropertyTest(Rc::new(RefCell::new(PropertyTestObj {
             expectedException: { let _ = (); None::<Str> },
@@ -3588,6 +3818,15 @@ impl TraitTest {
     pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
     pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
     pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new_uninit() -> TraitTest {
+        TraitTest(Rc::new(RefCell::new(TraitTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })))
+    }
     pub fn new(mut name: Str) -> Result<TraitTest, Throw> {
         let this = TraitTest(Rc::new(RefCell::new(TraitTestObj {
             expectedException: { let _ = (); None::<Str> },
@@ -3767,6 +4006,15 @@ impl TraitUseAdaptationTest {
     pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
     pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
     pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new_uninit() -> TraitUseAdaptationTest {
+        TraitUseAdaptationTest(Rc::new(RefCell::new(TraitUseAdaptationTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })))
+    }
     pub fn new(mut name: Str) -> Result<TraitUseAdaptationTest, Throw> {
         let this = TraitUseAdaptationTest(Rc::new(RefCell::new(TraitUseAdaptationTestObj {
             expectedException: { let _ = (); None::<Str> },
@@ -3947,6 +4195,15 @@ impl TraitUseTest {
     pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
     pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
     pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new_uninit() -> TraitUseTest {
+        TraitUseTest(Rc::new(RefCell::new(TraitUseTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })))
+    }
     pub fn new(mut name: Str) -> Result<TraitUseTest, Throw> {
         let this = TraitUseTest(Rc::new(RefCell::new(TraitUseTestObj {
             expectedException: { let _ = (); None::<Str> },
@@ -4094,6 +4351,15 @@ impl UseTest {
     pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
     pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
     pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new_uninit() -> UseTest {
+        UseTest(Rc::new(RefCell::new(UseTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })))
+    }
     pub fn new(mut name: Str) -> Result<UseTest, Throw> {
         let this = UseTest(Rc::new(RefCell::new(UseTestObj {
             expectedException: { let _ = (); None::<Str> },

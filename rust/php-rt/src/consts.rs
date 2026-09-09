@@ -206,6 +206,11 @@ tokens! {
     T_BAD_CHARACTER = 411, T_DOUBLE_COLON = 402,
 }
 
+/// Value of a `T_*` token constant by name.
+pub fn token_value(name: &[u8]) -> Option<i64> {
+    TOKEN_NAMES.iter().find(|(n, _)| n.as_bytes() == name).map(|(_, v)| *v)
+}
+
 pub fn token_name(id: i64) -> Str {
     for (name, v) in TOKEN_NAMES {
         if *v == id && *name != "T_PAAMAYIM_NEKUDOTAYIM" {

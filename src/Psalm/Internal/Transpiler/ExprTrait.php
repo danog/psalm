@@ -81,6 +81,9 @@ trait ExprTrait
             return $this->assignOpExpr($e);
         }
         if ($e instanceof Expr\AssignRef) {
+            if ($e->var instanceof Expr\Variable && is_string($e->var->name) && !empty($this->refvars[$e->var->name])) {
+                return new Val('{ ' . $this->assignRefStmt($e) . ' ' . $this->readVar($e->var->name)->code . ' }', $this->varType($e->var->name));
+            }
             $this->warn('assign by reference', $e);
             return $this->assignExpr(new Expr\Assign($e->var, $e->expr, $e->getAttributes()));
         }
@@ -195,8 +198,8 @@ trait ExprTrait
             return new Val('{ let _ = ' . $this->expr($e->expr)->code . '; Mixed::Bool(true) }', RustType::mixed());
         }
         if ($e instanceof Expr\Eval_) {
-            $this->warn('eval', $e);
-            return new Val('{ let _ = ' . $this->expr($e->expr)->code . '; unreachable!("eval") }', RustType::never());
+            // only constant expressions (`return "\t";`) are supported by the runtime evaluator
+            return $this->narrow(new Val('php_eval(&' . $this->exprTo($e->expr, RustType::str()) . ')?', RustType::mixed()), $e);
         }
         if ($e instanceof Expr\Yield_) {
             return $this->yieldExpr($e);
@@ -1402,9 +1405,6 @@ trait ExprTrait
                     continue;
                 }
                 $name = $use->var->name;
-                if ($use->byRef) {
-                    $this->warn('closure use by reference', $e);
-                }
                 $capture_names[] = $name;
             }
         } else {
@@ -1420,6 +1420,15 @@ trait ExprTrait
         $child->declareLocals($param_types);
         foreach ($capture_names as $name) {
             if (!isset($this->vars[$name])) {
+                continue;
+            }
+            if (!empty($this->cells[$name])) {
+                // shared by reference: the closure gets the same cell
+                $captures[] = 'let ' . Names::var($name) . ' = ' . Names::var($name) . '.clone();';
+                $child->vars[$name] = $this->vars[$name];
+                $child->cells[$name] = true;
+                $child->late[$name] = false;
+                $child->predeclared[$name] = true;
                 continue;
             }
             $v = $this->readVar($name);

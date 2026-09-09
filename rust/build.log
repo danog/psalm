@@ -1,256 +1,256 @@
    Compiling php_parser v0.1.0 (/home/daniil/repos/psalm-port/rust/generated/php_parser)
 warning: unused attribute `allow`
-    --> generated/php_parser/src/g/mod.rs:2927:5
+    --> generated/php_parser/src/g/mod.rs:3248:5
      |
-2927 |     #[allow(unreachable_code)] unreachable!("missing return")
+3248 |     #[allow(unreachable_code)] unreachable!("missing return")
      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
      |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-    --> generated/php_parser/src/g/mod.rs:2927:32
+    --> generated/php_parser/src/g/mod.rs:3248:32
      |
-2927 |     #[allow(unreachable_code)] unreachable!("missing return")
+3248 |     #[allow(unreachable_code)] unreachable!("missing return")
      |                                ^^^^^^^^^^^
      = note: `#[warn(unused_attributes)]` (part of `#[warn(unused)]`) on by default
 
 warning: unused attribute `allow`
-    --> generated/php_parser/src/g/mod.rs:2954:5
+    --> generated/php_parser/src/g/mod.rs:3275:5
      |
-2954 |     #[allow(unreachable_code)] unreachable!("missing return")
+3275 |     #[allow(unreachable_code)] unreachable!("missing return")
      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
      |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-    --> generated/php_parser/src/g/mod.rs:2954:32
+    --> generated/php_parser/src/g/mod.rs:3275:32
      |
-2954 |     #[allow(unreachable_code)] unreachable!("missing return")
+3275 |     #[allow(unreachable_code)] unreachable!("missing return")
      |                                ^^^^^^^^^^^
 
 warning: unused attribute `allow`
-    --> generated/php_parser/src/php_parser/builder/mod.rs:1450:5
+    --> generated/php_parser/src/php_parser/builder/mod.rs:1572:5
      |
-1450 |     #[allow(unreachable_code)] unreachable!("missing return")
+1572 |     #[allow(unreachable_code)] unreachable!("missing return")
      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
      |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-    --> generated/php_parser/src/php_parser/builder/mod.rs:1450:32
+    --> generated/php_parser/src/php_parser/builder/mod.rs:1572:32
      |
-1450 |     #[allow(unreachable_code)] unreachable!("missing return")
+1572 |     #[allow(unreachable_code)] unreachable!("missing return")
      |                                ^^^^^^^^^^^
 
 warning: unused attribute `allow`
-   --> generated/php_parser/src/php_parser/node/scalar/mod.rs:389:5
+   --> generated/php_parser/src/php_parser/node/scalar/mod.rs:413:5
     |
-389 |     #[allow(unreachable_code)] unreachable!("missing return")
+413 |     #[allow(unreachable_code)] unreachable!("missing return")
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-   --> generated/php_parser/src/php_parser/node/scalar/mod.rs:389:32
+   --> generated/php_parser/src/php_parser/node/scalar/mod.rs:413:32
     |
-389 |     #[allow(unreachable_code)] unreachable!("missing return")
+413 |     #[allow(unreachable_code)] unreachable!("missing return")
     |                                ^^^^^^^^^^^
 
 warning: unused attribute `allow`
-   --> generated/php_parser/src/php_parser/node/scalar/mod.rs:416:5
+   --> generated/php_parser/src/php_parser/node/scalar/mod.rs:440:5
     |
-416 |     #[allow(unreachable_code)] unreachable!("missing return")
+440 |     #[allow(unreachable_code)] unreachable!("missing return")
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-   --> generated/php_parser/src/php_parser/node/scalar/mod.rs:416:32
+   --> generated/php_parser/src/php_parser/node/scalar/mod.rs:440:32
     |
-416 |     #[allow(unreachable_code)] unreachable!("missing return")
+440 |     #[allow(unreachable_code)] unreachable!("missing return")
     |                                ^^^^^^^^^^^
 
 warning: unused attribute `allow`
-   --> generated/php_parser/src/php_parser/node_visitor/mod.rs:781:5
+   --> generated/php_parser/src/php_parser/node_visitor/mod.rs:833:5
     |
-781 |     #[allow(unreachable_code)] unreachable!("missing return")
+833 |     #[allow(unreachable_code)] unreachable!("missing return")
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-   --> generated/php_parser/src/php_parser/node_visitor/mod.rs:781:32
+   --> generated/php_parser/src/php_parser/node_visitor/mod.rs:833:32
     |
-781 |     #[allow(unreachable_code)] unreachable!("missing return")
+833 |     #[allow(unreachable_code)] unreachable!("missing return")
     |                                ^^^^^^^^^^^
 
 warning: unused attribute `allow`
-   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:598:5
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:623:5
     |
-598 |     #[allow(unreachable_code)] unreachable!("missing return")
+623 |     #[allow(unreachable_code)] unreachable!("missing return")
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:598:32
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:623:32
     |
-598 |     #[allow(unreachable_code)] unreachable!("missing return")
+623 |     #[allow(unreachable_code)] unreachable!("missing return")
     |                                ^^^^^^^^^^^
 
 warning: unused attribute `allow`
-   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:609:5
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:634:5
     |
-609 |     #[allow(unreachable_code)] unreachable!("missing return")
+634 |     #[allow(unreachable_code)] unreachable!("missing return")
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:609:32
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:634:32
     |
-609 |     #[allow(unreachable_code)] unreachable!("missing return")
+634 |     #[allow(unreachable_code)] unreachable!("missing return")
     |                                ^^^^^^^^^^^
 
 warning: unused attribute `allow`
-   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:619:5
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:644:5
     |
-619 |     #[allow(unreachable_code)] unreachable!("missing return")
+644 |     #[allow(unreachable_code)] unreachable!("missing return")
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:619:32
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:644:32
     |
-619 |     #[allow(unreachable_code)] unreachable!("missing return")
+644 |     #[allow(unreachable_code)] unreachable!("missing return")
     |                                ^^^^^^^^^^^
 
 warning: unused attribute `allow`
-   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:721:5
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:746:5
     |
-721 |     #[allow(unreachable_code)] unreachable!("missing return")
+746 |     #[allow(unreachable_code)] unreachable!("missing return")
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:721:32
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:746:32
     |
-721 |     #[allow(unreachable_code)] unreachable!("missing return")
+746 |     #[allow(unreachable_code)] unreachable!("missing return")
     |                                ^^^^^^^^^^^
 
 warning: unused attribute `allow`
-   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:729:5
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:754:5
     |
-729 |     #[allow(unreachable_code)] unreachable!("missing return")
+754 |     #[allow(unreachable_code)] unreachable!("missing return")
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:729:32
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:754:32
     |
-729 |     #[allow(unreachable_code)] unreachable!("missing return")
+754 |     #[allow(unreachable_code)] unreachable!("missing return")
     |                                ^^^^^^^^^^^
 
 warning: unused attribute `allow`
-   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:890:5
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:915:5
     |
-890 |     #[allow(unreachable_code)] unreachable!("missing return")
+915 |     #[allow(unreachable_code)] unreachable!("missing return")
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:890:32
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:915:32
     |
-890 |     #[allow(unreachable_code)] unreachable!("missing return")
+915 |     #[allow(unreachable_code)] unreachable!("missing return")
     |                                ^^^^^^^^^^^
 
 warning: unused attribute `allow`
-   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:954:5
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:979:5
     |
-954 |     #[allow(unreachable_code)] unreachable!("missing return")
+979 |     #[allow(unreachable_code)] unreachable!("missing return")
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:954:32
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:979:32
     |
-954 |     #[allow(unreachable_code)] unreachable!("missing return")
+979 |     #[allow(unreachable_code)] unreachable!("missing return")
     |                                ^^^^^^^^^^^
 
 warning: unused attribute `allow`
-   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:962:5
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:987:5
     |
-962 |     #[allow(unreachable_code)] unreachable!("missing return")
+987 |     #[allow(unreachable_code)] unreachable!("missing return")
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:962:32
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:987:32
     |
-962 |     #[allow(unreachable_code)] unreachable!("missing return")
+987 |     #[allow(unreachable_code)] unreachable!("missing return")
     |                                ^^^^^^^^^^^
 
 warning: unused attribute `allow`
-   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:970:5
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:995:5
     |
-970 |     #[allow(unreachable_code)] unreachable!("missing return")
+995 |     #[allow(unreachable_code)] unreachable!("missing return")
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:970:32
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:995:32
     |
-970 |     #[allow(unreachable_code)] unreachable!("missing return")
+995 |     #[allow(unreachable_code)] unreachable!("missing return")
     |                                ^^^^^^^^^^^
 
 warning: unused attribute `allow`
-   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:978:5
-    |
-978 |     #[allow(unreachable_code)] unreachable!("missing return")
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |
-note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:978:32
-    |
-978 |     #[allow(unreachable_code)] unreachable!("missing return")
-    |                                ^^^^^^^^^^^
-
-warning: unused attribute `allow`
-   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:996:5
-    |
-996 |     #[allow(unreachable_code)] unreachable!("missing return")
-    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
-    |
-note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:996:32
-    |
-996 |     #[allow(unreachable_code)] unreachable!("missing return")
-    |                                ^^^^^^^^^^^
-
-warning: unused attribute `allow`
-    --> generated/php_parser/src/php_parser/mod.rs:2402:5
+    --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:1003:5
      |
-2402 |     #[allow(unreachable_code)] unreachable!("missing return")
+1003 |     #[allow(unreachable_code)] unreachable!("missing return")
      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
      |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-    --> generated/php_parser/src/php_parser/mod.rs:2402:32
+    --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:1003:32
      |
-2402 |     #[allow(unreachable_code)] unreachable!("missing return")
+1003 |     #[allow(unreachable_code)] unreachable!("missing return")
      |                                ^^^^^^^^^^^
 
 warning: unused attribute `allow`
-    --> generated/php_parser/src/php_parser/mod.rs:3481:5
+    --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:1021:5
      |
-3481 |     #[allow(unreachable_code)] unreachable!("missing return")
+1021 |     #[allow(unreachable_code)] unreachable!("missing return")
      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
      |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-    --> generated/php_parser/src/php_parser/mod.rs:3481:32
+    --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:1021:32
      |
-3481 |     #[allow(unreachable_code)] unreachable!("missing return")
+1021 |     #[allow(unreachable_code)] unreachable!("missing return")
      |                                ^^^^^^^^^^^
 
 warning: unused attribute `allow`
-    --> generated/php_parser/src/php_parser/mod.rs:3624:5
+    --> generated/php_parser/src/php_parser/mod.rs:2477:5
      |
-3624 |     #[allow(unreachable_code)] unreachable!("missing return")
+2477 |     #[allow(unreachable_code)] unreachable!("missing return")
      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
      |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-    --> generated/php_parser/src/php_parser/mod.rs:3624:32
+    --> generated/php_parser/src/php_parser/mod.rs:2477:32
      |
-3624 |     #[allow(unreachable_code)] unreachable!("missing return")
+2477 |     #[allow(unreachable_code)] unreachable!("missing return")
      |                                ^^^^^^^^^^^
 
 warning: unused attribute `allow`
-    --> generated/php_parser/src/php_parser/mod.rs:3732:5
+    --> generated/php_parser/src/php_parser/mod.rs:3566:5
      |
-3732 |     #[allow(unreachable_code)] unreachable!("missing return")
+3566 |     #[allow(unreachable_code)] unreachable!("missing return")
      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
      |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-    --> generated/php_parser/src/php_parser/mod.rs:3732:32
+    --> generated/php_parser/src/php_parser/mod.rs:3566:32
      |
-3732 |     #[allow(unreachable_code)] unreachable!("missing return")
+3566 |     #[allow(unreachable_code)] unreachable!("missing return")
+     |                                ^^^^^^^^^^^
+
+warning: unused attribute `allow`
+    --> generated/php_parser/src/php_parser/mod.rs:3709:5
+     |
+3709 |     #[allow(unreachable_code)] unreachable!("missing return")
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
+    --> generated/php_parser/src/php_parser/mod.rs:3709:32
+     |
+3709 |     #[allow(unreachable_code)] unreachable!("missing return")
+     |                                ^^^^^^^^^^^
+
+warning: unused attribute `allow`
+    --> generated/php_parser/src/php_parser/mod.rs:3817:5
+     |
+3817 |     #[allow(unreachable_code)] unreachable!("missing return")
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
+    --> generated/php_parser/src/php_parser/mod.rs:3817:32
+     |
+3817 |     #[allow(unreachable_code)] unreachable!("missing return")
      |                                ^^^^^^^^^^^
 
 warning: `php_parser` (lib test) generated 21 warnings (run `cargo fix --lib -p php_parser --tests` to apply 21 suggestions)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1m 24s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1m 00s

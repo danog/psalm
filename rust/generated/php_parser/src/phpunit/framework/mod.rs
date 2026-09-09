@@ -55,6 +55,15 @@ impl AssertionFailedErrorSelf {
     pub fn p_previous_opt(&self) -> Option<Option<crate::g::Throwable>> { Some(self.0.borrow().previous.clone()) }
     pub fn p_previous_mut(&self) -> RefMut<'_, Option<crate::g::Throwable>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.previous) }
     pub fn set_p_previous(&self, v: Option<crate::g::Throwable>) { self.0.borrow_mut().previous = v; }
+    pub fn new_uninit() -> AssertionFailedErrorSelf {
+        AssertionFailedErrorSelf(Rc::new(RefCell::new(AssertionFailedErrorObj {
+            message: Str::from_static(""),
+            code: 0i64,
+            file: Str::from_static(""),
+            line: 0i64,
+            previous: { let _ = (); None::<crate::g::Throwable> },
+        })))
+    }
     pub fn new(mut message_v: Str, mut code: i64, mut previous: Option<crate::g::Throwable>) -> Result<AssertionFailedErrorSelf, Throw> {
         let this = AssertionFailedErrorSelf(Rc::new(RefCell::new(AssertionFailedErrorObj {
             message: Str::from_static(""),
@@ -173,6 +182,15 @@ impl ExpectationFailedException {
     pub fn p_previous_opt(&self) -> Option<Option<crate::g::Throwable>> { Some(self.0.borrow().previous.clone()) }
     pub fn p_previous_mut(&self) -> RefMut<'_, Option<crate::g::Throwable>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.previous) }
     pub fn set_p_previous(&self, v: Option<crate::g::Throwable>) { self.0.borrow_mut().previous = v; }
+    pub fn new_uninit() -> ExpectationFailedException {
+        ExpectationFailedException(Rc::new(RefCell::new(ExpectationFailedExceptionObj {
+            message: Str::from_static(""),
+            code: 0i64,
+            file: Str::from_static(""),
+            line: 0i64,
+            previous: { let _ = (); None::<crate::g::Throwable> },
+        })))
+    }
     pub fn new(mut message_v: Str, mut code: i64, mut previous: Option<crate::g::Throwable>) -> Result<ExpectationFailedException, Throw> {
         let this = ExpectationFailedException(Rc::new(RefCell::new(ExpectationFailedExceptionObj {
             message: Str::from_static(""),
@@ -246,6 +264,15 @@ impl SkippedTestError {
     pub fn p_previous_opt(&self) -> Option<Option<crate::g::Throwable>> { Some(self.0.borrow().previous.clone()) }
     pub fn p_previous_mut(&self) -> RefMut<'_, Option<crate::g::Throwable>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.previous) }
     pub fn set_p_previous(&self, v: Option<crate::g::Throwable>) { self.0.borrow_mut().previous = v; }
+    pub fn new_uninit() -> SkippedTestError {
+        SkippedTestError(Rc::new(RefCell::new(SkippedTestErrorObj {
+            message: Str::from_static(""),
+            code: 0i64,
+            file: Str::from_static(""),
+            line: 0i64,
+            previous: { let _ = (); None::<crate::g::Throwable> },
+        })))
+    }
     pub fn new(mut message_v: Str, mut code: i64, mut previous: Option<crate::g::Throwable>) -> Result<SkippedTestError, Throw> {
         let this = SkippedTestError(Rc::new(RefCell::new(SkippedTestErrorObj {
             message: Str::from_static(""),
@@ -319,6 +346,15 @@ impl IncompleteTestError {
     pub fn p_previous_opt(&self) -> Option<Option<crate::g::Throwable>> { Some(self.0.borrow().previous.clone()) }
     pub fn p_previous_mut(&self) -> RefMut<'_, Option<crate::g::Throwable>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.previous) }
     pub fn set_p_previous(&self, v: Option<crate::g::Throwable>) { self.0.borrow_mut().previous = v; }
+    pub fn new_uninit() -> IncompleteTestError {
+        IncompleteTestError(Rc::new(RefCell::new(IncompleteTestErrorObj {
+            message: Str::from_static(""),
+            code: 0i64,
+            file: Str::from_static(""),
+            line: 0i64,
+            previous: { let _ = (); None::<crate::g::Throwable> },
+        })))
+    }
     pub fn new(mut message_v: Str, mut code: i64, mut previous: Option<crate::g::Throwable>) -> Result<IncompleteTestError, Throw> {
         let this = IncompleteTestError(Rc::new(RefCell::new(IncompleteTestErrorObj {
             message: Str::from_static(""),
