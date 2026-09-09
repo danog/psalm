@@ -1,29 +1,29 @@
-tests::PhpParser_BuilderFactoryTest__testIntegration :: cannot narrow Mixed into U_PhpParser_Builder_or_PhpParser_Node_Stmt
+tests::PhpParser_BuilderFactoryTest__testInvalidIdentifierOrExpr :: cannot narrow PhpParser\Node\Name into U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str
 tests::PhpParser_BuilderFactoryTest__testConcatInvalidExpr :: cannot narrow Mixed into U_PhpParser_Node_Expr_or_Str
 tests::PhpParser_BuilderFactoryTest__testInvalidIdentifier :: cannot narrow PhpParser\Node\Name into U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str
-tests::PhpParser_BuilderFactoryTest__testInvalidNameOrExpr :: cannot narrow Mixed into U_PhpParser_Node_Expr_or_PhpParser_Node_Name_or_Str
+tests::PhpParser_BuilderFactoryTest__testIntegration :: cannot narrow Mixed into U_PhpParser_Builder_or_PhpParser_Node_Stmt
 tests::PhpParser_BuilderFactoryTest__testInvalidVar :: cannot narrow Mixed into U_PhpParser_Node_Expr_or_Str
-tests::PhpParser_BuilderFactoryTest__testInvalidIdentifierOrExpr :: cannot narrow PhpParser\Node\Name into U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str
+tests::PhpParser_BuilderFactoryTest__testInvalidNameOrExpr :: cannot narrow Mixed into U_PhpParser_Node_Expr_or_PhpParser_Node_Name_or_Str
 tests::PhpParser_BuilderHelpersTest__testNormalizeDocComment :: cannot narrow Mixed into U_PhpParser_Comment_Doc_or_Str
 tests::PhpParser_BuilderHelpersTest__testNormalizeAttribute :: cannot narrow Mixed into U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup
 tests::PhpParser_BuilderHelpersTest__testNormalizeNameInvalidType :: cannot narrow Mixed into U_PhpParser_Node_Name_or_Str
-tests::PhpParser_BuilderHelpersTest__testNormalizeIdentifierOrExpr :: cannot narrow Mixed into U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str
 tests::PhpParser_BuilderHelpersTest__testNormalizeIdentifier :: cannot narrow Mixed into U_PhpParser_Node_Identifier_or_Str
+tests::PhpParser_BuilderHelpersTest__testNormalizeIdentifierOrExpr :: cannot narrow Mixed into U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str
 tests::PhpParser_BuilderHelpersTest__testNormalizeNameOrExpInvalidType :: cannot narrow Mixed into U_PhpParser_Node_Expr_or_PhpParser_Node_Name_or_Str
 tests::PhpParser_BuilderHelpersTest__testNormalizeStmtInvalidType :: cannot narrow Mixed into U_PhpParser_Builder_or_PhpParser_Node
 tests::PhpParser_BuilderHelpersTest__testNormalizeNode :: cannot narrow Mixed into U_PhpParser_Builder_or_PhpParser_Node
 tests::PhpParser_BuilderHelpersTest__testNormalizeType :: internal error: entered unreachable code: property read on U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name
 tests::PhpParser_BuilderHelpersTest__testNormalizeValue :: cannot narrow Mixed into U_Bool_or_Float_or_Int_or_Map_ArrayKey_Mixed_or_PhpParser_Node_Expr_or_Str_or_UnitEnum
-tests::PhpParser_Builder_ClassTest__testInvalidName :: cannot narrow Mixed into U_PhpParser_Node_Name_or_Str
 tests::PhpParser_Builder_ClassTest__testInvalidDocComment :: cannot narrow PhpParser\Comment into U_PhpParser_Comment_Doc_or_Str
-tests::PhpParser_Builder_EnumTest__testInvalidDocComment :: cannot narrow PhpParser\Comment into U_PhpParser_Comment_Doc_or_Str
+tests::PhpParser_Builder_ClassTest__testInvalidName :: cannot narrow Mixed into U_PhpParser_Node_Name_or_Str
 tests::PhpParser_Builder_EnumTest__testInvalidName :: cannot narrow Mixed into U_PhpParser_Node_Name_or_Str
+tests::PhpParser_Builder_EnumTest__testInvalidDocComment :: cannot narrow PhpParser\Comment into U_PhpParser_Comment_Doc_or_Str
 tests::PhpParser_Builder_EnumTest__testInvalidStmtError :: cannot narrow Mixed into U_PhpParser_Builder_or_PhpParser_Node_Stmt
 tests::PhpParser_Builder_FunctionTest__testInvalidParamError :: cannot narrow PhpParser\Node\Name into U_PhpParser_Builder_Param_or_PhpParser_Node_Param
 tests::PhpParser_Builder_FunctionTest__testStmts :: cannot narrow Mixed into U_PhpParser_Builder_or_PhpParser_Node_Stmt
 tests::PhpParser_Builder_InterfaceTest__testInvalidStmtError :: cannot narrow Mixed into U_PhpParser_Builder_or_PhpParser_Node_Stmt
-tests::PhpParser_Builder_MethodTest__testInvalidParamError :: cannot narrow PhpParser\Node\Name into U_PhpParser_Builder_Param_or_PhpParser_Node_Param
 tests::PhpParser_Builder_InterfaceTest__testFullFunctional :: not implemented: cast crate::php_parser::node::Identifier => Str
+tests::PhpParser_Builder_MethodTest__testInvalidParamError :: cannot narrow PhpParser\Node\Name into U_PhpParser_Builder_Param_or_PhpParser_Node_Param
 tests::PhpParser_Builder_MethodTest__testModifiers :: PHPUnit\Framework\AssertionFailedError: Failed asserting that PhpParser\Node\Stmt\ClassMethod Object array (
 tests::PhpParser_Builder_MethodTest__testStmts :: cannot narrow Mixed into U_PhpParser_Builder_or_PhpParser_Node_Stmt
 tests::PhpParser_Builder_ParamTest__testInvalidTypeError :: cannot narrow Mixed into U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name_or_Str
@@ -32,73 +32,40 @@ tests::PhpParser_Builder_TraitUseTest__testInvalidAdaptationNode :: cannot narro
 tests::PhpParser_ConstExprEvaluatorTest__testEvaluateFails :: union U_DynCallable_or_Fn1_PhpParser_Node_Expr_to_Null is not DynCallable
 tests::PhpParser_ConstExprEvaluatorTest__testEvaluateFallbackPipeOperator :: internal error: entered unreachable code: closure without record
 tests::PhpParser_ConstExprEvaluatorTest__testEvaluateSilently :: union U_DynCallable_or_Fn1_PhpParser_Node_Expr_to_Null is not DynCallable
-tests::PhpParser_ConstExprEvaluatorTest__testEvaluate :: internal error: entered unreachable code: method getEndLine was not analyzed
 tests::PhpParser_JsonDecoderTest__testDecodingError :: PHPUnit\Framework\AssertionFailedError: Failed asserting that exception message 'ReflectionClass::newInstanceWithoutConstructor() is not supported' contains 'Attributes m
-tests::PhpParser_LexerTest__testDefaultErrorHandler :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_LexerTest__testError :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_LexerTest__testGetTokens :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_LexerTest__testLex :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Lexer_EmulativeTest__testError :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Lexer_EmulativeTest__testDefaultErrorHandler :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Lexer_EmulativeTest__testGetTokens :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Lexer_EmulativeTest__testLex :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Lexer_EmulativeTest__testLeaveStuffAloneInStrings :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Lexer_EmulativeTest__testErrorAfterEmulation :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Lexer_EmulativeTest__testLexNewFeatures :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_JsonDecoderTest__testRoundTrip :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterNullsafeObjectOperator :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterObjectOperator :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterObjectOperatorWithSpaces :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterObjectOperatorWithComment :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Lexer_EmulativeTest__testReplaceKeywords :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Lexer_EmulativeTest__testReplaceKeywordsUppercase :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Lexer_EmulativeTest__testTargetVersion :: internal error: entered unreachable code: method getEndLine was not analyzed
+tests::PhpParser_Lexer_EmulativeTest__testLexNewFeatures :: PHPUnit\Framework\AssertionFailedError: Failed asserting that array (
+tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterObjectOperatorWithComment :: PHPUnit\Framework\AssertionFailedError: Failed asserting that array (
+tests::PhpParser_ConstExprEvaluatorTest__testEvaluate :: union U_DynCallable_or_Fn1_PhpParser_Node_Expr_to_Null is not DynCallable
 tests::PhpParser_NameContextTest__testGetPossibleNames :: not implemented: cast crate::php_parser::node::Name => Str
 tests::PhpParser_NodeAbstractTest__testAttributes :: internal error: entered unreachable code: unknown method getMockForAbstractClass
 tests::PhpParser_NodeAbstractTest__testChange :: PHPUnit\Framework\AssertionFailedError: Failed asserting that 'newValue' is identical to 'newNewValue'.
 tests::PhpParser_NodeDumperTest__testError :: cannot narrow Mixed into U_Map_ArrayKey_Mixed_or_PhpParser_Node
-tests::PhpParser_NodeAbstractTest__testJsonSerialization :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_NodeDumperTest__testDumpWithPositions :: internal error: entered unreachable code: method getEndLine was not analyzed
 tests::PhpParser_NodeTraverserTest__testInvalidDeepArray :: not implemented: cast ((crate::php_parser::node::scalar::String_,),) => crate::php_parser::Node
 tests::PhpParser_NodeTraverserTest__testInvalidReturn :: cannot narrow Mixed into U_Int_or_Map_ArrayKey_PhpParser_Node_or_PhpParser_Node
 tests::PhpParser_NodeTraverserTest__testRemovingVisitor :: internal error: entered unreachable code: transpiler error in testRemovingVisitor
 tests::PhpParser_NodeVisitor_NameResolverTest__testAddDeclarationNamespacedName :: cannot cast PhpParser\Node\Expr\New_ to PhpParser\Node\Stmt
 tests::PhpParser_NodeVisitor_NameResolverTest__testAddOriginalNames :: cannot cast PhpParser\Node\Expr\ClassConstFetch to PhpParser\Node\Stmt
-tests::PhpParser_NodeVisitor_NameResolverTest__testAttributeOnlyMode :: cannot cast PhpParser\Node\Expr\ClassConstFetch to PhpParser\Node\Stmt
 tests::PhpParser_NodeVisitor_NameResolverTest__testAddRuntimeResolvedNamespacedName :: cannot cast PhpParser\Node\Expr\FuncCall to PhpParser\Node\Stmt
-tests::PhpParser_NodeVisitor_NameResolverTest__testNoResolveSpecialName :: PhpParser\Error: '\self' is an invalid class name on unknown line
-tests::PhpParser_NodeVisitor_NameResolverTest__testClassNameIsCaseInsensitive :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_NodeVisitor_NameResolverTest__testResolveNames :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_NodeVisitor_NameResolverTest__testResolveLocations :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_NodeVisitor_NodeConnectingVisitorTest__testConnectsNodeToItsParentNodeAndItsSiblingNodes :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_NodeVisitor_NameResolverTest__testSpecialClassNamesAreCaseInsensitive :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_NodeVisitor_NodeConnectingVisitorTest__testWeakReferences :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_NodeVisitor_ParentConnectingVisitorTest__testConnectsChildNodeToParentNode :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_NodeVisitor_ParentConnectingVisitorTest__testWeakReferences :: internal error: entered unreachable code: method getEndLine was not analyzed
+tests::PhpParser_NodeVisitor_NameResolverTest__testAttributeOnlyMode :: cannot cast PhpParser\Node\Expr\ClassConstFetch to PhpParser\Node\Stmt
+tests::PhpParser_JsonDecoderTest__testRoundTrip :: PHPUnit\Framework\AssertionFailedError: Failed asserting that array (
+tests::PhpParser_NodeAbstractTest__testJsonSerialization :: PHPUnit\Framework\AssertionFailedError: Failed asserting that '[
+tests::PhpParser_NodeVisitor_NameResolverTest__testClassNameIsCaseInsensitive :: PhpParser\Error: No code may exist outside of namespace {} on line 3
+tests::PhpParser_NodeVisitor_NodeConnectingVisitorTest__testWeakReferences :: Error: Call to undefined method WeakReference::get()
+tests::PhpParser_NodeVisitor_NameResolverTest__testSpecialClassNamesAreCaseInsensitive :: Mixed value is not a PhpParser\Node\AttributeGroup
+tests::PhpParser_NodeVisitor_ParentConnectingVisitorTest__testConnectsChildNodeToParentNode :: union U_Bool_or_Int_or_Map_ArrayKey_PhpParser_Node_AttributeGroup_or_Map_Arr_2b6ece7660 is not Map_ArrayKey_PhpParser_Node_Param
 tests::PhpParser_Node_NameTest__testInvalidArg :: cannot narrow Mixed into U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str
-tests::PhpParser_Node_NameTest__testNameTypes :: PHPUnit\Framework\AssertionFailedError: Failed asserting that false is true.
-tests::PhpParser_Node_PropertyHookTest__testGetStmtsSetHookFromParser :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Node_Scalar_DNumberTest__testRawValue :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Node_Scalar_NumberTest__testRawValue :: internal error: entered unreachable code: method getEndLine was not analyzed
+tests::PhpParser_NodeVisitor_ParentConnectingVisitorTest__testWeakReferences :: union U_Bool_or_Int_or_Map_ArrayKey_PhpParser_Node_AttributeGroup_or_Map_Arr_2b6ece7660 is not Map_ArrayKey_PhpParser_Node_Param
 tests::PhpParser_Node_Stmt_ClassMethodTest__testFunctionLike :: PHPUnit\Framework\AssertionFailedError: Failed asserting that array (
 tests::PhpParser_Node_Stmt_ClassMethodTest__testModifiers :: PHPUnit\Framework\AssertionFailedError: Failed asserting that false is true.
-tests::PhpParser_Node_Scalar_StringTest__testRawValue :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Node_Stmt_ClassTest__testIsAbstract :: PHPUnit\Framework\AssertionFailedError: Failed asserting that false is true.
 tests::PhpParser_Node_Stmt_ClassTest__testGetTraitUses :: cannot cast PhpParser\Node\Stmt\Trait_ to PhpParser\Node\Name
+tests::PhpParser_Node_Stmt_ClassTest__testIsAbstract :: PHPUnit\Framework\AssertionFailedError: Failed asserting that false is true.
 tests::PhpParser_Node_Stmt_ClassTest__testIsFinal :: PHPUnit\Framework\AssertionFailedError: Failed asserting that false is true.
-tests::PhpParser_Parser_Php7Test__testGetTokens :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Parser_Php7Test__testExtraAttributes :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Parser_Php7Test__testAttributeAssignment :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Parser_Php7Test__testInvalidToken :: RefCell already mutably borrowed
-tests::PhpParser_Parser_Php7Test__testListKindAttribute :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Parser_Php7Test__testParserThrowsSyntaxError :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Parser_Php7Test__testParserThrowsLexerError :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Parser_Php7Test__testParserThrowsSpecialError :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Parser_Php8Test__testAttributeAssignment :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Parser_Php8Test__testExtraAttributes :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Parser_Php8Test__testGetTokens :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Parser_Php8Test__testListKindAttribute :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Parser_Php8Test__testInvalidToken :: RefCell already mutably borrowed
-tests::PhpParser_Parser_Php8Test__testParserThrowsLexerError :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Parser_Php8Test__testParserThrowsSpecialError :: internal error: entered unreachable code: method getEndLine was not analyzed
-tests::PhpParser_Parser_Php8Test__testParserThrowsSyntaxError :: internal error: entered unreachable code: method getEndLine was not analyzed
+tests::PhpParser_Node_PropertyHookTest__testGetStmtsSetHookFromParser :: Mixed value is not a PhpParser\Node\AttributeGroup
+tests::PhpParser_Parser_Php7Test__testAttributeAssignment :: PHPUnit\Framework\AssertionFailedError: Failed asserting that array (
+tests::PhpParser_Parser_Php7Test__testListKindAttribute :: Error: Call to undefined method SplObjectStorage::offsetset()
+tests::PhpParser_Parser_Php7Test__testExtraAttributes :: Error: Call to undefined method SplObjectStorage::offsetset()
+tests::PhpParser_Parser_Php8Test__testAttributeAssignment :: PHPUnit\Framework\AssertionFailedError: Failed asserting that array (
+tests::PhpParser_Parser_Php8Test__testListKindAttribute :: Error: Call to undefined method SplObjectStorage::offsetset()
+tests::PhpParser_Parser_Php8Test__testExtraAttributes :: Error: Call to undefined method SplObjectStorage::offsetset()
+tests::PhpParser_NodeVisitor_NameResolverTest__testResolveLocations :: Mixed value is not a PhpParser\Node\AttributeGroup
+tests::PhpParser_NodeVisitor_NameResolverTest__testResolveNames :: not implemented: cast crate::php_parser::node::Identifier => Str

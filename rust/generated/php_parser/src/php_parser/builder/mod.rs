@@ -53,7 +53,7 @@ impl ClassConst {
     #[allow(unreachable_code)] Ok(Mixed::Null)
     }
     pub fn addConst(&self, mut name: U_PhpParser_Node_Identifier_or_Str, mut value: Option<U_Bool_or_Float_or_Int_or_Map_ArrayKey_Mixed_or_PhpParser_Node_Expr_or_Str_or_UnitEnum>) -> Result<crate::php_parser::builder::ClassConst, Throw> {
-    (*self.p_constants_mut()).push(crate::php_parser::node::Const_::new(name.clone(), crate::php_parser::BuilderHelpers::normalizeValue(value.clone())?, Map::<Str, Mixed>::new())?);
+    { let __h1 = crate::php_parser::node::Const_::new(name.clone(), crate::php_parser::BuilderHelpers::normalizeValue(value.clone())?, Map::<Str, Mixed>::new())?; (*self.p_constants_mut()).push(__h1); }
     return Ok(self.clone());
     }
     pub fn makePublic(&self) -> Result<crate::php_parser::builder::ClassConst, Throw> {
@@ -77,7 +77,7 @@ impl ClassConst {
     return Ok(self.clone());
     }
     pub fn addAttribute(&self, mut attribute: U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup) -> Result<crate::php_parser::builder::ClassConst, Throw> {
-    (*self.p_attributeGroups_mut()).push(crate::php_parser::BuilderHelpers::normalizeAttribute(attribute.clone())?);
+    { let __h1 = crate::php_parser::BuilderHelpers::normalizeAttribute(attribute.clone())?; (*self.p_attributeGroups_mut()).push(__h1); }
     return Ok(self.clone());
     }
     pub fn setType(&self, mut type_: U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name_or_Str) -> Result<crate::php_parser::builder::ClassConst, Throw> {
@@ -197,7 +197,7 @@ impl Class_ {
     let mut interface: Late<U_PhpParser_Node_Name_or_Str> = Late::uninit();
     'l1: for __kv1 in cast::<Map<ArrayKey, U_PhpParser_Node_Name_or_Str>>(interfaces.clone()).into_iter() {
         interface.set(__kv1.1);
-        (*self.p_implements_mut()).push(crate::php_parser::BuilderHelpers::normalizeName(interface.get().clone())?);
+        { let __h2 = crate::php_parser::BuilderHelpers::normalizeName(interface.get().clone())?; (*self.p_implements_mut()).push(__h2); }
     }
     return Ok(self.clone());
     }
@@ -216,20 +216,20 @@ impl Class_ {
     pub fn addStmt(&self, mut stmt: U_PhpParser_Builder_or_PhpParser_Node_Stmt) -> Result<crate::php_parser::builder::Class_, Throw> {
     stmt = cast::<U_PhpParser_Builder_or_PhpParser_Node_Stmt>(crate::php_parser::BuilderHelpers::normalizeNode(cast::<U_PhpParser_Builder_or_PhpParser_Node>(stmt.clone()))?);
     if is_instance::<crate::php_parser::node::stmt::Property>(&cast::<crate::php_parser::Node>(stmt.clone())) {
-        (*self.p_properties_mut()).push(cast::<crate::php_parser::node::stmt::Property>(stmt.clone()));
+        { let __h1 = cast::<crate::php_parser::node::stmt::Property>(stmt.clone()); (*self.p_properties_mut()).push(__h1); }
     } else if is_instance::<crate::php_parser::node::stmt::ClassMethod>(&cast::<crate::php_parser::Node>(stmt.clone())) {
-        (*self.p_methods_mut()).push(cast::<crate::php_parser::node::stmt::ClassMethod>(stmt.clone()));
+        { let __h2 = cast::<crate::php_parser::node::stmt::ClassMethod>(stmt.clone()); (*self.p_methods_mut()).push(__h2); }
     } else if is_instance::<crate::php_parser::node::stmt::TraitUse>(&cast::<crate::php_parser::Node>(stmt.clone())) {
-        (*self.p_uses_mut()).push(cast::<crate::php_parser::node::stmt::TraitUse>(stmt.clone()));
+        { let __h3 = cast::<crate::php_parser::node::stmt::TraitUse>(stmt.clone()); (*self.p_uses_mut()).push(__h3); }
     } else if is_instance::<crate::php_parser::node::stmt::ClassConst>(&cast::<crate::php_parser::Node>(stmt.clone())) {
-        (*self.p_constants_mut()).push(cast::<crate::php_parser::node::stmt::ClassConst>(stmt.clone()));
+        { let __h4 = cast::<crate::php_parser::node::stmt::ClassConst>(stmt.clone()); (*self.p_constants_mut()).push(__h4); }
     } else {
         return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(sprintf(&Str::from_static("Unexpected node of type \"%s\""), &[FmtArg::from(cast::<crate::php_parser::Node>(stmt.clone()).getType()?)])?, 0i64, { let _ = (); None::<crate::g::Throwable> })?));
     }
     return Ok(self.clone());
     }
     pub fn addAttribute(&self, mut attribute: U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup) -> Result<crate::php_parser::builder::Class_, Throw> {
-    (*self.p_attributeGroups_mut()).push(crate::php_parser::BuilderHelpers::normalizeAttribute(attribute.clone())?);
+    { let __h1 = crate::php_parser::BuilderHelpers::normalizeAttribute(attribute.clone())?; (*self.p_attributeGroups_mut()).push(__h1); }
     return Ok(self.clone());
     }
     pub fn getNode(&self) -> Result<crate::php_parser::node::stmt::Class_, Throw> {
@@ -295,7 +295,7 @@ impl Declaration {
     }
     pub fn setDocComment(&self, mut docComment: U_PhpParser_Comment_Doc_or_Str) -> Result<crate::php_parser::builder::Declaration, Throw> { match self { Declaration::PhpParser_Builder_Class_(__h) => Ok(__h.setDocComment(docComment)?), Declaration::PhpParser_Builder_Enum_(__h) => Ok(__h.setDocComment(docComment)?), Declaration::PhpParser_Builder_Function_(__h) => Ok(__h.setDocComment(docComment)?), Declaration::PhpParser_Builder_Interface_(__h) => Ok(__h.setDocComment(docComment)?), Declaration::PhpParser_Builder_Method(__h) => Ok(__h.setDocComment(docComment)?), Declaration::PhpParser_Builder_Namespace_(__h) => Ok(__h.setDocComment(docComment)?), Declaration::PhpParser_Builder_Trait_(__h) => Ok(__h.setDocComment(docComment)?), _ => unreachable!() } }
     pub fn setDocComment__impl(&self, mut docComment: U_PhpParser_Comment_Doc_or_Str) -> Result<crate::php_parser::builder::Declaration, Throw> {
-    (*self.p_attributes_mut()).insert(Str::from_static("comments"), { let __c2 = (crate::php_parser::BuilderHelpers::normalizeDocComment(docComment.clone())?,); let mut __m: Map<ArrayKey, Mixed> = Map::new(); __m.push(cast::<Mixed>(__c2.0)); Mixed::Arr(__m) });
+    { let __h1 = Str::from_static("comments"); let __h2 = { let __c2 = (crate::php_parser::BuilderHelpers::normalizeDocComment(docComment.clone())?,); let mut __m: Map<ArrayKey, Mixed> = Map::new(); __m.push(cast::<Mixed>(__c2.0)); Mixed::Arr(__m) }; (*self.p_attributes_mut()).insert(__h1, __h2); }
     return Ok(self.clone());
     }
     pub fn getNode(&self) -> Result<crate::php_parser::Node, Throw> { match self { Declaration::PhpParser_Builder_Class_(__h) => Ok(cast::<crate::php_parser::Node>(__h.getNode()?)), Declaration::PhpParser_Builder_Enum_(__h) => Ok(cast::<crate::php_parser::Node>(__h.getNode()?)), Declaration::PhpParser_Builder_Function_(__h) => Ok(cast::<crate::php_parser::Node>(__h.getNode()?)), Declaration::PhpParser_Builder_Interface_(__h) => Ok(cast::<crate::php_parser::Node>(__h.getNode()?)), Declaration::PhpParser_Builder_Method(__h) => Ok(cast::<crate::php_parser::Node>(__h.getNode()?)), Declaration::PhpParser_Builder_Namespace_(__h) => Ok(cast::<crate::php_parser::Node>(__h.getNode()?)), Declaration::PhpParser_Builder_Trait_(__h) => Ok(cast::<crate::php_parser::Node>(__h.getNode()?)), _ => unreachable!() } }
@@ -353,7 +353,7 @@ impl EnumCase {
     return Ok(self.clone());
     }
     pub fn addAttribute(&self, mut attribute: U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup) -> Result<crate::php_parser::builder::EnumCase, Throw> {
-    (*self.p_attributeGroups_mut()).push(crate::php_parser::BuilderHelpers::normalizeAttribute(attribute.clone())?);
+    { let __h1 = crate::php_parser::BuilderHelpers::normalizeAttribute(attribute.clone())?; (*self.p_attributeGroups_mut()).push(__h1); }
     return Ok(self.clone());
     }
     pub fn getNode(&self) -> Result<crate::php_parser::node::stmt::EnumCase, Throw> {
@@ -462,27 +462,27 @@ impl Enum_ {
     let mut interface: Late<U_PhpParser_Node_Name_or_Str> = Late::uninit();
     'l1: for __kv1 in cast::<Map<ArrayKey, U_PhpParser_Node_Name_or_Str>>(interfaces.clone()).into_iter() {
         interface.set(__kv1.1);
-        (*self.p_implements_mut()).push(crate::php_parser::BuilderHelpers::normalizeName(interface.get().clone())?);
+        { let __h2 = crate::php_parser::BuilderHelpers::normalizeName(interface.get().clone())?; (*self.p_implements_mut()).push(__h2); }
     }
     return Ok(self.clone());
     }
     pub fn addStmt(&self, mut stmt: U_PhpParser_Builder_or_PhpParser_Node_Stmt) -> Result<crate::php_parser::builder::Enum_, Throw> {
     stmt = cast::<U_PhpParser_Builder_or_PhpParser_Node_Stmt>(crate::php_parser::BuilderHelpers::normalizeNode(cast::<U_PhpParser_Builder_or_PhpParser_Node>(stmt.clone()))?);
     if is_instance::<crate::php_parser::node::stmt::EnumCase>(&cast::<crate::php_parser::Node>(stmt.clone())) {
-        (*self.p_enumCases_mut()).push(cast::<crate::php_parser::node::stmt::EnumCase>(stmt.clone()));
+        { let __h1 = cast::<crate::php_parser::node::stmt::EnumCase>(stmt.clone()); (*self.p_enumCases_mut()).push(__h1); }
     } else if is_instance::<crate::php_parser::node::stmt::ClassMethod>(&cast::<crate::php_parser::Node>(stmt.clone())) {
-        (*self.p_methods_mut()).push(cast::<crate::php_parser::node::stmt::ClassMethod>(stmt.clone()));
+        { let __h2 = cast::<crate::php_parser::node::stmt::ClassMethod>(stmt.clone()); (*self.p_methods_mut()).push(__h2); }
     } else if is_instance::<crate::php_parser::node::stmt::TraitUse>(&cast::<crate::php_parser::Node>(stmt.clone())) {
-        (*self.p_uses_mut()).push(cast::<crate::php_parser::node::stmt::TraitUse>(stmt.clone()));
+        { let __h3 = cast::<crate::php_parser::node::stmt::TraitUse>(stmt.clone()); (*self.p_uses_mut()).push(__h3); }
     } else if is_instance::<crate::php_parser::node::stmt::ClassConst>(&cast::<crate::php_parser::Node>(stmt.clone())) {
-        (*self.p_constants_mut()).push(cast::<crate::php_parser::node::stmt::ClassConst>(stmt.clone()));
+        { let __h4 = cast::<crate::php_parser::node::stmt::ClassConst>(stmt.clone()); (*self.p_constants_mut()).push(__h4); }
     } else {
         return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(sprintf(&Str::from_static("Unexpected node of type \"%s\""), &[FmtArg::from(cast::<crate::php_parser::Node>(stmt.clone()).getType()?)])?, 0i64, { let _ = (); None::<crate::g::Throwable> })?));
     }
     return Ok(self.clone());
     }
     pub fn addAttribute(&self, mut attribute: U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup) -> Result<crate::php_parser::builder::Enum_, Throw> {
-    (*self.p_attributeGroups_mut()).push(crate::php_parser::BuilderHelpers::normalizeAttribute(attribute.clone())?);
+    { let __h1 = crate::php_parser::BuilderHelpers::normalizeAttribute(attribute.clone())?; (*self.p_attributeGroups_mut()).push(__h1); }
     return Ok(self.clone());
     }
     pub fn getNode(&self) -> Result<crate::php_parser::node::stmt::Enum_, Throw> {
@@ -557,7 +557,7 @@ impl FunctionLike {
     if (!is_instance::<crate::php_parser::node::Param>(&cast::<crate::php_parser::Node>(param.clone()))) {
         return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(sprintf(&Str::from_static("Expected parameter node, got \"%s\""), &[FmtArg::from(cast::<crate::php_parser::Node>(param.clone()).getType()?)])?, 0i64, { let _ = (); None::<crate::g::Throwable> })?));
     }
-    (*self.p_params_mut()).push(cast::<crate::php_parser::node::Param>(param.clone()));
+    { let __h1 = cast::<crate::php_parser::node::Param>(param.clone()); (*self.p_params_mut()).push(__h1); }
     return Ok(self.clone());
     }
     pub fn addParams(&self, mut params: Map<ArrayKey, U_PhpParser_Builder_Param_or_PhpParser_Node_Param>) -> Result<crate::php_parser::builder::FunctionLike, Throw> { match self { FunctionLike::PhpParser_Builder_Function_(__h) => Ok(__h.addParams(params)?), FunctionLike::PhpParser_Builder_Method(__h) => Ok(__h.addParams(params)?), _ => unreachable!() } }
@@ -647,11 +647,11 @@ impl Function_ {
     #[allow(unreachable_code)] Ok(Mixed::Null)
     }
     pub fn addStmt(&self, mut stmt: U_PhpParser_Builder_or_PhpParser_Node) -> Result<crate::php_parser::builder::Function_, Throw> {
-    (*self.p_stmts_mut()).push(crate::php_parser::BuilderHelpers::normalizeStmt(stmt.clone())?);
+    { let __h1 = crate::php_parser::BuilderHelpers::normalizeStmt(stmt.clone())?; (*self.p_stmts_mut()).push(__h1); }
     return Ok(self.clone());
     }
     pub fn addAttribute(&self, mut attribute: U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup) -> Result<crate::php_parser::builder::Function_, Throw> {
-    (*self.p_attributeGroups_mut()).push(crate::php_parser::BuilderHelpers::normalizeAttribute(attribute.clone())?);
+    { let __h1 = crate::php_parser::BuilderHelpers::normalizeAttribute(attribute.clone())?; (*self.p_attributeGroups_mut()).push(__h1); }
     return Ok(self.clone());
     }
     pub fn getNode(&self) -> Result<crate::php_parser::node::stmt::Function_, Throw> {
@@ -741,24 +741,24 @@ impl Interface_ {
     let mut interface: Late<U_PhpParser_Node_Name_or_Str> = Late::uninit();
     'l1: for __kv1 in cast::<Map<ArrayKey, U_PhpParser_Node_Name_or_Str>>(interfaces.clone()).into_iter() {
         interface.set(__kv1.1);
-        (*self.p_extends_mut()).push(crate::php_parser::BuilderHelpers::normalizeName(interface.get().clone())?);
+        { let __h2 = crate::php_parser::BuilderHelpers::normalizeName(interface.get().clone())?; (*self.p_extends_mut()).push(__h2); }
     }
     return Ok(self.clone());
     }
     pub fn addStmt(&self, mut stmt: U_PhpParser_Builder_or_PhpParser_Node_Stmt) -> Result<crate::php_parser::builder::Interface_, Throw> {
     stmt = cast::<U_PhpParser_Builder_or_PhpParser_Node_Stmt>(crate::php_parser::BuilderHelpers::normalizeNode(cast::<U_PhpParser_Builder_or_PhpParser_Node>(stmt.clone()))?);
     if is_instance::<crate::php_parser::node::stmt::ClassConst>(&cast::<crate::php_parser::Node>(stmt.clone())) {
-        (*self.p_constants_mut()).push(cast::<crate::php_parser::node::stmt::ClassConst>(stmt.clone()));
+        { let __h1 = cast::<crate::php_parser::node::stmt::ClassConst>(stmt.clone()); (*self.p_constants_mut()).push(__h1); }
     } else if is_instance::<crate::php_parser::node::stmt::ClassMethod>(&cast::<crate::php_parser::Node>(stmt.clone())) {
         cast::<crate::php_parser::node::stmt::ClassMethod>(stmt.clone()).set_p_stmts({ let _ = (); None::<Map<ArrayKey, crate::php_parser::node::Stmt>> });
-        (*self.p_methods_mut()).push(cast::<crate::php_parser::node::stmt::ClassMethod>(stmt.clone()));
+        { let __h2 = cast::<crate::php_parser::node::stmt::ClassMethod>(stmt.clone()); (*self.p_methods_mut()).push(__h2); }
     } else {
         return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(sprintf(&Str::from_static("Unexpected node of type \"%s\""), &[FmtArg::from(cast::<crate::php_parser::Node>(stmt.clone()).getType()?)])?, 0i64, { let _ = (); None::<crate::g::Throwable> })?));
     }
     return Ok(self.clone());
     }
     pub fn addAttribute(&self, mut attribute: U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup) -> Result<crate::php_parser::builder::Interface_, Throw> {
-    (*self.p_attributeGroups_mut()).push(crate::php_parser::BuilderHelpers::normalizeAttribute(attribute.clone())?);
+    { let __h1 = crate::php_parser::BuilderHelpers::normalizeAttribute(attribute.clone())?; (*self.p_attributeGroups_mut()).push(__h1); }
     return Ok(self.clone());
     }
     pub fn getNode(&self) -> Result<crate::php_parser::node::stmt::Interface_, Throw> {
@@ -886,11 +886,11 @@ impl Method {
     if Some(self.clone()).and_then(|__b| Some(__b.p_stmts_get())).flatten().is_none() {
         return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(Str::from_static("Cannot add statements to an abstract method"), 0i64, { let _ = (); None::<crate::g::Throwable> })?));
     }
-    (*(*self.p_stmts_mut()).get_or_insert_with(Default::default)).push(crate::php_parser::BuilderHelpers::normalizeStmt(stmt.clone())?);
+    { let __h1 = crate::php_parser::BuilderHelpers::normalizeStmt(stmt.clone())?; (*(*self.p_stmts_mut()).get_or_insert_with(Default::default)).push(__h1); }
     return Ok(self.clone());
     }
     pub fn addAttribute(&self, mut attribute: U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup) -> Result<crate::php_parser::builder::Method, Throw> {
-    (*self.p_attributeGroups_mut()).push(crate::php_parser::BuilderHelpers::normalizeAttribute(attribute.clone())?);
+    { let __h1 = crate::php_parser::BuilderHelpers::normalizeAttribute(attribute.clone())?; (*self.p_attributeGroups_mut()).push(__h1); }
     return Ok(self.clone());
     }
     pub fn getNode(&self) -> Result<crate::php_parser::node::stmt::ClassMethod, Throw> {
@@ -956,7 +956,7 @@ impl Namespace_ {
     #[allow(unreachable_code)] Ok(Mixed::Null)
     }
     pub fn addStmt(&self, mut stmt: U_PhpParser_Builder_or_PhpParser_Node) -> Result<crate::php_parser::builder::Namespace_, Throw> {
-    (*self.p_stmts_mut()).push(crate::php_parser::BuilderHelpers::normalizeStmt(stmt.clone())?);
+    { let __h1 = crate::php_parser::BuilderHelpers::normalizeStmt(stmt.clone())?; (*self.p_stmts_mut()).push(__h1); }
     return Ok(self.clone());
     }
     pub fn getNode(&self) -> Result<crate::php_parser::node::stmt::Namespace_, Throw> {
@@ -1089,7 +1089,7 @@ impl Param {
     return Ok(self.clone());
     }
     pub fn addAttribute(&self, mut attribute: U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup) -> Result<crate::php_parser::builder::Param, Throw> {
-    (*self.p_attributeGroups_mut()).push(crate::php_parser::BuilderHelpers::normalizeAttribute(attribute.clone())?);
+    { let __h1 = crate::php_parser::BuilderHelpers::normalizeAttribute(attribute.clone())?; (*self.p_attributeGroups_mut()).push(__h1); }
     return Ok(self.clone());
     }
     pub fn getNode(&self) -> Result<crate::php_parser::node::Param, Throw> {
@@ -1225,7 +1225,7 @@ impl Property {
     return Ok(self.clone());
     }
     pub fn addAttribute(&self, mut attribute: U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup) -> Result<crate::php_parser::builder::Property, Throw> {
-    (*self.p_attributeGroups_mut()).push(crate::php_parser::BuilderHelpers::normalizeAttribute(attribute.clone())?);
+    { let __h1 = crate::php_parser::BuilderHelpers::normalizeAttribute(attribute.clone())?; (*self.p_attributeGroups_mut()).push(__h1); }
     return Ok(self.clone());
     }
     pub fn addHook(&self, mut hook: crate::php_parser::node::PropertyHook) -> Result<crate::php_parser::builder::Property, Throw> {
@@ -1290,7 +1290,7 @@ impl TraitUse {
     #[allow(unreachable_code)] Ok(Mixed::Null)
     }
     pub fn and(&self, mut trait_: U_PhpParser_Node_Name_or_Str) -> Result<crate::php_parser::builder::TraitUse, Throw> {
-    (*self.p_traits_mut()).push(crate::php_parser::BuilderHelpers::normalizeName(trait_.clone())?);
+    { let __h1 = crate::php_parser::BuilderHelpers::normalizeName(trait_.clone())?; (*self.p_traits_mut()).push(__h1); }
     return Ok(self.clone());
     }
     pub fn with(&self, mut adaptation: U_PhpParser_Builder_TraitUseAdaptation_or_PhpParser_Node_Stmt_TraitUseAdaptation) -> Result<crate::php_parser::builder::TraitUse, Throw> {
@@ -1298,7 +1298,7 @@ impl TraitUse {
     if (!is_instance::<crate::php_parser::node::stmt::TraitUseAdaptation>(&cast::<crate::php_parser::Node>(adaptation.clone()))) {
         return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(Str::from_static("Adaptation must have type TraitUseAdaptation"), 0i64, { let _ = (); None::<crate::g::Throwable> })?));
     }
-    (*self.p_adaptations_mut()).push(cast::<crate::php_parser::node::stmt::TraitUseAdaptation>(adaptation.clone()));
+    { let __h1 = cast::<crate::php_parser::node::stmt::TraitUseAdaptation>(adaptation.clone()); (*self.p_adaptations_mut()).push(__h1); }
     return Ok(self.clone());
     }
     pub fn getNode(&self) -> Result<crate::php_parser::Node, Throw> {
@@ -1415,7 +1415,7 @@ impl TraitUseAdaptation {
     }
     'l1: for __kv1 in cast::<Map<ArrayKey, U_PhpParser_Node_Name_or_Str>>(traits.clone()).into_iter() {
         trait_.set(__kv1.1);
-        (*self.p_insteadof_mut()).push(crate::php_parser::BuilderHelpers::normalizeName(trait_.get().clone())?);
+        { let __h2 = crate::php_parser::BuilderHelpers::normalizeName(trait_.get().clone())?; (*self.p_insteadof_mut()).push(__h2); }
     }
     return Ok(self.clone());
     }
@@ -1536,20 +1536,20 @@ impl Trait_ {
     pub fn addStmt(&self, mut stmt: U_PhpParser_Builder_or_PhpParser_Node_Stmt) -> Result<crate::php_parser::builder::Trait_, Throw> {
     stmt = cast::<U_PhpParser_Builder_or_PhpParser_Node_Stmt>(crate::php_parser::BuilderHelpers::normalizeNode(cast::<U_PhpParser_Builder_or_PhpParser_Node>(stmt.clone()))?);
     if is_instance::<crate::php_parser::node::stmt::Property>(&cast::<crate::php_parser::Node>(stmt.clone())) {
-        (*self.p_properties_mut()).push(cast::<crate::php_parser::node::stmt::Property>(stmt.clone()));
+        { let __h1 = cast::<crate::php_parser::node::stmt::Property>(stmt.clone()); (*self.p_properties_mut()).push(__h1); }
     } else if is_instance::<crate::php_parser::node::stmt::ClassMethod>(&cast::<crate::php_parser::Node>(stmt.clone())) {
-        (*self.p_methods_mut()).push(cast::<crate::php_parser::node::stmt::ClassMethod>(stmt.clone()));
+        { let __h2 = cast::<crate::php_parser::node::stmt::ClassMethod>(stmt.clone()); (*self.p_methods_mut()).push(__h2); }
     } else if is_instance::<crate::php_parser::node::stmt::TraitUse>(&cast::<crate::php_parser::Node>(stmt.clone())) {
-        (*self.p_uses_mut()).push(cast::<crate::php_parser::node::stmt::TraitUse>(stmt.clone()));
+        { let __h3 = cast::<crate::php_parser::node::stmt::TraitUse>(stmt.clone()); (*self.p_uses_mut()).push(__h3); }
     } else if is_instance::<crate::php_parser::node::stmt::ClassConst>(&cast::<crate::php_parser::Node>(stmt.clone())) {
-        (*self.p_constants_mut()).push(cast::<crate::php_parser::node::stmt::ClassConst>(stmt.clone()));
+        { let __h4 = cast::<crate::php_parser::node::stmt::ClassConst>(stmt.clone()); (*self.p_constants_mut()).push(__h4); }
     } else {
         return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(sprintf(&Str::from_static("Unexpected node of type \"%s\""), &[FmtArg::from(cast::<crate::php_parser::Node>(stmt.clone()).getType()?)])?, 0i64, { let _ = (); None::<crate::g::Throwable> })?));
     }
     return Ok(self.clone());
     }
     pub fn addAttribute(&self, mut attribute: U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup) -> Result<crate::php_parser::builder::Trait_, Throw> {
-    (*self.p_attributeGroups_mut()).push(crate::php_parser::BuilderHelpers::normalizeAttribute(attribute.clone())?);
+    { let __h1 = crate::php_parser::BuilderHelpers::normalizeAttribute(attribute.clone())?; (*self.p_attributeGroups_mut()).push(__h1); }
     return Ok(self.clone());
     }
     pub fn getNode(&self) -> Result<crate::php_parser::node::stmt::Trait_, Throw> {

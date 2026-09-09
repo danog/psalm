@@ -100,7 +100,7 @@ final class Casts
                 return 'Mixed::Closure(Rc::new(' . $this->convert($code, $from, RustType::dynCallable()) . '))';
             }
             if ($fk === RustType::DYN_CALLABLE) {
-                return 'Mixed::Closure(Rc::new(' . $code . '))';
+                return 'cast::<Mixed>(' . $code . ')';
             }
             if ($fk === RustType::RESOURCE) {
                 return 'cast::<Mixed>(' . $code . ')';
@@ -143,6 +143,9 @@ final class Casts
                     $this->needMixedTo($inner);
                 }
                 return $code . '.to_option().map(|__m| ' . $this->convert('__m', RustType::mixed(), $inner) . ')';
+            }
+            if ($fk === RustType::DYN_CALLABLE && $to->inner()->kind === RustType::DYN_CALLABLE) {
+                return 'DynCallable::into_option(' . $code . ')';
             }
             return 'Some(' . $this->convert($code, $from, $to->inner()) . ')';
         }

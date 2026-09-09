@@ -132,7 +132,7 @@ impl PhpToken {
     tokens_v = List::<crate::g::PhpToken>::new();
     'l1: for __kv1 in __rt_tokenize(&code.clone()).into_iter().enumerate().map(|(__i, __v)| (__i as i64, __v)) {
         let __d2 = __kv1.1; id_v = cast::<Mixed>(__d2.0.clone()); text = cast::<Mixed>(__d2.1.clone()); line = cast::<Mixed>(__d2.2.clone()); pos = cast::<Mixed>(__d2.3.clone()); 
-        tokens_v.push(crate::g::PhpToken::new(cast::<i64>(id_v.clone()), cast::<Str>(text.clone()), cast::<i64>(line.clone()), cast::<i64>(pos.clone()))?);
+        { let __h3 = crate::g::PhpToken::new(cast::<i64>(id_v.clone()), cast::<Str>(text.clone()), cast::<i64>(line.clone()), cast::<i64>(pos.clone()))?; tokens_v.push(__h3); }
     }
     return Ok(tokens_v.clone());
     }
@@ -3317,7 +3317,7 @@ impl FilesystemIterator {
                 { continue 'l1 };
             }
         }
-        (*self.p_entries_mut()).push(cast::<Str>(name.clone()));
+        { let __h2 = cast::<Str>(name.clone()); (*self.p_entries_mut()).push(__h2); }
     }
     #[allow(unreachable_code)] Ok(Mixed::Null)
     }
@@ -3484,17 +3484,17 @@ impl RecursiveIteratorIterator {
                 }
                 if iterator.clone().hasChildren()? {
                     if (self.p_mode_get() == crate::g::RecursiveIteratorIterator::SELF_FIRST()) {
-                        (*self.p_items_mut()).push((cast::<Str>(key_v.clone()), cast::<crate::g::SplFileInfo>(value.clone())));
+                        { let __h1 = (cast::<Str>(key_v.clone()), cast::<crate::g::SplFileInfo>(value.clone())); (*self.p_items_mut()).push(__h1); }
                     }
                     children = iterator.clone().getChildren()?;
                     if (!children.clone().is_none()) {
                         self.collect(children.clone().unwrap())?;
                     }
                     if (self.p_mode_get() == crate::g::RecursiveIteratorIterator::CHILD_FIRST()) {
-                        (*self.p_items_mut()).push((cast::<Str>(key_v.clone()), cast::<crate::g::SplFileInfo>(value.clone())));
+                        { let __h2 = (cast::<Str>(key_v.clone()), cast::<crate::g::SplFileInfo>(value.clone())); (*self.p_items_mut()).push(__h2); }
                     }
                 } else {
-                    (*self.p_items_mut()).push((cast::<Str>(key_v.clone()), cast::<crate::g::SplFileInfo>(value.clone())));
+                    { let __h3 = (cast::<Str>(key_v.clone()), cast::<crate::g::SplFileInfo>(value.clone())); (*self.p_items_mut()).push(__h3); }
                 }
             }
             iterator.clone().next()?;
@@ -3576,7 +3576,7 @@ impl RegexIterator {
                 key_v = iterator.clone().key().unwrap_or_default();
                 subject = (if truthy(&(flags & crate::g::RegexIterator::USE_KEY())) { key_v.clone() } else { iterator.clone().current().unwrap().to_php_string()? });
                 if truthy(&preg_match(&pattern.clone(), &subject.clone(), 0)?) {
-                    (*self.p_items_mut()).push((key_v.clone(), iterator.clone().current().unwrap()));
+                    { let __h1 = (key_v.clone(), iterator.clone().current().unwrap()); (*self.p_items_mut()).push(__h1); }
                 }
             }
             { iterator.clone().next(); };
@@ -4226,19 +4226,19 @@ usedTokenIds = Map::<i64, Str>::new();
         if (!clashingToken.clone().is_none()) {
             return Err(cast::<crate::g::Throwable>(crate::g::Error::new(sprintf(&concat(Str::from_static("Token %s has same ID as token %s, "), Str::from_static("you may be using a library with broken token emulation")), &[FmtArg::from(token.clone()), FmtArg::from(clashingToken.clone().unwrap_or_default())])?, 0i64, { let _ = (); None::<crate::g::Throwable> })?));
         }
-        usedTokenIds.insert(cast::<i64>(tokenId.clone()), token.clone());
+        { let __h2 = cast::<i64>(tokenId.clone()); usedTokenIds.insert(__h2, token.clone()); }
     }
 }
 newTokenId = (1i64).wrapping_neg();
-'l2: for __kv2 in compatTokens.clone().into_iter().enumerate().map(|(__i, __v)| (__i as i64, __v)) {
-    token = __kv2.1;
+'l2: for __kv3 in compatTokens.clone().into_iter().enumerate().map(|(__i, __v)| (__i as i64, __v)) {
+    token = __kv3.1;
     if (!defined(&token.clone())) {
         'l3: loop {
             if !({ let __k = newTokenId; Some(usedTokenIds.clone()).and_then(|__b| __b.get(&__k).cloned()) }.is_some()) { break; }
-            let _ = { let __t3 = newTokenId; newTokenId = __t3.wrapping_sub(1); __t3 };
+            let _ = { let __t4 = newTokenId; newTokenId = __t4.wrapping_sub(1); __t4 };
         }
         let _: bool = define(&token.clone(), cast::<Mixed>(newTokenId));
-        let _ = { let __t4 = newTokenId; newTokenId = __t4.wrapping_sub(1); __t4 };
+        let _ = { let __t5 = newTokenId; newTokenId = __t5.wrapping_sub(1); __t5 };
     }
 }
 #[allow(unreachable_code)] Ok(())

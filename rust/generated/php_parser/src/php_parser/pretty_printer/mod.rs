@@ -182,10 +182,10 @@ impl Standard {
     'l1: for __kv1 in node.clone().p_types_get().into_iter() {
         typeNode.set(__kv1.1);
         if is_instance::<crate::php_parser::node::IntersectionType>(&typeNode.get().clone()) {
-            types.push(concat(concat(Str::from_static("("), self.p(cast::<crate::php_parser::Node>(cast::<crate::php_parser::node::IntersectionType>(typeNode.get().clone())), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), Str::from_static(")")));
+            { let __h2 = concat(concat(Str::from_static("("), self.p(cast::<crate::php_parser::Node>(cast::<crate::php_parser::node::IntersectionType>(typeNode.get().clone())), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), Str::from_static(")")); types.push(__h2); }
             { continue 'l1 };
         }
-        types.push(self.p(cast::<crate::php_parser::Node>(cast::<U_PhpParser_Node_Identifier_or_PhpParser_Node_Name>(typeNode.get().clone())), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?);
+        { let __h3 = self.p(cast::<crate::php_parser::Node>(cast::<U_PhpParser_Node_Identifier_or_PhpParser_Node_Name>(typeNode.get().clone())), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?; types.push(__h3); }
     }
     return Ok(implode(&Str::from_static("|"), &types.clone()));
     }
@@ -931,7 +931,7 @@ impl Standard {
     pub fn containsEndLabel(&self, mut string: Str, mut label: Str, mut atStart: bool) -> Result<bool, Throw> {
     let mut start: Str = Default::default();
     start = (if atStart { Str::from_static("(?:^|[\\r\\n])[ \\t]*") } else { Str::from_static("[\\r\\n][ \\t]*") });
-    return Ok(((!identical(&cast::<Mixed>(false), &cast::<Mixed>(strpos(&string.clone(), &label.clone(), 0)))) && truthy(&preg_match(&concat(concat(concat(Str::from_static("/"), start.clone()), label.clone()), Str::from_static("(?:$|[^_A-Za-z0-9\\x80-\\xff])/")), &string.clone(), 0)?)));
+    return Ok(((!strpos(&string.clone(), &label.clone(), 0).is_none()) && truthy(&preg_match(&concat(concat(concat(Str::from_static("/"), start.clone()), label.clone()), Str::from_static("(?:$|[^_A-Za-z0-9\\x80-\\xff])/")), &string.clone(), 0)?)));
     }
     pub fn encapsedContainsEndLabel(&self, mut parts: Map<ArrayKey, U_PhpParser_Node_Expr_or_PhpParser_Node_InterpolatedStringPart>, mut label: Str) -> Result<bool, Throw> {
     let mut i: ArrayKey = Default::default();

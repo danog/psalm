@@ -1381,11 +1381,11 @@ impl Name {
     }
     pub fn isUnqualified(&self) -> Result<bool, Throw> { match self { Name::PhpParser_Node_Name(__h) => Ok(__h.isUnqualified()?), Name::PhpParser_Node_Name_FullyQualified(__h) => Ok(__h.isUnqualified()?), Name::PhpParser_Node_Name_Relative(__h) => Ok(__h.isUnqualified()?), _ => unreachable!() } }
     pub fn isUnqualified__impl(&self) -> Result<bool, Throw> {
-    return Ok(identical(&cast::<Mixed>(false), &cast::<Mixed>(strpos(&self.p_name_get(), &Str::from_static("\\"), 0))));
+    return Ok(strpos(&self.p_name_get(), &Str::from_static("\\"), 0).is_none());
     }
     pub fn isQualified(&self) -> Result<bool, Throw> { match self { Name::PhpParser_Node_Name(__h) => Ok(__h.isQualified()?), Name::PhpParser_Node_Name_FullyQualified(__h) => Ok(__h.isQualified()?), Name::PhpParser_Node_Name_Relative(__h) => Ok(__h.isQualified()?), _ => unreachable!() } }
     pub fn isQualified__impl(&self) -> Result<bool, Throw> {
-    return Ok((!identical(&cast::<Mixed>(false), &cast::<Mixed>(strpos(&self.p_name_get(), &Str::from_static("\\"), 0)))));
+    return Ok((!strpos(&self.p_name_get(), &Str::from_static("\\"), 0).is_none()));
     }
     pub fn isFullyQualified(&self) -> Result<bool, Throw> { match self { Name::PhpParser_Node_Name(__h) => Ok(__h.isFullyQualified()?), Name::PhpParser_Node_Name_FullyQualified(__h) => Ok(__h.isFullyQualified()?), Name::PhpParser_Node_Name_Relative(__h) => Ok(__h.isFullyQualified()?), _ => unreachable!() } }
     pub fn isFullyQualified__impl(&self) -> Result<bool, Throw> {
@@ -3016,7 +3016,7 @@ impl ParamTest {
     let mut get_v: Late<crate::php_parser::node::PropertyHook> = Late::uninit();
     node.set(crate::php_parser::node::Param::new(U_PhpParser_Node_Expr_Error_or_PhpParser_Node_Expr_Variable::PhpParser_Node_Expr_Variable(crate::php_parser::node::expr::Variable::new(U_PhpParser_Node_Expr_or_Str::Str(Str::from_static("foo")), Map::<Str, Mixed>::new())?), { let _ = (); None::<crate::php_parser::node::Expr> }, { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, false, false, Map::<Str, Mixed>::new(), 0i64, List::<crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?);
     get_v.set(crate::php_parser::node::PropertyHook::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("get")), { let _ = (); None::<U_Map_ArrayKey_PhpParser_Node_Stmt_or_PhpParser_Node_Expr> }, Shape_flagsq_Int_byRefq_Bool_paramsq_Map_ArrayKey_PhpParser_Node_Param_fbce00147d { flags: None, byRef: None, params: None, attrGroups: None }, Map::<Str, Mixed>::new())?);
-    (*node.get().clone().p_hooks_mut()).push(get_v.get().clone());
+    { let __h1 = get_v.get().clone(); (*node.get().clone().p_hooks_mut()).push(__h1); }
     { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>(node.get().clone().isPromoted()?), Str::from_static(""))? };
     { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>(node.get().clone().isPublic()?), Str::from_static(""))? };
     #[allow(unreachable_code)] Ok(())

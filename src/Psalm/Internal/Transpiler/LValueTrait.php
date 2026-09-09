@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Psalm\Internal\Transpiler;
 
 use PhpParser\Node;
+use Closure;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Scalar;
 
+use function preg_match;
 use function count;
 use function implode;
 use function in_array;
@@ -157,6 +159,30 @@ trait LValueTrait
         return null;
     }
 
+    /**
+     * Evaluates `$codes` into temporaries (unless trivially side-effect free) before `$f` builds a statement
+     * from them, so that a mutable borrow taken by the statement can't overlap their evaluation.
+     *
+     * @param list<string> $codes
+     * @param Closure(string...): string $f
+     */
+    private function hoisted(array $codes, Closure $f): string
+    {
+        $pre = '';
+        $names = [];
+        foreach ($codes as $c) {
+            if (preg_match('/^(?:[A-Za-z_][A-Za-z0-9_]*(?:\.clone\(\))?|-?[0-9]+(?:i64|usize|\.0)?|true|false|None|Str::from_static\("[^"\\]*"\)|ArrayKey::from_str\("[^"\\]*"\)|ArrayKey::Int\(-?[0-9]+\))$/', $c)) {
+                $names[] = $c;
+                continue;
+            }
+            $t = $this->tmp('__h');
+            $pre .= 'let ' . $t . ' = ' . $c . '; ';
+            $names[] = $t;
+        }
+        $stmt = $f(...$names);
+        return $pre === '' ? $stmt : '{ ' . $pre . $stmt . ' }';
+    }
+
     private function dimPlace(Expr\ArrayDimFetch $e): Place
     {
         $parent = $this->place($e->var);
@@ -184,14 +210,14 @@ trait LValueTrait
                 return new Place(
                     $vt,
                     fn() => 'unreachable!("read of $a[]")',
-                    fn(string $v) => $parent->modify(fn(string $p) => $p . '.push(' . $v . ');'),
+                    fn(string $v) => $this->hoisted([$v], fn(string $v) => $parent->modify(fn(string $p) => $p . '.push(' . $v . ');')),
                 );
             }
             $key = fn() => $this->exprTo($dim, RustType::int());
             return new Place(
                 $vt,
                 fn() => $parent->read() . '.idx(' . $key() . ').clone()',
-                fn(string $v) => $parent->modify(fn(string $p) => $p . '.set(' . $key() . ', ' . $v . ');'),
+                fn(string $v) => $this->hoisted([$key(), $v], fn(string $k, string $v) => $parent->modify(fn(string $p) => $p . '.set(' . $k . ', ' . $v . ');')),
                 $has_mut ? fn() => '(*' . $parent->mut() . '.idx_mut(' . $key() . '))' : null,
                 $wrap,
             );
@@ -202,7 +228,7 @@ trait LValueTrait
                 return new Place(
                     $vt,
                     fn() => 'unreachable!("read of $a[]")',
-                    fn(string $v) => $parent->modify(fn(string $p) => $p . '.push(' . $v . ');'),
+                    fn(string $v) => $this->hoisted([$v], fn(string $v) => $parent->modify(fn(string $p) => $p . '.push(' . $v . ');')),
                 );
             }
             $key = fn() => $this->keyExpr($dim, $kt);
@@ -212,7 +238,7 @@ trait LValueTrait
             return new Place(
                 $vt,
                 fn() => $parent->read() . '.idx(&' . $key() . ').clone()',
-                fn(string $v) => $parent->modify(fn(string $p) => $p . '.insert(' . $key() . ', ' . $v . ');'),
+                fn(string $v) => $this->hoisted([$key(), $v], fn(string $k, string $v) => $parent->modify(fn(string $p) => $p . '.insert(' . $k . ', ' . $v . ');')),
                 $mut,
                 $wrap,
             );
@@ -225,7 +251,7 @@ trait LValueTrait
                 return new Place(
                     $vt,
                     fn() => $parent->read() . '.' . $i,
-                    fn(string $v) => $parent->modify(fn(string $p) => $p . '.' . $i . ' = ' . $v . ';'),
+                    fn(string $v) => $this->hoisted([$v], fn(string $v) => $parent->modify(fn(string $p) => $p . '.' . $i . ' = ' . $v . ';')),
                     $has_mut ? fn() => $parent->mut() . '.' . $i : null,
                     $wrap,
                 );
@@ -240,7 +266,7 @@ trait LValueTrait
                     return new Place(
                         $vt,
                         fn() => $this->casts->convert($parent->read() . '.' . $rn, RustType::option($vt), $vt),
-                        fn(string $v) => $parent->modify(fn(string $p) => $p . '.' . $rn . ' = ' . $this->casts->convert($v, $vt, RustType::option($vt)) . ';'),
+                        fn(string $v) => $this->hoisted([$this->casts->convert($v, $vt, RustType::option($vt))], fn(string $v) => $parent->modify(fn(string $p) => $p . '.' . $rn . ' = ' . $v . ';')),
                         $has_mut ? fn() => '(*' . $parent->mut() . '.' . $rn . '.get_or_insert_with(Default::default))' : null,
                         $wrap,
                     );
@@ -248,7 +274,7 @@ trait LValueTrait
                 return new Place(
                     $vt,
                     fn() => $parent->read() . '.' . $rn,
-                    fn(string $v) => $parent->modify(fn(string $p) => $p . '.' . $rn . ' = ' . $v . ';'),
+                    fn(string $v) => $this->hoisted([$v], fn(string $v) => $parent->modify(fn(string $p) => $p . '.' . $rn . ' = ' . $v . ';')),
                     $has_mut ? fn() => $parent->mut() . '.' . $rn : null,
                     $wrap,
                 );
@@ -262,7 +288,7 @@ trait LValueTrait
             return new Place(
                 RustType::str(),
                 fn() => 'str_index(&' . $parent->read() . ', ' . $key() . ')',
-                fn(string $v) => $parent->modify(fn(string $p) => 'str_set_index(&mut ' . $p . ', ' . $key() . ', &' . $v . ');'),
+                fn(string $v) => $this->hoisted([$key(), $v], fn(string $k, string $v) => $parent->modify(fn(string $p) => 'str_set_index(&mut ' . $p . ', ' . $k . ', &' . $v . ');')),
             );
         }
         if ($pt->kind === RustType::CLASS_) {
@@ -286,7 +312,7 @@ trait LValueTrait
             return new Place(
                 RustType::mixed(),
                 fn() => $dim === null ? 'Mixed::Null' : 'mixed_get(&' . $parent->read() . ', &' . $this->keyExpr($dim, RustType::arrayKey()) . ').unwrap_or_default()',
-                fn(string $v) => $parent->modify(fn(string $p) => 'mixed_set(&mut ' . $p . ', ' . $key() . ', ' . $v . ');'),
+                fn(string $v) => $this->hoisted([$key(), $v], fn(string $k, string $v) => $parent->modify(fn(string $p) => 'mixed_set(&mut ' . $p . ', ' . $k . ', ' . $v . ');')),
                 $has_mut ? fn() => '(*mixed_entry(&mut ' . $parent->mut() . ', ' . $key() . '))' : null,
                 $wrap,
             );

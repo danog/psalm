@@ -53,9 +53,9 @@ impl Emulative {
         emulator.set(__kv1.1);
         emulatorPhpVersion.set((match emulator.get().clone() { U_PhpParser_Lexer_TokenEmulator_AsymmetricVisibilityTokenEmulator_or_P_6d726a203a::PhpParser_Lexer_TokenEmulator_AsymmetricVisibilityTokenEmulator(__o) => __o.getPhpVersion()?, U_PhpParser_Lexer_TokenEmulator_AsymmetricVisibilityTokenEmulator_or_P_6d726a203a::PhpParser_Lexer_TokenEmulator_AttributeEmulator(__o) => __o.getPhpVersion()?, U_PhpParser_Lexer_TokenEmulator_AsymmetricVisibilityTokenEmulator_or_P_6d726a203a::PhpParser_Lexer_TokenEmulator_EnumTokenEmulator(__o) => __o.getPhpVersion()?, U_PhpParser_Lexer_TokenEmulator_AsymmetricVisibilityTokenEmulator_or_P_6d726a203a::PhpParser_Lexer_TokenEmulator_ExplicitOctalEmulator(__o) => __o.getPhpVersion()?, U_PhpParser_Lexer_TokenEmulator_AsymmetricVisibilityTokenEmulator_or_P_6d726a203a::PhpParser_Lexer_TokenEmulator_FnTokenEmulator(__o) => __o.getPhpVersion()?, U_PhpParser_Lexer_TokenEmulator_AsymmetricVisibilityTokenEmulator_or_P_6d726a203a::PhpParser_Lexer_TokenEmulator_MatchTokenEmulator(__o) => __o.getPhpVersion()?, U_PhpParser_Lexer_TokenEmulator_AsymmetricVisibilityTokenEmulator_or_P_6d726a203a::PhpParser_Lexer_TokenEmulator_NullsafeTokenEmulator(__o) => __o.getPhpVersion()?, U_PhpParser_Lexer_TokenEmulator_AsymmetricVisibilityTokenEmulator_or_P_6d726a203a::PhpParser_Lexer_TokenEmulator_PipeOperatorEmulator(__o) => __o.getPhpVersion()?, U_PhpParser_Lexer_TokenEmulator_AsymmetricVisibilityTokenEmulator_or_P_6d726a203a::PhpParser_Lexer_TokenEmulator_PropertyTokenEmulator(__o) => __o.getPhpVersion()?, U_PhpParser_Lexer_TokenEmulator_AsymmetricVisibilityTokenEmulator_or_P_6d726a203a::PhpParser_Lexer_TokenEmulator_ReadonlyFunctionTokenEmulator(__o) => __o.getPhpVersion()?, U_PhpParser_Lexer_TokenEmulator_AsymmetricVisibilityTokenEmulator_or_P_6d726a203a::PhpParser_Lexer_TokenEmulator_ReadonlyTokenEmulator(__o) => __o.getPhpVersion()?, U_PhpParser_Lexer_TokenEmulator_AsymmetricVisibilityTokenEmulator_or_P_6d726a203a::PhpParser_Lexer_TokenEmulator_VoidCastEmulator(__o) => __o.getPhpVersion()?, _ => unreachable!() }));
         if self.isForwardEmulationNeeded(emulatorPhpVersion.get().clone())? {
-            (*self.p_emulators_mut()).push(cast::<crate::php_parser::lexer::token_emulator::TokenEmulator>(emulator.get().clone()));
+            { let __h3 = cast::<crate::php_parser::lexer::token_emulator::TokenEmulator>(emulator.get().clone()); (*self.p_emulators_mut()).push(__h3); }
         } else if self.isReverseEmulationNeeded(emulatorPhpVersion.get().clone())? {
-            (*self.p_emulators_mut()).push(cast::<crate::php_parser::lexer::token_emulator::TokenEmulator>(crate::php_parser::lexer::token_emulator::ReverseEmulator::new(cast::<crate::php_parser::lexer::token_emulator::TokenEmulator>(emulator.get().clone()))?));
+            { let __h4 = cast::<crate::php_parser::lexer::token_emulator::TokenEmulator>(crate::php_parser::lexer::token_emulator::ReverseEmulator::new(cast::<crate::php_parser::lexer::token_emulator::TokenEmulator>(emulator.get().clone()))?); (*self.p_emulators_mut()).push(__h4); }
         }
     }
     #[allow(unreachable_code)] Ok(Mixed::Null)
@@ -208,10 +208,10 @@ impl Emulative {
                 { let __t7 = substr_count(&patchText.clone(), &Str::from_static("\n")); lineDelta = (lineDelta).wrapping_sub(__t7); }
             }
         }
-        { let __t8 = num_add(to_num(&attrs.clone().idx(&Str::from_static("startFilePos")).clone()), Num::Int(posDelta)); attrs.insert(Str::from_static("startFilePos"), __t8.to_mixed()); }
-        { let __t9 = num_add(to_num(&attrs.clone().idx(&Str::from_static("endFilePos")).clone()), Num::Int(posDelta)); attrs.insert(Str::from_static("endFilePos"), __t9.to_mixed()); }
-        { let __t10 = num_add(to_num(&attrs.clone().idx(&Str::from_static("startLine")).clone()), Num::Int(lineDelta)); attrs.insert(Str::from_static("startLine"), __t10.to_mixed()); }
-        { let __t11 = num_add(to_num(&attrs.clone().idx(&Str::from_static("endLine")).clone()), Num::Int(lineDelta)); attrs.insert(Str::from_static("endLine"), __t11.to_mixed()); }
+        { let __t8 = num_add(to_num(&attrs.clone().idx(&Str::from_static("startFilePos")).clone()), Num::Int(posDelta)); { let __h9 = Str::from_static("startFilePos"); let __h10 = __t8.to_mixed(); attrs.insert(__h9, __h10); } }
+        { let __t11 = num_add(to_num(&attrs.clone().idx(&Str::from_static("endFilePos")).clone()), Num::Int(posDelta)); { let __h12 = Str::from_static("endFilePos"); let __h13 = __t11.to_mixed(); attrs.insert(__h12, __h13); } }
+        { let __t14 = num_add(to_num(&attrs.clone().idx(&Str::from_static("startLine")).clone()), Num::Int(lineDelta)); { let __h15 = Str::from_static("startLine"); let __h16 = __t14.to_mixed(); attrs.insert(__h15, __h16); } }
+        { let __t17 = num_add(to_num(&attrs.clone().idx(&Str::from_static("endLine")).clone()), Num::Int(lineDelta)); { let __h18 = Str::from_static("endLine"); let __h19 = __t17.to_mixed(); attrs.insert(__h18, __h19); } }
         error_v.get().clone().setAttributes(attrs.clone())?;
     }
     #[allow(unreachable_code)] Ok(())
@@ -345,7 +345,7 @@ impl EmulativeTest {
         if (identical(&cast::<Mixed>(mixed_prop(&token.clone(), &Str::from_static("id"))), &cast::<Mixed>(0i64)) || truthy(&mixed_call(&token.clone(), &Str::from_static("isIgnorable"), vec![])?)) {
             { continue 'l1 };
         }
-        reducedTokens.push((cast::<Mixed>(mixed_prop(&token.clone(), &Str::from_static("id"))), cast::<Mixed>(mixed_prop(&token.clone(), &Str::from_static("text")))));
+        { let __h2 = (cast::<Mixed>(mixed_prop(&token.clone(), &Str::from_static("id"))), cast::<Mixed>(mixed_prop(&token.clone(), &Str::from_static("text")))); reducedTokens.push(__h2); }
     }
     { let _ = self; crate::phpunit::framework::Assert::assertSame(cast::<Mixed>(expectedTokens.clone()), cast::<Mixed>(reducedTokens.clone()), Str::from_static(""))? };
     #[allow(unreachable_code)] Ok(())

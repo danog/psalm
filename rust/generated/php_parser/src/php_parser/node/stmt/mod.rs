@@ -462,7 +462,7 @@ impl ClassLike {
     'l1: for __kv1 in self.p_stmts_get().into_iter() {
         stmt.set(__kv1.1);
         if is_instance::<crate::php_parser::node::stmt::TraitUse>(&stmt.get().clone()) {
-            traitUses.push(cast::<crate::php_parser::node::stmt::TraitUse>(stmt.get().clone()));
+            { let __h2 = cast::<crate::php_parser::node::stmt::TraitUse>(stmt.get().clone()); traitUses.push(__h2); }
         }
     }
     return Ok(traitUses.clone());
@@ -475,7 +475,7 @@ impl ClassLike {
     'l1: for __kv1 in self.p_stmts_get().into_iter() {
         stmt.set(__kv1.1);
         if is_instance::<crate::php_parser::node::stmt::ClassConst>(&stmt.get().clone()) {
-            constants.push(cast::<crate::php_parser::node::stmt::ClassConst>(stmt.get().clone()));
+            { let __h2 = cast::<crate::php_parser::node::stmt::ClassConst>(stmt.get().clone()); constants.push(__h2); }
         }
     }
     return Ok(constants.clone());
@@ -488,7 +488,7 @@ impl ClassLike {
     'l1: for __kv1 in self.p_stmts_get().into_iter() {
         stmt.set(__kv1.1);
         if is_instance::<crate::php_parser::node::stmt::Property>(&stmt.get().clone()) {
-            properties.push(cast::<crate::php_parser::node::stmt::Property>(stmt.get().clone()));
+            { let __h2 = cast::<crate::php_parser::node::stmt::Property>(stmt.get().clone()); properties.push(__h2); }
         }
     }
     return Ok(properties.clone());
@@ -518,7 +518,7 @@ impl ClassLike {
     'l1: for __kv1 in self.p_stmts_get().into_iter() {
         stmt.set(__kv1.1);
         if is_instance::<crate::php_parser::node::stmt::ClassMethod>(&stmt.get().clone()) {
-            methods.push(cast::<crate::php_parser::node::stmt::ClassMethod>(stmt.get().clone()));
+            { let __h2 = cast::<crate::php_parser::node::stmt::ClassMethod>(stmt.get().clone()); methods.push(__h2); }
         }
     }
     return Ok(methods.clone());

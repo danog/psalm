@@ -171,25 +171,25 @@ impl Differ {
                 prevY = (prevX).wrapping_sub(prevK);
                 'l3: loop {
                     if !((x > prevX) && (y > prevY)) { break; }
-                    result.push(crate::php_parser::internal::DiffElem::new(crate::php_parser::internal::DiffElem::TYPE_KEEP(), old.clone().idx(&to_key(&(x).wrapping_sub(1i64))).clone(), new_v.clone().idx(&to_key(&(y).wrapping_sub(1i64))).clone())?);
-                    let _ = { let __t1 = x; x = __t1.wrapping_sub(1); __t1 };
-                    let _ = { let __t2 = y; y = __t2.wrapping_sub(1); __t2 };
+                    { let __h1 = crate::php_parser::internal::DiffElem::new(crate::php_parser::internal::DiffElem::TYPE_KEEP(), old.clone().idx(&to_key(&(x).wrapping_sub(1i64))).clone(), new_v.clone().idx(&to_key(&(y).wrapping_sub(1i64))).clone())?; result.push(__h1); }
+                    let _ = { let __t2 = x; x = __t2.wrapping_sub(1); __t2 };
+                    let _ = { let __t3 = y; y = __t3.wrapping_sub(1); __t3 };
                 }
                 if (d == 0i64) {
                     { break 'l1 };
                 }
                 'l4: loop {
                     if !(x > prevX) { break; }
-                    result.push(crate::php_parser::internal::DiffElem::new(crate::php_parser::internal::DiffElem::TYPE_REMOVE(), old.clone().idx(&to_key(&(x).wrapping_sub(1i64))).clone(), Mixed::Null)?);
-                    let _ = { let __t3 = x; x = __t3.wrapping_sub(1); __t3 };
+                    { let __h4 = crate::php_parser::internal::DiffElem::new(crate::php_parser::internal::DiffElem::TYPE_REMOVE(), old.clone().idx(&to_key(&(x).wrapping_sub(1i64))).clone(), Mixed::Null)?; result.push(__h4); }
+                    let _ = { let __t5 = x; x = __t5.wrapping_sub(1); __t5 };
                 }
                 'l5: loop {
                     if !(y > prevY) { break; }
-                    result.push(crate::php_parser::internal::DiffElem::new(crate::php_parser::internal::DiffElem::TYPE_ADD(), Mixed::Null, new_v.clone().idx(&to_key(&(y).wrapping_sub(1i64))).clone())?);
-                    let _ = { let __t4 = y; y = __t4.wrapping_sub(1); __t4 };
+                    { let __h6 = crate::php_parser::internal::DiffElem::new(crate::php_parser::internal::DiffElem::TYPE_ADD(), Mixed::Null, new_v.clone().idx(&to_key(&(y).wrapping_sub(1i64))).clone())?; result.push(__h6); }
+                    let _ = { let __t7 = y; y = __t7.wrapping_sub(1); __t7 };
                 }
             }
-            let _ = { let __t5 = d; d = __t5.wrapping_sub(1); __t5 };
+            let _ = { let __t8 = d; d = __t8.wrapping_sub(1); __t8 };
         }
     }
     return Ok(cast::<Map<ArrayKey, crate::php_parser::internal::DiffElem>>(array_reverse_l(&result.clone())));
@@ -212,18 +212,18 @@ impl Differ {
             'c2: {
                 diffType = diff.clone().idx(&to_key(&i)).clone().p_type__get();
                 if (!(diffType == crate::php_parser::internal::DiffElem::TYPE_REMOVE())) {
-                    newDiff.push(diff.clone().idx(&to_key(&i)).clone());
+                    { let __h1 = diff.clone().idx(&to_key(&i)).clone(); newDiff.push(__h1); }
                     { break 'c2 };
                 }
                 j = i;
                 'l3: loop {
                     if !((j < c) && (diff.clone().idx(&to_key(&j)).clone().p_type__get() == crate::php_parser::internal::DiffElem::TYPE_REMOVE())) { break; }
-                    let _ = { let __t1 = j; j = __t1.wrapping_add(1); __t1 };
+                    let _ = { let __t2 = j; j = __t2.wrapping_add(1); __t2 };
                 }
                 k = j;
                 'l4: loop {
                     if !((k < c) && (diff.clone().idx(&to_key(&k)).clone().p_type__get() == crate::php_parser::internal::DiffElem::TYPE_ADD())) { break; }
-                    let _ = { let __t2 = k; k = __t2.wrapping_add(1); __t2 };
+                    let _ = { let __t3 = k; k = __t3.wrapping_add(1); __t3 };
                 }
                 if ((j).wrapping_sub(i) == (k).wrapping_sub(j)) {
                     len_v = (j).wrapping_sub(i);
@@ -232,9 +232,9 @@ impl Differ {
                         'l5: loop {
                             if !((n < len_v)) { break; }
                             'c6: {
-                                newDiff.push(crate::php_parser::internal::DiffElem::new(crate::php_parser::internal::DiffElem::TYPE_REPLACE(), diff.clone().idx(&to_key(&(i).wrapping_add(n))).clone().p_old_get(), diff.clone().idx(&to_key(&(j).wrapping_add(n))).clone().p_new__get())?);
+                                { let __h4 = crate::php_parser::internal::DiffElem::new(crate::php_parser::internal::DiffElem::TYPE_REPLACE(), diff.clone().idx(&to_key(&(i).wrapping_add(n))).clone().p_old_get(), diff.clone().idx(&to_key(&(j).wrapping_add(n))).clone().p_new__get())?; newDiff.push(__h4); }
                             }
-                            let _ = { let __t3 = n; n = __t3.wrapping_add(1); __t3 };
+                            let _ = { let __t5 = n; n = __t5.wrapping_add(1); __t5 };
                         }
                     }
                 } else {
@@ -242,15 +242,15 @@ impl Differ {
                         'l7: loop {
                             if !((i < k)) { break; }
                             'c8: {
-                                newDiff.push(diff.clone().idx(&to_key(&i)).clone());
+                                { let __h6 = diff.clone().idx(&to_key(&i)).clone(); newDiff.push(__h6); }
                             }
-                            let _ = { let __t4 = i; i = __t4.wrapping_add(1); __t4 };
+                            let _ = { let __t7 = i; i = __t7.wrapping_add(1); __t7 };
                         }
                     }
                 }
                 i = (k).wrapping_sub(1i64);
             }
-            let _ = { let __t5 = i; i = __t5.wrapping_add(1); __t5 };
+            let _ = { let __t8 = i; i = __t8.wrapping_add(1); __t8 };
         }
     }
     return Ok(cast::<Map<ArrayKey, crate::php_parser::internal::DiffElem>>(newDiff.clone()));

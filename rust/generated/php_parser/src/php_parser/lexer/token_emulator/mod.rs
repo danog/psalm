@@ -17,7 +17,7 @@ impl AsymmetricVisibilityTokenEmulator {
     }
     pub fn isEmulationNeeded(&self, mut code: Str) -> Result<bool, Throw> {
     code = strtolower(&code.clone());
-    return Ok((((!identical(&cast::<Mixed>(strpos(&code.clone(), &Str::from_static("public(set)"), 0)), &cast::<Mixed>(false))) || (!identical(&cast::<Mixed>(strpos(&code.clone(), &Str::from_static("protected(set)"), 0)), &cast::<Mixed>(false)))) || (!identical(&cast::<Mixed>(strpos(&code.clone(), &Str::from_static("private(set)"), 0)), &cast::<Mixed>(false)))));
+    return Ok((((!strpos(&code.clone(), &Str::from_static("public(set)"), 0).is_none()) || (!strpos(&code.clone(), &Str::from_static("protected(set)"), 0).is_none())) || (!strpos(&code.clone(), &Str::from_static("private(set)"), 0).is_none())));
     }
     pub fn emulate(&self, mut code: Str, mut tokens_v: Map<ArrayKey, Mixed>) -> Result<Map<ArrayKey, Mixed>, Throw> {
     let mut map_v: Shape_326_Int_325_Int_324_Int = Default::default();
@@ -129,7 +129,7 @@ impl AttributeEmulator {
     return Ok(crate::php_parser::PhpVersion::fromComponents(8i64, 0i64)?);
     }
     pub fn isEmulationNeeded(&self, mut code: Str) -> Result<bool, Throw> {
-    return Ok((!identical(&cast::<Mixed>(strpos(&code.clone(), &Str::from_static("#["), 0)), &cast::<Mixed>(false))));
+    return Ok((!strpos(&code.clone(), &Str::from_static("#["), 0).is_none()));
     }
     pub fn emulate(&self, mut code: Str, mut tokens_v: Map<ArrayKey, Mixed>) -> Result<Map<ArrayKey, Mixed>, Throw> {
     let mut i: i64 = Default::default();
@@ -161,9 +161,9 @@ impl AttributeEmulator {
     pos = 0i64;
     'l1: loop {
         if !(!(cast::<i64>(false) == { let __t2 = strpos(&code.clone(), &Str::from_static("#["), pos).unwrap_or_default(); pos = __t2.clone(); __t2 })) { break; }
-        str_set_index(&mut code, pos, &Str::from_static("%"));
-        (*patches).push((pos, Str::from_static("replace"), Str::from_static("#")));
-        { let __t3 = 2i64; pos = (pos).wrapping_add(__t3); }
+        { let __h3 = Str::from_static("%"); str_set_index(&mut code, pos, &__h3); }
+        { let __h4 = (pos, Str::from_static("replace"), Str::from_static("#")); (*patches).push(__h4); }
+        { let __t5 = 2i64; pos = (pos).wrapping_add(__t5); }
     }
     return Ok(code.clone());
     }
@@ -241,7 +241,7 @@ impl ExplicitOctalEmulator {
     return Ok(crate::php_parser::PhpVersion::fromComponents(8i64, 1i64)?);
     }
     pub fn isEmulationNeeded(&self, mut code: Str) -> Result<bool, Throw> {
-    return Ok(((!identical(&cast::<Mixed>(strpos(&code.clone(), &Str::from_static("0o"), 0)), &cast::<Mixed>(false))) || (!identical(&cast::<Mixed>(strpos(&code.clone(), &Str::from_static("0O"), 0)), &cast::<Mixed>(false)))));
+    return Ok(((!strpos(&code.clone(), &Str::from_static("0o"), 0).is_none()) || (!strpos(&code.clone(), &Str::from_static("0O"), 0).is_none())));
     }
     pub fn emulate(&self, mut code: Str, mut tokens_v: Map<ArrayKey, Mixed>) -> Result<Map<ArrayKey, Mixed>, Throw> {
     let mut i: i64 = Default::default();
@@ -362,7 +362,7 @@ impl KeywordEmulator {
     pub fn getKeywordToken(&self) -> Result<i64, Throw> { match self { KeywordEmulator::PhpParser_Lexer_TokenEmulator_EnumTokenEmulator(__h) => Ok(__h.getKeywordToken()?), KeywordEmulator::PhpParser_Lexer_TokenEmulator_FnTokenEmulator(__h) => Ok(__h.getKeywordToken()?), KeywordEmulator::PhpParser_Lexer_TokenEmulator_MatchTokenEmulator(__h) => Ok(__h.getKeywordToken()?), KeywordEmulator::PhpParser_Lexer_TokenEmulator_PropertyTokenEmulator(__h) => Ok(__h.getKeywordToken()?), KeywordEmulator::PhpParser_Lexer_TokenEmulator_ReadonlyFunctionTokenEmulator(__h) => Ok(__h.getKeywordToken()?), KeywordEmulator::PhpParser_Lexer_TokenEmulator_ReadonlyTokenEmulator(__h) => Ok(__h.getKeywordToken()?), _ => unreachable!() } }
     pub fn isEmulationNeeded(&self, mut code: Str) -> Result<bool, Throw> { match self { KeywordEmulator::PhpParser_Lexer_TokenEmulator_EnumTokenEmulator(__h) => Ok(__h.isEmulationNeeded(code)?), KeywordEmulator::PhpParser_Lexer_TokenEmulator_FnTokenEmulator(__h) => Ok(__h.isEmulationNeeded(code)?), KeywordEmulator::PhpParser_Lexer_TokenEmulator_MatchTokenEmulator(__h) => Ok(__h.isEmulationNeeded(code)?), KeywordEmulator::PhpParser_Lexer_TokenEmulator_PropertyTokenEmulator(__h) => Ok(__h.isEmulationNeeded(code)?), KeywordEmulator::PhpParser_Lexer_TokenEmulator_ReadonlyFunctionTokenEmulator(__h) => Ok(__h.isEmulationNeeded(code)?), KeywordEmulator::PhpParser_Lexer_TokenEmulator_ReadonlyTokenEmulator(__h) => Ok(__h.isEmulationNeeded(code)?), _ => unreachable!() } }
     pub fn isEmulationNeeded__impl(&self, mut code: Str) -> Result<bool, Throw> {
-    return Ok((!identical(&cast::<Mixed>(strpos(&strtolower(&code.clone()), &self.getKeywordString()?, 0)), &cast::<Mixed>(false))));
+    return Ok((!strpos(&strtolower(&code.clone()), &self.getKeywordString()?, 0).is_none()));
     }
     pub fn isKeywordContext(&self, mut tokens_v: Map<ArrayKey, crate::php_parser::Token>, mut pos: i64) -> Result<bool, Throw> { match self { KeywordEmulator::PhpParser_Lexer_TokenEmulator_EnumTokenEmulator(__h) => Ok(__h.isKeywordContext(tokens_v.map_values(|v| cast::<Mixed>(v)), pos)?), KeywordEmulator::PhpParser_Lexer_TokenEmulator_FnTokenEmulator(__h) => Ok(__h.isKeywordContext(tokens_v, pos)?), KeywordEmulator::PhpParser_Lexer_TokenEmulator_MatchTokenEmulator(__h) => Ok(__h.isKeywordContext(tokens_v, pos)?), KeywordEmulator::PhpParser_Lexer_TokenEmulator_PropertyTokenEmulator(__h) => Ok(__h.isKeywordContext(tokens_v, pos)?), KeywordEmulator::PhpParser_Lexer_TokenEmulator_ReadonlyFunctionTokenEmulator(__h) => Ok(__h.isKeywordContext(tokens_v, pos)?), KeywordEmulator::PhpParser_Lexer_TokenEmulator_ReadonlyTokenEmulator(__h) => Ok(__h.isKeywordContext(tokens_v.map_values(|v| cast::<Mixed>(v)), pos)?), _ => unreachable!() } }
     pub fn isKeywordContext__impl(&self, mut tokens_v: Map<ArrayKey, crate::php_parser::Token>, mut pos: i64) -> Result<bool, Throw> {
@@ -480,7 +480,7 @@ impl NullsafeTokenEmulator {
     return Ok(crate::php_parser::PhpVersion::fromComponents(8i64, 0i64)?);
     }
     pub fn isEmulationNeeded(&self, mut code: Str) -> Result<bool, Throw> {
-    return Ok((!identical(&cast::<Mixed>(strpos(&code.clone(), &Str::from_static("?->"), 0)), &cast::<Mixed>(false))));
+    return Ok((!strpos(&code.clone(), &Str::from_static("?->"), 0).is_none()));
     }
     pub fn emulate(&self, mut code: Str, mut tokens_v: Map<ArrayKey, Mixed>) -> Result<Map<ArrayKey, Mixed>, Throw> {
     let mut i: i64 = Default::default();
@@ -505,14 +505,14 @@ impl NullsafeTokenEmulator {
                     replacement = list![crate::php_parser::Token::new(390i64, Str::from_static("?->"), token.get().clone().p_line_get(), token.get().clone().p_pos_get())?, crate::php_parser::Token::new(262i64, matches.clone().idx(&to_key(&1i64)).clone(), token.get().clone().p_line_get(), (token.get().clone().p_pos_get()).wrapping_add(3i64))?];
                     matchLen = strlen(&matches.clone().idx(&to_key(&0i64)).clone());
                     if (!(matchLen == strlen(&token.get().clone().p_text_get()))) {
-                        replacement.push(crate::php_parser::Token::new(268i64, substr(&token.get().clone().p_text_get(), matchLen, None), token.get().clone().p_line_get(), (token.get().clone().p_pos_get()).wrapping_add(matchLen))?);
+                        { let __h2 = crate::php_parser::Token::new(268i64, substr(&token.get().clone().p_text_get(), matchLen, None), token.get().clone().p_line_get(), (token.get().clone().p_pos_get()).wrapping_add(matchLen))?; replacement.push(__h2); }
                     }
                     let _: List<Mixed> = { let __off = i; let __len = Some(1i64); let __repl = replacement.clone().map_elems(|v| cast::<Mixed>(v)).into_vec(); let __r = array_splice_m(&mut tokens_v, __off, __len, __repl); __r };
-                    { let __t2 = (replacement.clone().count()).wrapping_sub(1i64); c = (c).wrapping_add(__t2); }
+                    { let __t3 = (replacement.clone().count()).wrapping_sub(1i64); c = (c).wrapping_add(__t3); }
                     { break 'c2 };
                 }
             }
-            let _ = { let __t3 = i; i = __t3.wrapping_add(1); __t3.wrapping_add(1) };
+            let _ = { let __t4 = i; i = __t4.wrapping_add(1); __t4.wrapping_add(1) };
         }
     }
     return Ok(tokens_v.clone().map_values(|v| cast::<crate::php_parser::Token>(v)).map_values(|v| cast::<Mixed>(v)));
@@ -552,7 +552,7 @@ impl PipeOperatorEmulator {
     return Ok(crate::php_parser::PhpVersion::fromComponents(8i64, 5i64)?);
     }
     pub fn isEmulationNeeded(&self, mut code: Str) -> Result<bool, Throw> {
-    return Ok((!identical(&cast::<Mixed>(strpos(&code.clone(), &Str::from_static("|>"), 0)), &cast::<Mixed>(false))));
+    return Ok((!strpos(&code.clone(), &Str::from_static("|>"), 0).is_none()));
     }
     pub fn emulate(&self, mut code: Str, mut tokens_v: Map<ArrayKey, Mixed>) -> Result<Map<ArrayKey, Mixed>, Throw> {
     let mut i: i64 = Default::default();
@@ -927,24 +927,24 @@ impl VoidCastEmulator {
                 }
                 newTokens = List::<crate::php_parser::Token>::new();
                 pos = token.get().clone().p_pos_get();
-                newTokens.push(crate::php_parser::Token::new(ord(&Str::from_static("(")), Str::from_static("("), token.get().clone().p_line_get(), pos)?);
-                let _ = { let __t1 = pos; pos = __t1.wrapping_add(1); __t1 };
+                { let __h1 = crate::php_parser::Token::new(ord(&Str::from_static("(")), Str::from_static("("), token.get().clone().p_line_get(), pos)?; newTokens.push(__h1); }
+                let _ = { let __t2 = pos; pos = __t2.wrapping_add(1); __t2 };
                 if (!identical(&match_.clone().idx(&to_key(&1i64)).clone(), &Str::from_static(""))) {
-                    newTokens.push(crate::php_parser::Token::new(397i64, match_.clone().idx(&to_key(&1i64)).clone(), token.get().clone().p_line_get(), pos)?);
-                    { let __t2 = strlen(&match_.clone().idx(&to_key(&1i64)).clone()); pos = (pos).wrapping_add(__t2); }
+                    { let __h3 = crate::php_parser::Token::new(397i64, match_.clone().idx(&to_key(&1i64)).clone(), token.get().clone().p_line_get(), pos)?; newTokens.push(__h3); }
+                    { let __t4 = strlen(&match_.clone().idx(&to_key(&1i64)).clone()); pos = (pos).wrapping_add(__t4); }
                 }
-                newTokens.push(crate::php_parser::Token::new(262i64, match_.clone().idx(&to_key(&2i64)).clone(), token.get().clone().p_line_get(), pos)?);
-                { let __t3 = strlen(&match_.clone().idx(&to_key(&2i64)).clone()); pos = (pos).wrapping_add(__t3); }
+                { let __h5 = crate::php_parser::Token::new(262i64, match_.clone().idx(&to_key(&2i64)).clone(), token.get().clone().p_line_get(), pos)?; newTokens.push(__h5); }
+                { let __t6 = strlen(&match_.clone().idx(&to_key(&2i64)).clone()); pos = (pos).wrapping_add(__t6); }
                 if (!identical(&match_.clone().idx(&to_key(&3i64)).clone(), &Str::from_static(""))) {
-                    newTokens.push(crate::php_parser::Token::new(397i64, match_.clone().idx(&to_key(&3i64)).clone(), token.get().clone().p_line_get(), pos)?);
-                    { let __t4 = strlen(&match_.clone().idx(&to_key(&3i64)).clone()); pos = (pos).wrapping_add(__t4); }
+                    { let __h7 = crate::php_parser::Token::new(397i64, match_.clone().idx(&to_key(&3i64)).clone(), token.get().clone().p_line_get(), pos)?; newTokens.push(__h7); }
+                    { let __t8 = strlen(&match_.clone().idx(&to_key(&3i64)).clone()); pos = (pos).wrapping_add(__t8); }
                 }
-                newTokens.push(crate::php_parser::Token::new(ord(&Str::from_static(")")), Str::from_static(")"), token.get().clone().p_line_get(), pos)?);
+                { let __h9 = crate::php_parser::Token::new(ord(&Str::from_static(")")), Str::from_static(")"), token.get().clone().p_line_get(), pos)?; newTokens.push(__h9); }
                 let _: List<Mixed> = { let __off = i; let __len = Some(1i64); let __repl = newTokens.clone().map_elems(|v| cast::<Mixed>(v)).into_vec(); let __r = array_splice_m(&mut tokens_v, __off, __len, __repl); __r };
-                { let __t5 = (newTokens.clone().count()).wrapping_sub(1i64); i = (i).wrapping_add(__t5); }
-                { let __t6 = (newTokens.clone().count()).wrapping_sub(1i64); c = (c).wrapping_add(__t6); }
+                { let __t10 = (newTokens.clone().count()).wrapping_sub(1i64); i = (i).wrapping_add(__t10); }
+                { let __t11 = (newTokens.clone().count()).wrapping_sub(1i64); c = (c).wrapping_add(__t11); }
             }
-            let _ = { let __t7 = i; i = __t7.wrapping_add(1); __t7.wrapping_add(1) };
+            let _ = { let __t12 = i; i = __t12.wrapping_add(1); __t12.wrapping_add(1) };
         }
     }
     return Ok(tokens_v.clone().map_values(|v| cast::<crate::php_parser::Token>(v)).map_values(|v| cast::<Mixed>(v)));

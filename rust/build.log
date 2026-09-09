@@ -253,4 +253,4 @@ note: the built-in attribute `allow` will be ignored, since it's applied to the 
      |                                ^^^^^^^^^^^
 
 warning: `php_parser` (lib test) generated 21 warnings (run `cargo fix --lib -p php_parser --tests` to apply 21 suggestions)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2m 17s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 26.29s

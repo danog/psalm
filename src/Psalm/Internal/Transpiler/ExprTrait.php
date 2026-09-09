@@ -846,6 +846,16 @@ trait ExprTrait
             $other = $this->isNullLiteral($right) ? $left : $right;
             $v = $this->expr($other);
             $ov = $this->optionalValue($other);
+            // a null stored where a callable is declared (docblock `callable[]` holding nulls)
+            if ($ov !== null && $ov->type->inner()->kind === RustType::DYN_CALLABLE) {
+                return '(match &' . $ov->code . ' { None => true, Some(__c) => __c.is_null() })';
+            }
+            if ($ov === null && $v->type->kind === RustType::DYN_CALLABLE) {
+                return $v->code . '.is_null()';
+            }
+            if ($ov === null && $v->type->kind === RustType::OPTION && $v->type->inner()->kind === RustType::DYN_CALLABLE) {
+                return '(match &' . $v->code . ' { None => true, Some(__c) => __c.is_null() })';
+            }
             if ($ov !== null) {
                 return $ov->code . '.is_none()';
             }
@@ -879,6 +889,10 @@ trait ExprTrait
                 }
                 if ($t->kind === RustType::OPTION && $inner->kind === RustType::BOOL) {
                     return '(' . $v->code . ' == Some(' . ($lit ? 'true' : 'false') . '))';
+                }
+                if ($t->kind === RustType::OPTION && $inner->kind !== RustType::MIXED && $inner->kind !== RustType::UNION) {
+                    // `T|false` results (e.g. strpos) are represented as Option<T>: `None` is the `false`
+                    return $lit ? '{ let _ = ' . $v->code . '; false }' : $v->code . '.is_none()';
                 }
                 if ($t->kind === RustType::MIXED) {
                     return 'matches!(' . $v->code . ', Mixed::Bool(' . ($lit ? 'true' : 'false') . '))';

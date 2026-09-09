@@ -38,7 +38,7 @@ impl Float_ {
     }
     pub fn fromString(mut str: Str, mut attributes: Map<ArrayKey, Mixed>) -> Result<crate::php_parser::node::scalar::Float_, Throw> {
     let mut float: f64 = Default::default();
-    attributes.insert(to_key(&Str::from_static("rawValue")), cast::<Mixed>(str.clone()));
+    { let __h1 = to_key(&Str::from_static("rawValue")); let __h2 = cast::<Mixed>(str.clone()); attributes.insert(__h1, __h2); }
     float = crate::php_parser::node::scalar::Float_::parse(str.clone())?;
     return Ok(crate::php_parser::node::scalar::Float_::new(float, attributes.clone().map_entries(|k, v| (cast::<Str>(k), v)))?);
     }
@@ -51,7 +51,7 @@ impl Float_ {
         if (identical(&Str::from_static("b"), &str_index(&str.clone(), 1i64)) || identical(&Str::from_static("B"), &str_index(&str.clone(), 1i64))) {
             return Ok((bindec(&str.clone()) as f64));
         }
-        if identical(&cast::<Mixed>(false), &cast::<Mixed>(strpbrk(&str.clone(), &Str::from_static(".eE")))) {
+        if strpbrk(&str.clone(), &Str::from_static(".eE")).is_none() {
             return Ok((octdec(&substr(&str.clone(), 0i64, Some(strcspn(&str.clone(), &Str::from_static("89"))))) as f64));
         }
     }
@@ -196,18 +196,18 @@ impl Int_ {
     return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("value"))); __m1 });
     }
     pub fn fromString(mut str: Str, mut attributes: Map<Str, Mixed>, mut allowInvalidOctal: bool) -> Result<crate::php_parser::node::scalar::Int_, Throw> {
-    attributes.insert(Str::from_static("rawValue"), cast::<Mixed>(str.clone()));
+    { let __h1 = Str::from_static("rawValue"); let __h2 = cast::<Mixed>(str.clone()); attributes.insert(__h1, __h2); }
     str = str_replace(&Str::from_static("_"), &Str::from_static(""), &str.clone());
     if ((!identical(&Str::from_static("0"), &str_index(&str.clone(), 0i64))) || identical(&Str::from_static("0"), &str.clone())) {
-        attributes.insert(Str::from_static("kind"), cast::<Mixed>(crate::php_parser::node::scalar::Int_::KIND_DEC()));
+        { let __h3 = Str::from_static("kind"); let __h4 = cast::<Mixed>(crate::php_parser::node::scalar::Int_::KIND_DEC()); attributes.insert(__h3, __h4); }
         return Ok(crate::php_parser::node::scalar::Int_::new(to_int(&str.clone()), attributes.clone())?);
     }
     if (identical(&Str::from_static("x"), &str_index(&str.clone(), 1i64)) || identical(&Str::from_static("X"), &str_index(&str.clone(), 1i64))) {
-        attributes.insert(Str::from_static("kind"), cast::<Mixed>(crate::php_parser::node::scalar::Int_::KIND_HEX()));
+        { let __h5 = Str::from_static("kind"); let __h6 = cast::<Mixed>(crate::php_parser::node::scalar::Int_::KIND_HEX()); attributes.insert(__h5, __h6); }
         return Ok(crate::php_parser::node::scalar::Int_::new(hexdec(&str.clone()), attributes.clone())?);
     }
     if (identical(&Str::from_static("b"), &str_index(&str.clone(), 1i64)) || identical(&Str::from_static("B"), &str_index(&str.clone(), 1i64))) {
-        attributes.insert(Str::from_static("kind"), cast::<Mixed>(crate::php_parser::node::scalar::Int_::KIND_BIN()));
+        { let __h7 = Str::from_static("kind"); let __h8 = cast::<Mixed>(crate::php_parser::node::scalar::Int_::KIND_BIN()); attributes.insert(__h7, __h8); }
         return Ok(crate::php_parser::node::scalar::Int_::new(bindec(&str.clone()), attributes.clone())?);
     }
     if ((!allowInvalidOctal) && truthy(&strpbrk(&str.clone(), &Str::from_static("89")))) {
@@ -216,7 +216,7 @@ impl Int_ {
     if (identical(&Str::from_static("o"), &str_index(&str.clone(), 1i64)) || identical(&Str::from_static("O"), &str_index(&str.clone(), 1i64))) {
         str = substr(&str.clone(), 2i64, None);
     }
-    attributes.insert(Str::from_static("kind"), cast::<Mixed>(crate::php_parser::node::scalar::Int_::KIND_OCT()));
+    { let __h9 = Str::from_static("kind"); let __h10 = cast::<Mixed>(crate::php_parser::node::scalar::Int_::KIND_OCT()); attributes.insert(__h9, __h10); }
     return Ok(crate::php_parser::node::scalar::Int_::new(intval(&str.clone(), 8i64), attributes.clone())?);
     }
     pub fn getType(&self) -> Result<Str, Throw> {
@@ -370,8 +370,8 @@ impl String_ {
     }
     pub fn fromString(mut str: Str, mut attributes: Map<Str, Mixed>, mut parseUnicodeEscape: bool) -> Result<crate::php_parser::node::scalar::String_, Throw> {
     let mut string: Str = Default::default();
-    attributes.insert(Str::from_static("kind"), cast::<Mixed>((if (identical(&str_index(&str.clone(), 0i64), &Str::from_static("'")) || (identical(&str_index(&str.clone(), 1i64), &Str::from_static("'")) && (identical(&str_index(&str.clone(), 0i64), &Str::from_static("b")) || identical(&str_index(&str.clone(), 0i64), &Str::from_static("B"))))) { crate::php_parser::node::scalar::String_::KIND_SINGLE_QUOTED() } else { crate::php_parser::node::scalar::String_::KIND_DOUBLE_QUOTED() })));
-    attributes.insert(Str::from_static("rawValue"), cast::<Mixed>(str.clone()));
+    { let __h1 = Str::from_static("kind"); let __h2 = cast::<Mixed>((if (identical(&str_index(&str.clone(), 0i64), &Str::from_static("'")) || (identical(&str_index(&str.clone(), 1i64), &Str::from_static("'")) && (identical(&str_index(&str.clone(), 0i64), &Str::from_static("b")) || identical(&str_index(&str.clone(), 0i64), &Str::from_static("B"))))) { crate::php_parser::node::scalar::String_::KIND_SINGLE_QUOTED() } else { crate::php_parser::node::scalar::String_::KIND_DOUBLE_QUOTED() })); attributes.insert(__h1, __h2); }
+    { let __h3 = Str::from_static("rawValue"); let __h4 = cast::<Mixed>(str.clone()); attributes.insert(__h3, __h4); }
     string = crate::php_parser::node::scalar::String_::parse(str.clone(), parseUnicodeEscape)?;
     return Ok(crate::php_parser::node::scalar::String_::new(string.clone(), attributes.clone())?);
     }
@@ -971,7 +971,7 @@ impl StringTest {
         i = __kv1.0;
         test = cast::<(Str, Str, Option<Str>)>(__kv1.1);
         if ((!(i == 1i64)) && (!(i == 2i64))) {
-            tests.push((test.clone().0, concat(concat(Str::from_static("\""), test.clone().1), Str::from_static("\""))));
+            { let __h2 = (test.clone().0, concat(concat(Str::from_static("\""), test.clone().1), Str::from_static("\""))); tests.push(__h2); }
         }
     }
     return Ok(tests.clone().map_elems(|v| { let __c1408 = v; (cast::<Mixed>(__c1408.0), __c1408.1) }));

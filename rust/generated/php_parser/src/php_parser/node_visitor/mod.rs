@@ -78,7 +78,7 @@ impl CommentAnnotatingVisitor {
         i = __kv1.0;
         token.set(__kv1.1);
         if ((token.get().clone().p_id_get() == 392i64) || (token.get().clone().p_id_get() == 393i64)) {
-            (*self.p_commentPositions_mut()).push(cast::<i64>(i.clone()));
+            { let __h2 = cast::<i64>(i.clone()); (*self.p_commentPositions_mut()).push(__h2); }
         }
     }
     #[allow(unreachable_code)] Ok(Mixed::Null)
@@ -102,11 +102,11 @@ impl CommentAnnotatingVisitor {
             if !({ let __t2 = pos; pos = __t2.wrapping_sub(1); __t2.wrapping_sub(1) } >= oldPos) { break; }
             token.set(self.p_tokens_get().idx(&to_key(&pos)).clone());
             if (token.get().clone().p_id_get() == 393i64) {
-                comments.push(cast::<crate::php_parser::Comment>(crate::php_parser::comment::Doc::new(token.get().clone().p_text_get(), token.get().clone().p_line_get(), token.get().clone().p_pos_get(), pos, token.get().clone().getEndLine()?, (token.get().clone().getEndPos()?).wrapping_sub(1i64), pos)?));
+                { let __h3 = cast::<crate::php_parser::Comment>(crate::php_parser::comment::Doc::new(token.get().clone().p_text_get(), token.get().clone().p_line_get(), token.get().clone().p_pos_get(), pos, token.get().clone().getEndLine()?, (token.get().clone().getEndPos()?).wrapping_sub(1i64), pos)?); comments.push(__h3); }
                 { continue 'l1 };
             }
             if (token.get().clone().p_id_get() == 392i64) {
-                comments.push(crate::php_parser::Comment::new(token.get().clone().p_text_get(), token.get().clone().p_line_get(), token.get().clone().p_pos_get(), pos, token.get().clone().getEndLine()?, (token.get().clone().getEndPos()?).wrapping_sub(1i64), pos)?);
+                { let __h4 = crate::php_parser::Comment::new(token.get().clone().p_text_get(), token.get().clone().p_line_get(), token.get().clone().p_pos_get(), pos, token.get().clone().getEndLine()?, (token.get().clone().getEndPos()?).wrapping_sub(1i64), pos)?; comments.push(__h4); }
                 { continue 'l1 };
             }
             if (!(token.get().clone().p_id_get() == 397i64)) {
@@ -203,7 +203,7 @@ impl php_rt::PhpObject for FindingVisitor {
     fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\nodevisitor\\findingvisitor", "phpparser\\nodevisitorabstract", "phpparser\\nodevisitor"] }
     fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = self.p_filterCallback_opt() { out.push((Str::from_static("filterCallback"), Mixed::Closure(Rc::new(v)))); } if let Some(v) = Some(self.p_foundNodes_get()) { out.push((Str::from_static("foundNodes"), cast::<Mixed>(v))); } out }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = self.p_filterCallback_opt() { out.push((Str::from_static("filterCallback"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_foundNodes_get()) { out.push((Str::from_static("foundNodes"), cast::<Mixed>(v))); } out }
     fn public_props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new();  out }
     fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "filterCallback" => { self.set_p_filterCallback(to_callable(&value)); true }, "foundNodes" => { self.set_p_foundNodes(cast::<List<crate::php_parser::Node>>(value)); true }, _ => false } }
     fn call_method(&self, name: &str, args: Vec<Mixed>) -> Result<Mixed, DynError> { match name { "__construct" => { let __r = self.magic__construct((match args.get(0) { Some(__a) => to_callable(&__a.clone()), None => unreachable!("no default for DynCallable") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(__r) }, "getfoundnodes" => { let __r = self.getFoundNodes().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "beforetraverse" => { let __r = self.beforeTraverse((match args.get(0) { Some(__a) => cast::<Map<ArrayKey, Mixed>>(__a.clone()), None => <Map<ArrayKey, Mixed>>::default() })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "enternode" => { let __r = self.enterNode((match args.get(0) { Some(__a) => cast::<crate::php_parser::Node>(__a.clone()), None => unreachable!("no default for crate::php_parser::Node") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(__r) }, "leavenode" => { let __r = self.leaveNode((match args.get(0) { Some(__a) => cast::<crate::php_parser::Node>(__a.clone()), None => unreachable!("no default for crate::php_parser::Node") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(__r) }, "aftertraverse" => { let __r = self.afterTraverse((match args.get(0) { Some(__a) => cast::<Map<ArrayKey, Mixed>>(__a.clone()), None => <Map<ArrayKey, Mixed>>::default() })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(__r) }, _ => Err(DynError::Rt(RtError::error(format!("Call to undefined method {}::{}()", "PhpParser\\NodeVisitor\\FindingVisitor", name)))) } }
@@ -267,7 +267,7 @@ impl php_rt::PhpObject for FirstFindingVisitor {
     fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\nodevisitor\\firstfindingvisitor", "phpparser\\nodevisitorabstract", "phpparser\\nodevisitor"] }
     fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
     fn as_any(&self) -> &dyn std::any::Any { self }
-    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = self.p_filterCallback_opt() { out.push((Str::from_static("filterCallback"), Mixed::Closure(Rc::new(v)))); } if let Some(v) = Some(self.p_foundNode_get()) { out.push((Str::from_static("foundNode"), cast::<Mixed>(v))); } out }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = self.p_filterCallback_opt() { out.push((Str::from_static("filterCallback"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_foundNode_get()) { out.push((Str::from_static("foundNode"), cast::<Mixed>(v))); } out }
     fn public_props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new();  out }
     fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "filterCallback" => { self.set_p_filterCallback(to_callable(&value)); true }, "foundNode" => { self.set_p_foundNode(value.to_option().map(|__m| cast::<crate::php_parser::Node>(__m))); true }, _ => false } }
     fn call_method(&self, name: &str, args: Vec<Mixed>) -> Result<Mixed, DynError> { match name { "__construct" => { let __r = self.magic__construct((match args.get(0) { Some(__a) => to_callable(&__a.clone()), None => unreachable!("no default for DynCallable") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(__r) }, "getfoundnode" => { let __r = self.getFoundNode().map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "beforetraverse" => { let __r = self.beforeTraverse((match args.get(0) { Some(__a) => cast::<Map<ArrayKey, Mixed>>(__a.clone()), None => <Map<ArrayKey, Mixed>>::default() })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(cast::<Mixed>(__r)) }, "enternode" => { let __r = self.enterNode((match args.get(0) { Some(__a) => cast::<crate::php_parser::Node>(__a.clone()), None => unreachable!("no default for crate::php_parser::Node") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(__r) }, "leavenode" => { let __r = self.leaveNode((match args.get(0) { Some(__a) => cast::<crate::php_parser::Node>(__a.clone()), None => unreachable!("no default for crate::php_parser::Node") })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(__r) }, "aftertraverse" => { let __r = self.afterTraverse((match args.get(0) { Some(__a) => cast::<Map<ArrayKey, Mixed>>(__a.clone()), None => <Map<ArrayKey, Mixed>>::default() })).map_err(|e| DynError::Obj(cast::<Mixed>(e)))?; Ok(__r) }, _ => Err(DynError::Rt(RtError::error(format!("Call to undefined method {}::{}()", "PhpParser\\NodeVisitor\\FirstFindingVisitor", name)))) } }

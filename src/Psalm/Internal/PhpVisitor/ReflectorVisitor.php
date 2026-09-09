@@ -17,6 +17,7 @@ use Psalm\Exception\DocblockParseException;
 use Psalm\Exception\TypeParseTreeException;
 use Psalm\FileSource;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
+use Psalm\Internal\Transpiler\Transpiler;
 use Psalm\Internal\Analyzer\CommentAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\SimpleTypeInferer;
 use Psalm\Internal\EventDispatcher;
@@ -76,6 +77,9 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
 
     private ?int $skip_if_descendants = null;
 
+    /** Line after which top-level code is unreachable (a top-level `return;` in a compile-time-true `if`) */
+    private ?int $unreachable_after_line = null;
+
     /**
      * @var array<string, TypeAlias>
      */
@@ -107,6 +111,10 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
     #[Override]
     public function enterNode(PhpParser\Node $node): ?int
     {
+        if ($this->unreachable_after_line !== null && $node->getStartLine() > $this->unreachable_after_line) {
+            return PhpParser\NodeVisitor::DONT_TRAVERSE_CHILDREN;
+        }
+
         foreach ($node->getComments() as $comment) {
             if ($comment instanceof PhpParser\Comment\Doc && !$node instanceof PhpParser\Node\Stmt\ClassLike) {
                 try {
@@ -306,14 +314,25 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
             if (!$this->functionlike_node_scanners) {
                 $this->exists_cond_expr = $node->cond;
 
-                if (ExpressionResolver::enterConditional(
+                $enter_conditional = ExpressionResolver::enterConditional(
                     $this->codebase,
                     $this->file_path,
                     $this->exists_cond_expr,
-                ) === false
-                ) {
+                );
+
+                if ($enter_conditional === false) {
                     // the else node should terminate the agreement
                     $this->skip_if_descendants = $node->else ? $node->else->getLine() : $node->getLine();
+                } elseif ($enter_conditional === true
+                    && Transpiler::isEnabled()
+                    && !$this->classlike_node_scanners
+                    && !$node->elseifs
+                    && !$node->else
+                    && $node->stmts
+                    && end($node->stmts) instanceof PhpParser\Node\Stmt\Return_
+                ) {
+                    // `if (PHP_VERSION_ID >= X) { ...; return; }` at the top level: the rest of the file is dead
+                    $this->unreachable_after_line = $node->getEndLine();
                 }
             }
         } elseif ($node instanceof PhpParser\Node\Stmt\Else_) {
@@ -507,6 +526,10 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
     #[Override]
     public function leaveNode(PhpParser\Node $node)
     {
+        if ($this->unreachable_after_line !== null && $node->getStartLine() > $this->unreachable_after_line) {
+            return null;
+        }
+
         if ($node instanceof PhpParser\Node\Stmt\Namespace_) {
             if (!$this->file_storage->aliases) {
                 throw new UnexpectedValueException('File storage liases should not be null');
