@@ -182,11 +182,6 @@ macro_rules! impl_enum_handle {
                 *self
             }
         }
-        impl $name {
-            pub fn to_php_string(&self) -> Result<$crate::Str, $crate::RtError> {
-                Err($crate::RtError::error("Object of enum could not be converted to string"))
-            }
-        }
     };
 }
 
@@ -534,6 +529,23 @@ pub fn list_unset<T: Clone>(l: &mut List<T>, i: i64) {
 
 pub fn json_encode_simple(m: &Mixed) -> Str {
     crate::builtins::json::json_encode(m, 0, 512).ok().flatten().unwrap_or_default()
+}
+
+/// Drive a PHP `Iterator` object through its methods, collecting all (key, value) pairs.
+pub fn iterate_php_iterator<K, V, E>(
+    mut rewind: impl FnMut() -> Result<(), E>,
+    mut valid: impl FnMut() -> Result<bool, E>,
+    mut next: impl FnMut() -> Result<(), E>,
+    mut key: impl FnMut() -> Result<K, E>,
+    mut current: impl FnMut() -> Result<V, E>,
+) -> Result<std::vec::IntoIter<(K, V)>, E> {
+    let mut out = Vec::new();
+    rewind()?;
+    while valid()? {
+        out.push((key()?, current()?));
+        next()?;
+    }
+    Ok(out.into_iter())
 }
 
 /// Iterate a PHP Iterator object by calling its methods through Mixed (dynamic fallback).

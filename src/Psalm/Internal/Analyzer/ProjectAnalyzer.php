@@ -520,6 +520,15 @@ final class ProjectAnalyzer
         );
     }
 
+    /** Second analysis pass over all project files (after signatures were completed by the transpiler). */
+    public function reanalyzeForTranspiler(): void
+    {
+        $this->codebase->analyzer->resetAnalyzedMethods();
+        $this->codebase->analyzer->addFilesToAnalyze($this->project_files);
+        $this->progress->startPhase(Phase::ANALYSIS, $this->threads);
+        $this->codebase->analyzer->analyzeFiles($this, $this->threads, false, true);
+    }
+
     public function consolidateAnalyzedData(): void
     {
         $this->codebase->classlikes->consolidateAnalyzedData(

@@ -588,5 +588,7 @@ final class ClassEmitter
         }
         $w->close();
         $w->line('impl_enum_handle!(' . $h . ', ' . Names::rustStringLiteral($cls->fqcn) . ', ' . $this->ancestorsLiteral($cls) . ');');
+        $w->line('impl ' . $h . ' { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static(' . Names::rustStringLiteral('Object of class ' . $cls->fqcn . ' could not be converted to string') . '))) } }');
+        $w->line('impl ' . $h . ' { pub fn new_same_class(&self) -> Result<Self, Throw> { Err(Throw::error(Str::from_static(' . Names::rustStringLiteral('Cannot instantiate enum ' . $cls->fqcn) . '))) } }');
     }
 }

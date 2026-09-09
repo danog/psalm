@@ -185,6 +185,9 @@ trait ExprTrait
         }
         if ($e instanceof Expr\Clone_) {
             $v = $this->expr($e->expr);
+            if ($v->type->kind === RustType::MIXED) {
+                return new Val('crate::php_clone_mixed(' . $v->code . ')', $v->type);
+            }
             return new Val($v->code . '.php_clone()', $v->type);
         }
         if ($e instanceof Expr\Include_) {
@@ -960,7 +963,10 @@ trait ExprTrait
             return null;
         }
         if ($e instanceof Expr\ArrayDimFetch && $e->dim !== null) {
-            $base = $this->optionalValue($e->var) ?? $this->asOption($this->expr($e->var));
+            // the base is read with its declared (not isset-narrowed) type: inside `??`/isset Psalm
+            // narrows optional shape fields to present ones, which must not become unwraps
+            $base = $this->optionalValue($e->var)
+                ?? $this->asOption($e->var instanceof Expr\Variable && is_string($e->var->name) ? $this->readVar($e->var->name) : $this->expr($e->var));
             $bt = $base->type->inner();
             $dim = $e->dim;
             if ($bt->kind === RustType::LIST) {
@@ -978,6 +984,10 @@ trait ExprTrait
                 if ($key !== null && isset($bt->fields[$key])) {
                     [$ft, $opt] = $bt->fields[$key];
                     $code = $base->code . '.and_then(|__b| ' . ($opt ? '__b.' . Names::field($key) : 'Some(__b.' . Names::field($key) . ')') . ')';
+                    if ($opt && $ft->kind === RustType::OPTION) {
+                        // optional nullable field: stored as a single (collapsed) Option
+                        return new Val($code, $ft);
+                    }
                     return $this->flattenOption($code, $ft);
                 }
                 if ($key !== null) {

@@ -1539,6 +1539,11 @@ final class Analyzer
     /**
      * @psalm-mutation-free
      */
+    public function resetAnalyzedMethods(): void
+    {
+        $this->analyzed_methods = [];
+    }
+
     public function isMethodAlreadyAnalyzed(string $file_path, string $method_id, bool $is_constructor = false): bool
     {
         if ($is_constructor) {

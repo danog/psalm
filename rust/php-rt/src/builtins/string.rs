@@ -1,5 +1,6 @@
 //! String functions.
 
+use crate::Mixed;
 use crate::conv;
 use crate::error::RtError;
 use crate::key::ArrayKey;
@@ -175,6 +176,28 @@ pub fn str_replace(search: &Str, replace: &Str, subject: &Str) -> Str {
     Str::from_vec(replace_bytes(subject, search, replace, &mut c))
 }
 /// str_replace with array search and string/array replace.
+/// `str_replace` with dynamically typed arguments (string or array search/replace/subject).
+pub fn str_replace_m(search: &Mixed, replace: &Mixed, subject: &Mixed) -> Mixed {
+    let one = |s: &Str| -> Str {
+        match (search, replace) {
+            (Mixed::Arr(sa), Mixed::Arr(ra)) => {
+                let sl: List<Str> = sa.values().map(|v| v.to_php_str()).collect();
+                let rl: List<Str> = ra.values().map(|v| v.to_php_str()).collect();
+                str_replace_arr(&sl, &rl, s)
+            }
+            (Mixed::Arr(sa), r) => {
+                let sl: List<Str> = sa.values().map(|v| v.to_php_str()).collect();
+                str_replace_arr_s(&sl, &r.to_php_str(), s)
+            }
+            (se, r) => str_replace(&se.to_php_str(), &r.to_php_str(), s),
+        }
+    };
+    match subject {
+        Mixed::Arr(m) => Mixed::Arr(m.clone().map_values(|v| Mixed::Str(one(&v.to_php_str())))),
+        other => Mixed::Str(one(&other.to_php_str())),
+    }
+}
+
 pub fn str_replace_arr(search: &List<Str>, replace: &List<Str>, subject: &Str) -> Str {
     let mut cur = subject.to_vec();
     let mut c = 0;

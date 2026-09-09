@@ -7,6 +7,7 @@ namespace Psalm\Internal\Transpiler;
 use function array_map;
 use function count;
 use function implode;
+use function in_array;
 
 /**
  * Emits generated types (union enums, shape structs) and the trait impls the
@@ -122,7 +123,20 @@ final class CastEmitter
                 continue;
             }
             $vn = $m->variantName();
-            $w->line('impl php_rt::CastTo<' . $m->toRust() . '> for ' . $name . ' { fn cast_to(self) -> ' . $m->toRust() . ' { match self { ' . $name . '::' . $vn . '(v) => v, _ => panic!("union ' . $name . ' is not ' . $vn . '") } } }');
+            $extra = '';
+            if ($m->kind === RustType::CLASS_) {
+                // other class members that are subclasses of this one upcast into it
+                $mc = $this->program->classOf($m);
+                foreach ($u->params as $o) {
+                    if ($o !== $m && $o->kind === RustType::CLASS_ && $mc !== null) {
+                        $oc = $this->program->classOf($o);
+                        if ($oc !== null && $oc->isSubclassOf($mc)) {
+                            $extra .= $name . '::' . $o->variantName() . '(v) => ' . $this->conv('v', $o, $m) . ', ';
+                        }
+                    }
+                }
+            }
+            $w->line('impl php_rt::CastTo<' . $m->toRust() . '> for ' . $name . ' { fn cast_to(self) -> ' . $m->toRust() . ' { match self { ' . $name . '::' . $vn . '(v) => v, ' . $extra . '_ => panic!("union ' . $name . ' is not ' . $vn . '") } } }');
             $w->line('impl php_rt::CastTo<' . $name . '> for ' . $m->toRust() . ' { fn cast_to(self) -> ' . $name . ' { ' . $name . '::' . $vn . '(self) } }');
         }
         if ($this->casts->hasUnit($u, 'True') || $this->casts->hasUnit($u, 'False')) {
@@ -392,6 +406,17 @@ final class CastEmitter
         if ($fk === RustType::CLASS_ && $tk === RustType::CLASS_) {
             $this->emitClassCast($from, $to, $w);
             return;
+        }
+        if ($fk === RustType::CLASS_ && $tk === RustType::RT_GENERIC && in_array($to->name, ['PhpIterator', 'Traversable', 'IteratorAggregate', 'Generator'], true)) {
+            $cls = $this->program->classOf($from);
+            $pairs = $cls !== null ? $this->casts->objectPairs($cls, 'self') : null;
+            if ($pairs !== null) {
+                [$it, $kt, $vt] = $pairs;
+                $tk_ = $to->params[0] ?? RustType::mixed();
+                $tv_ = $to->params[1] ?? RustType::mixed();
+                $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ' . $from->toRust() . ' { fn cast_to(self) -> ' . $to->toRust() . ' { let __run = || -> Result<Vec<(' . $tk_->toRust() . ', ' . $tv_->toRust() . ')>, Throw> { Ok(' . $it . '.map(|(__k, __v)| (' . $this->conv('__k', $kt, $tk_) . ', ' . $this->conv('__v', $vt, $tv_) . ')).collect()) }; Generator::from_pairs(__run().unwrap_or_else(|e| panic!("uncaught {}", e))) } }');
+                return;
+            }
         }
         if ($fk === RustType::RT_GENERIC && $from->name === 'Num' && $tk === RustType::UNION) {
             $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for Num { fn cast_to(self) -> ' . $to->toRust() . ' { match self { Num::Int(i) => ' . $this->conv('i', RustType::int(), $to) . ', Num::Float(f) => ' . $this->conv('f', RustType::float(), $to) . ' } } }');

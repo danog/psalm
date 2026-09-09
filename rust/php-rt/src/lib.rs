@@ -20,6 +20,7 @@ pub mod registry;
 pub mod consts;
 pub mod tokenizer;
 pub mod builtins;
+pub mod testing;
 
 pub use string::Str;
 pub use key::ArrayKey;

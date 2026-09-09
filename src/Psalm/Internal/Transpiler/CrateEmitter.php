@@ -7,6 +7,7 @@ namespace Psalm\Internal\Transpiler;
 use Psalm\Codebase;
 
 use function array_keys;
+use function array_map;
 use function count;
 use function file_put_contents;
 use function fwrite;
@@ -14,6 +15,7 @@ use function implode;
 use function is_dir;
 use function ksort;
 use function mkdir;
+use function strtolower;
 
 use const STDERR;
 
@@ -87,6 +89,10 @@ final class CrateEmitter
         $any = new Writer();
         $this->emitAnyObject($any);
 
+        fwrite(STDERR, "[transpiler] emitting tests\n");
+        $tests_w = new Writer();
+        $test_emitter = new TestEmitter($this->program, $this->casts, $this->builtins, $this->diag);
+        $n_tests = $test_emitter->emit($tests_w);
         // generated unions and shapes (emission of casts may add more, so loop)
         $types_w = new Writer();
         $emitted = [];
@@ -114,8 +120,8 @@ final class CrateEmitter
             }
         }
 
-        fwrite(STDERR, "[transpiler] writing crate\n");
-        $this->writeCrate($types_w, $casts_w, $any);
+        fwrite(STDERR, "[transpiler] $n_tests tests, writing crate\n");
+        $this->writeCrate($types_w, $casts_w, $any, $tests_w);
         $this->diag->report();
         foreach ($this->casts->warnings as $wmsg) {
             fwrite(STDERR, "  [casts] unsupported conversion: $wmsg\n");
@@ -197,7 +203,10 @@ final class CrateEmitter
         $w->line('impl php_rt::PhpCmp for AnyObject { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }');
         $w->line('impl php_rt::ToStr for AnyObject { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_str(self.class_name())) } }');
         $w->line('impl std::fmt::Debug for AnyObject { fn fmt(&self, f: &mut std::fmt::Formatter<\'_>) -> std::fmt::Result { write!(f, "object({})", self.class_name()) } }');
+        $w->line('pub fn php_clone_mixed(m: Mixed) -> Mixed { match m { Mixed::Obj(_) => cast::<Mixed>(AnyObject::from_mixed(m).php_clone()), other => other } }');
         $w->line('impl php_rt::PhpClone for AnyObject { fn php_clone(&self) -> Self { match self { ' . implode(', ', array_map(fn(ClassModel $c) => 'AnyObject::' . $c->variant() . '(h) => AnyObject::' . $c->variant() . '(h.php_clone())', $concrete)) . ($concrete ? ', ' : '') . 'AnyObject::Other(o) => AnyObject::Other(o.clone()) } } }');
+
+        $this->emitInit($w);
 
         // Throwable alias: the generated Throw type
         $throwable = $this->program->getClass('Throwable');
@@ -207,6 +216,39 @@ final class CrateEmitter
         } else {
             $w->line('pub type Throw = php_rt::FallbackThrow;');
         }
+    }
+
+    /** `init()`: registers classes and constants with the runtime registry (for class_exists, is_a, constant(), ...). */
+    private function emitInit(Writer $w): void
+    {
+        $w->line('thread_local! { static __INIT: std::cell::Cell<bool> = std::cell::Cell::new(false); }');
+        $w->open('pub fn init() {');
+        $w->line('if __INIT.with(|c| c.replace(true)) { return; }');
+        foreach ($this->program->uniqueClasses() as $cls) {
+            if (!$cls->is_project || $cls->isTrait()) {
+                continue;
+            }
+            $names = [strtolower($cls->fqcn)];
+            foreach ($cls->ancestors as $a) {
+                $names[] = strtolower($a->fqcn);
+            }
+            $w->line('php_rt::registry::register_class(' . Names::rustStringLiteral($cls->fqcn) . ', &[' . implode(', ', array_map(fn($n) => Names::rustStringLiteral($n), $names)) . '], ' . ($cls->isInterface() ? 'true' : 'false') . ');');
+        }
+        foreach ($this->program->uniqueClasses() as $cls) {
+            if (!$cls->is_project || $cls->isTrait()) {
+                continue;
+            }
+            foreach ($cls->constants as $c) {
+                if ($c->expr === null) {
+                    continue;
+                }
+                $w->line('php_rt::registry::define_constant(&Str::from_static(' . Names::rustStringLiteral($cls->fqcn . '::' . $c->name) . '), ' . $this->casts->convert($cls->path() . '::' . $c->rustName() . '()', $c->type, RustType::mixed()) . ');');
+            }
+        }
+        foreach ($this->program->constants as $c) {
+            $w->line('php_rt::registry::define_constant(&Str::from_static(' . Names::rustStringLiteral($c->name) . '), ' . $this->casts->convert('crate::consts::' . Names::constant($c->name) . '()', $c->type, RustType::mixed()) . ');');
+        }
+        $w->close();
     }
 
     /** Constructors for runtime-raised errors, and conversion from php_rt::RtError. */
@@ -251,7 +293,7 @@ final class CrateEmitter
         $w->line('impl std::fmt::Display for ' . $throwable->path() . ' { fn fmt(&self, f: &mut std::fmt::Formatter<\'_>) -> std::fmt::Result { write!(f, "{}: {}", self.class_name(), self.message()) } }');
     }
 
-    private function writeCrate(Writer $types, Writer $casts, Writer $any): void
+    private function writeCrate(Writer $types, Writer $casts, Writer $any, Writer $tests): void
     {
         $out = $this->transpiler->out_dir;
         $src = $out . '/src';
@@ -272,11 +314,12 @@ final class CrateEmitter
             }
             unset($node);
         }
-        $lib = $prelude . "pub mod generated;\npub mod consts;\npub use generated::*;\n" . $this->writeTree($tree, $src, $use, '') . "\n";
+        $lib = $prelude . "pub mod generated;\npub mod consts;\npub use generated::*;\n#[cfg(test)]\nmod tests;\n" . $this->writeTree($tree, $src, $use, '') . "\n";
         $lib .= "use php_rt::prelude::*;\nuse crate::generated::*;\n" . $any->get();
         file_put_contents($src . '/lib.rs', $lib);
         file_put_contents($src . '/generated.rs', $prelude . "use php_rt::prelude::*;\nuse crate::*;\n" . $types->get() . $casts->get());
         file_put_contents($src . '/consts.rs', $prelude . $use . $this->constsModule());
+        file_put_contents($src . '/tests.rs', $prelude . $use . $tests->get());
         $name = basename($out);
         file_put_contents($out . '/Cargo.toml', "[package]\nname = \"" . str_replace('-', '_', $name) . "\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[lib]\npath = \"src/lib.rs\"\n\n[dependencies]\nphp-rt = { path = \"../../php-rt\" }\n");
         fwrite(STDERR, 'wrote ' . count($this->modules) . " modules to $out\n");

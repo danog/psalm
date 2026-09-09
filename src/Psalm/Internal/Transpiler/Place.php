@@ -35,7 +35,7 @@ final class Place
 
     public function write(string $value_code): string
     {
-        return $this->wrap(($this->writer)($value_code));
+        return ($this->writer)($value_code);
     }
 
     public function hasMut(): bool

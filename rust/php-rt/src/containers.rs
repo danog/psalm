@@ -512,6 +512,10 @@ impl DynCallable {
     pub fn from_rt<F: Fn(Vec<Mixed>) -> Result<Mixed, RtError> + 'static>(arity: usize, f: F) -> Self {
         DynCallable { arity, f: Rc::new(move |a| f(a).map_err(DynError::Rt)) }
     }
+    /// A `null` stored where a callable is expected: invoking it is an Error, as in PHP.
+    pub fn null_callable() -> Self {
+        DynCallable::from_rt(0, |_| Err(RtError::error("Value of type null is not callable")))
+    }
     pub fn call(&self, mut args: Vec<Mixed>) -> Result<Mixed, DynError> {
         while args.len() < self.arity {
             args.push(Mixed::Null);

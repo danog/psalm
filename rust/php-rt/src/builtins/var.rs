@@ -74,9 +74,13 @@ fn var_export_inner(m: &Mixed, indent: usize, out: &mut Vec<u8>) {
         Mixed::Closure(_) => out.extend_from_slice(b"\\Closure::__set_state(array(\n))"),
     }
 }
-pub fn var_export(m: &Mixed) -> Str {
+pub fn var_export(m: &Mixed, ret: bool) -> Str {
     let mut out = Vec::new();
     var_export_inner(m, 0, &mut out);
+    if !ret {
+        crate::output::echo(&out);
+        return Str::empty();
+    }
     Str::from_vec(out)
 }
 

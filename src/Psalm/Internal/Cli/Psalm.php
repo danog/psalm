@@ -415,6 +415,12 @@ final class Psalm
 
         if (Transpiler::isEnabled()) {
             try {
+                $completed = Transpiler::get()->applyInferredReturnTypes();
+                if ($completed > 0) {
+                    fwrite(STDERR, "\n[transpiler] $completed inferred return types declared, re-analyzing\n");
+                    Transpiler::get()->resetRecords();
+                    $project_analyzer->reanalyzeForTranspiler();
+                }
                 Transpiler::get()->emit($project_analyzer->getCodebase());
             } catch (\Throwable $e) {
                 fwrite(STDERR, "Transpiler crashed: " . $e::class . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n");
