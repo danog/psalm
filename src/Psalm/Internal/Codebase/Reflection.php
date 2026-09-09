@@ -11,6 +11,7 @@ use Psalm\Codebase;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
+use Psalm\Internal\Transpiler\Transpiler;
 use Psalm\Storage\ClassConstantStorage;
 use Psalm\Storage\FunctionLikeParameter;
 use Psalm\Storage\FunctionStorage;
@@ -68,6 +69,11 @@ final class Reflection
 
         $class_name_lower = strtolower($class_name);
 
+        if (Transpiler::isEnabled() && Transpiler::isRuntimeStubClass($class_name_lower)) {
+            // defined by a transpiler runtime stub (a project file); never reflect it
+            return;
+        }
+
         try {
             $this->storage_provider->get($class_name_lower);
 
@@ -84,7 +90,14 @@ final class Reflection
 
         $storage->potential_declaring_method_ids['__construct'][$class_name_lower . '::__construct'] = true;
 
-        if ($reflected_parent_class) {
+        if ($reflected_parent_class
+            && Transpiler::isEnabled()
+            && Transpiler::isRuntimeStubClass(strtolower($reflected_parent_class->getName()))
+        ) {
+            // the parent is a runtime stub: link by name only, its storage comes from the stub file
+            $parent_class_name = $reflected_parent_class->getName();
+            $storage->parent_classes = [strtolower($parent_class_name) => $parent_class_name];
+        } elseif ($reflected_parent_class) {
             $parent_class_name = $reflected_parent_class->getName();
             $this->registerClass($reflected_parent_class);
             $parent_class_name_lc = strtolower($parent_class_name);
@@ -209,6 +222,11 @@ final class Reflection
 
         foreach ($reflection_methods as $reflection_method) {
             $method_reflection_class = $reflection_method->getDeclaringClass();
+
+            if (Transpiler::isEnabled() && Transpiler::isRuntimeStubClass(strtolower($method_reflection_class->getName()))) {
+                // inherited from a runtime stub: the stub's own definition is used by the populator
+                continue;
+            }
 
             $this->registerClass($method_reflection_class);
 

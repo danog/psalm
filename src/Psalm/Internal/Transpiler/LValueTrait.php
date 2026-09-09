@@ -122,7 +122,7 @@ trait LValueTrait
             $field = $this->findStaticField($cls, $e->name->name);
             if ($field !== null) {
                 $path = $field->declaring->path();
-                $rn = $field->acc();
+                $rn = $field->rustName();
                 return new Place(
                     $field->type,
                     fn() => $path . '::st_' . $rn . '()',

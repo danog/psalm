@@ -1028,7 +1028,7 @@ final class Builtins
 
     private function f_array_splice(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
-        $place = $b->place($args[0]->value);
+        $place = $this->arrayPlace($b, $b->place($args[0]->value));
         $pt = $place->type;
         $offset = $b->exprTo($args[1]->value, RustType::int());
         $len = isset($args[2]) && !$b->isNullLiteral($args[2]->value) ? $b->exprTo($args[2]->value, RustType::option(RustType::int())) : 'None';
@@ -1048,7 +1048,7 @@ final class Builtins
 
     private function f_array_pop(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
-        $place = $b->place($args[0]->value);
+        $place = $this->arrayPlace($b, $b->place($args[0]->value));
         $pt = $place->type;
         $vt = $pt->kind === RustType::LIST ? $pt->inner() : ($pt->kind === RustType::MAP ? $pt->params[1] : RustType::mixed());
         if ($pt->kind !== RustType::LIST && $pt->kind !== RustType::MAP) {
@@ -1057,9 +1057,39 @@ final class Builtins
         return $b->narrow(new Val('{ let __r = ' . $place->modifyValue(fn(string $p) => $p . '.pop()') . '; __r }', RustType::option($vt)), $call);
     }
 
+    /**
+     * For a place typed as a union with a single array member (e.g. `list<string>|false`), a place
+     * narrowed to that member: reads convert to the member type and writes wrap it back.
+     */
+    private function arrayPlace(BodyEmitter $b, Place $place): Place
+    {
+        $pt = $place->type;
+        if ($pt->kind !== RustType::UNION) {
+            return $place;
+        }
+        $member = null;
+        foreach ($pt->params as $m) {
+            if ($m->kind === RustType::LIST || $m->kind === RustType::MAP) {
+                if ($member !== null) {
+                    return $place;
+                }
+                $member = $m;
+            }
+        }
+        if ($member === null) {
+            return $place;
+        }
+        $casts = $b->casts;
+        return new Place(
+            $member,
+            fn() => $casts->convert($place->read(), $pt, $member),
+            fn(string $v) => $place->write($casts->convert($v, $member, $pt)),
+        );
+    }
+
     private function f_array_shift(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
-        $place = $b->place($args[0]->value);
+        $place = $this->arrayPlace($b, $b->place($args[0]->value));
         $pt = $place->type;
         $vt = $pt->kind === RustType::LIST ? $pt->inner() : ($pt->kind === RustType::MAP ? $pt->params[1] : RustType::mixed());
         if ($pt->kind !== RustType::LIST && $pt->kind !== RustType::MAP) {
@@ -1070,7 +1100,7 @@ final class Builtins
 
     private function f_array_push(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
-        $place = $b->place($args[0]->value);
+        $place = $this->arrayPlace($b, $b->place($args[0]->value));
         $pt = $place->type;
         $vt = $pt->kind === RustType::LIST ? $pt->inner() : ($pt->kind === RustType::MAP ? $pt->params[1] : RustType::mixed());
         $code = '';
@@ -1083,7 +1113,7 @@ final class Builtins
 
     private function f_array_unshift(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
-        $place = $b->place($args[0]->value);
+        $place = $this->arrayPlace($b, $b->place($args[0]->value));
         $pt = $place->type;
         $vt = $pt->kind === RustType::LIST ? $pt->inner() : ($pt->kind === RustType::MAP ? $pt->params[1] : RustType::mixed());
         $code = '';
@@ -1192,6 +1222,10 @@ final class Builtins
         $replace = $b->expr($args[1]->value);
         $subject = $b->expr($args[2]->value);
         $st = $subject->type;
+        if ($st->kind === RustType::MIXED && !isset($args[3])) {
+            // string or array subject decided at runtime
+            return new Val('str_replace_m(&' . $b->casts->convert($search->code, $search->type, RustType::mixed()) . ', &' . $b->casts->convert($replace->code, $replace->type, RustType::mixed()) . ', &' . $subject->code . ')', RustType::mixed());
+        }
         if ($st->kind !== RustType::STR) {
             // array subject: map over values
             $c = $this->container($b, $args[2]->value);
@@ -1559,7 +1593,7 @@ final class Builtins
 
     private function f_array_multisort(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
-        $place = $b->place($args[0]->value);
+        $place = $this->arrayPlace($b, $b->place($args[0]->value));
         return new Val('{ ' . $place->wrap('array_multisort_l(&mut ' . $place->mut() . ');') . ' true }', RustType::bool());
     }
 
@@ -1581,7 +1615,7 @@ final class Builtins
 
     private function sortInPlace(BodyEmitter $b, Expr\FuncCall $call, array $args, string $fn, bool $has_cb, bool $renumbers): Val
     {
-        $place = $b->place($args[0]->value);
+        $place = $this->arrayPlace($b, $b->place($args[0]->value));
         $pt = $place->type;
         $is_list = $pt->kind === RustType::LIST;
         if (!$is_list && $pt->kind !== RustType::MAP) {
@@ -1665,7 +1699,7 @@ final class Builtins
 
     private function f_shuffle(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
-        $place = $b->place($args[0]->value);
+        $place = $this->arrayPlace($b, $b->place($args[0]->value));
         return new Val('{ ' . $place->wrap('shuffle_l(&mut ' . $place->mut() . ');') . ' true }', RustType::bool());
     }
 

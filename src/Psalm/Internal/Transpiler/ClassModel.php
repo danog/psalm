@@ -83,7 +83,7 @@ final class ClassModel
     /** Leaf classes get a single newtype handle; everything else gets a dispatch enum. */
     public function isLeaf(): bool
     {
-        return $this->isConcrete() && $this->children === [] && !$this->isEnum();
+        return $this->isConcrete() && $this->children === [];
     }
 
     /** Short Rust type name of the handle. */

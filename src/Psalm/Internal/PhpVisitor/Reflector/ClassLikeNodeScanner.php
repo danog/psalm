@@ -166,6 +166,14 @@ final class ClassLikeNodeScanner
 
             $class_name = $node->name->name;
 
+            if (Transpiler::isEnabled()
+                && !Transpiler::isRuntimeStubFile($this->file_path)
+                && Transpiler::isRuntimeStubClass($fq_classlike_name_lc)
+            ) {
+                // the transpiler's runtime stub is the only definition of this class
+                return false;
+            }
+
             if ($this->codebase->classlike_storage_provider->has($fq_classlike_name_lc)) {
                 $duplicate_storage = $this->codebase->classlike_storage_provider->get($fq_classlike_name_lc);
 

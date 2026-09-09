@@ -70,6 +70,14 @@ final class Casts
         if ($fk === RustType::NEVER) {
             return 'never(' . $code . ')';
         }
+        if ($fk === RustType::RT_GENERIC && $from->name === 'Num') {
+            if ($tk === RustType::FLOAT) {
+                return $code . '.to_f64()';
+            }
+            if ($tk === RustType::INT) {
+                return $code . '.to_i64()';
+            }
+        }
         if ($tk === RustType::UNIT) {
             return '{ let _ = ' . $code . '; }';
         }
@@ -128,6 +136,10 @@ final class Casts
             return 'Some(' . $this->convert($code, $from, $to->inner()) . ')';
         }
         if ($fk === RustType::UNIT) {
+            if ($tk === RustType::DYN_CALLABLE) {
+                // calling it raises the same Error PHP would
+                return '{ let _ = ' . $code . '; DynCallable::null_callable() }';
+            }
             // null into a non-nullable type: use a default
             if ($to->hasDefault()) {
                 return '{ let _ = ' . $code . '; <' . $to->toRust() . '>::default() }';
@@ -513,6 +525,45 @@ final class Casts
                     return $m;
                 }
             }
+        }
+        return null;
+    }
+
+    /**
+     * Code iterating a PHP object (Iterator / IteratorAggregate) as owned (key, value) pairs.
+     *
+     * @return array{string, RustType, RustType}|null iterator expression, key type, value type
+     */
+    public function objectPairs(ClassModel $cls, string $code): ?array
+    {
+        $get = $this->program->findMethod($cls, 'getiterator');
+        if ($get !== null) {
+            $inner = $get->return_type;
+            $sub = $code . '.' . $get->rustName() . '()?';
+            if ($inner->kind === RustType::RT_GENERIC) {
+                return [$sub . '.into_pairs().into_iter()', $inner->params[0] ?? RustType::mixed(), $inner->params[1] ?? RustType::mixed()];
+            }
+            if ($inner->kind === RustType::CLASS_) {
+                $ic = $this->program->classOf($inner);
+                if ($ic !== null && $ic !== $cls) {
+                    return $this->objectPairs($ic, '(' . $sub . ')');
+                }
+            }
+            if ($inner->kind === RustType::LIST) {
+                return [$sub . '.into_iter().enumerate().map(|(__i, __v)| (__i as i64, __v))', RustType::int(), $inner->inner()];
+            }
+            if ($inner->kind === RustType::MAP) {
+                return [$sub . '.into_iter()', $inner->params[0], $inner->params[1]];
+            }
+        }
+        $current = $this->program->findMethod($cls, 'current');
+        $key = $this->program->findMethod($cls, 'key');
+        $rewind = $this->program->findMethod($cls, 'rewind');
+        $valid = $this->program->findMethod($cls, 'valid');
+        $next = $this->program->findMethod($cls, 'next');
+        if ($current !== null && $key !== null && $rewind !== null && $valid !== null && $next !== null) {
+            $it = '{ let __it = ' . $code . '; iterate_php_iterator(|| __it.' . $rewind->rustName() . '().map(|_| ()), || __it.' . $valid->rustName() . '(), || __it.' . $next->rustName() . '().map(|_| ()), || __it.' . $key->rustName() . '(), || __it.' . $current->rustName() . '())? }';
+            return [$it, $key->return_type, $current->return_type];
         }
         return null;
     }

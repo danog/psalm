@@ -25,6 +25,7 @@ use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\FileManipulation\FunctionDocblockManipulator;
 use Psalm\Internal\Provider\NodeDataProvider;
+use Psalm\Internal\Transpiler\Transpiler;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TemplateResult;
@@ -256,6 +257,10 @@ final class ReturnTypeAnalyzer
 
         if ($function_always_exits) {
             $inferred_return_type = Type::getNever();
+        }
+
+        if ($return_type === null && $function_like_storage !== null && Transpiler::isEnabled()) {
+            Transpiler::get()->recordInferredReturnType($function_like_storage, $inferred_return_type);
         }
 
         // void + never = null, so we need to check this separately

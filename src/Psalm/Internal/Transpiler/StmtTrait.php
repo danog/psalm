@@ -411,32 +411,9 @@ trait StmtTrait
      */
     private function objectIterator(ClassModel $cls, string $code, Stmt\Foreach_ $s): array
     {
-        $get = $this->program->findMethod($cls, 'getiterator');
-        if ($get !== null) {
-            $inner = $get->return_type;
-            $sub = new Val($code . '.' . $get->rustName() . '()?', $inner);
-            if ($inner->kind === RustType::RT_GENERIC) {
-                return [$sub->code . '.into_pairs()', $inner->params[0] ?? RustType::mixed(), $inner->params[1] ?? RustType::mixed()];
-            }
-            if ($inner->kind === RustType::CLASS_) {
-                $ic = $this->program->classOf($inner);
-                if ($ic !== null) {
-                    return $this->objectIterator($ic, $sub->code, $s);
-                }
-            }
-            if ($inner->kind === RustType::LIST) {
-                return [$sub->code . '.into_iter().enumerate().map(|(__i, __v)| (__i as i64, __v))', RustType::int(), $inner->inner()];
-            }
-            if ($inner->kind === RustType::MAP) {
-                return [$sub->code . '.into_iter()', $inner->params[0], $inner->params[1]];
-            }
-        }
-        $current = $this->program->findMethod($cls, 'current');
-        $key = $this->program->findMethod($cls, 'key');
-        if ($current !== null && $key !== null) {
-            $key_t = $key->return_type;
-            $val_t = $current->return_type;
-            return ['iterate_object(' . $code . ')?', $key_t, $val_t];
+        $pairs = $this->casts->objectPairs($cls, $code);
+        if ($pairs !== null) {
+            return $pairs;
         }
         $this->warn('foreach over object without iterator ' . $cls->fqcn, $s);
         return ['object_to_array(&' . $this->casts->convert($code, RustType::class($cls->fqcn), RustType::mixed()) . ').into_iter()', RustType::arrayKey(), RustType::mixed()];

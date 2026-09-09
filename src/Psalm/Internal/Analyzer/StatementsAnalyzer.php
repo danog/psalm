@@ -244,6 +244,10 @@ final class StatementsAnalyzer extends SourceAnalyzer
             }
 
             foreach ($stmts as $stmt) {
+                if (Transpiler::isEnabled()) {
+                    Transpiler::get()->recordStatement($this, $stmt, $context);
+                }
+
                 if (self::analyzeStatement($this, $stmt, $context, $global_context) === false) {
                     return false;
                 }

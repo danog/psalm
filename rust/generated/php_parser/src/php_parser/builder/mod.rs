@@ -1603,6 +1603,2543 @@ impl php_rt::PhpClone for Use_ { fn php_clone(&self) -> Self { let c = Use_(Rc::
 impl Clone for Use_Obj { fn clone(&self) -> Self { Use_Obj { name: self.name.clone(), type_: self.type_.clone(), alias: self.alias.clone() } } }
 impl Use_ {
 }
+pub struct ClassConstTestObj {
+    pub expectedException: Option<Str>,
+    pub expectedExceptionMessage: Option<Str>,
+    pub expectedExceptionMessageRegExp: Option<Str>,
+    pub expectedExceptionCode: Option<i64>,
+    pub name: Str,
+}
+#[derive(Clone)]
+pub struct ClassConstTest(pub Rc<RefCell<ClassConstTestObj>>);
+impl ClassConstTest {
+    pub fn p_expectedException(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedException) }
+    pub fn p_expectedException_get(&self) -> Option<Str> { self.0.borrow().expectedException.clone() }
+    pub fn p_expectedException_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedException.clone()) }
+    pub fn p_expectedException_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedException) }
+    pub fn set_p_expectedException(&self, v: Option<Str>) { self.0.borrow_mut().expectedException = v; }
+    pub fn p_expectedExceptionMessage(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessage) }
+    pub fn p_expectedExceptionMessage_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessage.clone() }
+    pub fn p_expectedExceptionMessage_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessage.clone()) }
+    pub fn p_expectedExceptionMessage_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessage) }
+    pub fn set_p_expectedExceptionMessage(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessage = v; }
+    pub fn p_expectedExceptionMessageRegExp(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessageRegExp) }
+    pub fn p_expectedExceptionMessageRegExp_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessageRegExp.clone() }
+    pub fn p_expectedExceptionMessageRegExp_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessageRegExp.clone()) }
+    pub fn p_expectedExceptionMessageRegExp_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessageRegExp) }
+    pub fn set_p_expectedExceptionMessageRegExp(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessageRegExp = v; }
+    pub fn p_expectedExceptionCode(&self) -> Ref<'_, Option<i64>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionCode) }
+    pub fn p_expectedExceptionCode_get(&self) -> Option<i64> { self.0.borrow().expectedExceptionCode.clone() }
+    pub fn p_expectedExceptionCode_opt(&self) -> Option<Option<i64>> { Some(self.0.borrow().expectedExceptionCode.clone()) }
+    pub fn p_expectedExceptionCode_mut(&self) -> RefMut<'_, Option<i64>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionCode) }
+    pub fn set_p_expectedExceptionCode(&self, v: Option<i64>) { self.0.borrow_mut().expectedExceptionCode = v; }
+    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| &o.name) }
+    pub fn p_name_get(&self) -> Str { self.0.borrow().name.clone() }
+    pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
+    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
+    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new(mut name: Str) -> Result<ClassConstTest, Throw> {
+        let this = ClassConstTest(Rc::new(RefCell::new(ClassConstTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })));
+        this.magic__construct(name)?;
+        Ok(this)
+    }
+    pub fn createClassConstBuilder(&self, mut name: Mixed, mut value: Mixed) -> Result<crate::php_parser::builder::ClassConst, Throw> {
+    return Ok(crate::php_parser::builder::ClassConst::new(cast::<U_PhpParser_Node_Identifier_or_Str>(name.clone()), value.clone().to_option().map(|__m| cast::<U_Bool_or_Float_or_Int_or_Map_ArrayKey_Mixed_or_PhpParser_Node_Expr_or_Str_or_UnitEnum>(__m)))?);
+    }
+    pub fn testModifiers(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::stmt::ClassConst> = Late::uninit();
+    node.set(self.createClassConstBuilder(cast::<Mixed>(Str::from_static("TEST")), cast::<Mixed>(1i64))?.makePrivate()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::ClassConst::new({ let mut __m1: Map<ArrayKey, crate::php_parser::node::Const_> = Map::new(); __m1.push(crate::php_parser::node::Const_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("TEST")), cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(1i64, Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?); __m1 }, crate::php_parser::Modifiers::PRIVATE(), Map::<Str, Mixed>::new(), List::<crate::php_parser::node::AttributeGroup>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> })?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    node.set(self.createClassConstBuilder(cast::<Mixed>(Str::from_static("TEST")), cast::<Mixed>(1i64))?.makeProtected()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::ClassConst::new({ let mut __m2: Map<ArrayKey, crate::php_parser::node::Const_> = Map::new(); __m2.push(crate::php_parser::node::Const_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("TEST")), cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(1i64, Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?); __m2 }, crate::php_parser::Modifiers::PROTECTED(), Map::<Str, Mixed>::new(), List::<crate::php_parser::node::AttributeGroup>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> })?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    node.set(self.createClassConstBuilder(cast::<Mixed>(Str::from_static("TEST")), cast::<Mixed>(1i64))?.makePublic()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::ClassConst::new({ let mut __m3: Map<ArrayKey, crate::php_parser::node::Const_> = Map::new(); __m3.push(crate::php_parser::node::Const_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("TEST")), cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(1i64, Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?); __m3 }, crate::php_parser::Modifiers::PUBLIC(), Map::<Str, Mixed>::new(), List::<crate::php_parser::node::AttributeGroup>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> })?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    node.set(self.createClassConstBuilder(cast::<Mixed>(Str::from_static("TEST")), cast::<Mixed>(1i64))?.makeFinal()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::ClassConst::new({ let mut __m4: Map<ArrayKey, crate::php_parser::node::Const_> = Map::new(); __m4.push(crate::php_parser::node::Const_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("TEST")), cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(1i64, Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?); __m4 }, crate::php_parser::Modifiers::FINAL(), Map::<Str, Mixed>::new(), List::<crate::php_parser::node::AttributeGroup>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> })?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testDocComment(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::stmt::ClassConst> = Late::uninit();
+    node.set(self.createClassConstBuilder(cast::<Mixed>(Str::from_static("TEST")), cast::<Mixed>(1i64))?.setDocComment(U_PhpParser_Comment_Doc_or_Str::Str(Str::from_static("/** Test */")))?.makePublic()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::ClassConst::new({ let mut __m1: Map<ArrayKey, crate::php_parser::node::Const_> = Map::new(); __m1.push(crate::php_parser::node::Const_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("TEST")), cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(1i64, Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?); __m1 }, crate::php_parser::Modifiers::PUBLIC(), { let mut __m2: Map<Str, Mixed> = Map::new(); __m2.insert(Str::from_static("comments"), { let __c1143 = (crate::php_parser::comment::Doc::new(Str::from_static("/** Test */"), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64))?,); let mut __m: Map<ArrayKey, Mixed> = Map::new(); __m.push(cast::<Mixed>(__c1143.0)); Mixed::Arr(__m) }); __m2 }, List::<crate::php_parser::node::AttributeGroup>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> })?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testAddConst(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::stmt::ClassConst> = Late::uninit();
+    node.set(self.createClassConstBuilder(cast::<Mixed>(Str::from_static("FIRST_TEST")), cast::<Mixed>(1i64))?.addConst(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("SECOND_TEST")), Some(U_Bool_or_Float_or_Int_or_Map_ArrayKey_Mixed_or_PhpParser_Node_Expr_or_Str_or_UnitEnum::Int(2i64)))?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::ClassConst::new({ let mut __m1: Map<ArrayKey, crate::php_parser::node::Const_> = Map::new(); __m1.push(crate::php_parser::node::Const_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("FIRST_TEST")), cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(1i64, Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?); __m1.push(crate::php_parser::node::Const_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("SECOND_TEST")), cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(2i64, Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?); __m1 }, 0i64, Map::<Str, Mixed>::new(), List::<crate::php_parser::node::AttributeGroup>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> })?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testAddAttribute(&self) -> Result<(), Throw> {
+    let mut attribute: Late<crate::php_parser::node::Attribute> = Late::uninit();
+    let mut attributeGroup: Late<crate::php_parser::node::AttributeGroup> = Late::uninit();
+    let mut node: Late<crate::php_parser::node::stmt::ClassConst> = Late::uninit();
+    attribute.set(crate::php_parser::node::Attribute::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Attr")), Map::<Str, Mixed>::new())?, list![crate::php_parser::node::Arg::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(1i64, Map::<Str, Mixed>::new())?), false, false, Map::<Str, Mixed>::new(), Some(crate::php_parser::node::Identifier::new(Str::from_static("name"), Map::<Str, Mixed>::new())?))?], Map::<Str, Mixed>::new())?);
+    attributeGroup.set(crate::php_parser::node::AttributeGroup::new({ let mut __m1: Map<ArrayKey, crate::php_parser::node::Attribute> = Map::new(); __m1.push(attribute.get().clone()); __m1 }, Map::<Str, Mixed>::new())?);
+    node.set(self.createClassConstBuilder(cast::<Mixed>(Str::from_static("ATTR_GROUP")), cast::<Mixed>(1i64))?.addAttribute(U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup::PhpParser_Node_AttributeGroup(attributeGroup.get().clone()))?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::ClassConst::new({ let mut __m2: Map<ArrayKey, crate::php_parser::node::Const_> = Map::new(); __m2.push(crate::php_parser::node::Const_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("ATTR_GROUP")), cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(1i64, Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?); __m2 }, 0i64, Map::<Str, Mixed>::new(), list![attributeGroup.get().clone()], { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> })?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testType(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::stmt::ClassConst> = Late::uninit();
+    node.set(self.createClassConstBuilder(cast::<Mixed>(Str::from_static("TYPE")), cast::<Mixed>(1i64))?.setType(U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("int")))?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::ClassConst::new({ let mut __m1: Map<ArrayKey, crate::php_parser::node::Const_> = Map::new(); __m1.push(crate::php_parser::node::Const_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("TYPE")), cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(1i64, Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?); __m1 }, 0i64, Map::<Str, Mixed>::new(), List::<crate::php_parser::node::AttributeGroup>::new(), Some(U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name::PhpParser_Node_Identifier(crate::php_parser::node::Identifier::new(Str::from_static("int"), Map::<Str, Mixed>::new())?)))?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testValues(&self, mut value: Mixed, mut expectedValueNode: Mixed) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::stmt::ClassConst> = Late::uninit();
+    node.set(self.createClassConstBuilder(cast::<Mixed>(Str::from_static("TEST")), value.clone())?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(expectedValueNode.clone(), cast::<Mixed>(node.get().clone().p_consts_get().idx(&to_key(&0i64)).clone().p_value_get()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn provideTestDefaultValues() -> Result<((Option<()>, crate::php_parser::node::expr::ConstFetch), (bool, crate::php_parser::node::expr::ConstFetch), (bool, crate::php_parser::node::expr::ConstFetch), (i64, crate::php_parser::node::scalar::Int_), (f64, crate::php_parser::node::scalar::Float_), (Str, crate::php_parser::node::scalar::String_), ((i64, i64, i64), crate::php_parser::node::expr::Array_), (Shape_bar_Str_foo_Str, crate::php_parser::node::expr::Array_), (crate::php_parser::node::scalar::magic_const::Dir, crate::php_parser::node::scalar::magic_const::Dir)), Throw> {
+    return Ok((({ let _ = (); None::<()> }, crate::php_parser::node::expr::ConstFetch::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("null")), Map::<Str, Mixed>::new())?, Map::<Str, Mixed>::new())?), (true, crate::php_parser::node::expr::ConstFetch::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("true")), Map::<Str, Mixed>::new())?, Map::<Str, Mixed>::new())?), (false, crate::php_parser::node::expr::ConstFetch::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("false")), Map::<Str, Mixed>::new())?, Map::<Str, Mixed>::new())?), (31415i64, crate::php_parser::node::scalar::Int_::new(31415i64, Map::<Str, Mixed>::new())?), (3.1415000000000002f64, crate::php_parser::node::scalar::Float_::new(3.1415000000000002f64, Map::<Str, Mixed>::new())?), (Str::from_static("Hallo World"), crate::php_parser::node::scalar::String_::new(Str::from_static("Hallo World"), Map::<Str, Mixed>::new())?), ((1i64, 2i64, 3i64), crate::php_parser::node::expr::Array_::new({ let mut __m1: Map<ArrayKey, crate::php_parser::node::ArrayItem> = Map::new(); __m1.push(crate::php_parser::node::ArrayItem::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(1i64, Map::<Str, Mixed>::new())?), { let _ = (); None::<crate::php_parser::node::Expr> }, false, Map::<Str, Mixed>::new(), false)?); __m1.push(crate::php_parser::node::ArrayItem::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(2i64, Map::<Str, Mixed>::new())?), { let _ = (); None::<crate::php_parser::node::Expr> }, false, Map::<Str, Mixed>::new(), false)?); __m1.push(crate::php_parser::node::ArrayItem::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(3i64, Map::<Str, Mixed>::new())?), { let _ = (); None::<crate::php_parser::node::Expr> }, false, Map::<Str, Mixed>::new(), false)?); __m1 }, Map::<Str, Mixed>::new())?), (Shape_bar_Str_foo_Str { foo: Str::from_static("bar"), bar: Str::from_static("foo") }, crate::php_parser::node::expr::Array_::new({ let mut __m2: Map<ArrayKey, crate::php_parser::node::ArrayItem> = Map::new(); __m2.push(crate::php_parser::node::ArrayItem::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::String_::new(Str::from_static("bar"), Map::<Str, Mixed>::new())?), Some(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::String_::new(Str::from_static("foo"), Map::<Str, Mixed>::new())?)), false, Map::<Str, Mixed>::new(), false)?); __m2.push(crate::php_parser::node::ArrayItem::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::String_::new(Str::from_static("foo"), Map::<Str, Mixed>::new())?), Some(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::String_::new(Str::from_static("bar"), Map::<Str, Mixed>::new())?)), false, Map::<Str, Mixed>::new(), false)?); __m2 }, Map::<Str, Mixed>::new())?), (crate::php_parser::node::scalar::magic_const::Dir::new(Map::<Str, Mixed>::new())?, crate::php_parser::node::scalar::magic_const::Dir::new(Map::<Str, Mixed>::new())?)));
+    }
+    pub fn magic__construct(&self, mut name: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).magic__construct__impl(name) }
+    pub fn setUpBeforeClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::setUpBeforeClass() }
+    pub fn tearDownAfterClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::tearDownAfterClass() }
+    pub fn setUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).setUp__impl() }
+    pub fn tearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).tearDown__impl() }
+    pub fn runSetUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runSetUp__impl() }
+    pub fn runTearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runTearDown__impl() }
+    pub fn getName(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).getName__impl() }
+    pub fn name(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).name__impl() }
+    pub fn expectException(&self, mut exception: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectException__impl(exception) }
+    pub fn expectExceptionMessage(&self, mut message_v: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessage__impl(message_v) }
+    pub fn expectExceptionMessageMatches(&self, mut regularExpression: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessageMatches__impl(regularExpression) }
+    pub fn expectExceptionCode(&self, mut code: i64) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionCode__impl(code) }
+    pub fn expectNotToPerformAssertions(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectNotToPerformAssertions__impl() }
+    pub fn expectsException(&self) -> Result<bool, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectsException__impl() }
+    pub fn verifyExpectedException(&self, mut e: crate::g::Throwable) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).verifyExpectedException__impl(e) }
+    pub fn expectedExceptionDescription(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectedExceptionDescription__impl() }
+    pub fn markTestSkipped(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestSkipped__impl(message_v) }
+    pub fn markTestIncomplete(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestIncomplete__impl(message_v) }
+    pub fn createMock(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createMock__impl(originalClassName) }
+    pub fn createStub(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createStub__impl(originalClassName) }
+    pub fn getCount() -> Result<i64, Throw> { crate::phpunit::framework::Assert::getCount() }
+    pub fn resetCount() -> Result<(), Throw> { crate::phpunit::framework::Assert::resetCount() }
+    pub fn fail(mut message_v: Str) -> Result<Never, Throw> { crate::phpunit::framework::Assert::fail(message_v) }
+    pub fn assertTrue(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertTrue(condition, message_v) }
+    pub fn assertFalse(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFalse(condition, message_v) }
+    pub fn assertNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNull(actual, message_v) }
+    pub fn assertNotNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotNull(actual, message_v) }
+    pub fn assertSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertSame(expected, actual, message_v) }
+    pub fn assertNotSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotSame(expected, actual, message_v) }
+    pub fn assertEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEquals(expected, actual, message_v) }
+    pub fn assertNotEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEquals(expected, actual, message_v) }
+    pub fn assertEqualsCanonicalizing(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEqualsCanonicalizing(expected, actual, message_v) }
+    pub fn assertCount(mut expectedCount: i64, mut haystack: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertCount(expectedCount, haystack, message_v) }
+    pub fn assertEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEmpty(actual, message_v) }
+    pub fn assertNotEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEmpty(actual, message_v) }
+    pub fn assertInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertInstanceOf(expected, actual, message_v) }
+    pub fn assertNotInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotInstanceOf(expected, actual, message_v) }
+    pub fn assertIsArray(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsArray(actual, message_v) }
+    pub fn assertIsString(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsString(actual, message_v) }
+    pub fn assertIsInt(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsInt(actual, message_v) }
+    pub fn assertIsBool(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsBool(actual, message_v) }
+    pub fn assertIsObject(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsObject(actual, message_v) }
+    pub fn assertIsCallable(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsCallable(actual, message_v) }
+    pub fn assertStringContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringContainsString(needle, haystack, message_v) }
+    pub fn assertStringNotContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringNotContainsString(needle, haystack, message_v) }
+    pub fn assertStringStartsWith(mut prefix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringStartsWith(prefix, string, message_v) }
+    pub fn assertStringEndsWith(mut suffix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEndsWith(suffix, string, message_v) }
+    pub fn assertMatchesRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertMatchesRegularExpression(pattern, string, message_v) }
+    pub fn assertDoesNotMatchRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDoesNotMatchRegularExpression(pattern, string, message_v) }
+    pub fn assertContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertContains(needle, haystack, message_v) }
+    pub fn assertNotContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotContains(needle, haystack, message_v) }
+    pub fn assertArrayHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayHasKey(key_v, array, message_v) }
+    pub fn assertArrayNotHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayNotHasKey(key_v, array, message_v) }
+    pub fn assertGreaterThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThan(expected, actual, message_v) }
+    pub fn assertGreaterThanOrEqual(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThanOrEqual(expected, actual, message_v) }
+    pub fn assertLessThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertLessThan(expected, actual, message_v) }
+    pub fn assertFileExists(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileExists(filename, message_v) }
+    pub fn assertFileDoesNotExist(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileDoesNotExist(filename, message_v) }
+    pub fn assertDirectoryExists(mut directory: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDirectoryExists(directory, message_v) }
+    pub fn assertStringEqualsFile(mut expectedFile: Str, mut actualString: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEqualsFile(expectedFile, actualString, message_v) }
+    pub fn assertJsonStringEqualsJsonString(mut expectedJson: Str, mut actualJson: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertJsonStringEqualsJsonString(expectedJson, actualJson, message_v) }
+    pub fn assertObjectHasProperty(mut propertyName: Str, mut object: AnyObject, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertObjectHasProperty(propertyName, object, message_v) }
+    pub fn new_same_class(&self, mut name: Str) -> Result<crate::php_parser::builder::ClassConstTest, Throw> { Ok(Self::new(name)?) }
+}
+impl php_rt::PhpObject for ClassConstTest {
+    fn class_name(&self) -> &'static str { "PhpParser\\Builder\\ClassConstTest" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\builder\\classconsttest", "phpunit\\framework\\testcase", "phpunit\\framework\\assert"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_expectedException_get()) { out.push((Str::from_static("expectedException"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessage_get()) { out.push((Str::from_static("expectedExceptionMessage"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessageRegExp_get()) { out.push((Str::from_static("expectedExceptionMessageRegExp"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionCode_get()) { out.push((Str::from_static("expectedExceptionCode"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_name_get()) { out.push((Str::from_static("name"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "expectedException" => { self.set_p_expectedException(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessage" => { self.set_p_expectedExceptionMessage(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessageRegExp" => { self.set_p_expectedExceptionMessageRegExp(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionCode" => { self.set_p_expectedExceptionCode(value.to_option().map(|__m| cast::<i64>(__m))); true }, "name" => { self.set_p_name(cast::<Str>(value)); true }, _ => false } }
+}
+impl ClassConstTest { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Builder\\ClassConstTest could not be converted to string"))) } }
+impl php_rt::PhpClone for ClassConstTest { fn php_clone(&self) -> Self { let c = ClassConstTest(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for ClassConstTestObj { fn clone(&self) -> Self { ClassConstTestObj { expectedException: self.expectedException.clone(), expectedExceptionMessage: self.expectedExceptionMessage.clone(), expectedExceptionMessageRegExp: self.expectedExceptionMessageRegExp.clone(), expectedExceptionCode: self.expectedExceptionCode.clone(), name: self.name.clone() } } }
+impl ClassConstTest {
+}
+pub struct ClassTestObj {
+    pub expectedException: Option<Str>,
+    pub expectedExceptionMessage: Option<Str>,
+    pub expectedExceptionMessageRegExp: Option<Str>,
+    pub expectedExceptionCode: Option<i64>,
+    pub name: Str,
+}
+#[derive(Clone)]
+pub struct ClassTest(pub Rc<RefCell<ClassTestObj>>);
+impl ClassTest {
+    pub fn p_expectedException(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedException) }
+    pub fn p_expectedException_get(&self) -> Option<Str> { self.0.borrow().expectedException.clone() }
+    pub fn p_expectedException_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedException.clone()) }
+    pub fn p_expectedException_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedException) }
+    pub fn set_p_expectedException(&self, v: Option<Str>) { self.0.borrow_mut().expectedException = v; }
+    pub fn p_expectedExceptionMessage(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessage) }
+    pub fn p_expectedExceptionMessage_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessage.clone() }
+    pub fn p_expectedExceptionMessage_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessage.clone()) }
+    pub fn p_expectedExceptionMessage_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessage) }
+    pub fn set_p_expectedExceptionMessage(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessage = v; }
+    pub fn p_expectedExceptionMessageRegExp(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessageRegExp) }
+    pub fn p_expectedExceptionMessageRegExp_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessageRegExp.clone() }
+    pub fn p_expectedExceptionMessageRegExp_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessageRegExp.clone()) }
+    pub fn p_expectedExceptionMessageRegExp_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessageRegExp) }
+    pub fn set_p_expectedExceptionMessageRegExp(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessageRegExp = v; }
+    pub fn p_expectedExceptionCode(&self) -> Ref<'_, Option<i64>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionCode) }
+    pub fn p_expectedExceptionCode_get(&self) -> Option<i64> { self.0.borrow().expectedExceptionCode.clone() }
+    pub fn p_expectedExceptionCode_opt(&self) -> Option<Option<i64>> { Some(self.0.borrow().expectedExceptionCode.clone()) }
+    pub fn p_expectedExceptionCode_mut(&self) -> RefMut<'_, Option<i64>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionCode) }
+    pub fn set_p_expectedExceptionCode(&self, v: Option<i64>) { self.0.borrow_mut().expectedExceptionCode = v; }
+    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| &o.name) }
+    pub fn p_name_get(&self) -> Str { self.0.borrow().name.clone() }
+    pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
+    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
+    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new(mut name: Str) -> Result<ClassTest, Throw> {
+        let this = ClassTest(Rc::new(RefCell::new(ClassTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })));
+        this.magic__construct(name)?;
+        Ok(this)
+    }
+    pub fn createClassBuilder(&self, mut class: Mixed) -> Result<crate::php_parser::builder::Class_, Throw> {
+    return Ok(crate::php_parser::builder::Class_::new(cast::<Str>(class.clone()))?);
+    }
+    pub fn testExtendsImplements(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::stmt::Class_> = Late::uninit();
+    node.set(self.createClassBuilder(cast::<Mixed>(Str::from_static("SomeLogger")))?.extend(U_PhpParser_Node_Name_or_Str::Str(Str::from_static("BaseLogger")))?.implement(list![U_PhpParser_Node_Name_or_Str::Str(Str::from_static("Namespaced\\Logger")), U_PhpParser_Node_Name_or_Str::PhpParser_Node_Name(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("SomeInterface")), Map::<Str, Mixed>::new())?)])?.implement(list![U_PhpParser_Node_Name_or_Str::Str(Str::from_static("\\Fully\\Qualified")), U_PhpParser_Node_Name_or_Str::Str(Str::from_static("namespace\\NamespaceRelative"))])?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Class_::new(Some(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("SomeLogger"))), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_extendsq__467d114822 { extends: Some(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("BaseLogger")), Map::<Str, Mixed>::new())?), implements: Some({ let mut __m1: Map<ArrayKey, crate::php_parser::node::Name> = Map::new(); __m1.push(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Namespaced\\Logger")), Map::<Str, Mixed>::new())?); __m1.push(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("SomeInterface")), Map::<Str, Mixed>::new())?); __m1.push(cast::<crate::php_parser::node::Name>(crate::php_parser::node::name::FullyQualified::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Fully\\Qualified")), Map::<Str, Mixed>::new())?)); __m1.push(cast::<crate::php_parser::node::Name>(crate::php_parser::node::name::Relative::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("NamespaceRelative")), Map::<Str, Mixed>::new())?)); __m1 }), attrGroups: None, flags: None, stmts: None }, Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testAbstract(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::stmt::Class_> = Late::uninit();
+    node.set(self.createClassBuilder(cast::<Mixed>(Str::from_static("Test")))?.makeAbstract()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Class_::new(Some(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("Test"))), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_extendsq__467d114822 { flags: Some(crate::php_parser::Modifiers::ABSTRACT()), attrGroups: None, extends: None, implements: None, stmts: None }, Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testFinal(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::stmt::Class_> = Late::uninit();
+    node.set(self.createClassBuilder(cast::<Mixed>(Str::from_static("Test")))?.makeFinal()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Class_::new(Some(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("Test"))), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_extendsq__467d114822 { flags: Some(crate::php_parser::Modifiers::FINAL()), attrGroups: None, extends: None, implements: None, stmts: None }, Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testReadonly(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::stmt::Class_> = Late::uninit();
+    node.set(self.createClassBuilder(cast::<Mixed>(Str::from_static("Test")))?.makeReadonly()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Class_::new(Some(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("Test"))), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_extendsq__467d114822 { flags: Some(crate::php_parser::Modifiers::READONLY()), attrGroups: None, extends: None, implements: None, stmts: None }, Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testStatementOrder(&self) -> Result<(), Throw> {
+    let mut method: Late<crate::php_parser::node::stmt::ClassMethod> = Late::uninit();
+    let mut property: Late<crate::php_parser::node::stmt::Property> = Late::uninit();
+    let mut const_: Late<crate::php_parser::node::stmt::ClassConst> = Late::uninit();
+    let mut use_: Late<crate::php_parser::node::stmt::TraitUse> = Late::uninit();
+    let mut node: Late<crate::php_parser::node::stmt::Class_> = Late::uninit();
+    method.set(crate::php_parser::node::stmt::ClassMethod::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("testMethod")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_6534c97760 { attrGroups: None, byRef: None, flags: None, params: None, returnType: None, stmts: None }, Map::<Str, Mixed>::new())?);
+    property.set(crate::php_parser::node::stmt::Property::new(crate::php_parser::Modifiers::PUBLIC(), { let mut __m1: Map<ArrayKey, crate::php_parser::node::PropertyItem> = Map::new(); __m1.push(crate::php_parser::node::PropertyItem::new(U_PhpParser_Node_VarLikeIdentifier_or_Str::Str(Str::from_static("testProperty")), { let _ = (); None::<crate::php_parser::node::Expr> }, Map::<Str, Mixed>::new())?); __m1 }, Map::<Str, Mixed>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, Map::<ArrayKey, crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?);
+    const_.set(crate::php_parser::node::stmt::ClassConst::new({ let mut __m2: Map<ArrayKey, crate::php_parser::node::Const_> = Map::new(); __m2.push(crate::php_parser::node::Const_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("TEST_CONST")), cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::String_::new(Str::from_static("ABC"), Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?); __m2 }, 0i64, Map::<Str, Mixed>::new(), List::<crate::php_parser::node::AttributeGroup>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> })?);
+    use_.set(crate::php_parser::node::stmt::TraitUse::new({ let mut __m3: Map<ArrayKey, crate::php_parser::node::Name> = Map::new(); __m3.push(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("SomeTrait")), Map::<Str, Mixed>::new())?); __m3 }, Map::<ArrayKey, crate::php_parser::node::stmt::TraitUseAdaptation>::new(), Map::<Str, Mixed>::new())?);
+    node.set(cast::<crate::php_parser::node::stmt::Class_>(self.createClassBuilder(cast::<Mixed>(Str::from_static("Test")))?.addStmt(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(method.get().clone())))?.addStmt(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(property.get().clone())))?.addStmts({ let mut __m4: Map<ArrayKey, U_PhpParser_Builder_or_PhpParser_Node_Stmt> = Map::new(); __m4.push(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(const_.get().clone()))); __m4.push(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(use_.get().clone()))); __m4 })?.getNode()?));
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Class_::new(Some(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("Test"))), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_extendsq__467d114822 { stmts: Some({ let mut __m5: Map<ArrayKey, crate::php_parser::node::Stmt> = Map::new(); __m5.push(cast::<crate::php_parser::node::Stmt>(use_.get().clone())); __m5.push(cast::<crate::php_parser::node::Stmt>(const_.get().clone())); __m5.push(cast::<crate::php_parser::node::Stmt>(property.get().clone())); __m5.push(cast::<crate::php_parser::node::Stmt>(method.get().clone())); __m5 }), attrGroups: None, extends: None, flags: None, implements: None }, Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testDocComment(&self) -> Result<(), Throw> {
+    let mut docComment: Str = Default::default();
+    let mut class: Late<crate::php_parser::node::stmt::Class_> = Late::uninit();
+    docComment = Str::from_static("/**\n * Test\n */");
+    class.set(cast::<crate::php_parser::node::stmt::Class_>(self.createClassBuilder(cast::<Mixed>(Str::from_static("Test")))?.setDocComment(U_PhpParser_Comment_Doc_or_Str::Str(docComment.clone()))?.getNode()?));
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Class_::new(Some(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("Test"))), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_extendsq__467d114822 { attrGroups: None, extends: None, flags: None, implements: None, stmts: None }, { let mut __m1: Map<Str, Mixed> = Map::new(); __m1.insert(Str::from_static("comments"), { let __c1144 = (crate::php_parser::comment::Doc::new(docComment.clone(), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64))?,); let mut __m: Map<ArrayKey, Mixed> = Map::new(); __m.push(cast::<Mixed>(__c1144.0)); Mixed::Arr(__m) }); __m1 })?), cast::<Mixed>(class.get().clone()), Str::from_static(""))? };
+    class.set(cast::<crate::php_parser::node::stmt::Class_>(self.createClassBuilder(cast::<Mixed>(Str::from_static("Test")))?.setDocComment(U_PhpParser_Comment_Doc_or_Str::PhpParser_Comment_Doc(crate::php_parser::comment::Doc::new(docComment.clone(), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64))?))?.getNode()?));
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Class_::new(Some(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("Test"))), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_extendsq__467d114822 { attrGroups: None, extends: None, flags: None, implements: None, stmts: None }, { let mut __m2: Map<Str, Mixed> = Map::new(); __m2.insert(Str::from_static("comments"), { let __c1145 = (crate::php_parser::comment::Doc::new(docComment.clone(), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64))?,); let mut __m: Map<ArrayKey, Mixed> = Map::new(); __m.push(cast::<Mixed>(__c1145.0)); Mixed::Arr(__m) }); __m2 })?), cast::<Mixed>(class.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testAddAttribute(&self) -> Result<(), Throw> {
+    let mut attribute: Late<crate::php_parser::node::Attribute> = Late::uninit();
+    let mut attributeGroup: Late<crate::php_parser::node::AttributeGroup> = Late::uninit();
+    let mut class: Late<crate::php_parser::node::stmt::Class_> = Late::uninit();
+    attribute.set(crate::php_parser::node::Attribute::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Attr")), Map::<Str, Mixed>::new())?, list![crate::php_parser::node::Arg::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(1i64, Map::<Str, Mixed>::new())?), false, false, Map::<Str, Mixed>::new(), Some(crate::php_parser::node::Identifier::new(Str::from_static("name"), Map::<Str, Mixed>::new())?))?], Map::<Str, Mixed>::new())?);
+    attributeGroup.set(crate::php_parser::node::AttributeGroup::new({ let mut __m1: Map<ArrayKey, crate::php_parser::node::Attribute> = Map::new(); __m1.push(attribute.get().clone()); __m1 }, Map::<Str, Mixed>::new())?);
+    class.set(self.createClassBuilder(cast::<Mixed>(Str::from_static("ATTR_GROUP")))?.addAttribute(U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup::PhpParser_Node_AttributeGroup(attributeGroup.get().clone()))?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Class_::new(Some(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("ATTR_GROUP"))), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_extendsq__467d114822 { attrGroups: Some({ let mut __m2: Map<ArrayKey, crate::php_parser::node::AttributeGroup> = Map::new(); __m2.push(attributeGroup.get().clone()); __m2 }), extends: None, flags: None, implements: None, stmts: None }, Map::<Str, Mixed>::new())?), cast::<Mixed>(class.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testInvalidStmtError(&self) -> Result<(), Throw> {
+    self.expectException(Str::from_static("LogicException"))?;
+    self.expectExceptionMessage(Str::from_static("Unexpected node of type \"Stmt_Echo\""))?;
+    let _: crate::php_parser::builder::Class_ = self.createClassBuilder(cast::<Mixed>(Str::from_static("Test")))?.addStmt(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(crate::php_parser::node::stmt::Echo_::new(Map::<ArrayKey, crate::php_parser::node::Expr>::new(), Map::<Str, Mixed>::new())?)))?;
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testInvalidDocComment(&self) -> Result<(), Throw> {
+    self.expectException(Str::from_static("LogicException"))?;
+    self.expectExceptionMessage(Str::from_static("Doc comment must be a string or an instance of PhpParser\\Comment\\Doc"))?;
+    let _: crate::php_parser::builder::Declaration = self.createClassBuilder(cast::<Mixed>(Str::from_static("Test")))?.setDocComment(cast::<U_PhpParser_Comment_Doc_or_Str>(crate::php_parser::Comment::new(Str::from_static("Test"), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64))?))?;
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testEmptyName(&self) -> Result<(), Throw> {
+    self.expectException(Str::from_static("LogicException"))?;
+    self.expectExceptionMessage(Str::from_static("Name cannot be empty"))?;
+    let _: crate::php_parser::builder::Class_ = self.createClassBuilder(cast::<Mixed>(Str::from_static("Test")))?.extend(U_PhpParser_Node_Name_or_Str::Str(Str::from_static("")))?;
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testInvalidName(&self) -> Result<(), Throw> {
+    self.expectException(Str::from_static("LogicException"))?;
+    self.expectExceptionMessage(Str::from_static("Name must be a string or an instance of Node\\Name"))?;
+    let _: crate::php_parser::builder::Class_ = self.createClassBuilder(cast::<Mixed>(Str::from_static("Test")))?.extend(cast::<U_PhpParser_Node_Name_or_Str>((Str::from_static("Foo"),)))?;
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn magic__construct(&self, mut name: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).magic__construct__impl(name) }
+    pub fn setUpBeforeClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::setUpBeforeClass() }
+    pub fn tearDownAfterClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::tearDownAfterClass() }
+    pub fn setUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).setUp__impl() }
+    pub fn tearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).tearDown__impl() }
+    pub fn runSetUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runSetUp__impl() }
+    pub fn runTearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runTearDown__impl() }
+    pub fn getName(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).getName__impl() }
+    pub fn name(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).name__impl() }
+    pub fn expectException(&self, mut exception: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectException__impl(exception) }
+    pub fn expectExceptionMessage(&self, mut message_v: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessage__impl(message_v) }
+    pub fn expectExceptionMessageMatches(&self, mut regularExpression: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessageMatches__impl(regularExpression) }
+    pub fn expectExceptionCode(&self, mut code: i64) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionCode__impl(code) }
+    pub fn expectNotToPerformAssertions(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectNotToPerformAssertions__impl() }
+    pub fn expectsException(&self) -> Result<bool, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectsException__impl() }
+    pub fn verifyExpectedException(&self, mut e: crate::g::Throwable) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).verifyExpectedException__impl(e) }
+    pub fn expectedExceptionDescription(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectedExceptionDescription__impl() }
+    pub fn markTestSkipped(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestSkipped__impl(message_v) }
+    pub fn markTestIncomplete(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestIncomplete__impl(message_v) }
+    pub fn createMock(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createMock__impl(originalClassName) }
+    pub fn createStub(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createStub__impl(originalClassName) }
+    pub fn getCount() -> Result<i64, Throw> { crate::phpunit::framework::Assert::getCount() }
+    pub fn resetCount() -> Result<(), Throw> { crate::phpunit::framework::Assert::resetCount() }
+    pub fn fail(mut message_v: Str) -> Result<Never, Throw> { crate::phpunit::framework::Assert::fail(message_v) }
+    pub fn assertTrue(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertTrue(condition, message_v) }
+    pub fn assertFalse(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFalse(condition, message_v) }
+    pub fn assertNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNull(actual, message_v) }
+    pub fn assertNotNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotNull(actual, message_v) }
+    pub fn assertSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertSame(expected, actual, message_v) }
+    pub fn assertNotSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotSame(expected, actual, message_v) }
+    pub fn assertEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEquals(expected, actual, message_v) }
+    pub fn assertNotEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEquals(expected, actual, message_v) }
+    pub fn assertEqualsCanonicalizing(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEqualsCanonicalizing(expected, actual, message_v) }
+    pub fn assertCount(mut expectedCount: i64, mut haystack: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertCount(expectedCount, haystack, message_v) }
+    pub fn assertEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEmpty(actual, message_v) }
+    pub fn assertNotEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEmpty(actual, message_v) }
+    pub fn assertInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertInstanceOf(expected, actual, message_v) }
+    pub fn assertNotInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotInstanceOf(expected, actual, message_v) }
+    pub fn assertIsArray(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsArray(actual, message_v) }
+    pub fn assertIsString(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsString(actual, message_v) }
+    pub fn assertIsInt(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsInt(actual, message_v) }
+    pub fn assertIsBool(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsBool(actual, message_v) }
+    pub fn assertIsObject(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsObject(actual, message_v) }
+    pub fn assertIsCallable(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsCallable(actual, message_v) }
+    pub fn assertStringContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringContainsString(needle, haystack, message_v) }
+    pub fn assertStringNotContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringNotContainsString(needle, haystack, message_v) }
+    pub fn assertStringStartsWith(mut prefix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringStartsWith(prefix, string, message_v) }
+    pub fn assertStringEndsWith(mut suffix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEndsWith(suffix, string, message_v) }
+    pub fn assertMatchesRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertMatchesRegularExpression(pattern, string, message_v) }
+    pub fn assertDoesNotMatchRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDoesNotMatchRegularExpression(pattern, string, message_v) }
+    pub fn assertContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertContains(needle, haystack, message_v) }
+    pub fn assertNotContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotContains(needle, haystack, message_v) }
+    pub fn assertArrayHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayHasKey(key_v, array, message_v) }
+    pub fn assertArrayNotHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayNotHasKey(key_v, array, message_v) }
+    pub fn assertGreaterThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThan(expected, actual, message_v) }
+    pub fn assertGreaterThanOrEqual(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThanOrEqual(expected, actual, message_v) }
+    pub fn assertLessThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertLessThan(expected, actual, message_v) }
+    pub fn assertFileExists(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileExists(filename, message_v) }
+    pub fn assertFileDoesNotExist(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileDoesNotExist(filename, message_v) }
+    pub fn assertDirectoryExists(mut directory: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDirectoryExists(directory, message_v) }
+    pub fn assertStringEqualsFile(mut expectedFile: Str, mut actualString: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEqualsFile(expectedFile, actualString, message_v) }
+    pub fn assertJsonStringEqualsJsonString(mut expectedJson: Str, mut actualJson: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertJsonStringEqualsJsonString(expectedJson, actualJson, message_v) }
+    pub fn assertObjectHasProperty(mut propertyName: Str, mut object: AnyObject, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertObjectHasProperty(propertyName, object, message_v) }
+    pub fn new_same_class(&self, mut name: Str) -> Result<crate::php_parser::builder::ClassTest, Throw> { Ok(Self::new(name)?) }
+}
+impl php_rt::PhpObject for ClassTest {
+    fn class_name(&self) -> &'static str { "PhpParser\\Builder\\ClassTest" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\builder\\classtest", "phpunit\\framework\\testcase", "phpunit\\framework\\assert"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_expectedException_get()) { out.push((Str::from_static("expectedException"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessage_get()) { out.push((Str::from_static("expectedExceptionMessage"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessageRegExp_get()) { out.push((Str::from_static("expectedExceptionMessageRegExp"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionCode_get()) { out.push((Str::from_static("expectedExceptionCode"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_name_get()) { out.push((Str::from_static("name"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "expectedException" => { self.set_p_expectedException(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessage" => { self.set_p_expectedExceptionMessage(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessageRegExp" => { self.set_p_expectedExceptionMessageRegExp(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionCode" => { self.set_p_expectedExceptionCode(value.to_option().map(|__m| cast::<i64>(__m))); true }, "name" => { self.set_p_name(cast::<Str>(value)); true }, _ => false } }
+}
+impl ClassTest { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Builder\\ClassTest could not be converted to string"))) } }
+impl php_rt::PhpClone for ClassTest { fn php_clone(&self) -> Self { let c = ClassTest(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for ClassTestObj { fn clone(&self) -> Self { ClassTestObj { expectedException: self.expectedException.clone(), expectedExceptionMessage: self.expectedExceptionMessage.clone(), expectedExceptionMessageRegExp: self.expectedExceptionMessageRegExp.clone(), expectedExceptionCode: self.expectedExceptionCode.clone(), name: self.name.clone() } } }
+impl ClassTest {
+}
+pub struct EnumCaseTestObj {
+    pub expectedException: Option<Str>,
+    pub expectedExceptionMessage: Option<Str>,
+    pub expectedExceptionMessageRegExp: Option<Str>,
+    pub expectedExceptionCode: Option<i64>,
+    pub name: Str,
+}
+#[derive(Clone)]
+pub struct EnumCaseTest(pub Rc<RefCell<EnumCaseTestObj>>);
+impl EnumCaseTest {
+    pub fn p_expectedException(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedException) }
+    pub fn p_expectedException_get(&self) -> Option<Str> { self.0.borrow().expectedException.clone() }
+    pub fn p_expectedException_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedException.clone()) }
+    pub fn p_expectedException_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedException) }
+    pub fn set_p_expectedException(&self, v: Option<Str>) { self.0.borrow_mut().expectedException = v; }
+    pub fn p_expectedExceptionMessage(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessage) }
+    pub fn p_expectedExceptionMessage_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessage.clone() }
+    pub fn p_expectedExceptionMessage_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessage.clone()) }
+    pub fn p_expectedExceptionMessage_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessage) }
+    pub fn set_p_expectedExceptionMessage(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessage = v; }
+    pub fn p_expectedExceptionMessageRegExp(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessageRegExp) }
+    pub fn p_expectedExceptionMessageRegExp_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessageRegExp.clone() }
+    pub fn p_expectedExceptionMessageRegExp_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessageRegExp.clone()) }
+    pub fn p_expectedExceptionMessageRegExp_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessageRegExp) }
+    pub fn set_p_expectedExceptionMessageRegExp(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessageRegExp = v; }
+    pub fn p_expectedExceptionCode(&self) -> Ref<'_, Option<i64>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionCode) }
+    pub fn p_expectedExceptionCode_get(&self) -> Option<i64> { self.0.borrow().expectedExceptionCode.clone() }
+    pub fn p_expectedExceptionCode_opt(&self) -> Option<Option<i64>> { Some(self.0.borrow().expectedExceptionCode.clone()) }
+    pub fn p_expectedExceptionCode_mut(&self) -> RefMut<'_, Option<i64>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionCode) }
+    pub fn set_p_expectedExceptionCode(&self, v: Option<i64>) { self.0.borrow_mut().expectedExceptionCode = v; }
+    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| &o.name) }
+    pub fn p_name_get(&self) -> Str { self.0.borrow().name.clone() }
+    pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
+    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
+    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new(mut name: Str) -> Result<EnumCaseTest, Throw> {
+        let this = EnumCaseTest(Rc::new(RefCell::new(EnumCaseTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })));
+        this.magic__construct(name)?;
+        Ok(this)
+    }
+    pub fn createEnumCaseBuilder(&self, mut name: Mixed) -> Result<crate::php_parser::builder::EnumCase, Throw> {
+    return Ok(crate::php_parser::builder::EnumCase::new(cast::<U_PhpParser_Node_Identifier_or_Str>(name.clone()))?);
+    }
+    pub fn testDocComment(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::stmt::EnumCase> = Late::uninit();
+    node.set(self.createEnumCaseBuilder(cast::<Mixed>(Str::from_static("TEST")))?.setDocComment(U_PhpParser_Comment_Doc_or_Str::Str(Str::from_static("/** Test */")))?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::EnumCase::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("TEST")), { let _ = (); None::<crate::php_parser::node::Expr> }, List::<crate::php_parser::node::AttributeGroup>::new(), { let mut __m1: Map<Str, Mixed> = Map::new(); __m1.insert(Str::from_static("comments"), { let __c1146 = (crate::php_parser::comment::Doc::new(Str::from_static("/** Test */"), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64))?,); let mut __m: Map<ArrayKey, Mixed> = Map::new(); __m.push(cast::<Mixed>(__c1146.0)); Mixed::Arr(__m) }); __m1 })?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testAddAttribute(&self) -> Result<(), Throw> {
+    let mut attribute: Late<crate::php_parser::node::Attribute> = Late::uninit();
+    let mut attributeGroup: Late<crate::php_parser::node::AttributeGroup> = Late::uninit();
+    let mut node: Late<crate::php_parser::node::stmt::EnumCase> = Late::uninit();
+    attribute.set(crate::php_parser::node::Attribute::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Attr")), Map::<Str, Mixed>::new())?, list![crate::php_parser::node::Arg::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(1i64, Map::<Str, Mixed>::new())?), false, false, Map::<Str, Mixed>::new(), Some(crate::php_parser::node::Identifier::new(Str::from_static("name"), Map::<Str, Mixed>::new())?))?], Map::<Str, Mixed>::new())?);
+    attributeGroup.set(crate::php_parser::node::AttributeGroup::new({ let mut __m1: Map<ArrayKey, crate::php_parser::node::Attribute> = Map::new(); __m1.push(attribute.get().clone()); __m1 }, Map::<Str, Mixed>::new())?);
+    node.set(self.createEnumCaseBuilder(cast::<Mixed>(Str::from_static("ATTR_GROUP")))?.addAttribute(U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup::PhpParser_Node_AttributeGroup(attributeGroup.get().clone()))?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::EnumCase::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("ATTR_GROUP")), { let _ = (); None::<crate::php_parser::node::Expr> }, list![attributeGroup.get().clone()], Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testValues(&self, mut value: Mixed, mut expectedValueNode: Mixed) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::stmt::EnumCase> = Late::uninit();
+    node.set(self.createEnumCaseBuilder(cast::<Mixed>(Str::from_static("TEST")))?.setValue(cast::<U_Int_or_PhpParser_Node_Expr_or_Str>(value.clone()))?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(expectedValueNode.clone(), cast::<Mixed>(node.get().clone().p_expr_get()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn provideTestDefaultValues() -> Result<((i64, crate::php_parser::node::scalar::Int_), (Str, crate::php_parser::node::scalar::String_)), Throw> {
+    return Ok(((31415i64, crate::php_parser::node::scalar::Int_::new(31415i64, Map::<Str, Mixed>::new())?), (Str::from_static("Hallo World"), crate::php_parser::node::scalar::String_::new(Str::from_static("Hallo World"), Map::<Str, Mixed>::new())?)));
+    }
+    pub fn magic__construct(&self, mut name: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).magic__construct__impl(name) }
+    pub fn setUpBeforeClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::setUpBeforeClass() }
+    pub fn tearDownAfterClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::tearDownAfterClass() }
+    pub fn setUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).setUp__impl() }
+    pub fn tearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).tearDown__impl() }
+    pub fn runSetUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runSetUp__impl() }
+    pub fn runTearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runTearDown__impl() }
+    pub fn getName(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).getName__impl() }
+    pub fn name(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).name__impl() }
+    pub fn expectException(&self, mut exception: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectException__impl(exception) }
+    pub fn expectExceptionMessage(&self, mut message_v: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessage__impl(message_v) }
+    pub fn expectExceptionMessageMatches(&self, mut regularExpression: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessageMatches__impl(regularExpression) }
+    pub fn expectExceptionCode(&self, mut code: i64) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionCode__impl(code) }
+    pub fn expectNotToPerformAssertions(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectNotToPerformAssertions__impl() }
+    pub fn expectsException(&self) -> Result<bool, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectsException__impl() }
+    pub fn verifyExpectedException(&self, mut e: crate::g::Throwable) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).verifyExpectedException__impl(e) }
+    pub fn expectedExceptionDescription(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectedExceptionDescription__impl() }
+    pub fn markTestSkipped(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestSkipped__impl(message_v) }
+    pub fn markTestIncomplete(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestIncomplete__impl(message_v) }
+    pub fn createMock(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createMock__impl(originalClassName) }
+    pub fn createStub(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createStub__impl(originalClassName) }
+    pub fn getCount() -> Result<i64, Throw> { crate::phpunit::framework::Assert::getCount() }
+    pub fn resetCount() -> Result<(), Throw> { crate::phpunit::framework::Assert::resetCount() }
+    pub fn fail(mut message_v: Str) -> Result<Never, Throw> { crate::phpunit::framework::Assert::fail(message_v) }
+    pub fn assertTrue(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertTrue(condition, message_v) }
+    pub fn assertFalse(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFalse(condition, message_v) }
+    pub fn assertNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNull(actual, message_v) }
+    pub fn assertNotNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotNull(actual, message_v) }
+    pub fn assertSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertSame(expected, actual, message_v) }
+    pub fn assertNotSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotSame(expected, actual, message_v) }
+    pub fn assertEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEquals(expected, actual, message_v) }
+    pub fn assertNotEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEquals(expected, actual, message_v) }
+    pub fn assertEqualsCanonicalizing(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEqualsCanonicalizing(expected, actual, message_v) }
+    pub fn assertCount(mut expectedCount: i64, mut haystack: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertCount(expectedCount, haystack, message_v) }
+    pub fn assertEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEmpty(actual, message_v) }
+    pub fn assertNotEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEmpty(actual, message_v) }
+    pub fn assertInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertInstanceOf(expected, actual, message_v) }
+    pub fn assertNotInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotInstanceOf(expected, actual, message_v) }
+    pub fn assertIsArray(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsArray(actual, message_v) }
+    pub fn assertIsString(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsString(actual, message_v) }
+    pub fn assertIsInt(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsInt(actual, message_v) }
+    pub fn assertIsBool(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsBool(actual, message_v) }
+    pub fn assertIsObject(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsObject(actual, message_v) }
+    pub fn assertIsCallable(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsCallable(actual, message_v) }
+    pub fn assertStringContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringContainsString(needle, haystack, message_v) }
+    pub fn assertStringNotContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringNotContainsString(needle, haystack, message_v) }
+    pub fn assertStringStartsWith(mut prefix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringStartsWith(prefix, string, message_v) }
+    pub fn assertStringEndsWith(mut suffix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEndsWith(suffix, string, message_v) }
+    pub fn assertMatchesRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertMatchesRegularExpression(pattern, string, message_v) }
+    pub fn assertDoesNotMatchRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDoesNotMatchRegularExpression(pattern, string, message_v) }
+    pub fn assertContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertContains(needle, haystack, message_v) }
+    pub fn assertNotContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotContains(needle, haystack, message_v) }
+    pub fn assertArrayHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayHasKey(key_v, array, message_v) }
+    pub fn assertArrayNotHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayNotHasKey(key_v, array, message_v) }
+    pub fn assertGreaterThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThan(expected, actual, message_v) }
+    pub fn assertGreaterThanOrEqual(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThanOrEqual(expected, actual, message_v) }
+    pub fn assertLessThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertLessThan(expected, actual, message_v) }
+    pub fn assertFileExists(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileExists(filename, message_v) }
+    pub fn assertFileDoesNotExist(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileDoesNotExist(filename, message_v) }
+    pub fn assertDirectoryExists(mut directory: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDirectoryExists(directory, message_v) }
+    pub fn assertStringEqualsFile(mut expectedFile: Str, mut actualString: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEqualsFile(expectedFile, actualString, message_v) }
+    pub fn assertJsonStringEqualsJsonString(mut expectedJson: Str, mut actualJson: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertJsonStringEqualsJsonString(expectedJson, actualJson, message_v) }
+    pub fn assertObjectHasProperty(mut propertyName: Str, mut object: AnyObject, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertObjectHasProperty(propertyName, object, message_v) }
+    pub fn new_same_class(&self, mut name: Str) -> Result<crate::php_parser::builder::EnumCaseTest, Throw> { Ok(Self::new(name)?) }
+}
+impl php_rt::PhpObject for EnumCaseTest {
+    fn class_name(&self) -> &'static str { "PhpParser\\Builder\\EnumCaseTest" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\builder\\enumcasetest", "phpunit\\framework\\testcase", "phpunit\\framework\\assert"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_expectedException_get()) { out.push((Str::from_static("expectedException"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessage_get()) { out.push((Str::from_static("expectedExceptionMessage"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessageRegExp_get()) { out.push((Str::from_static("expectedExceptionMessageRegExp"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionCode_get()) { out.push((Str::from_static("expectedExceptionCode"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_name_get()) { out.push((Str::from_static("name"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "expectedException" => { self.set_p_expectedException(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessage" => { self.set_p_expectedExceptionMessage(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessageRegExp" => { self.set_p_expectedExceptionMessageRegExp(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionCode" => { self.set_p_expectedExceptionCode(value.to_option().map(|__m| cast::<i64>(__m))); true }, "name" => { self.set_p_name(cast::<Str>(value)); true }, _ => false } }
+}
+impl EnumCaseTest { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Builder\\EnumCaseTest could not be converted to string"))) } }
+impl php_rt::PhpClone for EnumCaseTest { fn php_clone(&self) -> Self { let c = EnumCaseTest(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for EnumCaseTestObj { fn clone(&self) -> Self { EnumCaseTestObj { expectedException: self.expectedException.clone(), expectedExceptionMessage: self.expectedExceptionMessage.clone(), expectedExceptionMessageRegExp: self.expectedExceptionMessageRegExp.clone(), expectedExceptionCode: self.expectedExceptionCode.clone(), name: self.name.clone() } } }
+impl EnumCaseTest {
+}
+pub struct EnumTestObj {
+    pub expectedException: Option<Str>,
+    pub expectedExceptionMessage: Option<Str>,
+    pub expectedExceptionMessageRegExp: Option<Str>,
+    pub expectedExceptionCode: Option<i64>,
+    pub name: Str,
+}
+#[derive(Clone)]
+pub struct EnumTest(pub Rc<RefCell<EnumTestObj>>);
+impl EnumTest {
+    pub fn p_expectedException(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedException) }
+    pub fn p_expectedException_get(&self) -> Option<Str> { self.0.borrow().expectedException.clone() }
+    pub fn p_expectedException_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedException.clone()) }
+    pub fn p_expectedException_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedException) }
+    pub fn set_p_expectedException(&self, v: Option<Str>) { self.0.borrow_mut().expectedException = v; }
+    pub fn p_expectedExceptionMessage(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessage) }
+    pub fn p_expectedExceptionMessage_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessage.clone() }
+    pub fn p_expectedExceptionMessage_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessage.clone()) }
+    pub fn p_expectedExceptionMessage_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessage) }
+    pub fn set_p_expectedExceptionMessage(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessage = v; }
+    pub fn p_expectedExceptionMessageRegExp(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessageRegExp) }
+    pub fn p_expectedExceptionMessageRegExp_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessageRegExp.clone() }
+    pub fn p_expectedExceptionMessageRegExp_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessageRegExp.clone()) }
+    pub fn p_expectedExceptionMessageRegExp_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessageRegExp) }
+    pub fn set_p_expectedExceptionMessageRegExp(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessageRegExp = v; }
+    pub fn p_expectedExceptionCode(&self) -> Ref<'_, Option<i64>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionCode) }
+    pub fn p_expectedExceptionCode_get(&self) -> Option<i64> { self.0.borrow().expectedExceptionCode.clone() }
+    pub fn p_expectedExceptionCode_opt(&self) -> Option<Option<i64>> { Some(self.0.borrow().expectedExceptionCode.clone()) }
+    pub fn p_expectedExceptionCode_mut(&self) -> RefMut<'_, Option<i64>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionCode) }
+    pub fn set_p_expectedExceptionCode(&self, v: Option<i64>) { self.0.borrow_mut().expectedExceptionCode = v; }
+    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| &o.name) }
+    pub fn p_name_get(&self) -> Str { self.0.borrow().name.clone() }
+    pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
+    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
+    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new(mut name: Str) -> Result<EnumTest, Throw> {
+        let this = EnumTest(Rc::new(RefCell::new(EnumTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })));
+        this.magic__construct(name)?;
+        Ok(this)
+    }
+    pub fn createEnumBuilder(&self, mut class: Mixed) -> Result<crate::php_parser::builder::Enum_, Throw> {
+    return Ok(crate::php_parser::builder::Enum_::new(cast::<Str>(class.clone()))?);
+    }
+    pub fn testImplements(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::stmt::Enum_> = Late::uninit();
+    node.set(self.createEnumBuilder(cast::<Mixed>(Str::from_static("SomeEnum")))?.implement(list![U_PhpParser_Node_Name_or_Str::Str(Str::from_static("Namespaced\\SomeInterface")), U_PhpParser_Node_Name_or_Str::PhpParser_Node_Name(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("OtherInterface")), Map::<Str, Mixed>::new())?)])?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Enum_::new(Some(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("SomeEnum"))), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_implement_38f3035d6c { implements: Some({ let mut __m1: Map<ArrayKey, crate::php_parser::node::Name> = Map::new(); __m1.push(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Namespaced\\SomeInterface")), Map::<Str, Mixed>::new())?); __m1.push(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("OtherInterface")), Map::<Str, Mixed>::new())?); __m1 }), attrGroups: None, scalarType: None, stmts: None }, Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testSetScalarType(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::stmt::Enum_> = Late::uninit();
+    node.set(self.createEnumBuilder(cast::<Mixed>(Str::from_static("Test")))?.setScalarType(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("int")))?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Enum_::new(Some(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("Test"))), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_implement_38f3035d6c { scalarType: Some(crate::php_parser::node::Identifier::new(Str::from_static("int"), Map::<Str, Mixed>::new())?), attrGroups: None, implements: None, stmts: None }, Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testStatementOrder(&self) -> Result<(), Throw> {
+    let mut method: Late<crate::php_parser::node::stmt::ClassMethod> = Late::uninit();
+    let mut enumCase: Late<crate::php_parser::node::stmt::EnumCase> = Late::uninit();
+    let mut const_: Late<crate::php_parser::node::stmt::ClassConst> = Late::uninit();
+    let mut use_: Late<crate::php_parser::node::stmt::TraitUse> = Late::uninit();
+    let mut node: Late<crate::php_parser::node::stmt::Enum_> = Late::uninit();
+    method.set(crate::php_parser::node::stmt::ClassMethod::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("testMethod")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_6534c97760 { attrGroups: None, byRef: None, flags: None, params: None, returnType: None, stmts: None }, Map::<Str, Mixed>::new())?);
+    enumCase.set(crate::php_parser::node::stmt::EnumCase::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("TEST_ENUM_CASE")), { let _ = (); None::<crate::php_parser::node::Expr> }, List::<crate::php_parser::node::AttributeGroup>::new(), Map::<Str, Mixed>::new())?);
+    const_.set(crate::php_parser::node::stmt::ClassConst::new({ let mut __m1: Map<ArrayKey, crate::php_parser::node::Const_> = Map::new(); __m1.push(crate::php_parser::node::Const_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("TEST_CONST")), cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::String_::new(Str::from_static("ABC"), Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?); __m1 }, 0i64, Map::<Str, Mixed>::new(), List::<crate::php_parser::node::AttributeGroup>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> })?);
+    use_.set(crate::php_parser::node::stmt::TraitUse::new({ let mut __m2: Map<ArrayKey, crate::php_parser::node::Name> = Map::new(); __m2.push(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("SomeTrait")), Map::<Str, Mixed>::new())?); __m2 }, Map::<ArrayKey, crate::php_parser::node::stmt::TraitUseAdaptation>::new(), Map::<Str, Mixed>::new())?);
+    node.set(cast::<crate::php_parser::node::stmt::Enum_>(self.createEnumBuilder(cast::<Mixed>(Str::from_static("Test")))?.addStmt(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(method.get().clone())))?.addStmt(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(enumCase.get().clone())))?.addStmts({ let mut __m3: Map<ArrayKey, U_PhpParser_Builder_or_PhpParser_Node_Stmt> = Map::new(); __m3.push(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(const_.get().clone()))); __m3.push(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(use_.get().clone()))); __m3 })?.getNode()?));
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Enum_::new(Some(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("Test"))), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_implement_38f3035d6c { stmts: Some({ let mut __m4: Map<ArrayKey, crate::php_parser::node::Stmt> = Map::new(); __m4.push(cast::<crate::php_parser::node::Stmt>(use_.get().clone())); __m4.push(cast::<crate::php_parser::node::Stmt>(enumCase.get().clone())); __m4.push(cast::<crate::php_parser::node::Stmt>(const_.get().clone())); __m4.push(cast::<crate::php_parser::node::Stmt>(method.get().clone())); __m4 }), attrGroups: None, implements: None, scalarType: None }, Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testDocComment(&self) -> Result<(), Throw> {
+    let mut docComment: Str = Default::default();
+    let mut enum_: Late<crate::php_parser::node::stmt::Enum_> = Late::uninit();
+    docComment = Str::from_static("/**\n * Test\n */");
+    enum_.set(cast::<crate::php_parser::node::stmt::Enum_>(self.createEnumBuilder(cast::<Mixed>(Str::from_static("Test")))?.setDocComment(U_PhpParser_Comment_Doc_or_Str::Str(docComment.clone()))?.getNode()?));
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Enum_::new(Some(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("Test"))), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_implement_38f3035d6c { attrGroups: None, implements: None, scalarType: None, stmts: None }, { let mut __m1: Map<Str, Mixed> = Map::new(); __m1.insert(Str::from_static("comments"), { let __c1147 = (crate::php_parser::comment::Doc::new(docComment.clone(), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64))?,); let mut __m: Map<ArrayKey, Mixed> = Map::new(); __m.push(cast::<Mixed>(__c1147.0)); Mixed::Arr(__m) }); __m1 })?), cast::<Mixed>(enum_.get().clone()), Str::from_static(""))? };
+    enum_.set(cast::<crate::php_parser::node::stmt::Enum_>(self.createEnumBuilder(cast::<Mixed>(Str::from_static("Test")))?.setDocComment(U_PhpParser_Comment_Doc_or_Str::PhpParser_Comment_Doc(crate::php_parser::comment::Doc::new(docComment.clone(), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64))?))?.getNode()?));
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Enum_::new(Some(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("Test"))), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_implement_38f3035d6c { attrGroups: None, implements: None, scalarType: None, stmts: None }, { let mut __m2: Map<Str, Mixed> = Map::new(); __m2.insert(Str::from_static("comments"), { let __c1148 = (crate::php_parser::comment::Doc::new(docComment.clone(), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64))?,); let mut __m: Map<ArrayKey, Mixed> = Map::new(); __m.push(cast::<Mixed>(__c1148.0)); Mixed::Arr(__m) }); __m2 })?), cast::<Mixed>(enum_.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testAddAttribute(&self) -> Result<(), Throw> {
+    let mut attribute: Late<crate::php_parser::node::Attribute> = Late::uninit();
+    let mut attributeGroup: Late<crate::php_parser::node::AttributeGroup> = Late::uninit();
+    let mut enum_: Late<crate::php_parser::node::stmt::Enum_> = Late::uninit();
+    attribute.set(crate::php_parser::node::Attribute::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Attr")), Map::<Str, Mixed>::new())?, list![crate::php_parser::node::Arg::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(1i64, Map::<Str, Mixed>::new())?), false, false, Map::<Str, Mixed>::new(), Some(crate::php_parser::node::Identifier::new(Str::from_static("name"), Map::<Str, Mixed>::new())?))?], Map::<Str, Mixed>::new())?);
+    attributeGroup.set(crate::php_parser::node::AttributeGroup::new({ let mut __m1: Map<ArrayKey, crate::php_parser::node::Attribute> = Map::new(); __m1.push(attribute.get().clone()); __m1 }, Map::<Str, Mixed>::new())?);
+    enum_.set(self.createEnumBuilder(cast::<Mixed>(Str::from_static("ATTR_GROUP")))?.addAttribute(U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup::PhpParser_Node_AttributeGroup(attributeGroup.get().clone()))?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Enum_::new(Some(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("ATTR_GROUP"))), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_implement_38f3035d6c { attrGroups: Some({ let mut __m2: Map<ArrayKey, crate::php_parser::node::AttributeGroup> = Map::new(); __m2.push(attributeGroup.get().clone()); __m2 }), implements: None, scalarType: None, stmts: None }, Map::<Str, Mixed>::new())?), cast::<Mixed>(enum_.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testInvalidStmtError(&self) -> Result<(), Throw> {
+    self.expectException(Str::from_static("LogicException"))?;
+    self.expectExceptionMessage(Str::from_static("Unexpected node of type \"PropertyItem\""))?;
+    let _: crate::php_parser::builder::Enum_ = self.createEnumBuilder(cast::<Mixed>(Str::from_static("Test")))?.addStmt(cast::<U_PhpParser_Builder_or_PhpParser_Node_Stmt>(crate::php_parser::node::PropertyItem::new(U_PhpParser_Node_VarLikeIdentifier_or_Str::Str(Str::from_static("property")), { let _ = (); None::<crate::php_parser::node::Expr> }, Map::<Str, Mixed>::new())?))?;
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testInvalidDocComment(&self) -> Result<(), Throw> {
+    self.expectException(Str::from_static("LogicException"))?;
+    self.expectExceptionMessage(Str::from_static("Doc comment must be a string or an instance of PhpParser\\Comment\\Doc"))?;
+    let _: crate::php_parser::builder::Declaration = self.createEnumBuilder(cast::<Mixed>(Str::from_static("Test")))?.setDocComment(cast::<U_PhpParser_Comment_Doc_or_Str>(crate::php_parser::Comment::new(Str::from_static("Test"), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64))?))?;
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testEmptyName(&self) -> Result<(), Throw> {
+    self.expectException(Str::from_static("LogicException"))?;
+    self.expectExceptionMessage(Str::from_static("Name cannot be empty"))?;
+    let _: crate::php_parser::builder::Enum_ = self.createEnumBuilder(cast::<Mixed>(Str::from_static("Test")))?.implement(list![U_PhpParser_Node_Name_or_Str::Str(Str::from_static(""))])?;
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testInvalidName(&self) -> Result<(), Throw> {
+    self.expectException(Str::from_static("LogicException"))?;
+    self.expectExceptionMessage(Str::from_static("Name must be a string or an instance of Node\\Name"))?;
+    let _: crate::php_parser::builder::Enum_ = self.createEnumBuilder(cast::<Mixed>(Str::from_static("Test")))?.implement(list![cast::<U_PhpParser_Node_Name_or_Str>((Str::from_static("Foo"),))])?;
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn magic__construct(&self, mut name: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).magic__construct__impl(name) }
+    pub fn setUpBeforeClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::setUpBeforeClass() }
+    pub fn tearDownAfterClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::tearDownAfterClass() }
+    pub fn setUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).setUp__impl() }
+    pub fn tearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).tearDown__impl() }
+    pub fn runSetUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runSetUp__impl() }
+    pub fn runTearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runTearDown__impl() }
+    pub fn getName(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).getName__impl() }
+    pub fn name(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).name__impl() }
+    pub fn expectException(&self, mut exception: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectException__impl(exception) }
+    pub fn expectExceptionMessage(&self, mut message_v: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessage__impl(message_v) }
+    pub fn expectExceptionMessageMatches(&self, mut regularExpression: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessageMatches__impl(regularExpression) }
+    pub fn expectExceptionCode(&self, mut code: i64) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionCode__impl(code) }
+    pub fn expectNotToPerformAssertions(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectNotToPerformAssertions__impl() }
+    pub fn expectsException(&self) -> Result<bool, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectsException__impl() }
+    pub fn verifyExpectedException(&self, mut e: crate::g::Throwable) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).verifyExpectedException__impl(e) }
+    pub fn expectedExceptionDescription(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectedExceptionDescription__impl() }
+    pub fn markTestSkipped(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestSkipped__impl(message_v) }
+    pub fn markTestIncomplete(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestIncomplete__impl(message_v) }
+    pub fn createMock(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createMock__impl(originalClassName) }
+    pub fn createStub(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createStub__impl(originalClassName) }
+    pub fn getCount() -> Result<i64, Throw> { crate::phpunit::framework::Assert::getCount() }
+    pub fn resetCount() -> Result<(), Throw> { crate::phpunit::framework::Assert::resetCount() }
+    pub fn fail(mut message_v: Str) -> Result<Never, Throw> { crate::phpunit::framework::Assert::fail(message_v) }
+    pub fn assertTrue(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertTrue(condition, message_v) }
+    pub fn assertFalse(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFalse(condition, message_v) }
+    pub fn assertNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNull(actual, message_v) }
+    pub fn assertNotNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotNull(actual, message_v) }
+    pub fn assertSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertSame(expected, actual, message_v) }
+    pub fn assertNotSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotSame(expected, actual, message_v) }
+    pub fn assertEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEquals(expected, actual, message_v) }
+    pub fn assertNotEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEquals(expected, actual, message_v) }
+    pub fn assertEqualsCanonicalizing(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEqualsCanonicalizing(expected, actual, message_v) }
+    pub fn assertCount(mut expectedCount: i64, mut haystack: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertCount(expectedCount, haystack, message_v) }
+    pub fn assertEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEmpty(actual, message_v) }
+    pub fn assertNotEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEmpty(actual, message_v) }
+    pub fn assertInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertInstanceOf(expected, actual, message_v) }
+    pub fn assertNotInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotInstanceOf(expected, actual, message_v) }
+    pub fn assertIsArray(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsArray(actual, message_v) }
+    pub fn assertIsString(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsString(actual, message_v) }
+    pub fn assertIsInt(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsInt(actual, message_v) }
+    pub fn assertIsBool(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsBool(actual, message_v) }
+    pub fn assertIsObject(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsObject(actual, message_v) }
+    pub fn assertIsCallable(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsCallable(actual, message_v) }
+    pub fn assertStringContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringContainsString(needle, haystack, message_v) }
+    pub fn assertStringNotContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringNotContainsString(needle, haystack, message_v) }
+    pub fn assertStringStartsWith(mut prefix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringStartsWith(prefix, string, message_v) }
+    pub fn assertStringEndsWith(mut suffix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEndsWith(suffix, string, message_v) }
+    pub fn assertMatchesRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertMatchesRegularExpression(pattern, string, message_v) }
+    pub fn assertDoesNotMatchRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDoesNotMatchRegularExpression(pattern, string, message_v) }
+    pub fn assertContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertContains(needle, haystack, message_v) }
+    pub fn assertNotContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotContains(needle, haystack, message_v) }
+    pub fn assertArrayHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayHasKey(key_v, array, message_v) }
+    pub fn assertArrayNotHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayNotHasKey(key_v, array, message_v) }
+    pub fn assertGreaterThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThan(expected, actual, message_v) }
+    pub fn assertGreaterThanOrEqual(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThanOrEqual(expected, actual, message_v) }
+    pub fn assertLessThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertLessThan(expected, actual, message_v) }
+    pub fn assertFileExists(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileExists(filename, message_v) }
+    pub fn assertFileDoesNotExist(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileDoesNotExist(filename, message_v) }
+    pub fn assertDirectoryExists(mut directory: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDirectoryExists(directory, message_v) }
+    pub fn assertStringEqualsFile(mut expectedFile: Str, mut actualString: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEqualsFile(expectedFile, actualString, message_v) }
+    pub fn assertJsonStringEqualsJsonString(mut expectedJson: Str, mut actualJson: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertJsonStringEqualsJsonString(expectedJson, actualJson, message_v) }
+    pub fn assertObjectHasProperty(mut propertyName: Str, mut object: AnyObject, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertObjectHasProperty(propertyName, object, message_v) }
+    pub fn new_same_class(&self, mut name: Str) -> Result<crate::php_parser::builder::EnumTest, Throw> { Ok(Self::new(name)?) }
+}
+impl php_rt::PhpObject for EnumTest {
+    fn class_name(&self) -> &'static str { "PhpParser\\Builder\\EnumTest" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\builder\\enumtest", "phpunit\\framework\\testcase", "phpunit\\framework\\assert"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_expectedException_get()) { out.push((Str::from_static("expectedException"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessage_get()) { out.push((Str::from_static("expectedExceptionMessage"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessageRegExp_get()) { out.push((Str::from_static("expectedExceptionMessageRegExp"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionCode_get()) { out.push((Str::from_static("expectedExceptionCode"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_name_get()) { out.push((Str::from_static("name"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "expectedException" => { self.set_p_expectedException(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessage" => { self.set_p_expectedExceptionMessage(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessageRegExp" => { self.set_p_expectedExceptionMessageRegExp(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionCode" => { self.set_p_expectedExceptionCode(value.to_option().map(|__m| cast::<i64>(__m))); true }, "name" => { self.set_p_name(cast::<Str>(value)); true }, _ => false } }
+}
+impl EnumTest { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Builder\\EnumTest could not be converted to string"))) } }
+impl php_rt::PhpClone for EnumTest { fn php_clone(&self) -> Self { let c = EnumTest(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for EnumTestObj { fn clone(&self) -> Self { EnumTestObj { expectedException: self.expectedException.clone(), expectedExceptionMessage: self.expectedExceptionMessage.clone(), expectedExceptionMessageRegExp: self.expectedExceptionMessageRegExp.clone(), expectedExceptionCode: self.expectedExceptionCode.clone(), name: self.name.clone() } } }
+impl EnumTest {
+}
+pub struct FunctionTestObj {
+    pub expectedException: Option<Str>,
+    pub expectedExceptionMessage: Option<Str>,
+    pub expectedExceptionMessageRegExp: Option<Str>,
+    pub expectedExceptionCode: Option<i64>,
+    pub name: Str,
+}
+#[derive(Clone)]
+pub struct FunctionTest(pub Rc<RefCell<FunctionTestObj>>);
+impl FunctionTest {
+    pub fn p_expectedException(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedException) }
+    pub fn p_expectedException_get(&self) -> Option<Str> { self.0.borrow().expectedException.clone() }
+    pub fn p_expectedException_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedException.clone()) }
+    pub fn p_expectedException_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedException) }
+    pub fn set_p_expectedException(&self, v: Option<Str>) { self.0.borrow_mut().expectedException = v; }
+    pub fn p_expectedExceptionMessage(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessage) }
+    pub fn p_expectedExceptionMessage_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessage.clone() }
+    pub fn p_expectedExceptionMessage_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessage.clone()) }
+    pub fn p_expectedExceptionMessage_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessage) }
+    pub fn set_p_expectedExceptionMessage(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessage = v; }
+    pub fn p_expectedExceptionMessageRegExp(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessageRegExp) }
+    pub fn p_expectedExceptionMessageRegExp_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessageRegExp.clone() }
+    pub fn p_expectedExceptionMessageRegExp_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessageRegExp.clone()) }
+    pub fn p_expectedExceptionMessageRegExp_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessageRegExp) }
+    pub fn set_p_expectedExceptionMessageRegExp(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessageRegExp = v; }
+    pub fn p_expectedExceptionCode(&self) -> Ref<'_, Option<i64>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionCode) }
+    pub fn p_expectedExceptionCode_get(&self) -> Option<i64> { self.0.borrow().expectedExceptionCode.clone() }
+    pub fn p_expectedExceptionCode_opt(&self) -> Option<Option<i64>> { Some(self.0.borrow().expectedExceptionCode.clone()) }
+    pub fn p_expectedExceptionCode_mut(&self) -> RefMut<'_, Option<i64>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionCode) }
+    pub fn set_p_expectedExceptionCode(&self, v: Option<i64>) { self.0.borrow_mut().expectedExceptionCode = v; }
+    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| &o.name) }
+    pub fn p_name_get(&self) -> Str { self.0.borrow().name.clone() }
+    pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
+    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
+    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new(mut name: Str) -> Result<FunctionTest, Throw> {
+        let this = FunctionTest(Rc::new(RefCell::new(FunctionTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })));
+        this.magic__construct(name)?;
+        Ok(this)
+    }
+    pub fn createFunctionBuilder(&self, mut name: Mixed) -> Result<crate::php_parser::builder::Function_, Throw> {
+    return Ok(crate::php_parser::builder::Function_::new(cast::<Str>(name.clone()))?);
+    }
+    pub fn testReturnByRef(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::stmt::Function_> = Late::uninit();
+    node.set(cast::<crate::php_parser::node::stmt::Function_>(self.createFunctionBuilder(cast::<Mixed>(Str::from_static("test")))?.makeReturnByRef()?.getNode()?));
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Function_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("test")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_b3b37d5382 { byRef: Some(true), attrGroups: None, params: None, returnType: None, stmts: None }, Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testParams(&self) -> Result<(), Throw> {
+    let mut param1: Late<crate::php_parser::node::Param> = Late::uninit();
+    let mut param2: Late<crate::php_parser::node::Param> = Late::uninit();
+    let mut param3: Late<crate::php_parser::node::Param> = Late::uninit();
+    let mut node: Late<crate::php_parser::node::stmt::Function_> = Late::uninit();
+    param1.set(crate::php_parser::node::Param::new(U_PhpParser_Node_Expr_Error_or_PhpParser_Node_Expr_Variable::PhpParser_Node_Expr_Variable(crate::php_parser::node::expr::Variable::new(U_PhpParser_Node_Expr_or_Str::Str(Str::from_static("test1")), Map::<Str, Mixed>::new())?), { let _ = (); None::<crate::php_parser::node::Expr> }, { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, false, false, Map::<Str, Mixed>::new(), 0i64, List::<crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?);
+    param2.set(crate::php_parser::node::Param::new(U_PhpParser_Node_Expr_Error_or_PhpParser_Node_Expr_Variable::PhpParser_Node_Expr_Variable(crate::php_parser::node::expr::Variable::new(U_PhpParser_Node_Expr_or_Str::Str(Str::from_static("test2")), Map::<Str, Mixed>::new())?), { let _ = (); None::<crate::php_parser::node::Expr> }, { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, false, false, Map::<Str, Mixed>::new(), 0i64, List::<crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?);
+    param3.set(crate::php_parser::node::Param::new(U_PhpParser_Node_Expr_Error_or_PhpParser_Node_Expr_Variable::PhpParser_Node_Expr_Variable(crate::php_parser::node::expr::Variable::new(U_PhpParser_Node_Expr_or_Str::Str(Str::from_static("test3")), Map::<Str, Mixed>::new())?), { let _ = (); None::<crate::php_parser::node::Expr> }, { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, false, false, Map::<Str, Mixed>::new(), 0i64, List::<crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?);
+    node.set(cast::<crate::php_parser::node::stmt::Function_>(self.createFunctionBuilder(cast::<Mixed>(Str::from_static("test")))?.addParam(U_PhpParser_Builder_Param_or_PhpParser_Node_Param::PhpParser_Node_Param(param1.get().clone()))?.addParams({ let mut __m1: Map<ArrayKey, U_PhpParser_Builder_Param_or_PhpParser_Node_Param> = Map::new(); __m1.push(U_PhpParser_Builder_Param_or_PhpParser_Node_Param::PhpParser_Node_Param(param2.get().clone())); __m1.push(U_PhpParser_Builder_Param_or_PhpParser_Node_Param::PhpParser_Node_Param(param3.get().clone())); __m1 })?.getNode()?));
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Function_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("test")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_b3b37d5382 { params: Some({ let mut __m2: Map<ArrayKey, crate::php_parser::node::Param> = Map::new(); __m2.push(param1.get().clone()); __m2.push(param2.get().clone()); __m2.push(param3.get().clone()); __m2 }), attrGroups: None, byRef: None, returnType: None, stmts: None }, Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testStmts(&self) -> Result<(), Throw> {
+    let mut stmt1: Late<crate::php_parser::node::expr::Print_> = Late::uninit();
+    let mut stmt2: Late<crate::php_parser::node::expr::Print_> = Late::uninit();
+    let mut stmt3: Late<crate::php_parser::node::expr::Print_> = Late::uninit();
+    let mut node: Late<crate::php_parser::node::stmt::Function_> = Late::uninit();
+    stmt1.set(crate::php_parser::node::expr::Print_::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::String_::new(Str::from_static("test1"), Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?);
+    stmt2.set(crate::php_parser::node::expr::Print_::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::String_::new(Str::from_static("test2"), Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?);
+    stmt3.set(crate::php_parser::node::expr::Print_::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::String_::new(Str::from_static("test3"), Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?);
+    node.set(cast::<crate::php_parser::node::stmt::Function_>(self.createFunctionBuilder(cast::<Mixed>(Str::from_static("test")))?.addStmt(U_PhpParser_Builder_or_PhpParser_Node::PhpParser_Node(cast::<crate::php_parser::Node>(stmt1.get().clone())))?.addStmts({ let mut __m1: Map<ArrayKey, U_PhpParser_Builder_or_PhpParser_Node_Stmt> = Map::new(); __m1.push(cast::<U_PhpParser_Builder_or_PhpParser_Node_Stmt>(stmt2.get().clone())); __m1.push(cast::<U_PhpParser_Builder_or_PhpParser_Node_Stmt>(stmt3.get().clone())); __m1 })?.getNode()?));
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Function_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("test")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_b3b37d5382 { stmts: Some({ let mut __m2: Map<ArrayKey, crate::php_parser::node::Stmt> = Map::new(); __m2.push(cast::<crate::php_parser::node::Stmt>(crate::php_parser::node::stmt::Expression::new(cast::<crate::php_parser::node::Expr>(stmt1.get().clone()), Map::<Str, Mixed>::new())?)); __m2.push(cast::<crate::php_parser::node::Stmt>(crate::php_parser::node::stmt::Expression::new(cast::<crate::php_parser::node::Expr>(stmt2.get().clone()), Map::<Str, Mixed>::new())?)); __m2.push(cast::<crate::php_parser::node::Stmt>(crate::php_parser::node::stmt::Expression::new(cast::<crate::php_parser::node::Expr>(stmt3.get().clone()), Map::<Str, Mixed>::new())?)); __m2 }), attrGroups: None, byRef: None, params: None, returnType: None }, Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testDocComment(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::stmt::Function_> = Late::uninit();
+    node.set(cast::<crate::php_parser::node::stmt::Function_>(self.createFunctionBuilder(cast::<Mixed>(Str::from_static("test")))?.setDocComment(U_PhpParser_Comment_Doc_or_Str::Str(Str::from_static("/** Test */")))?.getNode()?));
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Function_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("test")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_b3b37d5382 { attrGroups: None, byRef: None, params: None, returnType: None, stmts: None }, { let mut __m1: Map<Str, Mixed> = Map::new(); __m1.insert(Str::from_static("comments"), { let __c1149 = (crate::php_parser::comment::Doc::new(Str::from_static("/** Test */"), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64))?,); let mut __m: Map<ArrayKey, Mixed> = Map::new(); __m.push(cast::<Mixed>(__c1149.0)); Mixed::Arr(__m) }); __m1 })?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testAddAttribute(&self) -> Result<(), Throw> {
+    let mut attribute: Late<crate::php_parser::node::Attribute> = Late::uninit();
+    let mut attributeGroup: Late<crate::php_parser::node::AttributeGroup> = Late::uninit();
+    let mut node: Late<crate::php_parser::node::stmt::Function_> = Late::uninit();
+    attribute.set(crate::php_parser::node::Attribute::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Attr")), Map::<Str, Mixed>::new())?, list![crate::php_parser::node::Arg::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(1i64, Map::<Str, Mixed>::new())?), false, false, Map::<Str, Mixed>::new(), Some(crate::php_parser::node::Identifier::new(Str::from_static("name"), Map::<Str, Mixed>::new())?))?], Map::<Str, Mixed>::new())?);
+    attributeGroup.set(crate::php_parser::node::AttributeGroup::new({ let mut __m1: Map<ArrayKey, crate::php_parser::node::Attribute> = Map::new(); __m1.push(attribute.get().clone()); __m1 }, Map::<Str, Mixed>::new())?);
+    node.set(self.createFunctionBuilder(cast::<Mixed>(Str::from_static("attrGroup")))?.addAttribute(U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup::PhpParser_Node_AttributeGroup(attributeGroup.get().clone()))?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Function_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("attrGroup")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_b3b37d5382 { attrGroups: Some({ let mut __m2: Map<ArrayKey, crate::php_parser::node::AttributeGroup> = Map::new(); __m2.push(attributeGroup.get().clone()); __m2 }), byRef: None, params: None, returnType: None, stmts: None }, Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testReturnType(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::stmt::Function_> = Late::uninit();
+    node.set(cast::<crate::php_parser::node::stmt::Function_>(self.createFunctionBuilder(cast::<Mixed>(Str::from_static("test")))?.setReturnType(U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("void")))?.getNode()?));
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Function_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("test")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_b3b37d5382 { returnType: Some(U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name::PhpParser_Node_Identifier(crate::php_parser::node::Identifier::new(Str::from_static("void"), Map::<Str, Mixed>::new())?)), attrGroups: None, byRef: None, params: None, stmts: None }, Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testInvalidNullableVoidType(&self) -> Result<(), Throw> {
+    self.expectException(Str::from_static("LogicException"))?;
+    self.expectExceptionMessage(Str::from_static("void type cannot be nullable"))?;
+    let _: crate::php_parser::builder::FunctionLike = self.createFunctionBuilder(cast::<Mixed>(Str::from_static("test")))?.setReturnType(U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("?void")))?;
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testInvalidParamError(&self) -> Result<(), Throw> {
+    self.expectException(Str::from_static("LogicException"))?;
+    self.expectExceptionMessage(Str::from_static("Expected parameter node, got \"Name\""))?;
+    let _: crate::php_parser::builder::FunctionLike = self.createFunctionBuilder(cast::<Mixed>(Str::from_static("test")))?.addParam(cast::<U_PhpParser_Builder_Param_or_PhpParser_Node_Param>(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("foo")), Map::<Str, Mixed>::new())?))?;
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testAddNonStmt(&self) -> Result<(), Throw> {
+    self.expectException(Str::from_static("LogicException"))?;
+    self.expectExceptionMessage(Str::from_static("Expected statement or expression node"))?;
+    let _: crate::php_parser::builder::Function_ = self.createFunctionBuilder(cast::<Mixed>(Str::from_static("test")))?.addStmt(U_PhpParser_Builder_or_PhpParser_Node::PhpParser_Node(cast::<crate::php_parser::Node>(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Test")), Map::<Str, Mixed>::new())?)))?;
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn magic__construct(&self, mut name: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).magic__construct__impl(name) }
+    pub fn setUpBeforeClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::setUpBeforeClass() }
+    pub fn tearDownAfterClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::tearDownAfterClass() }
+    pub fn setUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).setUp__impl() }
+    pub fn tearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).tearDown__impl() }
+    pub fn runSetUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runSetUp__impl() }
+    pub fn runTearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runTearDown__impl() }
+    pub fn getName(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).getName__impl() }
+    pub fn name(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).name__impl() }
+    pub fn expectException(&self, mut exception: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectException__impl(exception) }
+    pub fn expectExceptionMessage(&self, mut message_v: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessage__impl(message_v) }
+    pub fn expectExceptionMessageMatches(&self, mut regularExpression: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessageMatches__impl(regularExpression) }
+    pub fn expectExceptionCode(&self, mut code: i64) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionCode__impl(code) }
+    pub fn expectNotToPerformAssertions(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectNotToPerformAssertions__impl() }
+    pub fn expectsException(&self) -> Result<bool, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectsException__impl() }
+    pub fn verifyExpectedException(&self, mut e: crate::g::Throwable) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).verifyExpectedException__impl(e) }
+    pub fn expectedExceptionDescription(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectedExceptionDescription__impl() }
+    pub fn markTestSkipped(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestSkipped__impl(message_v) }
+    pub fn markTestIncomplete(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestIncomplete__impl(message_v) }
+    pub fn createMock(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createMock__impl(originalClassName) }
+    pub fn createStub(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createStub__impl(originalClassName) }
+    pub fn getCount() -> Result<i64, Throw> { crate::phpunit::framework::Assert::getCount() }
+    pub fn resetCount() -> Result<(), Throw> { crate::phpunit::framework::Assert::resetCount() }
+    pub fn fail(mut message_v: Str) -> Result<Never, Throw> { crate::phpunit::framework::Assert::fail(message_v) }
+    pub fn assertTrue(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertTrue(condition, message_v) }
+    pub fn assertFalse(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFalse(condition, message_v) }
+    pub fn assertNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNull(actual, message_v) }
+    pub fn assertNotNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotNull(actual, message_v) }
+    pub fn assertSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertSame(expected, actual, message_v) }
+    pub fn assertNotSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotSame(expected, actual, message_v) }
+    pub fn assertEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEquals(expected, actual, message_v) }
+    pub fn assertNotEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEquals(expected, actual, message_v) }
+    pub fn assertEqualsCanonicalizing(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEqualsCanonicalizing(expected, actual, message_v) }
+    pub fn assertCount(mut expectedCount: i64, mut haystack: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertCount(expectedCount, haystack, message_v) }
+    pub fn assertEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEmpty(actual, message_v) }
+    pub fn assertNotEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEmpty(actual, message_v) }
+    pub fn assertInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertInstanceOf(expected, actual, message_v) }
+    pub fn assertNotInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotInstanceOf(expected, actual, message_v) }
+    pub fn assertIsArray(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsArray(actual, message_v) }
+    pub fn assertIsString(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsString(actual, message_v) }
+    pub fn assertIsInt(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsInt(actual, message_v) }
+    pub fn assertIsBool(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsBool(actual, message_v) }
+    pub fn assertIsObject(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsObject(actual, message_v) }
+    pub fn assertIsCallable(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsCallable(actual, message_v) }
+    pub fn assertStringContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringContainsString(needle, haystack, message_v) }
+    pub fn assertStringNotContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringNotContainsString(needle, haystack, message_v) }
+    pub fn assertStringStartsWith(mut prefix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringStartsWith(prefix, string, message_v) }
+    pub fn assertStringEndsWith(mut suffix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEndsWith(suffix, string, message_v) }
+    pub fn assertMatchesRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertMatchesRegularExpression(pattern, string, message_v) }
+    pub fn assertDoesNotMatchRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDoesNotMatchRegularExpression(pattern, string, message_v) }
+    pub fn assertContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertContains(needle, haystack, message_v) }
+    pub fn assertNotContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotContains(needle, haystack, message_v) }
+    pub fn assertArrayHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayHasKey(key_v, array, message_v) }
+    pub fn assertArrayNotHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayNotHasKey(key_v, array, message_v) }
+    pub fn assertGreaterThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThan(expected, actual, message_v) }
+    pub fn assertGreaterThanOrEqual(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThanOrEqual(expected, actual, message_v) }
+    pub fn assertLessThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertLessThan(expected, actual, message_v) }
+    pub fn assertFileExists(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileExists(filename, message_v) }
+    pub fn assertFileDoesNotExist(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileDoesNotExist(filename, message_v) }
+    pub fn assertDirectoryExists(mut directory: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDirectoryExists(directory, message_v) }
+    pub fn assertStringEqualsFile(mut expectedFile: Str, mut actualString: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEqualsFile(expectedFile, actualString, message_v) }
+    pub fn assertJsonStringEqualsJsonString(mut expectedJson: Str, mut actualJson: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertJsonStringEqualsJsonString(expectedJson, actualJson, message_v) }
+    pub fn assertObjectHasProperty(mut propertyName: Str, mut object: AnyObject, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertObjectHasProperty(propertyName, object, message_v) }
+    pub fn new_same_class(&self, mut name: Str) -> Result<crate::php_parser::builder::FunctionTest, Throw> { Ok(Self::new(name)?) }
+}
+impl php_rt::PhpObject for FunctionTest {
+    fn class_name(&self) -> &'static str { "PhpParser\\Builder\\FunctionTest" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\builder\\functiontest", "phpunit\\framework\\testcase", "phpunit\\framework\\assert"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_expectedException_get()) { out.push((Str::from_static("expectedException"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessage_get()) { out.push((Str::from_static("expectedExceptionMessage"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessageRegExp_get()) { out.push((Str::from_static("expectedExceptionMessageRegExp"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionCode_get()) { out.push((Str::from_static("expectedExceptionCode"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_name_get()) { out.push((Str::from_static("name"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "expectedException" => { self.set_p_expectedException(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessage" => { self.set_p_expectedExceptionMessage(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessageRegExp" => { self.set_p_expectedExceptionMessageRegExp(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionCode" => { self.set_p_expectedExceptionCode(value.to_option().map(|__m| cast::<i64>(__m))); true }, "name" => { self.set_p_name(cast::<Str>(value)); true }, _ => false } }
+}
+impl FunctionTest { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Builder\\FunctionTest could not be converted to string"))) } }
+impl php_rt::PhpClone for FunctionTest { fn php_clone(&self) -> Self { let c = FunctionTest(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for FunctionTestObj { fn clone(&self) -> Self { FunctionTestObj { expectedException: self.expectedException.clone(), expectedExceptionMessage: self.expectedExceptionMessage.clone(), expectedExceptionMessageRegExp: self.expectedExceptionMessageRegExp.clone(), expectedExceptionCode: self.expectedExceptionCode.clone(), name: self.name.clone() } } }
+impl FunctionTest {
+}
+pub struct InterfaceTestObj {
+    pub expectedException: Option<Str>,
+    pub expectedExceptionMessage: Option<Str>,
+    pub expectedExceptionMessageRegExp: Option<Str>,
+    pub expectedExceptionCode: Option<i64>,
+    pub name: Str,
+}
+#[derive(Clone)]
+pub struct InterfaceTest(pub Rc<RefCell<InterfaceTestObj>>);
+impl InterfaceTest {
+    pub fn p_expectedException(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedException) }
+    pub fn p_expectedException_get(&self) -> Option<Str> { self.0.borrow().expectedException.clone() }
+    pub fn p_expectedException_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedException.clone()) }
+    pub fn p_expectedException_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedException) }
+    pub fn set_p_expectedException(&self, v: Option<Str>) { self.0.borrow_mut().expectedException = v; }
+    pub fn p_expectedExceptionMessage(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessage) }
+    pub fn p_expectedExceptionMessage_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessage.clone() }
+    pub fn p_expectedExceptionMessage_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessage.clone()) }
+    pub fn p_expectedExceptionMessage_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessage) }
+    pub fn set_p_expectedExceptionMessage(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessage = v; }
+    pub fn p_expectedExceptionMessageRegExp(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessageRegExp) }
+    pub fn p_expectedExceptionMessageRegExp_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessageRegExp.clone() }
+    pub fn p_expectedExceptionMessageRegExp_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessageRegExp.clone()) }
+    pub fn p_expectedExceptionMessageRegExp_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessageRegExp) }
+    pub fn set_p_expectedExceptionMessageRegExp(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessageRegExp = v; }
+    pub fn p_expectedExceptionCode(&self) -> Ref<'_, Option<i64>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionCode) }
+    pub fn p_expectedExceptionCode_get(&self) -> Option<i64> { self.0.borrow().expectedExceptionCode.clone() }
+    pub fn p_expectedExceptionCode_opt(&self) -> Option<Option<i64>> { Some(self.0.borrow().expectedExceptionCode.clone()) }
+    pub fn p_expectedExceptionCode_mut(&self) -> RefMut<'_, Option<i64>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionCode) }
+    pub fn set_p_expectedExceptionCode(&self, v: Option<i64>) { self.0.borrow_mut().expectedExceptionCode = v; }
+    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| &o.name) }
+    pub fn p_name_get(&self) -> Str { self.0.borrow().name.clone() }
+    pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
+    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
+    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new(mut name: Str) -> Result<InterfaceTest, Throw> {
+        let this = InterfaceTest(Rc::new(RefCell::new(InterfaceTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })));
+        this.magic__construct(name)?;
+        Ok(this)
+    }
+    pub fn createInterfaceBuilder(&self) -> Result<crate::php_parser::builder::Interface_, Throw> {
+    return Ok(crate::php_parser::builder::Interface_::new(Str::from_static("Contract"))?);
+    }
+    pub fn dump(&self, mut node: Mixed) -> Result<Str, Throw> {
+    let mut pp: Late<crate::php_parser::pretty_printer::Standard> = Late::uninit();
+    pp.set(crate::php_parser::pretty_printer::Standard::new(Shape_indentq_Str_newlineq_Str_phpVersionq_PhpParser_PhpVersion_shortArraySyntaxq_Bool { indent: None, newline: None, phpVersion: None, shortArraySyntax: None })?);
+    return Ok(pp.get().clone().prettyPrint({ let mut __m1: Map<ArrayKey, crate::php_parser::Node> = Map::new(); __m1.push(cast::<crate::php_parser::Node>(node.clone())); __m1 })?);
+    }
+    pub fn testEmpty(&self) -> Result<(), Throw> {
+    let mut contract: Late<crate::php_parser::node::stmt::Interface_> = Late::uninit();
+    contract.set(self.createInterfaceBuilder()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertInstanceOf(Str::from_static("PhpParser\\Node\\Stmt\\Interface_"), cast::<Mixed>(contract.get().clone()), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::Identifier::new(Str::from_static("Contract"), Map::<Str, Mixed>::new())?), cast::<Mixed>(contract.get().clone().p_name_get()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testExtending(&self) -> Result<(), Throw> {
+    let mut contract: Late<crate::php_parser::node::stmt::Interface_> = Late::uninit();
+    contract.set(self.createInterfaceBuilder()?.extend(list![U_PhpParser_Node_Name_or_Str::Str(Str::from_static("Space\\Root1")), U_PhpParser_Node_Name_or_Str::Str(Str::from_static("Root2"))])?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Interface_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("Contract")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_extendsq__786d9d6046 { extends: Some({ let mut __m1: Map<ArrayKey, crate::php_parser::node::Name> = Map::new(); __m1.push(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Space\\Root1")), Map::<Str, Mixed>::new())?); __m1.push(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Root2")), Map::<Str, Mixed>::new())?); __m1 }), attrGroups: None, stmts: None }, Map::<Str, Mixed>::new())?), cast::<Mixed>(contract.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testAddMethod(&self) -> Result<(), Throw> {
+    let mut method: Late<crate::php_parser::node::stmt::ClassMethod> = Late::uninit();
+    let mut contract: Late<crate::php_parser::node::stmt::Interface_> = Late::uninit();
+    method.set(crate::php_parser::node::stmt::ClassMethod::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("doSomething")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_6534c97760 { attrGroups: None, byRef: None, flags: None, params: None, returnType: None, stmts: None }, Map::<Str, Mixed>::new())?);
+    contract.set(self.createInterfaceBuilder()?.addStmt(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(method.get().clone())))?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertSame({ let __c1150 = (method.get().clone(),); let mut __m: Map<ArrayKey, Mixed> = Map::new(); __m.push(cast::<Mixed>(__c1150.0)); Mixed::Arr(__m) }, cast::<Mixed>(cast::<List<crate::php_parser::node::Stmt>>(contract.get().clone().p_stmts_get())), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testAddConst(&self) -> Result<(), Throw> {
+    let mut const_: Late<crate::php_parser::node::stmt::ClassConst> = Late::uninit();
+    let mut contract: Late<crate::php_parser::node::stmt::Interface_> = Late::uninit();
+    const_.set(crate::php_parser::node::stmt::ClassConst::new({ let mut __m1: Map<ArrayKey, crate::php_parser::node::Const_> = Map::new(); __m1.push(crate::php_parser::node::Const_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("SPEED_OF_LIGHT")), cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Float_::new(299792458.0f64, Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?); __m1 }, 0i64, Map::<Str, Mixed>::new(), List::<crate::php_parser::node::AttributeGroup>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> })?);
+    contract.set(self.createInterfaceBuilder()?.addStmt(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(const_.get().clone())))?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertSame(cast::<Mixed>(299792458.0f64), cast::<Mixed>(mixed_prop(&cast::<Mixed>(mixed_prop(&cast::<Mixed>(mixed_get(&cast::<Mixed>(mixed_prop(&cast::<Mixed>(cast::<List<crate::php_parser::node::Stmt>>(contract.get().clone().p_stmts_get()).idx(0i64).clone()), &Str::from_static("consts"))), &to_key(&0i64))), &Str::from_static("value"))), &Str::from_static("value"))), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testOrder(&self) -> Result<(), Throw> {
+    let mut const_: Late<crate::php_parser::node::stmt::ClassConst> = Late::uninit();
+    let mut method: Late<crate::php_parser::node::stmt::ClassMethod> = Late::uninit();
+    let mut contract: Late<crate::php_parser::node::stmt::Interface_> = Late::uninit();
+    const_.set(crate::php_parser::node::stmt::ClassConst::new({ let mut __m1: Map<ArrayKey, crate::php_parser::node::Const_> = Map::new(); __m1.push(crate::php_parser::node::Const_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("SPEED_OF_LIGHT")), cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Float_::new((299792458i64 as f64), Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?); __m1 }, 0i64, Map::<Str, Mixed>::new(), List::<crate::php_parser::node::AttributeGroup>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> })?);
+    method.set(crate::php_parser::node::stmt::ClassMethod::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("doSomething")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_6534c97760 { attrGroups: None, byRef: None, flags: None, params: None, returnType: None, stmts: None }, Map::<Str, Mixed>::new())?);
+    contract.set(self.createInterfaceBuilder()?.addStmt(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(method.get().clone())))?.addStmt(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(const_.get().clone())))?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertInstanceOf(Str::from_static("PhpParser\\Node\\Stmt\\ClassConst"), cast::<Mixed>(cast::<List<crate::php_parser::node::Stmt>>(contract.get().clone().p_stmts_get()).idx(0i64).clone()), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertInstanceOf(Str::from_static("PhpParser\\Node\\Stmt\\ClassMethod"), cast::<Mixed>(cast::<List<crate::php_parser::node::Stmt>>(contract.get().clone().p_stmts_get()).idx(1i64).clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testDocComment(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::stmt::Interface_> = Late::uninit();
+    node.set(cast::<crate::php_parser::node::stmt::Interface_>(self.createInterfaceBuilder()?.setDocComment(U_PhpParser_Comment_Doc_or_Str::Str(Str::from_static("/** Test */")))?.getNode()?));
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Interface_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("Contract")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_extendsq__786d9d6046 { attrGroups: None, extends: None, stmts: None }, { let mut __m1: Map<Str, Mixed> = Map::new(); __m1.insert(Str::from_static("comments"), { let __c1151 = (crate::php_parser::comment::Doc::new(Str::from_static("/** Test */"), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64))?,); let mut __m: Map<ArrayKey, Mixed> = Map::new(); __m.push(cast::<Mixed>(__c1151.0)); Mixed::Arr(__m) }); __m1 })?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testAddAttribute(&self) -> Result<(), Throw> {
+    let mut attribute: Late<crate::php_parser::node::Attribute> = Late::uninit();
+    let mut attributeGroup: Late<crate::php_parser::node::AttributeGroup> = Late::uninit();
+    let mut node: Late<crate::php_parser::node::stmt::Interface_> = Late::uninit();
+    attribute.set(crate::php_parser::node::Attribute::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Attr")), Map::<Str, Mixed>::new())?, list![crate::php_parser::node::Arg::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(1i64, Map::<Str, Mixed>::new())?), false, false, Map::<Str, Mixed>::new(), Some(crate::php_parser::node::Identifier::new(Str::from_static("name"), Map::<Str, Mixed>::new())?))?], Map::<Str, Mixed>::new())?);
+    attributeGroup.set(crate::php_parser::node::AttributeGroup::new({ let mut __m1: Map<ArrayKey, crate::php_parser::node::Attribute> = Map::new(); __m1.push(attribute.get().clone()); __m1 }, Map::<Str, Mixed>::new())?);
+    node.set(self.createInterfaceBuilder()?.addAttribute(U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup::PhpParser_Node_AttributeGroup(attributeGroup.get().clone()))?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Interface_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("Contract")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_extendsq__786d9d6046 { attrGroups: Some({ let mut __m2: Map<ArrayKey, crate::php_parser::node::AttributeGroup> = Map::new(); __m2.push(attributeGroup.get().clone()); __m2 }), extends: None, stmts: None }, Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testInvalidStmtError(&self) -> Result<(), Throw> {
+    self.expectException(Str::from_static("LogicException"))?;
+    self.expectExceptionMessage(Str::from_static("Unexpected node of type \"PropertyItem\""))?;
+    let _: crate::php_parser::builder::Interface_ = self.createInterfaceBuilder()?.addStmt(cast::<U_PhpParser_Builder_or_PhpParser_Node_Stmt>(crate::php_parser::node::PropertyItem::new(U_PhpParser_Node_VarLikeIdentifier_or_Str::Str(Str::from_static("invalid")), { let _ = (); None::<crate::php_parser::node::Expr> }, Map::<Str, Mixed>::new())?))?;
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testFullFunctional(&self) -> Result<(), Throw> {
+    let mut const_: Late<crate::php_parser::node::stmt::ClassConst> = Late::uninit();
+    let mut method: Late<crate::php_parser::node::stmt::ClassMethod> = Late::uninit();
+    let mut contract: Late<crate::php_parser::node::stmt::Interface_> = Late::uninit();
+    const_.set(crate::php_parser::node::stmt::ClassConst::new({ let mut __m1: Map<ArrayKey, crate::php_parser::node::Const_> = Map::new(); __m1.push(crate::php_parser::node::Const_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("SPEED_OF_LIGHT")), cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Float_::new((299792458i64 as f64), Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?); __m1 }, 0i64, Map::<Str, Mixed>::new(), List::<crate::php_parser::node::AttributeGroup>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> })?);
+    method.set(crate::php_parser::node::stmt::ClassMethod::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("doSomething")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_6534c97760 { attrGroups: None, byRef: None, flags: None, params: None, returnType: None, stmts: None }, Map::<Str, Mixed>::new())?);
+    contract.set(self.createInterfaceBuilder()?.addStmt(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(method.get().clone())))?.addStmt(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(const_.get().clone())))?.getNode()?);
+    { let _ = self.dump(cast::<Mixed>(contract.get().clone()))?; unreachable!("eval") };
+    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>(interface_exists(&Str::from_static("Contract"), false)), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn magic__construct(&self, mut name: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).magic__construct__impl(name) }
+    pub fn setUpBeforeClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::setUpBeforeClass() }
+    pub fn tearDownAfterClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::tearDownAfterClass() }
+    pub fn setUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).setUp__impl() }
+    pub fn tearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).tearDown__impl() }
+    pub fn runSetUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runSetUp__impl() }
+    pub fn runTearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runTearDown__impl() }
+    pub fn getName(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).getName__impl() }
+    pub fn name(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).name__impl() }
+    pub fn expectException(&self, mut exception: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectException__impl(exception) }
+    pub fn expectExceptionMessage(&self, mut message_v: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessage__impl(message_v) }
+    pub fn expectExceptionMessageMatches(&self, mut regularExpression: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessageMatches__impl(regularExpression) }
+    pub fn expectExceptionCode(&self, mut code: i64) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionCode__impl(code) }
+    pub fn expectNotToPerformAssertions(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectNotToPerformAssertions__impl() }
+    pub fn expectsException(&self) -> Result<bool, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectsException__impl() }
+    pub fn verifyExpectedException(&self, mut e: crate::g::Throwable) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).verifyExpectedException__impl(e) }
+    pub fn expectedExceptionDescription(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectedExceptionDescription__impl() }
+    pub fn markTestSkipped(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestSkipped__impl(message_v) }
+    pub fn markTestIncomplete(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestIncomplete__impl(message_v) }
+    pub fn createMock(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createMock__impl(originalClassName) }
+    pub fn createStub(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createStub__impl(originalClassName) }
+    pub fn getCount() -> Result<i64, Throw> { crate::phpunit::framework::Assert::getCount() }
+    pub fn resetCount() -> Result<(), Throw> { crate::phpunit::framework::Assert::resetCount() }
+    pub fn fail(mut message_v: Str) -> Result<Never, Throw> { crate::phpunit::framework::Assert::fail(message_v) }
+    pub fn assertTrue(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertTrue(condition, message_v) }
+    pub fn assertFalse(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFalse(condition, message_v) }
+    pub fn assertNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNull(actual, message_v) }
+    pub fn assertNotNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotNull(actual, message_v) }
+    pub fn assertSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertSame(expected, actual, message_v) }
+    pub fn assertNotSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotSame(expected, actual, message_v) }
+    pub fn assertEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEquals(expected, actual, message_v) }
+    pub fn assertNotEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEquals(expected, actual, message_v) }
+    pub fn assertEqualsCanonicalizing(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEqualsCanonicalizing(expected, actual, message_v) }
+    pub fn assertCount(mut expectedCount: i64, mut haystack: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertCount(expectedCount, haystack, message_v) }
+    pub fn assertEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEmpty(actual, message_v) }
+    pub fn assertNotEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEmpty(actual, message_v) }
+    pub fn assertInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertInstanceOf(expected, actual, message_v) }
+    pub fn assertNotInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotInstanceOf(expected, actual, message_v) }
+    pub fn assertIsArray(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsArray(actual, message_v) }
+    pub fn assertIsString(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsString(actual, message_v) }
+    pub fn assertIsInt(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsInt(actual, message_v) }
+    pub fn assertIsBool(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsBool(actual, message_v) }
+    pub fn assertIsObject(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsObject(actual, message_v) }
+    pub fn assertIsCallable(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsCallable(actual, message_v) }
+    pub fn assertStringContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringContainsString(needle, haystack, message_v) }
+    pub fn assertStringNotContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringNotContainsString(needle, haystack, message_v) }
+    pub fn assertStringStartsWith(mut prefix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringStartsWith(prefix, string, message_v) }
+    pub fn assertStringEndsWith(mut suffix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEndsWith(suffix, string, message_v) }
+    pub fn assertMatchesRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertMatchesRegularExpression(pattern, string, message_v) }
+    pub fn assertDoesNotMatchRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDoesNotMatchRegularExpression(pattern, string, message_v) }
+    pub fn assertContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertContains(needle, haystack, message_v) }
+    pub fn assertNotContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotContains(needle, haystack, message_v) }
+    pub fn assertArrayHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayHasKey(key_v, array, message_v) }
+    pub fn assertArrayNotHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayNotHasKey(key_v, array, message_v) }
+    pub fn assertGreaterThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThan(expected, actual, message_v) }
+    pub fn assertGreaterThanOrEqual(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThanOrEqual(expected, actual, message_v) }
+    pub fn assertLessThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertLessThan(expected, actual, message_v) }
+    pub fn assertFileExists(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileExists(filename, message_v) }
+    pub fn assertFileDoesNotExist(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileDoesNotExist(filename, message_v) }
+    pub fn assertDirectoryExists(mut directory: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDirectoryExists(directory, message_v) }
+    pub fn assertStringEqualsFile(mut expectedFile: Str, mut actualString: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEqualsFile(expectedFile, actualString, message_v) }
+    pub fn assertJsonStringEqualsJsonString(mut expectedJson: Str, mut actualJson: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertJsonStringEqualsJsonString(expectedJson, actualJson, message_v) }
+    pub fn assertObjectHasProperty(mut propertyName: Str, mut object: AnyObject, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertObjectHasProperty(propertyName, object, message_v) }
+    pub fn new_same_class(&self, mut name: Str) -> Result<crate::php_parser::builder::InterfaceTest, Throw> { Ok(Self::new(name)?) }
+}
+impl php_rt::PhpObject for InterfaceTest {
+    fn class_name(&self) -> &'static str { "PhpParser\\Builder\\InterfaceTest" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\builder\\interfacetest", "phpunit\\framework\\testcase", "phpunit\\framework\\assert"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_expectedException_get()) { out.push((Str::from_static("expectedException"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessage_get()) { out.push((Str::from_static("expectedExceptionMessage"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessageRegExp_get()) { out.push((Str::from_static("expectedExceptionMessageRegExp"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionCode_get()) { out.push((Str::from_static("expectedExceptionCode"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_name_get()) { out.push((Str::from_static("name"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "expectedException" => { self.set_p_expectedException(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessage" => { self.set_p_expectedExceptionMessage(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessageRegExp" => { self.set_p_expectedExceptionMessageRegExp(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionCode" => { self.set_p_expectedExceptionCode(value.to_option().map(|__m| cast::<i64>(__m))); true }, "name" => { self.set_p_name(cast::<Str>(value)); true }, _ => false } }
+}
+impl InterfaceTest { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Builder\\InterfaceTest could not be converted to string"))) } }
+impl php_rt::PhpClone for InterfaceTest { fn php_clone(&self) -> Self { let c = InterfaceTest(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for InterfaceTestObj { fn clone(&self) -> Self { InterfaceTestObj { expectedException: self.expectedException.clone(), expectedExceptionMessage: self.expectedExceptionMessage.clone(), expectedExceptionMessageRegExp: self.expectedExceptionMessageRegExp.clone(), expectedExceptionCode: self.expectedExceptionCode.clone(), name: self.name.clone() } } }
+impl InterfaceTest {
+}
+pub struct MethodTestObj {
+    pub expectedException: Option<Str>,
+    pub expectedExceptionMessage: Option<Str>,
+    pub expectedExceptionMessageRegExp: Option<Str>,
+    pub expectedExceptionCode: Option<i64>,
+    pub name: Str,
+}
+#[derive(Clone)]
+pub struct MethodTest(pub Rc<RefCell<MethodTestObj>>);
+impl MethodTest {
+    pub fn p_expectedException(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedException) }
+    pub fn p_expectedException_get(&self) -> Option<Str> { self.0.borrow().expectedException.clone() }
+    pub fn p_expectedException_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedException.clone()) }
+    pub fn p_expectedException_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedException) }
+    pub fn set_p_expectedException(&self, v: Option<Str>) { self.0.borrow_mut().expectedException = v; }
+    pub fn p_expectedExceptionMessage(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessage) }
+    pub fn p_expectedExceptionMessage_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessage.clone() }
+    pub fn p_expectedExceptionMessage_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessage.clone()) }
+    pub fn p_expectedExceptionMessage_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessage) }
+    pub fn set_p_expectedExceptionMessage(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessage = v; }
+    pub fn p_expectedExceptionMessageRegExp(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessageRegExp) }
+    pub fn p_expectedExceptionMessageRegExp_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessageRegExp.clone() }
+    pub fn p_expectedExceptionMessageRegExp_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessageRegExp.clone()) }
+    pub fn p_expectedExceptionMessageRegExp_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessageRegExp) }
+    pub fn set_p_expectedExceptionMessageRegExp(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessageRegExp = v; }
+    pub fn p_expectedExceptionCode(&self) -> Ref<'_, Option<i64>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionCode) }
+    pub fn p_expectedExceptionCode_get(&self) -> Option<i64> { self.0.borrow().expectedExceptionCode.clone() }
+    pub fn p_expectedExceptionCode_opt(&self) -> Option<Option<i64>> { Some(self.0.borrow().expectedExceptionCode.clone()) }
+    pub fn p_expectedExceptionCode_mut(&self) -> RefMut<'_, Option<i64>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionCode) }
+    pub fn set_p_expectedExceptionCode(&self, v: Option<i64>) { self.0.borrow_mut().expectedExceptionCode = v; }
+    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| &o.name) }
+    pub fn p_name_get(&self) -> Str { self.0.borrow().name.clone() }
+    pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
+    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
+    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new(mut name: Str) -> Result<MethodTest, Throw> {
+        let this = MethodTest(Rc::new(RefCell::new(MethodTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })));
+        this.magic__construct(name)?;
+        Ok(this)
+    }
+    pub fn createMethodBuilder(&self, mut name: Mixed) -> Result<crate::php_parser::builder::Method, Throw> {
+    return Ok(crate::php_parser::builder::Method::new(cast::<Str>(name.clone()))?);
+    }
+    pub fn testModifiers(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::stmt::ClassMethod> = Late::uninit();
+    node.set(self.createMethodBuilder(cast::<Mixed>(Str::from_static("test")))?.makePublic()?.makeAbstract()?.makeStatic()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::ClassMethod::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("test")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_6534c97760 { flags: Some(((crate::php_parser::Modifiers::PUBLIC() | crate::php_parser::Modifiers::ABSTRACT()) | crate::php_parser::Modifiers::STATIC())), stmts: { let _ = (); None::<Map<ArrayKey, crate::php_parser::node::Stmt>> }, attrGroups: None, byRef: None, params: None, returnType: None }, Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    node.set(self.createMethodBuilder(cast::<Mixed>(Str::from_static("test")))?.makeProtected()?.makeFinal()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::ClassMethod::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("test")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_6534c97760 { flags: Some((crate::php_parser::Modifiers::PROTECTED() | crate::php_parser::Modifiers::FINAL())), attrGroups: None, byRef: None, params: None, returnType: None, stmts: None }, Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    node.set(self.createMethodBuilder(cast::<Mixed>(Str::from_static("test")))?.makePrivate()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::ClassMethod::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("test")), { let __c1152 = { let mut __m1: Map<ArrayKey, U_Bool_or_Int_or_Map_ArrayKey_PhpParser_Node_AttributeGroup_or_Map_Arr_2b6ece7660> = Map::new(); __m1.insert(to_key(&Str::from_static("type")), U_Bool_or_Int_or_Map_ArrayKey_PhpParser_Node_AttributeGroup_or_Map_Arr_2b6ece7660::Int(crate::php_parser::Modifiers::PRIVATE())); __m1 }; Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_6534c97760 { attrGroups: __c1152.get(&ArrayKey::from(Str::from_static("attrGroups"))).cloned().map(|v| cast::<Map<ArrayKey, crate::php_parser::node::AttributeGroup>>(v)), byRef: __c1152.get(&ArrayKey::from(Str::from_static("byRef"))).cloned().map(|v| cast::<bool>(v)), flags: __c1152.get(&ArrayKey::from(Str::from_static("flags"))).cloned().map(|v| cast::<i64>(v)), params: __c1152.get(&ArrayKey::from(Str::from_static("params"))).cloned().map(|v| cast::<Map<ArrayKey, crate::php_parser::node::Param>>(v)), returnType: __c1152.get(&ArrayKey::from(Str::from_static("returnType"))).cloned().map(|v| cast::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>(v)), stmts: __c1152.get(&ArrayKey::from(Str::from_static("stmts"))).cloned().map(|v| cast::<Map<ArrayKey, crate::php_parser::node::Stmt>>(v)) } }, Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testReturnByRef(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::stmt::ClassMethod> = Late::uninit();
+    node.set(cast::<crate::php_parser::node::stmt::ClassMethod>(self.createMethodBuilder(cast::<Mixed>(Str::from_static("test")))?.makeReturnByRef()?.getNode()?));
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::ClassMethod::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("test")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_6534c97760 { byRef: Some(true), attrGroups: None, flags: None, params: None, returnType: None, stmts: None }, Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testParams(&self) -> Result<(), Throw> {
+    let mut param1: Late<crate::php_parser::node::Param> = Late::uninit();
+    let mut param2: Late<crate::php_parser::node::Param> = Late::uninit();
+    let mut param3: Late<crate::php_parser::node::Param> = Late::uninit();
+    let mut node: Late<crate::php_parser::node::stmt::ClassMethod> = Late::uninit();
+    param1.set(crate::php_parser::node::Param::new(U_PhpParser_Node_Expr_Error_or_PhpParser_Node_Expr_Variable::PhpParser_Node_Expr_Variable(crate::php_parser::node::expr::Variable::new(U_PhpParser_Node_Expr_or_Str::Str(Str::from_static("test1")), Map::<Str, Mixed>::new())?), { let _ = (); None::<crate::php_parser::node::Expr> }, { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, false, false, Map::<Str, Mixed>::new(), 0i64, List::<crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?);
+    param2.set(crate::php_parser::node::Param::new(U_PhpParser_Node_Expr_Error_or_PhpParser_Node_Expr_Variable::PhpParser_Node_Expr_Variable(crate::php_parser::node::expr::Variable::new(U_PhpParser_Node_Expr_or_Str::Str(Str::from_static("test2")), Map::<Str, Mixed>::new())?), { let _ = (); None::<crate::php_parser::node::Expr> }, { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, false, false, Map::<Str, Mixed>::new(), 0i64, List::<crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?);
+    param3.set(crate::php_parser::node::Param::new(U_PhpParser_Node_Expr_Error_or_PhpParser_Node_Expr_Variable::PhpParser_Node_Expr_Variable(crate::php_parser::node::expr::Variable::new(U_PhpParser_Node_Expr_or_Str::Str(Str::from_static("test3")), Map::<Str, Mixed>::new())?), { let _ = (); None::<crate::php_parser::node::Expr> }, { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, false, false, Map::<Str, Mixed>::new(), 0i64, List::<crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?);
+    node.set(cast::<crate::php_parser::node::stmt::ClassMethod>(self.createMethodBuilder(cast::<Mixed>(Str::from_static("test")))?.addParam(U_PhpParser_Builder_Param_or_PhpParser_Node_Param::PhpParser_Node_Param(param1.get().clone()))?.addParams({ let mut __m1: Map<ArrayKey, U_PhpParser_Builder_Param_or_PhpParser_Node_Param> = Map::new(); __m1.push(U_PhpParser_Builder_Param_or_PhpParser_Node_Param::PhpParser_Node_Param(param2.get().clone())); __m1.push(U_PhpParser_Builder_Param_or_PhpParser_Node_Param::PhpParser_Node_Param(param3.get().clone())); __m1 })?.getNode()?));
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::ClassMethod::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("test")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_6534c97760 { params: Some({ let mut __m2: Map<ArrayKey, crate::php_parser::node::Param> = Map::new(); __m2.push(param1.get().clone()); __m2.push(param2.get().clone()); __m2.push(param3.get().clone()); __m2 }), attrGroups: None, byRef: None, flags: None, returnType: None, stmts: None }, Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testStmts(&self) -> Result<(), Throw> {
+    let mut stmt1: Late<crate::php_parser::node::expr::Print_> = Late::uninit();
+    let mut stmt2: Late<crate::php_parser::node::expr::Print_> = Late::uninit();
+    let mut stmt3: Late<crate::php_parser::node::expr::Print_> = Late::uninit();
+    let mut node: Late<crate::php_parser::node::stmt::ClassMethod> = Late::uninit();
+    stmt1.set(crate::php_parser::node::expr::Print_::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::String_::new(Str::from_static("test1"), Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?);
+    stmt2.set(crate::php_parser::node::expr::Print_::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::String_::new(Str::from_static("test2"), Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?);
+    stmt3.set(crate::php_parser::node::expr::Print_::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::String_::new(Str::from_static("test3"), Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?);
+    node.set(cast::<crate::php_parser::node::stmt::ClassMethod>(self.createMethodBuilder(cast::<Mixed>(Str::from_static("test")))?.addStmt(U_PhpParser_Builder_or_PhpParser_Node::PhpParser_Node(cast::<crate::php_parser::Node>(stmt1.get().clone())))?.addStmts({ let mut __m1: Map<ArrayKey, U_PhpParser_Builder_or_PhpParser_Node_Stmt> = Map::new(); __m1.push(cast::<U_PhpParser_Builder_or_PhpParser_Node_Stmt>(stmt2.get().clone())); __m1.push(cast::<U_PhpParser_Builder_or_PhpParser_Node_Stmt>(stmt3.get().clone())); __m1 })?.getNode()?));
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::ClassMethod::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("test")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_6534c97760 { stmts: Some(cast::<Map<ArrayKey, crate::php_parser::node::Stmt>>({ let __c1153 = (crate::php_parser::node::stmt::Expression::new(cast::<crate::php_parser::node::Expr>(stmt1.get().clone()), Map::<Str, Mixed>::new())?, crate::php_parser::node::stmt::Expression::new(cast::<crate::php_parser::node::Expr>(stmt2.get().clone()), Map::<Str, Mixed>::new())?, crate::php_parser::node::stmt::Expression::new(cast::<crate::php_parser::node::Expr>(stmt3.get().clone()), Map::<Str, Mixed>::new())?); List::from_vec(vec![cast::<crate::php_parser::node::Stmt>(__c1153.0), cast::<crate::php_parser::node::Stmt>(__c1153.1), cast::<crate::php_parser::node::Stmt>(__c1153.2)]) })), attrGroups: None, byRef: None, flags: None, params: None, returnType: None }, Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testDocComment(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::stmt::ClassMethod> = Late::uninit();
+    node.set(cast::<crate::php_parser::node::stmt::ClassMethod>(self.createMethodBuilder(cast::<Mixed>(Str::from_static("test")))?.setDocComment(U_PhpParser_Comment_Doc_or_Str::Str(Str::from_static("/** Test */")))?.getNode()?));
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::ClassMethod::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("test")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_6534c97760 { attrGroups: None, byRef: None, flags: None, params: None, returnType: None, stmts: None }, { let mut __m1: Map<Str, Mixed> = Map::new(); __m1.insert(Str::from_static("comments"), { let __c1154 = (crate::php_parser::comment::Doc::new(Str::from_static("/** Test */"), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64))?,); let mut __m: Map<ArrayKey, Mixed> = Map::new(); __m.push(cast::<Mixed>(__c1154.0)); Mixed::Arr(__m) }); __m1 })?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testAddAttribute(&self) -> Result<(), Throw> {
+    let mut attribute: Late<crate::php_parser::node::Attribute> = Late::uninit();
+    let mut attributeGroup: Late<crate::php_parser::node::AttributeGroup> = Late::uninit();
+    let mut node: Late<crate::php_parser::node::stmt::ClassMethod> = Late::uninit();
+    attribute.set(crate::php_parser::node::Attribute::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Attr")), Map::<Str, Mixed>::new())?, list![crate::php_parser::node::Arg::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(1i64, Map::<Str, Mixed>::new())?), false, false, Map::<Str, Mixed>::new(), Some(crate::php_parser::node::Identifier::new(Str::from_static("name"), Map::<Str, Mixed>::new())?))?], Map::<Str, Mixed>::new())?);
+    attributeGroup.set(crate::php_parser::node::AttributeGroup::new({ let mut __m1: Map<ArrayKey, crate::php_parser::node::Attribute> = Map::new(); __m1.push(attribute.get().clone()); __m1 }, Map::<Str, Mixed>::new())?);
+    node.set(self.createMethodBuilder(cast::<Mixed>(Str::from_static("attributeGroup")))?.addAttribute(U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup::PhpParser_Node_AttributeGroup(attributeGroup.get().clone()))?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::ClassMethod::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("attributeGroup")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_6534c97760 { attrGroups: Some({ let mut __m2: Map<ArrayKey, crate::php_parser::node::AttributeGroup> = Map::new(); __m2.push(attributeGroup.get().clone()); __m2 }), byRef: None, flags: None, params: None, returnType: None, stmts: None }, Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testReturnType(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::stmt::ClassMethod> = Late::uninit();
+    node.set(cast::<crate::php_parser::node::stmt::ClassMethod>(self.createMethodBuilder(cast::<Mixed>(Str::from_static("test")))?.setReturnType(U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("bool")))?.getNode()?));
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::ClassMethod::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("test")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_6534c97760 { returnType: Some(U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name::PhpParser_Node_Identifier(crate::php_parser::node::Identifier::new(Str::from_static("bool"), Map::<Str, Mixed>::new())?)), attrGroups: None, byRef: None, flags: None, params: None, stmts: None }, Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testAddStmtToAbstractMethodError(&self) -> Result<(), Throw> {
+    self.expectException(Str::from_static("LogicException"))?;
+    self.expectExceptionMessage(Str::from_static("Cannot add statements to an abstract method"))?;
+    let _: crate::php_parser::builder::Method = self.createMethodBuilder(cast::<Mixed>(Str::from_static("test")))?.makeAbstract()?.addStmt(U_PhpParser_Builder_or_PhpParser_Node::PhpParser_Node(cast::<crate::php_parser::Node>(crate::php_parser::node::expr::Print_::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::String_::new(Str::from_static("test"), Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?)))?;
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testMakeMethodWithStmtsAbstractError(&self) -> Result<(), Throw> {
+    self.expectException(Str::from_static("LogicException"))?;
+    self.expectExceptionMessage(Str::from_static("Cannot make method with statements abstract"))?;
+    let _: crate::php_parser::builder::Method = self.createMethodBuilder(cast::<Mixed>(Str::from_static("test")))?.addStmt(U_PhpParser_Builder_or_PhpParser_Node::PhpParser_Node(cast::<crate::php_parser::Node>(crate::php_parser::node::expr::Print_::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::String_::new(Str::from_static("test"), Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?)))?.makeAbstract()?;
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testInvalidParamError(&self) -> Result<(), Throw> {
+    self.expectException(Str::from_static("LogicException"))?;
+    self.expectExceptionMessage(Str::from_static("Expected parameter node, got \"Name\""))?;
+    let _: crate::php_parser::builder::FunctionLike = self.createMethodBuilder(cast::<Mixed>(Str::from_static("test")))?.addParam(cast::<U_PhpParser_Builder_Param_or_PhpParser_Node_Param>(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("foo")), Map::<Str, Mixed>::new())?))?;
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn magic__construct(&self, mut name: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).magic__construct__impl(name) }
+    pub fn setUpBeforeClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::setUpBeforeClass() }
+    pub fn tearDownAfterClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::tearDownAfterClass() }
+    pub fn setUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).setUp__impl() }
+    pub fn tearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).tearDown__impl() }
+    pub fn runSetUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runSetUp__impl() }
+    pub fn runTearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runTearDown__impl() }
+    pub fn getName(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).getName__impl() }
+    pub fn name(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).name__impl() }
+    pub fn expectException(&self, mut exception: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectException__impl(exception) }
+    pub fn expectExceptionMessage(&self, mut message_v: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessage__impl(message_v) }
+    pub fn expectExceptionMessageMatches(&self, mut regularExpression: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessageMatches__impl(regularExpression) }
+    pub fn expectExceptionCode(&self, mut code: i64) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionCode__impl(code) }
+    pub fn expectNotToPerformAssertions(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectNotToPerformAssertions__impl() }
+    pub fn expectsException(&self) -> Result<bool, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectsException__impl() }
+    pub fn verifyExpectedException(&self, mut e: crate::g::Throwable) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).verifyExpectedException__impl(e) }
+    pub fn expectedExceptionDescription(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectedExceptionDescription__impl() }
+    pub fn markTestSkipped(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestSkipped__impl(message_v) }
+    pub fn markTestIncomplete(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestIncomplete__impl(message_v) }
+    pub fn createMock(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createMock__impl(originalClassName) }
+    pub fn createStub(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createStub__impl(originalClassName) }
+    pub fn getCount() -> Result<i64, Throw> { crate::phpunit::framework::Assert::getCount() }
+    pub fn resetCount() -> Result<(), Throw> { crate::phpunit::framework::Assert::resetCount() }
+    pub fn fail(mut message_v: Str) -> Result<Never, Throw> { crate::phpunit::framework::Assert::fail(message_v) }
+    pub fn assertTrue(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertTrue(condition, message_v) }
+    pub fn assertFalse(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFalse(condition, message_v) }
+    pub fn assertNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNull(actual, message_v) }
+    pub fn assertNotNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotNull(actual, message_v) }
+    pub fn assertSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertSame(expected, actual, message_v) }
+    pub fn assertNotSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotSame(expected, actual, message_v) }
+    pub fn assertEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEquals(expected, actual, message_v) }
+    pub fn assertNotEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEquals(expected, actual, message_v) }
+    pub fn assertEqualsCanonicalizing(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEqualsCanonicalizing(expected, actual, message_v) }
+    pub fn assertCount(mut expectedCount: i64, mut haystack: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertCount(expectedCount, haystack, message_v) }
+    pub fn assertEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEmpty(actual, message_v) }
+    pub fn assertNotEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEmpty(actual, message_v) }
+    pub fn assertInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertInstanceOf(expected, actual, message_v) }
+    pub fn assertNotInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotInstanceOf(expected, actual, message_v) }
+    pub fn assertIsArray(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsArray(actual, message_v) }
+    pub fn assertIsString(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsString(actual, message_v) }
+    pub fn assertIsInt(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsInt(actual, message_v) }
+    pub fn assertIsBool(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsBool(actual, message_v) }
+    pub fn assertIsObject(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsObject(actual, message_v) }
+    pub fn assertIsCallable(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsCallable(actual, message_v) }
+    pub fn assertStringContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringContainsString(needle, haystack, message_v) }
+    pub fn assertStringNotContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringNotContainsString(needle, haystack, message_v) }
+    pub fn assertStringStartsWith(mut prefix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringStartsWith(prefix, string, message_v) }
+    pub fn assertStringEndsWith(mut suffix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEndsWith(suffix, string, message_v) }
+    pub fn assertMatchesRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertMatchesRegularExpression(pattern, string, message_v) }
+    pub fn assertDoesNotMatchRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDoesNotMatchRegularExpression(pattern, string, message_v) }
+    pub fn assertContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertContains(needle, haystack, message_v) }
+    pub fn assertNotContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotContains(needle, haystack, message_v) }
+    pub fn assertArrayHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayHasKey(key_v, array, message_v) }
+    pub fn assertArrayNotHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayNotHasKey(key_v, array, message_v) }
+    pub fn assertGreaterThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThan(expected, actual, message_v) }
+    pub fn assertGreaterThanOrEqual(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThanOrEqual(expected, actual, message_v) }
+    pub fn assertLessThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertLessThan(expected, actual, message_v) }
+    pub fn assertFileExists(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileExists(filename, message_v) }
+    pub fn assertFileDoesNotExist(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileDoesNotExist(filename, message_v) }
+    pub fn assertDirectoryExists(mut directory: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDirectoryExists(directory, message_v) }
+    pub fn assertStringEqualsFile(mut expectedFile: Str, mut actualString: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEqualsFile(expectedFile, actualString, message_v) }
+    pub fn assertJsonStringEqualsJsonString(mut expectedJson: Str, mut actualJson: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertJsonStringEqualsJsonString(expectedJson, actualJson, message_v) }
+    pub fn assertObjectHasProperty(mut propertyName: Str, mut object: AnyObject, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertObjectHasProperty(propertyName, object, message_v) }
+    pub fn new_same_class(&self, mut name: Str) -> Result<crate::php_parser::builder::MethodTest, Throw> { Ok(Self::new(name)?) }
+}
+impl php_rt::PhpObject for MethodTest {
+    fn class_name(&self) -> &'static str { "PhpParser\\Builder\\MethodTest" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\builder\\methodtest", "phpunit\\framework\\testcase", "phpunit\\framework\\assert"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_expectedException_get()) { out.push((Str::from_static("expectedException"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessage_get()) { out.push((Str::from_static("expectedExceptionMessage"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessageRegExp_get()) { out.push((Str::from_static("expectedExceptionMessageRegExp"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionCode_get()) { out.push((Str::from_static("expectedExceptionCode"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_name_get()) { out.push((Str::from_static("name"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "expectedException" => { self.set_p_expectedException(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessage" => { self.set_p_expectedExceptionMessage(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessageRegExp" => { self.set_p_expectedExceptionMessageRegExp(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionCode" => { self.set_p_expectedExceptionCode(value.to_option().map(|__m| cast::<i64>(__m))); true }, "name" => { self.set_p_name(cast::<Str>(value)); true }, _ => false } }
+}
+impl MethodTest { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Builder\\MethodTest could not be converted to string"))) } }
+impl php_rt::PhpClone for MethodTest { fn php_clone(&self) -> Self { let c = MethodTest(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for MethodTestObj { fn clone(&self) -> Self { MethodTestObj { expectedException: self.expectedException.clone(), expectedExceptionMessage: self.expectedExceptionMessage.clone(), expectedExceptionMessageRegExp: self.expectedExceptionMessageRegExp.clone(), expectedExceptionCode: self.expectedExceptionCode.clone(), name: self.name.clone() } } }
+impl MethodTest {
+}
+pub struct NamespaceTestObj {
+    pub expectedException: Option<Str>,
+    pub expectedExceptionMessage: Option<Str>,
+    pub expectedExceptionMessageRegExp: Option<Str>,
+    pub expectedExceptionCode: Option<i64>,
+    pub name: Str,
+}
+#[derive(Clone)]
+pub struct NamespaceTest(pub Rc<RefCell<NamespaceTestObj>>);
+impl NamespaceTest {
+    pub fn p_expectedException(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedException) }
+    pub fn p_expectedException_get(&self) -> Option<Str> { self.0.borrow().expectedException.clone() }
+    pub fn p_expectedException_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedException.clone()) }
+    pub fn p_expectedException_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedException) }
+    pub fn set_p_expectedException(&self, v: Option<Str>) { self.0.borrow_mut().expectedException = v; }
+    pub fn p_expectedExceptionMessage(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessage) }
+    pub fn p_expectedExceptionMessage_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessage.clone() }
+    pub fn p_expectedExceptionMessage_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessage.clone()) }
+    pub fn p_expectedExceptionMessage_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessage) }
+    pub fn set_p_expectedExceptionMessage(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessage = v; }
+    pub fn p_expectedExceptionMessageRegExp(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessageRegExp) }
+    pub fn p_expectedExceptionMessageRegExp_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessageRegExp.clone() }
+    pub fn p_expectedExceptionMessageRegExp_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessageRegExp.clone()) }
+    pub fn p_expectedExceptionMessageRegExp_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessageRegExp) }
+    pub fn set_p_expectedExceptionMessageRegExp(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessageRegExp = v; }
+    pub fn p_expectedExceptionCode(&self) -> Ref<'_, Option<i64>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionCode) }
+    pub fn p_expectedExceptionCode_get(&self) -> Option<i64> { self.0.borrow().expectedExceptionCode.clone() }
+    pub fn p_expectedExceptionCode_opt(&self) -> Option<Option<i64>> { Some(self.0.borrow().expectedExceptionCode.clone()) }
+    pub fn p_expectedExceptionCode_mut(&self) -> RefMut<'_, Option<i64>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionCode) }
+    pub fn set_p_expectedExceptionCode(&self, v: Option<i64>) { self.0.borrow_mut().expectedExceptionCode = v; }
+    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| &o.name) }
+    pub fn p_name_get(&self) -> Str { self.0.borrow().name.clone() }
+    pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
+    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
+    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new(mut name: Str) -> Result<NamespaceTest, Throw> {
+        let this = NamespaceTest(Rc::new(RefCell::new(NamespaceTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })));
+        this.magic__construct(name)?;
+        Ok(this)
+    }
+    pub fn createNamespaceBuilder(&self, mut fqn: Mixed) -> Result<crate::php_parser::builder::Namespace_, Throw> {
+    return Ok(crate::php_parser::builder::Namespace_::new(fqn.clone().to_option().map(|__m| cast::<U_PhpParser_Node_Name_or_Str>(__m)))?);
+    }
+    pub fn testCreation(&self) -> Result<(), Throw> {
+    let mut stmt1: Late<crate::php_parser::node::stmt::Class_> = Late::uninit();
+    let mut stmt2: Late<crate::php_parser::node::stmt::Interface_> = Late::uninit();
+    let mut stmt3: Late<crate::php_parser::node::stmt::Function_> = Late::uninit();
+    let mut docComment: Late<crate::php_parser::comment::Doc> = Late::uninit();
+    let mut expected: Late<crate::php_parser::node::stmt::Namespace_> = Late::uninit();
+    let mut node: Late<crate::php_parser::node::stmt::Namespace_> = Late::uninit();
+    stmt1.set(crate::php_parser::node::stmt::Class_::new(Some(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("SomeClass"))), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_extendsq__467d114822 { attrGroups: None, extends: None, flags: None, implements: None, stmts: None }, Map::<Str, Mixed>::new())?);
+    stmt2.set(crate::php_parser::node::stmt::Interface_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("SomeInterface")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_extendsq__786d9d6046 { attrGroups: None, extends: None, stmts: None }, Map::<Str, Mixed>::new())?);
+    stmt3.set(crate::php_parser::node::stmt::Function_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("someFunction")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_b3b37d5382 { attrGroups: None, byRef: None, params: None, returnType: None, stmts: None }, Map::<Str, Mixed>::new())?);
+    docComment.set(crate::php_parser::comment::Doc::new(Str::from_static("/** Test */"), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64))?);
+    expected.set(crate::php_parser::node::stmt::Namespace_::new(Some(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Name\\Space")), Map::<Str, Mixed>::new())?), Some(cast::<Map<ArrayKey, crate::php_parser::node::Stmt>>({ let __c1155 = (stmt1.get().clone(), stmt2.get().clone(), stmt3.get().clone()); List::from_vec(vec![cast::<crate::php_parser::node::Stmt>(__c1155.0), cast::<crate::php_parser::node::Stmt>(__c1155.1), cast::<crate::php_parser::node::Stmt>(__c1155.2)]) })), { let mut __m1: Map<Str, Mixed> = Map::new(); __m1.insert(Str::from_static("comments"), { let __c1156 = (docComment.get().clone(),); let mut __m: Map<ArrayKey, Mixed> = Map::new(); __m.push(cast::<Mixed>(__c1156.0)); Mixed::Arr(__m) }); __m1 })?);
+    node.set(cast::<crate::php_parser::node::stmt::Namespace_>(self.createNamespaceBuilder(cast::<Mixed>(Str::from_static("Name\\Space")))?.addStmt(U_PhpParser_Builder_or_PhpParser_Node::PhpParser_Node(cast::<crate::php_parser::Node>(stmt1.get().clone())))?.addStmts({ let mut __m2: Map<ArrayKey, U_PhpParser_Builder_or_PhpParser_Node_Stmt> = Map::new(); __m2.push(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(stmt2.get().clone()))); __m2.push(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(stmt3.get().clone()))); __m2 })?.setDocComment(U_PhpParser_Comment_Doc_or_Str::PhpParser_Comment_Doc(docComment.get().clone()))?.getNode()?));
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(expected.get().clone()), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    node.set(cast::<crate::php_parser::node::stmt::Namespace_>(self.createNamespaceBuilder(cast::<Mixed>(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Map_ArrayKey_Str(cast::<Map<ArrayKey, Str>>({ let __c1157 = (Str::from_static("Name"), Str::from_static("Space")); List::from_vec(vec![__c1157.0, __c1157.1]) })), Map::<Str, Mixed>::new())?))?.setDocComment(U_PhpParser_Comment_Doc_or_Str::PhpParser_Comment_Doc(docComment.get().clone()))?.addStmts({ let mut __m3: Map<ArrayKey, U_PhpParser_Builder_or_PhpParser_Node_Stmt> = Map::new(); __m3.push(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(stmt1.get().clone()))); __m3.push(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(stmt2.get().clone()))); __m3 })?.addStmt(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(stmt3.get().clone())))?.getNode()?));
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(expected.get().clone()), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    node.set(self.createNamespaceBuilder(Mixed::Null)?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertNull(cast::<Mixed>(node.get().clone().p_name_get()), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertEmpty(cast::<Mixed>(node.get().clone().p_stmts_get()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn magic__construct(&self, mut name: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).magic__construct__impl(name) }
+    pub fn setUpBeforeClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::setUpBeforeClass() }
+    pub fn tearDownAfterClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::tearDownAfterClass() }
+    pub fn setUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).setUp__impl() }
+    pub fn tearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).tearDown__impl() }
+    pub fn runSetUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runSetUp__impl() }
+    pub fn runTearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runTearDown__impl() }
+    pub fn getName(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).getName__impl() }
+    pub fn name(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).name__impl() }
+    pub fn expectException(&self, mut exception: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectException__impl(exception) }
+    pub fn expectExceptionMessage(&self, mut message_v: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessage__impl(message_v) }
+    pub fn expectExceptionMessageMatches(&self, mut regularExpression: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessageMatches__impl(regularExpression) }
+    pub fn expectExceptionCode(&self, mut code: i64) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionCode__impl(code) }
+    pub fn expectNotToPerformAssertions(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectNotToPerformAssertions__impl() }
+    pub fn expectsException(&self) -> Result<bool, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectsException__impl() }
+    pub fn verifyExpectedException(&self, mut e: crate::g::Throwable) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).verifyExpectedException__impl(e) }
+    pub fn expectedExceptionDescription(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectedExceptionDescription__impl() }
+    pub fn markTestSkipped(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestSkipped__impl(message_v) }
+    pub fn markTestIncomplete(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestIncomplete__impl(message_v) }
+    pub fn createMock(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createMock__impl(originalClassName) }
+    pub fn createStub(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createStub__impl(originalClassName) }
+    pub fn getCount() -> Result<i64, Throw> { crate::phpunit::framework::Assert::getCount() }
+    pub fn resetCount() -> Result<(), Throw> { crate::phpunit::framework::Assert::resetCount() }
+    pub fn fail(mut message_v: Str) -> Result<Never, Throw> { crate::phpunit::framework::Assert::fail(message_v) }
+    pub fn assertTrue(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertTrue(condition, message_v) }
+    pub fn assertFalse(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFalse(condition, message_v) }
+    pub fn assertNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNull(actual, message_v) }
+    pub fn assertNotNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotNull(actual, message_v) }
+    pub fn assertSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertSame(expected, actual, message_v) }
+    pub fn assertNotSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotSame(expected, actual, message_v) }
+    pub fn assertEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEquals(expected, actual, message_v) }
+    pub fn assertNotEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEquals(expected, actual, message_v) }
+    pub fn assertEqualsCanonicalizing(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEqualsCanonicalizing(expected, actual, message_v) }
+    pub fn assertCount(mut expectedCount: i64, mut haystack: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertCount(expectedCount, haystack, message_v) }
+    pub fn assertEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEmpty(actual, message_v) }
+    pub fn assertNotEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEmpty(actual, message_v) }
+    pub fn assertInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertInstanceOf(expected, actual, message_v) }
+    pub fn assertNotInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotInstanceOf(expected, actual, message_v) }
+    pub fn assertIsArray(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsArray(actual, message_v) }
+    pub fn assertIsString(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsString(actual, message_v) }
+    pub fn assertIsInt(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsInt(actual, message_v) }
+    pub fn assertIsBool(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsBool(actual, message_v) }
+    pub fn assertIsObject(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsObject(actual, message_v) }
+    pub fn assertIsCallable(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsCallable(actual, message_v) }
+    pub fn assertStringContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringContainsString(needle, haystack, message_v) }
+    pub fn assertStringNotContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringNotContainsString(needle, haystack, message_v) }
+    pub fn assertStringStartsWith(mut prefix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringStartsWith(prefix, string, message_v) }
+    pub fn assertStringEndsWith(mut suffix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEndsWith(suffix, string, message_v) }
+    pub fn assertMatchesRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertMatchesRegularExpression(pattern, string, message_v) }
+    pub fn assertDoesNotMatchRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDoesNotMatchRegularExpression(pattern, string, message_v) }
+    pub fn assertContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertContains(needle, haystack, message_v) }
+    pub fn assertNotContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotContains(needle, haystack, message_v) }
+    pub fn assertArrayHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayHasKey(key_v, array, message_v) }
+    pub fn assertArrayNotHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayNotHasKey(key_v, array, message_v) }
+    pub fn assertGreaterThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThan(expected, actual, message_v) }
+    pub fn assertGreaterThanOrEqual(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThanOrEqual(expected, actual, message_v) }
+    pub fn assertLessThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertLessThan(expected, actual, message_v) }
+    pub fn assertFileExists(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileExists(filename, message_v) }
+    pub fn assertFileDoesNotExist(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileDoesNotExist(filename, message_v) }
+    pub fn assertDirectoryExists(mut directory: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDirectoryExists(directory, message_v) }
+    pub fn assertStringEqualsFile(mut expectedFile: Str, mut actualString: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEqualsFile(expectedFile, actualString, message_v) }
+    pub fn assertJsonStringEqualsJsonString(mut expectedJson: Str, mut actualJson: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertJsonStringEqualsJsonString(expectedJson, actualJson, message_v) }
+    pub fn assertObjectHasProperty(mut propertyName: Str, mut object: AnyObject, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertObjectHasProperty(propertyName, object, message_v) }
+    pub fn new_same_class(&self, mut name: Str) -> Result<crate::php_parser::builder::NamespaceTest, Throw> { Ok(Self::new(name)?) }
+}
+impl php_rt::PhpObject for NamespaceTest {
+    fn class_name(&self) -> &'static str { "PhpParser\\Builder\\NamespaceTest" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\builder\\namespacetest", "phpunit\\framework\\testcase", "phpunit\\framework\\assert"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_expectedException_get()) { out.push((Str::from_static("expectedException"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessage_get()) { out.push((Str::from_static("expectedExceptionMessage"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessageRegExp_get()) { out.push((Str::from_static("expectedExceptionMessageRegExp"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionCode_get()) { out.push((Str::from_static("expectedExceptionCode"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_name_get()) { out.push((Str::from_static("name"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "expectedException" => { self.set_p_expectedException(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessage" => { self.set_p_expectedExceptionMessage(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessageRegExp" => { self.set_p_expectedExceptionMessageRegExp(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionCode" => { self.set_p_expectedExceptionCode(value.to_option().map(|__m| cast::<i64>(__m))); true }, "name" => { self.set_p_name(cast::<Str>(value)); true }, _ => false } }
+}
+impl NamespaceTest { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Builder\\NamespaceTest could not be converted to string"))) } }
+impl php_rt::PhpClone for NamespaceTest { fn php_clone(&self) -> Self { let c = NamespaceTest(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for NamespaceTestObj { fn clone(&self) -> Self { NamespaceTestObj { expectedException: self.expectedException.clone(), expectedExceptionMessage: self.expectedExceptionMessage.clone(), expectedExceptionMessageRegExp: self.expectedExceptionMessageRegExp.clone(), expectedExceptionCode: self.expectedExceptionCode.clone(), name: self.name.clone() } } }
+impl NamespaceTest {
+}
+pub struct ParamTestObj {
+    pub expectedException: Option<Str>,
+    pub expectedExceptionMessage: Option<Str>,
+    pub expectedExceptionMessageRegExp: Option<Str>,
+    pub expectedExceptionCode: Option<i64>,
+    pub name: Str,
+}
+#[derive(Clone)]
+pub struct ParamTest(pub Rc<RefCell<ParamTestObj>>);
+impl ParamTest {
+    pub fn p_expectedException(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedException) }
+    pub fn p_expectedException_get(&self) -> Option<Str> { self.0.borrow().expectedException.clone() }
+    pub fn p_expectedException_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedException.clone()) }
+    pub fn p_expectedException_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedException) }
+    pub fn set_p_expectedException(&self, v: Option<Str>) { self.0.borrow_mut().expectedException = v; }
+    pub fn p_expectedExceptionMessage(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessage) }
+    pub fn p_expectedExceptionMessage_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessage.clone() }
+    pub fn p_expectedExceptionMessage_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessage.clone()) }
+    pub fn p_expectedExceptionMessage_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessage) }
+    pub fn set_p_expectedExceptionMessage(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessage = v; }
+    pub fn p_expectedExceptionMessageRegExp(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessageRegExp) }
+    pub fn p_expectedExceptionMessageRegExp_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessageRegExp.clone() }
+    pub fn p_expectedExceptionMessageRegExp_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessageRegExp.clone()) }
+    pub fn p_expectedExceptionMessageRegExp_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessageRegExp) }
+    pub fn set_p_expectedExceptionMessageRegExp(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessageRegExp = v; }
+    pub fn p_expectedExceptionCode(&self) -> Ref<'_, Option<i64>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionCode) }
+    pub fn p_expectedExceptionCode_get(&self) -> Option<i64> { self.0.borrow().expectedExceptionCode.clone() }
+    pub fn p_expectedExceptionCode_opt(&self) -> Option<Option<i64>> { Some(self.0.borrow().expectedExceptionCode.clone()) }
+    pub fn p_expectedExceptionCode_mut(&self) -> RefMut<'_, Option<i64>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionCode) }
+    pub fn set_p_expectedExceptionCode(&self, v: Option<i64>) { self.0.borrow_mut().expectedExceptionCode = v; }
+    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| &o.name) }
+    pub fn p_name_get(&self) -> Str { self.0.borrow().name.clone() }
+    pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
+    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
+    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new(mut name: Str) -> Result<ParamTest, Throw> {
+        let this = ParamTest(Rc::new(RefCell::new(ParamTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })));
+        this.magic__construct(name)?;
+        Ok(this)
+    }
+    pub fn createParamBuilder(&self, mut name: Mixed) -> Result<crate::php_parser::builder::Param, Throw> {
+    return Ok(crate::php_parser::builder::Param::new(cast::<Str>(name.clone()))?);
+    }
+    pub fn testDefaultValues(&self, mut value: Mixed, mut expectedValueNode: Mixed) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::Param> = Late::uninit();
+    node.set(self.createParamBuilder(cast::<Mixed>(Str::from_static("test")))?.setDefault(value.clone())?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(expectedValueNode.clone(), cast::<Mixed>(node.get().clone().p_default_get()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn provideTestDefaultValues() -> Result<((Option<()>, crate::php_parser::node::expr::ConstFetch), (bool, crate::php_parser::node::expr::ConstFetch), (bool, crate::php_parser::node::expr::ConstFetch), (i64, crate::php_parser::node::scalar::Int_), (f64, crate::php_parser::node::scalar::Float_), (Str, crate::php_parser::node::scalar::String_), ((i64, i64, i64), crate::php_parser::node::expr::Array_), (Shape_bar_Str_foo_Str, crate::php_parser::node::expr::Array_), (crate::php_parser::node::scalar::magic_const::Dir, crate::php_parser::node::scalar::magic_const::Dir)), Throw> {
+    return Ok((({ let _ = (); None::<()> }, crate::php_parser::node::expr::ConstFetch::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("null")), Map::<Str, Mixed>::new())?, Map::<Str, Mixed>::new())?), (true, crate::php_parser::node::expr::ConstFetch::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("true")), Map::<Str, Mixed>::new())?, Map::<Str, Mixed>::new())?), (false, crate::php_parser::node::expr::ConstFetch::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("false")), Map::<Str, Mixed>::new())?, Map::<Str, Mixed>::new())?), (31415i64, crate::php_parser::node::scalar::Int_::new(31415i64, Map::<Str, Mixed>::new())?), (3.1415000000000002f64, crate::php_parser::node::scalar::Float_::new(3.1415000000000002f64, Map::<Str, Mixed>::new())?), (Str::from_static("Hallo World"), crate::php_parser::node::scalar::String_::new(Str::from_static("Hallo World"), Map::<Str, Mixed>::new())?), ((1i64, 2i64, 3i64), crate::php_parser::node::expr::Array_::new({ let mut __m1: Map<ArrayKey, crate::php_parser::node::ArrayItem> = Map::new(); __m1.push(crate::php_parser::node::ArrayItem::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(1i64, Map::<Str, Mixed>::new())?), { let _ = (); None::<crate::php_parser::node::Expr> }, false, Map::<Str, Mixed>::new(), false)?); __m1.push(crate::php_parser::node::ArrayItem::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(2i64, Map::<Str, Mixed>::new())?), { let _ = (); None::<crate::php_parser::node::Expr> }, false, Map::<Str, Mixed>::new(), false)?); __m1.push(crate::php_parser::node::ArrayItem::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(3i64, Map::<Str, Mixed>::new())?), { let _ = (); None::<crate::php_parser::node::Expr> }, false, Map::<Str, Mixed>::new(), false)?); __m1 }, Map::<Str, Mixed>::new())?), (Shape_bar_Str_foo_Str { foo: Str::from_static("bar"), bar: Str::from_static("foo") }, crate::php_parser::node::expr::Array_::new({ let mut __m2: Map<ArrayKey, crate::php_parser::node::ArrayItem> = Map::new(); __m2.push(crate::php_parser::node::ArrayItem::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::String_::new(Str::from_static("bar"), Map::<Str, Mixed>::new())?), Some(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::String_::new(Str::from_static("foo"), Map::<Str, Mixed>::new())?)), false, Map::<Str, Mixed>::new(), false)?); __m2.push(crate::php_parser::node::ArrayItem::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::String_::new(Str::from_static("foo"), Map::<Str, Mixed>::new())?), Some(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::String_::new(Str::from_static("bar"), Map::<Str, Mixed>::new())?)), false, Map::<Str, Mixed>::new(), false)?); __m2 }, Map::<Str, Mixed>::new())?), (crate::php_parser::node::scalar::magic_const::Dir::new(Map::<Str, Mixed>::new())?, crate::php_parser::node::scalar::magic_const::Dir::new(Map::<Str, Mixed>::new())?)));
+    }
+    pub fn testTypes(&self, mut typeHint: Mixed, mut expectedType: Mixed) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::Param> = Late::uninit();
+    let mut type_: Mixed = Default::default();
+    node.set(self.createParamBuilder(cast::<Mixed>(Str::from_static("test")))?.setType(cast::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name_or_Str>(typeHint.clone()))?.getNode()?);
+    type_ = cast::<Mixed>(node.get().clone().p_type__get());
+    if is_instance::<crate::php_parser::node::NullableType>(&expectedType.clone()) {
+        { let _ = self; crate::phpunit::framework::Assert::assertInstanceOf(class_name_of(&cast::<Mixed>(cast::<crate::php_parser::node::NullableType>(expectedType.clone()))), type_.clone(), Str::from_static(""))? };
+        expectedType = cast::<Mixed>(cast::<crate::php_parser::node::NullableType>(expectedType.clone()).p_type__get());
+        type_ = cast::<Mixed>(mixed_prop(&type_.clone(), &Str::from_static("type")));
+    }
+    { let _ = self; crate::phpunit::framework::Assert::assertInstanceOf(get_class(&expectedType.clone()), type_.clone(), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(expectedType.clone(), type_.clone(), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn provideTestTypes() -> Result<List<U_Tup2_PhpParser_Node_Name_PhpParser_Node_Name_or_Tup2_Str_PhpParser_N_81e341c3b0>, Throw> {
+    return Ok(list![U_Tup2_PhpParser_Node_Name_PhpParser_Node_Name_or_Tup2_Str_PhpParser_N_81e341c3b0::Tup2_Str_PhpParser_Node_Identifier((Str::from_static("array"), crate::php_parser::node::Identifier::new(Str::from_static("array"), Map::<Str, Mixed>::new())?)), U_Tup2_PhpParser_Node_Name_PhpParser_Node_Name_or_Tup2_Str_PhpParser_N_81e341c3b0::Tup2_Str_PhpParser_Node_Identifier((Str::from_static("callable"), crate::php_parser::node::Identifier::new(Str::from_static("callable"), Map::<Str, Mixed>::new())?)), U_Tup2_PhpParser_Node_Name_PhpParser_Node_Name_or_Tup2_Str_PhpParser_N_81e341c3b0::Tup2_Str_PhpParser_Node_Identifier((Str::from_static("bool"), crate::php_parser::node::Identifier::new(Str::from_static("bool"), Map::<Str, Mixed>::new())?)), U_Tup2_PhpParser_Node_Name_PhpParser_Node_Name_or_Tup2_Str_PhpParser_N_81e341c3b0::Tup2_Str_PhpParser_Node_Identifier((Str::from_static("int"), crate::php_parser::node::Identifier::new(Str::from_static("int"), Map::<Str, Mixed>::new())?)), U_Tup2_PhpParser_Node_Name_PhpParser_Node_Name_or_Tup2_Str_PhpParser_N_81e341c3b0::Tup2_Str_PhpParser_Node_Identifier((Str::from_static("float"), crate::php_parser::node::Identifier::new(Str::from_static("float"), Map::<Str, Mixed>::new())?)), U_Tup2_PhpParser_Node_Name_PhpParser_Node_Name_or_Tup2_Str_PhpParser_N_81e341c3b0::Tup2_Str_PhpParser_Node_Identifier((Str::from_static("string"), crate::php_parser::node::Identifier::new(Str::from_static("string"), Map::<Str, Mixed>::new())?)), U_Tup2_PhpParser_Node_Name_PhpParser_Node_Name_or_Tup2_Str_PhpParser_N_81e341c3b0::Tup2_Str_PhpParser_Node_Identifier((Str::from_static("iterable"), crate::php_parser::node::Identifier::new(Str::from_static("iterable"), Map::<Str, Mixed>::new())?)), U_Tup2_PhpParser_Node_Name_PhpParser_Node_Name_or_Tup2_Str_PhpParser_N_81e341c3b0::Tup2_Str_PhpParser_Node_Identifier((Str::from_static("object"), crate::php_parser::node::Identifier::new(Str::from_static("object"), Map::<Str, Mixed>::new())?)), U_Tup2_PhpParser_Node_Name_PhpParser_Node_Name_or_Tup2_Str_PhpParser_N_81e341c3b0::Tup2_Str_PhpParser_Node_Identifier((Str::from_static("Array"), crate::php_parser::node::Identifier::new(Str::from_static("array"), Map::<Str, Mixed>::new())?)), U_Tup2_PhpParser_Node_Name_PhpParser_Node_Name_or_Tup2_Str_PhpParser_N_81e341c3b0::Tup2_Str_PhpParser_Node_Identifier((Str::from_static("CALLABLE"), crate::php_parser::node::Identifier::new(Str::from_static("callable"), Map::<Str, Mixed>::new())?)), U_Tup2_PhpParser_Node_Name_PhpParser_Node_Name_or_Tup2_Str_PhpParser_N_81e341c3b0::Tup2_Str_PhpParser_Node_Identifier((Str::from_static("mixed"), crate::php_parser::node::Identifier::new(Str::from_static("mixed"), Map::<Str, Mixed>::new())?)), U_Tup2_PhpParser_Node_Name_PhpParser_Node_Name_or_Tup2_Str_PhpParser_N_81e341c3b0::Tup2_Str_PhpParser_Node_Name((Str::from_static("Some\\Class"), crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Some\\Class")), Map::<Str, Mixed>::new())?)), U_Tup2_PhpParser_Node_Name_PhpParser_Node_Name_or_Tup2_Str_PhpParser_N_81e341c3b0::Tup2_Str_PhpParser_Node_Name_FullyQualified((Str::from_static("\\Foo"), crate::php_parser::node::name::FullyQualified::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Foo")), Map::<Str, Mixed>::new())?)), U_Tup2_PhpParser_Node_Name_PhpParser_Node_Name_or_Tup2_Str_PhpParser_N_81e341c3b0::Tup2_Str_PhpParser_Node_Name((Str::from_static("self"), crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("self")), Map::<Str, Mixed>::new())?)), U_Tup2_PhpParser_Node_Name_PhpParser_Node_Name_or_Tup2_Str_PhpParser_N_81e341c3b0::Tup2_PhpParser_Node_Name_PhpParser_Node_Name((crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Some\\Class")), Map::<Str, Mixed>::new())?, crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Some\\Class")), Map::<Str, Mixed>::new())?))]);
+    }
+    pub fn provideTestNullableTypes() -> Result<((Str, crate::php_parser::node::NullableType), (Str, crate::php_parser::node::NullableType), (crate::php_parser::node::NullableType, crate::php_parser::node::NullableType), (crate::php_parser::node::NullableType, crate::php_parser::node::NullableType)), Throw> {
+    return Ok(((Str::from_static("?array"), crate::php_parser::node::NullableType::new(U_PhpParser_Node_Identifier_or_PhpParser_Node_Name::PhpParser_Node_Identifier(crate::php_parser::node::Identifier::new(Str::from_static("array"), Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?), (Str::from_static("?Some\\Class"), crate::php_parser::node::NullableType::new(U_PhpParser_Node_Identifier_or_PhpParser_Node_Name::PhpParser_Node_Name(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Some\\Class")), Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?), (crate::php_parser::node::NullableType::new(U_PhpParser_Node_Identifier_or_PhpParser_Node_Name::PhpParser_Node_Identifier(crate::php_parser::node::Identifier::new(Str::from_static("int"), Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?, crate::php_parser::node::NullableType::new(U_PhpParser_Node_Identifier_or_PhpParser_Node_Name::PhpParser_Node_Identifier(crate::php_parser::node::Identifier::new(Str::from_static("int"), Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?), (crate::php_parser::node::NullableType::new(U_PhpParser_Node_Identifier_or_PhpParser_Node_Name::PhpParser_Node_Name(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Some\\Class")), Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?, crate::php_parser::node::NullableType::new(U_PhpParser_Node_Identifier_or_PhpParser_Node_Name::PhpParser_Node_Name(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Some\\Class")), Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?)));
+    }
+    pub fn provideTestUnionTypes() -> Result<((crate::php_parser::node::UnionType, crate::php_parser::node::UnionType), (crate::php_parser::node::UnionType, crate::php_parser::node::UnionType)), Throw> {
+    return Ok(((crate::php_parser::node::UnionType::new({ let mut __m1: Map<ArrayKey, U_PhpParser_Node_Identifier_or_PhpParser_Node_IntersectionType_or_PhpParser_Node_Name> = Map::new(); __m1.push(U_PhpParser_Node_Identifier_or_PhpParser_Node_IntersectionType_or_PhpParser_Node_Name::PhpParser_Node_Name(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Some\\Class")), Map::<Str, Mixed>::new())?)); __m1.push(U_PhpParser_Node_Identifier_or_PhpParser_Node_IntersectionType_or_PhpParser_Node_Name::PhpParser_Node_Identifier(crate::php_parser::node::Identifier::new(Str::from_static("array"), Map::<Str, Mixed>::new())?)); __m1 }, Map::<Str, Mixed>::new())?, crate::php_parser::node::UnionType::new({ let mut __m2: Map<ArrayKey, U_PhpParser_Node_Identifier_or_PhpParser_Node_IntersectionType_or_PhpParser_Node_Name> = Map::new(); __m2.push(U_PhpParser_Node_Identifier_or_PhpParser_Node_IntersectionType_or_PhpParser_Node_Name::PhpParser_Node_Name(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Some\\Class")), Map::<Str, Mixed>::new())?)); __m2.push(U_PhpParser_Node_Identifier_or_PhpParser_Node_IntersectionType_or_PhpParser_Node_Name::PhpParser_Node_Identifier(crate::php_parser::node::Identifier::new(Str::from_static("array"), Map::<Str, Mixed>::new())?)); __m2 }, Map::<Str, Mixed>::new())?), (crate::php_parser::node::UnionType::new({ let mut __m3: Map<ArrayKey, U_PhpParser_Node_Identifier_or_PhpParser_Node_IntersectionType_or_PhpParser_Node_Name> = Map::new(); __m3.push(U_PhpParser_Node_Identifier_or_PhpParser_Node_IntersectionType_or_PhpParser_Node_Name::PhpParser_Node_Identifier(crate::php_parser::node::Identifier::new(Str::from_static("self"), Map::<Str, Mixed>::new())?)); __m3.push(U_PhpParser_Node_Identifier_or_PhpParser_Node_IntersectionType_or_PhpParser_Node_Name::PhpParser_Node_Identifier(crate::php_parser::node::Identifier::new(Str::from_static("array"), Map::<Str, Mixed>::new())?)); __m3.push(U_PhpParser_Node_Identifier_or_PhpParser_Node_IntersectionType_or_PhpParser_Node_Name::PhpParser_Node_Name(cast::<crate::php_parser::node::Name>(crate::php_parser::node::name::FullyQualified::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Foo")), Map::<Str, Mixed>::new())?))); __m3 }, Map::<Str, Mixed>::new())?, crate::php_parser::node::UnionType::new({ let mut __m4: Map<ArrayKey, U_PhpParser_Node_Identifier_or_PhpParser_Node_IntersectionType_or_PhpParser_Node_Name> = Map::new(); __m4.push(U_PhpParser_Node_Identifier_or_PhpParser_Node_IntersectionType_or_PhpParser_Node_Name::PhpParser_Node_Identifier(crate::php_parser::node::Identifier::new(Str::from_static("self"), Map::<Str, Mixed>::new())?)); __m4.push(U_PhpParser_Node_Identifier_or_PhpParser_Node_IntersectionType_or_PhpParser_Node_Name::PhpParser_Node_Identifier(crate::php_parser::node::Identifier::new(Str::from_static("array"), Map::<Str, Mixed>::new())?)); __m4.push(U_PhpParser_Node_Identifier_or_PhpParser_Node_IntersectionType_or_PhpParser_Node_Name::PhpParser_Node_Name(cast::<crate::php_parser::node::Name>(crate::php_parser::node::name::FullyQualified::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Foo")), Map::<Str, Mixed>::new())?))); __m4 }, Map::<Str, Mixed>::new())?)));
+    }
+    pub fn testVoidTypeError(&self) -> Result<(), Throw> {
+    self.expectException(Str::from_static("LogicException"))?;
+    self.expectExceptionMessage(Str::from_static("Parameter type cannot be void"))?;
+    let _: crate::php_parser::builder::Param = self.createParamBuilder(cast::<Mixed>(Str::from_static("test")))?.setType(U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("void")))?;
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testInvalidTypeError(&self) -> Result<(), Throw> {
+    self.expectException(Str::from_static("LogicException"))?;
+    self.expectExceptionMessage(Str::from_static("Type must be a string, or an instance of Name, Identifier or ComplexType"))?;
+    let _: crate::php_parser::builder::Param = self.createParamBuilder(cast::<Mixed>(Str::from_static("test")))?.setType(cast::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name_or_Str>(StdClass::new()))?;
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testByRef(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::Param> = Late::uninit();
+    node.set(self.createParamBuilder(cast::<Mixed>(Str::from_static("test")))?.makeByRef()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::Param::new(U_PhpParser_Node_Expr_Error_or_PhpParser_Node_Expr_Variable::PhpParser_Node_Expr_Variable(crate::php_parser::node::expr::Variable::new(U_PhpParser_Node_Expr_or_Str::Str(Str::from_static("test")), Map::<Str, Mixed>::new())?), { let _ = (); None::<crate::php_parser::node::Expr> }, { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, true, false, Map::<Str, Mixed>::new(), 0i64, List::<crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testVariadic(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::Param> = Late::uninit();
+    node.set(self.createParamBuilder(cast::<Mixed>(Str::from_static("test")))?.makeVariadic()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::Param::new(U_PhpParser_Node_Expr_Error_or_PhpParser_Node_Expr_Variable::PhpParser_Node_Expr_Variable(crate::php_parser::node::expr::Variable::new(U_PhpParser_Node_Expr_or_Str::Str(Str::from_static("test")), Map::<Str, Mixed>::new())?), { let _ = (); None::<crate::php_parser::node::Expr> }, { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, false, true, Map::<Str, Mixed>::new(), 0i64, List::<crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testMakePublic(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::Param> = Late::uninit();
+    node.set(self.createParamBuilder(cast::<Mixed>(Str::from_static("test")))?.makePublic()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::Param::new(U_PhpParser_Node_Expr_Error_or_PhpParser_Node_Expr_Variable::PhpParser_Node_Expr_Variable(crate::php_parser::node::expr::Variable::new(U_PhpParser_Node_Expr_or_Str::Str(Str::from_static("test")), Map::<Str, Mixed>::new())?), { let _ = (); None::<crate::php_parser::node::Expr> }, { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, false, false, Map::<Str, Mixed>::new(), crate::php_parser::Modifiers::PUBLIC(), List::<crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testMakeProtected(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::Param> = Late::uninit();
+    node.set(self.createParamBuilder(cast::<Mixed>(Str::from_static("test")))?.makeProtected()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::Param::new(U_PhpParser_Node_Expr_Error_or_PhpParser_Node_Expr_Variable::PhpParser_Node_Expr_Variable(crate::php_parser::node::expr::Variable::new(U_PhpParser_Node_Expr_or_Str::Str(Str::from_static("test")), Map::<Str, Mixed>::new())?), { let _ = (); None::<crate::php_parser::node::Expr> }, { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, false, false, Map::<Str, Mixed>::new(), crate::php_parser::Modifiers::PROTECTED(), List::<crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    node.set(self.createParamBuilder(cast::<Mixed>(Str::from_static("test")))?.makeProtectedSet()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::Param::new(U_PhpParser_Node_Expr_Error_or_PhpParser_Node_Expr_Variable::PhpParser_Node_Expr_Variable(crate::php_parser::node::expr::Variable::new(U_PhpParser_Node_Expr_or_Str::Str(Str::from_static("test")), Map::<Str, Mixed>::new())?), { let _ = (); None::<crate::php_parser::node::Expr> }, { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, false, false, Map::<Str, Mixed>::new(), crate::php_parser::Modifiers::PROTECTED_SET(), List::<crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testMakePrivate(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::Param> = Late::uninit();
+    node.set(self.createParamBuilder(cast::<Mixed>(Str::from_static("test")))?.makePrivate()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::Param::new(U_PhpParser_Node_Expr_Error_or_PhpParser_Node_Expr_Variable::PhpParser_Node_Expr_Variable(crate::php_parser::node::expr::Variable::new(U_PhpParser_Node_Expr_or_Str::Str(Str::from_static("test")), Map::<Str, Mixed>::new())?), { let _ = (); None::<crate::php_parser::node::Expr> }, { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, false, false, Map::<Str, Mixed>::new(), crate::php_parser::Modifiers::PRIVATE(), List::<crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    node.set(self.createParamBuilder(cast::<Mixed>(Str::from_static("test")))?.makePrivateSet()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::Param::new(U_PhpParser_Node_Expr_Error_or_PhpParser_Node_Expr_Variable::PhpParser_Node_Expr_Variable(crate::php_parser::node::expr::Variable::new(U_PhpParser_Node_Expr_or_Str::Str(Str::from_static("test")), Map::<Str, Mixed>::new())?), { let _ = (); None::<crate::php_parser::node::Expr> }, { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, false, false, Map::<Str, Mixed>::new(), crate::php_parser::Modifiers::PRIVATE_SET(), List::<crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testMakeReadonly(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::Param> = Late::uninit();
+    node.set(self.createParamBuilder(cast::<Mixed>(Str::from_static("test")))?.makeReadonly()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::Param::new(U_PhpParser_Node_Expr_Error_or_PhpParser_Node_Expr_Variable::PhpParser_Node_Expr_Variable(crate::php_parser::node::expr::Variable::new(U_PhpParser_Node_Expr_or_Str::Str(Str::from_static("test")), Map::<Str, Mixed>::new())?), { let _ = (); None::<crate::php_parser::node::Expr> }, { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, false, false, Map::<Str, Mixed>::new(), crate::php_parser::Modifiers::READONLY(), List::<crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testAddAttribute(&self) -> Result<(), Throw> {
+    let mut attribute: Late<crate::php_parser::node::Attribute> = Late::uninit();
+    let mut attributeGroup: Late<crate::php_parser::node::AttributeGroup> = Late::uninit();
+    let mut node: Late<crate::php_parser::node::Param> = Late::uninit();
+    attribute.set(crate::php_parser::node::Attribute::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Attr")), Map::<Str, Mixed>::new())?, list![crate::php_parser::node::Arg::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(1i64, Map::<Str, Mixed>::new())?), false, false, Map::<Str, Mixed>::new(), Some(crate::php_parser::node::Identifier::new(Str::from_static("name"), Map::<Str, Mixed>::new())?))?], Map::<Str, Mixed>::new())?);
+    attributeGroup.set(crate::php_parser::node::AttributeGroup::new({ let mut __m1: Map<ArrayKey, crate::php_parser::node::Attribute> = Map::new(); __m1.push(attribute.get().clone()); __m1 }, Map::<Str, Mixed>::new())?);
+    node.set(self.createParamBuilder(cast::<Mixed>(Str::from_static("attributeGroup")))?.addAttribute(U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup::PhpParser_Node_AttributeGroup(attributeGroup.get().clone()))?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::Param::new(U_PhpParser_Node_Expr_Error_or_PhpParser_Node_Expr_Variable::PhpParser_Node_Expr_Variable(crate::php_parser::node::expr::Variable::new(U_PhpParser_Node_Expr_or_Str::Str(Str::from_static("attributeGroup")), Map::<Str, Mixed>::new())?), { let _ = (); None::<crate::php_parser::node::Expr> }, { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, false, false, Map::<Str, Mixed>::new(), 0i64, list![attributeGroup.get().clone()], Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn magic__construct(&self, mut name: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).magic__construct__impl(name) }
+    pub fn setUpBeforeClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::setUpBeforeClass() }
+    pub fn tearDownAfterClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::tearDownAfterClass() }
+    pub fn setUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).setUp__impl() }
+    pub fn tearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).tearDown__impl() }
+    pub fn runSetUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runSetUp__impl() }
+    pub fn runTearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runTearDown__impl() }
+    pub fn getName(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).getName__impl() }
+    pub fn name(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).name__impl() }
+    pub fn expectException(&self, mut exception: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectException__impl(exception) }
+    pub fn expectExceptionMessage(&self, mut message_v: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessage__impl(message_v) }
+    pub fn expectExceptionMessageMatches(&self, mut regularExpression: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessageMatches__impl(regularExpression) }
+    pub fn expectExceptionCode(&self, mut code: i64) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionCode__impl(code) }
+    pub fn expectNotToPerformAssertions(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectNotToPerformAssertions__impl() }
+    pub fn expectsException(&self) -> Result<bool, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectsException__impl() }
+    pub fn verifyExpectedException(&self, mut e: crate::g::Throwable) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).verifyExpectedException__impl(e) }
+    pub fn expectedExceptionDescription(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectedExceptionDescription__impl() }
+    pub fn markTestSkipped(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestSkipped__impl(message_v) }
+    pub fn markTestIncomplete(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestIncomplete__impl(message_v) }
+    pub fn createMock(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createMock__impl(originalClassName) }
+    pub fn createStub(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createStub__impl(originalClassName) }
+    pub fn getCount() -> Result<i64, Throw> { crate::phpunit::framework::Assert::getCount() }
+    pub fn resetCount() -> Result<(), Throw> { crate::phpunit::framework::Assert::resetCount() }
+    pub fn fail(mut message_v: Str) -> Result<Never, Throw> { crate::phpunit::framework::Assert::fail(message_v) }
+    pub fn assertTrue(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertTrue(condition, message_v) }
+    pub fn assertFalse(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFalse(condition, message_v) }
+    pub fn assertNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNull(actual, message_v) }
+    pub fn assertNotNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotNull(actual, message_v) }
+    pub fn assertSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertSame(expected, actual, message_v) }
+    pub fn assertNotSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotSame(expected, actual, message_v) }
+    pub fn assertEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEquals(expected, actual, message_v) }
+    pub fn assertNotEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEquals(expected, actual, message_v) }
+    pub fn assertEqualsCanonicalizing(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEqualsCanonicalizing(expected, actual, message_v) }
+    pub fn assertCount(mut expectedCount: i64, mut haystack: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertCount(expectedCount, haystack, message_v) }
+    pub fn assertEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEmpty(actual, message_v) }
+    pub fn assertNotEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEmpty(actual, message_v) }
+    pub fn assertInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertInstanceOf(expected, actual, message_v) }
+    pub fn assertNotInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotInstanceOf(expected, actual, message_v) }
+    pub fn assertIsArray(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsArray(actual, message_v) }
+    pub fn assertIsString(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsString(actual, message_v) }
+    pub fn assertIsInt(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsInt(actual, message_v) }
+    pub fn assertIsBool(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsBool(actual, message_v) }
+    pub fn assertIsObject(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsObject(actual, message_v) }
+    pub fn assertIsCallable(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsCallable(actual, message_v) }
+    pub fn assertStringContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringContainsString(needle, haystack, message_v) }
+    pub fn assertStringNotContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringNotContainsString(needle, haystack, message_v) }
+    pub fn assertStringStartsWith(mut prefix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringStartsWith(prefix, string, message_v) }
+    pub fn assertStringEndsWith(mut suffix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEndsWith(suffix, string, message_v) }
+    pub fn assertMatchesRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertMatchesRegularExpression(pattern, string, message_v) }
+    pub fn assertDoesNotMatchRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDoesNotMatchRegularExpression(pattern, string, message_v) }
+    pub fn assertContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertContains(needle, haystack, message_v) }
+    pub fn assertNotContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotContains(needle, haystack, message_v) }
+    pub fn assertArrayHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayHasKey(key_v, array, message_v) }
+    pub fn assertArrayNotHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayNotHasKey(key_v, array, message_v) }
+    pub fn assertGreaterThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThan(expected, actual, message_v) }
+    pub fn assertGreaterThanOrEqual(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThanOrEqual(expected, actual, message_v) }
+    pub fn assertLessThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertLessThan(expected, actual, message_v) }
+    pub fn assertFileExists(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileExists(filename, message_v) }
+    pub fn assertFileDoesNotExist(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileDoesNotExist(filename, message_v) }
+    pub fn assertDirectoryExists(mut directory: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDirectoryExists(directory, message_v) }
+    pub fn assertStringEqualsFile(mut expectedFile: Str, mut actualString: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEqualsFile(expectedFile, actualString, message_v) }
+    pub fn assertJsonStringEqualsJsonString(mut expectedJson: Str, mut actualJson: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertJsonStringEqualsJsonString(expectedJson, actualJson, message_v) }
+    pub fn assertObjectHasProperty(mut propertyName: Str, mut object: AnyObject, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertObjectHasProperty(propertyName, object, message_v) }
+    pub fn new_same_class(&self, mut name: Str) -> Result<crate::php_parser::builder::ParamTest, Throw> { Ok(Self::new(name)?) }
+}
+impl php_rt::PhpObject for ParamTest {
+    fn class_name(&self) -> &'static str { "PhpParser\\Builder\\ParamTest" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\builder\\paramtest", "phpunit\\framework\\testcase", "phpunit\\framework\\assert"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_expectedException_get()) { out.push((Str::from_static("expectedException"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessage_get()) { out.push((Str::from_static("expectedExceptionMessage"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessageRegExp_get()) { out.push((Str::from_static("expectedExceptionMessageRegExp"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionCode_get()) { out.push((Str::from_static("expectedExceptionCode"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_name_get()) { out.push((Str::from_static("name"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "expectedException" => { self.set_p_expectedException(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessage" => { self.set_p_expectedExceptionMessage(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessageRegExp" => { self.set_p_expectedExceptionMessageRegExp(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionCode" => { self.set_p_expectedExceptionCode(value.to_option().map(|__m| cast::<i64>(__m))); true }, "name" => { self.set_p_name(cast::<Str>(value)); true }, _ => false } }
+}
+impl ParamTest { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Builder\\ParamTest could not be converted to string"))) } }
+impl php_rt::PhpClone for ParamTest { fn php_clone(&self) -> Self { let c = ParamTest(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for ParamTestObj { fn clone(&self) -> Self { ParamTestObj { expectedException: self.expectedException.clone(), expectedExceptionMessage: self.expectedExceptionMessage.clone(), expectedExceptionMessageRegExp: self.expectedExceptionMessageRegExp.clone(), expectedExceptionCode: self.expectedExceptionCode.clone(), name: self.name.clone() } } }
+impl ParamTest {
+}
+pub struct PropertyTestObj {
+    pub expectedException: Option<Str>,
+    pub expectedExceptionMessage: Option<Str>,
+    pub expectedExceptionMessageRegExp: Option<Str>,
+    pub expectedExceptionCode: Option<i64>,
+    pub name: Str,
+}
+#[derive(Clone)]
+pub struct PropertyTest(pub Rc<RefCell<PropertyTestObj>>);
+impl PropertyTest {
+    pub fn p_expectedException(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedException) }
+    pub fn p_expectedException_get(&self) -> Option<Str> { self.0.borrow().expectedException.clone() }
+    pub fn p_expectedException_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedException.clone()) }
+    pub fn p_expectedException_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedException) }
+    pub fn set_p_expectedException(&self, v: Option<Str>) { self.0.borrow_mut().expectedException = v; }
+    pub fn p_expectedExceptionMessage(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessage) }
+    pub fn p_expectedExceptionMessage_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessage.clone() }
+    pub fn p_expectedExceptionMessage_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessage.clone()) }
+    pub fn p_expectedExceptionMessage_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessage) }
+    pub fn set_p_expectedExceptionMessage(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessage = v; }
+    pub fn p_expectedExceptionMessageRegExp(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessageRegExp) }
+    pub fn p_expectedExceptionMessageRegExp_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessageRegExp.clone() }
+    pub fn p_expectedExceptionMessageRegExp_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessageRegExp.clone()) }
+    pub fn p_expectedExceptionMessageRegExp_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessageRegExp) }
+    pub fn set_p_expectedExceptionMessageRegExp(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessageRegExp = v; }
+    pub fn p_expectedExceptionCode(&self) -> Ref<'_, Option<i64>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionCode) }
+    pub fn p_expectedExceptionCode_get(&self) -> Option<i64> { self.0.borrow().expectedExceptionCode.clone() }
+    pub fn p_expectedExceptionCode_opt(&self) -> Option<Option<i64>> { Some(self.0.borrow().expectedExceptionCode.clone()) }
+    pub fn p_expectedExceptionCode_mut(&self) -> RefMut<'_, Option<i64>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionCode) }
+    pub fn set_p_expectedExceptionCode(&self, v: Option<i64>) { self.0.borrow_mut().expectedExceptionCode = v; }
+    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| &o.name) }
+    pub fn p_name_get(&self) -> Str { self.0.borrow().name.clone() }
+    pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
+    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
+    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new(mut name: Str) -> Result<PropertyTest, Throw> {
+        let this = PropertyTest(Rc::new(RefCell::new(PropertyTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })));
+        this.magic__construct(name)?;
+        Ok(this)
+    }
+    pub fn createPropertyBuilder(&self, mut name: Mixed) -> Result<crate::php_parser::builder::Property, Throw> {
+    return Ok(crate::php_parser::builder::Property::new(cast::<Str>(name.clone()))?);
+    }
+    pub fn testModifiers(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::stmt::Property> = Late::uninit();
+    node.set(self.createPropertyBuilder(cast::<Mixed>(Str::from_static("test")))?.makePrivate()?.makeStatic()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Property::new((crate::php_parser::Modifiers::PRIVATE() | crate::php_parser::Modifiers::STATIC()), { let mut __m1: Map<ArrayKey, crate::php_parser::node::PropertyItem> = Map::new(); __m1.push(crate::php_parser::node::PropertyItem::new(U_PhpParser_Node_VarLikeIdentifier_or_Str::Str(Str::from_static("test")), { let _ = (); None::<crate::php_parser::node::Expr> }, Map::<Str, Mixed>::new())?); __m1 }, Map::<Str, Mixed>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, Map::<ArrayKey, crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    node.set(self.createPropertyBuilder(cast::<Mixed>(Str::from_static("test")))?.makeProtected()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Property::new(crate::php_parser::Modifiers::PROTECTED(), { let mut __m2: Map<ArrayKey, crate::php_parser::node::PropertyItem> = Map::new(); __m2.push(crate::php_parser::node::PropertyItem::new(U_PhpParser_Node_VarLikeIdentifier_or_Str::Str(Str::from_static("test")), { let _ = (); None::<crate::php_parser::node::Expr> }, Map::<Str, Mixed>::new())?); __m2 }, Map::<Str, Mixed>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, Map::<ArrayKey, crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    node.set(self.createPropertyBuilder(cast::<Mixed>(Str::from_static("test")))?.makePublic()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Property::new(crate::php_parser::Modifiers::PUBLIC(), { let mut __m3: Map<ArrayKey, crate::php_parser::node::PropertyItem> = Map::new(); __m3.push(crate::php_parser::node::PropertyItem::new(U_PhpParser_Node_VarLikeIdentifier_or_Str::Str(Str::from_static("test")), { let _ = (); None::<crate::php_parser::node::Expr> }, Map::<Str, Mixed>::new())?); __m3 }, Map::<Str, Mixed>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, Map::<ArrayKey, crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    node.set(self.createPropertyBuilder(cast::<Mixed>(Str::from_static("test")))?.makeReadonly()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Property::new(crate::php_parser::Modifiers::READONLY(), { let mut __m4: Map<ArrayKey, crate::php_parser::node::PropertyItem> = Map::new(); __m4.push(crate::php_parser::node::PropertyItem::new(U_PhpParser_Node_VarLikeIdentifier_or_Str::Str(Str::from_static("test")), { let _ = (); None::<crate::php_parser::node::Expr> }, Map::<Str, Mixed>::new())?); __m4 }, Map::<Str, Mixed>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, Map::<ArrayKey, crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    node.set(self.createPropertyBuilder(cast::<Mixed>(Str::from_static("test")))?.makeFinal()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Property::new(crate::php_parser::Modifiers::FINAL(), { let mut __m5: Map<ArrayKey, crate::php_parser::node::PropertyItem> = Map::new(); __m5.push(crate::php_parser::node::PropertyItem::new(U_PhpParser_Node_VarLikeIdentifier_or_Str::Str(Str::from_static("test")), { let _ = (); None::<crate::php_parser::node::Expr> }, Map::<Str, Mixed>::new())?); __m5 }, Map::<Str, Mixed>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, Map::<ArrayKey, crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    node.set(self.createPropertyBuilder(cast::<Mixed>(Str::from_static("test")))?.makePrivateSet()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Property::new(crate::php_parser::Modifiers::PRIVATE_SET(), { let mut __m6: Map<ArrayKey, crate::php_parser::node::PropertyItem> = Map::new(); __m6.push(crate::php_parser::node::PropertyItem::new(U_PhpParser_Node_VarLikeIdentifier_or_Str::Str(Str::from_static("test")), { let _ = (); None::<crate::php_parser::node::Expr> }, Map::<Str, Mixed>::new())?); __m6 }, Map::<Str, Mixed>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, Map::<ArrayKey, crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    node.set(self.createPropertyBuilder(cast::<Mixed>(Str::from_static("test")))?.makeProtectedSet()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Property::new(crate::php_parser::Modifiers::PROTECTED_SET(), { let mut __m7: Map<ArrayKey, crate::php_parser::node::PropertyItem> = Map::new(); __m7.push(crate::php_parser::node::PropertyItem::new(U_PhpParser_Node_VarLikeIdentifier_or_Str::Str(Str::from_static("test")), { let _ = (); None::<crate::php_parser::node::Expr> }, Map::<Str, Mixed>::new())?); __m7 }, Map::<Str, Mixed>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, Map::<ArrayKey, crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testAbstractWithoutHook(&self) -> Result<Mixed, Throw> {
+    self.expectException(Str::from_static("PhpParser\\Error"))?;
+    self.expectExceptionMessage(Str::from_static("Only hooked properties may be declared abstract"))?;
+    let _: crate::php_parser::node::stmt::Property = self.createPropertyBuilder(cast::<Mixed>(Str::from_static("test")))?.makeAbstract()?.getNode()?;
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn testDocComment(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::stmt::Property> = Late::uninit();
+    node.set(self.createPropertyBuilder(cast::<Mixed>(Str::from_static("test")))?.setDocComment(U_PhpParser_Comment_Doc_or_Str::Str(Str::from_static("/** Test */")))?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Property::new(crate::php_parser::Modifiers::PUBLIC(), { let mut __m1: Map<ArrayKey, crate::php_parser::node::PropertyItem> = Map::new(); __m1.push(crate::php_parser::node::PropertyItem::new(U_PhpParser_Node_VarLikeIdentifier_or_Str::Str(Str::from_static("test")), { let _ = (); None::<crate::php_parser::node::Expr> }, Map::<Str, Mixed>::new())?); __m1 }, { let mut __m2: Map<Str, Mixed> = Map::new(); __m2.insert(Str::from_static("comments"), { let __c1158 = (crate::php_parser::comment::Doc::new(Str::from_static("/** Test */"), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64))?,); let mut __m: Map<ArrayKey, Mixed> = Map::new(); __m.push(cast::<Mixed>(__c1158.0)); Mixed::Arr(__m) }); __m2 }, { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, Map::<ArrayKey, crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testDefaultValues(&self, mut value: Mixed, mut expectedValueNode: Mixed) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::stmt::Property> = Late::uninit();
+    node.set(self.createPropertyBuilder(cast::<Mixed>(Str::from_static("test")))?.setDefault(value.clone())?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(expectedValueNode.clone(), cast::<Mixed>(node.get().clone().p_props_get().idx(&to_key(&0i64)).clone().p_default_get()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testAddAttribute(&self) -> Result<(), Throw> {
+    let mut attribute: Late<crate::php_parser::node::Attribute> = Late::uninit();
+    let mut attributeGroup: Late<crate::php_parser::node::AttributeGroup> = Late::uninit();
+    let mut node: Late<crate::php_parser::node::stmt::Property> = Late::uninit();
+    attribute.set(crate::php_parser::node::Attribute::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Attr")), Map::<Str, Mixed>::new())?, list![crate::php_parser::node::Arg::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(1i64, Map::<Str, Mixed>::new())?), false, false, Map::<Str, Mixed>::new(), Some(crate::php_parser::node::Identifier::new(Str::from_static("name"), Map::<Str, Mixed>::new())?))?], Map::<Str, Mixed>::new())?);
+    attributeGroup.set(crate::php_parser::node::AttributeGroup::new({ let mut __m1: Map<ArrayKey, crate::php_parser::node::Attribute> = Map::new(); __m1.push(attribute.get().clone()); __m1 }, Map::<Str, Mixed>::new())?);
+    node.set(self.createPropertyBuilder(cast::<Mixed>(Str::from_static("test")))?.addAttribute(U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup::PhpParser_Node_AttributeGroup(attributeGroup.get().clone()))?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Property::new(crate::php_parser::Modifiers::PUBLIC(), { let mut __m2: Map<ArrayKey, crate::php_parser::node::PropertyItem> = Map::new(); __m2.push(crate::php_parser::node::PropertyItem::new(U_PhpParser_Node_VarLikeIdentifier_or_Str::Str(Str::from_static("test")), { let _ = (); None::<crate::php_parser::node::Expr> }, Map::<Str, Mixed>::new())?); __m2 }, Map::<Str, Mixed>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, { let mut __m3: Map<ArrayKey, crate::php_parser::node::AttributeGroup> = Map::new(); __m3.push(attributeGroup.get().clone()); __m3 }, Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testAddHook(&self) -> Result<(), Throw> {
+    let mut get_v: Late<crate::php_parser::node::PropertyHook> = Late::uninit();
+    let mut set_v: Late<crate::php_parser::node::PropertyHook> = Late::uninit();
+    let mut node: Late<crate::php_parser::node::stmt::Property> = Late::uninit();
+    get_v.set(crate::php_parser::node::PropertyHook::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("get")), { let _ = (); None::<U_Map_ArrayKey_PhpParser_Node_Stmt_or_PhpParser_Node_Expr> }, Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_0539ffcad8 { attrGroups: None, byRef: None, flags: None, params: None }, Map::<Str, Mixed>::new())?);
+    set_v.set(crate::php_parser::node::PropertyHook::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("set")), { let _ = (); None::<U_Map_ArrayKey_PhpParser_Node_Stmt_or_PhpParser_Node_Expr> }, Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_0539ffcad8 { attrGroups: None, byRef: None, flags: None, params: None }, Map::<Str, Mixed>::new())?);
+    node.set(self.createPropertyBuilder(cast::<Mixed>(Str::from_static("test")))?.addHook(get_v.get().clone())?.addHook(set_v.get().clone())?.makeAbstract()?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Property::new(crate::php_parser::Modifiers::ABSTRACT(), { let mut __m1: Map<ArrayKey, crate::php_parser::node::PropertyItem> = Map::new(); __m1.push(crate::php_parser::node::PropertyItem::new(U_PhpParser_Node_VarLikeIdentifier_or_Str::Str(Str::from_static("test")), { let _ = (); None::<crate::php_parser::node::Expr> }, Map::<Str, Mixed>::new())?); __m1 }, Map::<Str, Mixed>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, Map::<ArrayKey, crate::php_parser::node::AttributeGroup>::new(), { let mut __m2: Map<ArrayKey, crate::php_parser::node::PropertyHook> = Map::new(); __m2.push(get_v.get().clone()); __m2.push(set_v.get().clone()); __m2 })?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn provideTestDefaultValues() -> Result<((Option<()>, crate::php_parser::node::expr::ConstFetch), (bool, crate::php_parser::node::expr::ConstFetch), (bool, crate::php_parser::node::expr::ConstFetch), (i64, crate::php_parser::node::scalar::Int_), (f64, crate::php_parser::node::scalar::Float_), (Str, crate::php_parser::node::scalar::String_), ((i64, i64, i64), crate::php_parser::node::expr::Array_), (Shape_bar_Str_foo_Str, crate::php_parser::node::expr::Array_), (crate::php_parser::node::scalar::magic_const::Dir, crate::php_parser::node::scalar::magic_const::Dir)), Throw> {
+    return Ok((({ let _ = (); None::<()> }, crate::php_parser::node::expr::ConstFetch::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("null")), Map::<Str, Mixed>::new())?, Map::<Str, Mixed>::new())?), (true, crate::php_parser::node::expr::ConstFetch::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("true")), Map::<Str, Mixed>::new())?, Map::<Str, Mixed>::new())?), (false, crate::php_parser::node::expr::ConstFetch::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("false")), Map::<Str, Mixed>::new())?, Map::<Str, Mixed>::new())?), (31415i64, crate::php_parser::node::scalar::Int_::new(31415i64, Map::<Str, Mixed>::new())?), (3.1415000000000002f64, crate::php_parser::node::scalar::Float_::new(3.1415000000000002f64, Map::<Str, Mixed>::new())?), (Str::from_static("Hallo World"), crate::php_parser::node::scalar::String_::new(Str::from_static("Hallo World"), Map::<Str, Mixed>::new())?), ((1i64, 2i64, 3i64), crate::php_parser::node::expr::Array_::new({ let mut __m1: Map<ArrayKey, crate::php_parser::node::ArrayItem> = Map::new(); __m1.push(crate::php_parser::node::ArrayItem::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(1i64, Map::<Str, Mixed>::new())?), { let _ = (); None::<crate::php_parser::node::Expr> }, false, Map::<Str, Mixed>::new(), false)?); __m1.push(crate::php_parser::node::ArrayItem::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(2i64, Map::<Str, Mixed>::new())?), { let _ = (); None::<crate::php_parser::node::Expr> }, false, Map::<Str, Mixed>::new(), false)?); __m1.push(crate::php_parser::node::ArrayItem::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(3i64, Map::<Str, Mixed>::new())?), { let _ = (); None::<crate::php_parser::node::Expr> }, false, Map::<Str, Mixed>::new(), false)?); __m1 }, Map::<Str, Mixed>::new())?), (Shape_bar_Str_foo_Str { foo: Str::from_static("bar"), bar: Str::from_static("foo") }, crate::php_parser::node::expr::Array_::new({ let mut __m2: Map<ArrayKey, crate::php_parser::node::ArrayItem> = Map::new(); __m2.push(crate::php_parser::node::ArrayItem::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::String_::new(Str::from_static("bar"), Map::<Str, Mixed>::new())?), Some(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::String_::new(Str::from_static("foo"), Map::<Str, Mixed>::new())?)), false, Map::<Str, Mixed>::new(), false)?); __m2.push(crate::php_parser::node::ArrayItem::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::String_::new(Str::from_static("foo"), Map::<Str, Mixed>::new())?), Some(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::String_::new(Str::from_static("bar"), Map::<Str, Mixed>::new())?)), false, Map::<Str, Mixed>::new(), false)?); __m2 }, Map::<Str, Mixed>::new())?), (crate::php_parser::node::scalar::magic_const::Dir::new(Map::<Str, Mixed>::new())?, crate::php_parser::node::scalar::magic_const::Dir::new(Map::<Str, Mixed>::new())?)));
+    }
+    pub fn magic__construct(&self, mut name: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).magic__construct__impl(name) }
+    pub fn setUpBeforeClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::setUpBeforeClass() }
+    pub fn tearDownAfterClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::tearDownAfterClass() }
+    pub fn setUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).setUp__impl() }
+    pub fn tearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).tearDown__impl() }
+    pub fn runSetUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runSetUp__impl() }
+    pub fn runTearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runTearDown__impl() }
+    pub fn getName(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).getName__impl() }
+    pub fn name(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).name__impl() }
+    pub fn expectException(&self, mut exception: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectException__impl(exception) }
+    pub fn expectExceptionMessage(&self, mut message_v: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessage__impl(message_v) }
+    pub fn expectExceptionMessageMatches(&self, mut regularExpression: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessageMatches__impl(regularExpression) }
+    pub fn expectExceptionCode(&self, mut code: i64) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionCode__impl(code) }
+    pub fn expectNotToPerformAssertions(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectNotToPerformAssertions__impl() }
+    pub fn expectsException(&self) -> Result<bool, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectsException__impl() }
+    pub fn verifyExpectedException(&self, mut e: crate::g::Throwable) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).verifyExpectedException__impl(e) }
+    pub fn expectedExceptionDescription(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectedExceptionDescription__impl() }
+    pub fn markTestSkipped(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestSkipped__impl(message_v) }
+    pub fn markTestIncomplete(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestIncomplete__impl(message_v) }
+    pub fn createMock(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createMock__impl(originalClassName) }
+    pub fn createStub(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createStub__impl(originalClassName) }
+    pub fn getCount() -> Result<i64, Throw> { crate::phpunit::framework::Assert::getCount() }
+    pub fn resetCount() -> Result<(), Throw> { crate::phpunit::framework::Assert::resetCount() }
+    pub fn fail(mut message_v: Str) -> Result<Never, Throw> { crate::phpunit::framework::Assert::fail(message_v) }
+    pub fn assertTrue(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertTrue(condition, message_v) }
+    pub fn assertFalse(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFalse(condition, message_v) }
+    pub fn assertNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNull(actual, message_v) }
+    pub fn assertNotNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotNull(actual, message_v) }
+    pub fn assertSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertSame(expected, actual, message_v) }
+    pub fn assertNotSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotSame(expected, actual, message_v) }
+    pub fn assertEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEquals(expected, actual, message_v) }
+    pub fn assertNotEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEquals(expected, actual, message_v) }
+    pub fn assertEqualsCanonicalizing(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEqualsCanonicalizing(expected, actual, message_v) }
+    pub fn assertCount(mut expectedCount: i64, mut haystack: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertCount(expectedCount, haystack, message_v) }
+    pub fn assertEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEmpty(actual, message_v) }
+    pub fn assertNotEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEmpty(actual, message_v) }
+    pub fn assertInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertInstanceOf(expected, actual, message_v) }
+    pub fn assertNotInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotInstanceOf(expected, actual, message_v) }
+    pub fn assertIsArray(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsArray(actual, message_v) }
+    pub fn assertIsString(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsString(actual, message_v) }
+    pub fn assertIsInt(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsInt(actual, message_v) }
+    pub fn assertIsBool(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsBool(actual, message_v) }
+    pub fn assertIsObject(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsObject(actual, message_v) }
+    pub fn assertIsCallable(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsCallable(actual, message_v) }
+    pub fn assertStringContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringContainsString(needle, haystack, message_v) }
+    pub fn assertStringNotContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringNotContainsString(needle, haystack, message_v) }
+    pub fn assertStringStartsWith(mut prefix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringStartsWith(prefix, string, message_v) }
+    pub fn assertStringEndsWith(mut suffix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEndsWith(suffix, string, message_v) }
+    pub fn assertMatchesRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertMatchesRegularExpression(pattern, string, message_v) }
+    pub fn assertDoesNotMatchRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDoesNotMatchRegularExpression(pattern, string, message_v) }
+    pub fn assertContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertContains(needle, haystack, message_v) }
+    pub fn assertNotContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotContains(needle, haystack, message_v) }
+    pub fn assertArrayHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayHasKey(key_v, array, message_v) }
+    pub fn assertArrayNotHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayNotHasKey(key_v, array, message_v) }
+    pub fn assertGreaterThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThan(expected, actual, message_v) }
+    pub fn assertGreaterThanOrEqual(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThanOrEqual(expected, actual, message_v) }
+    pub fn assertLessThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertLessThan(expected, actual, message_v) }
+    pub fn assertFileExists(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileExists(filename, message_v) }
+    pub fn assertFileDoesNotExist(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileDoesNotExist(filename, message_v) }
+    pub fn assertDirectoryExists(mut directory: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDirectoryExists(directory, message_v) }
+    pub fn assertStringEqualsFile(mut expectedFile: Str, mut actualString: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEqualsFile(expectedFile, actualString, message_v) }
+    pub fn assertJsonStringEqualsJsonString(mut expectedJson: Str, mut actualJson: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertJsonStringEqualsJsonString(expectedJson, actualJson, message_v) }
+    pub fn assertObjectHasProperty(mut propertyName: Str, mut object: AnyObject, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertObjectHasProperty(propertyName, object, message_v) }
+    pub fn new_same_class(&self, mut name: Str) -> Result<crate::php_parser::builder::PropertyTest, Throw> { Ok(Self::new(name)?) }
+}
+impl php_rt::PhpObject for PropertyTest {
+    fn class_name(&self) -> &'static str { "PhpParser\\Builder\\PropertyTest" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\builder\\propertytest", "phpunit\\framework\\testcase", "phpunit\\framework\\assert"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_expectedException_get()) { out.push((Str::from_static("expectedException"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessage_get()) { out.push((Str::from_static("expectedExceptionMessage"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessageRegExp_get()) { out.push((Str::from_static("expectedExceptionMessageRegExp"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionCode_get()) { out.push((Str::from_static("expectedExceptionCode"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_name_get()) { out.push((Str::from_static("name"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "expectedException" => { self.set_p_expectedException(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessage" => { self.set_p_expectedExceptionMessage(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessageRegExp" => { self.set_p_expectedExceptionMessageRegExp(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionCode" => { self.set_p_expectedExceptionCode(value.to_option().map(|__m| cast::<i64>(__m))); true }, "name" => { self.set_p_name(cast::<Str>(value)); true }, _ => false } }
+}
+impl PropertyTest { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Builder\\PropertyTest could not be converted to string"))) } }
+impl php_rt::PhpClone for PropertyTest { fn php_clone(&self) -> Self { let c = PropertyTest(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for PropertyTestObj { fn clone(&self) -> Self { PropertyTestObj { expectedException: self.expectedException.clone(), expectedExceptionMessage: self.expectedExceptionMessage.clone(), expectedExceptionMessageRegExp: self.expectedExceptionMessageRegExp.clone(), expectedExceptionCode: self.expectedExceptionCode.clone(), name: self.name.clone() } } }
+impl PropertyTest {
+}
+pub struct TraitTestObj {
+    pub expectedException: Option<Str>,
+    pub expectedExceptionMessage: Option<Str>,
+    pub expectedExceptionMessageRegExp: Option<Str>,
+    pub expectedExceptionCode: Option<i64>,
+    pub name: Str,
+}
+#[derive(Clone)]
+pub struct TraitTest(pub Rc<RefCell<TraitTestObj>>);
+impl TraitTest {
+    pub fn p_expectedException(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedException) }
+    pub fn p_expectedException_get(&self) -> Option<Str> { self.0.borrow().expectedException.clone() }
+    pub fn p_expectedException_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedException.clone()) }
+    pub fn p_expectedException_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedException) }
+    pub fn set_p_expectedException(&self, v: Option<Str>) { self.0.borrow_mut().expectedException = v; }
+    pub fn p_expectedExceptionMessage(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessage) }
+    pub fn p_expectedExceptionMessage_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessage.clone() }
+    pub fn p_expectedExceptionMessage_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessage.clone()) }
+    pub fn p_expectedExceptionMessage_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessage) }
+    pub fn set_p_expectedExceptionMessage(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessage = v; }
+    pub fn p_expectedExceptionMessageRegExp(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessageRegExp) }
+    pub fn p_expectedExceptionMessageRegExp_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessageRegExp.clone() }
+    pub fn p_expectedExceptionMessageRegExp_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessageRegExp.clone()) }
+    pub fn p_expectedExceptionMessageRegExp_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessageRegExp) }
+    pub fn set_p_expectedExceptionMessageRegExp(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessageRegExp = v; }
+    pub fn p_expectedExceptionCode(&self) -> Ref<'_, Option<i64>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionCode) }
+    pub fn p_expectedExceptionCode_get(&self) -> Option<i64> { self.0.borrow().expectedExceptionCode.clone() }
+    pub fn p_expectedExceptionCode_opt(&self) -> Option<Option<i64>> { Some(self.0.borrow().expectedExceptionCode.clone()) }
+    pub fn p_expectedExceptionCode_mut(&self) -> RefMut<'_, Option<i64>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionCode) }
+    pub fn set_p_expectedExceptionCode(&self, v: Option<i64>) { self.0.borrow_mut().expectedExceptionCode = v; }
+    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| &o.name) }
+    pub fn p_name_get(&self) -> Str { self.0.borrow().name.clone() }
+    pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
+    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
+    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new(mut name: Str) -> Result<TraitTest, Throw> {
+        let this = TraitTest(Rc::new(RefCell::new(TraitTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })));
+        this.magic__construct(name)?;
+        Ok(this)
+    }
+    pub fn createTraitBuilder(&self, mut class: Mixed) -> Result<crate::php_parser::builder::Trait_, Throw> {
+    return Ok(crate::php_parser::builder::Trait_::new(cast::<Str>(class.clone()))?);
+    }
+    pub fn testStmtAddition(&self) -> Result<(), Throw> {
+    let mut method1: Late<crate::php_parser::node::stmt::ClassMethod> = Late::uninit();
+    let mut method2: Late<crate::php_parser::node::stmt::ClassMethod> = Late::uninit();
+    let mut method3: Late<crate::php_parser::node::stmt::ClassMethod> = Late::uninit();
+    let mut prop: Late<crate::php_parser::node::stmt::Property> = Late::uninit();
+    let mut const_: Late<crate::php_parser::node::stmt::ClassConst> = Late::uninit();
+    let mut use_: Late<crate::php_parser::node::stmt::TraitUse> = Late::uninit();
+    let mut trait_: Late<crate::php_parser::node::stmt::Trait_> = Late::uninit();
+    method1.set(crate::php_parser::node::stmt::ClassMethod::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("test1")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_6534c97760 { attrGroups: None, byRef: None, flags: None, params: None, returnType: None, stmts: None }, Map::<Str, Mixed>::new())?);
+    method2.set(crate::php_parser::node::stmt::ClassMethod::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("test2")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_6534c97760 { attrGroups: None, byRef: None, flags: None, params: None, returnType: None, stmts: None }, Map::<Str, Mixed>::new())?);
+    method3.set(crate::php_parser::node::stmt::ClassMethod::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("test3")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_6534c97760 { attrGroups: None, byRef: None, flags: None, params: None, returnType: None, stmts: None }, Map::<Str, Mixed>::new())?);
+    prop.set(crate::php_parser::node::stmt::Property::new(crate::php_parser::Modifiers::PUBLIC(), { let mut __m1: Map<ArrayKey, crate::php_parser::node::PropertyItem> = Map::new(); __m1.push(crate::php_parser::node::PropertyItem::new(U_PhpParser_Node_VarLikeIdentifier_or_Str::Str(Str::from_static("test")), { let _ = (); None::<crate::php_parser::node::Expr> }, Map::<Str, Mixed>::new())?); __m1 }, Map::<Str, Mixed>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, Map::<ArrayKey, crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?);
+    const_.set(crate::php_parser::node::stmt::ClassConst::new({ let mut __m2: Map<ArrayKey, crate::php_parser::node::Const_> = Map::new(); __m2.push(crate::php_parser::node::Const_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("FOO")), cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(0i64, Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?); __m2 }, 0i64, Map::<Str, Mixed>::new(), List::<crate::php_parser::node::AttributeGroup>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> })?);
+    use_.set(crate::php_parser::node::stmt::TraitUse::new({ let mut __m3: Map<ArrayKey, crate::php_parser::node::Name> = Map::new(); __m3.push(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("OtherTrait")), Map::<Str, Mixed>::new())?); __m3 }, Map::<ArrayKey, crate::php_parser::node::stmt::TraitUseAdaptation>::new(), Map::<Str, Mixed>::new())?);
+    trait_.set(cast::<crate::php_parser::node::stmt::Trait_>(self.createTraitBuilder(cast::<Mixed>(Str::from_static("TestTrait")))?.setDocComment(U_PhpParser_Comment_Doc_or_Str::Str(Str::from_static("/** Nice trait */")))?.addStmt(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(method1.get().clone())))?.addStmts({ let mut __m4: Map<ArrayKey, U_PhpParser_Builder_or_PhpParser_Node_Stmt> = Map::new(); __m4.push(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(method2.get().clone()))); __m4.push(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(method3.get().clone()))); __m4 })?.addStmt(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(prop.get().clone())))?.addStmt(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(use_.get().clone())))?.addStmt(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(const_.get().clone())))?.getNode()?));
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Trait_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("TestTrait")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_stmtsq_Ma_b3c75089bc { stmts: Some({ let mut __m5: Map<ArrayKey, crate::php_parser::node::Stmt> = Map::new(); __m5.push(cast::<crate::php_parser::node::Stmt>(use_.get().clone())); __m5.push(cast::<crate::php_parser::node::Stmt>(const_.get().clone())); __m5.push(cast::<crate::php_parser::node::Stmt>(prop.get().clone())); __m5.push(cast::<crate::php_parser::node::Stmt>(method1.get().clone())); __m5.push(cast::<crate::php_parser::node::Stmt>(method2.get().clone())); __m5.push(cast::<crate::php_parser::node::Stmt>(method3.get().clone())); __m5 }), attrGroups: None }, { let mut __m6: Map<Str, Mixed> = Map::new(); __m6.insert(Str::from_static("comments"), { let __c1159 = (crate::php_parser::comment::Doc::new(Str::from_static("/** Nice trait */"), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64))?,); let mut __m: Map<ArrayKey, Mixed> = Map::new(); __m.push(cast::<Mixed>(__c1159.0)); Mixed::Arr(__m) }); __m6 })?), cast::<Mixed>(trait_.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testInvalidStmtError(&self) -> Result<(), Throw> {
+    self.expectException(Str::from_static("LogicException"))?;
+    self.expectExceptionMessage(Str::from_static("Unexpected node of type \"Stmt_Echo\""))?;
+    let _: crate::php_parser::builder::Trait_ = self.createTraitBuilder(cast::<Mixed>(Str::from_static("Test")))?.addStmt(U_PhpParser_Builder_or_PhpParser_Node_Stmt::PhpParser_Node_Stmt(cast::<crate::php_parser::node::Stmt>(crate::php_parser::node::stmt::Echo_::new(Map::<ArrayKey, crate::php_parser::node::Expr>::new(), Map::<Str, Mixed>::new())?)))?;
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testGetMethods(&self) -> Result<(), Throw> {
+    let mut methods: Late<(crate::php_parser::node::stmt::ClassMethod, crate::php_parser::node::stmt::ClassMethod, crate::php_parser::node::stmt::ClassMethod)> = Late::uninit();
+    let mut trait_: Late<crate::php_parser::node::stmt::Trait_> = Late::uninit();
+    methods.set((crate::php_parser::node::stmt::ClassMethod::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("foo")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_6534c97760 { attrGroups: None, byRef: None, flags: None, params: None, returnType: None, stmts: None }, Map::<Str, Mixed>::new())?, crate::php_parser::node::stmt::ClassMethod::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("bar")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_6534c97760 { attrGroups: None, byRef: None, flags: None, params: None, returnType: None, stmts: None }, Map::<Str, Mixed>::new())?, crate::php_parser::node::stmt::ClassMethod::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("fooBar")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_6534c97760 { attrGroups: None, byRef: None, flags: None, params: None, returnType: None, stmts: None }, Map::<Str, Mixed>::new())?));
+    trait_.set(crate::php_parser::node::stmt::Trait_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("Foo")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_stmtsq_Ma_b3c75089bc { stmts: Some({ let mut __m1: Map<ArrayKey, crate::php_parser::node::Stmt> = Map::new(); __m1.push(cast::<crate::php_parser::node::Stmt>(crate::php_parser::node::stmt::TraitUse::new(Map::<ArrayKey, crate::php_parser::node::Name>::new(), Map::<ArrayKey, crate::php_parser::node::stmt::TraitUseAdaptation>::new(), Map::<Str, Mixed>::new())?)); __m1.push(cast::<crate::php_parser::node::Stmt>(methods.get().clone().0)); __m1.push(cast::<crate::php_parser::node::Stmt>(crate::php_parser::node::stmt::ClassConst::new(Map::<ArrayKey, crate::php_parser::node::Const_>::new(), 0i64, Map::<Str, Mixed>::new(), List::<crate::php_parser::node::AttributeGroup>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> })?)); __m1.push(cast::<crate::php_parser::node::Stmt>(methods.get().clone().1)); __m1.push(cast::<crate::php_parser::node::Stmt>(crate::php_parser::node::stmt::Property::new(0i64, Map::<ArrayKey, crate::php_parser::node::PropertyItem>::new(), Map::<Str, Mixed>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, Map::<ArrayKey, crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?)); __m1.push(cast::<crate::php_parser::node::Stmt>(methods.get().clone().2)); __m1 }), attrGroups: None }, Map::<Str, Mixed>::new())?);
+    { let _ = self; crate::phpunit::framework::Assert::assertSame({ let __c1160 = methods.get().clone(); let mut __m: Map<ArrayKey, Mixed> = Map::new(); __m.push(cast::<Mixed>(__c1160.0)); __m.push(cast::<Mixed>(__c1160.1)); __m.push(cast::<Mixed>(__c1160.2)); Mixed::Arr(__m) }, cast::<Mixed>(trait_.get().clone().getMethods()?), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testGetProperties(&self) -> Result<(), Throw> {
+    let mut properties: Late<(crate::php_parser::node::stmt::Property, crate::php_parser::node::stmt::Property)> = Late::uninit();
+    let mut trait_: Late<crate::php_parser::node::stmt::Trait_> = Late::uninit();
+    properties.set((crate::php_parser::node::stmt::Property::new(crate::php_parser::Modifiers::PUBLIC(), { let mut __m1: Map<ArrayKey, crate::php_parser::node::PropertyItem> = Map::new(); __m1.push(crate::php_parser::node::PropertyItem::new(U_PhpParser_Node_VarLikeIdentifier_or_Str::Str(Str::from_static("foo")), { let _ = (); None::<crate::php_parser::node::Expr> }, Map::<Str, Mixed>::new())?); __m1 }, Map::<Str, Mixed>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, Map::<ArrayKey, crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?, crate::php_parser::node::stmt::Property::new(crate::php_parser::Modifiers::PUBLIC(), { let mut __m2: Map<ArrayKey, crate::php_parser::node::PropertyItem> = Map::new(); __m2.push(crate::php_parser::node::PropertyItem::new(U_PhpParser_Node_VarLikeIdentifier_or_Str::Str(Str::from_static("bar")), { let _ = (); None::<crate::php_parser::node::Expr> }, Map::<Str, Mixed>::new())?); __m2 }, Map::<Str, Mixed>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> }, Map::<ArrayKey, crate::php_parser::node::AttributeGroup>::new(), Map::<ArrayKey, crate::php_parser::node::PropertyHook>::new())?));
+    trait_.set(crate::php_parser::node::stmt::Trait_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("Foo")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_stmtsq_Ma_b3c75089bc { stmts: Some({ let mut __m3: Map<ArrayKey, crate::php_parser::node::Stmt> = Map::new(); __m3.push(cast::<crate::php_parser::node::Stmt>(crate::php_parser::node::stmt::TraitUse::new(Map::<ArrayKey, crate::php_parser::node::Name>::new(), Map::<ArrayKey, crate::php_parser::node::stmt::TraitUseAdaptation>::new(), Map::<Str, Mixed>::new())?)); __m3.push(cast::<crate::php_parser::node::Stmt>(properties.get().clone().0)); __m3.push(cast::<crate::php_parser::node::Stmt>(crate::php_parser::node::stmt::ClassConst::new(Map::<ArrayKey, crate::php_parser::node::Const_>::new(), 0i64, Map::<Str, Mixed>::new(), List::<crate::php_parser::node::AttributeGroup>::new(), { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> })?)); __m3.push(cast::<crate::php_parser::node::Stmt>(properties.get().clone().1)); __m3.push(cast::<crate::php_parser::node::Stmt>(crate::php_parser::node::stmt::ClassMethod::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("fooBar")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_6534c97760 { attrGroups: None, byRef: None, flags: None, params: None, returnType: None, stmts: None }, Map::<Str, Mixed>::new())?)); __m3 }), attrGroups: None }, Map::<Str, Mixed>::new())?);
+    { let _ = self; crate::phpunit::framework::Assert::assertSame({ let __c1161 = properties.get().clone(); let mut __m: Map<ArrayKey, Mixed> = Map::new(); __m.push(cast::<Mixed>(__c1161.0)); __m.push(cast::<Mixed>(__c1161.1)); Mixed::Arr(__m) }, cast::<Mixed>(trait_.get().clone().getProperties()?), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testAddAttribute(&self) -> Result<(), Throw> {
+    let mut attribute: Late<crate::php_parser::node::Attribute> = Late::uninit();
+    let mut attributeGroup: Late<crate::php_parser::node::AttributeGroup> = Late::uninit();
+    let mut node: Late<crate::php_parser::node::stmt::Trait_> = Late::uninit();
+    attribute.set(crate::php_parser::node::Attribute::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Attr")), Map::<Str, Mixed>::new())?, list![crate::php_parser::node::Arg::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(1i64, Map::<Str, Mixed>::new())?), false, false, Map::<Str, Mixed>::new(), Some(crate::php_parser::node::Identifier::new(Str::from_static("name"), Map::<Str, Mixed>::new())?))?], Map::<Str, Mixed>::new())?);
+    attributeGroup.set(crate::php_parser::node::AttributeGroup::new({ let mut __m1: Map<ArrayKey, crate::php_parser::node::Attribute> = Map::new(); __m1.push(attribute.get().clone()); __m1 }, Map::<Str, Mixed>::new())?);
+    node.set(self.createTraitBuilder(cast::<Mixed>(Str::from_static("AttributeGroup")))?.addAttribute(U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup::PhpParser_Node_AttributeGroup(attributeGroup.get().clone()))?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Trait_::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("AttributeGroup")), Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_stmtsq_Ma_b3c75089bc { attrGroups: Some({ let mut __m2: Map<ArrayKey, crate::php_parser::node::AttributeGroup> = Map::new(); __m2.push(attributeGroup.get().clone()); __m2 }), stmts: None }, Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn magic__construct(&self, mut name: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).magic__construct__impl(name) }
+    pub fn setUpBeforeClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::setUpBeforeClass() }
+    pub fn tearDownAfterClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::tearDownAfterClass() }
+    pub fn setUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).setUp__impl() }
+    pub fn tearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).tearDown__impl() }
+    pub fn runSetUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runSetUp__impl() }
+    pub fn runTearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runTearDown__impl() }
+    pub fn getName(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).getName__impl() }
+    pub fn name(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).name__impl() }
+    pub fn expectException(&self, mut exception: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectException__impl(exception) }
+    pub fn expectExceptionMessage(&self, mut message_v: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessage__impl(message_v) }
+    pub fn expectExceptionMessageMatches(&self, mut regularExpression: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessageMatches__impl(regularExpression) }
+    pub fn expectExceptionCode(&self, mut code: i64) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionCode__impl(code) }
+    pub fn expectNotToPerformAssertions(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectNotToPerformAssertions__impl() }
+    pub fn expectsException(&self) -> Result<bool, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectsException__impl() }
+    pub fn verifyExpectedException(&self, mut e: crate::g::Throwable) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).verifyExpectedException__impl(e) }
+    pub fn expectedExceptionDescription(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectedExceptionDescription__impl() }
+    pub fn markTestSkipped(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestSkipped__impl(message_v) }
+    pub fn markTestIncomplete(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestIncomplete__impl(message_v) }
+    pub fn createMock(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createMock__impl(originalClassName) }
+    pub fn createStub(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createStub__impl(originalClassName) }
+    pub fn getCount() -> Result<i64, Throw> { crate::phpunit::framework::Assert::getCount() }
+    pub fn resetCount() -> Result<(), Throw> { crate::phpunit::framework::Assert::resetCount() }
+    pub fn fail(mut message_v: Str) -> Result<Never, Throw> { crate::phpunit::framework::Assert::fail(message_v) }
+    pub fn assertTrue(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertTrue(condition, message_v) }
+    pub fn assertFalse(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFalse(condition, message_v) }
+    pub fn assertNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNull(actual, message_v) }
+    pub fn assertNotNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotNull(actual, message_v) }
+    pub fn assertSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertSame(expected, actual, message_v) }
+    pub fn assertNotSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotSame(expected, actual, message_v) }
+    pub fn assertEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEquals(expected, actual, message_v) }
+    pub fn assertNotEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEquals(expected, actual, message_v) }
+    pub fn assertEqualsCanonicalizing(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEqualsCanonicalizing(expected, actual, message_v) }
+    pub fn assertCount(mut expectedCount: i64, mut haystack: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertCount(expectedCount, haystack, message_v) }
+    pub fn assertEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEmpty(actual, message_v) }
+    pub fn assertNotEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEmpty(actual, message_v) }
+    pub fn assertInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertInstanceOf(expected, actual, message_v) }
+    pub fn assertNotInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotInstanceOf(expected, actual, message_v) }
+    pub fn assertIsArray(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsArray(actual, message_v) }
+    pub fn assertIsString(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsString(actual, message_v) }
+    pub fn assertIsInt(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsInt(actual, message_v) }
+    pub fn assertIsBool(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsBool(actual, message_v) }
+    pub fn assertIsObject(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsObject(actual, message_v) }
+    pub fn assertIsCallable(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsCallable(actual, message_v) }
+    pub fn assertStringContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringContainsString(needle, haystack, message_v) }
+    pub fn assertStringNotContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringNotContainsString(needle, haystack, message_v) }
+    pub fn assertStringStartsWith(mut prefix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringStartsWith(prefix, string, message_v) }
+    pub fn assertStringEndsWith(mut suffix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEndsWith(suffix, string, message_v) }
+    pub fn assertMatchesRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertMatchesRegularExpression(pattern, string, message_v) }
+    pub fn assertDoesNotMatchRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDoesNotMatchRegularExpression(pattern, string, message_v) }
+    pub fn assertContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertContains(needle, haystack, message_v) }
+    pub fn assertNotContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotContains(needle, haystack, message_v) }
+    pub fn assertArrayHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayHasKey(key_v, array, message_v) }
+    pub fn assertArrayNotHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayNotHasKey(key_v, array, message_v) }
+    pub fn assertGreaterThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThan(expected, actual, message_v) }
+    pub fn assertGreaterThanOrEqual(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThanOrEqual(expected, actual, message_v) }
+    pub fn assertLessThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertLessThan(expected, actual, message_v) }
+    pub fn assertFileExists(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileExists(filename, message_v) }
+    pub fn assertFileDoesNotExist(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileDoesNotExist(filename, message_v) }
+    pub fn assertDirectoryExists(mut directory: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDirectoryExists(directory, message_v) }
+    pub fn assertStringEqualsFile(mut expectedFile: Str, mut actualString: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEqualsFile(expectedFile, actualString, message_v) }
+    pub fn assertJsonStringEqualsJsonString(mut expectedJson: Str, mut actualJson: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertJsonStringEqualsJsonString(expectedJson, actualJson, message_v) }
+    pub fn assertObjectHasProperty(mut propertyName: Str, mut object: AnyObject, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertObjectHasProperty(propertyName, object, message_v) }
+    pub fn new_same_class(&self, mut name: Str) -> Result<crate::php_parser::builder::TraitTest, Throw> { Ok(Self::new(name)?) }
+}
+impl php_rt::PhpObject for TraitTest {
+    fn class_name(&self) -> &'static str { "PhpParser\\Builder\\TraitTest" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\builder\\traittest", "phpunit\\framework\\testcase", "phpunit\\framework\\assert"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_expectedException_get()) { out.push((Str::from_static("expectedException"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessage_get()) { out.push((Str::from_static("expectedExceptionMessage"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessageRegExp_get()) { out.push((Str::from_static("expectedExceptionMessageRegExp"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionCode_get()) { out.push((Str::from_static("expectedExceptionCode"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_name_get()) { out.push((Str::from_static("name"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "expectedException" => { self.set_p_expectedException(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessage" => { self.set_p_expectedExceptionMessage(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessageRegExp" => { self.set_p_expectedExceptionMessageRegExp(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionCode" => { self.set_p_expectedExceptionCode(value.to_option().map(|__m| cast::<i64>(__m))); true }, "name" => { self.set_p_name(cast::<Str>(value)); true }, _ => false } }
+}
+impl TraitTest { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Builder\\TraitTest could not be converted to string"))) } }
+impl php_rt::PhpClone for TraitTest { fn php_clone(&self) -> Self { let c = TraitTest(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for TraitTestObj { fn clone(&self) -> Self { TraitTestObj { expectedException: self.expectedException.clone(), expectedExceptionMessage: self.expectedExceptionMessage.clone(), expectedExceptionMessageRegExp: self.expectedExceptionMessageRegExp.clone(), expectedExceptionCode: self.expectedExceptionCode.clone(), name: self.name.clone() } } }
+impl TraitTest {
+}
+pub struct TraitUseAdaptationTestObj {
+    pub expectedException: Option<Str>,
+    pub expectedExceptionMessage: Option<Str>,
+    pub expectedExceptionMessageRegExp: Option<Str>,
+    pub expectedExceptionCode: Option<i64>,
+    pub name: Str,
+}
+#[derive(Clone)]
+pub struct TraitUseAdaptationTest(pub Rc<RefCell<TraitUseAdaptationTestObj>>);
+impl TraitUseAdaptationTest {
+    pub fn p_expectedException(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedException) }
+    pub fn p_expectedException_get(&self) -> Option<Str> { self.0.borrow().expectedException.clone() }
+    pub fn p_expectedException_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedException.clone()) }
+    pub fn p_expectedException_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedException) }
+    pub fn set_p_expectedException(&self, v: Option<Str>) { self.0.borrow_mut().expectedException = v; }
+    pub fn p_expectedExceptionMessage(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessage) }
+    pub fn p_expectedExceptionMessage_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessage.clone() }
+    pub fn p_expectedExceptionMessage_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessage.clone()) }
+    pub fn p_expectedExceptionMessage_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessage) }
+    pub fn set_p_expectedExceptionMessage(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessage = v; }
+    pub fn p_expectedExceptionMessageRegExp(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessageRegExp) }
+    pub fn p_expectedExceptionMessageRegExp_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessageRegExp.clone() }
+    pub fn p_expectedExceptionMessageRegExp_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessageRegExp.clone()) }
+    pub fn p_expectedExceptionMessageRegExp_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessageRegExp) }
+    pub fn set_p_expectedExceptionMessageRegExp(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessageRegExp = v; }
+    pub fn p_expectedExceptionCode(&self) -> Ref<'_, Option<i64>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionCode) }
+    pub fn p_expectedExceptionCode_get(&self) -> Option<i64> { self.0.borrow().expectedExceptionCode.clone() }
+    pub fn p_expectedExceptionCode_opt(&self) -> Option<Option<i64>> { Some(self.0.borrow().expectedExceptionCode.clone()) }
+    pub fn p_expectedExceptionCode_mut(&self) -> RefMut<'_, Option<i64>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionCode) }
+    pub fn set_p_expectedExceptionCode(&self, v: Option<i64>) { self.0.borrow_mut().expectedExceptionCode = v; }
+    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| &o.name) }
+    pub fn p_name_get(&self) -> Str { self.0.borrow().name.clone() }
+    pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
+    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
+    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new(mut name: Str) -> Result<TraitUseAdaptationTest, Throw> {
+        let this = TraitUseAdaptationTest(Rc::new(RefCell::new(TraitUseAdaptationTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })));
+        this.magic__construct(name)?;
+        Ok(this)
+    }
+    pub fn createTraitUseAdaptationBuilder(&self, mut trait_: Mixed, mut method: Mixed) -> Result<crate::php_parser::builder::TraitUseAdaptation, Throw> {
+    return Ok(crate::php_parser::builder::TraitUseAdaptation::new(trait_.clone().to_option().map(|__m| cast::<U_PhpParser_Node_Name_or_Str>(__m)), cast::<U_PhpParser_Node_Identifier_or_Str>(method.clone()))?);
+    }
+    pub fn testAsMake(&self) -> Result<(), Throw> {
+    let mut builder: Late<crate::php_parser::builder::TraitUseAdaptation> = Late::uninit();
+    builder.set(self.createTraitUseAdaptationBuilder(Mixed::Null, cast::<Mixed>(Str::from_static("foo")))?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::trait_use_adaptation::Alias::new({ let _ = (); None::<crate::php_parser::node::Name> }, U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("foo")), { let _ = (); None::<i64> }, Some(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("bar"))), Map::<Str, Mixed>::new())?), cast::<Mixed>(builder.get().clone().php_clone().as_(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("bar")))?.getNode()?), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::trait_use_adaptation::Alias::new({ let _ = (); None::<crate::php_parser::node::Name> }, U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("foo")), Some(crate::php_parser::Modifiers::PUBLIC()), { let _ = (); None::<U_PhpParser_Node_Identifier_or_Str> }, Map::<Str, Mixed>::new())?), cast::<Mixed>(builder.get().clone().php_clone().makePublic()?.getNode()?), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::trait_use_adaptation::Alias::new({ let _ = (); None::<crate::php_parser::node::Name> }, U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("foo")), Some(crate::php_parser::Modifiers::PROTECTED()), { let _ = (); None::<U_PhpParser_Node_Identifier_or_Str> }, Map::<Str, Mixed>::new())?), cast::<Mixed>(builder.get().clone().php_clone().makeProtected()?.getNode()?), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::trait_use_adaptation::Alias::new({ let _ = (); None::<crate::php_parser::node::Name> }, U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("foo")), Some(crate::php_parser::Modifiers::PRIVATE()), { let _ = (); None::<U_PhpParser_Node_Identifier_or_Str> }, Map::<Str, Mixed>::new())?), cast::<Mixed>(builder.get().clone().php_clone().makePrivate()?.getNode()?), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testInsteadof(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::Node> = Late::uninit();
+    node.set(self.createTraitUseAdaptationBuilder(cast::<Mixed>(Str::from_static("SomeTrait")), cast::<Mixed>(Str::from_static("foo")))?.insteadof(list![U_PhpParser_Node_Name_or_Str::Str(Str::from_static("AnotherTrait"))])?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::trait_use_adaptation::Precedence::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("SomeTrait")), Map::<Str, Mixed>::new())?, U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("foo")), { let mut __m1: Map<ArrayKey, crate::php_parser::node::Name> = Map::new(); __m1.push(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("AnotherTrait")), Map::<Str, Mixed>::new())?); __m1 }, Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testAsOnNotAlias(&self) -> Result<(), Throw> {
+    self.expectException(Str::from_static("LogicException"))?;
+    self.expectExceptionMessage(Str::from_static("Cannot set alias for not alias adaptation buider"))?;
+    let _: crate::php_parser::builder::TraitUseAdaptation = self.createTraitUseAdaptationBuilder(cast::<Mixed>(Str::from_static("Test")), cast::<Mixed>(Str::from_static("foo")))?.insteadof(list![U_PhpParser_Node_Name_or_Str::Str(Str::from_static("AnotherTrait"))])?.as_(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("bar")))?;
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testInsteadofOnNotPrecedence(&self) -> Result<(), Throw> {
+    self.expectException(Str::from_static("LogicException"))?;
+    self.expectExceptionMessage(Str::from_static("Cannot add overwritten traits for not precedence adaptation buider"))?;
+    let _: crate::php_parser::builder::TraitUseAdaptation = self.createTraitUseAdaptationBuilder(cast::<Mixed>(Str::from_static("Test")), cast::<Mixed>(Str::from_static("foo")))?.as_(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("bar")))?.insteadof(list![U_PhpParser_Node_Name_or_Str::Str(Str::from_static("AnotherTrait"))])?;
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testInsteadofWithoutTrait(&self) -> Result<(), Throw> {
+    self.expectException(Str::from_static("LogicException"))?;
+    self.expectExceptionMessage(Str::from_static("Precedence adaptation must have trait"))?;
+    let _: crate::php_parser::builder::TraitUseAdaptation = self.createTraitUseAdaptationBuilder(Mixed::Null, cast::<Mixed>(Str::from_static("foo")))?.insteadof(list![U_PhpParser_Node_Name_or_Str::Str(Str::from_static("AnotherTrait"))])?;
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testMakeOnNotAlias(&self) -> Result<(), Throw> {
+    self.expectException(Str::from_static("LogicException"))?;
+    self.expectExceptionMessage(Str::from_static("Cannot set access modifier for not alias adaptation buider"))?;
+    let _: crate::php_parser::builder::TraitUseAdaptation = self.createTraitUseAdaptationBuilder(cast::<Mixed>(Str::from_static("Test")), cast::<Mixed>(Str::from_static("foo")))?.insteadof(list![U_PhpParser_Node_Name_or_Str::Str(Str::from_static("AnotherTrait"))])?.makePublic()?;
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testMultipleMake(&self) -> Result<(), Throw> {
+    self.expectException(Str::from_static("LogicException"))?;
+    self.expectExceptionMessage(Str::from_static("Multiple access type modifiers are not allowed"))?;
+    let _: crate::php_parser::builder::TraitUseAdaptation = self.createTraitUseAdaptationBuilder(Mixed::Null, cast::<Mixed>(Str::from_static("foo")))?.makePrivate()?.makePublic()?;
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testUndefinedType(&self) -> Result<(), Throw> {
+    self.expectException(Str::from_static("LogicException"))?;
+    self.expectExceptionMessage(Str::from_static("Type of adaptation is not defined"))?;
+    let _: crate::php_parser::Node = self.createTraitUseAdaptationBuilder(Mixed::Null, cast::<Mixed>(Str::from_static("foo")))?.getNode()?;
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn magic__construct(&self, mut name: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).magic__construct__impl(name) }
+    pub fn setUpBeforeClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::setUpBeforeClass() }
+    pub fn tearDownAfterClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::tearDownAfterClass() }
+    pub fn setUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).setUp__impl() }
+    pub fn tearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).tearDown__impl() }
+    pub fn runSetUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runSetUp__impl() }
+    pub fn runTearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runTearDown__impl() }
+    pub fn getName(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).getName__impl() }
+    pub fn name(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).name__impl() }
+    pub fn expectException(&self, mut exception: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectException__impl(exception) }
+    pub fn expectExceptionMessage(&self, mut message_v: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessage__impl(message_v) }
+    pub fn expectExceptionMessageMatches(&self, mut regularExpression: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessageMatches__impl(regularExpression) }
+    pub fn expectExceptionCode(&self, mut code: i64) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionCode__impl(code) }
+    pub fn expectNotToPerformAssertions(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectNotToPerformAssertions__impl() }
+    pub fn expectsException(&self) -> Result<bool, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectsException__impl() }
+    pub fn verifyExpectedException(&self, mut e: crate::g::Throwable) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).verifyExpectedException__impl(e) }
+    pub fn expectedExceptionDescription(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectedExceptionDescription__impl() }
+    pub fn markTestSkipped(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestSkipped__impl(message_v) }
+    pub fn markTestIncomplete(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestIncomplete__impl(message_v) }
+    pub fn createMock(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createMock__impl(originalClassName) }
+    pub fn createStub(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createStub__impl(originalClassName) }
+    pub fn getCount() -> Result<i64, Throw> { crate::phpunit::framework::Assert::getCount() }
+    pub fn resetCount() -> Result<(), Throw> { crate::phpunit::framework::Assert::resetCount() }
+    pub fn fail(mut message_v: Str) -> Result<Never, Throw> { crate::phpunit::framework::Assert::fail(message_v) }
+    pub fn assertTrue(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertTrue(condition, message_v) }
+    pub fn assertFalse(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFalse(condition, message_v) }
+    pub fn assertNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNull(actual, message_v) }
+    pub fn assertNotNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotNull(actual, message_v) }
+    pub fn assertSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertSame(expected, actual, message_v) }
+    pub fn assertNotSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotSame(expected, actual, message_v) }
+    pub fn assertEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEquals(expected, actual, message_v) }
+    pub fn assertNotEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEquals(expected, actual, message_v) }
+    pub fn assertEqualsCanonicalizing(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEqualsCanonicalizing(expected, actual, message_v) }
+    pub fn assertCount(mut expectedCount: i64, mut haystack: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertCount(expectedCount, haystack, message_v) }
+    pub fn assertEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEmpty(actual, message_v) }
+    pub fn assertNotEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEmpty(actual, message_v) }
+    pub fn assertInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertInstanceOf(expected, actual, message_v) }
+    pub fn assertNotInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotInstanceOf(expected, actual, message_v) }
+    pub fn assertIsArray(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsArray(actual, message_v) }
+    pub fn assertIsString(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsString(actual, message_v) }
+    pub fn assertIsInt(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsInt(actual, message_v) }
+    pub fn assertIsBool(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsBool(actual, message_v) }
+    pub fn assertIsObject(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsObject(actual, message_v) }
+    pub fn assertIsCallable(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsCallable(actual, message_v) }
+    pub fn assertStringContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringContainsString(needle, haystack, message_v) }
+    pub fn assertStringNotContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringNotContainsString(needle, haystack, message_v) }
+    pub fn assertStringStartsWith(mut prefix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringStartsWith(prefix, string, message_v) }
+    pub fn assertStringEndsWith(mut suffix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEndsWith(suffix, string, message_v) }
+    pub fn assertMatchesRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertMatchesRegularExpression(pattern, string, message_v) }
+    pub fn assertDoesNotMatchRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDoesNotMatchRegularExpression(pattern, string, message_v) }
+    pub fn assertContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertContains(needle, haystack, message_v) }
+    pub fn assertNotContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotContains(needle, haystack, message_v) }
+    pub fn assertArrayHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayHasKey(key_v, array, message_v) }
+    pub fn assertArrayNotHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayNotHasKey(key_v, array, message_v) }
+    pub fn assertGreaterThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThan(expected, actual, message_v) }
+    pub fn assertGreaterThanOrEqual(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThanOrEqual(expected, actual, message_v) }
+    pub fn assertLessThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertLessThan(expected, actual, message_v) }
+    pub fn assertFileExists(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileExists(filename, message_v) }
+    pub fn assertFileDoesNotExist(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileDoesNotExist(filename, message_v) }
+    pub fn assertDirectoryExists(mut directory: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDirectoryExists(directory, message_v) }
+    pub fn assertStringEqualsFile(mut expectedFile: Str, mut actualString: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEqualsFile(expectedFile, actualString, message_v) }
+    pub fn assertJsonStringEqualsJsonString(mut expectedJson: Str, mut actualJson: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertJsonStringEqualsJsonString(expectedJson, actualJson, message_v) }
+    pub fn assertObjectHasProperty(mut propertyName: Str, mut object: AnyObject, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertObjectHasProperty(propertyName, object, message_v) }
+    pub fn new_same_class(&self, mut name: Str) -> Result<crate::php_parser::builder::TraitUseAdaptationTest, Throw> { Ok(Self::new(name)?) }
+}
+impl php_rt::PhpObject for TraitUseAdaptationTest {
+    fn class_name(&self) -> &'static str { "PhpParser\\Builder\\TraitUseAdaptationTest" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\builder\\traituseadaptationtest", "phpunit\\framework\\testcase", "phpunit\\framework\\assert"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_expectedException_get()) { out.push((Str::from_static("expectedException"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessage_get()) { out.push((Str::from_static("expectedExceptionMessage"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessageRegExp_get()) { out.push((Str::from_static("expectedExceptionMessageRegExp"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionCode_get()) { out.push((Str::from_static("expectedExceptionCode"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_name_get()) { out.push((Str::from_static("name"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "expectedException" => { self.set_p_expectedException(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessage" => { self.set_p_expectedExceptionMessage(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessageRegExp" => { self.set_p_expectedExceptionMessageRegExp(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionCode" => { self.set_p_expectedExceptionCode(value.to_option().map(|__m| cast::<i64>(__m))); true }, "name" => { self.set_p_name(cast::<Str>(value)); true }, _ => false } }
+}
+impl TraitUseAdaptationTest { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Builder\\TraitUseAdaptationTest could not be converted to string"))) } }
+impl php_rt::PhpClone for TraitUseAdaptationTest { fn php_clone(&self) -> Self { let c = TraitUseAdaptationTest(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for TraitUseAdaptationTestObj { fn clone(&self) -> Self { TraitUseAdaptationTestObj { expectedException: self.expectedException.clone(), expectedExceptionMessage: self.expectedExceptionMessage.clone(), expectedExceptionMessageRegExp: self.expectedExceptionMessageRegExp.clone(), expectedExceptionCode: self.expectedExceptionCode.clone(), name: self.name.clone() } } }
+impl TraitUseAdaptationTest {
+}
+pub struct TraitUseTestObj {
+    pub expectedException: Option<Str>,
+    pub expectedExceptionMessage: Option<Str>,
+    pub expectedExceptionMessageRegExp: Option<Str>,
+    pub expectedExceptionCode: Option<i64>,
+    pub name: Str,
+}
+#[derive(Clone)]
+pub struct TraitUseTest(pub Rc<RefCell<TraitUseTestObj>>);
+impl TraitUseTest {
+    pub fn p_expectedException(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedException) }
+    pub fn p_expectedException_get(&self) -> Option<Str> { self.0.borrow().expectedException.clone() }
+    pub fn p_expectedException_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedException.clone()) }
+    pub fn p_expectedException_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedException) }
+    pub fn set_p_expectedException(&self, v: Option<Str>) { self.0.borrow_mut().expectedException = v; }
+    pub fn p_expectedExceptionMessage(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessage) }
+    pub fn p_expectedExceptionMessage_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessage.clone() }
+    pub fn p_expectedExceptionMessage_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessage.clone()) }
+    pub fn p_expectedExceptionMessage_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessage) }
+    pub fn set_p_expectedExceptionMessage(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessage = v; }
+    pub fn p_expectedExceptionMessageRegExp(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessageRegExp) }
+    pub fn p_expectedExceptionMessageRegExp_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessageRegExp.clone() }
+    pub fn p_expectedExceptionMessageRegExp_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessageRegExp.clone()) }
+    pub fn p_expectedExceptionMessageRegExp_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessageRegExp) }
+    pub fn set_p_expectedExceptionMessageRegExp(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessageRegExp = v; }
+    pub fn p_expectedExceptionCode(&self) -> Ref<'_, Option<i64>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionCode) }
+    pub fn p_expectedExceptionCode_get(&self) -> Option<i64> { self.0.borrow().expectedExceptionCode.clone() }
+    pub fn p_expectedExceptionCode_opt(&self) -> Option<Option<i64>> { Some(self.0.borrow().expectedExceptionCode.clone()) }
+    pub fn p_expectedExceptionCode_mut(&self) -> RefMut<'_, Option<i64>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionCode) }
+    pub fn set_p_expectedExceptionCode(&self, v: Option<i64>) { self.0.borrow_mut().expectedExceptionCode = v; }
+    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| &o.name) }
+    pub fn p_name_get(&self) -> Str { self.0.borrow().name.clone() }
+    pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
+    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
+    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new(mut name: Str) -> Result<TraitUseTest, Throw> {
+        let this = TraitUseTest(Rc::new(RefCell::new(TraitUseTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })));
+        this.magic__construct(name)?;
+        Ok(this)
+    }
+    pub fn createTraitUseBuilder(&self, mut traits: List<Mixed>) -> Result<crate::php_parser::builder::TraitUse, Throw> {
+    return Ok(crate::php_parser::builder::TraitUse::new(cast::<List<U_PhpParser_Node_Name_or_Str>>(cast::<Map<ArrayKey, Mixed>>(traits.clone()).map_values(|v| cast::<U_PhpParser_Node_Name_or_Str>(v))))?);
+    }
+    pub fn testAnd(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::Node> = Late::uninit();
+    node.set(self.createTraitUseBuilder(list![cast::<Mixed>(Str::from_static("SomeTrait"))])?.and(U_PhpParser_Node_Name_or_Str::Str(Str::from_static("AnotherTrait")))?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::TraitUse::new({ let mut __m1: Map<ArrayKey, crate::php_parser::node::Name> = Map::new(); __m1.push(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("SomeTrait")), Map::<Str, Mixed>::new())?); __m1.push(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("AnotherTrait")), Map::<Str, Mixed>::new())?); __m1 }, Map::<ArrayKey, crate::php_parser::node::stmt::TraitUseAdaptation>::new(), Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testWith(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::Node> = Late::uninit();
+    node.set(self.createTraitUseBuilder(list![cast::<Mixed>(Str::from_static("SomeTrait"))])?.with(U_PhpParser_Builder_TraitUseAdaptation_or_PhpParser_Node_Stmt_TraitUseAdaptation::PhpParser_Node_Stmt_TraitUseAdaptation(cast::<crate::php_parser::node::stmt::TraitUseAdaptation>(crate::php_parser::node::stmt::trait_use_adaptation::Alias::new({ let _ = (); None::<crate::php_parser::node::Name> }, U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("foo")), { let _ = (); None::<i64> }, Some(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("bar"))), Map::<Str, Mixed>::new())?)))?.with(U_PhpParser_Builder_TraitUseAdaptation_or_PhpParser_Node_Stmt_TraitUseAdaptation::PhpParser_Builder_TraitUseAdaptation(crate::php_parser::builder::TraitUseAdaptation::new({ let _ = (); None::<U_PhpParser_Node_Name_or_Str> }, U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("test")))?.as_(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("baz")))?))?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::TraitUse::new({ let mut __m1: Map<ArrayKey, crate::php_parser::node::Name> = Map::new(); __m1.push(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("SomeTrait")), Map::<Str, Mixed>::new())?); __m1 }, { let mut __m2: Map<ArrayKey, crate::php_parser::node::stmt::TraitUseAdaptation> = Map::new(); __m2.push(cast::<crate::php_parser::node::stmt::TraitUseAdaptation>(crate::php_parser::node::stmt::trait_use_adaptation::Alias::new({ let _ = (); None::<crate::php_parser::node::Name> }, U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("foo")), { let _ = (); None::<i64> }, Some(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("bar"))), Map::<Str, Mixed>::new())?)); __m2.push(cast::<crate::php_parser::node::stmt::TraitUseAdaptation>(crate::php_parser::node::stmt::trait_use_adaptation::Alias::new({ let _ = (); None::<crate::php_parser::node::Name> }, U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("test")), { let _ = (); None::<i64> }, Some(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("baz"))), Map::<Str, Mixed>::new())?)); __m2 }, Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn testInvalidAdaptationNode(&self) -> Result<(), Throw> {
+    self.expectException(Str::from_static("LogicException"))?;
+    self.expectExceptionMessage(Str::from_static("Adaptation must have type TraitUseAdaptation"))?;
+    let _: crate::php_parser::builder::TraitUse = self.createTraitUseBuilder(list![cast::<Mixed>(Str::from_static("Test"))])?.with(cast::<U_PhpParser_Builder_TraitUseAdaptation_or_PhpParser_Node_Stmt_TraitUseAdaptation>(crate::php_parser::node::stmt::Echo_::new(Map::<ArrayKey, crate::php_parser::node::Expr>::new(), Map::<Str, Mixed>::new())?))?;
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn magic__construct(&self, mut name: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).magic__construct__impl(name) }
+    pub fn setUpBeforeClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::setUpBeforeClass() }
+    pub fn tearDownAfterClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::tearDownAfterClass() }
+    pub fn setUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).setUp__impl() }
+    pub fn tearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).tearDown__impl() }
+    pub fn runSetUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runSetUp__impl() }
+    pub fn runTearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runTearDown__impl() }
+    pub fn getName(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).getName__impl() }
+    pub fn name(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).name__impl() }
+    pub fn expectException(&self, mut exception: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectException__impl(exception) }
+    pub fn expectExceptionMessage(&self, mut message_v: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessage__impl(message_v) }
+    pub fn expectExceptionMessageMatches(&self, mut regularExpression: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessageMatches__impl(regularExpression) }
+    pub fn expectExceptionCode(&self, mut code: i64) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionCode__impl(code) }
+    pub fn expectNotToPerformAssertions(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectNotToPerformAssertions__impl() }
+    pub fn expectsException(&self) -> Result<bool, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectsException__impl() }
+    pub fn verifyExpectedException(&self, mut e: crate::g::Throwable) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).verifyExpectedException__impl(e) }
+    pub fn expectedExceptionDescription(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectedExceptionDescription__impl() }
+    pub fn markTestSkipped(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestSkipped__impl(message_v) }
+    pub fn markTestIncomplete(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestIncomplete__impl(message_v) }
+    pub fn createMock(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createMock__impl(originalClassName) }
+    pub fn createStub(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createStub__impl(originalClassName) }
+    pub fn getCount() -> Result<i64, Throw> { crate::phpunit::framework::Assert::getCount() }
+    pub fn resetCount() -> Result<(), Throw> { crate::phpunit::framework::Assert::resetCount() }
+    pub fn fail(mut message_v: Str) -> Result<Never, Throw> { crate::phpunit::framework::Assert::fail(message_v) }
+    pub fn assertTrue(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertTrue(condition, message_v) }
+    pub fn assertFalse(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFalse(condition, message_v) }
+    pub fn assertNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNull(actual, message_v) }
+    pub fn assertNotNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotNull(actual, message_v) }
+    pub fn assertSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertSame(expected, actual, message_v) }
+    pub fn assertNotSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotSame(expected, actual, message_v) }
+    pub fn assertEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEquals(expected, actual, message_v) }
+    pub fn assertNotEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEquals(expected, actual, message_v) }
+    pub fn assertEqualsCanonicalizing(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEqualsCanonicalizing(expected, actual, message_v) }
+    pub fn assertCount(mut expectedCount: i64, mut haystack: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertCount(expectedCount, haystack, message_v) }
+    pub fn assertEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEmpty(actual, message_v) }
+    pub fn assertNotEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEmpty(actual, message_v) }
+    pub fn assertInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertInstanceOf(expected, actual, message_v) }
+    pub fn assertNotInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotInstanceOf(expected, actual, message_v) }
+    pub fn assertIsArray(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsArray(actual, message_v) }
+    pub fn assertIsString(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsString(actual, message_v) }
+    pub fn assertIsInt(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsInt(actual, message_v) }
+    pub fn assertIsBool(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsBool(actual, message_v) }
+    pub fn assertIsObject(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsObject(actual, message_v) }
+    pub fn assertIsCallable(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsCallable(actual, message_v) }
+    pub fn assertStringContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringContainsString(needle, haystack, message_v) }
+    pub fn assertStringNotContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringNotContainsString(needle, haystack, message_v) }
+    pub fn assertStringStartsWith(mut prefix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringStartsWith(prefix, string, message_v) }
+    pub fn assertStringEndsWith(mut suffix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEndsWith(suffix, string, message_v) }
+    pub fn assertMatchesRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertMatchesRegularExpression(pattern, string, message_v) }
+    pub fn assertDoesNotMatchRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDoesNotMatchRegularExpression(pattern, string, message_v) }
+    pub fn assertContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertContains(needle, haystack, message_v) }
+    pub fn assertNotContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotContains(needle, haystack, message_v) }
+    pub fn assertArrayHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayHasKey(key_v, array, message_v) }
+    pub fn assertArrayNotHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayNotHasKey(key_v, array, message_v) }
+    pub fn assertGreaterThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThan(expected, actual, message_v) }
+    pub fn assertGreaterThanOrEqual(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThanOrEqual(expected, actual, message_v) }
+    pub fn assertLessThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertLessThan(expected, actual, message_v) }
+    pub fn assertFileExists(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileExists(filename, message_v) }
+    pub fn assertFileDoesNotExist(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileDoesNotExist(filename, message_v) }
+    pub fn assertDirectoryExists(mut directory: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDirectoryExists(directory, message_v) }
+    pub fn assertStringEqualsFile(mut expectedFile: Str, mut actualString: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEqualsFile(expectedFile, actualString, message_v) }
+    pub fn assertJsonStringEqualsJsonString(mut expectedJson: Str, mut actualJson: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertJsonStringEqualsJsonString(expectedJson, actualJson, message_v) }
+    pub fn assertObjectHasProperty(mut propertyName: Str, mut object: AnyObject, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertObjectHasProperty(propertyName, object, message_v) }
+    pub fn new_same_class(&self, mut name: Str) -> Result<crate::php_parser::builder::TraitUseTest, Throw> { Ok(Self::new(name)?) }
+}
+impl php_rt::PhpObject for TraitUseTest {
+    fn class_name(&self) -> &'static str { "PhpParser\\Builder\\TraitUseTest" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\builder\\traitusetest", "phpunit\\framework\\testcase", "phpunit\\framework\\assert"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_expectedException_get()) { out.push((Str::from_static("expectedException"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessage_get()) { out.push((Str::from_static("expectedExceptionMessage"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessageRegExp_get()) { out.push((Str::from_static("expectedExceptionMessageRegExp"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionCode_get()) { out.push((Str::from_static("expectedExceptionCode"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_name_get()) { out.push((Str::from_static("name"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "expectedException" => { self.set_p_expectedException(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessage" => { self.set_p_expectedExceptionMessage(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessageRegExp" => { self.set_p_expectedExceptionMessageRegExp(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionCode" => { self.set_p_expectedExceptionCode(value.to_option().map(|__m| cast::<i64>(__m))); true }, "name" => { self.set_p_name(cast::<Str>(value)); true }, _ => false } }
+}
+impl TraitUseTest { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Builder\\TraitUseTest could not be converted to string"))) } }
+impl php_rt::PhpClone for TraitUseTest { fn php_clone(&self) -> Self { let c = TraitUseTest(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for TraitUseTestObj { fn clone(&self) -> Self { TraitUseTestObj { expectedException: self.expectedException.clone(), expectedExceptionMessage: self.expectedExceptionMessage.clone(), expectedExceptionMessageRegExp: self.expectedExceptionMessageRegExp.clone(), expectedExceptionCode: self.expectedExceptionCode.clone(), name: self.name.clone() } } }
+impl TraitUseTest {
+}
+pub struct UseTestObj {
+    pub expectedException: Option<Str>,
+    pub expectedExceptionMessage: Option<Str>,
+    pub expectedExceptionMessageRegExp: Option<Str>,
+    pub expectedExceptionCode: Option<i64>,
+    pub name: Str,
+}
+#[derive(Clone)]
+pub struct UseTest(pub Rc<RefCell<UseTestObj>>);
+impl UseTest {
+    pub fn p_expectedException(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedException) }
+    pub fn p_expectedException_get(&self) -> Option<Str> { self.0.borrow().expectedException.clone() }
+    pub fn p_expectedException_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedException.clone()) }
+    pub fn p_expectedException_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedException) }
+    pub fn set_p_expectedException(&self, v: Option<Str>) { self.0.borrow_mut().expectedException = v; }
+    pub fn p_expectedExceptionMessage(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessage) }
+    pub fn p_expectedExceptionMessage_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessage.clone() }
+    pub fn p_expectedExceptionMessage_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessage.clone()) }
+    pub fn p_expectedExceptionMessage_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessage) }
+    pub fn set_p_expectedExceptionMessage(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessage = v; }
+    pub fn p_expectedExceptionMessageRegExp(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionMessageRegExp) }
+    pub fn p_expectedExceptionMessageRegExp_get(&self) -> Option<Str> { self.0.borrow().expectedExceptionMessageRegExp.clone() }
+    pub fn p_expectedExceptionMessageRegExp_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().expectedExceptionMessageRegExp.clone()) }
+    pub fn p_expectedExceptionMessageRegExp_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionMessageRegExp) }
+    pub fn set_p_expectedExceptionMessageRegExp(&self, v: Option<Str>) { self.0.borrow_mut().expectedExceptionMessageRegExp = v; }
+    pub fn p_expectedExceptionCode(&self) -> Ref<'_, Option<i64>> { Ref::map(self.0.borrow(), |o| &o.expectedExceptionCode) }
+    pub fn p_expectedExceptionCode_get(&self) -> Option<i64> { self.0.borrow().expectedExceptionCode.clone() }
+    pub fn p_expectedExceptionCode_opt(&self) -> Option<Option<i64>> { Some(self.0.borrow().expectedExceptionCode.clone()) }
+    pub fn p_expectedExceptionCode_mut(&self) -> RefMut<'_, Option<i64>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expectedExceptionCode) }
+    pub fn set_p_expectedExceptionCode(&self, v: Option<i64>) { self.0.borrow_mut().expectedExceptionCode = v; }
+    pub fn p_name(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| &o.name) }
+    pub fn p_name_get(&self) -> Str { self.0.borrow().name.clone() }
+    pub fn p_name_opt(&self) -> Option<Str> { Some(self.0.borrow().name.clone()) }
+    pub fn p_name_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.name) }
+    pub fn set_p_name(&self, v: Str) { self.0.borrow_mut().name = v; }
+    pub fn new(mut name: Str) -> Result<UseTest, Throw> {
+        let this = UseTest(Rc::new(RefCell::new(UseTestObj {
+            expectedException: { let _ = (); None::<Str> },
+            expectedExceptionMessage: { let _ = (); None::<Str> },
+            expectedExceptionMessageRegExp: { let _ = (); None::<Str> },
+            expectedExceptionCode: { let _ = (); None::<i64> },
+            name: Str::from_static(""),
+        })));
+        this.magic__construct(name)?;
+        Ok(this)
+    }
+    pub fn createUseBuilder(&self, mut name: Mixed, mut type_: Mixed) -> Result<crate::php_parser::builder::Use_, Throw> {
+    return Ok(crate::php_parser::builder::Use_::new(cast::<U_PhpParser_Node_Name_or_Str>(name.clone()), type_.clone())?);
+    }
+    pub fn testCreation(&self) -> Result<(), Throw> {
+    let mut node: Late<crate::php_parser::node::stmt::Use_> = Late::uninit();
+    node.set(self.createUseBuilder(cast::<Mixed>(Str::from_static("Foo\\Bar")), cast::<Mixed>(crate::php_parser::node::stmt::Use_::TYPE_NORMAL()))?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Use_::new({ let mut __m1: Map<ArrayKey, crate::php_parser::node::UseItem> = Map::new(); __m1.push(crate::php_parser::node::UseItem::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Foo\\Bar")), Map::<Str, Mixed>::new())?, { let _ = (); None::<U_PhpParser_Node_Identifier_or_Str> }, cast::<Mixed>(crate::php_parser::node::stmt::Use_::TYPE_UNKNOWN()), Map::<Str, Mixed>::new())?); __m1 }, cast::<Mixed>(crate::php_parser::node::stmt::Use_::TYPE_NORMAL()), Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    node.set(self.createUseBuilder(cast::<Mixed>(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Foo\\Bar")), Map::<Str, Mixed>::new())?), cast::<Mixed>(crate::php_parser::node::stmt::Use_::TYPE_NORMAL()))?.as_(Str::from_static("XYZ"))?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Use_::new({ let mut __m2: Map<ArrayKey, crate::php_parser::node::UseItem> = Map::new(); __m2.push(crate::php_parser::node::UseItem::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("Foo\\Bar")), Map::<Str, Mixed>::new())?, Some(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("XYZ"))), cast::<Mixed>(crate::php_parser::node::stmt::Use_::TYPE_UNKNOWN()), Map::<Str, Mixed>::new())?); __m2 }, cast::<Mixed>(crate::php_parser::node::stmt::Use_::TYPE_NORMAL()), Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    node.set(self.createUseBuilder(cast::<Mixed>(Str::from_static("foo\\bar")), cast::<Mixed>(crate::php_parser::node::stmt::Use_::TYPE_FUNCTION()))?.as_(Str::from_static("foo"))?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Use_::new({ let mut __m3: Map<ArrayKey, crate::php_parser::node::UseItem> = Map::new(); __m3.push(crate::php_parser::node::UseItem::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("foo\\bar")), Map::<Str, Mixed>::new())?, Some(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("foo"))), cast::<Mixed>(crate::php_parser::node::stmt::Use_::TYPE_UNKNOWN()), Map::<Str, Mixed>::new())?); __m3 }, cast::<Mixed>(crate::php_parser::node::stmt::Use_::TYPE_FUNCTION()), Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    node.set(self.createUseBuilder(cast::<Mixed>(Str::from_static("foo\\BAR")), cast::<Mixed>(crate::php_parser::node::stmt::Use_::TYPE_CONSTANT()))?.as_(Str::from_static("FOO"))?.getNode()?);
+    { let _ = self; crate::phpunit::framework::Assert::assertEquals(cast::<Mixed>(crate::php_parser::node::stmt::Use_::new({ let mut __m4: Map<ArrayKey, crate::php_parser::node::UseItem> = Map::new(); __m4.push(crate::php_parser::node::UseItem::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("foo\\BAR")), Map::<Str, Mixed>::new())?, Some(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("FOO"))), cast::<Mixed>(crate::php_parser::node::stmt::Use_::TYPE_UNKNOWN()), Map::<Str, Mixed>::new())?); __m4 }, cast::<Mixed>(crate::php_parser::node::stmt::Use_::TYPE_CONSTANT()), Map::<Str, Mixed>::new())?), cast::<Mixed>(node.get().clone()), Str::from_static(""))? };
+    #[allow(unreachable_code)] Ok(())
+    }
+    pub fn magic__construct(&self, mut name: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).magic__construct__impl(name) }
+    pub fn setUpBeforeClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::setUpBeforeClass() }
+    pub fn tearDownAfterClass() -> Result<(), Throw> { crate::phpunit::framework::TestCase::tearDownAfterClass() }
+    pub fn setUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).setUp__impl() }
+    pub fn tearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).tearDown__impl() }
+    pub fn runSetUp(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runSetUp__impl() }
+    pub fn runTearDown(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).runTearDown__impl() }
+    pub fn getName(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).getName__impl() }
+    pub fn name(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).name__impl() }
+    pub fn expectException(&self, mut exception: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectException__impl(exception) }
+    pub fn expectExceptionMessage(&self, mut message_v: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessage__impl(message_v) }
+    pub fn expectExceptionMessageMatches(&self, mut regularExpression: Str) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionMessageMatches__impl(regularExpression) }
+    pub fn expectExceptionCode(&self, mut code: i64) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectExceptionCode__impl(code) }
+    pub fn expectNotToPerformAssertions(&self) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectNotToPerformAssertions__impl() }
+    pub fn expectsException(&self) -> Result<bool, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectsException__impl() }
+    pub fn verifyExpectedException(&self, mut e: crate::g::Throwable) -> Result<(), Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).verifyExpectedException__impl(e) }
+    pub fn expectedExceptionDescription(&self) -> Result<Str, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).expectedExceptionDescription__impl() }
+    pub fn markTestSkipped(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestSkipped__impl(message_v) }
+    pub fn markTestIncomplete(&self, mut message_v: Str) -> Result<Never, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).markTestIncomplete__impl(message_v) }
+    pub fn createMock(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createMock__impl(originalClassName) }
+    pub fn createStub(&self, mut originalClassName: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).createStub__impl(originalClassName) }
+    pub fn getCount() -> Result<i64, Throw> { crate::phpunit::framework::Assert::getCount() }
+    pub fn resetCount() -> Result<(), Throw> { crate::phpunit::framework::Assert::resetCount() }
+    pub fn fail(mut message_v: Str) -> Result<Never, Throw> { crate::phpunit::framework::Assert::fail(message_v) }
+    pub fn assertTrue(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertTrue(condition, message_v) }
+    pub fn assertFalse(mut condition: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFalse(condition, message_v) }
+    pub fn assertNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNull(actual, message_v) }
+    pub fn assertNotNull(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotNull(actual, message_v) }
+    pub fn assertSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertSame(expected, actual, message_v) }
+    pub fn assertNotSame(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotSame(expected, actual, message_v) }
+    pub fn assertEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEquals(expected, actual, message_v) }
+    pub fn assertNotEquals(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEquals(expected, actual, message_v) }
+    pub fn assertEqualsCanonicalizing(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEqualsCanonicalizing(expected, actual, message_v) }
+    pub fn assertCount(mut expectedCount: i64, mut haystack: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertCount(expectedCount, haystack, message_v) }
+    pub fn assertEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertEmpty(actual, message_v) }
+    pub fn assertNotEmpty(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotEmpty(actual, message_v) }
+    pub fn assertInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertInstanceOf(expected, actual, message_v) }
+    pub fn assertNotInstanceOf(mut expected: Str, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotInstanceOf(expected, actual, message_v) }
+    pub fn assertIsArray(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsArray(actual, message_v) }
+    pub fn assertIsString(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsString(actual, message_v) }
+    pub fn assertIsInt(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsInt(actual, message_v) }
+    pub fn assertIsBool(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsBool(actual, message_v) }
+    pub fn assertIsObject(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsObject(actual, message_v) }
+    pub fn assertIsCallable(mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertIsCallable(actual, message_v) }
+    pub fn assertStringContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringContainsString(needle, haystack, message_v) }
+    pub fn assertStringNotContainsString(mut needle: Str, mut haystack: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringNotContainsString(needle, haystack, message_v) }
+    pub fn assertStringStartsWith(mut prefix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringStartsWith(prefix, string, message_v) }
+    pub fn assertStringEndsWith(mut suffix: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEndsWith(suffix, string, message_v) }
+    pub fn assertMatchesRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertMatchesRegularExpression(pattern, string, message_v) }
+    pub fn assertDoesNotMatchRegularExpression(mut pattern: Str, mut string: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDoesNotMatchRegularExpression(pattern, string, message_v) }
+    pub fn assertContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertContains(needle, haystack, message_v) }
+    pub fn assertNotContains(mut needle: Mixed, mut haystack: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertNotContains(needle, haystack, message_v) }
+    pub fn assertArrayHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayHasKey(key_v, array, message_v) }
+    pub fn assertArrayNotHasKey(mut key_v: ArrayKey, mut array: Map<ArrayKey, Mixed>, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertArrayNotHasKey(key_v, array, message_v) }
+    pub fn assertGreaterThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThan(expected, actual, message_v) }
+    pub fn assertGreaterThanOrEqual(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertGreaterThanOrEqual(expected, actual, message_v) }
+    pub fn assertLessThan(mut expected: Mixed, mut actual: Mixed, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertLessThan(expected, actual, message_v) }
+    pub fn assertFileExists(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileExists(filename, message_v) }
+    pub fn assertFileDoesNotExist(mut filename: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertFileDoesNotExist(filename, message_v) }
+    pub fn assertDirectoryExists(mut directory: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertDirectoryExists(directory, message_v) }
+    pub fn assertStringEqualsFile(mut expectedFile: Str, mut actualString: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertStringEqualsFile(expectedFile, actualString, message_v) }
+    pub fn assertJsonStringEqualsJsonString(mut expectedJson: Str, mut actualJson: Str, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertJsonStringEqualsJsonString(expectedJson, actualJson, message_v) }
+    pub fn assertObjectHasProperty(mut propertyName: Str, mut object: AnyObject, mut message_v: Str) -> Result<(), Throw> { crate::phpunit::framework::Assert::assertObjectHasProperty(propertyName, object, message_v) }
+    pub fn new_same_class(&self, mut name: Str) -> Result<crate::php_parser::builder::UseTest, Throw> { Ok(Self::new(name)?) }
+}
+impl php_rt::PhpObject for UseTest {
+    fn class_name(&self) -> &'static str { "PhpParser\\Builder\\UseTest" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\builder\\usetest", "phpunit\\framework\\testcase", "phpunit\\framework\\assert"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_expectedException_get()) { out.push((Str::from_static("expectedException"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessage_get()) { out.push((Str::from_static("expectedExceptionMessage"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionMessageRegExp_get()) { out.push((Str::from_static("expectedExceptionMessageRegExp"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expectedExceptionCode_get()) { out.push((Str::from_static("expectedExceptionCode"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_name_get()) { out.push((Str::from_static("name"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "expectedException" => { self.set_p_expectedException(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessage" => { self.set_p_expectedExceptionMessage(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionMessageRegExp" => { self.set_p_expectedExceptionMessageRegExp(value.to_option().map(|__m| cast::<Str>(__m))); true }, "expectedExceptionCode" => { self.set_p_expectedExceptionCode(value.to_option().map(|__m| cast::<i64>(__m))); true }, "name" => { self.set_p_name(cast::<Str>(value)); true }, _ => false } }
+}
+impl UseTest { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Builder\\UseTest could not be converted to string"))) } }
+impl php_rt::PhpClone for UseTest { fn php_clone(&self) -> Self { let c = UseTest(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for UseTestObj { fn clone(&self) -> Self { UseTestObj { expectedException: self.expectedException.clone(), expectedExceptionMessage: self.expectedExceptionMessage.clone(), expectedExceptionMessageRegExp: self.expectedExceptionMessageRegExp.clone(), expectedExceptionCode: self.expectedExceptionCode.clone(), name: self.name.clone() } } }
+impl UseTest {
+}
 impl php_rt::Truthy for ClassConst { fn truthy(&self) -> bool { true } }
 impl php_rt::ToStr for ClassConst { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Builder\\ClassConst")) } }
 impl php_rt::Identical for ClassConst { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
@@ -1811,3 +4348,185 @@ impl php_rt::CastTo<Use_> for AnyObject { fn cast_to(self) -> Use_ { cast::<Use_
 impl php_rt::InstanceOf<Use_> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\builder\\use_") } }
 impl php_rt::InstanceOf<Use_> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\builder\\use_") } }
 impl php_rt::InstanceOf<Use_> for Use_ { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for ClassConstTest { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for ClassConstTest { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Builder\\ClassConstTest")) } }
+impl php_rt::Identical for ClassConstTest { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for ClassConstTest { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for ClassConstTest { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for ClassConstTest { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<ClassConstTest> for Mixed { fn cast_to(self) -> ClassConstTest { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::ClassConstTest>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Builder\\ClassConstTest") } }
+impl php_rt::TryDowncast for ClassConstTest { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::ClassConstTest>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for ClassConstTest { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<ClassConstTest> for AnyObject { fn cast_to(self) -> ClassConstTest { cast::<ClassConstTest>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<ClassConstTest> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\builder\\classconsttest") } }
+impl php_rt::InstanceOf<ClassConstTest> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\builder\\classconsttest") } }
+impl php_rt::InstanceOf<ClassConstTest> for ClassConstTest { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for ClassTest { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for ClassTest { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Builder\\ClassTest")) } }
+impl php_rt::Identical for ClassTest { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for ClassTest { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for ClassTest { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for ClassTest { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<ClassTest> for Mixed { fn cast_to(self) -> ClassTest { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::ClassTest>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Builder\\ClassTest") } }
+impl php_rt::TryDowncast for ClassTest { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::ClassTest>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for ClassTest { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<ClassTest> for AnyObject { fn cast_to(self) -> ClassTest { cast::<ClassTest>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<ClassTest> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\builder\\classtest") } }
+impl php_rt::InstanceOf<ClassTest> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\builder\\classtest") } }
+impl php_rt::InstanceOf<ClassTest> for ClassTest { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for EnumCaseTest { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for EnumCaseTest { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Builder\\EnumCaseTest")) } }
+impl php_rt::Identical for EnumCaseTest { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for EnumCaseTest { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for EnumCaseTest { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for EnumCaseTest { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<EnumCaseTest> for Mixed { fn cast_to(self) -> EnumCaseTest { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::EnumCaseTest>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Builder\\EnumCaseTest") } }
+impl php_rt::TryDowncast for EnumCaseTest { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::EnumCaseTest>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for EnumCaseTest { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<EnumCaseTest> for AnyObject { fn cast_to(self) -> EnumCaseTest { cast::<EnumCaseTest>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<EnumCaseTest> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\builder\\enumcasetest") } }
+impl php_rt::InstanceOf<EnumCaseTest> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\builder\\enumcasetest") } }
+impl php_rt::InstanceOf<EnumCaseTest> for EnumCaseTest { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for EnumTest { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for EnumTest { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Builder\\EnumTest")) } }
+impl php_rt::Identical for EnumTest { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for EnumTest { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for EnumTest { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for EnumTest { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<EnumTest> for Mixed { fn cast_to(self) -> EnumTest { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::EnumTest>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Builder\\EnumTest") } }
+impl php_rt::TryDowncast for EnumTest { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::EnumTest>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for EnumTest { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<EnumTest> for AnyObject { fn cast_to(self) -> EnumTest { cast::<EnumTest>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<EnumTest> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\builder\\enumtest") } }
+impl php_rt::InstanceOf<EnumTest> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\builder\\enumtest") } }
+impl php_rt::InstanceOf<EnumTest> for EnumTest { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for FunctionTest { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for FunctionTest { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Builder\\FunctionTest")) } }
+impl php_rt::Identical for FunctionTest { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for FunctionTest { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for FunctionTest { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for FunctionTest { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<FunctionTest> for Mixed { fn cast_to(self) -> FunctionTest { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::FunctionTest>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Builder\\FunctionTest") } }
+impl php_rt::TryDowncast for FunctionTest { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::FunctionTest>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for FunctionTest { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<FunctionTest> for AnyObject { fn cast_to(self) -> FunctionTest { cast::<FunctionTest>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<FunctionTest> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\builder\\functiontest") } }
+impl php_rt::InstanceOf<FunctionTest> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\builder\\functiontest") } }
+impl php_rt::InstanceOf<FunctionTest> for FunctionTest { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for InterfaceTest { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for InterfaceTest { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Builder\\InterfaceTest")) } }
+impl php_rt::Identical for InterfaceTest { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for InterfaceTest { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for InterfaceTest { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for InterfaceTest { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<InterfaceTest> for Mixed { fn cast_to(self) -> InterfaceTest { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::InterfaceTest>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Builder\\InterfaceTest") } }
+impl php_rt::TryDowncast for InterfaceTest { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::InterfaceTest>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for InterfaceTest { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<InterfaceTest> for AnyObject { fn cast_to(self) -> InterfaceTest { cast::<InterfaceTest>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<InterfaceTest> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\builder\\interfacetest") } }
+impl php_rt::InstanceOf<InterfaceTest> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\builder\\interfacetest") } }
+impl php_rt::InstanceOf<InterfaceTest> for InterfaceTest { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for MethodTest { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for MethodTest { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Builder\\MethodTest")) } }
+impl php_rt::Identical for MethodTest { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for MethodTest { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for MethodTest { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for MethodTest { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<MethodTest> for Mixed { fn cast_to(self) -> MethodTest { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::MethodTest>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Builder\\MethodTest") } }
+impl php_rt::TryDowncast for MethodTest { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::MethodTest>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for MethodTest { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<MethodTest> for AnyObject { fn cast_to(self) -> MethodTest { cast::<MethodTest>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<MethodTest> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\builder\\methodtest") } }
+impl php_rt::InstanceOf<MethodTest> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\builder\\methodtest") } }
+impl php_rt::InstanceOf<MethodTest> for MethodTest { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for NamespaceTest { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for NamespaceTest { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Builder\\NamespaceTest")) } }
+impl php_rt::Identical for NamespaceTest { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for NamespaceTest { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for NamespaceTest { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for NamespaceTest { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<NamespaceTest> for Mixed { fn cast_to(self) -> NamespaceTest { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::NamespaceTest>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Builder\\NamespaceTest") } }
+impl php_rt::TryDowncast for NamespaceTest { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::NamespaceTest>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for NamespaceTest { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<NamespaceTest> for AnyObject { fn cast_to(self) -> NamespaceTest { cast::<NamespaceTest>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<NamespaceTest> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\builder\\namespacetest") } }
+impl php_rt::InstanceOf<NamespaceTest> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\builder\\namespacetest") } }
+impl php_rt::InstanceOf<NamespaceTest> for NamespaceTest { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for ParamTest { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for ParamTest { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Builder\\ParamTest")) } }
+impl php_rt::Identical for ParamTest { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for ParamTest { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for ParamTest { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for ParamTest { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<ParamTest> for Mixed { fn cast_to(self) -> ParamTest { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::ParamTest>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Builder\\ParamTest") } }
+impl php_rt::TryDowncast for ParamTest { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::ParamTest>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for ParamTest { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<ParamTest> for AnyObject { fn cast_to(self) -> ParamTest { cast::<ParamTest>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<ParamTest> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\builder\\paramtest") } }
+impl php_rt::InstanceOf<ParamTest> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\builder\\paramtest") } }
+impl php_rt::InstanceOf<ParamTest> for ParamTest { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for PropertyTest { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for PropertyTest { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Builder\\PropertyTest")) } }
+impl php_rt::Identical for PropertyTest { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for PropertyTest { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for PropertyTest { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for PropertyTest { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<PropertyTest> for Mixed { fn cast_to(self) -> PropertyTest { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::PropertyTest>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Builder\\PropertyTest") } }
+impl php_rt::TryDowncast for PropertyTest { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::PropertyTest>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for PropertyTest { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<PropertyTest> for AnyObject { fn cast_to(self) -> PropertyTest { cast::<PropertyTest>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<PropertyTest> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\builder\\propertytest") } }
+impl php_rt::InstanceOf<PropertyTest> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\builder\\propertytest") } }
+impl php_rt::InstanceOf<PropertyTest> for PropertyTest { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for TraitTest { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for TraitTest { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Builder\\TraitTest")) } }
+impl php_rt::Identical for TraitTest { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for TraitTest { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for TraitTest { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for TraitTest { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<TraitTest> for Mixed { fn cast_to(self) -> TraitTest { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::TraitTest>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Builder\\TraitTest") } }
+impl php_rt::TryDowncast for TraitTest { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::TraitTest>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for TraitTest { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<TraitTest> for AnyObject { fn cast_to(self) -> TraitTest { cast::<TraitTest>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<TraitTest> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\builder\\traittest") } }
+impl php_rt::InstanceOf<TraitTest> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\builder\\traittest") } }
+impl php_rt::InstanceOf<TraitTest> for TraitTest { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for TraitUseAdaptationTest { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for TraitUseAdaptationTest { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Builder\\TraitUseAdaptationTest")) } }
+impl php_rt::Identical for TraitUseAdaptationTest { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for TraitUseAdaptationTest { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for TraitUseAdaptationTest { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for TraitUseAdaptationTest { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<TraitUseAdaptationTest> for Mixed { fn cast_to(self) -> TraitUseAdaptationTest { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::TraitUseAdaptationTest>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Builder\\TraitUseAdaptationTest") } }
+impl php_rt::TryDowncast for TraitUseAdaptationTest { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::TraitUseAdaptationTest>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for TraitUseAdaptationTest { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<TraitUseAdaptationTest> for AnyObject { fn cast_to(self) -> TraitUseAdaptationTest { cast::<TraitUseAdaptationTest>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<TraitUseAdaptationTest> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\builder\\traituseadaptationtest") } }
+impl php_rt::InstanceOf<TraitUseAdaptationTest> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\builder\\traituseadaptationtest") } }
+impl php_rt::InstanceOf<TraitUseAdaptationTest> for TraitUseAdaptationTest { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for TraitUseTest { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for TraitUseTest { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Builder\\TraitUseTest")) } }
+impl php_rt::Identical for TraitUseTest { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for TraitUseTest { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for TraitUseTest { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for TraitUseTest { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<TraitUseTest> for Mixed { fn cast_to(self) -> TraitUseTest { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::TraitUseTest>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Builder\\TraitUseTest") } }
+impl php_rt::TryDowncast for TraitUseTest { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::TraitUseTest>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for TraitUseTest { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<TraitUseTest> for AnyObject { fn cast_to(self) -> TraitUseTest { cast::<TraitUseTest>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<TraitUseTest> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\builder\\traitusetest") } }
+impl php_rt::InstanceOf<TraitUseTest> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\builder\\traitusetest") } }
+impl php_rt::InstanceOf<TraitUseTest> for TraitUseTest { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for UseTest { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for UseTest { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Builder\\UseTest")) } }
+impl php_rt::Identical for UseTest { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for UseTest { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for UseTest { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for UseTest { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<UseTest> for Mixed { fn cast_to(self) -> UseTest { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::UseTest>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Builder\\UseTest") } }
+impl php_rt::TryDowncast for UseTest { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::builder::UseTest>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for UseTest { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<UseTest> for AnyObject { fn cast_to(self) -> UseTest { cast::<UseTest>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<UseTest> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\builder\\usetest") } }
+impl php_rt::InstanceOf<UseTest> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\builder\\usetest") } }
+impl php_rt::InstanceOf<UseTest> for UseTest { fn is_instance(&self) -> bool { true } }

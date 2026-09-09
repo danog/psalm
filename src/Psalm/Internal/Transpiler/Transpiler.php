@@ -17,10 +17,15 @@ use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\FunctionLikeAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Storage\ClassLikeStorage;
+use Psalm\Type\Union;
 use Psalm\Storage\FunctionLikeStorage;
 use RuntimeException;
 
+use function file_get_contents;
 use function fwrite;
+use function glob;
+use function preg_match;
+use function preg_split;
 use function is_dir;
 use function mkdir;
 use function spl_object_id;
@@ -77,6 +82,32 @@ final class Transpiler
     public static function isRuntimeStubFile(string $file_path): bool
     {
         return str_starts_with($file_path, self::runtimeStubDir() . '/');
+    }
+
+    /** @var array<lowercase-string, true>|null */
+    private static ?array $runtime_stub_classes = null;
+
+    /**
+     * Whether a runtime stub declares this class-like; other definitions (Psalm's stubs, vendor) are then ignored
+     * so that the stub is the only definition Psalm ever sees.
+     */
+    public static function isRuntimeStubClass(string $fq_classlike_name_lc): bool
+    {
+        if (self::$runtime_stub_classes === null) {
+            self::$runtime_stub_classes = [];
+            foreach (glob(self::runtimeStubDir() . '/*.php') ?: [] as $file) {
+                $code = (string) file_get_contents($file);
+                $namespace = '';
+                foreach (preg_split('/\R/', $code) ?: [] as $line) {
+                    if (preg_match('/^namespace\s+([A-Za-z0-9_\\\\]+)\s*[;{]/', $line, $m)) {
+                        $namespace = $m[1] . '\\';
+                    } elseif (preg_match('/^(?:abstract\s+|final\s+|readonly\s+)*(?:class|interface|trait|enum)\s+([A-Za-z0-9_]+)/', $line, $m)) {
+                        self::$runtime_stub_classes[strtolower($namespace . $m[1])] = true;
+                    }
+                }
+            }
+        }
+        return isset(self::$runtime_stub_classes[$fq_classlike_name_lc]);
     }
 
     public static function get(): Transpiler
@@ -160,6 +191,43 @@ final class Transpiler
     public function getFunctionRecord(Closure|Function_|ClassMethod|ArrowFunction $node, ?string $fq_class_name): ?FunctionRecord
     {
         return $this->functions[spl_object_id($node) . '@' . strtolower((string) $fq_class_name)] ?? null;
+    }
+
+    /** @var array<int, array{FunctionLikeStorage, Union}> inferred return types of function-likes without a declared one */
+    private array $inferred_return_types = [];
+
+    public function recordInferredReturnType(FunctionLikeStorage $storage, Union $type): void
+    {
+        if ($type->isVoid() || $type->isNever() || $type->hasMixed() || $type->possibly_undefined) {
+            return;
+        }
+        $this->inferred_return_types[spl_object_id($storage)] = [$storage, $type];
+    }
+
+    /**
+     * Declare the inferred return types on their storages so a second analysis pass sees typed call sites.
+     *
+     * @return int number of signatures completed
+     */
+    public function applyInferredReturnTypes(): int
+    {
+        $n = 0;
+        foreach ($this->inferred_return_types as [$storage, $type]) {
+            if ($storage->return_type === null) {
+                $storage->return_type = $type;
+                $n++;
+            }
+        }
+        $this->inferred_return_types = [];
+        return $n;
+    }
+
+    /** Forget everything recorded by the first analysis pass. */
+    public function resetRecords(): void
+    {
+        $this->functions = [];
+        $this->classes = [];
+        $this->active = [];
     }
 
     public function emit(Codebase $codebase): void

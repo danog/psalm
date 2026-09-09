@@ -17,6 +17,7 @@ use Psalm\Internal\Provider\FileReferenceProvider;
 use Psalm\Internal\Provider\FileStorageProvider;
 use Psalm\Internal\Scanner\FileScanner;
 use Psalm\IssueBuffer;
+use Psalm\Internal\Transpiler\Transpiler;
 use Psalm\Progress\Progress;
 use Psalm\Storage\ClassLikeStorage;
 use Psalm\Storage\FileStorage;
@@ -407,6 +408,11 @@ final class Scanner
             }
 
             if (!isset($this->classlike_files[$fq_classlike_name_lc])) {
+                if (Transpiler::isEnabled() && Transpiler::isRuntimeStubClass($fq_classlike_name_lc)) {
+                    // defined by a transpiler runtime stub, which is a project file
+                    continue;
+                }
+
                 if ($classlikes->doesClassLikeExist($fq_classlike_name_lc)) {
                     if ($fq_classlike_name_lc === 'self') {
                         continue;
