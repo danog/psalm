@@ -79,6 +79,10 @@ final class Casts
         if ($from === $to || $from->toRust() === $to->toRust()) {
             return $code;
         }
+        if ($code === 'self') {
+            // the receiver is borrowed; a converted value is owned
+            $code = 'self.clone()';
+        }
         $fk = $from->kind;
         $tk = $to->kind;
 

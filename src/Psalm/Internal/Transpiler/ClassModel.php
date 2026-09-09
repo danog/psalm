@@ -101,7 +101,7 @@ final class ClassModel
     /** Rust name of the data struct. */
     public function objStruct(): string
     {
-        return $this->handle() . 'Obj';
+        return $this->handle() . 'Obj_';
     }
 
     public function path(): string

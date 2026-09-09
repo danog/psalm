@@ -1969,7 +1969,7 @@ final class Builtins
             return $v;
         }
         $b->warn('iterator_to_array on ' . $t->toRust(), $call);
-        return new Val('unreachable!("iterator_to_array")', $res);
+        return $b->dead('iterator_to_array', $res);
     }
 
     private function f_array_key_exists_str(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -2030,6 +2030,18 @@ final class Builtins
         return $this->f_array_flip($b, $call, $args);
     }
 
+    /** runtime hook: parsed XML document element as a nested array tree (null when malformed) */
+    private function f___rt_xml_parse(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        return new Val('php_rt::xml::xml_parse(&' . $b->exprTo($args[0]->value, RustType::str()) . ')', RustType::option(RustType::mixed()));
+    }
+
+    /** runtime hook: XML-escaped text (attribute context when the flag is set) */
+    private function f___rt_xml_escape(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        return new Val('php_rt::xml::xml_escape(&' . $b->exprTo($args[0]->value, RustType::str()) . ', ' . (isset($args[1]) ? $b->exprTo($args[1]->value, RustType::bool()) : 'false') . ')', RustType::str());
+    }
+
     /** runtime hook: an instance of the named class without running its constructor (null if unknown) */
     private function f___rt_new_uninit(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
@@ -2069,19 +2081,19 @@ final class Builtins
         return new Val('List::<Mixed>::new()', RustType::list(RustType::mixed()));
     }
 
-    private function f_simplexml_load_string(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    private function __removed_f_simplexml_load_string(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
         $s = $b->exprTo($args[0]->value, RustType::str());
         return $b->narrow(new Val('simplexml_load_string(&' . $s . ')', RustType::option(RustType::class('SimpleXMLElement'))), $call);
     }
 
-    private function f_simplexml_load_file(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    private function __removed_f_simplexml_load_file(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
         $s = $b->exprTo($args[0]->value, RustType::str());
         return $b->narrow(new Val('simplexml_load_file(&' . $s . ')', RustType::option(RustType::class('SimpleXMLElement'))), $call);
     }
 
-    private function f_simplexml_import_dom(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    private function __removed_f_simplexml_import_dom(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
         $b->warn('simplexml_import_dom', $call);
         return new Val('None', RustType::option(RustType::class('SimpleXMLElement')));
@@ -2202,6 +2214,6 @@ final class Builtins
                 return new Val($recv->code . '.get(' . $b->exprTo($args[0]->value, RustType::str()) . ')', RustType::option(RustType::mixed()));
         }
         $b->warn('unknown runtime method ' . $t->name . '::' . $name, $site);
-        return new Val('unreachable!("runtime method ' . $t->name . '::' . $name . '")', $res);
+        return $b->dead('runtime method ' . $t->name . '::' . $name . '', $res);
     }
 }

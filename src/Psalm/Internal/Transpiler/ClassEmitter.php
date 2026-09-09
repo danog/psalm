@@ -417,7 +417,8 @@ final class ClassEmitter
         }
         // extra params of the override get defaults
         for ($i = count($base->storage->params); $i < count($override->storage->params); $i++) {
-            $args[] = $this->casts->defaultOf($override->param_types[$i] ?? RustType::mixed());
+            $default = $this->casts->defaultOf($override->param_types[$i] ?? RustType::mixed());
+            $args[] = ($override->storage->params[$i]->by_ref ? '&mut ' : '') . $default;
         }
         return implode(', ', $args);
     }

@@ -14,6 +14,8 @@ use Psalm\Storage\FunctionLikeStorage;
 use function array_values;
 use function count;
 use function implode;
+use function preg_match;
+use function array_pop;
 use function in_array;
 use function is_string;
 use function strtolower;
@@ -32,7 +34,45 @@ trait CallTrait
      * @param list<RustType> $param_types
      * @return list<string>
      */
+    /** @var list<string> hoisted argument evaluations (`let` statements) pending for the next finishCall() */
+    private array $pending_pre = [];
+
+    /**
+     * Wraps a call expression with the argument evaluations hoisted by the matching args() call:
+     * by-reference arguments borrow their place mutably, so the other arguments (which may read the
+     * same variable) are evaluated into temporaries first.
+     */
+    public function finishCall(string $call): string
+    {
+        $pre = array_pop($this->pending_pre) ?? '';
+        return $pre === '' ? $call : '{ ' . $pre . ' ' . $call . ' }';
+    }
+
     public function args(array $args, FunctionLikeStorage $storage, array $param_types, ?ClassModel $callee_class, string $callee_name): array
+    {
+        $out = $this->argsInner($args, $storage, $param_types, $callee_class, $callee_name);
+        $pre = '';
+        $has_byref = false;
+        foreach (array_values($storage->params) as $i => $p) {
+            if ($p->by_ref && isset($out[$i])) {
+                $has_byref = true;
+            }
+        }
+        if ($has_byref) {
+            foreach (array_values($storage->params) as $i => $p) {
+                if ($p->by_ref || !isset($out[$i]) || preg_match('/^[A-Za-z_][A-Za-z0-9_]*$|^-?[0-9]+(?:i64|\.0)?$|^(?:true|false|None)$/', $out[$i])) {
+                    continue;
+                }
+                $tmp = $this->tmp('__h');
+                $pre .= 'let ' . $tmp . ' = ' . $out[$i] . '; ';
+                $out[$i] = $tmp;
+            }
+        }
+        $this->pending_pre[] = $pre;
+        return $out;
+    }
+
+    private function argsInner(array $args, FunctionLikeStorage $storage, array $param_types, ?ClassModel $callee_class, string $callee_name): array
     {
         $params = array_values($storage->params);
         $out = [];
@@ -193,7 +233,7 @@ trait CallTrait
         $fn = $this->program->getFunction($resolved) ?? $this->program->getFunction($short);
         if ($fn !== null) {
             $argc = $this->args($args, $fn->record->storage, $fn->param_types, null, $fn->fq_name);
-            return new Val($fn->path() . '(' . implode(', ', $argc) . ')?', $fn->return_type);
+            return new Val($this->finishCall($fn->path() . '(' . implode(', ', $argc) . ')?'), $fn->return_type);
         }
 
         $result = $this->builtins->emit($this, $e, strtolower($short), $args);
@@ -201,7 +241,7 @@ trait CallTrait
             return $result;
         }
         $this->warn('unknown function ' . $resolved, $e);
-        return new Val('unreachable!("unknown function ' . $resolved . '")', $this->inferredOrMixed($e));
+        return $this->dead('unknown function ' . $resolved . '', $this->inferredOrMixed($e));
     }
 
     /** `$callable(...)` */
@@ -243,11 +283,11 @@ trait CallTrait
             $m = $cls !== null ? $this->program->findMethod($cls, '__invoke') : null;
             if ($m !== null) {
                 $argc = $this->args($args, $m->storage, $m->param_types, $m->declaring, $m->name);
-                return new Val($callee->code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')?', $m->return_type);
+                return new Val($this->finishCall($callee->code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')?'), $m->return_type);
             }
         }
         $this->warn('call of ' . $t->toRust(), $site);
-        return new Val('unreachable!("call of ' . $t->toRust() . '")', $this->inferredOrMixed($site));
+        return $this->dead('call of ' . $t->toRust() . '', $this->inferredOrMixed($site));
     }
 
     private function firstClassCallable(Expr\FuncCall|Expr\MethodCall|Expr\StaticCall $e): Val
@@ -255,7 +295,7 @@ trait CallTrait
         $inf = $this->inferred($e);
         if ($inf === null || $inf->kind !== RustType::CLOSURE) {
             $this->warn('first-class callable without signature', $e);
-            return new Val('unreachable!("first-class callable")', $inf ?? RustType::dynCallable());
+            return $this->dead('first-class callable', $inf ?? RustType::dynCallable());
         }
         $params = [];
         $args = [];
@@ -332,9 +372,9 @@ trait CallTrait
             if ($m !== null) {
                 $argc = $this->args($args, $m->storage, $m->param_types, $m->declaring, $m->name);
                 if ($m->isStatic()) {
-                    return new Val('{ let _ = ' . $recv->code . '; ' . $m->declaring->path() . '::' . $m->rustName() . '(' . implode(', ', $argc) . ')? }', $m->return_type);
+                    return new Val('{ let _ = ' . $recv->code . '; ' . $this->finishCall($m->declaring->path() . '::' . $m->rustName() . '(' . implode(', ', $argc) . ')?') . ' }', $m->return_type);
                 }
-                return new Val($recv->code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')?', $m->return_type);
+                return new Val($this->finishCall($recv->code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')?'), $m->return_type);
             }
             if ($cls !== null && $cls->isEnum()) {
                 return $this->enumStaticCall($cls, $lc, $args, $e, $recv);
@@ -351,7 +391,7 @@ trait CallTrait
                 return $this->narrow($v, $e);
             }
             $this->warn('unknown method ' . $name . ' on ' . $rt->toRust(), $e);
-            return new Val('unreachable!("unknown method ' . $name . '")', $this->inferredOrMixed($e));
+            return $this->dead('unknown method ' . $name . '', $this->inferredOrMixed($e));
         }
         if ($rt->kind === RustType::UNION) {
             $res = $this->inferredOrMixed($e);
@@ -367,7 +407,7 @@ trait CallTrait
                     continue;
                 }
                 $argc = $this->args($args, $m->storage, $m->param_types, $m->declaring, $m->name);
-                $call = '__o.' . $m->rustName() . '(' . implode(', ', $argc) . ')?';
+                $call = $this->finishCall('__o.' . $m->rustName() . '(' . implode(', ', $argc) . ')?');
                 $arms[] = $rt->mangle() . '::' . $member->variantName() . '(__o) => ' . $this->casts->convert($call, $m->return_type, $res);
             }
             if ($arms !== []) {
@@ -389,7 +429,7 @@ trait CallTrait
             return $this->narrow($v, $e);
         }
         $this->warn('method call on ' . $rt->toRust(), $e);
-        return new Val('unreachable!("method call on ' . $rt->toRust() . '")', $this->inferredOrMixed($e));
+        return $this->dead('method call on ' . $rt->toRust() . '', $this->inferredOrMixed($e));
     }
 
     private function staticCall(Expr\StaticCall $e): Val
@@ -399,7 +439,7 @@ trait CallTrait
         }
         if (!$e->name instanceof Identifier) {
             $this->warn('dynamic static method name', $e);
-            return new Val('unreachable!("dynamic static method")', $this->inferredOrMixed($e));
+            return $this->dead('dynamic static method', $this->inferredOrMixed($e));
         }
         $name = $e->name->name;
         $lc = strtolower($name);
@@ -411,7 +451,7 @@ trait CallTrait
                 return $this->methodCallOn($cv, $name, $e);
             }
             $this->warn('static call on expression', $e);
-            return new Val('unreachable!("static call on expression")', $this->inferredOrMixed($e));
+            return $this->dead('static call on expression', $this->inferredOrMixed($e));
         }
         $kind = strtolower($e->class->toString());
         $fqcn = $this->resolveClassName($e->class);
@@ -422,7 +462,22 @@ trait CallTrait
         $cls = $fqcn !== null ? $this->program->getClass($fqcn) : null;
         if ($cls === null) {
             $this->warn('static call on unknown class ' . $fqcn, $e);
-            return new Val('unreachable!("unknown class ' . $fqcn . '")', $this->inferredOrMixed($e));
+            return $this->dead('unknown class ' . $fqcn . '', $this->inferredOrMixed($e));
+        }
+        if (!$cls->is_project) {
+            // no generated code: a defaultable result (false for `X::isEnabled()`) or a dead value
+            $this->warn('static call on external class ' . $fqcn, $e);
+            $t = $this->inferredOrMixed($e);
+            $m = $this->program->findMethod($cls, $lc);
+            if ($m !== null && $m->return_type->hasDefault() && $m->return_type->kind !== RustType::MIXED) {
+                $t = $m->return_type;
+            }
+            foreach ($args as $a) {
+                if ($a instanceof \PhpParser\Node\Arg) {
+                    $this->expr($a->value);
+                }
+            }
+            return $t->hasDefault() ? new Val('<' . $t->toRust() . '>::default()', $t) : $this->dead('external static call ' . $fqcn . '::' . $name, $t);
         }
         if ($cls->isEnum()) {
             return $this->enumStaticCall($cls, $lc, $args, $e, null);
@@ -430,7 +485,7 @@ trait CallTrait
         $m = $this->program->findMethod($cls, $lc);
         if ($m === null) {
             $this->warn('unknown static method ' . $fqcn . '::' . $name, $e);
-            return new Val('unreachable!("unknown static method ' . $name . '")', $this->inferredOrMixed($e));
+            return $this->dead('unknown static method ' . $name . '', $this->inferredOrMixed($e));
         }
         $argc = $this->args($args, $m->storage, $m->param_types, $m->declaring, $m->name);
         if ($m->isStatic()) {
@@ -440,22 +495,23 @@ trait CallTrait
                     $target = $this->static_class; // forwarded late static binding
                 } elseif ($kind === 'static' && $this->this_type !== null && $this->class !== null) {
                     if (!$this->class->isLeaf()) {
-                        return new Val($this->this_expr . '.' . $m->rustName() . '__static(' . implode(', ', $argc) . ')?', $m->return_type);
+                        return new Val($this->finishCall($this->this_expr . '.' . $m->rustName() . '__static(' . implode(', ', $argc) . ')?'), $m->return_type);
                     }
                     $target = $this->class;
                 } elseif ($kind !== 'self' && $kind !== 'parent') {
                     $target = $cls; // explicitly named class
                 }
             }
-            return new Val($target->path() . '::' . $m->rustName() . '(' . implode(', ', $argc) . ')?', $m->return_type);
+            return new Val($this->finishCall($target->path() . '::' . $m->rustName() . '(' . implode(', ', $argc) . ')?'), $m->return_type);
         }
         // instance method called with self::/parent::/static:: => non-virtual call on $this
         if ($this->this_type === null) {
             $this->warn('instance method called statically', $e);
-            return new Val('unreachable!("instance method called statically")', $m->return_type);
+            $this->finishCall('');
+            return $this->dead('instance method called statically', $m->return_type);
         }
         if ($kind === 'static') {
-            return new Val($this->this_expr . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')?', $m->return_type);
+            return new Val($this->finishCall($this->this_expr . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')?'), $m->return_type);
         }
         $decl = $m->declaring;
         $this_t = $this->this_type;
@@ -464,7 +520,7 @@ trait CallTrait
         if ($m->isAbstract()) {
             $impl = $m->rustName();
         }
-        return new Val($recv . '.' . $impl . '(' . implode(', ', $argc) . ')?', $m->return_type);
+        return new Val($this->finishCall($recv . '.' . $impl . '(' . implode(', ', $argc) . ')?'), $m->return_type);
     }
 
     private function enumStaticCall(ClassModel $cls, string $lc, array $args, Expr $e, ?Val $recv): Val
@@ -484,12 +540,12 @@ trait CallTrait
         if ($m !== null) {
             $argc = $this->args($args, $m->storage, $m->param_types, $m->declaring, $m->name);
             if ($m->isStatic() || $recv === null) {
-                return new Val($path . '::' . $m->rustName() . '(' . implode(', ', $argc) . ')?', $m->return_type);
+                return new Val($this->finishCall($path . '::' . $m->rustName() . '(' . implode(', ', $argc) . ')?'), $m->return_type);
             }
-            return new Val($recv->code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')?', $m->return_type);
+            return new Val($this->finishCall($recv->code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')?'), $m->return_type);
         }
         $this->warn('unknown enum method ' . $lc, $e);
-        return new Val('unreachable!("unknown enum method")', $this->inferredOrMixed($e));
+        return $this->dead('unknown enum method', $this->inferredOrMixed($e));
     }
 
     // ------------------------------------------------------------------ new
@@ -508,7 +564,7 @@ trait CallTrait
             }
             if ($cls === null) {
                 $this->warn('anonymous class without model', $e);
-                return new Val('unreachable!("anonymous class")', $this->inferredOrMixed($e));
+                return $this->dead('anonymous class', $this->inferredOrMixed($e));
             }
             return $this->construct($cls, $args, $e);
         }
@@ -525,7 +581,7 @@ trait CallTrait
             $cls = $fqcn !== null ? $this->program->getClass($fqcn) : null;
             if ($cls === null) {
                 $this->warn('new on unknown class ' . $fqcn, $e);
-                return new Val('unreachable!("new ' . $fqcn . '")', $this->inferredOrMixed($e));
+                return $this->dead('new ' . $fqcn . '', $this->inferredOrMixed($e));
             }
             if (strtolower($e->class->toString()) === 'static' && $this->class !== null && !$this->class->isLeaf() && $this->this_type !== null) {
                 $argc = $this->constructorArgs($cls, $args);
@@ -551,7 +607,7 @@ trait CallTrait
             return new Val($target->path() . '::new_by_name(&' . $this->casts->convert($cv->code, $cv->type, RustType::str()) . ', ' . implode(', ', $argc) . ')?', RustType::class($target->fqcn));
         }
         $this->warn('dynamic new without known class', $e);
-        return new Val('unreachable!("dynamic new")', $inf ?? RustType::anyObject());
+        return $this->dead('dynamic new', $inf ?? RustType::anyObject());
     }
 
     private function newRuntimeGeneric(RustType $t, array $args, Expr $e): Val
@@ -571,7 +627,7 @@ trait CallTrait
                 return new Val('StdClass::new()', $t);
         }
         $this->warn('new on runtime class ' . $t->name, $e);
-        return new Val('unreachable!("new ' . $t->name . '")', $t);
+        return $this->dead('new ' . $t->name . '', $t);
     }
 
     private function constructorArgs(ClassModel $cls, array $args): array
@@ -585,11 +641,12 @@ trait CallTrait
 
     public function construct(ClassModel $cls, array $args, Expr $e): Val
     {
-        $argc = $this->constructorArgs($cls, $args);
-        $t = RustType::class($cls->fqcn);
         if (!$cls->is_project) {
             $this->warn('new on external class ' . $cls->fqcn, $e);
+            return $this->dead('new on external class ' . $cls->fqcn, RustType::anyObject());
         }
-        return new Val($cls->path() . '::new(' . implode(', ', $argc) . ')?', $t);
+        $argc = $this->constructorArgs($cls, $args);
+        $t = RustType::class($cls->fqcn);
+        return new Val($this->finishCall($cls->path() . '::new(' . implode(', ', $argc) . ')?'), $t);
     }
 }

@@ -103,7 +103,7 @@ pub fn random_int(min: i64, max: i64) -> i64 {
 pub fn mt_getrandmax() -> i64 {
     2147483647
 }
-pub fn microtime() -> f64 {
+pub fn microtime(_as_float: bool) -> f64 {
     let t = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap();
     t.as_secs_f64()
 }

@@ -230,7 +230,7 @@ final class RustType
             self::NEVER => 'Never',
             self::MIXED => 'Mixed',
             self::ARRAY_KEY => 'ArrayKey',
-            self::RESOURCE => 'Resource',
+            self::RESOURCE => 'Rc<Resource>',
             self::ANY_OBJECT => 'AnyObject',
             self::DYN_CALLABLE => 'DynCallable',
             self::OPTION => 'Option<' . $this->params[0]->toRust() . '>',

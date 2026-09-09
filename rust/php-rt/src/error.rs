@@ -46,6 +46,11 @@ pub enum Flow<T> {
 pub enum Never {}
 
 #[inline]
+/// A value the transpiler proved unreachable (unsupported construct or external code): panics when evaluated.
+pub fn dead<T>(msg: &str) -> T {
+    panic!("{}", msg)
+}
+
 pub fn never(n: Never) -> ! {
     match n {}
 }

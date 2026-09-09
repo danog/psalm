@@ -20,6 +20,7 @@ pub mod containers;
 pub mod registry;
 pub mod consts;
 pub mod tokenizer;
+pub mod xml;
 pub mod builtins;
 pub mod testing;
 
@@ -30,7 +31,7 @@ pub use map::Map;
 pub use late::Late;
 pub use refs::{PhpRef, Cell as PhpCell, new_cell, cell_of};
 pub use mixed::{Mixed, AnyObj, PhpObject};
-pub use error::{RtError, Flow, R, Never, never};
+pub use error::{RtError, Flow, R, Never, never, dead};
 pub use traits::*;
 pub use ops::*;
 pub use cast::{CastTo, cast};
@@ -41,8 +42,9 @@ pub use output::*;
 pub use builtins::*;
 
 pub mod prelude {
-    pub use crate::{Str, ArrayKey, List, Map, Late, Mixed, AnyObj, PhpObject, RtError, Flow, R, Never, never, Num};
+    pub use crate::{Str, ArrayKey, List, Map, Late, Mixed, AnyObj, PhpObject, RtError, Flow, R, Never, never, dead, Num};
     pub use crate::refs::{PhpRef, Cell as PhpCell, new_cell, cell_of};
+    pub use crate::key::MapKey;
     pub use crate::{list, map, cat, sfmt, sprintf, impl_enum_handle};
     pub use crate::traits::*;
     pub use crate::ops::*;

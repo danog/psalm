@@ -88,6 +88,13 @@ impl Mixed {
     pub fn is_object(&self) -> bool {
         matches!(self, Mixed::Obj(_) | Mixed::Closure(_))
     }
+    pub fn is_iterable(&self) -> bool {
+        match self {
+            Mixed::Arr(_) => true,
+            Mixed::Obj(o) => o.instance_of_name("traversable"),
+            _ => false,
+        }
+    }
     pub fn is_scalar(&self) -> bool {
         matches!(self, Mixed::Bool(_) | Mixed::Int(_) | Mixed::Float(_) | Mixed::Str(_))
     }
