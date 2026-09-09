@@ -29,6 +29,7 @@ use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
+use Psalm\Internal\Transpiler\Transpiler;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
 use Psalm\Internal\Type\TypeExpander;
@@ -168,6 +169,10 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         ?Context $global_context = null,
     ): void {
         $class = $this->class;
+
+        if (Transpiler::isEnabled()) {
+            Transpiler::get()->recordClassLike($this, $class, $this->storage);
+        }
 
         if (!$class instanceof PhpParser\Node\Stmt\Class_ && !$class instanceof PhpParser\Node\Stmt\Enum_) {
             throw new LogicException('Something went badly wrong');

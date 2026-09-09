@@ -14,3 +14,4 @@
 .idea/
 .vscode/
 .php-version
+/rust/target/

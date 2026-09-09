@@ -20,6 +20,7 @@ use Psalm\Internal\Provider\ClassLikeStorageProvider;
 use Psalm\Internal\Provider\FileReferenceProvider;
 use Psalm\Internal\Provider\FileStorageProvider;
 use Psalm\Internal\Provider\NodeDataProvider;
+use Psalm\Internal\Transpiler\Transpiler;
 use Psalm\Internal\Type\TypeAlias\LinkableTypeAlias;
 use Psalm\Internal\Type\TypeTokenizer;
 use Psalm\Issue\InvalidTypeImport;
@@ -329,6 +330,7 @@ class FileAnalyzer extends SourceAnalyzer
             // this can happen when stubbing
             if (!$this->codebase->classExists($stmt->name->name)
                 && !$this->codebase->classlikes->enumExists($stmt->name->name)
+                && !(Transpiler::isEnabled() && Transpiler::isRuntimeStubFile($this->file_path))
             ) {
                 return;
             }
@@ -345,7 +347,9 @@ class FileAnalyzer extends SourceAnalyzer
             }
 
             // this can happen when stubbing
-            if (!$this->codebase->interfaceExists($stmt->name->name)) {
+            if (!$this->codebase->interfaceExists($stmt->name->name)
+                && !(Transpiler::isEnabled() && Transpiler::isRuntimeStubFile($this->file_path))
+            ) {
                 return;
             }
 
