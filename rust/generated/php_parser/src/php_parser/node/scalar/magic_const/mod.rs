@@ -579,8 +579,8 @@ impl Clone for Trait_Obj { fn clone(&self) -> Self { Trait_Obj { attributes: sel
 impl Trait_ {
 }
 impl php_rt::Truthy for Class_ { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for Class_ { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Scalar\\MagicConst\\Class_")) } }
 impl php_rt::Identical for Class_ { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for Class_ { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Scalar\\MagicConst\\Class_")) } }
 impl php_rt::PhpCmp for Class_ { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for Class_ { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for Class_ { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
@@ -592,8 +592,8 @@ impl php_rt::InstanceOf<Class_> for AnyObject { fn is_instance(&self) -> bool { 
 impl php_rt::InstanceOf<Class_> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\scalar\\magicconst\\class_") } }
 impl php_rt::InstanceOf<Class_> for Class_ { fn is_instance(&self) -> bool { true } }
 impl php_rt::Truthy for Dir { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for Dir { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Scalar\\MagicConst\\Dir")) } }
 impl php_rt::Identical for Dir { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for Dir { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Scalar\\MagicConst\\Dir")) } }
 impl php_rt::PhpCmp for Dir { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for Dir { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for Dir { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
@@ -605,8 +605,8 @@ impl php_rt::InstanceOf<Dir> for AnyObject { fn is_instance(&self) -> bool { sel
 impl php_rt::InstanceOf<Dir> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\scalar\\magicconst\\dir") } }
 impl php_rt::InstanceOf<Dir> for Dir { fn is_instance(&self) -> bool { true } }
 impl php_rt::Truthy for File { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for File { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Scalar\\MagicConst\\File")) } }
 impl php_rt::Identical for File { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for File { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Scalar\\MagicConst\\File")) } }
 impl php_rt::PhpCmp for File { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for File { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for File { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
@@ -618,8 +618,8 @@ impl php_rt::InstanceOf<File> for AnyObject { fn is_instance(&self) -> bool { se
 impl php_rt::InstanceOf<File> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\scalar\\magicconst\\file") } }
 impl php_rt::InstanceOf<File> for File { fn is_instance(&self) -> bool { true } }
 impl php_rt::Truthy for Function_ { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for Function_ { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Scalar\\MagicConst\\Function_")) } }
 impl php_rt::Identical for Function_ { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for Function_ { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Scalar\\MagicConst\\Function_")) } }
 impl php_rt::PhpCmp for Function_ { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for Function_ { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for Function_ { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
@@ -631,8 +631,8 @@ impl php_rt::InstanceOf<Function_> for AnyObject { fn is_instance(&self) -> bool
 impl php_rt::InstanceOf<Function_> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\scalar\\magicconst\\function_") } }
 impl php_rt::InstanceOf<Function_> for Function_ { fn is_instance(&self) -> bool { true } }
 impl php_rt::Truthy for Line { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for Line { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Scalar\\MagicConst\\Line")) } }
 impl php_rt::Identical for Line { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for Line { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Scalar\\MagicConst\\Line")) } }
 impl php_rt::PhpCmp for Line { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for Line { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for Line { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
@@ -644,8 +644,8 @@ impl php_rt::InstanceOf<Line> for AnyObject { fn is_instance(&self) -> bool { se
 impl php_rt::InstanceOf<Line> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\scalar\\magicconst\\line") } }
 impl php_rt::InstanceOf<Line> for Line { fn is_instance(&self) -> bool { true } }
 impl php_rt::Truthy for Method { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for Method { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Scalar\\MagicConst\\Method")) } }
 impl php_rt::Identical for Method { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for Method { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Scalar\\MagicConst\\Method")) } }
 impl php_rt::PhpCmp for Method { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for Method { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for Method { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
@@ -657,8 +657,8 @@ impl php_rt::InstanceOf<Method> for AnyObject { fn is_instance(&self) -> bool { 
 impl php_rt::InstanceOf<Method> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\scalar\\magicconst\\method") } }
 impl php_rt::InstanceOf<Method> for Method { fn is_instance(&self) -> bool { true } }
 impl php_rt::Truthy for Namespace_ { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for Namespace_ { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Scalar\\MagicConst\\Namespace_")) } }
 impl php_rt::Identical for Namespace_ { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for Namespace_ { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Scalar\\MagicConst\\Namespace_")) } }
 impl php_rt::PhpCmp for Namespace_ { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for Namespace_ { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for Namespace_ { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
@@ -670,8 +670,8 @@ impl php_rt::InstanceOf<Namespace_> for AnyObject { fn is_instance(&self) -> boo
 impl php_rt::InstanceOf<Namespace_> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\scalar\\magicconst\\namespace_") } }
 impl php_rt::InstanceOf<Namespace_> for Namespace_ { fn is_instance(&self) -> bool { true } }
 impl php_rt::Truthy for Property { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for Property { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Scalar\\MagicConst\\Property")) } }
 impl php_rt::Identical for Property { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for Property { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Scalar\\MagicConst\\Property")) } }
 impl php_rt::PhpCmp for Property { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for Property { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for Property { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
@@ -683,8 +683,8 @@ impl php_rt::InstanceOf<Property> for AnyObject { fn is_instance(&self) -> bool 
 impl php_rt::InstanceOf<Property> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\scalar\\magicconst\\property") } }
 impl php_rt::InstanceOf<Property> for Property { fn is_instance(&self) -> bool { true } }
 impl php_rt::Truthy for Trait_ { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for Trait_ { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Scalar\\MagicConst\\Trait_")) } }
 impl php_rt::Identical for Trait_ { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for Trait_ { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Scalar\\MagicConst\\Trait_")) } }
 impl php_rt::PhpCmp for Trait_ { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for Trait_ { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for Trait_ { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }

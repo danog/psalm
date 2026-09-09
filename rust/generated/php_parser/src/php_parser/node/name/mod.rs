@@ -233,8 +233,8 @@ impl Clone for RelativeObj { fn clone(&self) -> Self { RelativeObj { attributes:
 impl Relative {
 }
 impl php_rt::Truthy for FullyQualified { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for FullyQualified { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Name\\FullyQualified")) } }
 impl php_rt::Identical for FullyQualified { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for FullyQualified { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Name\\FullyQualified")) } }
 impl php_rt::PhpCmp for FullyQualified { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for FullyQualified { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for FullyQualified { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
@@ -246,8 +246,8 @@ impl php_rt::InstanceOf<FullyQualified> for AnyObject { fn is_instance(&self) ->
 impl php_rt::InstanceOf<FullyQualified> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\name\\fullyqualified") } }
 impl php_rt::InstanceOf<FullyQualified> for FullyQualified { fn is_instance(&self) -> bool { true } }
 impl php_rt::Truthy for Relative { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for Relative { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Name\\Relative")) } }
 impl php_rt::Identical for Relative { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for Relative { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Name\\Relative")) } }
 impl php_rt::PhpCmp for Relative { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for Relative { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for Relative { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }

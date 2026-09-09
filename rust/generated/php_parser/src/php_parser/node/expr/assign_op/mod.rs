@@ -1004,8 +1004,8 @@ impl Clone for ShiftRightObj { fn clone(&self) -> Self { ShiftRightObj { attribu
 impl ShiftRight {
 }
 impl php_rt::Truthy for BitwiseAnd { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for BitwiseAnd { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\BitwiseAnd")) } }
 impl php_rt::Identical for BitwiseAnd { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for BitwiseAnd { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\BitwiseAnd")) } }
 impl php_rt::PhpCmp for BitwiseAnd { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for BitwiseAnd { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for BitwiseAnd { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
@@ -1017,8 +1017,8 @@ impl php_rt::InstanceOf<BitwiseAnd> for AnyObject { fn is_instance(&self) -> boo
 impl php_rt::InstanceOf<BitwiseAnd> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\assignop\\bitwiseand") } }
 impl php_rt::InstanceOf<BitwiseAnd> for BitwiseAnd { fn is_instance(&self) -> bool { true } }
 impl php_rt::Truthy for BitwiseOr { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for BitwiseOr { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\BitwiseOr")) } }
 impl php_rt::Identical for BitwiseOr { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for BitwiseOr { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\BitwiseOr")) } }
 impl php_rt::PhpCmp for BitwiseOr { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for BitwiseOr { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for BitwiseOr { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
@@ -1030,8 +1030,8 @@ impl php_rt::InstanceOf<BitwiseOr> for AnyObject { fn is_instance(&self) -> bool
 impl php_rt::InstanceOf<BitwiseOr> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\assignop\\bitwiseor") } }
 impl php_rt::InstanceOf<BitwiseOr> for BitwiseOr { fn is_instance(&self) -> bool { true } }
 impl php_rt::Truthy for BitwiseXor { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for BitwiseXor { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\BitwiseXor")) } }
 impl php_rt::Identical for BitwiseXor { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for BitwiseXor { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\BitwiseXor")) } }
 impl php_rt::PhpCmp for BitwiseXor { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for BitwiseXor { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for BitwiseXor { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
@@ -1043,8 +1043,8 @@ impl php_rt::InstanceOf<BitwiseXor> for AnyObject { fn is_instance(&self) -> boo
 impl php_rt::InstanceOf<BitwiseXor> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\assignop\\bitwisexor") } }
 impl php_rt::InstanceOf<BitwiseXor> for BitwiseXor { fn is_instance(&self) -> bool { true } }
 impl php_rt::Truthy for Coalesce { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for Coalesce { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Coalesce")) } }
 impl php_rt::Identical for Coalesce { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for Coalesce { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Coalesce")) } }
 impl php_rt::PhpCmp for Coalesce { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for Coalesce { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for Coalesce { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
@@ -1056,8 +1056,8 @@ impl php_rt::InstanceOf<Coalesce> for AnyObject { fn is_instance(&self) -> bool 
 impl php_rt::InstanceOf<Coalesce> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\assignop\\coalesce") } }
 impl php_rt::InstanceOf<Coalesce> for Coalesce { fn is_instance(&self) -> bool { true } }
 impl php_rt::Truthy for Concat { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for Concat { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Concat")) } }
 impl php_rt::Identical for Concat { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for Concat { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Concat")) } }
 impl php_rt::PhpCmp for Concat { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for Concat { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for Concat { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
@@ -1069,8 +1069,8 @@ impl php_rt::InstanceOf<Concat> for AnyObject { fn is_instance(&self) -> bool { 
 impl php_rt::InstanceOf<Concat> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\assignop\\concat") } }
 impl php_rt::InstanceOf<Concat> for Concat { fn is_instance(&self) -> bool { true } }
 impl php_rt::Truthy for Div { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for Div { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Div")) } }
 impl php_rt::Identical for Div { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for Div { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Div")) } }
 impl php_rt::PhpCmp for Div { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for Div { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for Div { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
@@ -1082,8 +1082,8 @@ impl php_rt::InstanceOf<Div> for AnyObject { fn is_instance(&self) -> bool { sel
 impl php_rt::InstanceOf<Div> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\assignop\\div") } }
 impl php_rt::InstanceOf<Div> for Div { fn is_instance(&self) -> bool { true } }
 impl php_rt::Truthy for Minus { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for Minus { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Minus")) } }
 impl php_rt::Identical for Minus { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for Minus { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Minus")) } }
 impl php_rt::PhpCmp for Minus { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for Minus { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for Minus { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
@@ -1095,8 +1095,8 @@ impl php_rt::InstanceOf<Minus> for AnyObject { fn is_instance(&self) -> bool { s
 impl php_rt::InstanceOf<Minus> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\assignop\\minus") } }
 impl php_rt::InstanceOf<Minus> for Minus { fn is_instance(&self) -> bool { true } }
 impl php_rt::Truthy for Mod { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for Mod { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Mod")) } }
 impl php_rt::Identical for Mod { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for Mod { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Mod")) } }
 impl php_rt::PhpCmp for Mod { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for Mod { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for Mod { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
@@ -1108,8 +1108,8 @@ impl php_rt::InstanceOf<Mod> for AnyObject { fn is_instance(&self) -> bool { sel
 impl php_rt::InstanceOf<Mod> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\assignop\\mod") } }
 impl php_rt::InstanceOf<Mod> for Mod { fn is_instance(&self) -> bool { true } }
 impl php_rt::Truthy for Mul { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for Mul { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Mul")) } }
 impl php_rt::Identical for Mul { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for Mul { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Mul")) } }
 impl php_rt::PhpCmp for Mul { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for Mul { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for Mul { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
@@ -1121,8 +1121,8 @@ impl php_rt::InstanceOf<Mul> for AnyObject { fn is_instance(&self) -> bool { sel
 impl php_rt::InstanceOf<Mul> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\assignop\\mul") } }
 impl php_rt::InstanceOf<Mul> for Mul { fn is_instance(&self) -> bool { true } }
 impl php_rt::Truthy for Plus { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for Plus { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Plus")) } }
 impl php_rt::Identical for Plus { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for Plus { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Plus")) } }
 impl php_rt::PhpCmp for Plus { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for Plus { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for Plus { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
@@ -1134,8 +1134,8 @@ impl php_rt::InstanceOf<Plus> for AnyObject { fn is_instance(&self) -> bool { se
 impl php_rt::InstanceOf<Plus> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\assignop\\plus") } }
 impl php_rt::InstanceOf<Plus> for Plus { fn is_instance(&self) -> bool { true } }
 impl php_rt::Truthy for Pow { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for Pow { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Pow")) } }
 impl php_rt::Identical for Pow { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for Pow { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Pow")) } }
 impl php_rt::PhpCmp for Pow { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for Pow { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for Pow { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
@@ -1147,8 +1147,8 @@ impl php_rt::InstanceOf<Pow> for AnyObject { fn is_instance(&self) -> bool { sel
 impl php_rt::InstanceOf<Pow> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\assignop\\pow") } }
 impl php_rt::InstanceOf<Pow> for Pow { fn is_instance(&self) -> bool { true } }
 impl php_rt::Truthy for ShiftLeft { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for ShiftLeft { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\ShiftLeft")) } }
 impl php_rt::Identical for ShiftLeft { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for ShiftLeft { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\ShiftLeft")) } }
 impl php_rt::PhpCmp for ShiftLeft { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for ShiftLeft { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for ShiftLeft { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
@@ -1160,8 +1160,8 @@ impl php_rt::InstanceOf<ShiftLeft> for AnyObject { fn is_instance(&self) -> bool
 impl php_rt::InstanceOf<ShiftLeft> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\assignop\\shiftleft") } }
 impl php_rt::InstanceOf<ShiftLeft> for ShiftLeft { fn is_instance(&self) -> bool { true } }
 impl php_rt::Truthy for ShiftRight { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for ShiftRight { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\ShiftRight")) } }
 impl php_rt::Identical for ShiftRight { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for ShiftRight { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\ShiftRight")) } }
 impl php_rt::PhpCmp for ShiftRight { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for ShiftRight { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for ShiftRight { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }

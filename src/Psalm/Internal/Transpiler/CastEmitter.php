@@ -265,9 +265,14 @@ final class CastEmitter
         $h = $cls->handle();
         $ht = RustType::class($cls->fqcn);
         // Truthy / ToStr / Identical / PhpCmp on the handle type
-        $w->line('impl php_rt::Truthy for ' . $h . ' { fn truthy(&self) -> bool { true } }');
+        if ($cls->isLeaf()) {
+            $w->line('impl php_rt::Truthy for ' . $h . ' { fn truthy(&self) -> bool { true } }');
+            $w->line('impl php_rt::Identical for ' . $h . ' { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }');
+        } else {
+            $w->line('impl php_rt::Truthy for ' . $h . ' { fn truthy(&self) -> bool { match self { ' . $h . '::Other__(__m) => truthy(__m), _ => true } } }');
+            $w->line('impl php_rt::Identical for ' . $h . ' { fn identical(&self, o: &Self) -> bool { match (self, o) { (' . $h . '::Other__(a), ' . $h . '::Other__(b)) => identical(a, b), (' . $h . '::Other__(_), _) | (_, ' . $h . '::Other__(_)) => false, _ => self.obj_id() == o.obj_id() } } }');
+        }
         $w->line('impl php_rt::ToStr for ' . $h . ' { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static(' . Names::rustStringLiteral($cls->fqcn) . ')) } }');
-        $w->line('impl php_rt::Identical for ' . $h . ' { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }');
         $w->line('impl php_rt::PhpCmp for ' . $h . ' { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }');
         $w->line('impl std::fmt::Debug for ' . $h . ' { fn fmt(&self, f: &mut std::fmt::Formatter<\'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }');
         // to Mixed: store the concrete own handle
@@ -275,6 +280,7 @@ final class CastEmitter
             $w->line('impl php_rt::CastTo<Mixed> for ' . $h . ' { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }');
         } else {
             $arms = array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(v) => Mixed::Obj(Rc::new(v))', $cls->concrete);
+            $arms[] = $h . '::Other__(m) => m';
             $w->line('impl php_rt::CastTo<Mixed> for ' . $h . ' { fn cast_to(self) -> Mixed { match self { ' . implode(', ', $arms) . ($arms ? ', ' : '') . '_ => unreachable!() } } }');
             if ($cls->isConcrete()) {
                 $own = $cls->ownHandle();
@@ -290,14 +296,19 @@ final class CastEmitter
             $arms[] = 'if let Some(v) = o.as_any().downcast_ref::<' . $c->ownPath() . '>() { return ' . $this->wrapConcrete($cls, $c, 'v.clone()') . '; }';
             $some_arms[] = 'if let Some(v) = o.as_any().downcast_ref::<' . $c->ownPath() . '>() { return Some(' . $this->wrapConcrete($cls, $c, 'v.clone()') . '); }';
         }
-        $w->line('impl php_rt::CastTo<' . $h . '> for Mixed { fn cast_to(self) -> ' . $h . ' { if let Mixed::Obj(o) = &self { ' . implode(' ', $arms) . ' } panic!(' . Names::rustStringLiteral('Mixed value is not a ' . $cls->fqcn) . ') } }');
+        $fallback = $cls->isLeaf() ? 'panic!(' . Names::rustStringLiteral('Mixed value is not a ' . $cls->fqcn) . ')' : $h . '::Other__(self)';
+        $w->line('impl php_rt::CastTo<' . $h . '> for Mixed { fn cast_to(self) -> ' . $h . ' { if let Mixed::Obj(o) = &self { ' . implode(' ', $arms) . ' } ' . $fallback . ' } }');
         $w->line('impl php_rt::TryDowncast for ' . $h . ' { fn try_downcast(o: &AnyObj) -> Option<Self> { ' . implode(' ', $some_arms) . ' None } }');
         // AnyObject
         $w->line('impl php_rt::CastTo<AnyObject> for ' . $h . ' { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }');
         $w->line('impl php_rt::CastTo<' . $h . '> for AnyObject { fn cast_to(self) -> ' . $h . ' { cast::<' . $h . '>(cast::<Mixed>(self)) } }');
         $w->line('impl php_rt::InstanceOf<' . $h . '> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name(' . Names::rustStringLiteral(strtolower($cls->fqcn)) . ') } }');
         $w->line('impl php_rt::InstanceOf<' . $h . '> for Mixed { fn is_instance(&self) -> bool { self.instance_of(' . Names::rustStringLiteral(strtolower($cls->fqcn)) . ') } }');
-        $w->line('impl php_rt::InstanceOf<' . $h . '> for ' . $h . ' { fn is_instance(&self) -> bool { true } }');
+        if ($cls->isLeaf()) {
+            $w->line('impl php_rt::InstanceOf<' . $h . '> for ' . $h . ' { fn is_instance(&self) -> bool { true } }');
+        } else {
+            $w->line('impl php_rt::InstanceOf<' . $h . '> for ' . $h . ' { fn is_instance(&self) -> bool { match self { ' . $h . '::Other__(__m) => __m.instance_of(' . Names::rustStringLiteral(strtolower($cls->fqcn)) . '), _ => true } } }');
+        }
     }
 
     /** Wrap a concrete own handle value into the handle type of `$cls`. */
@@ -566,6 +577,8 @@ final class CastEmitter
             // upcast of a leaf into an ancestor enum, or (impossible) sideways cast
             if ($fc->isSubclassOf($tc)) {
                 $body = $tc->isLeaf() ? 'self' : $th . '::' . $fc->variant() . '(self)';
+            } elseif (!$tc->isLeaf()) {
+                $body = $th . '::Other__(Mixed::Obj(Rc::new(self)))';
             } else {
                 $body = 'panic!(' . Names::rustStringLiteral('cannot cast ' . $fc->fqcn . ' to ' . $tc->fqcn) . ')';
             }
@@ -575,10 +588,14 @@ final class CastEmitter
         foreach ($fc->concrete as $c) {
             if ($c->isSubclassOf($tc)) {
                 $arms[] = $fh . '::' . $c->variant() . '(v) => ' . $this->wrapConcrete($tc, $c, 'v');
-            } else {
+            } elseif ($tc->isLeaf()) {
                 $arms[] = $fh . '::' . $c->variant() . '(_) => panic!(' . Names::rustStringLiteral('cannot cast ' . $c->fqcn . ' to ' . $tc->fqcn) . ')';
+            } else {
+                // not an instance of the target: carried through its escape variant
+                $arms[] = $fh . '::' . $c->variant() . '(v) => ' . $th . '::Other__(Mixed::Obj(Rc::new(v)))';
             }
         }
+        $arms[] = $fh . '::Other__(m) => ' . $this->conv('m', RustType::mixed(), $to);
         $w->line('impl php_rt::CastTo<' . $th . '> for ' . $fh . ' { fn cast_to(self) -> ' . $th . ' { match self { ' . implode(', ', $arms) . ($arms ? ', ' : '') . '_ => unreachable!() } } }');
     }
 
@@ -604,7 +621,8 @@ final class CastEmitter
                     $yes[] = $subject->toRust() . '::' . $c->variant() . '(_)';
                 }
             }
-            $body = $yes === [] ? 'false' : 'matches!(self, ' . implode(' | ', $yes) . ')';
+            $other = $subject->toRust() . '::Other__(__m) => __m.instance_of(' . Names::rustStringLiteral(strtolower($tc->fqcn)) . ')';
+            $body = 'match self { ' . ($yes === [] ? '' : implode(' | ', $yes) . ' => true, ') . $other . ', _ => false }';
             $w->line('impl php_rt::InstanceOf<' . $th . '> for ' . $subject->toRust() . ' { fn is_instance(&self) -> bool { ' . $body . ' } }');
             return;
         }

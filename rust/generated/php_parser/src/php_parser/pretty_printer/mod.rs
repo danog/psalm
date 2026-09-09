@@ -1105,8 +1105,8 @@ impl Clone for StandardObj { fn clone(&self) -> Self { StandardObj { precedenceM
 impl Standard {
 }
 impl php_rt::Truthy for Standard { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for Standard { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\PrettyPrinter\\Standard")) } }
 impl php_rt::Identical for Standard { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for Standard { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\PrettyPrinter\\Standard")) } }
 impl php_rt::PhpCmp for Standard { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for Standard { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for Standard { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }

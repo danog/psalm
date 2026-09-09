@@ -103,8 +103,8 @@ impl Clone for DocObj { fn clone(&self) -> Self { DocObj { text: self.text.clone
 impl Doc {
 }
 impl php_rt::Truthy for Doc { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for Doc { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Comment\\Doc")) } }
 impl php_rt::Identical for Doc { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for Doc { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Comment\\Doc")) } }
 impl php_rt::PhpCmp for Doc { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for Doc { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for Doc { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }

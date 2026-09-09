@@ -59,6 +59,8 @@ final class ClassEmitter
             foreach ($cls->concrete as $c) {
                 $w->line($c->variant() . '(' . $c->ownPath() . '),');
             }
+            // escape hatch for values that are not instances of this class (docblocks lying)
+            $w->line('Other__(Mixed),');
             $w->close();
             $this->emitEnumHandleImpls($cls, $w);
         }
@@ -572,7 +574,7 @@ final class ClassEmitter
     private function emitEnumHandleImpls(ClassModel $cls, Writer $w): void
     {
         $h = $cls->handle();
-        $arms = fn(string $call) => implode(', ', array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => __h.' . $call, $cls->concrete)) . ($cls->concrete ? ', ' : '') . '_ => unreachable!()';
+        $arms = fn(string $call) => implode(', ', array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => __h.' . $call, $cls->concrete)) . ($cls->concrete ? ', ' : '') . $h . '::Other__(__m) => php_rt::other_obj(__m).' . $call . ', _ => unreachable!()';
         $w->open('impl php_rt::PhpObject for ' . $h . ' {');
         $w->line('fn class_name(&self) -> &\'static str { match self { ' . $arms('class_name()') . ' } }');
         $w->line('fn class_ancestors(&self) -> &\'static [&\'static str] { match self { ' . $arms('class_ancestors()') . ' } }');
@@ -584,8 +586,9 @@ final class ClassEmitter
         $w->line('fn call_method(&self, name: &str, args: Vec<Mixed>) -> Result<Mixed, DynError> { match self { ' . $arms('call_method(name, args)') . ' } }');
         $w->line('fn public_props(&self) -> Vec<(Str, Mixed)> { match self { ' . $arms('public_props()') . ' } }');
         $w->close();
-        $w->line('impl ' . $h . ' { pub fn to_php_string(&self) -> Result<Str, Throw> { match self { ' . $arms('to_php_string()') . ' } } }');
-        $w->line('impl php_rt::PhpClone for ' . $h . ' { fn php_clone(&self) -> Self { match self { ' . implode(', ', array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => ' . $h . '::' . $c->variant() . '(__h.php_clone())', $cls->concrete)) . ($cls->concrete ? ', ' : '') . '_ => unreachable!() } } }');
+        $to_string_arms = implode(', ', array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => __h.to_php_string()', $cls->concrete)) . ($cls->concrete ? ', ' : '') . $h . '::Other__(__m) => Ok(to_str(__m)), _ => unreachable!()';
+        $w->line('impl ' . $h . ' { pub fn to_php_string(&self) -> Result<Str, Throw> { match self { ' . $to_string_arms . ' } } }');
+        $w->line('impl php_rt::PhpClone for ' . $h . ' { fn php_clone(&self) -> Self { match self { ' . implode(', ', array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => ' . $h . '::' . $c->variant() . '(__h.php_clone())', $cls->concrete)) . ($cls->concrete ? ', ' : '') . '' . $h . '::Other__(__m) => ' . $h . '::Other__(__m.clone()), _ => unreachable!() } } }');
     }
 
     private function emitFactory(ClassModel $cls, Writer $w): void

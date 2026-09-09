@@ -154,7 +154,7 @@ impl CollectingTest {
     errorHandler.get().clone().handleError({ let __t1 = crate::php_parser::Error::new(Str::from_static("Test 1"), Map::<Str, Mixed>::new())?; e1.set(__t1.clone()); __t1 })?;
     errorHandler.get().clone().handleError({ let __t2 = crate::php_parser::Error::new(Str::from_static("Test 2"), Map::<Str, Mixed>::new())?; e2.set(__t2.clone()); __t2 })?;
     { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>(errorHandler.get().clone().hasErrors()?), Str::from_static(""))? };
-    { let _ = self; crate::phpunit::framework::Assert::assertSame({ let __c1235 = (e1.get().clone(), e2.get().clone()); let mut __m: Map<ArrayKey, Mixed> = Map::new(); __m.push(cast::<Mixed>(__c1235.0)); __m.push(cast::<Mixed>(__c1235.1)); Mixed::Arr(__m) }, cast::<Mixed>(errorHandler.get().clone().getErrors()?), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertSame({ let __c1252 = (e1.get().clone(), e2.get().clone()); let mut __m: Map<ArrayKey, Mixed> = Map::new(); __m.push(cast::<Mixed>(__c1252.0)); __m.push(cast::<Mixed>(__c1252.1)); Mixed::Arr(__m) }, cast::<Mixed>(errorHandler.get().clone().getErrors()?), Str::from_static(""))? };
     errorHandler.get().clone().clearErrors()?;
     { let _ = self; crate::phpunit::framework::Assert::assertFalse(cast::<Mixed>(errorHandler.get().clone().hasErrors()?), Str::from_static(""))? };
     { let _ = self; crate::phpunit::framework::Assert::assertEmpty(cast::<Mixed>(errorHandler.get().clone().getErrors()?), Str::from_static(""))? };
@@ -384,8 +384,8 @@ impl Clone for ThrowingTestObj { fn clone(&self) -> Self { ThrowingTestObj { exp
 impl ThrowingTest {
 }
 impl php_rt::Truthy for Collecting { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for Collecting { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\ErrorHandler\\Collecting")) } }
 impl php_rt::Identical for Collecting { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for Collecting { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\ErrorHandler\\Collecting")) } }
 impl php_rt::PhpCmp for Collecting { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for Collecting { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for Collecting { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
@@ -397,8 +397,8 @@ impl php_rt::InstanceOf<Collecting> for AnyObject { fn is_instance(&self) -> boo
 impl php_rt::InstanceOf<Collecting> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\errorhandler\\collecting") } }
 impl php_rt::InstanceOf<Collecting> for Collecting { fn is_instance(&self) -> bool { true } }
 impl php_rt::Truthy for Throwing { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for Throwing { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\ErrorHandler\\Throwing")) } }
 impl php_rt::Identical for Throwing { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for Throwing { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\ErrorHandler\\Throwing")) } }
 impl php_rt::PhpCmp for Throwing { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for Throwing { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for Throwing { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
@@ -410,8 +410,8 @@ impl php_rt::InstanceOf<Throwing> for AnyObject { fn is_instance(&self) -> bool 
 impl php_rt::InstanceOf<Throwing> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\errorhandler\\throwing") } }
 impl php_rt::InstanceOf<Throwing> for Throwing { fn is_instance(&self) -> bool { true } }
 impl php_rt::Truthy for CollectingTest { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for CollectingTest { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\ErrorHandler\\CollectingTest")) } }
 impl php_rt::Identical for CollectingTest { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for CollectingTest { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\ErrorHandler\\CollectingTest")) } }
 impl php_rt::PhpCmp for CollectingTest { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for CollectingTest { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for CollectingTest { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
@@ -423,8 +423,8 @@ impl php_rt::InstanceOf<CollectingTest> for AnyObject { fn is_instance(&self) ->
 impl php_rt::InstanceOf<CollectingTest> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\errorhandler\\collectingtest") } }
 impl php_rt::InstanceOf<CollectingTest> for CollectingTest { fn is_instance(&self) -> bool { true } }
 impl php_rt::Truthy for ThrowingTest { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for ThrowingTest { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\ErrorHandler\\ThrowingTest")) } }
 impl php_rt::Identical for ThrowingTest { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for ThrowingTest { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\ErrorHandler\\ThrowingTest")) } }
 impl php_rt::PhpCmp for ThrowingTest { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for ThrowingTest { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for ThrowingTest { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }

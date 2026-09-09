@@ -198,8 +198,8 @@ impl Clone for PrecedenceObj { fn clone(&self) -> Self { PrecedenceObj { attribu
 impl Precedence {
 }
 impl php_rt::Truthy for Alias { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for Alias { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Stmt\\TraitUseAdaptation\\Alias")) } }
 impl php_rt::Identical for Alias { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for Alias { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Stmt\\TraitUseAdaptation\\Alias")) } }
 impl php_rt::PhpCmp for Alias { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for Alias { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for Alias { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
@@ -211,8 +211,8 @@ impl php_rt::InstanceOf<Alias> for AnyObject { fn is_instance(&self) -> bool { s
 impl php_rt::InstanceOf<Alias> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\stmt\\traituseadaptation\\alias") } }
 impl php_rt::InstanceOf<Alias> for Alias { fn is_instance(&self) -> bool { true } }
 impl php_rt::Truthy for Precedence { fn truthy(&self) -> bool { true } }
-impl php_rt::ToStr for Precedence { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Stmt\\TraitUseAdaptation\\Precedence")) } }
 impl php_rt::Identical for Precedence { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::ToStr for Precedence { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Stmt\\TraitUseAdaptation\\Precedence")) } }
 impl php_rt::PhpCmp for Precedence { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
 impl std::fmt::Debug for Precedence { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
 impl php_rt::CastTo<Mixed> for Precedence { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
