@@ -444,7 +444,7 @@ trait ExprTrait
                 }
                 [$ft, $opt] = $target->fields[$key];
                 $code = $this->exprTo($item->value, $ft);
-                $fields[Names::field($key)] = $opt ? $this->casts->convert($code, $ft, RustType::option($ft)) : $code;
+                $fields[Names::field($key)] = $opt ? $this->casts->convert($code, $ft, RustType::shapeField($ft, true)) : $code;
                 $seen[$key] = true;
             }
             foreach ($target->fields as $k => [$ft, $opt]) {
@@ -999,10 +999,6 @@ trait ExprTrait
                 if ($key !== null && isset($bt->fields[$key])) {
                     [$ft, $opt] = $bt->fields[$key];
                     $code = $base->code . '.and_then(|__b| ' . ($opt ? '__b.' . Names::field($key) : 'Some(__b.' . Names::field($key) . ')') . ')';
-                    if ($opt && $ft->kind === RustType::OPTION) {
-                        // optional nullable field: stored as a single (collapsed) Option
-                        return new Val($code, $ft);
-                    }
                     return $this->flattenOption($code, $ft);
                 }
                 if ($key !== null) {

@@ -111,6 +111,23 @@ final class RustType
         }
         return self::intern(new self(self::OPTION, [$inner]));
     }
+    /**
+     * A non-collapsing Option: `Option<Option<T>>` is how an optional *and* nullable shape field is
+     * stored, so that "key absent" and "key present with null" stay distinct (`array_key_exists`).
+     */
+    public static function optionRaw(RustType $inner): RustType
+    {
+        return self::intern(new self(self::OPTION, [$inner]));
+    }
+    /** Storage type of a shape field declared as `$t` (optional when `$opt`). */
+    public static function shapeField(RustType $t, bool $opt): RustType
+    {
+        return $opt ? self::optionRaw($t) : $t;
+    }
+    public function isNestedOption(): bool
+    {
+        return $this->kind === self::OPTION && $this->params[0]->kind === self::OPTION;
+    }
     public static function list(RustType $elem): RustType
     {
         return self::intern(new self(self::LIST, [$elem]));

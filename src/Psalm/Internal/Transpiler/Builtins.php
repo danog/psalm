@@ -407,7 +407,13 @@ final class Builtins
                 $codes[] = $v->type->kind === RustType::FLOAT ? 'Num::Float(' . $v->code . ')' : 'Num::Int(' . $b->casts->convert($v->code, $v->type, RustType::int()) . ')';
                 continue;
             }
-            $code = $b->exprTo($arg->value, $t);
+            if ($letter === 'm') {
+                // a Mixed argument takes the value with its declared type: no narrowing unwrap can fail
+                $rv = $b->rawValue($arg->value);
+                $code = $b->casts->convert($rv->code, $rv->type, RustType::mixed());
+            } else {
+                $code = $b->exprTo($arg->value, $t);
+            }
             if ($optional) {
                 $codes[] = 'Some(' . ($byref ? '&' : '') . $code . ')';
             } else {
@@ -1131,6 +1137,16 @@ final class Builtins
 
     private function f_array_key_exists(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
+        $sv = $b->expr($args[1]->value);
+        $st = $sv->type->kind === RustType::OPTION ? $sv->type->inner() : $sv->type;
+        $key = $b->literalKey($args[0]->value);
+        if ($st->kind === RustType::SHAPE && $key !== null) {
+            if (!isset($st->fields[$key])) {
+                return new Val('{ let _ = ' . $sv->code . '; false }', RustType::bool());
+            }
+            $acc = $sv->type->kind === RustType::OPTION ? $sv->code . '.map_or(false, |__s| __s.' . Names::field($key) . '.is_some())' : $sv->code . '.' . Names::field($key) . '.is_some()';
+            return new Val($st->fields[$key][1] ? $acc : '{ let _ = ' . $sv->code . '; true }', RustType::bool());
+        }
         $c = $this->container($b, $args[1]->value);
         if ($c->type->kind === RustType::LIST) {
             return new Val('array_key_exists_l(' . $b->exprTo($args[0]->value, RustType::int()) . ', &' . $c->code . ')', RustType::bool());

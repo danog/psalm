@@ -58,6 +58,21 @@ final class Casts
         return '__c' . (++$this->tmp);
     }
 
+    /**
+     * Lookup-style Option mapping: `None` (key absent) stays `None`, `Some(v)` converts the value
+     * (a `Mixed` null becomes an absent key unless the target itself is nullable).
+     */
+    public function optionMap(string $code, RustType $a, RustType $b): string
+    {
+        if ($a->toRust() === $b->toRust()) {
+            return $code;
+        }
+        if ($a->kind === RustType::MIXED && $b->kind !== RustType::OPTION && $b->kind !== RustType::MIXED) {
+            return $code . '.and_then(|__m| __m.to_option()).map(|__v| ' . $this->convert('__v', $a, $b) . ')';
+        }
+        return $code . '.map(|__v| ' . $this->convert('__v', $a, $b) . ')';
+    }
+
     /** Emit code converting `$code` (a value of type `$from`) into a value of type `$to`. */
     public function convert(string $code, RustType $from, RustType $to): string
     {
@@ -108,6 +123,21 @@ final class Casts
             }
             $this->needMixedFrom($from);
             return 'cast::<Mixed>(' . $code . ')';
+        }
+        // optional nullable shape fields are stored as Option<Option<T>>
+        if ($from->isNestedOption()) {
+            if ($to->isNestedOption()) {
+                return $code . '.map(|__v| ' . $this->convert('__v', $from->inner(), $to->inner()) . ')';
+            }
+            // read as a value: absent and null both read as null
+            return $this->convert($code . '.flatten()', $from->inner(), $to);
+        }
+        if ($to->isNestedOption()) {
+            if ($fk === RustType::UNIT) {
+                return '{ let _ = ' . $code . '; Some(None) }';
+            }
+            // storing a value: the key is present (possibly with null)
+            return 'Some(' . $this->convert($code, $from, $to->inner()) . ')';
         }
         if ($fk === RustType::OPTION && $tk === RustType::OPTION) {
             $a = $from->inner();
@@ -250,11 +280,9 @@ final class Casts
                 if (isset($from->fields[$name])) {
                     [$st, $sopt] = $from->fields[$name];
                     $src = $t . '.' . $rn;
-                    $parts[] = $rn . ': ' . $this->convert(
-                        $src,
-                        $sopt ? RustType::option($st) : $st,
-                        $opt ? RustType::option($ft) : $ft,
-                    );
+                    $parts[] = $rn . ': ' . ($sopt && $opt
+                        ? $this->optionMap($src, $st, $ft)
+                        : $this->convert($src, RustType::shapeField($st, $sopt), RustType::shapeField($ft, $opt)));
                 } elseif ($opt) {
                     $parts[] = $rn . ': None';
                 } else {
@@ -287,7 +315,7 @@ final class Casts
                 $rn = Names::field($name);
                 $key = $this->keyLookup($name, $from->params[0]);
                 if ($opt) {
-                    $parts[] = $rn . ': ' . $this->convert($t . '.get(' . $key . ').cloned()', RustType::option($vt), RustType::option($ft));
+                    $parts[] = $rn . ': ' . $this->optionMap($t . '.get(' . $key . ').cloned()', $vt, $ft);
                 } else {
                     $parts[] = $rn . ': ' . $this->convert($t . '.idx(' . $key . ').clone()', $vt, $ft);
                 }
@@ -302,7 +330,7 @@ final class Casts
                 $rn = Names::field($name);
                 $i = (int) $name;
                 if ($opt) {
-                    $parts[] = $rn . ': ' . $this->convert($t . '.get(' . $i . ').cloned()', RustType::option($vt), RustType::option($ft));
+                    $parts[] = $rn . ': ' . $this->optionMap($t . '.get(' . $i . ').cloned()', $vt, $ft);
                 } else {
                     $parts[] = $rn . ': ' . $this->convert($t . '.idx(' . $i . ').clone()', $vt, $ft);
                 }
@@ -316,7 +344,7 @@ final class Casts
                 $name = (string) $i;
                 if (isset($from->fields[$name])) {
                     [$st, $sopt] = $from->fields[$name];
-                    $parts[] = $this->convert($t . '.' . Names::field($name), $sopt ? RustType::option($st) : $st, $p);
+                    $parts[] = $this->convert($t . '.' . Names::field($name), RustType::shapeField($st, $sopt), $p);
                 } else {
                     $parts[] = $this->defaultOf($p);
                 }
@@ -330,7 +358,7 @@ final class Casts
                 $i = (int) $name;
                 $rn = Names::field($name);
                 if (isset($from->params[$i])) {
-                    $parts[] = $rn . ': ' . $this->convert($t . '.' . $i, $from->params[$i], $opt ? RustType::option($ft) : $ft);
+                    $parts[] = $rn . ': ' . $this->convert($t . '.' . $i, $from->params[$i], RustType::shapeField($ft, $opt));
                 } elseif ($opt) {
                     $parts[] = $rn . ': None';
                 } else {
@@ -631,7 +659,7 @@ final class Casts
         }
     }
 
-    private function needMixedTo(RustType $to): void
+    public function needMixedTo(RustType $to): void
     {
         switch ($to->kind) {
             case RustType::CLASS_:

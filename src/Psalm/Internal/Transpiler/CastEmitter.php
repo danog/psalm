@@ -205,7 +205,7 @@ final class CastEmitter
         $w->line('#[derive(Clone' . ($all_default ? ', Default' : '') . ')]');
         $w->open('pub struct ' . $name . ' {');
         foreach ($s->fields as $k => [$t, $opt]) {
-            $w->line('pub ' . Names::field($k) . ': ' . ($opt ? RustType::option($t)->toRust() : $t->toRust()) . ',');
+            $w->line('pub ' . Names::field($k) . ': ' . RustType::shapeField($t, $opt)->toRust() . ',');
         }
         $w->close();
         $w->line('impl php_rt::Truthy for ' . $name . ' { fn truthy(&self) -> bool { ' . (count($s->fields) ? 'true' : 'false') . ' } }');
@@ -231,7 +231,8 @@ final class CastEmitter
         foreach ($s->fields as $k => [$t, $opt]) {
             $key = '&ArrayKey::from(' . Names::strLit($k) . ')';
             if ($opt) {
-                $outs[] = Names::field($k) . ': ' . $this->conv('m.get(' . $key . ').cloned()', RustType::option(RustType::mixed()), RustType::option($t));
+                $this->casts->needMixedTo($t);
+                $outs[] = Names::field($k) . ': ' . $this->casts->optionMap('m.get(' . $key . ').cloned()', RustType::mixed(), $t);
             } else {
                 $outs[] = Names::field($k) . ': ' . $this->conv('m.get(' . $key . ').cloned().unwrap_or_default()', RustType::mixed(), $t);
             }

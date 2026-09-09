@@ -263,10 +263,11 @@ trait LValueTrait
                 [$vt, $opt] = $pt->fields[$k];
                 $rn = Names::field($k);
                 if ($opt) {
+                    $st = RustType::shapeField($vt, true);
                     return new Place(
                         $vt,
-                        fn() => $this->casts->convert($parent->read() . '.' . $rn, RustType::option($vt), $vt),
-                        fn(string $v) => $this->hoisted([$this->casts->convert($v, $vt, RustType::option($vt))], fn(string $v) => $parent->modify(fn(string $p) => $p . '.' . $rn . ' = ' . $v . ';')),
+                        fn() => $this->casts->convert($parent->read() . '.' . $rn, $st, $vt),
+                        fn(string $v) => $this->hoisted([$this->casts->convert($v, $vt, $st)], fn(string $v) => $parent->modify(fn(string $p) => $p . '.' . $rn . ' = ' . $v . ';')),
                         $has_mut ? fn() => '(*' . $parent->mut() . '.' . $rn . '.get_or_insert_with(Default::default))' : null,
                         $wrap,
                     );
@@ -372,7 +373,7 @@ trait LValueTrait
                 [$ft, $opt] = $bt->fields[$k];
                 $rn = Names::field($k);
                 if ($opt) {
-                    return $this->narrowOptional(new Val($base->code . '.' . $rn, RustType::option($ft)), $e);
+                    return $this->narrowOptional(new Val($base->code . '.' . $rn, RustType::shapeField($ft, true)), $e);
                 }
                 return $this->narrow(new Val($base->code . '.' . $rn, $ft), $e);
             }
@@ -664,7 +665,7 @@ trait LValueTrait
                 }
             } elseif ($vt->kind === RustType::SHAPE && $key !== null && isset($vt->fields[$key])) {
                 [$ft, $opt] = $vt->fields[$key];
-                $elem = new Val($opt ? $this->casts->convert($tmp . '.' . Names::field($key) . '.clone()', RustType::option($ft), $ft) : $tmp . '.' . Names::field($key) . '.clone()', $ft);
+                $elem = new Val($opt ? $this->casts->convert($tmp . '.' . Names::field($key) . '.clone()', RustType::shapeField($ft, true), $ft) : $tmp . '.' . Names::field($key) . '.clone()', $ft);
             } elseif ($vt->kind === RustType::LIST) {
                 $elem = new Val($tmp . '.idx(' . (int) $key . ').clone()', $vt->inner());
             } elseif ($vt->kind === RustType::MAP) {
