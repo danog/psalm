@@ -497,7 +497,7 @@ trait CallTrait
     private function newExpr(Expr\New_ $e, ?RustType $expected = null): Val
     {
         $args = $e->getArgs();
-        if ($e->class instanceof Expr\ClassLike) {
+        if ($e->class instanceof \PhpParser\Node\Stmt\Class_) {
             // anonymous class
             $fqcn = $e->class->getAttribute('anonymous_fqcn');
             $cls = null;

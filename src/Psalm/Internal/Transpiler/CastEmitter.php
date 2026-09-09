@@ -150,6 +150,25 @@ final class CastEmitter
                     }
                 }
             }
+            $mc = $m->kind === RustType::CLASS_ ? $this->program->classOf($m) : null;
+            if ($mc !== null) {
+                foreach ($u->params as $o) {
+                    if ($o === $m || $o->kind !== RustType::CLASS_) {
+                        continue;
+                    }
+                    $oc = $this->program->classOf($o);
+                    if ($oc === null || $oc->isSubclassOf($mc)) {
+                        continue;
+                    }
+                    if (!$mc->isLeaf()) {
+                        // unrelated class members are carried through the target's escape variant
+                        $extra .= $name . '::' . $o->variantName() . '(v) => ' . $this->conv($this->conv('v', $o, RustType::mixed()), RustType::mixed(), $m) . ', ';
+                    } elseif (!$oc->isLeaf()) {
+                        // a non-leaf member may hold the target in its own escape variant
+                        $extra .= $name . '::' . $o->variantName() . '(v) => ' . $this->conv('v', $o, $m) . ', ';
+                    }
+                }
+            }
             if ($m->kind === RustType::STR) {
                 // `(string) $x` on the other members: scalars and objects with __toString
                 foreach ($u->params as $o) {
