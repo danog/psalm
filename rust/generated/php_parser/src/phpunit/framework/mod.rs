@@ -693,7 +693,7 @@ impl Assert {
         return Ok(concat(concat(Str::from_static("'"), cast::<Str>(value.clone())), Str::from_static("'")));
     }
     if value.clone().is_object() {
-        return Ok(concat(concat(class_name_of(&cast::<Mixed>(cast::<AnyObject>(value.clone()))), Str::from_static(" Object ")), var_export(&cast::<Mixed>(get_object_vars(&cast::<Mixed>(cast::<AnyObject>(value.clone())))), true)));
+        return Ok(concat(concat(class_name_of(&cast::<Mixed>(cast::<AnyObject>(value.clone()))), Str::from_static(" Object ")), var_export(&cast::<Mixed>(get_object_vars(&value.clone())), true)));
     }
     return Ok(var_export(&value.clone(), true));
     }
@@ -784,7 +784,7 @@ impl Assert {
         if (!identical(&class_name_of(&cast::<Mixed>(cast::<AnyObject>(expected.clone()))), &class_name_of(&cast::<Mixed>(cast::<AnyObject>(actual.clone()))))) {
             return Ok(false);
         }
-        return Ok(crate::phpunit::framework::Assert::looselyEqual(cast::<Mixed>(get_object_vars(&cast::<Mixed>(cast::<AnyObject>(expected.clone())))), cast::<Mixed>(get_object_vars(&cast::<Mixed>(cast::<AnyObject>(actual.clone())))))?);
+        return Ok(crate::phpunit::framework::Assert::looselyEqual(cast::<Mixed>(get_object_vars(&expected.clone())), cast::<Mixed>(get_object_vars(&actual.clone())))?);
     }
     if (expected.clone().is_float() || actual.clone().is_float()) {
         if ((!expected.clone().is_numeric()) || (!actual.clone().is_numeric())) {

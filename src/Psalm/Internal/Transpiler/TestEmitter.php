@@ -234,7 +234,7 @@ final class TestEmitter
                     [$ft, $opt] = $vt->fields[$key];
                     $src = '__row.' . Names::field($key) . '.clone()';
                     $args[] = $opt
-                        ? $this->casts->convert($src, RustType::option($ft), RustType::option($pt)) . '.unwrap_or_default()'
+                        ? $this->casts->convert($src, RustType::shapeField($ft, true), RustType::option($pt)) . '.unwrap_or_default()'
                         : $this->casts->convert($src, $ft, $pt);
                 } else {
                     $args[] = $this->casts->defaultOf($pt);

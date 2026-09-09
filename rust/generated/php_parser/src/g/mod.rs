@@ -3148,7 +3148,7 @@ impl SplFileInfo {
     }
     pub fn getExtension(&self) -> Result<Str, Throw> {
     let mut info: Shape_dirname_Str_basename_Str_extensionq_Str_filename_Str = Default::default();
-    info = { let __c1804 = pathinfo(&self.p_pathname_get()); Shape_dirname_Str_basename_Str_extensionq_Str_filename_Str { dirname: __c1804.idx(&Str::from_static("dirname")).clone(), basename: __c1804.idx(&Str::from_static("basename")).clone(), extension: __c1804.get(&Str::from_static("extension")).cloned(), filename: __c1804.idx(&Str::from_static("filename")).clone() } };
+    info = { let __c1802 = pathinfo(&self.p_pathname_get()); Shape_dirname_Str_basename_Str_extensionq_Str_filename_Str { dirname: __c1802.idx(&Str::from_static("dirname")).clone(), basename: __c1802.idx(&Str::from_static("basename")).clone(), extension: __c1802.get(&Str::from_static("extension")).cloned(), filename: __c1802.idx(&Str::from_static("filename")).clone() } };
     return Ok((match Some(info.clone()).and_then(|__b| __b.extension) { Some(__v) => __v, None => Str::from_static("") }));
     }
     pub fn getPath(&self) -> Result<Str, Throw> {

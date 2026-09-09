@@ -72,7 +72,7 @@ impl Doc {
     pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::Comment>(self.clone()).getEndTokenPos__impl() }
     pub fn magic__toString(&self) -> Result<Str, Throw> { cast::<crate::php_parser::Comment>(self.clone()).magic__toString__impl() }
     pub fn getReformattedText(&self) -> Result<Str, Throw> { cast::<crate::php_parser::Comment>(self.clone()).getReformattedText__impl() }
-    pub fn jsonSerialize(&self) -> Result<Shape_nodeType_Str_text_Mixed_line_Mixed_filePos_Mixed, Throw> { cast::<crate::php_parser::Comment>(self.clone()).jsonSerialize__impl() }
+    pub fn jsonSerialize(&self) -> Result<Shape_nodeType_Str_text_Mixed_line_Mixed_filePos_Mixed_tokenPosq_Mixed_4b86746f99, Throw> { cast::<crate::php_parser::Comment>(self.clone()).jsonSerialize__impl() }
     pub fn new_same_class(&self, mut text: Str, mut startLine: i64, mut startFilePos: i64, mut startTokenPos: i64, mut endLine: i64, mut endFilePos: i64, mut endTokenPos: i64) -> Result<crate::php_parser::comment::Doc, Throw> { Ok(Self::new(text, startLine, startFilePos, startTokenPos, endLine, endFilePos, endTokenPos)?) }
 }
 impl php_rt::PhpObject for Doc {

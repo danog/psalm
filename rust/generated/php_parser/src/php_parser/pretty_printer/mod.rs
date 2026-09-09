@@ -798,8 +798,8 @@ impl Standard {
     return Ok(concat(concat(concat(concat(concat(Str::from_static("elseif ("), self.p(cast::<crate::php_parser::Node>(node.clone().p_cond_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), Str::from_static(") {")), self.pStmts(cast::<Map<ArrayKey, crate::php_parser::Node>>(node.clone().p_stmts_get().map_elems(|v| cast::<crate::php_parser::Node>(v))), true)?), self.p_nl_get()), Str::from_static("}")));
     }
     pub fn pStmt_Else(&self, mut node: crate::php_parser::node::stmt::Else_) -> Result<Str, Throw> {
-    if ((node.clone().p_stmts_get().count() == 1i64) && is_instance::<crate::php_parser::node::stmt::If_>(&{ let __c1110 = node.clone().p_stmts_get(); (__c1110.idx(0).clone(),) }.0)) {
-        return Ok(concat(Str::from_static("else "), self.p(cast::<crate::php_parser::Node>({ let __c1111 = node.clone().p_stmts_get(); (cast::<crate::php_parser::node::stmt::If_>(__c1111.idx(0).clone()),) }.0), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?));
+    if ((node.clone().p_stmts_get().count() == 1i64) && is_instance::<crate::php_parser::node::stmt::If_>(&{ let __c1108 = node.clone().p_stmts_get(); (__c1108.idx(0).clone(),) }.0)) {
+        return Ok(concat(Str::from_static("else "), self.p(cast::<crate::php_parser::Node>({ let __c1109 = node.clone().p_stmts_get(); (cast::<crate::php_parser::node::stmt::If_>(__c1109.idx(0).clone()),) }.0), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?));
     }
     return Ok(concat(concat(concat(Str::from_static("else {"), self.pStmts(cast::<Map<ArrayKey, crate::php_parser::Node>>(node.clone().p_stmts_get().map_elems(|v| cast::<crate::php_parser::Node>(v))), true)?), self.p_nl_get()), Str::from_static("}")));
     }

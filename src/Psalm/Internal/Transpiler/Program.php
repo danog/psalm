@@ -473,6 +473,47 @@ final class Program
     }
 
     /**
+     * A shape-typed return whose body returns array literals with keys the docblock doesn't list
+     * (`@return array{nodeType: string, ...}` next to `return [..., 'endLine' => ...]`) gets those keys
+     * as optional `Mixed` fields so the values survive.
+     */
+    private function extendShapeWithReturnedKeys(RustType $t, \PhpParser\Node\FunctionLike $node): RustType
+    {
+        $shape = $t->kind === RustType::OPTION ? $t->inner() : $t;
+        if ($shape->kind !== RustType::SHAPE) {
+            return $t;
+        }
+        $stmts = $node->getStmts();
+        if ($stmts === null) {
+            return $t;
+        }
+        $extra = [];
+        foreach ((new \PhpParser\NodeFinder())->findInstanceOf($stmts, \PhpParser\Node\Stmt\Return_::class) as $ret) {
+            if (!$ret->expr instanceof \PhpParser\Node\Expr\Array_) {
+                continue;
+            }
+            foreach ($ret->expr->items as $item) {
+                $key = null;
+                if ($item->key instanceof \PhpParser\Node\Scalar\String_) {
+                    $key = $item->key->value;
+                } elseif ($item->key instanceof \PhpParser\Node\Scalar\Int_) {
+                    $key = (string) $item->key->value;
+                }
+                if ($key === null || isset($shape->fields[$key]) || isset($extra[$key])) {
+                    continue;
+                }
+                $extra[$key] = [RustType::mixed(), true];
+            }
+        }
+        if ($extra === []) {
+            return $t;
+        }
+        $shape = RustType::shape($shape->fields + $extra);
+        $this->types->shapes[$shape->mangle()] = $shape;
+        return $t->kind === RustType::OPTION ? RustType::option($shape) : $shape;
+    }
+
+    /**
      * @param list<RustType> $param_types
      */
     private function resolveSignature(FunctionLikeStorage $storage, array &$param_types, RustType &$return_type, ?\PhpParser\Node $node = null): void
@@ -489,6 +530,9 @@ final class Program
             $param_types[] = $t;
         }
         $return_type = $this->types->map($storage->return_type);
+        if ($node instanceof \PhpParser\Node\FunctionLike) {
+            $return_type = $this->extendShapeWithReturnedKeys($return_type, $node);
+        }
         if ($storage->return_type !== null && $storage->return_type->isVoid()) {
             $return_type = RustType::unit();
         }
