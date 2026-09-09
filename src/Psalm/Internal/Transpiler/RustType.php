@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Transpiler;
 
+use function str_starts_with;
 use function array_map;
 use function count;
 use function implode;
@@ -214,6 +215,14 @@ final class RustType
                 }
                 return true;
             })($this->fields),
+            self::UNION => (static function (array $ms): bool {
+                foreach ($ms as $m) {
+                    if (($m->kind === self::RT_GENERIC && str_starts_with($m->name, '__unit_')) || $m->hasDefault()) {
+                        return true;
+                    }
+                }
+                return false;
+            })($this->params),
             default => false,
         };
     }

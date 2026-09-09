@@ -443,6 +443,10 @@ final class Casts
         if ($fk === RustType::CLOSURE && $tk === RustType::CLOSURE) {
             return $this->convertClosure($code, $from, $to);
         }
+        if ($fk === RustType::STR && ($tk === RustType::CLOSURE || $tk === RustType::DYN_CALLABLE)) {
+            // a function name used as a callable
+            return $this->convert('to_callable(&Mixed::Str(' . $code . '))', RustType::dynCallable(), $to);
+        }
         if ($fk === RustType::CLOSURE && $tk === RustType::DYN_CALLABLE) {
             $t = $this->tmp();
             $n = count($from->params);
