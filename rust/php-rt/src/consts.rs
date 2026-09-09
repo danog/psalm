@@ -10,10 +10,10 @@ pub const DIRECTORY_SEPARATOR: Str = Str::from_static("/");
 pub const PATH_SEPARATOR: Str = Str::from_static(":");
 pub const PHP_OS: Str = Str::from_static("Linux");
 pub const PHP_OS_FAMILY: Str = Str::from_static("Linux");
-pub const PHP_VERSION: Str = Str::from_static("8.4.0");
-pub const PHP_VERSION_ID: i64 = 80400;
+pub const PHP_VERSION: Str = Str::from_static("8.5.0");
+pub const PHP_VERSION_ID: i64 = 80500;
 pub const PHP_MAJOR_VERSION: i64 = 8;
-pub const PHP_MINOR_VERSION: i64 = 4;
+pub const PHP_MINOR_VERSION: i64 = 5;
 pub const PHP_RELEASE_VERSION: i64 = 0;
 pub const PHP_INT_MAX: i64 = i64::MAX;
 pub const PHP_INT_MIN: i64 = i64::MIN;
@@ -202,12 +202,12 @@ tokens! {
     T_END_HEREDOC = 399, T_DOLLAR_OPEN_CURLY_BRACES = 400, T_CURLY_OPEN = 401, T_PAAMAYIM_NEKUDOTAYIM = 402,
     T_NS_SEPARATOR = 403, T_ELLIPSIS = 404, T_DOUBLE_COLON = 402, T_AMPERSAND_FOLLOWED_BY_VAR_OR_VARARG = 405,
     T_AMPERSAND_NOT_FOLLOWED_BY_VAR_OR_VARARG = 406, T_BAD_CHARACTER = 407, T_PRIVATE_SET = 408,
-    T_PROTECTED_SET = 409, T_PUBLIC_SET = 410,
+    T_PROTECTED_SET = 409, T_PUBLIC_SET = 410, T_POW = 411,
 }
 
 pub fn token_name(id: i64) -> Str {
     for (name, v) in TOKEN_NAMES {
-        if *v == id && *name != "T_DOUBLE_COLON" {
+        if *v == id && *name != "T_PAAMAYIM_NEKUDOTAYIM" {
             return Str::from_static(name);
         }
     }
