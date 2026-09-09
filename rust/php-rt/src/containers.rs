@@ -429,10 +429,24 @@ pub type WeakMap<K, V> = SplObjectStorage<K, V>;
 
 #[derive(Clone)]
 pub struct WeakReference<T>(Rc<RefCell<Option<T>>>);
-impl<T: Clone> WeakReference<T> {
+impl<T: Clone + PhpObject + 'static> WeakReference<T> {
+    /// As in PHP, creating a weak reference to the same object twice yields the same instance.
     pub fn create(v: T) -> Self {
-        WeakReference(Rc::new(RefCell::new(Some(v))))
+        thread_local! {
+            static REGISTRY: RefCell<std::collections::HashMap<usize, Box<dyn std::any::Any>>> = RefCell::new(std::collections::HashMap::new());
+        }
+        let id = v.obj_id();
+        REGISTRY.with(|r| {
+            if let Some(existing) = r.borrow().get(&id).and_then(|b| b.downcast_ref::<WeakReference<T>>()) {
+                return existing.clone();
+            }
+            let w = WeakReference(Rc::new(RefCell::new(Some(v))));
+            r.borrow_mut().insert(id, Box::new(w.clone()));
+            w
+        })
     }
+}
+impl<T: Clone> WeakReference<T> {
     pub fn get(&self) -> Option<T> {
         self.0.borrow().clone()
     }

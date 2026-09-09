@@ -625,6 +625,14 @@ impl PhpCmp for Mixed {
                     Ordering::Greater
                 }
             }
+            (Obj(a), Str(b)) => match a.php_to_string() {
+                Some(s) => cmp_str(&s, b),
+                None => Ordering::Greater,
+            },
+            (Str(a), Obj(b)) => match b.php_to_string() {
+                Some(s) => cmp_str(a, &s),
+                None => Ordering::Less,
+            },
             (Obj(_), _) | (Closure(_), _) => Ordering::Greater,
             (_, Obj(_)) | (_, Closure(_)) => Ordering::Less,
         }

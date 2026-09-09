@@ -151,7 +151,13 @@ fn encode(m: &Mixed, flags: i64, depth: usize, max_depth: i64, out: &mut Vec<u8>
             }
         }
         Mixed::Obj(o) => {
-            // JsonSerializable objects are pre-converted by the transpiler via jsonSerialize();
+            if o.instance_of_name("jsonserializable") {
+                let v = o.call_method("jsonserialize", Vec::new()).map_err(|e| match e {
+                    crate::containers::DynError::Rt(e) => e,
+                    crate::containers::DynError::Obj(_) => RtError::error("jsonSerialize() threw"),
+                })?;
+                return encode(&v, flags, depth, max_depth, out);
+            }
             // stdClass / plain objects encode their public props
             let props = o.props();
             if props.is_empty() {
