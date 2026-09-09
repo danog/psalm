@@ -366,10 +366,9 @@ final class BodyEmitter
             return new Val('php_rt::superglobal(' . Names::rustStringLiteral($name) . ')', RustType::map(RustType::str(), RustType::mixed()));
         }
         if (!isset($this->vars[$name])) {
-            // variable never seen in snapshots (e.g. only assigned inside a closure use list)
+            // never assigned anywhere: PHP reads an undefined variable as null
             $this->warn('unknown variable $' . $name);
-            $this->vars[$name] = RustType::mixed();
-            $this->late[$name] = false;
+            return new Val('Mixed::Null', RustType::mixed());
         }
         $t = $this->vars[$name];
         $rn = Names::var($name);

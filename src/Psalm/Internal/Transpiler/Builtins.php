@@ -333,6 +333,8 @@ final class Builtins
         'checkdate' => ['checkdate', ['i', 'i', 'i'], 'b'],
         'array_key_exists_mixed' => ['array_key_exists_mixed', ['&k', '&m'], 'b'],
         'array_replace_recursive' => ['array_replace_recursive', ['&m', '&m'], 'm'],
+        'strnatcmp' => ['strnatcmp', ['&s', '&s'], 'i'],
+        'strnatcasecmp' => ['strnatcasecmp', ['&s', '&s'], 'i'],
         'posix_kill' => ['posix_kill', ['i', 'i'], 'b'],
         'posix_get_last_error' => ['posix_get_last_error', [], 'i'],
         'posix_strerror' => ['posix_strerror', ['i'], 's'],

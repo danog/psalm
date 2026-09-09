@@ -407,6 +407,47 @@ pub fn strcmp(a: &Str, b: &Str) -> i64 {
         std::cmp::Ordering::Greater => 1,
     }
 }
+/// `strnatcmp` / `strnatcasecmp`: digit runs compare numerically.
+pub fn strnatcmp_impl(a: &[u8], b: &[u8], fold: bool) -> i64 {
+    let (mut i, mut j) = (0, 0);
+    while i < a.len() && j < b.len() {
+        let (ca, cb) = (a[i], b[j]);
+        if ca.is_ascii_digit() && cb.is_ascii_digit() {
+            let (si, sj) = (i, j);
+            while i < a.len() && a[i].is_ascii_digit() {
+                i += 1;
+            }
+            while j < b.len() && b[j].is_ascii_digit() {
+                j += 1;
+            }
+            let (na, nb) = (&a[si..i], &b[sj..j]);
+            let ta = na.iter().position(|&c| c != b'0').map_or(&na[na.len()..], |p| &na[p..]);
+            let tb = nb.iter().position(|&c| c != b'0').map_or(&nb[nb.len()..], |p| &nb[p..]);
+            let ord = ta.len().cmp(&tb.len()).then_with(|| ta.cmp(tb));
+            if ord != std::cmp::Ordering::Equal {
+                return if ord == std::cmp::Ordering::Less { -1 } else { 1 };
+            }
+            continue;
+        }
+        let (fa, fb) = if fold { (ca.to_ascii_lowercase(), cb.to_ascii_lowercase()) } else { (ca, cb) };
+        if fa != fb {
+            return if fa < fb { -1 } else { 1 };
+        }
+        i += 1;
+        j += 1;
+    }
+    match (a.len() - i).cmp(&(b.len() - j)) {
+        std::cmp::Ordering::Less => -1,
+        std::cmp::Ordering::Equal => 0,
+        std::cmp::Ordering::Greater => 1,
+    }
+}
+pub fn strnatcmp(a: &Str, b: &Str) -> i64 {
+    strnatcmp_impl(a.as_bytes(), b.as_bytes(), false)
+}
+pub fn strnatcasecmp(a: &Str, b: &Str) -> i64 {
+    strnatcmp_impl(a.as_bytes(), b.as_bytes(), true)
+}
 pub fn strcasecmp(a: &Str, b: &Str) -> i64 {
     let x = a.as_bytes().to_ascii_lowercase();
     let y = b.as_bytes().to_ascii_lowercase();
