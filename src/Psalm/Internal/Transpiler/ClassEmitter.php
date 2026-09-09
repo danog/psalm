@@ -82,6 +82,10 @@ final class ClassEmitter
 
         // ---- statics, constants and bodies live on the handle type
         $w->open('impl ' . $handle . ' {');
+        if (!$cls->isInterface() && !$cls->isEnum()) {
+            // `$class::method(...)` with a runtime class name
+            $w->line('pub fn call_static(name: &str, args: Vec<Mixed>) -> Result<Mixed, DynError> { match name { ' . $this->callMethodArms($cls, true) . '_ => Err(DynError::Rt(RtError::error(format!("Call to undefined static method {}::{}()", ' . Names::rustStringLiteral($cls->fqcn) . ', name)))) } }');
+        }
         foreach ($cls->static_fields as $f) {
             $this->emitStatic($cls, $f, $w);
         }
@@ -551,11 +555,14 @@ final class ClassEmitter
     }
 
     /** Match arms (lowercase method name => dynamic invocation) for `PhpObject::call_method`. */
-    private function callMethodArms(ClassModel $cls): string
+    private function callMethodArms(ClassModel $cls, bool $static_only = false): string
     {
         $arms = '';
         foreach ($cls->methods as $m) {
             if ($m->isAbstract() && !$cls->isInterface()) {
+                continue;
+            }
+            if ($static_only && !$m->isStatic()) {
                 continue;
             }
             $params = [];

@@ -472,6 +472,17 @@ trait CallTrait
             if ($cv->type->kind === RustType::CLASS_) {
                 return $this->methodCallOn($cv, $name, $e);
             }
+            if ($e->name instanceof Identifier) {
+                // `$class::method(...)` with a runtime class name: registry dispatch
+                $argc = [];
+                foreach ($args as $a) {
+                    if ($a instanceof \PhpParser\Node\Arg) {
+                        $argc[] = $this->exprTo($a->value, RustType::mixed());
+                    }
+                }
+                $class_str = $this->casts->convert($cv->code, $cv->type, RustType::str());
+                return $this->narrow(new Val('php_rt::registry::call_static(' . $class_str . '.as_bytes(), ' . Names::rustStringLiteral($name) . ', vec![' . implode(', ', $argc) . '])?', RustType::mixed()), $e);
+            }
             $this->warn('static call on expression', $e);
             return $this->dead('static call on expression', $this->inferredOrMixed($e));
         }

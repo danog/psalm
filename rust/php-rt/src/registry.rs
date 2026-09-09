@@ -11,7 +11,10 @@ pub struct ClassEntry {
     pub is_interface: bool,
 }
 
+type StaticDispatch = Box<dyn Fn(&str, Vec<crate::mixed::Mixed>) -> Result<crate::mixed::Mixed, crate::containers::DynError>>;
+
 thread_local! {
+    static STATICS: RefCell<HashMap<Vec<u8>, StaticDispatch>> = RefCell::new(HashMap::new());
     static FACTORIES: RefCell<HashMap<Vec<u8>, Box<dyn Fn() -> crate::mixed::Mixed>>> = RefCell::new(HashMap::new());
     static CLASSES: RefCell<HashMap<Vec<u8>, ClassEntry>> = RefCell::new(HashMap::new());
     static FUNCTIONS: RefCell<HashMap<Vec<u8>, DynCallable>> = RefCell::new(HashMap::new());
@@ -29,6 +32,25 @@ pub fn register_factory(name: &str, f: Box<dyn Fn() -> crate::mixed::Mixed>) {
     FACTORIES.with(|c| {
         c.borrow_mut().insert(name.to_ascii_lowercase().into_bytes(), f);
     });
+}
+
+/// Registers the static-method dispatcher of a class (`$class::method(...)` with a runtime name).
+pub fn register_static(name: &str, f: StaticDispatch) {
+    STATICS.with(|c| {
+        c.borrow_mut().insert(name.to_ascii_lowercase().into_bytes(), f);
+    });
+}
+
+/// `$class::method(...)` on a class named at runtime.
+pub fn call_static(class: &[u8], method: &str, args: Vec<crate::mixed::Mixed>) -> Result<crate::mixed::Mixed, crate::containers::DynError> {
+    let lc = norm(class);
+    let lm = method.to_ascii_lowercase();
+    let f = STATICS.with(|c| c.borrow().get(&lc).map(|f| f as *const StaticDispatch));
+    match f {
+        // the dispatcher table is only appended to; the pointer stays valid
+        Some(f) => unsafe { (*f)(&lm, args) },
+        None => Err(crate::containers::DynError::Rt(crate::error::RtError::error(crate::sfmt!("Class \"{}\" not found", String::from_utf8_lossy(class))))),
+    }
 }
 
 /// `ReflectionClass::newInstanceWithoutConstructor()`: `None` when the class is unknown.
