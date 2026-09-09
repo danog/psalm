@@ -1159,36 +1159,64 @@ final class Builtins
         return $b->narrow(new Val('array_key_last_m(&' . $c->code . ')', RustType::option($c->type->params[0])), $call);
     }
 
-    private function f_reset(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    /** `current($a)`, `key($a)`: reads at the internal array pointer */
+    private function pointerRead(BodyEmitter $b, Expr\FuncCall $call, array $args, string $method): Val
     {
         $c = $this->container($b, $args[0]->value);
+        if ($c->type->kind !== RustType::LIST && $c->type->kind !== RustType::MAP) {
+            $b->warn($method . ' on ' . $c->type->toRust(), $call);
+            return new Val('{ let _ = ' . $c->code . '; None::<Mixed> }', RustType::option(RustType::mixed()));
+        }
+        if ($method === 'ptr_key') {
+            $kt = $c->type->kind === RustType::LIST ? RustType::int() : $c->type->params[0];
+            $code = $c->type->kind === RustType::LIST ? $c->code . '.ptr_key()' : $c->code . '.ptr_key().cloned()';
+            return $b->narrow(new Val($code, RustType::option($kt)), $call);
+        }
         $vt = $c->type->kind === RustType::LIST ? $c->type->inner() : $c->type->params[1];
-        $code = $c->type->kind === RustType::LIST ? $c->code . '.first().cloned()' : $c->code . '.first().map(|(_, __v)| __v.clone())';
-        return $b->narrow(new Val($code, RustType::option($vt)), $call);
+        return $b->narrow(new Val($c->code . '.' . $method . '().cloned()', RustType::option($vt)), $call);
+    }
+
+    /** `next($a)`, `prev($a)`, `reset($a)`, `end($a)`: move the internal array pointer of the place */
+    private function pointerMove(BodyEmitter $b, Expr\FuncCall $call, array $args, string $method): Val
+    {
+        $place = $this->arrayPlace($b, $b->place($args[0]->value));
+        $pt = $place->type;
+        if ($pt->kind !== RustType::LIST && $pt->kind !== RustType::MAP) {
+            $b->warn($method . ' on ' . $pt->toRust(), $call);
+            return new Val('None::<Mixed>', RustType::option(RustType::mixed()));
+        }
+        $vt = $pt->kind === RustType::LIST ? $pt->inner() : $pt->params[1];
+        return $b->narrow(new Val('{ let __r = ' . $place->modifyValue(fn(string $p) => $p . '.' . $method . '().cloned()') . '; __r }', RustType::option($vt)), $call);
+    }
+
+    private function f_reset(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        return $this->pointerMove($b, $call, $args, 'ptr_reset');
     }
 
     private function f_current(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
-        return $this->f_reset($b, $call, $args);
+        return $this->pointerRead($b, $call, $args, 'ptr_current');
     }
 
     private function f_end(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
-        $c = $this->container($b, $args[0]->value);
-        $vt = $c->type->kind === RustType::LIST ? $c->type->inner() : $c->type->params[1];
-        $code = $c->type->kind === RustType::LIST ? $c->code . '.last().cloned()' : $c->code . '.last().map(|(_, __v)| __v.clone())';
-        return $b->narrow(new Val($code, RustType::option($vt)), $call);
+        return $this->pointerMove($b, $call, $args, 'ptr_end');
     }
 
     private function f_key(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
-        return $this->f_array_key_first($b, $call, $args);
+        return $this->pointerRead($b, $call, $args, 'ptr_key');
     }
 
     private function f_next(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
-        $b->warn('next() on array', $call);
-        return new Val('None::<Mixed>', RustType::option(RustType::mixed()));
+        return $this->pointerMove($b, $call, $args, 'ptr_next');
+    }
+
+    private function f_prev(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        return $this->pointerMove($b, $call, $args, 'ptr_prev');
     }
 
     private function f_implode(BodyEmitter $b, Expr\FuncCall $call, array $args): Val

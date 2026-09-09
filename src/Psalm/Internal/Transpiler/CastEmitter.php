@@ -136,6 +136,14 @@ final class CastEmitter
                     }
                 }
             }
+            if ($m->kind === RustType::DYN_CALLABLE) {
+                // closure members of the union are callables too
+                foreach ($u->params as $o) {
+                    if ($o->kind === RustType::CLOSURE) {
+                        $extra .= $name . '::' . $o->variantName() . '(v) => ' . $this->conv('v', $o, $m) . ', ';
+                    }
+                }
+            }
             $w->line('impl php_rt::CastTo<' . $m->toRust() . '> for ' . $name . ' { fn cast_to(self) -> ' . $m->toRust() . ' { match self { ' . $name . '::' . $vn . '(v) => v, ' . $extra . '_ => panic!("union ' . $name . ' is not ' . $vn . '") } } }');
             $w->line('impl php_rt::CastTo<' . $name . '> for ' . $m->toRust() . ' { fn cast_to(self) -> ' . $name . ' { ' . $name . '::' . $vn . '(self) } }');
         }
@@ -456,6 +464,11 @@ final class CastEmitter
             || ($fk === RustType::ANY_OBJECT && $tk === RustType::MIXED) || ($fk === RustType::MIXED && $tk === RustType::ANY_OBJECT)
             || ($fk === RustType::DYN_CALLABLE && $tk === RustType::MIXED) || ($fk === RustType::MIXED && $tk === RustType::DYN_CALLABLE)
         ) {
+            return;
+        }
+        if ($fk === RustType::CLASS_ && $tk === RustType::STR) {
+            // (string) $object goes through __toString
+            $w->line('impl php_rt::CastTo<Str> for ' . $from->toRust() . ' { fn cast_to(self) -> Str { self.to_php_string().unwrap_or_else(|__e| panic!("{}", __e)) } }');
             return;
         }
         $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ' . $from->toRust() . ' { fn cast_to(self) -> ' . $to->toRust() . ' { unimplemented!("cast ' . $from->toRust() . ' => ' . $to->toRust() . '") } }');

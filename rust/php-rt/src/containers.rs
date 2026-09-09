@@ -338,7 +338,12 @@ impl<K, V> Len for SplObjectStorage<K, V> {
         self.0.borrow().len() as i64
     }
 }
-impl<K: 'static, V: 'static> PhpObject for SplObjectStorage<K, V> {
+impl<K, V> PhpObject for SplObjectStorage<K, V>
+where
+    K: PhpObject + Clone + 'static,
+    V: Clone + Default + crate::cast::CastTo<Mixed> + 'static,
+    Mixed: crate::cast::CastTo<K> + crate::cast::CastTo<V>,
+{
     fn class_name(&self) -> &'static str {
         "SplObjectStorage"
     }
@@ -351,13 +356,59 @@ impl<K: 'static, V: 'static> PhpObject for SplObjectStorage<K, V> {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+    fn call_method(&self, name: &str, args: Vec<Mixed>) -> Result<Mixed, DynError> {
+        use crate::cast::CastTo;
+        let arg = |i: usize| args.get(i).cloned().unwrap_or(Mixed::Null);
+        let key = |i: usize| -> K { CastTo::<K>::cast_to(arg(i)) };
+        Ok(match name {
+            "attach" | "offsetset" => {
+                let v: V = match arg(1) {
+                    Mixed::Null => V::default(),
+                    m => CastTo::<V>::cast_to(m),
+                };
+                self.attach(key(0), v);
+                Mixed::Null
+            }
+            "detach" | "offsetunset" => {
+                self.detach(&key(0));
+                Mixed::Null
+            }
+            "contains" | "offsetexists" => Mixed::Bool(self.contains(&key(0))),
+            "offsetget" => match self.get(&key(0)) {
+                Some(v) => CastTo::<Mixed>::cast_to(v),
+                None => {
+                    return Err(DynError::Rt(RtError::new("UnexpectedValueException", "Object not found")));
+                }
+            },
+            "count" => Mixed::Int(self.count()),
+            "getinfo" => CastTo::<Mixed>::cast_to(self.get_info()),
+            "addall" => {
+                let other: SplObjectStorage<K, V> = CastTo::<SplObjectStorage<K, V>>::cast_to(arg(0));
+                self.add_all(&other);
+                Mixed::Null
+            }
+            _ => {
+                return Err(DynError::Rt(RtError::error(crate::sfmt!("Call to undefined method SplObjectStorage::{}()", name))));
+            }
+        })
+    }
 }
-impl<K: 'static, V: 'static> crate::cast::CastTo<Mixed> for SplObjectStorage<K, V> {
+impl<K, V> crate::cast::CastTo<Mixed> for SplObjectStorage<K, V>
+where
+    K: PhpObject + Clone + 'static,
+    V: Clone + Default + crate::cast::CastTo<Mixed> + 'static,
+    Mixed: crate::cast::CastTo<K> + crate::cast::CastTo<V>,
+{
     fn cast_to(self) -> Mixed {
         Mixed::Obj(Rc::new(self))
     }
 }
-impl<K: 'static, V: 'static> crate::cast::CastTo<SplObjectStorage<K, V>> for Mixed {
+impl<K, V> crate::cast::CastTo<SplObjectStorage<K, V>> for Mixed
+where
+    K: PhpObject + Clone + 'static,
+    V: Clone + Default + crate::cast::CastTo<Mixed> + 'static,
+    Mixed: crate::cast::CastTo<K> + crate::cast::CastTo<V>,
+{
     fn cast_to(self) -> SplObjectStorage<K, V> {
         if let Mixed::Obj(o) = &self {
             if let Some(g) = o.as_any().downcast_ref::<SplObjectStorage<K, V>>() {
@@ -401,7 +452,7 @@ impl<T> std::fmt::Debug for WeakReference<T> {
         write!(f, "WeakReference")
     }
 }
-impl<T: 'static> PhpObject for WeakReference<T> {
+impl<T: Clone + crate::cast::CastTo<Mixed> + 'static> PhpObject for WeakReference<T> {
     fn class_name(&self) -> &'static str {
         "WeakReference"
     }
@@ -414,8 +465,17 @@ impl<T: 'static> PhpObject for WeakReference<T> {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+    fn call_method(&self, name: &str, _args: Vec<Mixed>) -> Result<Mixed, DynError> {
+        match name {
+            "get" => Ok(match self.get() {
+                Some(v) => crate::cast::CastTo::<Mixed>::cast_to(v),
+                None => Mixed::Null,
+            }),
+            _ => Err(DynError::Rt(RtError::error(crate::sfmt!("Call to undefined method WeakReference::{}()", name)))),
+        }
+    }
 }
-impl<T: 'static> crate::cast::CastTo<Mixed> for WeakReference<T> {
+impl<T: Clone + crate::cast::CastTo<Mixed> + 'static> crate::cast::CastTo<Mixed> for WeakReference<T> {
     fn cast_to(self) -> Mixed {
         Mixed::Obj(Rc::new(self))
     }

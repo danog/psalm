@@ -136,7 +136,7 @@ impl CollectingTest {
     errorHandler.get().clone().handleError({ let __t1 = crate::php_parser::Error::new(Str::from_static("Test 1"), Map::<Str, Mixed>::new())?; e1.set(__t1.clone()); __t1 })?;
     errorHandler.get().clone().handleError({ let __t2 = crate::php_parser::Error::new(Str::from_static("Test 2"), Map::<Str, Mixed>::new())?; e2.set(__t2.clone()); __t2 })?;
     { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>(errorHandler.get().clone().hasErrors()?), Str::from_static(""))? };
-    { let _ = self; crate::phpunit::framework::Assert::assertSame({ let __c1246 = (e1.get().clone(), e2.get().clone()); let mut __m: Map<ArrayKey, Mixed> = Map::new(); __m.push(cast::<Mixed>(__c1246.0)); __m.push(cast::<Mixed>(__c1246.1)); Mixed::Arr(__m) }, cast::<Mixed>(errorHandler.get().clone().getErrors()?), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertSame({ let __c1236 = (e1.get().clone(), e2.get().clone()); let mut __m: Map<ArrayKey, Mixed> = Map::new(); __m.push(cast::<Mixed>(__c1236.0)); __m.push(cast::<Mixed>(__c1236.1)); Mixed::Arr(__m) }, cast::<Mixed>(errorHandler.get().clone().getErrors()?), Str::from_static(""))? };
     errorHandler.get().clone().clearErrors()?;
     { let _ = self; crate::phpunit::framework::Assert::assertFalse(cast::<Mixed>(errorHandler.get().clone().hasErrors()?), Str::from_static(""))? };
     { let _ = self; crate::phpunit::framework::Assert::assertEmpty(cast::<Mixed>(errorHandler.get().clone().getErrors()?), Str::from_static(""))? };
