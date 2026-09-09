@@ -715,6 +715,20 @@ final class Builtins
         if ($t->kind === RustType::ARRAY_KEY && ($pred === 'is_int' || $pred === 'is_string')) {
             return new Val($v->code . '.' . ($pred === 'is_int' ? 'is_int()' : 'is_str()'), RustType::bool());
         }
+        if (($t->kind === RustType::CLASS_ || ($t->kind === RustType::OPTION && $inner->kind === RustType::CLASS_))
+            && in_array($pred, ['is_null', 'is_int', 'is_float', 'is_string', 'is_bool', 'is_array', 'is_object', 'is_scalar'], true)
+        ) {
+            // a non-leaf class value may carry a non-object through its escape variant
+            $c = $b->program->classOf($inner);
+            if ($c !== null && !$c->isLeaf()) {
+                $h = $inner->toRust();
+                $static = in_array($inner->kind, $kinds, true) ? 'true' : 'false';
+                if ($t->kind === RustType::OPTION) {
+                    return new Val('(match &' . $v->code . ' { None => ' . ($pred === 'is_null' ? 'true' : 'false') . ', Some(' . $h . '::Other__(__m)) => __m.' . $pred . '(), Some(_) => ' . $static . ' })', RustType::bool());
+                }
+                return new Val('(match &' . $v->code . ' { ' . $h . '::Other__(__m) => __m.' . $pred . '(), _ => ' . $static . ' })', RustType::bool());
+            }
+        }
         if ($t->kind === RustType::OPTION) {
             $in = in_array($inner->kind, $kinds, true);
             return new Val('{ let _ = ' . $v->code . '; ' . ($in ? $v->code . '.is_some()' : 'false') . ' }', RustType::bool());

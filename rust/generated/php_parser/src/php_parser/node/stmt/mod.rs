@@ -882,7 +882,7 @@ impl Class_ {
     return Ok(truthy(&(self.p_flags_get() & crate::php_parser::Modifiers::READONLY())));
     }
     pub fn isAnonymous(&self) -> Result<bool, Throw> {
-    return Ok(Some(self.clone()).and_then(|__b| __b.p_name_opt()).flatten().is_none());
+    return Ok(matches!(&Some(self.clone()).and_then(|__b| __b.p_name_opt()).flatten(), None | Some(crate::php_parser::node::Identifier::Other__(Mixed::Null))));
     }
     pub fn getType(&self) -> Result<Str, Throw> {
     return Ok(Str::from_static("Stmt_Class"));

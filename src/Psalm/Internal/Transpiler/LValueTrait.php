@@ -31,11 +31,22 @@ trait LValueTrait
         if ($e instanceof Expr\Variable && is_string($e->name)) {
             $name = $e->name;
             $t = $this->varType($name);
+            if (!empty($this->refvars[$name])) {
+                // reference variable: in-place mutation runs inside the target's `with_mut`
+                $rn = Names::var($name);
+                return new Place(
+                    $t,
+                    fn() => $this->readVar($name)->code,
+                    fn(string $v) => $this->storeVar($name, $v),
+                    fn() => '(*__ref)',
+                    fn(string $stmt) => $rn . '.with_mut(|__ref| { ' . $stmt . ' });',
+                );
+            }
             return new Place(
                 $t,
                 fn() => $this->readVar($name)->code,
                 fn(string $v) => $this->storeVar($name, $v),
-                $this->hasMutPlace($name) ? fn() => $this->varPlace($name) : null,
+                fn() => $this->varPlace($name),
             );
         }
         if (($e instanceof Expr\PropertyFetch || $e instanceof Expr\NullsafePropertyFetch) && $e->name instanceof Identifier) {

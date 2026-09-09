@@ -3505,7 +3505,7 @@ impl SplFileInfo {
     }
     pub fn getExtension(&self) -> Result<Str, Throw> {
     let mut info: Shape_dirname_Str_basename_Str_extensionq_Str_filename_Str = Default::default();
-    info = { let __c1831 = pathinfo(&self.p_pathname_get()); Shape_dirname_Str_basename_Str_extensionq_Str_filename_Str { dirname: __c1831.idx(&Str::from_static("dirname")).clone(), basename: __c1831.idx(&Str::from_static("basename")).clone(), extension: __c1831.get(&Str::from_static("extension")).cloned(), filename: __c1831.idx(&Str::from_static("filename")).clone() } };
+    info = { let __c1833 = pathinfo(&self.p_pathname_get()); Shape_dirname_Str_basename_Str_extensionq_Str_filename_Str { dirname: __c1833.idx(&Str::from_static("dirname")).clone(), basename: __c1833.idx(&Str::from_static("basename")).clone(), extension: __c1833.get(&Str::from_static("extension")).cloned(), filename: __c1833.idx(&Str::from_static("filename")).clone() } };
     return Ok((match Some(info.clone()).and_then(|__b| __b.extension) { Some(__v) => __v, None => Str::from_static("") }));
     }
     pub fn getPath(&self) -> Result<Str, Throw> {
@@ -3871,8 +3871,8 @@ impl RecursiveIteratorIterator {
                         { let __h1 = (cast::<Str>(key_v.clone()), cast::<crate::g::SplFileInfo>(value.clone())); (*self.p_items_mut()).push(__h1); }
                     }
                     children = iterator.clone().getChildren()?;
-                    if (!children.clone().is_none()) {
-                        self.collect(children.clone().unwrap())?;
+                    if (!matches!(&children.clone(), None | Some(crate::g::RecursiveIterator::Other__(Mixed::Null)))) {
+                        self.collect((match children.clone() { Some(__o) => __o, None => crate::g::RecursiveIterator::Other__(Mixed::Null) }))?;
                     }
                     if (self.p_mode_get() == crate::g::RecursiveIteratorIterator::CHILD_FIRST()) {
                         { let __h2 = (cast::<Str>(key_v.clone()), cast::<crate::g::SplFileInfo>(value.clone())); (*self.p_items_mut()).push(__h2); }

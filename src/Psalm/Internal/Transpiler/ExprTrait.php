@@ -864,17 +864,31 @@ trait ExprTrait
             if ($ov === null && $v->type->kind === RustType::OPTION && $v->type->inner()->kind === RustType::DYN_CALLABLE) {
                 return '(match &' . $v->code . ' { None => true, Some(__c) => __c.is_null() })';
             }
+            $escaped = function (RustType $t): ?string {
+                // a non-leaf class value may carry a null through its escape variant
+                if ($t->kind !== RustType::CLASS_) {
+                    return null;
+                }
+                $c = $this->program->classOf($t);
+                return $c !== null && !$c->isLeaf() ? $t->toRust() : null;
+            };
             if ($ov !== null) {
-                return $ov->code . '.is_none()';
+                $h = $escaped($ov->type->inner());
+                return $h !== null ? 'matches!(&' . $ov->code . ', None | Some(' . $h . '::Other__(Mixed::Null)))' : $ov->code . '.is_none()';
             }
             if ($v->type->kind === RustType::OPTION) {
-                return $v->code . '.is_none()';
+                $h = $escaped($v->type->inner());
+                return $h !== null ? 'matches!(&' . $v->code . ', None | Some(' . $h . '::Other__(Mixed::Null)))' : $v->code . '.is_none()';
             }
             if ($v->type->kind === RustType::UNIT) {
                 return '{ let _ = ' . $v->code . '; true }';
             }
             if ($v->type->kind === RustType::MIXED) {
                 return $v->code . '.is_null()';
+            }
+            $h = $escaped($v->type);
+            if ($h !== null) {
+                return 'matches!(&' . $v->code . ', ' . $h . '::Other__(Mixed::Null))';
             }
             return '{ let _ = ' . $v->code . '; false }';
         }
@@ -1293,10 +1307,10 @@ trait ExprTrait
             }
             if ($t->kind === RustType::CLASS_ && $tc !== null) {
                 $vc = $this->program->classOf($t);
-                if ($vc !== null && $vc->isSubclassOf($tc)) {
+                if ($vc !== null && $vc->isLeaf() && $vc->isSubclassOf($tc)) {
                     return new Val('{ let _ = ' . $v->code . '; true }', RustType::bool());
                 }
-                if ($vc !== null && !$tc->isSubclassOf($vc) && !$tc->isInterface() && !$vc->isInterface()) {
+                if ($vc !== null && $vc->isLeaf() && !$tc->isSubclassOf($vc) && !$tc->isInterface() && !$vc->isInterface()) {
                     return new Val('{ let _ = ' . $v->code . '; false }', RustType::bool());
                 }
             }

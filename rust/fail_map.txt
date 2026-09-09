@@ -1,8 +1,7 @@
 tests::PhpParser_Builder_InterfaceTest__testFullFunctional :: Error: eval(): unsupported code: interface
 tests::PhpParser_NodeAbstractTest__testAttributes :: internal error: entered unreachable code: unknown method getMockForAbstractClass
-tests::PhpParser_CodeParsingTest__testParse :: internal error: entered unreachable code: transpiler error in checkAttributes
 tests::PhpParser_NodeTraverserTest__testInvalidDeepArray :: not implemented: cast ((crate::php_parser::node::scalar::String_,),) => crate::php_parser::Node
-tests::PhpParser_NodeTraverserTest__testRemovingVisitor :: internal error: entered unreachable code: transpiler error in testRemovingVisitor
+tests::PhpParser_NodeTraverserTest__testRemovingVisitor :: internal error: entered unreachable code: method call on Rc<dyn Fn() -> Result<Mixed, Throw>>
 tests::PhpParser_PrettyPrinterTest__testFormatPreservingPrint :: Error: eval(): unsupported code: use
-tests::PhpParser_PrettyPrinterTest__testPrettyPrint :: internal error: entered unreachable code
-tests::PhpParser_PrettyPrinterTest__testRoundTripPrint :: internal error: entered unreachable code
+tests::PhpParser_CodeParsingTest__testParse :: Mixed value is not a PhpParser\Node\Arg
+tests::PhpParser_PrettyPrinterTest__testRoundTripPrint :: Mixed value is not a PhpParser\Node\Arg

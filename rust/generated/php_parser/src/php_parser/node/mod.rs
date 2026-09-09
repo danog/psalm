@@ -1957,7 +1957,7 @@ impl PropertyHook {
     if self.p_body_get().map_or(false, |__v| is_instance::<crate::php_parser::node::Expr>(&__v)) {
         name = self.p_name_get().toLowerString()?;
         if identical(&name.clone(), &Str::from_static("get")) {
-            return Ok(Some(cast::<Map<ArrayKey, Mixed>>({ let __c38 = (crate::php_parser::node::stmt::Return_::new(Some(cast::<crate::php_parser::node::Expr>(self.p_body_get().unwrap())), Map::<Str, Mixed>::new())?,); List::from_vec(vec![cast::<Mixed>(__c38.0)]) })));
+            return Ok(Some(cast::<Map<ArrayKey, Mixed>>({ let __c38 = (crate::php_parser::node::stmt::Return_::new(Some((match self.p_body_get() { Some(__o) => cast::<crate::php_parser::node::Expr>(__o), None => crate::php_parser::node::Expr::Other__(Mixed::Null) })), Map::<Str, Mixed>::new())?,); List::from_vec(vec![cast::<Mixed>(__c38.0)]) })));
         }
         if identical(&name.clone(), &Str::from_static("set")) {
             if (!self.hasAttribute(Str::from_static("propertyName"))?) {
@@ -1965,7 +1965,7 @@ impl PropertyHook {
             }
             propName = self.getAttribute(Str::from_static("propertyName"), Mixed::Null)?;
             prop.set(crate::php_parser::node::expr::PropertyFetch::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::expr::Variable::new(U_PhpParser_Node_Expr_or_Str::Str(Str::from_static("this")), Map::<Str, Mixed>::new())?), U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str::Str(to_str(&propName.clone())), Map::<Str, Mixed>::new())?);
-            return Ok(Some(cast::<Map<ArrayKey, Mixed>>({ let __c39 = (crate::php_parser::node::stmt::Expression::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::expr::Assign::new(cast::<crate::php_parser::node::Expr>(prop.get().clone()), cast::<crate::php_parser::node::Expr>(self.p_body_get().unwrap()), Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?,); List::from_vec(vec![cast::<Mixed>(__c39.0)]) })));
+            return Ok(Some(cast::<Map<ArrayKey, Mixed>>({ let __c39 = (crate::php_parser::node::stmt::Expression::new(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::expr::Assign::new(cast::<crate::php_parser::node::Expr>(prop.get().clone()), (match self.p_body_get() { Some(__o) => cast::<crate::php_parser::node::Expr>(__o), None => crate::php_parser::node::Expr::Other__(Mixed::Null) }), Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?,); List::from_vec(vec![cast::<Mixed>(__c39.0)]) })));
         }
         return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(concat(concat(Str::from_static("Unknown property hook \""), name.clone()), Str::from_static("\"")), 0i64, { let _ = (); None::<crate::g::Throwable> })?));
     }
@@ -2417,8 +2417,8 @@ impl UseItem {
     return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("type"))); __m1.push(cast::<Mixed>(Str::from_static("name"))); __m1.push(cast::<Mixed>(Str::from_static("alias"))); __m1 });
     }
     pub fn getAlias(&self) -> Result<crate::php_parser::node::Identifier, Throw> {
-    if (!Some(self.clone()).and_then(|__b| __b.p_alias_opt()).flatten().is_none()) {
-        return Ok(self.p_alias_get().unwrap());
+    if (!matches!(&Some(self.clone()).and_then(|__b| __b.p_alias_opt()).flatten(), None | Some(crate::php_parser::node::Identifier::Other__(Mixed::Null)))) {
+        return Ok((match self.p_alias_get() { Some(__o) => __o, None => crate::php_parser::node::Identifier::Other__(Mixed::Null) }));
     }
     return Ok(crate::php_parser::node::Identifier::new(self.p_name_get().getLast()?, Map::<Str, Mixed>::new())?);
     }

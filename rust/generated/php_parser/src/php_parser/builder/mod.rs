@@ -1575,7 +1575,7 @@ impl TraitUseAdaptation {
             return Ok(cast::<crate::php_parser::Node>(crate::php_parser::node::stmt::trait_use_adaptation::Alias::new(self.p_trait__get(), U_PhpParser_Node_Identifier_or_Str::PhpParser_Node_Identifier(self.p_method_get()), self.p_modifier_get(), self.p_alias_get().map(|v| U_PhpParser_Node_Identifier_or_Str::PhpParser_Node_Identifier(v)), Map::<Str, Mixed>::new())?));
         }
         if __idx2 <= 1 {
-            return Ok(cast::<crate::php_parser::Node>(crate::php_parser::node::stmt::trait_use_adaptation::Precedence::new(self.p_trait__get().unwrap(), U_PhpParser_Node_Identifier_or_Str::PhpParser_Node_Identifier(self.p_method_get()), self.p_insteadof_get(), Map::<Str, Mixed>::new())?));
+            return Ok(cast::<crate::php_parser::Node>(crate::php_parser::node::stmt::trait_use_adaptation::Precedence::new((match self.p_trait__get() { Some(__o) => __o, None => crate::php_parser::node::Name::Other__(Mixed::Null) }), U_PhpParser_Node_Identifier_or_Str::PhpParser_Node_Identifier(self.p_method_get()), self.p_insteadof_get(), Map::<Str, Mixed>::new())?));
         }
         if __idx2 <= 2 {
             return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(Str::from_static("Type of adaptation is not defined"), 0i64, { let _ = (); None::<crate::g::Throwable> })?));

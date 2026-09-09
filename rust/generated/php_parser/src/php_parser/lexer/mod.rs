@@ -81,7 +81,7 @@ impl Emulative {
     if (!truthy(&emulators.clone())) {
         return Ok(cast::<crate::php_parser::Lexer>(self.clone()).tokenize__impl(code.clone(), errorHandler.clone())?.map_values(|v| cast::<Mixed>(v)));
     }
-    if errorHandler.clone().is_none() {
+    if matches!(&errorHandler.clone(), None | Some(crate::php_parser::ErrorHandler::Other__(Mixed::Null))) {
         errorHandler = Some(cast::<crate::php_parser::ErrorHandler>(crate::php_parser::error_handler::Throwing::new()?));
     }
     self.set_p_patches(Map::<ArrayKey, (i64, Str, Str)>::new());
@@ -98,7 +98,7 @@ impl Emulative {
         self.fixupErrors(errors.clone())?;
         'l2: for __kv2 in errors.clone().into_iter() {
             error_v.set(__kv2.1);
-            errorHandler.clone().unwrap().handleError(error_v.get().clone())?;
+            (match errorHandler.clone() { Some(__o) => __o, None => crate::php_parser::ErrorHandler::Other__(Mixed::Null) }).handleError(error_v.get().clone())?;
         }
     }
     'l3: for __kv3 in emulators.clone().into_iter() {

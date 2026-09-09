@@ -156,6 +156,12 @@ final class Casts
         }
         if ($fk === RustType::OPTION) {
             $inner = $from->inner();
+            if ($tk === RustType::CLASS_) {
+                $tc = $this->program->classOf($to);
+                if ($tc !== null && !$tc->isLeaf()) {
+                    return '(match ' . $code . ' { Some(__o) => ' . $this->convert('__o', $inner, $to) . ', None => ' . $to->toRust() . '::Other__(Mixed::Null) })';
+                }
+            }
             if ($to->hasDefault() && $tk !== RustType::CLASS_) {
                 if ($inner->toRust() === $to->toRust()) {
                     return $code . '.unwrap_or_default()';
