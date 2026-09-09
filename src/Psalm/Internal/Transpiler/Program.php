@@ -121,7 +121,7 @@ final class Program
             $this->buildMethods($model);
         }
         foreach ($this->functions as $fn) {
-            $this->resolveSignature($fn->record->storage, $fn->param_types, $fn->return_type);
+            $this->resolveSignature($fn->record->storage, $fn->param_types, $fn->return_type, $fn->record->node);
         }
     }
 
@@ -413,7 +413,7 @@ final class Program
         $this->method_cache[$key] = $method;
         $saved = $this->types->current_class;
         $this->types->current_class = $body_owner->fqcn;
-        $this->resolveSignature($storage, $method->param_types, $method->return_type);
+        $this->resolveSignature($storage, $method->param_types, $method->return_type, $method->node);
         $this->types->current_class = $saved;
         // by-reference parameters must keep the type of the root declaration so dispatch signatures agree
         foreach ($storage->params as $i => $p) {
@@ -434,15 +434,57 @@ final class Program
     }
 
     /**
+     * A shape-typed parameter whose body reads keys the docblock doesn't declare (`$subNodes['type']`
+     * next to `array{flags?: int, ...}`) gets those keys as optional `Mixed` fields, so that call sites
+     * passing them keep the values instead of dropping them as unknown.
+     */
+    private function extendShapeWithBodyReads(RustType $t, string $param_name, \PhpParser\Node\FunctionLike $node): RustType
+    {
+        $shape = $t->kind === RustType::OPTION ? $t->inner() : $t;
+        if ($shape->kind !== RustType::SHAPE) {
+            return $t;
+        }
+        $stmts = $node->getStmts();
+        if ($stmts === null) {
+            return $t;
+        }
+        $extra = [];
+        foreach ((new \PhpParser\NodeFinder())->findInstanceOf($stmts, \PhpParser\Node\Expr\ArrayDimFetch::class) as $fetch) {
+            if (!$fetch->var instanceof \PhpParser\Node\Expr\Variable || $fetch->var->name !== $param_name) {
+                continue;
+            }
+            $key = null;
+            if ($fetch->dim instanceof \PhpParser\Node\Scalar\String_) {
+                $key = $fetch->dim->value;
+            } elseif ($fetch->dim instanceof \PhpParser\Node\Scalar\Int_) {
+                $key = (string) $fetch->dim->value;
+            }
+            if ($key === null || isset($shape->fields[$key]) || isset($extra[$key])) {
+                continue;
+            }
+            $extra[$key] = [RustType::mixed(), true];
+        }
+        if ($extra === []) {
+            return $t;
+        }
+        $shape = RustType::shape($shape->fields + $extra);
+        $this->types->shapes[$shape->mangle()] = $shape;
+        return $t->kind === RustType::OPTION ? RustType::option($shape) : $shape;
+    }
+
+    /**
      * @param list<RustType> $param_types
      */
-    private function resolveSignature(FunctionLikeStorage $storage, array &$param_types, RustType &$return_type): void
+    private function resolveSignature(FunctionLikeStorage $storage, array &$param_types, RustType &$return_type, ?\PhpParser\Node $node = null): void
     {
         $param_types = [];
         foreach ($storage->params as $param) {
             $t = $this->types->map($param->type);
             if ($param->is_variadic) {
                 $t = RustType::list($t);
+            }
+            if ($node instanceof \PhpParser\Node\FunctionLike) {
+                $t = $this->extendShapeWithBodyReads($t, $param->name, $node);
             }
             $param_types[] = $t;
         }

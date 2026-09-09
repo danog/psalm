@@ -5,18 +5,19 @@ use std::fmt;
 use std::ops::{Deref, Index};
 use std::rc::Rc;
 
-pub struct List<T>(Rc<Vec<T>>);
+/// The second field is PHP's internal array pointer (`current()`/`next()`...), copied with the value.
+pub struct List<T>(Rc<Vec<T>>, usize);
 
 impl<T> Clone for List<T> {
     #[inline]
     fn clone(&self) -> List<T> {
-        List(self.0.clone())
+        List(self.0.clone(), self.1)
     }
 }
 
 impl<T> Default for List<T> {
     fn default() -> List<T> {
-        List(Rc::new(Vec::new()))
+        List(Rc::new(Vec::new()), 0)
     }
 }
 
@@ -31,14 +32,48 @@ impl<T> Deref for List<T> {
 impl<T> List<T> {
     #[inline]
     pub fn new() -> List<T> {
-        List(Rc::new(Vec::new()))
+        List(Rc::new(Vec::new()), 0)
     }
     pub fn with_capacity(n: usize) -> List<T> {
-        List(Rc::new(Vec::with_capacity(n)))
+        List(Rc::new(Vec::with_capacity(n)), 0)
     }
     #[inline]
     pub fn from_vec(v: Vec<T>) -> List<T> {
-        List(Rc::new(v))
+        List(Rc::new(v), 0)
+    }
+    /// `current()`: element at the internal pointer.
+    pub fn ptr_current(&self) -> Option<&T> {
+        self.0.get(self.1)
+    }
+    /// `key()`: index at the internal pointer.
+    pub fn ptr_key(&self) -> Option<i64> {
+        if self.1 < self.0.len() { Some(self.1 as i64) } else { None }
+    }
+    /// `next()`: advance the internal pointer and return the element there.
+    pub fn ptr_next(&mut self) -> Option<&T> {
+        if self.1 < self.0.len() {
+            self.1 += 1;
+        }
+        self.0.get(self.1)
+    }
+    /// `prev()`
+    pub fn ptr_prev(&mut self) -> Option<&T> {
+        if self.1 == 0 || self.1 > self.0.len() {
+            self.1 = self.0.len();
+            return None;
+        }
+        self.1 -= 1;
+        self.0.get(self.1)
+    }
+    /// `reset()`
+    pub fn ptr_reset(&mut self) -> Option<&T> {
+        self.1 = 0;
+        self.0.first()
+    }
+    /// `end()`
+    pub fn ptr_end(&mut self) -> Option<&T> {
+        self.1 = self.0.len().saturating_sub(1);
+        self.0.last()
     }
     #[inline]
     pub fn len(&self) -> usize {

@@ -20,20 +20,22 @@ pub struct OrderedMap<K, V> {
     table: HashTable<usize>,
     len: usize,
     next_index: i64,
+    /// PHP's internal array pointer (an index into `entries`).
+    pos: usize,
 }
 
 impl<K: Clone, V: Clone> Clone for OrderedMap<K, V> {
     fn clone(&self) -> Self {
-        OrderedMap { entries: self.entries.clone(), table: self.table.clone(), len: self.len, next_index: self.next_index }
+        OrderedMap { entries: self.entries.clone(), table: self.table.clone(), len: self.len, next_index: self.next_index, pos: self.pos }
     }
 }
 
 impl<K: MapKey, V> OrderedMap<K, V> {
     fn new() -> Self {
-        OrderedMap { entries: Vec::new(), table: HashTable::new(), len: 0, next_index: 0 }
+        OrderedMap { entries: Vec::new(), table: HashTable::new(), len: 0, next_index: 0, pos: 0 }
     }
     fn with_capacity(n: usize) -> Self {
-        OrderedMap { entries: Vec::with_capacity(n), table: HashTable::with_capacity(n), len: 0, next_index: 0 }
+        OrderedMap { entries: Vec::with_capacity(n), table: HashTable::with_capacity(n), len: 0, next_index: 0, pos: 0 }
     }
     #[inline]
     fn key_at(&self, idx: usize) -> &K {
@@ -80,6 +82,7 @@ impl<K: MapKey, V> OrderedMap<K, V> {
     }
     fn compact(&mut self) {
         let old = std::mem::take(&mut self.entries);
+        self.pos = old.iter().take(self.pos).filter(|e| e.is_some()).count();
         self.entries = old.into_iter().flatten().map(Some).collect();
         self.table.clear();
         let entries = &self.entries;
@@ -186,6 +189,27 @@ impl<K: MapKey, V> Map<K, V> {
     pub fn values(&self) -> impl Iterator<Item = &V> {
         self.iter().map(|(_, v)| v)
     }
+    /// index of the first live entry at or after `i`
+    fn live_from(&self, mut i: usize) -> Option<usize> {
+        while i < self.0.entries.len() {
+            if self.0.entries[i].is_some() {
+                return Some(i);
+            }
+            i += 1;
+        }
+        None
+    }
+    fn entry_at(&self, i: Option<usize>) -> Option<(&K, &V)> {
+        i.and_then(|i| self.0.entries[i].as_ref()).map(|(k, v)| (k, v))
+    }
+    /// `current()`: value at the internal pointer.
+    pub fn ptr_current(&self) -> Option<&V> {
+        self.entry_at(self.live_from(self.0.pos)).map(|(_, v)| v)
+    }
+    /// `key()`: key at the internal pointer.
+    pub fn ptr_key(&self) -> Option<&K> {
+        self.entry_at(self.live_from(self.0.pos)).map(|(k, _)| k)
+    }
     pub fn first(&self) -> Option<(&K, &V)> {
         self.iter().next()
     }
@@ -225,6 +249,42 @@ impl<K: MapKey, V: Clone> Map<K, V> {
     }
     pub fn make_mut(&mut self) -> &mut OrderedMap<K, V> {
         self.data()
+    }
+    /// `next()`: advance the internal pointer and return the value there.
+    pub fn ptr_next(&mut self) -> Option<&V> {
+        let cur = self.live_from(self.0.pos);
+        let next = match cur {
+            Some(i) => self.live_from(i + 1),
+            None => None,
+        };
+        self.data().pos = next.unwrap_or(usize::MAX);
+        self.ptr_current()
+    }
+    /// `prev()`
+    pub fn ptr_prev(&mut self) -> Option<&V> {
+        let mut i = self.live_from(self.0.pos).unwrap_or(0);
+        loop {
+            if i == 0 {
+                self.data().pos = usize::MAX;
+                return None;
+            }
+            i -= 1;
+            if self.0.entries[i].is_some() {
+                self.data().pos = i;
+                return self.ptr_current();
+            }
+        }
+    }
+    /// `reset()`
+    pub fn ptr_reset(&mut self) -> Option<&V> {
+        self.data().pos = 0;
+        self.ptr_current()
+    }
+    /// `end()`
+    pub fn ptr_end(&mut self) -> Option<&V> {
+        let last = self.0.entries.iter().rposition(|e| e.is_some()).unwrap_or(usize::MAX);
+        self.data().pos = last;
+        self.ptr_current()
     }
     /// Set a key, keeping its position if it already exists.
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {

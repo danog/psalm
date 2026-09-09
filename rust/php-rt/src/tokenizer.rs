@@ -532,6 +532,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn visibility_set(&self, text: &[u8]) -> Option<(i64, usize)> {
+        // `public(set)` etc.: the scanner rule allows no whitespace anywhere inside
         let id = if text.eq_ignore_ascii_case(b"public") {
             T_PUBLIC_SET
         } else if text.eq_ignore_ascii_case(b"protected") {
@@ -542,28 +543,11 @@ impl<'a> Lexer<'a> {
             return None;
         };
         let r = self.rest();
-        let mut k = text.len();
-        while k < r.len() && is_ws(r[k]) {
-            k += 1;
-        }
-        if r.get(k) != Some(&b'(') {
+        let k = text.len();
+        if r.len() < k + 5 || r[k] != b'(' || !r[k + 1..k + 4].eq_ignore_ascii_case(b"set") || r[k + 4] != b')' {
             return None;
         }
-        k += 1;
-        while k < r.len() && is_ws(r[k]) {
-            k += 1;
-        }
-        if r.len() < k + 3 || !r[k..k + 3].eq_ignore_ascii_case(b"set") {
-            return None;
-        }
-        k += 3;
-        while k < r.len() && is_ws(r[k]) {
-            k += 1;
-        }
-        if r.get(k) != Some(&b')') {
-            return None;
-        }
-        Some((id, k + 1))
+        Some((id, k + 5))
     }
 
     fn scan_name(&self, mut n: usize) -> usize {
