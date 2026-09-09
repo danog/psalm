@@ -28,6 +28,7 @@ use Psalm\Internal\Provider\ParserCacheProvider;
 use Psalm\Internal\Provider\ProjectCacheProvider;
 use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\Stubs\Generator\StubsGenerator;
+use Psalm\Internal\Transpiler\Transpiler;
 use Psalm\IssueBuffer;
 use Psalm\Progress\DebugProgress;
 use Psalm\Progress\DefaultProgress;
@@ -179,6 +180,7 @@ final class Psalm
         'dump-taint-graph:',
         'find-unused-psalm-suppress',
         'error-level:',
+        'transpile-rust:',
     ];
 
     /**
@@ -401,10 +403,23 @@ final class Psalm
         // Prime cache
         InternalCallMapHandler::getCallMap();
 
+        if (isset($options['transpile-rust']) && is_string($options['transpile-rust'])) {
+            Transpiler::enable($options['transpile-rust'], $config, $current_dir);
+        }
+
         if ($paths_to_check === null) {
             $project_analyzer->check($current_dir, $is_diff);
         } elseif ($paths_to_check) {
             $project_analyzer->checkPaths($paths_to_check);
+        }
+
+        if (Transpiler::isEnabled()) {
+            try {
+                Transpiler::get()->emit($project_analyzer->getCodebase());
+            } catch (\Throwable $e) {
+                fwrite(STDERR, "Transpiler crashed: " . $e::class . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n");
+                exit(70);
+            }
         }
 
         if ($find_references_to) {
@@ -437,6 +452,10 @@ final class Psalm
     /** @return int<1, max> */
     public static function getThreads(array $options, Config $config, bool $in_ci, bool $for_scan): int
     {
+        if (isset($options['transpile-rust'])) {
+            // the transpiler collects analysis data in-process
+            return 1;
+        }
         if (defined('PHP_WINDOWS_VERSION_MAJOR')) {
             // No support desired for Windows at the moment
             return 1;

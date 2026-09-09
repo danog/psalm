@@ -1,0 +1,11 @@
+[package]
+name = "php-rt"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "php_rt"
+
+[dependencies]
+hashbrown = "0.15"
+pcre2 = "0.2"

@@ -1,0 +1,1092 @@
+use php_rt::prelude::*;
+use crate::generated::*;
+use crate::Throw;
+use crate::AnyObject;
+pub struct StandardObj {
+    pub precedenceMap: Map<Str, (i64, i64, i64)>,
+    pub indentLevel: i64,
+    pub indent: Str,
+    pub indentWidth: i64,
+    pub useTabs: bool,
+    pub tabWidth: i64,
+    pub newline: Str,
+    pub nl: Str,
+    pub docStringEndToken: Option<Str>,
+    pub canUseSemicolonNamespaces: bool,
+    pub shortArraySyntax: bool,
+    pub phpVersion: Late<crate::php_parser::PhpVersion>,
+    pub origTokens: Option<crate::php_parser::internal::TokenStream>,
+    pub nodeListDiffer: Late<crate::php_parser::internal::Differ>,
+    pub labelCharMap: Map<Str, bool>,
+    pub fixupMap: Map<Str, Map<Str, i64>>,
+    pub removalMap: Map<Str, Shape_leftq_ArrayKey_rightq_ArrayKey>,
+    pub insertionMap: Map<Str, (Option<ArrayKey>, bool, Option<Str>, Option<Str>)>,
+    pub listInsertionMap: Map<Str, Str>,
+    pub emptyListInsertionMap: Map<Str, (Option<ArrayKey>, Str, Str)>,
+    pub modifierChangeMap: Map<Str, (Str, i64, i64)>,
+}
+#[derive(Clone)]
+pub struct Standard(pub Rc<RefCell<StandardObj>>);
+impl Standard {
+    pub fn p_precedenceMap(&self) -> Ref<'_, Map<Str, (i64, i64, i64)>> { Ref::map(self.0.borrow(), |o| &o.precedenceMap) }
+    pub fn p_precedenceMap_get(&self) -> Map<Str, (i64, i64, i64)> { self.0.borrow().precedenceMap.clone() }
+    pub fn p_precedenceMap_opt(&self) -> Option<Map<Str, (i64, i64, i64)>> { Some(self.0.borrow().precedenceMap.clone()) }
+    pub fn p_precedenceMap_mut(&self) -> RefMut<'_, Map<Str, (i64, i64, i64)>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.precedenceMap) }
+    pub fn set_p_precedenceMap(&self, v: Map<Str, (i64, i64, i64)>) { self.0.borrow_mut().precedenceMap = v; }
+    pub fn p_indentLevel(&self) -> Ref<'_, i64> { Ref::map(self.0.borrow(), |o| &o.indentLevel) }
+    pub fn p_indentLevel_get(&self) -> i64 { self.0.borrow().indentLevel.clone() }
+    pub fn p_indentLevel_opt(&self) -> Option<i64> { Some(self.0.borrow().indentLevel.clone()) }
+    pub fn p_indentLevel_mut(&self) -> RefMut<'_, i64> { RefMut::map(self.0.borrow_mut(), |o| &mut o.indentLevel) }
+    pub fn set_p_indentLevel(&self, v: i64) { self.0.borrow_mut().indentLevel = v; }
+    pub fn p_indent(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| &o.indent) }
+    pub fn p_indent_get(&self) -> Str { self.0.borrow().indent.clone() }
+    pub fn p_indent_opt(&self) -> Option<Str> { Some(self.0.borrow().indent.clone()) }
+    pub fn p_indent_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.indent) }
+    pub fn set_p_indent(&self, v: Str) { self.0.borrow_mut().indent = v; }
+    pub fn p_indentWidth(&self) -> Ref<'_, i64> { Ref::map(self.0.borrow(), |o| &o.indentWidth) }
+    pub fn p_indentWidth_get(&self) -> i64 { self.0.borrow().indentWidth.clone() }
+    pub fn p_indentWidth_opt(&self) -> Option<i64> { Some(self.0.borrow().indentWidth.clone()) }
+    pub fn p_indentWidth_mut(&self) -> RefMut<'_, i64> { RefMut::map(self.0.borrow_mut(), |o| &mut o.indentWidth) }
+    pub fn set_p_indentWidth(&self, v: i64) { self.0.borrow_mut().indentWidth = v; }
+    pub fn p_useTabs(&self) -> Ref<'_, bool> { Ref::map(self.0.borrow(), |o| &o.useTabs) }
+    pub fn p_useTabs_get(&self) -> bool { self.0.borrow().useTabs.clone() }
+    pub fn p_useTabs_opt(&self) -> Option<bool> { Some(self.0.borrow().useTabs.clone()) }
+    pub fn p_useTabs_mut(&self) -> RefMut<'_, bool> { RefMut::map(self.0.borrow_mut(), |o| &mut o.useTabs) }
+    pub fn set_p_useTabs(&self, v: bool) { self.0.borrow_mut().useTabs = v; }
+    pub fn p_tabWidth(&self) -> Ref<'_, i64> { Ref::map(self.0.borrow(), |o| &o.tabWidth) }
+    pub fn p_tabWidth_get(&self) -> i64 { self.0.borrow().tabWidth.clone() }
+    pub fn p_tabWidth_opt(&self) -> Option<i64> { Some(self.0.borrow().tabWidth.clone()) }
+    pub fn p_tabWidth_mut(&self) -> RefMut<'_, i64> { RefMut::map(self.0.borrow_mut(), |o| &mut o.tabWidth) }
+    pub fn set_p_tabWidth(&self, v: i64) { self.0.borrow_mut().tabWidth = v; }
+    pub fn p_newline(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| &o.newline) }
+    pub fn p_newline_get(&self) -> Str { self.0.borrow().newline.clone() }
+    pub fn p_newline_opt(&self) -> Option<Str> { Some(self.0.borrow().newline.clone()) }
+    pub fn p_newline_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.newline) }
+    pub fn set_p_newline(&self, v: Str) { self.0.borrow_mut().newline = v; }
+    pub fn p_nl(&self) -> Ref<'_, Str> { Ref::map(self.0.borrow(), |o| &o.nl) }
+    pub fn p_nl_get(&self) -> Str { self.0.borrow().nl.clone() }
+    pub fn p_nl_opt(&self) -> Option<Str> { Some(self.0.borrow().nl.clone()) }
+    pub fn p_nl_mut(&self) -> RefMut<'_, Str> { RefMut::map(self.0.borrow_mut(), |o| &mut o.nl) }
+    pub fn set_p_nl(&self, v: Str) { self.0.borrow_mut().nl = v; }
+    pub fn p_docStringEndToken(&self) -> Ref<'_, Option<Str>> { Ref::map(self.0.borrow(), |o| &o.docStringEndToken) }
+    pub fn p_docStringEndToken_get(&self) -> Option<Str> { self.0.borrow().docStringEndToken.clone() }
+    pub fn p_docStringEndToken_opt(&self) -> Option<Option<Str>> { Some(self.0.borrow().docStringEndToken.clone()) }
+    pub fn p_docStringEndToken_mut(&self) -> RefMut<'_, Option<Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.docStringEndToken) }
+    pub fn set_p_docStringEndToken(&self, v: Option<Str>) { self.0.borrow_mut().docStringEndToken = v; }
+    pub fn p_canUseSemicolonNamespaces(&self) -> Ref<'_, bool> { Ref::map(self.0.borrow(), |o| &o.canUseSemicolonNamespaces) }
+    pub fn p_canUseSemicolonNamespaces_get(&self) -> bool { self.0.borrow().canUseSemicolonNamespaces.clone() }
+    pub fn p_canUseSemicolonNamespaces_opt(&self) -> Option<bool> { Some(self.0.borrow().canUseSemicolonNamespaces.clone()) }
+    pub fn p_canUseSemicolonNamespaces_mut(&self) -> RefMut<'_, bool> { RefMut::map(self.0.borrow_mut(), |o| &mut o.canUseSemicolonNamespaces) }
+    pub fn set_p_canUseSemicolonNamespaces(&self, v: bool) { self.0.borrow_mut().canUseSemicolonNamespaces = v; }
+    pub fn p_shortArraySyntax(&self) -> Ref<'_, bool> { Ref::map(self.0.borrow(), |o| &o.shortArraySyntax) }
+    pub fn p_shortArraySyntax_get(&self) -> bool { self.0.borrow().shortArraySyntax.clone() }
+    pub fn p_shortArraySyntax_opt(&self) -> Option<bool> { Some(self.0.borrow().shortArraySyntax.clone()) }
+    pub fn p_shortArraySyntax_mut(&self) -> RefMut<'_, bool> { RefMut::map(self.0.borrow_mut(), |o| &mut o.shortArraySyntax) }
+    pub fn set_p_shortArraySyntax(&self, v: bool) { self.0.borrow_mut().shortArraySyntax = v; }
+    pub fn p_phpVersion(&self) -> Ref<'_, crate::php_parser::PhpVersion> { Ref::map(self.0.borrow(), |o| o.phpVersion.get()) }
+    pub fn p_phpVersion_get(&self) -> crate::php_parser::PhpVersion { self.0.borrow().phpVersion.get().clone() }
+    pub fn p_phpVersion_opt(&self) -> Option<crate::php_parser::PhpVersion> { self.0.borrow().phpVersion.as_option().cloned() }
+    pub fn p_phpVersion_mut(&self) -> RefMut<'_, crate::php_parser::PhpVersion> { RefMut::map(self.0.borrow_mut(), |o| o.phpVersion.get_mut()) }
+    pub fn set_p_phpVersion(&self, v: crate::php_parser::PhpVersion) { self.0.borrow_mut().phpVersion.set(v); }
+    pub fn p_origTokens(&self) -> Ref<'_, Option<crate::php_parser::internal::TokenStream>> { Ref::map(self.0.borrow(), |o| &o.origTokens) }
+    pub fn p_origTokens_get(&self) -> Option<crate::php_parser::internal::TokenStream> { self.0.borrow().origTokens.clone() }
+    pub fn p_origTokens_opt(&self) -> Option<Option<crate::php_parser::internal::TokenStream>> { Some(self.0.borrow().origTokens.clone()) }
+    pub fn p_origTokens_mut(&self) -> RefMut<'_, Option<crate::php_parser::internal::TokenStream>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.origTokens) }
+    pub fn set_p_origTokens(&self, v: Option<crate::php_parser::internal::TokenStream>) { self.0.borrow_mut().origTokens = v; }
+    pub fn p_nodeListDiffer(&self) -> Ref<'_, crate::php_parser::internal::Differ> { Ref::map(self.0.borrow(), |o| o.nodeListDiffer.get()) }
+    pub fn p_nodeListDiffer_get(&self) -> crate::php_parser::internal::Differ { self.0.borrow().nodeListDiffer.get().clone() }
+    pub fn p_nodeListDiffer_opt(&self) -> Option<crate::php_parser::internal::Differ> { self.0.borrow().nodeListDiffer.as_option().cloned() }
+    pub fn p_nodeListDiffer_mut(&self) -> RefMut<'_, crate::php_parser::internal::Differ> { RefMut::map(self.0.borrow_mut(), |o| o.nodeListDiffer.get_mut()) }
+    pub fn set_p_nodeListDiffer(&self, v: crate::php_parser::internal::Differ) { self.0.borrow_mut().nodeListDiffer.set(v); }
+    pub fn p_labelCharMap(&self) -> Ref<'_, Map<Str, bool>> { Ref::map(self.0.borrow(), |o| &o.labelCharMap) }
+    pub fn p_labelCharMap_get(&self) -> Map<Str, bool> { self.0.borrow().labelCharMap.clone() }
+    pub fn p_labelCharMap_opt(&self) -> Option<Map<Str, bool>> { Some(self.0.borrow().labelCharMap.clone()) }
+    pub fn p_labelCharMap_mut(&self) -> RefMut<'_, Map<Str, bool>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.labelCharMap) }
+    pub fn set_p_labelCharMap(&self, v: Map<Str, bool>) { self.0.borrow_mut().labelCharMap = v; }
+    pub fn p_fixupMap(&self) -> Ref<'_, Map<Str, Map<Str, i64>>> { Ref::map(self.0.borrow(), |o| &o.fixupMap) }
+    pub fn p_fixupMap_get(&self) -> Map<Str, Map<Str, i64>> { self.0.borrow().fixupMap.clone() }
+    pub fn p_fixupMap_opt(&self) -> Option<Map<Str, Map<Str, i64>>> { Some(self.0.borrow().fixupMap.clone()) }
+    pub fn p_fixupMap_mut(&self) -> RefMut<'_, Map<Str, Map<Str, i64>>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.fixupMap) }
+    pub fn set_p_fixupMap(&self, v: Map<Str, Map<Str, i64>>) { self.0.borrow_mut().fixupMap = v; }
+    pub fn p_removalMap(&self) -> Ref<'_, Map<Str, Shape_leftq_ArrayKey_rightq_ArrayKey>> { Ref::map(self.0.borrow(), |o| &o.removalMap) }
+    pub fn p_removalMap_get(&self) -> Map<Str, Shape_leftq_ArrayKey_rightq_ArrayKey> { self.0.borrow().removalMap.clone() }
+    pub fn p_removalMap_opt(&self) -> Option<Map<Str, Shape_leftq_ArrayKey_rightq_ArrayKey>> { Some(self.0.borrow().removalMap.clone()) }
+    pub fn p_removalMap_mut(&self) -> RefMut<'_, Map<Str, Shape_leftq_ArrayKey_rightq_ArrayKey>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.removalMap) }
+    pub fn set_p_removalMap(&self, v: Map<Str, Shape_leftq_ArrayKey_rightq_ArrayKey>) { self.0.borrow_mut().removalMap = v; }
+    pub fn p_insertionMap(&self) -> Ref<'_, Map<Str, (Option<ArrayKey>, bool, Option<Str>, Option<Str>)>> { Ref::map(self.0.borrow(), |o| &o.insertionMap) }
+    pub fn p_insertionMap_get(&self) -> Map<Str, (Option<ArrayKey>, bool, Option<Str>, Option<Str>)> { self.0.borrow().insertionMap.clone() }
+    pub fn p_insertionMap_opt(&self) -> Option<Map<Str, (Option<ArrayKey>, bool, Option<Str>, Option<Str>)>> { Some(self.0.borrow().insertionMap.clone()) }
+    pub fn p_insertionMap_mut(&self) -> RefMut<'_, Map<Str, (Option<ArrayKey>, bool, Option<Str>, Option<Str>)>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.insertionMap) }
+    pub fn set_p_insertionMap(&self, v: Map<Str, (Option<ArrayKey>, bool, Option<Str>, Option<Str>)>) { self.0.borrow_mut().insertionMap = v; }
+    pub fn p_listInsertionMap(&self) -> Ref<'_, Map<Str, Str>> { Ref::map(self.0.borrow(), |o| &o.listInsertionMap) }
+    pub fn p_listInsertionMap_get(&self) -> Map<Str, Str> { self.0.borrow().listInsertionMap.clone() }
+    pub fn p_listInsertionMap_opt(&self) -> Option<Map<Str, Str>> { Some(self.0.borrow().listInsertionMap.clone()) }
+    pub fn p_listInsertionMap_mut(&self) -> RefMut<'_, Map<Str, Str>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.listInsertionMap) }
+    pub fn set_p_listInsertionMap(&self, v: Map<Str, Str>) { self.0.borrow_mut().listInsertionMap = v; }
+    pub fn p_emptyListInsertionMap(&self) -> Ref<'_, Map<Str, (Option<ArrayKey>, Str, Str)>> { Ref::map(self.0.borrow(), |o| &o.emptyListInsertionMap) }
+    pub fn p_emptyListInsertionMap_get(&self) -> Map<Str, (Option<ArrayKey>, Str, Str)> { self.0.borrow().emptyListInsertionMap.clone() }
+    pub fn p_emptyListInsertionMap_opt(&self) -> Option<Map<Str, (Option<ArrayKey>, Str, Str)>> { Some(self.0.borrow().emptyListInsertionMap.clone()) }
+    pub fn p_emptyListInsertionMap_mut(&self) -> RefMut<'_, Map<Str, (Option<ArrayKey>, Str, Str)>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.emptyListInsertionMap) }
+    pub fn set_p_emptyListInsertionMap(&self, v: Map<Str, (Option<ArrayKey>, Str, Str)>) { self.0.borrow_mut().emptyListInsertionMap = v; }
+    pub fn p_modifierChangeMap(&self) -> Ref<'_, Map<Str, (Str, i64, i64)>> { Ref::map(self.0.borrow(), |o| &o.modifierChangeMap) }
+    pub fn p_modifierChangeMap_get(&self) -> Map<Str, (Str, i64, i64)> { self.0.borrow().modifierChangeMap.clone() }
+    pub fn p_modifierChangeMap_opt(&self) -> Option<Map<Str, (Str, i64, i64)>> { Some(self.0.borrow().modifierChangeMap.clone()) }
+    pub fn p_modifierChangeMap_mut(&self) -> RefMut<'_, Map<Str, (Str, i64, i64)>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.modifierChangeMap) }
+    pub fn set_p_modifierChangeMap(&self, v: Map<Str, (Str, i64, i64)>) { self.0.borrow_mut().modifierChangeMap = v; }
+    pub fn new(mut options: Shape_indentq_Str_newlineq_Str_phpVersionq_PhpParser_PhpVersion_shortArraySyntaxq_Bool) -> Result<Standard, Throw> {
+        let this = Standard(Rc::new(RefCell::new(StandardObj {
+            precedenceMap: { let mut __m: Map<Str, (i64, i64, i64)> = Map::new(); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\Clone_"), ((-10i64), 0i64, 1i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Pow"), (0i64, 0i64, 1i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BitwiseNot"), (10i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\UnaryPlus"), (10i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\UnaryMinus"), (10i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\Cast\\Int_"), (10i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\Cast\\Double"), (10i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\Cast\\String_"), (10i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\Cast\\Array_"), (10i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\Cast\\Object_"), (10i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\Cast\\Bool_"), (10i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\Cast\\Unset_"), (10i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\ErrorSuppress"), (10i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\Instanceof_"), (20i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BooleanNot"), (30i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Mul"), (40i64, 41i64, 40i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Div"), (40i64, 41i64, 40i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Mod"), (40i64, 41i64, 40i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Plus"), (50i64, 51i64, 50i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Minus"), (50i64, 51i64, 50i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Concat"), (50i64, 51i64, 50i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\ShiftLeft"), (60i64, 61i64, 60i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\ShiftRight"), (60i64, 61i64, 60i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Pipe"), (65i64, 66i64, 65i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Smaller"), (70i64, 70i64, 70i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\SmallerOrEqual"), (70i64, 70i64, 70i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Greater"), (70i64, 70i64, 70i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\GreaterOrEqual"), (70i64, 70i64, 70i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Equal"), (80i64, 80i64, 80i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\NotEqual"), (80i64, 80i64, 80i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Identical"), (80i64, 80i64, 80i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\NotIdentical"), (80i64, 80i64, 80i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Spaceship"), (80i64, 80i64, 80i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\BitwiseAnd"), (90i64, 91i64, 90i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\BitwiseXor"), (100i64, 101i64, 100i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\BitwiseOr"), (110i64, 111i64, 110i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\BooleanAnd"), (120i64, 121i64, 120i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\BooleanOr"), (130i64, 131i64, 130i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Coalesce"), (140i64, 140i64, 141i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\Ternary"), (150i64, 150i64, 150i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\Assign"), (160i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\AssignRef"), (160i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Plus"), (160i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Minus"), (160i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Mul"), (160i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Div"), (160i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Concat"), (160i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Mod"), (160i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\BitwiseAnd"), (160i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\BitwiseOr"), (160i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\BitwiseXor"), (160i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\ShiftLeft"), (160i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\ShiftRight"), (160i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Pow"), (160i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Coalesce"), (160i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\YieldFrom"), (170i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\Yield_"), (175i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\Print_"), (180i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\LogicalAnd"), (190i64, 191i64, 190i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\LogicalXor"), (200i64, 201i64, 200i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\LogicalOr"), (210i64, 211i64, 210i64)); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\Include_"), (220i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\ArrowFunction"), (230i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\Throw_"), (240i64, (-1i64), (-1i64))); __m.insert(Str::from_static("PhpParser\\Node\\Expr\\Cast\\Void_"), (250i64, (-1i64), (-1i64))); __m },
+            indentLevel: Default::default(),
+            indent: Default::default(),
+            indentWidth: Default::default(),
+            useTabs: Default::default(),
+            tabWidth: 4i64,
+            newline: Default::default(),
+            nl: Default::default(),
+            docStringEndToken: Default::default(),
+            canUseSemicolonNamespaces: Default::default(),
+            shortArraySyntax: Default::default(),
+            phpVersion: Late::uninit(),
+            origTokens: Default::default(),
+            nodeListDiffer: Late::uninit(),
+            labelCharMap: Default::default(),
+            fixupMap: Default::default(),
+            removalMap: Default::default(),
+            insertionMap: Default::default(),
+            listInsertionMap: Default::default(),
+            emptyListInsertionMap: Default::default(),
+            modifierChangeMap: Default::default(),
+        })));
+        this.magic__construct(options)?;
+        Ok(this)
+    }
+    pub fn pParam(&self, mut node: crate::php_parser::node::Param) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(concat(concat(concat(self.pAttrGroups(node.clone().p_attrGroups_get(), self.p_phpVersion_get().supportsAttributes()?)?, self.pModifiers(node.clone().p_flags_get())?), (if truthy(&node.clone().p_type__get()) { concat(self.p(cast::<crate::php_parser::Node>(node.clone().p_type__get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, Str::from_static(" ")) } else { Str::from_static("") })), (if node.clone().p_byRef_get() { Str::from_static("&") } else { Str::from_static("") })), (if node.clone().p_variadic_get() { Str::from_static("...") } else { Str::from_static("") })), self.p(cast::<crate::php_parser::Node>(node.clone().p_var_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), (if truthy(&node.clone().p_default_get()) { concat(Str::from_static(" = "), self.p(cast::<crate::php_parser::Node>(node.clone().p_default_get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?) } else { Str::from_static("") })), (if truthy(&node.clone().p_hooks_get()) { concat(concat(concat(Str::from_static(" {"), self.pStmts(node.clone().p_hooks_get().map_values(|v| cast::<crate::php_parser::Node>(v)), true)?), self.p_nl_get()), Str::from_static("}")) } else { Str::from_static("") })));
+    }
+    pub fn pArg(&self, mut node: crate::php_parser::node::Arg) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat((if truthy(&node.clone().p_name_get()) { concat(node.clone().p_name_get().unwrap().toString()?, Str::from_static(": ")) } else { Str::from_static("") }), (if node.clone().p_byRef_get() { Str::from_static("&") } else { Str::from_static("") })), (if node.clone().p_unpack_get() { Str::from_static("...") } else { Str::from_static("") })), self.p(cast::<crate::php_parser::Node>(node.clone().p_value_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?));
+    }
+    pub fn pVariadicPlaceholder(&self, mut node: crate::php_parser::node::VariadicPlaceholder) -> Result<Str, Throw> {
+    return Ok(Str::from_static("..."));
+    }
+    pub fn pConst(&self, mut node: crate::php_parser::node::Const_) -> Result<Str, Throw> {
+    return Ok(concat(concat(cast::<Str>(node.clone().p_name_get()), Str::from_static(" = ")), self.p(cast::<crate::php_parser::Node>(node.clone().p_value_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?));
+    }
+    pub fn pNullableType(&self, mut node: crate::php_parser::node::NullableType) -> Result<Str, Throw> {
+    return Ok(concat(Str::from_static("?"), self.p(cast::<crate::php_parser::Node>(node.clone().p_type__get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?));
+    }
+    pub fn pUnionType(&self, mut node: crate::php_parser::node::UnionType) -> Result<Str, Throw> {
+    let mut types: List<Str> = Default::default();
+    let mut typeNode: Late<U_PhpParser_Node_Identifier_or_PhpParser_Node_IntersectionType_or_PhpParser_Node_Name> = Late::uninit();
+    types = List::<Str>::new();
+    'l1: for __kv1 in node.clone().p_types_get().into_iter() {
+        typeNode.set(__kv1.1);
+        if is_instance::<crate::php_parser::node::IntersectionType>(&typeNode.get().clone()) {
+            types.push(concat(concat(Str::from_static("("), self.p(cast::<crate::php_parser::Node>(cast::<crate::php_parser::node::IntersectionType>(typeNode.get().clone())), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), Str::from_static(")")));
+            { continue 'l1 };
+        }
+        types.push(self.p(cast::<crate::php_parser::Node>(cast::<U_PhpParser_Node_Identifier_or_PhpParser_Node_Name>(typeNode.get().clone())), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?);
+    }
+    return Ok(implode(&Str::from_static("|"), &types.clone()));
+    }
+    pub fn pIntersectionType(&self, mut node: crate::php_parser::node::IntersectionType) -> Result<Str, Throw> {
+    return Ok(self.pImplode(node.clone().p_types_get().map_values(|v| cast::<crate::php_parser::Node>(v)), Str::from_static("&"))?);
+    }
+    pub fn pIdentifier(&self, mut node: crate::php_parser::node::Identifier) -> Result<Str, Throw> {
+    return Ok(node.clone().p_name_get());
+    }
+    pub fn pVarLikeIdentifier(&self, mut node: crate::php_parser::node::VarLikeIdentifier) -> Result<Str, Throw> {
+    return Ok(concat(Str::from_static("$"), node.clone().p_name_get()));
+    }
+    pub fn pAttribute(&self, mut node: crate::php_parser::node::Attribute) -> Result<Str, Throw> {
+    return Ok(concat(self.p(cast::<crate::php_parser::Node>(node.clone().p_name_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, (if truthy(&node.clone().p_args_get()) { concat(concat(Str::from_static("("), self.pCommaSeparated(cast::<Map<ArrayKey, crate::php_parser::Node>>(node.clone().p_args_get().map_elems(|v| cast::<crate::php_parser::Node>(v))))?), Str::from_static(")")) } else { Str::from_static("") })));
+    }
+    pub fn pAttributeGroup(&self, mut node: crate::php_parser::node::AttributeGroup) -> Result<Str, Throw> {
+    return Ok(concat(concat(Str::from_static("#["), self.pCommaSeparated(node.clone().p_attrs_get().map_values(|v| cast::<crate::php_parser::Node>(v)))?), Str::from_static("]")));
+    }
+    pub fn pName(&self, mut node: crate::php_parser::node::Name) -> Result<Str, Throw> {
+    return Ok(node.clone().p_name_get());
+    }
+    pub fn pName_FullyQualified(&self, mut node: crate::php_parser::node::name::FullyQualified) -> Result<Str, Throw> {
+    return Ok(concat(Str::from_static("\\"), node.clone().p_name_get()));
+    }
+    pub fn pName_Relative(&self, mut node: crate::php_parser::node::name::Relative) -> Result<Str, Throw> {
+    return Ok(concat(Str::from_static("namespace\\"), node.clone().p_name_get()));
+    }
+    pub fn pScalar_MagicConst_Class(&self, mut node: crate::php_parser::node::scalar::magic_const::Class_) -> Result<Str, Throw> {
+    return Ok(Str::from_static("__CLASS__"));
+    }
+    pub fn pScalar_MagicConst_Dir(&self, mut node: crate::php_parser::node::scalar::magic_const::Dir) -> Result<Str, Throw> {
+    return Ok(Str::from_static("__DIR__"));
+    }
+    pub fn pScalar_MagicConst_File(&self, mut node: crate::php_parser::node::scalar::magic_const::File) -> Result<Str, Throw> {
+    return Ok(Str::from_static("__FILE__"));
+    }
+    pub fn pScalar_MagicConst_Function(&self, mut node: crate::php_parser::node::scalar::magic_const::Function_) -> Result<Str, Throw> {
+    return Ok(Str::from_static("__FUNCTION__"));
+    }
+    pub fn pScalar_MagicConst_Line(&self, mut node: crate::php_parser::node::scalar::magic_const::Line) -> Result<Str, Throw> {
+    return Ok(Str::from_static("__LINE__"));
+    }
+    pub fn pScalar_MagicConst_Method(&self, mut node: crate::php_parser::node::scalar::magic_const::Method) -> Result<Str, Throw> {
+    return Ok(Str::from_static("__METHOD__"));
+    }
+    pub fn pScalar_MagicConst_Namespace(&self, mut node: crate::php_parser::node::scalar::magic_const::Namespace_) -> Result<Str, Throw> {
+    return Ok(Str::from_static("__NAMESPACE__"));
+    }
+    pub fn pScalar_MagicConst_Trait(&self, mut node: crate::php_parser::node::scalar::magic_const::Trait_) -> Result<Str, Throw> {
+    return Ok(Str::from_static("__TRAIT__"));
+    }
+    pub fn pScalar_MagicConst_Property(&self, mut node: crate::php_parser::node::scalar::magic_const::Property) -> Result<Str, Throw> {
+    return Ok(Str::from_static("__PROPERTY__"));
+    }
+    pub fn indentString(&self, mut str: Str) -> Result<Str, Throw> {
+    return Ok(str_replace(&Str::from_static("\n"), &self.p_nl_get(), &str.clone()));
+    }
+    pub fn pScalar_String(&self, mut node: crate::php_parser::node::scalar::String_) -> Result<Str, Throw> {
+    let mut kind: Mixed = Default::default();
+    let mut label: Mixed = Default::default();
+    let mut shouldIdent: bool = Default::default();
+    let mut nl: Str = Default::default();
+    let mut value: Str = Default::default();
+    let mut escaped: Str = Default::default();
+    kind = node.clone().getAttribute(Str::from_static("kind"), cast::<Mixed>(crate::php_parser::node::scalar::String_::KIND_SINGLE_QUOTED()))?;
+    'sw1: {
+        let __sw1 = kind.clone();
+        let __idx2: usize = if loose_eq(&__sw1.clone(), &cast::<Mixed>(crate::php_parser::node::scalar::String_::KIND_NOWDOC())) { 0 } else if loose_eq(&__sw1.clone(), &cast::<Mixed>(crate::php_parser::node::scalar::String_::KIND_SINGLE_QUOTED())) { 1 } else if loose_eq(&__sw1.clone(), &cast::<Mixed>(crate::php_parser::node::scalar::String_::KIND_HEREDOC())) { 2 } else if loose_eq(&__sw1.clone(), &cast::<Mixed>(crate::php_parser::node::scalar::String_::KIND_DOUBLE_QUOTED())) { 3 } else { 4 };
+        if __idx2 <= 0 {
+            label = node.clone().getAttribute(Str::from_static("docLabel"), Mixed::Null)?;
+            if (truthy(&label.clone()) && (!self.containsEndLabel(node.clone().p_value_get(), cast::<Str>(label.clone()), true)?)) {
+                shouldIdent = self.p_phpVersion_get().supportsFlexibleHeredoc()?;
+                nl = (if shouldIdent { self.p_nl_get() } else { self.p_newline_get() });
+                if identical(&node.clone().p_value_get(), &Str::from_static("")) {
+                    return Ok(cat!(Str::from_static("<<<'"), cast::<Str>(label.clone()), Str::from_static("'"), nl.clone(), cast::<Str>(label.clone()), self.p_docStringEndToken_get().unwrap()));
+                }
+                if (!identical(&str_index(&node.clone().p_value_get(), (strlen(&node.clone().p_value_get())).wrapping_sub(1i64)), &Str::from_static("\r"))) {
+                    value = (if shouldIdent { self.indentString(node.clone().p_value_get())? } else { node.clone().p_value_get() });
+                    return Ok(cat!(Str::from_static("<<<'"), cast::<Str>(label.clone()), Str::from_static("'"), nl.clone(), value.clone(), nl.clone(), cast::<Str>(label.clone()), self.p_docStringEndToken_get().unwrap()));
+                }
+            }
+        }
+        if __idx2 <= 1 {
+            return Ok(self.pSingleQuotedString(node.clone().p_value_get())?);
+        }
+        if __idx2 <= 2 {
+            label = node.clone().getAttribute(Str::from_static("docLabel"), Mixed::Null)?;
+            escaped = self.escapeString(node.clone().p_value_get(), { let _ = (); None::<Str> })?;
+            if (truthy(&label.clone()) && (!self.containsEndLabel(escaped.clone(), cast::<Str>(label.clone()), true)?)) {
+                nl = (if self.p_phpVersion_get().supportsFlexibleHeredoc()? { self.p_nl_get() } else { self.p_newline_get() });
+                if identical(&escaped.clone(), &Str::from_static("")) {
+                    return Ok(cat!(Str::from_static("<<<"), cast::<Str>(label.clone()), nl.clone(), cast::<Str>(label.clone()), self.p_docStringEndToken_get().unwrap()));
+                }
+                return Ok(cat!(Str::from_static("<<<"), cast::<Str>(label.clone()), nl.clone(), escaped.clone(), nl.clone(), cast::<Str>(label.clone()), self.p_docStringEndToken_get().unwrap()));
+            }
+        }
+        if __idx2 <= 3 {
+            return Ok(concat(concat(Str::from_static("\""), self.escapeString(node.clone().p_value_get(), Some(Str::from_static("\"")))?), Str::from_static("\"")));
+        }
+    }
+    return Err(cast::<crate::g::Throwable>(crate::g::Exception::new(Str::from_static("Invalid string kind"), 0i64, { let _ = (); None::<crate::g::Throwable> })?));
+    }
+    pub fn pScalar_InterpolatedString(&self, mut node: crate::php_parser::node::scalar::InterpolatedString) -> Result<Str, Throw> {
+    let mut label: Mixed = Default::default();
+    let mut nl: Str = Default::default();
+    if identical(&node.clone().getAttribute(Str::from_static("kind"), Mixed::Null)?, &cast::<Mixed>(crate::php_parser::node::scalar::String_::KIND_HEREDOC())) {
+        label = node.clone().getAttribute(Str::from_static("docLabel"), Mixed::Null)?;
+        if (truthy(&label.clone()) && (!self.encapsedContainsEndLabel(node.clone().p_parts_get(), cast::<Str>(label.clone()))?)) {
+            nl = (if self.p_phpVersion_get().supportsFlexibleHeredoc()? { self.p_nl_get() } else { self.p_newline_get() });
+            if (((node.clone().p_parts_get().count() == 1i64) && is_instance::<crate::php_parser::node::InterpolatedStringPart>(&node.clone().p_parts_get().idx(&to_key(&0i64)).clone())) && identical(&cast::<crate::php_parser::node::InterpolatedStringPart>(node.clone().p_parts_get().idx(&to_key(&0i64)).clone()).p_value_get(), &Str::from_static(""))) {
+                return Ok(cat!(Str::from_static("<<<"), cast::<Str>(label.clone()), nl.clone(), cast::<Str>(label.clone()), self.p_docStringEndToken_get().unwrap()));
+            }
+            return Ok(concat(concat(cat!(Str::from_static("<<<"), cast::<Str>(label.clone()), nl.clone()), self.pEncapsList(node.clone().p_parts_get(), { let _ = (); None::<Str> })?), cat!(nl.clone(), cast::<Str>(label.clone()), self.p_docStringEndToken_get().unwrap())));
+        }
+    }
+    return Ok(concat(concat(Str::from_static("\""), self.pEncapsList(node.clone().p_parts_get(), Some(Str::from_static("\"")))?), Str::from_static("\"")));
+    }
+    pub fn pScalar_Int(&self, mut node: crate::php_parser::node::scalar::Int_) -> Result<Str, Throw> {
+    let mut kind: Mixed = Default::default();
+    let mut sign: Str = Default::default();
+    let mut str: Str = Default::default();
+    if matches!(node.clone().getAttribute(Str::from_static("shouldPrintRawValue"), Mixed::Null)?, Mixed::Bool(true)) {
+        return Ok(cast::<Str>(node.clone().getAttribute(Str::from_static("rawValue"), Mixed::Null)?));
+    }
+    if (node.clone().p_value_get() == ((consts::PHP_INT_MAX).wrapping_neg()).wrapping_sub(1i64)) {
+        return Ok(concat(concat(Str::from_static("(-"), cast::<Str>(consts::PHP_INT_MAX)), Str::from_static("-1)")));
+    }
+    kind = node.clone().getAttribute(Str::from_static("kind"), cast::<Mixed>(crate::php_parser::node::scalar::Int_::KIND_DEC()))?;
+    if identical(&cast::<Mixed>(crate::php_parser::node::scalar::Int_::KIND_DEC()), &kind.clone()) {
+        return Ok(to_str(&node.clone().p_value_get()));
+    }
+    if (node.clone().p_value_get() < 0i64) {
+        sign = Str::from_static("-");
+        str = to_str(&(node.clone().p_value_get()).wrapping_neg());
+    } else {
+        sign = Str::from_static("");
+        str = to_str(&node.clone().p_value_get());
+    }
+    'sw1: {
+        let __sw1 = kind.clone();
+        let __idx2: usize = if loose_eq(&__sw1.clone(), &cast::<Mixed>(crate::php_parser::node::scalar::Int_::KIND_BIN())) { 0 } else if loose_eq(&__sw1.clone(), &cast::<Mixed>(crate::php_parser::node::scalar::Int_::KIND_OCT())) { 1 } else if loose_eq(&__sw1.clone(), &cast::<Mixed>(crate::php_parser::node::scalar::Int_::KIND_HEX())) { 2 } else { 3 };
+        if __idx2 <= 0 {
+            return Ok(concat(concat(sign.clone(), Str::from_static("0b")), base_convert(&str.clone(), 10i64, 2i64)));
+        }
+        if __idx2 <= 1 {
+            return Ok(concat(concat(sign.clone(), Str::from_static("0")), base_convert(&str.clone(), 10i64, 8i64)));
+        }
+        if __idx2 <= 2 {
+            return Ok(concat(concat(sign.clone(), Str::from_static("0x")), base_convert(&str.clone(), 10i64, 16i64)));
+        }
+    }
+    return Err(cast::<crate::g::Throwable>(crate::g::Exception::new(Str::from_static("Invalid number kind"), 0i64, { let _ = (); None::<crate::g::Throwable> })?));
+    }
+    pub fn pScalar_Float(&self, mut node: crate::php_parser::node::scalar::Float_) -> Result<Str, Throw> {
+    let mut stringValue: Str = Default::default();
+    if (!is_finite(node.clone().p_value_get())) {
+        if (node.clone().p_value_get() == consts::INF) {
+            return Ok(Str::from_static("1.0E+1000"));
+        }
+        if (node.clone().p_value_get() == (-consts::INF)) {
+            return Ok(Str::from_static("-1.0E+1000"));
+        } else {
+            return Ok(Str::from_static("\\NAN"));
+        }
+    }
+    stringValue = sprintf(&Str::from_static("%.16G"), &[FmtArg::from(node.clone().p_value_get())])?;
+    if (!(node.clone().p_value_get() == to_float(&stringValue.clone()))) {
+        stringValue = sprintf(&Str::from_static("%.17G"), &[FmtArg::from(node.clone().p_value_get())])?;
+    }
+    stringValue = str_replace(&Str::from_static(","), &Str::from_static("."), &stringValue.clone());
+    return Ok((if truthy(&preg_match(&Str::from_static("/^-?[0-9]+$/"), &stringValue.clone(), 0)?) { concat(stringValue.clone(), Str::from_static(".0")) } else { stringValue.clone() }));
+    }
+    pub fn pExpr_Assign(&self, mut node: crate::php_parser::node::expr::Assign, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\Assign"), concat(self.p(cast::<crate::php_parser::Node>(node.clone().p_var_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, Str::from_static(" = ")), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_AssignRef(&self, mut node: crate::php_parser::node::expr::AssignRef, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\AssignRef"), concat(self.p(cast::<crate::php_parser::Node>(node.clone().p_var_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, Str::from_static(" =& ")), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_AssignOp_Plus(&self, mut node: crate::php_parser::node::expr::assign_op::Plus, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Plus"), concat(self.p(cast::<crate::php_parser::Node>(node.clone().p_var_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, Str::from_static(" += ")), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_AssignOp_Minus(&self, mut node: crate::php_parser::node::expr::assign_op::Minus, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Minus"), concat(self.p(cast::<crate::php_parser::Node>(node.clone().p_var_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, Str::from_static(" -= ")), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_AssignOp_Mul(&self, mut node: crate::php_parser::node::expr::assign_op::Mul, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Mul"), concat(self.p(cast::<crate::php_parser::Node>(node.clone().p_var_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, Str::from_static(" *= ")), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_AssignOp_Div(&self, mut node: crate::php_parser::node::expr::assign_op::Div, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Div"), concat(self.p(cast::<crate::php_parser::Node>(node.clone().p_var_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, Str::from_static(" /= ")), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_AssignOp_Concat(&self, mut node: crate::php_parser::node::expr::assign_op::Concat, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Concat"), concat(self.p(cast::<crate::php_parser::Node>(node.clone().p_var_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, Str::from_static(" .= ")), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_AssignOp_Mod(&self, mut node: crate::php_parser::node::expr::assign_op::Mod, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Mod"), concat(self.p(cast::<crate::php_parser::Node>(node.clone().p_var_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, Str::from_static(" %= ")), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_AssignOp_BitwiseAnd(&self, mut node: crate::php_parser::node::expr::assign_op::BitwiseAnd, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\BitwiseAnd"), concat(self.p(cast::<crate::php_parser::Node>(node.clone().p_var_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, Str::from_static(" &= ")), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_AssignOp_BitwiseOr(&self, mut node: crate::php_parser::node::expr::assign_op::BitwiseOr, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\BitwiseOr"), concat(self.p(cast::<crate::php_parser::Node>(node.clone().p_var_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, Str::from_static(" |= ")), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_AssignOp_BitwiseXor(&self, mut node: crate::php_parser::node::expr::assign_op::BitwiseXor, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\BitwiseXor"), concat(self.p(cast::<crate::php_parser::Node>(node.clone().p_var_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, Str::from_static(" ^= ")), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_AssignOp_ShiftLeft(&self, mut node: crate::php_parser::node::expr::assign_op::ShiftLeft, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\ShiftLeft"), concat(self.p(cast::<crate::php_parser::Node>(node.clone().p_var_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, Str::from_static(" <<= ")), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_AssignOp_ShiftRight(&self, mut node: crate::php_parser::node::expr::assign_op::ShiftRight, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\ShiftRight"), concat(self.p(cast::<crate::php_parser::Node>(node.clone().p_var_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, Str::from_static(" >>= ")), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_AssignOp_Pow(&self, mut node: crate::php_parser::node::expr::assign_op::Pow, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Pow"), concat(self.p(cast::<crate::php_parser::Node>(node.clone().p_var_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, Str::from_static(" **= ")), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_AssignOp_Coalesce(&self, mut node: crate::php_parser::node::expr::assign_op::Coalesce, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\AssignOp\\Coalesce"), concat(self.p(cast::<crate::php_parser::Node>(node.clone().p_var_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, Str::from_static(" ??= ")), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_Plus(&self, mut node: crate::php_parser::node::expr::binary_op::Plus, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Plus"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" + "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_Minus(&self, mut node: crate::php_parser::node::expr::binary_op::Minus, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Minus"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" - "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_Mul(&self, mut node: crate::php_parser::node::expr::binary_op::Mul, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Mul"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" * "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_Div(&self, mut node: crate::php_parser::node::expr::binary_op::Div, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Div"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" / "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_Concat(&self, mut node: crate::php_parser::node::expr::binary_op::Concat, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Concat"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" . "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_Mod(&self, mut node: crate::php_parser::node::expr::binary_op::Mod, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Mod"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" % "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_BooleanAnd(&self, mut node: crate::php_parser::node::expr::binary_op::BooleanAnd, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\BooleanAnd"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" && "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_BooleanOr(&self, mut node: crate::php_parser::node::expr::binary_op::BooleanOr, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\BooleanOr"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" || "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_BitwiseAnd(&self, mut node: crate::php_parser::node::expr::binary_op::BitwiseAnd, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\BitwiseAnd"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" & "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_BitwiseOr(&self, mut node: crate::php_parser::node::expr::binary_op::BitwiseOr, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\BitwiseOr"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" | "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_BitwiseXor(&self, mut node: crate::php_parser::node::expr::binary_op::BitwiseXor, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\BitwiseXor"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" ^ "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_ShiftLeft(&self, mut node: crate::php_parser::node::expr::binary_op::ShiftLeft, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\ShiftLeft"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" << "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_ShiftRight(&self, mut node: crate::php_parser::node::expr::binary_op::ShiftRight, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\ShiftRight"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" >> "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_Pow(&self, mut node: crate::php_parser::node::expr::binary_op::Pow, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Pow"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" ** "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_LogicalAnd(&self, mut node: crate::php_parser::node::expr::binary_op::LogicalAnd, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\LogicalAnd"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" and "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_LogicalOr(&self, mut node: crate::php_parser::node::expr::binary_op::LogicalOr, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\LogicalOr"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" or "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_LogicalXor(&self, mut node: crate::php_parser::node::expr::binary_op::LogicalXor, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\LogicalXor"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" xor "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_Equal(&self, mut node: crate::php_parser::node::expr::binary_op::Equal, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Equal"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" == "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_NotEqual(&self, mut node: crate::php_parser::node::expr::binary_op::NotEqual, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\NotEqual"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" != "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_Identical(&self, mut node: crate::php_parser::node::expr::binary_op::Identical, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Identical"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" === "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_NotIdentical(&self, mut node: crate::php_parser::node::expr::binary_op::NotIdentical, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\NotIdentical"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" !== "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_Spaceship(&self, mut node: crate::php_parser::node::expr::binary_op::Spaceship, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Spaceship"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" <=> "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_Greater(&self, mut node: crate::php_parser::node::expr::binary_op::Greater, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Greater"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" > "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_GreaterOrEqual(&self, mut node: crate::php_parser::node::expr::binary_op::GreaterOrEqual, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\GreaterOrEqual"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" >= "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_Smaller(&self, mut node: crate::php_parser::node::expr::binary_op::Smaller, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Smaller"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" < "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_SmallerOrEqual(&self, mut node: crate::php_parser::node::expr::binary_op::SmallerOrEqual, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\SmallerOrEqual"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" <= "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_Coalesce(&self, mut node: crate::php_parser::node::expr::binary_op::Coalesce, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Coalesce"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" ?? "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BinaryOp_Pipe(&self, mut node: crate::php_parser::node::expr::binary_op::Pipe, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    if is_instance::<crate::php_parser::node::expr::ArrowFunction>(&node.clone().p_right_get()) {
+        lhsPrecedence = self.p_precedenceMap_get().idx(&Str::from_static("PhpParser\\Node\\Expr\\ArrowFunction")).clone().0;
+    }
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\BinaryOp\\Pipe"), cast::<crate::php_parser::Node>(node.clone().p_left_get()), Str::from_static(" |> "), cast::<crate::php_parser::Node>(node.clone().p_right_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_Instanceof(&self, mut node: crate::php_parser::node::expr::Instanceof_, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPostfixOp(Str::from_static("PhpParser\\Node\\Expr\\Instanceof_"), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), concat(Str::from_static(" instanceof "), self.pNewOperand(cast::<crate::php_parser::Node>(node.clone().p_class_get()))?), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BooleanNot(&self, mut node: crate::php_parser::node::expr::BooleanNot, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\BooleanNot"), Str::from_static("!"), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_BitwiseNot(&self, mut node: crate::php_parser::node::expr::BitwiseNot, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\BitwiseNot"), Str::from_static("~"), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_UnaryMinus(&self, mut node: crate::php_parser::node::expr::UnaryMinus, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\UnaryMinus"), Str::from_static("-"), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_UnaryPlus(&self, mut node: crate::php_parser::node::expr::UnaryPlus, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\UnaryPlus"), Str::from_static("+"), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_PreInc(&self, mut node: crate::php_parser::node::expr::PreInc) -> Result<Str, Throw> {
+    return Ok(concat(Str::from_static("++"), self.p(cast::<crate::php_parser::Node>(node.clone().p_var_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?));
+    }
+    pub fn pExpr_PreDec(&self, mut node: crate::php_parser::node::expr::PreDec) -> Result<Str, Throw> {
+    return Ok(concat(Str::from_static("--"), self.p(cast::<crate::php_parser::Node>(node.clone().p_var_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?));
+    }
+    pub fn pExpr_PostInc(&self, mut node: crate::php_parser::node::expr::PostInc) -> Result<Str, Throw> {
+    return Ok(concat(self.p(cast::<crate::php_parser::Node>(node.clone().p_var_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, Str::from_static("++")));
+    }
+    pub fn pExpr_PostDec(&self, mut node: crate::php_parser::node::expr::PostDec) -> Result<Str, Throw> {
+    return Ok(concat(self.p(cast::<crate::php_parser::Node>(node.clone().p_var_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, Str::from_static("--")));
+    }
+    pub fn pExpr_ErrorSuppress(&self, mut node: crate::php_parser::node::expr::ErrorSuppress, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\ErrorSuppress"), Str::from_static("@"), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_YieldFrom(&self, mut node: crate::php_parser::node::expr::YieldFrom, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\YieldFrom"), Str::from_static("yield from "), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_Print(&self, mut node: crate::php_parser::node::expr::Print_, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\Print_"), Str::from_static("print "), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_Cast_Int(&self, mut node: crate::php_parser::node::expr::cast::Int_, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\Cast\\Int_"), Str::from_static("(int) "), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_Cast_Double(&self, mut node: crate::php_parser::node::expr::cast::Double, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    let mut kind: Mixed = Default::default();
+    let mut cast_v: Str = Default::default();
+    kind = node.clone().getAttribute(Str::from_static("kind"), cast::<Mixed>(crate::php_parser::node::expr::cast::Double::KIND_DOUBLE()))?;
+    if identical(&kind.clone(), &cast::<Mixed>(crate::php_parser::node::expr::cast::Double::KIND_DOUBLE())) {
+        cast_v = Str::from_static("(double)");
+    } else if identical(&kind.clone(), &cast::<Mixed>(crate::php_parser::node::expr::cast::Double::KIND_FLOAT())) {
+        cast_v = Str::from_static("(float)");
+    } else {
+        let _: bool = { if !(identical(&kind.clone(), &cast::<Mixed>(crate::php_parser::node::expr::cast::Double::KIND_REAL()))) { return Err(Throw::assertion(Str::from_static("assert(Expr_BinaryOp_Identical)"))); } true };
+        cast_v = Str::from_static("(real)");
+    }
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\Cast\\Double"), concat(cast_v.clone(), Str::from_static(" ")), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_Cast_String(&self, mut node: crate::php_parser::node::expr::cast::String_, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\Cast\\String_"), Str::from_static("(string) "), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_Cast_Array(&self, mut node: crate::php_parser::node::expr::cast::Array_, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\Cast\\Array_"), Str::from_static("(array) "), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_Cast_Object(&self, mut node: crate::php_parser::node::expr::cast::Object_, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\Cast\\Object_"), Str::from_static("(object) "), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_Cast_Bool(&self, mut node: crate::php_parser::node::expr::cast::Bool_, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\Cast\\Bool_"), Str::from_static("(bool) "), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_Cast_Unset(&self, mut node: crate::php_parser::node::expr::cast::Unset_, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\Cast\\Unset_"), Str::from_static("(unset) "), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_Cast_Void(&self, mut node: crate::php_parser::node::expr::cast::Void_, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\Cast\\Void_"), Str::from_static("(void) "), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_FuncCall(&self, mut node: crate::php_parser::node::expr::FuncCall) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(self.pCallLhs(cast::<crate::php_parser::Node>(node.clone().p_name_get()))?, Str::from_static("(")), self.pMaybeMultiline(node.clone().p_args_get().map_values(|v| cast::<crate::php_parser::Node>(v)), false)?), Str::from_static(")")));
+    }
+    pub fn pExpr_MethodCall(&self, mut node: crate::php_parser::node::expr::MethodCall) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(concat(self.pDereferenceLhs(cast::<crate::php_parser::Node>(node.clone().p_var_get()))?, Str::from_static("->")), self.pObjectProperty(cast::<crate::php_parser::Node>(node.clone().p_name_get()))?), Str::from_static("(")), self.pMaybeMultiline(node.clone().p_args_get().map_values(|v| cast::<crate::php_parser::Node>(v)), false)?), Str::from_static(")")));
+    }
+    pub fn pExpr_NullsafeMethodCall(&self, mut node: crate::php_parser::node::expr::NullsafeMethodCall) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(concat(self.pDereferenceLhs(cast::<crate::php_parser::Node>(node.clone().p_var_get()))?, Str::from_static("?->")), self.pObjectProperty(cast::<crate::php_parser::Node>(node.clone().p_name_get()))?), Str::from_static("(")), self.pMaybeMultiline(node.clone().p_args_get().map_values(|v| cast::<crate::php_parser::Node>(v)), false)?), Str::from_static(")")));
+    }
+    pub fn pExpr_StaticCall(&self, mut node: crate::php_parser::node::expr::StaticCall) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(concat(self.pStaticDereferenceLhs(cast::<crate::php_parser::Node>(node.clone().p_class_get()))?, Str::from_static("::")), cast::<Str>((if is_instance::<crate::php_parser::node::Expr>(&node.clone().p_name_get()) { U_PhpParser_Node_Identifier_or_Str::Str((if is_instance::<crate::php_parser::node::expr::Variable>(&cast::<crate::php_parser::node::Expr>(node.clone().p_name_get())) { self.p(cast::<crate::php_parser::Node>(cast::<crate::php_parser::node::expr::Variable>(node.clone().p_name_get())), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)? } else { concat(concat(Str::from_static("{"), self.p(cast::<crate::php_parser::Node>(cast::<crate::php_parser::node::Expr>(node.clone().p_name_get())), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), Str::from_static("}")) })) } else { U_PhpParser_Node_Identifier_or_Str::PhpParser_Node_Identifier(cast::<crate::php_parser::node::Identifier>(node.clone().p_name_get())) }))), Str::from_static("(")), self.pMaybeMultiline(node.clone().p_args_get().map_values(|v| cast::<crate::php_parser::Node>(v)), false)?), Str::from_static(")")));
+    }
+    pub fn pExpr_Empty(&self, mut node: crate::php_parser::node::expr::Empty_) -> Result<Str, Throw> {
+    return Ok(concat(concat(Str::from_static("empty("), self.p(cast::<crate::php_parser::Node>(node.clone().p_expr_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), Str::from_static(")")));
+    }
+    pub fn pExpr_Isset(&self, mut node: crate::php_parser::node::expr::Isset_) -> Result<Str, Throw> {
+    return Ok(concat(concat(Str::from_static("isset("), self.pCommaSeparated(node.clone().p_vars_get().map_values(|v| cast::<crate::php_parser::Node>(v)))?), Str::from_static(")")));
+    }
+    pub fn pExpr_Eval(&self, mut node: crate::php_parser::node::expr::Eval_) -> Result<Str, Throw> {
+    return Ok(concat(concat(Str::from_static("eval("), self.p(cast::<crate::php_parser::Node>(node.clone().p_expr_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), Str::from_static(")")));
+    }
+    pub fn pExpr_Include(&self, mut node: crate::php_parser::node::expr::Include_, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    let mut map_v: Mixed = Default::default();
+    map_v = cast::<Mixed>(Shape_1_Str_2_Str_3_Str_4_Str { k1: Str::from_static("include"), k2: Str::from_static("include_once"), k3: Str::from_static("require"), k4: Str::from_static("require_once") });
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\Include_"), concat(cast::<Str>(cast::<Mixed>(mixed_get(&map_v.clone(), &to_key(&node.clone().p_type__get())))), Str::from_static(" ")), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_List(&self, mut node: crate::php_parser::node::expr::List_) -> Result<Str, Throw> {
+    let mut syntax: Mixed = Default::default();
+    syntax = node.clone().getAttribute(Str::from_static("kind"), cast::<Mixed>((if self.p_phpVersion_get().supportsShortArrayDestructuring()? { crate::php_parser::node::expr::List_::KIND_ARRAY() } else { crate::php_parser::node::expr::List_::KIND_LIST() })))?;
+    if identical(&syntax.clone(), &cast::<Mixed>(crate::php_parser::node::expr::List_::KIND_ARRAY())) {
+        return Ok(concat(concat(Str::from_static("["), self.pMaybeMultiline(node.clone().p_items_get().map_entries(|k, v| (cast::<ArrayKey>(k), cast::<crate::php_parser::Node>(v.unwrap()))), true)?), Str::from_static("]")));
+    } else {
+        return Ok(concat(concat(Str::from_static("list("), self.pMaybeMultiline(node.clone().p_items_get().map_entries(|k, v| (cast::<ArrayKey>(k), cast::<crate::php_parser::Node>(v.unwrap()))), true)?), Str::from_static(")")));
+    }
+    #[allow(unreachable_code)] unreachable!("missing return")
+    }
+    pub fn pExpr_Error(&self, mut node: crate::php_parser::node::expr::Error) -> Result<Str, Throw> {
+    return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(Str::from_static("Cannot pretty-print AST with Error nodes"), 0i64, { let _ = (); None::<crate::g::Throwable> })?));
+    }
+    pub fn pExpr_Variable(&self, mut node: crate::php_parser::node::expr::Variable) -> Result<Str, Throw> {
+    if is_instance::<crate::php_parser::node::Expr>(&node.clone().p_name_get()) {
+        return Ok(concat(concat(Str::from_static("${"), self.p(cast::<crate::php_parser::Node>(cast::<crate::php_parser::node::Expr>(node.clone().p_name_get())), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), Str::from_static("}")));
+    } else {
+        return Ok(concat(Str::from_static("$"), cast::<Str>(node.clone().p_name_get())));
+    }
+    #[allow(unreachable_code)] unreachable!("missing return")
+    }
+    pub fn pExpr_Array(&self, mut node: crate::php_parser::node::expr::Array_) -> Result<Str, Throw> {
+    let mut syntax: Mixed = Default::default();
+    syntax = node.clone().getAttribute(Str::from_static("kind"), cast::<Mixed>((if self.p_shortArraySyntax_get() { crate::php_parser::node::expr::Array_::KIND_SHORT() } else { crate::php_parser::node::expr::Array_::KIND_LONG() })))?;
+    if identical(&syntax.clone(), &cast::<Mixed>(crate::php_parser::node::expr::Array_::KIND_SHORT())) {
+        return Ok(concat(concat(Str::from_static("["), self.pMaybeMultiline(node.clone().p_items_get().map_entries(|k, v| (cast::<ArrayKey>(k), cast::<crate::php_parser::Node>(v.unwrap()))), true)?), Str::from_static("]")));
+    } else {
+        return Ok(concat(concat(Str::from_static("array("), self.pMaybeMultiline(node.clone().p_items_get().map_entries(|k, v| (cast::<ArrayKey>(k), cast::<crate::php_parser::Node>(v.unwrap()))), true)?), Str::from_static(")")));
+    }
+    #[allow(unreachable_code)] unreachable!("missing return")
+    }
+    pub fn pKey(&self, mut node: Option<crate::php_parser::Node>) -> Result<Str, Throw> {
+    let mut yieldPrecedence: i64 = Default::default();
+    if node.clone().is_none() {
+        return Ok(Str::from_static(""));
+    }
+    yieldPrecedence = self.p_precedenceMap_get().idx(&Str::from_static("PhpParser\\Node\\Expr\\Yield_")).clone().0;
+    return Ok(concat(self.p(node.clone().unwrap(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), yieldPrecedence, false)?, Str::from_static(" => ")));
+    }
+    pub fn pArrayItem(&self, mut node: crate::php_parser::node::ArrayItem) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(self.pKey(node.clone().p_key_get().map(|v| cast::<crate::php_parser::Node>(v)))?, (if node.clone().p_byRef_get() { Str::from_static("&") } else { Str::from_static("") })), (if node.clone().p_unpack_get() { Str::from_static("...") } else { Str::from_static("") })), self.p(cast::<crate::php_parser::Node>(node.clone().p_value_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?));
+    }
+    pub fn pExpr_ArrayDimFetch(&self, mut node: crate::php_parser::node::expr::ArrayDimFetch) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(self.pDereferenceLhs(cast::<crate::php_parser::Node>(node.clone().p_var_get()))?, Str::from_static("[")), (if (!Some(node.clone()).and_then(|__b| Some(__b.p_dim_get())).flatten().is_none()) { self.p(cast::<crate::php_parser::Node>(node.clone().p_dim_get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)? } else { Str::from_static("") })), Str::from_static("]")));
+    }
+    pub fn pExpr_ConstFetch(&self, mut node: crate::php_parser::node::expr::ConstFetch) -> Result<Str, Throw> {
+    return Ok(self.p(cast::<crate::php_parser::Node>(node.clone().p_name_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?);
+    }
+    pub fn pExpr_ClassConstFetch(&self, mut node: crate::php_parser::node::expr::ClassConstFetch) -> Result<Str, Throw> {
+    return Ok(concat(concat(self.pStaticDereferenceLhs(cast::<crate::php_parser::Node>(node.clone().p_class_get()))?, Str::from_static("::")), self.pObjectProperty(cast::<crate::php_parser::Node>(cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier>(node.clone().p_name_get())))?));
+    }
+    pub fn pExpr_PropertyFetch(&self, mut node: crate::php_parser::node::expr::PropertyFetch) -> Result<Str, Throw> {
+    return Ok(concat(concat(self.pDereferenceLhs(cast::<crate::php_parser::Node>(node.clone().p_var_get()))?, Str::from_static("->")), self.pObjectProperty(cast::<crate::php_parser::Node>(node.clone().p_name_get()))?));
+    }
+    pub fn pExpr_NullsafePropertyFetch(&self, mut node: crate::php_parser::node::expr::NullsafePropertyFetch) -> Result<Str, Throw> {
+    return Ok(concat(concat(self.pDereferenceLhs(cast::<crate::php_parser::Node>(node.clone().p_var_get()))?, Str::from_static("?->")), self.pObjectProperty(cast::<crate::php_parser::Node>(node.clone().p_name_get()))?));
+    }
+    pub fn pExpr_StaticPropertyFetch(&self, mut node: crate::php_parser::node::expr::StaticPropertyFetch) -> Result<Str, Throw> {
+    return Ok(concat(concat(self.pStaticDereferenceLhs(cast::<crate::php_parser::Node>(node.clone().p_class_get()))?, Str::from_static("::$")), self.pObjectProperty(cast::<crate::php_parser::Node>(node.clone().p_name_get()))?));
+    }
+    pub fn pExpr_ShellExec(&self, mut node: crate::php_parser::node::expr::ShellExec) -> Result<Str, Throw> {
+    return Ok(concat(concat(Str::from_static("`"), self.pEncapsList(cast::<Map<ArrayKey, U_PhpParser_Node_Expr_or_PhpParser_Node_InterpolatedStringPart>>(node.clone().p_parts_get().map_elems(|v| U_PhpParser_Node_Expr_or_PhpParser_Node_InterpolatedStringPart::PhpParser_Node_Expr(v))), Some(Str::from_static("`")))?), Str::from_static("`")));
+    }
+    pub fn pExpr_Closure(&self, mut node: crate::php_parser::node::expr::Closure) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(concat(concat(concat(concat(concat(concat(concat(concat(self.pAttrGroups(node.clone().p_attrGroups_get(), true)?, self.pStatic(node.clone().p_static__get())?), Str::from_static("function ")), (if node.clone().p_byRef_get() { Str::from_static("&") } else { Str::from_static("") })), Str::from_static("(")), self.pParams(cast::<Map<ArrayKey, crate::php_parser::node::Param>>(node.clone().p_params_get()))?), Str::from_static(")")), (if (!(!truthy(&Some(node.clone()).and_then(|__b| Some(__b.p_uses_get()))))) { concat(concat(Str::from_static(" use ("), self.pCommaSeparated(node.clone().p_uses_get().map_values(|v| cast::<crate::php_parser::Node>(v)))?), Str::from_static(")")) } else { Str::from_static("") })), (if (!Some(node.clone()).and_then(|__b| Some(__b.p_returnType_get())).flatten().is_none()) { concat(Str::from_static(": "), self.p(cast::<crate::php_parser::Node>(node.clone().p_returnType_get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?) } else { Str::from_static("") })), Str::from_static(" {")), self.pStmts(node.clone().p_stmts_get().map_values(|v| cast::<crate::php_parser::Node>(v)), true)?), self.p_nl_get()), Str::from_static("}")));
+    }
+    pub fn pExpr_Match(&self, mut node: crate::php_parser::node::expr::Match_) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(concat(Str::from_static("match ("), self.p(cast::<crate::php_parser::Node>(node.clone().p_cond_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), Str::from_static(") {")), self.pCommaSeparatedMultiline(node.clone().p_arms_get().map_values(|v| cast::<crate::php_parser::Node>(v)), true)?), self.p_nl_get()), Str::from_static("}")));
+    }
+    pub fn pMatchArm(&self, mut node: crate::php_parser::node::MatchArm) -> Result<Str, Throw> {
+    let mut result: Str = Default::default();
+    let mut i: i64 = Default::default();
+    let mut c: i64 = Default::default();
+    result = Str::from_static("");
+    if truthy(&node.clone().p_conds_get()) {
+        {
+            i = 0i64;
+            c = node.clone().p_conds_get().unwrap().count();
+            'l1: loop {
+                if !(((i).wrapping_add(1i64) < c)) { break; }
+                'c2: {
+                    append(&mut result, concat(self.p(cast::<crate::php_parser::Node>(node.clone().p_conds_get().unwrap().idx(i).clone()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, Str::from_static(", ")));
+                }
+                let _ = { let __t1 = i; i = __t1.wrapping_add(1); __t1 };
+            }
+        }
+        append(&mut result, self.pKey(Some(cast::<crate::php_parser::Node>(node.clone().p_conds_get().unwrap().idx(i).clone())))?);
+    } else {
+        result = Str::from_static("default => ");
+    }
+    return Ok(concat(result.clone(), self.p(cast::<crate::php_parser::Node>(node.clone().p_body_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?));
+    }
+    pub fn pExpr_ArrowFunction(&self, mut node: crate::php_parser::node::expr::ArrowFunction, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\ArrowFunction"), concat(concat(concat(concat(concat(concat(concat(concat(self.pAttrGroups(node.clone().p_attrGroups_get(), true)?, self.pStatic(node.clone().p_static__get())?), Str::from_static("fn")), (if node.clone().p_byRef_get() { Str::from_static("&") } else { Str::from_static("") })), Str::from_static("(")), self.pParams(cast::<Map<ArrayKey, crate::php_parser::node::Param>>(node.clone().p_params_get()))?), Str::from_static(")")), (if (!Some(node.clone()).and_then(|__b| Some(__b.p_returnType_get())).flatten().is_none()) { concat(Str::from_static(": "), self.p(cast::<crate::php_parser::Node>(node.clone().p_returnType_get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?) } else { Str::from_static("") })), Str::from_static(" => ")), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pClosureUse(&self, mut node: crate::php_parser::node::ClosureUse) -> Result<Str, Throw> {
+    return Ok(concat((if node.clone().p_byRef_get() { Str::from_static("&") } else { Str::from_static("") }), self.p(cast::<crate::php_parser::Node>(node.clone().p_var_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?));
+    }
+    pub fn pExpr_New(&self, mut node: crate::php_parser::node::expr::New_) -> Result<Str, Throw> {
+    let mut args: Str = Default::default();
+    if is_instance::<crate::php_parser::node::stmt::Class_>(&node.clone().p_class_get()) {
+        args = (if truthy(&node.clone().p_args_get()) { concat(concat(Str::from_static("("), self.pMaybeMultiline(node.clone().p_args_get().map_values(|v| cast::<crate::php_parser::Node>(v)), false)?), Str::from_static(")")) } else { Str::from_static("") });
+        return Ok(concat(Str::from_static("new "), self.pClassCommon(cast::<crate::php_parser::node::stmt::Class_>(node.clone().p_class_get()), args.clone())?));
+    }
+    return Ok(concat(concat(concat(concat(Str::from_static("new "), self.pNewOperand(cast::<crate::php_parser::Node>(cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Name>(node.clone().p_class_get())))?), Str::from_static("(")), self.pMaybeMultiline(node.clone().p_args_get().map_values(|v| cast::<crate::php_parser::Node>(v)), false)?), Str::from_static(")")));
+    }
+    pub fn pExpr_Clone(&self, mut node: crate::php_parser::node::expr::Clone_, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\Clone_"), Str::from_static("clone "), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_Ternary(&self, mut node: crate::php_parser::node::expr::Ternary, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pInfixOp(Str::from_static("PhpParser\\Node\\Expr\\Ternary"), cast::<crate::php_parser::Node>(node.clone().p_cond_get()), concat(concat(Str::from_static(" ?"), (if (!Some(node.clone()).and_then(|__b| Some(__b.p_if__get())).flatten().is_none()) { concat(concat(Str::from_static(" "), self.p(cast::<crate::php_parser::Node>(node.clone().p_if__get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), Str::from_static(" ")) } else { Str::from_static("") })), Str::from_static(": ")), cast::<crate::php_parser::Node>(node.clone().p_else__get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_Exit(&self, mut node: crate::php_parser::node::expr::Exit_) -> Result<Str, Throw> {
+    let mut kind: Mixed = Default::default();
+    kind = node.clone().getAttribute(Str::from_static("kind"), cast::<Mixed>(crate::php_parser::node::expr::Exit_::KIND_DIE()))?;
+    return Ok(concat((if identical(&kind.clone(), &cast::<Mixed>(crate::php_parser::node::expr::Exit_::KIND_EXIT())) { Str::from_static("exit") } else { Str::from_static("die") }), (if (!Some(node.clone()).and_then(|__b| Some(__b.p_expr_get())).flatten().is_none()) { concat(concat(Str::from_static("("), self.p(cast::<crate::php_parser::Node>(node.clone().p_expr_get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), Str::from_static(")")) } else { Str::from_static("") })));
+    }
+    pub fn pExpr_Throw(&self, mut node: crate::php_parser::node::expr::Throw_, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\Throw_"), Str::from_static("throw "), cast::<crate::php_parser::Node>(node.clone().p_expr_get()), precedence, lhsPrecedence)?);
+    }
+    pub fn pExpr_Yield(&self, mut node: crate::php_parser::node::expr::Yield_, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> {
+    let mut opPrecedence: i64 = Default::default();
+    if Some(node.clone()).and_then(|__b| Some(__b.p_value_get())).flatten().is_none() {
+        opPrecedence = self.p_precedenceMap_get().idx(&Str::from_static("PhpParser\\Node\\Expr\\Yield_")).clone().0;
+        return Ok((if (opPrecedence >= lhsPrecedence) { Str::from_static("(yield)") } else { Str::from_static("yield") }));
+    } else {
+        if (!self.p_phpVersion_get().supportsYieldWithoutParentheses()?) {
+            return Ok(concat(concat(concat(Str::from_static("(yield "), self.pKey(node.clone().p_key_get().map(|v| cast::<crate::php_parser::Node>(v)))?), self.p(cast::<crate::php_parser::Node>(node.clone().p_value_get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), Str::from_static(")")));
+        }
+        return Ok(self.pPrefixOp(Str::from_static("PhpParser\\Node\\Expr\\Yield_"), concat(Str::from_static("yield "), self.pKey(node.clone().p_key_get().map(|v| cast::<crate::php_parser::Node>(v)))?), cast::<crate::php_parser::Node>(node.clone().p_value_get().unwrap()), precedence, lhsPrecedence)?);
+    }
+    #[allow(unreachable_code)] unreachable!("missing return")
+    }
+    pub fn pStmt_Namespace(&self, mut node: crate::php_parser::node::stmt::Namespace_) -> Result<Str, Throw> {
+    if self.p_canUseSemicolonNamespaces_get() {
+        return Ok(concat(concat(concat(concat(Str::from_static("namespace "), self.p(cast::<crate::php_parser::Node>(node.clone().p_name_get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), Str::from_static(";")), self.p_nl_get()), self.pStmts(cast::<Map<ArrayKey, crate::php_parser::Node>>(node.clone().p_stmts_get().map_elems(|v| cast::<crate::php_parser::Node>(v))), false)?));
+    } else {
+        return Ok(concat(concat(concat(concat(concat(Str::from_static("namespace"), (if (!Some(node.clone()).and_then(|__b| Some(__b.p_name_get())).flatten().is_none()) { concat(Str::from_static(" "), self.p(cast::<crate::php_parser::Node>(node.clone().p_name_get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?) } else { Str::from_static("") })), Str::from_static(" {")), self.pStmts(cast::<Map<ArrayKey, crate::php_parser::Node>>(node.clone().p_stmts_get().map_elems(|v| cast::<crate::php_parser::Node>(v))), true)?), self.p_nl_get()), Str::from_static("}")));
+    }
+    #[allow(unreachable_code)] unreachable!("missing return")
+    }
+    pub fn pStmt_Use(&self, mut node: crate::php_parser::node::stmt::Use_) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(Str::from_static("use "), self.pUseType(cast::<i64>(node.clone().p_type__get()))?), self.pCommaSeparated(node.clone().p_uses_get().map_values(|v| cast::<crate::php_parser::Node>(v)))?), Str::from_static(";")));
+    }
+    pub fn pStmt_GroupUse(&self, mut node: crate::php_parser::node::stmt::GroupUse) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(concat(Str::from_static("use "), self.pUseType(cast::<i64>(node.clone().p_type__get()))?), self.pName(node.clone().p_prefix_get())?), Str::from_static("\\{")), self.pCommaSeparated(node.clone().p_uses_get().map_values(|v| cast::<crate::php_parser::Node>(v)))?), Str::from_static("};")));
+    }
+    pub fn pUseItem(&self, mut node: crate::php_parser::node::UseItem) -> Result<Str, Throw> {
+    return Ok(concat(concat(self.pUseType(cast::<i64>(node.clone().p_type__get()))?, self.p(cast::<crate::php_parser::Node>(node.clone().p_name_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), (if (!Some(node.clone()).and_then(|__b| Some(__b.p_alias_get())).flatten().is_none()) { concat(Str::from_static(" as "), cast::<Str>(node.clone().p_alias_get().unwrap())) } else { Str::from_static("") })));
+    }
+    pub fn pUseType(&self, mut type_: i64) -> Result<Str, Throw> {
+    return Ok((if (type_ == crate::php_parser::node::stmt::Use_::TYPE_FUNCTION()) { Str::from_static("function ") } else { (if (type_ == crate::php_parser::node::stmt::Use_::TYPE_CONSTANT()) { Str::from_static("const ") } else { Str::from_static("") }) }));
+    }
+    pub fn pStmt_Interface(&self, mut node: crate::php_parser::node::stmt::Interface_) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(concat(concat(concat(concat(self.pAttrGroups(node.clone().p_attrGroups_get(), false)?, Str::from_static("interface ")), cast::<Str>(node.clone().p_name_get().unwrap())), (if (!(!truthy(&Some(node.clone()).and_then(|__b| Some(__b.p_extends_get()))))) { concat(Str::from_static(" extends "), self.pCommaSeparated(node.clone().p_extends_get().map_values(|v| cast::<crate::php_parser::Node>(v)))?) } else { Str::from_static("") })), self.p_nl_get()), Str::from_static("{")), self.pStmts(cast::<Map<ArrayKey, crate::php_parser::Node>>(cast::<List<crate::php_parser::node::Stmt>>(node.clone().p_stmts_get()).map_elems(|v| cast::<crate::php_parser::Node>(v))), true)?), self.p_nl_get()), Str::from_static("}")));
+    }
+    pub fn pStmt_Enum(&self, mut node: crate::php_parser::node::stmt::Enum_) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(concat(concat(concat(concat(concat(self.pAttrGroups(node.clone().p_attrGroups_get(), false)?, Str::from_static("enum ")), cast::<Str>(node.clone().p_name_get().unwrap())), (if truthy(&node.clone().p_scalarType_get()) { concat(Str::from_static(" : "), self.p(cast::<crate::php_parser::Node>(node.clone().p_scalarType_get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?) } else { Str::from_static("") })), (if (!(!truthy(&Some(node.clone()).and_then(|__b| Some(__b.p_implements_get()))))) { concat(Str::from_static(" implements "), self.pCommaSeparated(node.clone().p_implements_get().map_values(|v| cast::<crate::php_parser::Node>(v)))?) } else { Str::from_static("") })), self.p_nl_get()), Str::from_static("{")), self.pStmts(node.clone().p_stmts_get().map_values(|v| cast::<crate::php_parser::Node>(v)), true)?), self.p_nl_get()), Str::from_static("}")));
+    }
+    pub fn pStmt_Class(&self, mut node: crate::php_parser::node::stmt::Class_) -> Result<Str, Throw> {
+    return Ok(self.pClassCommon(node.clone(), concat(Str::from_static(" "), cast::<Str>(node.clone().p_name_get().unwrap())))?);
+    }
+    pub fn pStmt_Trait(&self, mut node: crate::php_parser::node::stmt::Trait_) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(concat(concat(concat(self.pAttrGroups(node.clone().p_attrGroups_get(), false)?, Str::from_static("trait ")), cast::<Str>(node.clone().p_name_get().unwrap())), self.p_nl_get()), Str::from_static("{")), self.pStmts(cast::<Map<ArrayKey, crate::php_parser::Node>>(cast::<List<crate::php_parser::node::Stmt>>(node.clone().p_stmts_get()).map_elems(|v| cast::<crate::php_parser::Node>(v))), true)?), self.p_nl_get()), Str::from_static("}")));
+    }
+    pub fn pStmt_EnumCase(&self, mut node: crate::php_parser::node::stmt::EnumCase) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(self.pAttrGroups(node.clone().p_attrGroups_get(), false)?, Str::from_static("case ")), cast::<Str>(node.clone().p_name_get())), (if truthy(&node.clone().p_expr_get()) { concat(Str::from_static(" = "), self.p(cast::<crate::php_parser::Node>(node.clone().p_expr_get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?) } else { Str::from_static("") })), Str::from_static(";")));
+    }
+    pub fn pStmt_TraitUse(&self, mut node: crate::php_parser::node::stmt::TraitUse) -> Result<Str, Throw> {
+    return Ok(concat(concat(Str::from_static("use "), self.pCommaSeparated(node.clone().p_traits_get().map_values(|v| cast::<crate::php_parser::Node>(v)))?), (if (!truthy(&Some(node.clone()).and_then(|__b| Some(__b.p_adaptations_get())))) { Str::from_static(";") } else { concat(concat(concat(Str::from_static(" {"), self.pStmts(node.clone().p_adaptations_get().map_values(|v| cast::<crate::php_parser::Node>(v)), true)?), self.p_nl_get()), Str::from_static("}")) })));
+    }
+    pub fn pStmt_TraitUseAdaptation_Precedence(&self, mut node: crate::php_parser::node::stmt::trait_use_adaptation::Precedence) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(concat(self.p(cast::<crate::php_parser::Node>(node.clone().p_trait__get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, Str::from_static("::")), cast::<Str>(node.clone().p_method_get())), Str::from_static(" insteadof ")), self.pCommaSeparated(node.clone().p_insteadof_get().map_values(|v| cast::<crate::php_parser::Node>(v)))?), Str::from_static(";")));
+    }
+    pub fn pStmt_TraitUseAdaptation_Alias(&self, mut node: crate::php_parser::node::stmt::trait_use_adaptation::Alias) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(concat((if (!Some(node.clone()).and_then(|__b| Some(__b.p_trait__get())).flatten().is_none()) { concat(self.p(cast::<crate::php_parser::Node>(node.clone().p_trait__get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, Str::from_static("::")) } else { Str::from_static("") }), cast::<Str>(node.clone().p_method_get())), Str::from_static(" as")), (if (!Some(node.clone()).and_then(|__b| Some(__b.p_newModifier_get())).flatten().is_none()) { concat(Str::from_static(" "), rtrim(&self.pModifiers(node.clone().p_newModifier_get().unwrap())?, Some(&Str::from_static(" ")))) } else { Str::from_static("") })), (if (!Some(node.clone()).and_then(|__b| Some(__b.p_newName_get())).flatten().is_none()) { concat(Str::from_static(" "), cast::<Str>(node.clone().p_newName_get().unwrap())) } else { Str::from_static("") })), Str::from_static(";")));
+    }
+    pub fn pStmt_Property(&self, mut node: crate::php_parser::node::stmt::Property) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(self.pAttrGroups(node.clone().p_attrGroups_get(), false)?, (if (0i64 == node.clone().p_flags_get()) { Str::from_static("var ") } else { self.pModifiers(node.clone().p_flags_get())? })), (if truthy(&node.clone().p_type__get()) { concat(self.p(cast::<crate::php_parser::Node>(node.clone().p_type__get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, Str::from_static(" ")) } else { Str::from_static("") })), self.pCommaSeparated(node.clone().p_props_get().map_values(|v| cast::<crate::php_parser::Node>(v)))?), (if truthy(&node.clone().p_hooks_get()) { concat(concat(concat(Str::from_static(" {"), self.pStmts(node.clone().p_hooks_get().map_values(|v| cast::<crate::php_parser::Node>(v)), true)?), self.p_nl_get()), Str::from_static("}")) } else { Str::from_static(";") })));
+    }
+    pub fn pPropertyItem(&self, mut node: crate::php_parser::node::PropertyItem) -> Result<Str, Throw> {
+    return Ok(concat(concat(Str::from_static("$"), cast::<Str>(node.clone().p_name_get())), (if (!Some(node.clone()).and_then(|__b| Some(__b.p_default_get())).flatten().is_none()) { concat(Str::from_static(" = "), self.p(cast::<crate::php_parser::Node>(node.clone().p_default_get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?) } else { Str::from_static("") })));
+    }
+    pub fn pPropertyHook(&self, mut node: crate::php_parser::node::PropertyHook) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(concat(self.pAttrGroups(node.clone().p_attrGroups_get(), false)?, self.pModifiers(node.clone().p_flags_get())?), (if node.clone().p_byRef_get() { Str::from_static("&") } else { Str::from_static("") })), cast::<Str>(node.clone().p_name_get())), (if truthy(&node.clone().p_params_get()) { concat(concat(Str::from_static("("), self.pParams(node.clone().p_params_get())?), Str::from_static(")")) } else { Str::from_static("") })), (if (match node.clone().p_body_get() { Some(__u) => match __u { U_Map_ArrayKey_PhpParser_Node_Stmt_or_PhpParser_Node_Expr::Map_ArrayKey_PhpParser_Node_Stmt(_) => true, _ => false }, None => false }) { concat(concat(concat(Str::from_static(" {"), self.pStmts(cast::<Map<ArrayKey, crate::php_parser::node::Stmt>>(node.clone().p_body_get().unwrap()).map_values(|v| cast::<crate::php_parser::Node>(v)), true)?), self.p_nl_get()), Str::from_static("}")) } else { concat((if (!Some(node.clone()).and_then(|__b| Some(__b.p_body_get())).flatten().is_none()) { concat(Str::from_static(" => "), self.p(cast::<crate::php_parser::Node>(cast::<crate::php_parser::node::Expr>(node.clone().p_body_get().unwrap())), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?) } else { Str::from_static("") }), Str::from_static(";")) })));
+    }
+    pub fn pStmt_ClassMethod(&self, mut node: crate::php_parser::node::stmt::ClassMethod) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(concat(concat(concat(concat(concat(self.pAttrGroups(node.clone().p_attrGroups_get(), false)?, self.pModifiers(node.clone().p_flags_get())?), Str::from_static("function ")), (if node.clone().p_byRef_get() { Str::from_static("&") } else { Str::from_static("") })), cast::<Str>(node.clone().p_name_get())), Str::from_static("(")), self.pParams(node.clone().p_params_get())?), Str::from_static(")")), (if (!Some(node.clone()).and_then(|__b| Some(__b.p_returnType_get())).flatten().is_none()) { concat(Str::from_static(": "), self.p(cast::<crate::php_parser::Node>(node.clone().p_returnType_get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?) } else { Str::from_static("") })), (if (!Some(node.clone()).and_then(|__b| Some(__b.p_stmts_get())).flatten().is_none()) { concat(concat(concat(concat(self.p_nl_get(), Str::from_static("{")), self.pStmts(node.clone().p_stmts_get().unwrap().map_values(|v| cast::<crate::php_parser::Node>(v)), true)?), self.p_nl_get()), Str::from_static("}")) } else { Str::from_static(";") })));
+    }
+    pub fn pStmt_ClassConst(&self, mut node: crate::php_parser::node::stmt::ClassConst) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(concat(self.pAttrGroups(node.clone().p_attrGroups_get(), false)?, self.pModifiers(node.clone().p_flags_get())?), Str::from_static("const ")), (if (!Some(node.clone()).and_then(|__b| Some(__b.p_type__get())).flatten().is_none()) { concat(self.p(cast::<crate::php_parser::Node>(node.clone().p_type__get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, Str::from_static(" ")) } else { Str::from_static("") })), self.pCommaSeparated(node.clone().p_consts_get().map_values(|v| cast::<crate::php_parser::Node>(v)))?), Str::from_static(";")));
+    }
+    pub fn pStmt_Function(&self, mut node: crate::php_parser::node::stmt::Function_) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(concat(concat(concat(concat(concat(concat(concat(concat(self.pAttrGroups(node.clone().p_attrGroups_get(), false)?, Str::from_static("function ")), (if node.clone().p_byRef_get() { Str::from_static("&") } else { Str::from_static("") })), cast::<Str>(node.clone().p_name_get())), Str::from_static("(")), self.pParams(node.clone().p_params_get())?), Str::from_static(")")), (if (!Some(node.clone()).and_then(|__b| Some(__b.p_returnType_get())).flatten().is_none()) { concat(Str::from_static(": "), self.p(cast::<crate::php_parser::Node>(node.clone().p_returnType_get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?) } else { Str::from_static("") })), self.p_nl_get()), Str::from_static("{")), self.pStmts(node.clone().p_stmts_get().map_values(|v| cast::<crate::php_parser::Node>(v)), true)?), self.p_nl_get()), Str::from_static("}")));
+    }
+    pub fn pStmt_Const(&self, mut node: crate::php_parser::node::stmt::Const_) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(self.pAttrGroups(node.clone().p_attrGroups_get(), false)?, Str::from_static("const ")), self.pCommaSeparated(node.clone().p_consts_get().map_values(|v| cast::<crate::php_parser::Node>(v)))?), Str::from_static(";")));
+    }
+    pub fn pStmt_Declare(&self, mut node: crate::php_parser::node::stmt::Declare_) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(Str::from_static("declare ("), self.pCommaSeparated(node.clone().p_declares_get().map_values(|v| cast::<crate::php_parser::Node>(v)))?), Str::from_static(")")), (if (!Some(node.clone()).and_then(|__b| Some(__b.p_stmts_get())).flatten().is_none()) { concat(concat(concat(Str::from_static(" {"), self.pStmts(node.clone().p_stmts_get().unwrap().map_values(|v| cast::<crate::php_parser::Node>(v)), true)?), self.p_nl_get()), Str::from_static("}")) } else { Str::from_static(";") })));
+    }
+    pub fn pDeclareItem(&self, mut node: crate::php_parser::node::DeclareItem) -> Result<Str, Throw> {
+    return Ok(concat(concat(cast::<Str>(node.clone().p_key_get()), Str::from_static("=")), self.p(cast::<crate::php_parser::Node>(node.clone().p_value_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?));
+    }
+    pub fn pStmt_If(&self, mut node: crate::php_parser::node::stmt::If_) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(concat(concat(concat(Str::from_static("if ("), self.p(cast::<crate::php_parser::Node>(node.clone().p_cond_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), Str::from_static(") {")), self.pStmts(cast::<Map<ArrayKey, crate::php_parser::Node>>(node.clone().p_stmts_get().map_elems(|v| cast::<crate::php_parser::Node>(v))), true)?), self.p_nl_get()), Str::from_static("}")), (if truthy(&node.clone().p_elseifs_get()) { concat(Str::from_static(" "), self.pImplode(node.clone().p_elseifs_get().map_values(|v| cast::<crate::php_parser::Node>(v)), Str::from_static(" "))?) } else { Str::from_static("") })), (if (!Some(node.clone()).and_then(|__b| Some(__b.p_else__get())).flatten().is_none()) { concat(Str::from_static(" "), self.p(cast::<crate::php_parser::Node>(node.clone().p_else__get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?) } else { Str::from_static("") })));
+    }
+    pub fn pStmt_ElseIf(&self, mut node: crate::php_parser::node::stmt::ElseIf_) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(concat(Str::from_static("elseif ("), self.p(cast::<crate::php_parser::Node>(node.clone().p_cond_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), Str::from_static(") {")), self.pStmts(cast::<Map<ArrayKey, crate::php_parser::Node>>(node.clone().p_stmts_get().map_elems(|v| cast::<crate::php_parser::Node>(v))), true)?), self.p_nl_get()), Str::from_static("}")));
+    }
+    pub fn pStmt_Else(&self, mut node: crate::php_parser::node::stmt::Else_) -> Result<Str, Throw> {
+    if ((node.clone().p_stmts_get().count() == 1i64) && is_instance::<crate::php_parser::node::stmt::If_>(&{ let __c1169 = node.clone().p_stmts_get(); (__c1169.idx(0).clone(),) }.0)) {
+        return Ok(concat(Str::from_static("else "), self.p(cast::<crate::php_parser::Node>({ let __c1170 = node.clone().p_stmts_get(); (cast::<crate::php_parser::node::stmt::If_>(__c1170.idx(0).clone()),) }.0), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?));
+    }
+    return Ok(concat(concat(concat(Str::from_static("else {"), self.pStmts(cast::<Map<ArrayKey, crate::php_parser::Node>>(node.clone().p_stmts_get().map_elems(|v| cast::<crate::php_parser::Node>(v))), true)?), self.p_nl_get()), Str::from_static("}")));
+    }
+    pub fn pStmt_For(&self, mut node: crate::php_parser::node::stmt::For_) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(concat(concat(concat(concat(concat(concat(concat(Str::from_static("for ("), self.pCommaSeparated(node.clone().p_init_get().map_values(|v| cast::<crate::php_parser::Node>(v)))?), Str::from_static(";")), (if (!(!truthy(&Some(node.clone()).and_then(|__b| Some(__b.p_cond_get()))))) { Str::from_static(" ") } else { Str::from_static("") })), self.pCommaSeparated(node.clone().p_cond_get().map_values(|v| cast::<crate::php_parser::Node>(v)))?), Str::from_static(";")), (if (!(!truthy(&Some(node.clone()).and_then(|__b| Some(__b.p_loop__get()))))) { Str::from_static(" ") } else { Str::from_static("") })), self.pCommaSeparated(node.clone().p_loop__get().map_values(|v| cast::<crate::php_parser::Node>(v)))?), Str::from_static(") {")), self.pStmts(cast::<Map<ArrayKey, crate::php_parser::Node>>(node.clone().p_stmts_get().map_elems(|v| cast::<crate::php_parser::Node>(v))), true)?), self.p_nl_get()), Str::from_static("}")));
+    }
+    pub fn pStmt_Foreach(&self, mut node: crate::php_parser::node::stmt::Foreach_) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(concat(concat(concat(concat(concat(Str::from_static("foreach ("), self.p(cast::<crate::php_parser::Node>(node.clone().p_expr_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), Str::from_static(" as ")), (if (!Some(node.clone()).and_then(|__b| Some(__b.p_keyVar_get())).flatten().is_none()) { concat(self.p(cast::<crate::php_parser::Node>(node.clone().p_keyVar_get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, Str::from_static(" => ")) } else { Str::from_static("") })), (if node.clone().p_byRef_get() { Str::from_static("&") } else { Str::from_static("") })), self.p(cast::<crate::php_parser::Node>(node.clone().p_valueVar_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), Str::from_static(") {")), self.pStmts(cast::<Map<ArrayKey, crate::php_parser::Node>>(node.clone().p_stmts_get().map_elems(|v| cast::<crate::php_parser::Node>(v))), true)?), self.p_nl_get()), Str::from_static("}")));
+    }
+    pub fn pStmt_While(&self, mut node: crate::php_parser::node::stmt::While_) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(concat(Str::from_static("while ("), self.p(cast::<crate::php_parser::Node>(node.clone().p_cond_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), Str::from_static(") {")), self.pStmts(cast::<Map<ArrayKey, crate::php_parser::Node>>(node.clone().p_stmts_get().map_elems(|v| cast::<crate::php_parser::Node>(v))), true)?), self.p_nl_get()), Str::from_static("}")));
+    }
+    pub fn pStmt_Do(&self, mut node: crate::php_parser::node::stmt::Do_) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(concat(Str::from_static("do {"), self.pStmts(cast::<Map<ArrayKey, crate::php_parser::Node>>(node.clone().p_stmts_get().map_elems(|v| cast::<crate::php_parser::Node>(v))), true)?), self.p_nl_get()), Str::from_static("} while (")), self.p(cast::<crate::php_parser::Node>(node.clone().p_cond_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), Str::from_static(");")));
+    }
+    pub fn pStmt_Switch(&self, mut node: crate::php_parser::node::stmt::Switch_) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(concat(Str::from_static("switch ("), self.p(cast::<crate::php_parser::Node>(node.clone().p_cond_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), Str::from_static(") {")), self.pStmts(node.clone().p_cases_get().map_values(|v| cast::<crate::php_parser::Node>(v)), true)?), self.p_nl_get()), Str::from_static("}")));
+    }
+    pub fn pStmt_Case(&self, mut node: crate::php_parser::node::stmt::Case_) -> Result<Str, Throw> {
+    return Ok(concat(concat((if (!Some(node.clone()).and_then(|__b| Some(__b.p_cond_get())).flatten().is_none()) { concat(Str::from_static("case "), self.p(cast::<crate::php_parser::Node>(node.clone().p_cond_get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?) } else { Str::from_static("default") }), Str::from_static(":")), self.pStmts(cast::<Map<ArrayKey, crate::php_parser::Node>>(node.clone().p_stmts_get().map_elems(|v| cast::<crate::php_parser::Node>(v))), true)?));
+    }
+    pub fn pStmt_TryCatch(&self, mut node: crate::php_parser::node::stmt::TryCatch) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(concat(Str::from_static("try {"), self.pStmts(cast::<Map<ArrayKey, crate::php_parser::Node>>(node.clone().p_stmts_get().map_elems(|v| cast::<crate::php_parser::Node>(v))), true)?), self.p_nl_get()), Str::from_static("}")), (if truthy(&node.clone().p_catches_get()) { concat(Str::from_static(" "), self.pImplode(node.clone().p_catches_get().map_values(|v| cast::<crate::php_parser::Node>(v)), Str::from_static(" "))?) } else { Str::from_static("") })), (if (!Some(node.clone()).and_then(|__b| Some(__b.p_finally_get())).flatten().is_none()) { concat(Str::from_static(" "), self.p(cast::<crate::php_parser::Node>(node.clone().p_finally_get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?) } else { Str::from_static("") })));
+    }
+    pub fn pStmt_Catch(&self, mut node: crate::php_parser::node::stmt::Catch_) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(concat(concat(Str::from_static("catch ("), self.pImplode(node.clone().p_types_get().map_values(|v| cast::<crate::php_parser::Node>(v)), Str::from_static("|"))?), (if (!Some(node.clone()).and_then(|__b| Some(__b.p_var_get())).flatten().is_none()) { concat(Str::from_static(" "), self.p(cast::<crate::php_parser::Node>(node.clone().p_var_get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?) } else { Str::from_static("") })), Str::from_static(") {")), self.pStmts(cast::<Map<ArrayKey, crate::php_parser::Node>>(node.clone().p_stmts_get().map_elems(|v| cast::<crate::php_parser::Node>(v))), true)?), self.p_nl_get()), Str::from_static("}")));
+    }
+    pub fn pStmt_Finally(&self, mut node: crate::php_parser::node::stmt::Finally_) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(Str::from_static("finally {"), self.pStmts(cast::<Map<ArrayKey, crate::php_parser::Node>>(node.clone().p_stmts_get().map_elems(|v| cast::<crate::php_parser::Node>(v))), true)?), self.p_nl_get()), Str::from_static("}")));
+    }
+    pub fn pStmt_Break(&self, mut node: crate::php_parser::node::stmt::Break_) -> Result<Str, Throw> {
+    return Ok(concat(concat(Str::from_static("break"), (if (!Some(node.clone()).and_then(|__b| Some(__b.p_num_get())).flatten().is_none()) { concat(Str::from_static(" "), self.p(cast::<crate::php_parser::Node>(node.clone().p_num_get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?) } else { Str::from_static("") })), Str::from_static(";")));
+    }
+    pub fn pStmt_Continue(&self, mut node: crate::php_parser::node::stmt::Continue_) -> Result<Str, Throw> {
+    return Ok(concat(concat(Str::from_static("continue"), (if (!Some(node.clone()).and_then(|__b| Some(__b.p_num_get())).flatten().is_none()) { concat(Str::from_static(" "), self.p(cast::<crate::php_parser::Node>(node.clone().p_num_get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?) } else { Str::from_static("") })), Str::from_static(";")));
+    }
+    pub fn pStmt_Return(&self, mut node: crate::php_parser::node::stmt::Return_) -> Result<Str, Throw> {
+    return Ok(concat(concat(Str::from_static("return"), (if (!Some(node.clone()).and_then(|__b| Some(__b.p_expr_get())).flatten().is_none()) { concat(Str::from_static(" "), self.p(cast::<crate::php_parser::Node>(node.clone().p_expr_get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?) } else { Str::from_static("") })), Str::from_static(";")));
+    }
+    pub fn pStmt_Label(&self, mut node: crate::php_parser::node::stmt::Label) -> Result<Str, Throw> {
+    return Ok(concat(cast::<Str>(node.clone().p_name_get()), Str::from_static(":")));
+    }
+    pub fn pStmt_Goto(&self, mut node: crate::php_parser::node::stmt::Goto_) -> Result<Str, Throw> {
+    return Ok(concat(concat(Str::from_static("goto "), cast::<Str>(node.clone().p_name_get())), Str::from_static(";")));
+    }
+    pub fn pStmt_Expression(&self, mut node: crate::php_parser::node::stmt::Expression) -> Result<Str, Throw> {
+    return Ok(concat(self.p(cast::<crate::php_parser::Node>(node.clone().p_expr_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, Str::from_static(";")));
+    }
+    pub fn pStmt_Echo(&self, mut node: crate::php_parser::node::stmt::Echo_) -> Result<Str, Throw> {
+    return Ok(concat(concat(Str::from_static("echo "), self.pCommaSeparated(node.clone().p_exprs_get().map_values(|v| cast::<crate::php_parser::Node>(v)))?), Str::from_static(";")));
+    }
+    pub fn pStmt_Static(&self, mut node: crate::php_parser::node::stmt::Static_) -> Result<Str, Throw> {
+    return Ok(concat(concat(Str::from_static("static "), self.pCommaSeparated(node.clone().p_vars_get().map_values(|v| cast::<crate::php_parser::Node>(v)))?), Str::from_static(";")));
+    }
+    pub fn pStmt_Global(&self, mut node: crate::php_parser::node::stmt::Global_) -> Result<Str, Throw> {
+    return Ok(concat(concat(Str::from_static("global "), self.pCommaSeparated(node.clone().p_vars_get().map_values(|v| cast::<crate::php_parser::Node>(v)))?), Str::from_static(";")));
+    }
+    pub fn pStaticVar(&self, mut node: crate::php_parser::node::StaticVar) -> Result<Str, Throw> {
+    return Ok(concat(self.p(cast::<crate::php_parser::Node>(node.clone().p_var_get()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, (if (!Some(node.clone()).and_then(|__b| Some(__b.p_default_get())).flatten().is_none()) { concat(Str::from_static(" = "), self.p(cast::<crate::php_parser::Node>(node.clone().p_default_get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?) } else { Str::from_static("") })));
+    }
+    pub fn pStmt_Unset(&self, mut node: crate::php_parser::node::stmt::Unset_) -> Result<Str, Throw> {
+    return Ok(concat(concat(Str::from_static("unset("), self.pCommaSeparated(node.clone().p_vars_get().map_values(|v| cast::<crate::php_parser::Node>(v)))?), Str::from_static(");")));
+    }
+    pub fn pStmt_InlineHTML(&self, mut node: crate::php_parser::node::stmt::InlineHTML) -> Result<Str, Throw> {
+    let mut newline: Str = Default::default();
+    newline = (if truthy(&node.clone().getAttribute(Str::from_static("hasLeadingNewline"), cast::<Mixed>(true))?) { self.p_newline_get() } else { Str::from_static("") });
+    return Ok(concat(concat(concat(Str::from_static("?>"), newline.clone()), node.clone().p_value_get()), Str::from_static("<?php ")));
+    }
+    pub fn pStmt_HaltCompiler(&self, mut node: crate::php_parser::node::stmt::HaltCompiler) -> Result<Str, Throw> {
+    return Ok(concat(Str::from_static("__halt_compiler();"), node.clone().p_remaining_get()));
+    }
+    pub fn pStmt_Nop(&self, mut node: crate::php_parser::node::stmt::Nop) -> Result<Str, Throw> {
+    return Ok(Str::from_static(""));
+    }
+    pub fn pStmt_Block(&self, mut node: crate::php_parser::node::stmt::Block) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(Str::from_static("{"), self.pStmts(node.clone().p_stmts_get().map_values(|v| cast::<crate::php_parser::Node>(v)), true)?), self.p_nl_get()), Str::from_static("}")));
+    }
+    pub fn pClassCommon(&self, mut node: crate::php_parser::node::stmt::Class_, mut afterClassToken: Str) -> Result<Str, Throw> {
+    return Ok(concat(concat(concat(concat(concat(concat(concat(concat(concat(concat(self.pAttrGroups(node.clone().p_attrGroups_get(), Some(node.clone()).and_then(|__b| Some(__b.p_name_get())).flatten().is_none())?, self.pModifiers(node.clone().p_flags_get())?), Str::from_static("class")), afterClassToken.clone()), (if (!Some(node.clone()).and_then(|__b| Some(__b.p_extends_get())).flatten().is_none()) { concat(Str::from_static(" extends "), self.p(cast::<crate::php_parser::Node>(node.clone().p_extends_get().unwrap()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?) } else { Str::from_static("") })), (if (!(!truthy(&Some(node.clone()).and_then(|__b| Some(__b.p_implements_get()))))) { concat(Str::from_static(" implements "), self.pCommaSeparated(node.clone().p_implements_get().map_values(|v| cast::<crate::php_parser::Node>(v)))?) } else { Str::from_static("") })), self.p_nl_get()), Str::from_static("{")), self.pStmts(cast::<Map<ArrayKey, crate::php_parser::Node>>(cast::<List<crate::php_parser::node::Stmt>>(node.clone().p_stmts_get()).map_elems(|v| cast::<crate::php_parser::Node>(v))), true)?), self.p_nl_get()), Str::from_static("}")));
+    }
+    pub fn pObjectProperty(&self, mut node: crate::php_parser::Node) -> Result<Str, Throw> {
+    if is_instance::<crate::php_parser::node::Expr>(&node.clone()) {
+        return Ok(concat(concat(Str::from_static("{"), self.p(cast::<crate::php_parser::Node>(cast::<crate::php_parser::node::Expr>(node.clone())), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), Str::from_static("}")));
+    } else {
+        let _: bool = { if !(is_instance::<crate::php_parser::node::Identifier>(&node.clone())) { return Err(Throw::assertion(Str::from_static("assert(Expr_Instanceof)"))); } true };
+        return Ok(cast::<crate::php_parser::node::Identifier>(node.clone()).p_name_get());
+    }
+    #[allow(unreachable_code)] unreachable!("missing return")
+    }
+    pub fn pEncapsList(&self, mut encapsList: Map<ArrayKey, U_PhpParser_Node_Expr_or_PhpParser_Node_InterpolatedStringPart>, mut quote: Option<Str>) -> Result<Str, Throw> {
+    let mut return_: Str = Default::default();
+    let mut element: Late<U_PhpParser_Node_Expr_or_PhpParser_Node_InterpolatedStringPart> = Late::uninit();
+    return_ = Str::from_static("");
+    'l1: for __kv1 in encapsList.clone().into_iter() {
+        element.set(__kv1.1);
+        if is_instance::<crate::php_parser::node::InterpolatedStringPart>(&element.get().clone()) {
+            append(&mut return_, self.escapeString(cast::<crate::php_parser::node::InterpolatedStringPart>(element.get().clone()).p_value_get(), quote.clone())?);
+        } else {
+            append(&mut return_, concat(concat(Str::from_static("{"), self.p(cast::<crate::php_parser::Node>(cast::<crate::php_parser::node::Expr>(element.get().clone())), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), Str::from_static("}")));
+        }
+    }
+    return Ok(return_.clone());
+    }
+    pub fn pSingleQuotedString(&self, mut string: Str) -> Result<Str, Throw> {
+    let mut regex: Str = Default::default();
+    regex = Str::from_static("/'|\\\\(?=['\\\\]|$)|(?<=\\\\)\\\\/");
+    return Ok(concat(concat(Str::from_static("'"), preg_replace(&regex.clone(), &Str::from_static("\\\\$0"), &string.clone(), -1)?), Str::from_static("'")));
+    }
+    pub fn escapeString(&self, mut string: Str, mut quote: Option<Str>) -> Result<Str, Throw> {
+    let mut escaped: Option<Str> = Default::default();
+    let mut regex: Str = Default::default();
+    if quote.clone().is_none() {
+        escaped = Some(addcslashes(&string.clone(), &Str::from_static("\t\u{c}\u{b}$\\")));
+        escaped = Some(preg_replace(&Str::from_static("/\\r(?!\\n)/"), &Str::from_static("\\r"), &escaped.clone().unwrap(), -1)?);
+        if self.p_phpVersion_get().supportsFlexibleHeredoc()? {
+            escaped = Some(self.indentString(escaped.clone().unwrap())?);
+        }
+    } else {
+        escaped = Some(addcslashes(&string.clone(), &concat(concat(Str::from_static("\n\r\t\u{c}\u{b}$"), quote.clone().unwrap()), Str::from_static("\\"))));
+    }
+    regex = Str::from_static("/(\n              [\\x00-\\x08\\x0E-\\x1F] # Control characters\n            | [\\xC0-\\xC1] # Invalid UTF-8 Bytes\n            | [\\xF5-\\xFF] # Invalid UTF-8 Bytes\n            | \\xE0(?=[\\x80-\\x9F]) # Overlong encoding of prior code point\n            | \\xF0(?=[\\x80-\\x8F]) # Overlong encoding of prior code point\n            | [\\xC2-\\xDF](?![\\x80-\\xBF]) # Invalid UTF-8 Sequence Start\n            | [\\xE0-\\xEF](?![\\x80-\\xBF]{2}) # Invalid UTF-8 Sequence Start\n            | [\\xF0-\\xF4](?![\\x80-\\xBF]{3}) # Invalid UTF-8 Sequence Start\n            | (?<=[\\x00-\\x7F\\xF5-\\xFF])[\\x80-\\xBF] # Invalid UTF-8 Sequence Middle\n            | (?<![\\xC2-\\xDF]|[\\xE0-\\xEF]|[\\xE0-\\xEF][\\x80-\\xBF]|[\\xF0-\\xF4]|[\\xF0-\\xF4][\\x80-\\xBF]|[\\xF0-\\xF4][\\x80-\\xBF]{2})[\\x80-\\xBF] # Overlong Sequence\n            | (?<=[\\xE0-\\xEF])[\\x80-\\xBF](?![\\x80-\\xBF]) # Short 3 byte sequence\n            | (?<=[\\xF0-\\xF4])[\\x80-\\xBF](?![\\x80-\\xBF]{2}) # Short 4 byte sequence\n            | (?<=[\\xF0-\\xF4][\\x80-\\xBF])[\\x80-\\xBF](?![\\x80-\\xBF]) # Short 4 byte sequence (2)\n        )/x");
+    return Ok(preg_replace_callback(&regex.clone(), &escaped.clone().unwrap(), -1, { let __f = { let this = self.clone(); Rc::new(move |mut matches: Map<ArrayKey, Str>| -> Result<Str, Throw> { 
+    let mut hex: Str = Default::default();
+    let _: bool = { if !((strlen(&matches.clone().idx(&to_key(&0i64)).clone()) == 1i64)) { return Err(Throw::assertion(Str::from_static("assert(Expr_BinaryOp_Identical)"))); } true };
+    hex = dechex(ord(&matches.clone().idx(&to_key(&0i64)).clone()));
+    return Ok(concat(Str::from_static("\\x"), str_pad(&hex.clone(), 2i64, &Str::from_static("0"), 0i64)));
+    }) as Rc<dyn Fn(Map<ArrayKey, Str>) -> Result<Str, Throw>> }; move |__m: Map<ArrayKey, Str>| __f(__m) })?);
+    }
+    pub fn containsEndLabel(&self, mut string: Str, mut label: Str, mut atStart: bool) -> Result<bool, Throw> {
+    let mut start: Str = Default::default();
+    start = (if atStart { Str::from_static("(?:^|[\\r\\n])[ \\t]*") } else { Str::from_static("[\\r\\n][ \\t]*") });
+    return Ok(((!identical(&cast::<Mixed>(false), &cast::<Mixed>(strpos(&string.clone(), &label.clone(), 0)))) && truthy(&preg_match(&concat(concat(concat(Str::from_static("/"), start.clone()), label.clone()), Str::from_static("(?:$|[^_A-Za-z0-9\\x80-\\xff])/")), &string.clone(), 0)?)));
+    }
+    pub fn encapsedContainsEndLabel(&self, mut parts: Map<ArrayKey, U_PhpParser_Node_Expr_or_PhpParser_Node_InterpolatedStringPart>, mut label: Str) -> Result<bool, Throw> {
+    let mut i: ArrayKey = Default::default();
+    let mut part: Late<U_PhpParser_Node_Expr_or_PhpParser_Node_InterpolatedStringPart> = Late::uninit();
+    'l1: for __kv1 in parts.clone().into_iter() {
+        i = __kv1.0;
+        part.set(__kv1.1);
+        if (is_instance::<crate::php_parser::node::InterpolatedStringPart>(&part.get().clone()) && self.containsEndLabel(self.escapeString(cast::<crate::php_parser::node::InterpolatedStringPart>(part.get().clone()).p_value_get(), { let _ = (); None::<Str> })?, label.clone(), identical(&i.clone(), &cast::<ArrayKey>(0i64)))?) {
+            return Ok(true);
+        }
+    }
+    return Ok(false);
+    }
+    pub fn pDereferenceLhs(&self, mut node: crate::php_parser::Node) -> Result<Str, Throw> {
+    if (!self.dereferenceLhsRequiresParens(node.clone())?) {
+        return Ok(self.p(node.clone(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?);
+    } else {
+        return Ok(concat(concat(Str::from_static("("), self.p(node.clone(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), Str::from_static(")")));
+    }
+    #[allow(unreachable_code)] unreachable!("missing return")
+    }
+    pub fn pStaticDereferenceLhs(&self, mut node: crate::php_parser::Node) -> Result<Str, Throw> {
+    if (!self.staticDereferenceLhsRequiresParens(node.clone())?) {
+        return Ok(self.p(node.clone(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?);
+    } else {
+        return Ok(concat(concat(Str::from_static("("), self.p(node.clone(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), Str::from_static(")")));
+    }
+    #[allow(unreachable_code)] unreachable!("missing return")
+    }
+    pub fn pCallLhs(&self, mut node: crate::php_parser::Node) -> Result<Str, Throw> {
+    if (!self.callLhsRequiresParens(node.clone())?) {
+        return Ok(self.p(node.clone(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?);
+    } else {
+        return Ok(concat(concat(Str::from_static("("), self.p(node.clone(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), Str::from_static(")")));
+    }
+    #[allow(unreachable_code)] unreachable!("missing return")
+    }
+    pub fn pNewOperand(&self, mut node: crate::php_parser::Node) -> Result<Str, Throw> {
+    if (!self.newOperandRequiresParens(node.clone())?) {
+        return Ok(self.p(node.clone(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?);
+    } else {
+        return Ok(concat(concat(Str::from_static("("), self.p(node.clone(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?), Str::from_static(")")));
+    }
+    #[allow(unreachable_code)] unreachable!("missing return")
+    }
+    pub fn hasNodeWithComments(&self, mut nodes: Map<ArrayKey, crate::php_parser::Node>) -> Result<bool, Throw> {
+    let mut node: Late<crate::php_parser::Node> = Late::uninit();
+    'l1: for __kv1 in nodes.clone().into_iter() {
+        node.set(__kv1.1);
+        if (truthy(&node.get().clone()) && truthy(&node.get().clone().getComments()?)) {
+            return Ok(true);
+        }
+    }
+    return Ok(false);
+    }
+    pub fn pMaybeMultiline(&self, mut nodes: Map<ArrayKey, crate::php_parser::Node>, mut trailingComma: bool) -> Result<Str, Throw> {
+    if (!self.hasNodeWithComments(nodes.clone())?) {
+        return Ok(self.pCommaSeparated(nodes.clone())?);
+    } else {
+        return Ok(concat(self.pCommaSeparatedMultiline(nodes.clone(), trailingComma)?, self.p_nl_get()));
+    }
+    #[allow(unreachable_code)] unreachable!("missing return")
+    }
+    pub fn hasParamWithAttributes(&self, mut params: Map<ArrayKey, crate::php_parser::node::Param>) -> Result<bool, Throw> {
+    let mut param: Late<crate::php_parser::node::Param> = Late::uninit();
+    'l1: for __kv1 in params.clone().into_iter() {
+        param.set(__kv1.1);
+        if truthy(&param.get().clone().p_attrGroups_get()) {
+            return Ok(true);
+        }
+    }
+    return Ok(false);
+    }
+    pub fn pParams(&self, mut params: Map<ArrayKey, crate::php_parser::node::Param>) -> Result<Str, Throw> {
+    if (self.hasNodeWithComments(params.clone().map_values(|v| cast::<crate::php_parser::Node>(v)))? || (self.hasParamWithAttributes(params.clone())? && (!self.p_phpVersion_get().supportsAttributes()?))) {
+        return Ok(concat(self.pCommaSeparatedMultiline(params.clone().map_values(|v| cast::<crate::php_parser::Node>(v)), self.p_phpVersion_get().supportsTrailingCommaInParamList()?)?, self.p_nl_get()));
+    }
+    return Ok(self.pCommaSeparated(params.clone().map_values(|v| cast::<crate::php_parser::Node>(v)))?);
+    }
+    pub fn pAttrGroups(&self, mut nodes: Map<ArrayKey, crate::php_parser::node::AttributeGroup>, mut inline: bool) -> Result<Str, Throw> {
+    let mut result: Str = Default::default();
+    let mut sep: Str = Default::default();
+    let mut node: Late<crate::php_parser::node::AttributeGroup> = Late::uninit();
+    result = Str::from_static("");
+    sep = (if inline { Str::from_static(" ") } else { self.p_nl_get() });
+    'l1: for __kv1 in nodes.clone().into_iter() {
+        node.set(__kv1.1);
+        append(&mut result, concat(self.p(cast::<crate::php_parser::Node>(node.get().clone()), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), crate::php_parser::PrettyPrinterAbstract::MAX_PRECEDENCE(), false)?, sep.clone()));
+    }
+    return Ok(result.clone());
+    }
+    pub fn magic__construct(&self, mut options: Shape_indentq_Str_newlineq_Str_phpVersionq_PhpParser_PhpVersion_shortArraySyntaxq_Bool) -> Result<Mixed, Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).magic__construct__impl(options) }
+    pub fn resetState(&self) -> Result<(), Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).resetState__impl() }
+    pub fn setIndentLevel(&self, mut level: i64) -> Result<(), Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).setIndentLevel__impl(level) }
+    pub fn indent(&self) -> Result<(), Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).indent__impl() }
+    pub fn outdent(&self) -> Result<(), Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).outdent__impl() }
+    pub fn prettyPrint(&self, mut stmts: Map<ArrayKey, crate::php_parser::Node>) -> Result<Str, Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).prettyPrint__impl(stmts) }
+    pub fn prettyPrintExpr(&self, mut node: crate::php_parser::node::Expr) -> Result<Str, Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).prettyPrintExpr__impl(node) }
+    pub fn prettyPrintFile(&self, mut stmts: Map<ArrayKey, crate::php_parser::Node>) -> Result<Str, Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).prettyPrintFile__impl(stmts) }
+    pub fn preprocessNodes(&self, mut nodes: Map<ArrayKey, crate::php_parser::Node>) -> Result<(), Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).preprocessNodes__impl(nodes) }
+    pub fn handleMagicTokens(&self, mut str: Str) -> Result<Str, Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).handleMagicTokens__impl(str) }
+    pub fn pStmts(&self, mut nodes: Map<ArrayKey, crate::php_parser::Node>, mut indent: bool) -> Result<Str, Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).pStmts__impl(nodes, indent) }
+    pub fn pInfixOp(&self, mut class: Str, mut leftNode: crate::php_parser::Node, mut operatorString: Str, mut rightNode: crate::php_parser::Node, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).pInfixOp__impl(class, leftNode, operatorString, rightNode, precedence, lhsPrecedence) }
+    pub fn pPrefixOp(&self, mut class: Str, mut operatorString: Str, mut node: crate::php_parser::Node, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).pPrefixOp__impl(class, operatorString, node, precedence, lhsPrecedence) }
+    pub fn pPostfixOp(&self, mut class: Str, mut node: crate::php_parser::Node, mut operatorString: Str, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).pPostfixOp__impl(class, node, operatorString, precedence, lhsPrecedence) }
+    pub fn pImplode(&self, mut nodes: Map<ArrayKey, crate::php_parser::Node>, mut glue: Str) -> Result<Str, Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).pImplode__impl(nodes, glue) }
+    pub fn pCommaSeparated(&self, mut nodes: Map<ArrayKey, crate::php_parser::Node>) -> Result<Str, Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).pCommaSeparated__impl(nodes) }
+    pub fn pCommaSeparatedMultiline(&self, mut nodes: Map<ArrayKey, crate::php_parser::Node>, mut trailingComma: bool) -> Result<Str, Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).pCommaSeparatedMultiline__impl(nodes, trailingComma) }
+    pub fn pComments(&self, mut comments: Map<ArrayKey, crate::php_parser::Comment>) -> Result<Str, Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).pComments__impl(comments) }
+    pub fn printFormatPreserving(&self, mut stmts: Map<ArrayKey, crate::php_parser::Node>, mut origStmts: Map<ArrayKey, crate::php_parser::Node>, mut origTokens: Map<ArrayKey, crate::php_parser::Token>) -> Result<Str, Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).printFormatPreserving__impl(stmts, origStmts, origTokens) }
+    pub fn pFallback(&self, mut node: crate::php_parser::Node, mut precedence: i64, mut lhsPrecedence: i64) -> Result<Str, Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).pFallback__impl(node, precedence, lhsPrecedence) }
+    pub fn p(&self, mut node: crate::php_parser::Node, mut precedence: i64, mut lhsPrecedence: i64, mut parentFormatPreserved: bool) -> Result<Str, Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).p__impl(node, precedence, lhsPrecedence, parentFormatPreserved) }
+    pub fn pArray(&self, mut nodes: Map<ArrayKey, crate::php_parser::Node>, mut origNodes: Map<ArrayKey, crate::php_parser::Node>, mut pos: &mut i64, mut indentAdjustment: i64, mut parentNodeClass: Str, mut subNodeName: Str, mut fixup: Option<i64>) -> Result<Option<Str>, Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).pArray__impl(nodes, origNodes, pos, indentAdjustment, parentNodeClass, subNodeName, fixup) }
+    pub fn pFixup(&self, mut fixup: i64, mut subNode: crate::php_parser::Node, mut parentClass: Option<Str>, mut subStartPos: i64, mut subEndPos: i64) -> Result<Str, Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).pFixup__impl(fixup, subNode, parentClass, subStartPos, subEndPos) }
+    pub fn safeAppend(&self, mut str: &mut Str, mut append_v: Str) -> Result<(), Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).safeAppend__impl(str, append_v) }
+    pub fn callLhsRequiresParens(&self, mut node: crate::php_parser::Node) -> Result<bool, Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).callLhsRequiresParens__impl(node) }
+    pub fn dereferenceLhsRequiresParens(&self, mut node: crate::php_parser::Node) -> Result<bool, Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).dereferenceLhsRequiresParens__impl(node) }
+    pub fn staticDereferenceLhsRequiresParens(&self, mut node: crate::php_parser::Node) -> Result<bool, Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).staticDereferenceLhsRequiresParens__impl(node) }
+    pub fn newOperandRequiresParens(&self, mut node: crate::php_parser::Node) -> Result<bool, Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).newOperandRequiresParens__impl(node) }
+    pub fn pModifiers(&self, mut modifiers: i64) -> Result<Str, Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).pModifiers__impl(modifiers) }
+    pub fn pStatic(&self, mut static_: bool) -> Result<Str, Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).pStatic__impl(static_) }
+    pub fn isMultiline(&self, mut nodes: Map<ArrayKey, Option<crate::php_parser::Node>>) -> Result<bool, Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).isMultiline__impl(nodes) }
+    pub fn initializeLabelCharMap(&self) -> Result<(), Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).initializeLabelCharMap__impl() }
+    pub fn initializeNodeListDiffer(&self) -> Result<(), Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).initializeNodeListDiffer__impl() }
+    pub fn initializeFixupMap(&self) -> Result<(), Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).initializeFixupMap__impl() }
+    pub fn initializeRemovalMap(&self) -> Result<(), Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).initializeRemovalMap__impl() }
+    pub fn initializeInsertionMap(&self) -> Result<(), Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).initializeInsertionMap__impl() }
+    pub fn initializeListInsertionMap(&self) -> Result<(), Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).initializeListInsertionMap__impl() }
+    pub fn initializeEmptyListInsertionMap(&self) -> Result<(), Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).initializeEmptyListInsertionMap__impl() }
+    pub fn initializeModifierChangeMap(&self) -> Result<(), Throw> { cast::<crate::php_parser::PrettyPrinterAbstract>(self.clone()).initializeModifierChangeMap__impl() }
+    pub fn new_same_class(&self, mut options: Shape_indentq_Str_newlineq_Str_phpVersionq_PhpParser_PhpVersion_shortArraySyntaxq_Bool) -> Result<crate::php_parser::pretty_printer::Standard, Throw> { Ok(Self::new(options)?) }
+}
+impl php_rt::PhpObject for Standard {
+    fn class_name(&self) -> &'static str { "PhpParser\\PrettyPrinter\\Standard" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\prettyprinter\\standard", "phpparser\\prettyprinterabstract", "phpparser\\prettyprinter"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_precedenceMap_get()) { out.push((Str::from_static("precedenceMap"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_indentLevel_get()) { out.push((Str::from_static("indentLevel"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_indent_get()) { out.push((Str::from_static("indent"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_indentWidth_get()) { out.push((Str::from_static("indentWidth"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_useTabs_get()) { out.push((Str::from_static("useTabs"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_tabWidth_get()) { out.push((Str::from_static("tabWidth"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_newline_get()) { out.push((Str::from_static("newline"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_nl_get()) { out.push((Str::from_static("nl"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_docStringEndToken_get()) { out.push((Str::from_static("docStringEndToken"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_canUseSemicolonNamespaces_get()) { out.push((Str::from_static("canUseSemicolonNamespaces"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_shortArraySyntax_get()) { out.push((Str::from_static("shortArraySyntax"), cast::<Mixed>(v))); } if let Some(v) = self.p_phpVersion_opt() { out.push((Str::from_static("phpVersion"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_origTokens_get()) { out.push((Str::from_static("origTokens"), cast::<Mixed>(v))); } if let Some(v) = self.p_nodeListDiffer_opt() { out.push((Str::from_static("nodeListDiffer"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_labelCharMap_get()) { out.push((Str::from_static("labelCharMap"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_fixupMap_get()) { out.push((Str::from_static("fixupMap"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_removalMap_get()) { out.push((Str::from_static("removalMap"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_insertionMap_get()) { out.push((Str::from_static("insertionMap"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_listInsertionMap_get()) { out.push((Str::from_static("listInsertionMap"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_emptyListInsertionMap_get()) { out.push((Str::from_static("emptyListInsertionMap"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_modifierChangeMap_get()) { out.push((Str::from_static("modifierChangeMap"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "precedenceMap" => { self.set_p_precedenceMap(cast::<Map<Str, (i64, i64, i64)>>(value)); true }, "indentLevel" => { self.set_p_indentLevel(cast::<i64>(value)); true }, "indent" => { self.set_p_indent(cast::<Str>(value)); true }, "indentWidth" => { self.set_p_indentWidth(cast::<i64>(value)); true }, "useTabs" => { self.set_p_useTabs(cast::<bool>(value)); true }, "tabWidth" => { self.set_p_tabWidth(cast::<i64>(value)); true }, "newline" => { self.set_p_newline(cast::<Str>(value)); true }, "nl" => { self.set_p_nl(cast::<Str>(value)); true }, "docStringEndToken" => { self.set_p_docStringEndToken(value.to_option().map(|__m| cast::<Str>(__m))); true }, "canUseSemicolonNamespaces" => { self.set_p_canUseSemicolonNamespaces(cast::<bool>(value)); true }, "shortArraySyntax" => { self.set_p_shortArraySyntax(cast::<bool>(value)); true }, "phpVersion" => { self.set_p_phpVersion(cast::<crate::php_parser::PhpVersion>(value)); true }, "origTokens" => { self.set_p_origTokens(value.to_option().map(|__m| cast::<crate::php_parser::internal::TokenStream>(__m))); true }, "nodeListDiffer" => { self.set_p_nodeListDiffer(cast::<crate::php_parser::internal::Differ>(value)); true }, "labelCharMap" => { self.set_p_labelCharMap(cast::<Map<Str, bool>>(value)); true }, "fixupMap" => { self.set_p_fixupMap(cast::<Map<Str, Map<Str, i64>>>(value)); true }, "removalMap" => { self.set_p_removalMap(cast::<Map<Str, Shape_leftq_ArrayKey_rightq_ArrayKey>>(value)); true }, "insertionMap" => { self.set_p_insertionMap(cast::<Map<Str, (Option<ArrayKey>, bool, Option<Str>, Option<Str>)>>(value)); true }, "listInsertionMap" => { self.set_p_listInsertionMap(cast::<Map<Str, Str>>(value)); true }, "emptyListInsertionMap" => { self.set_p_emptyListInsertionMap(cast::<Map<Str, (Option<ArrayKey>, Str, Str)>>(value)); true }, "modifierChangeMap" => { self.set_p_modifierChangeMap(cast::<Map<Str, (Str, i64, i64)>>(value)); true }, _ => false } }
+}
+impl Standard { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\PrettyPrinter\\Standard could not be converted to string"))) } }
+impl php_rt::PhpClone for Standard { fn php_clone(&self) -> Self { let c = Standard(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for StandardObj { fn clone(&self) -> Self { StandardObj { precedenceMap: self.precedenceMap.clone(), indentLevel: self.indentLevel.clone(), indent: self.indent.clone(), indentWidth: self.indentWidth.clone(), useTabs: self.useTabs.clone(), tabWidth: self.tabWidth.clone(), newline: self.newline.clone(), nl: self.nl.clone(), docStringEndToken: self.docStringEndToken.clone(), canUseSemicolonNamespaces: self.canUseSemicolonNamespaces.clone(), shortArraySyntax: self.shortArraySyntax.clone(), phpVersion: self.phpVersion.clone(), origTokens: self.origTokens.clone(), nodeListDiffer: self.nodeListDiffer.clone(), labelCharMap: self.labelCharMap.clone(), fixupMap: self.fixupMap.clone(), removalMap: self.removalMap.clone(), insertionMap: self.insertionMap.clone(), listInsertionMap: self.listInsertionMap.clone(), emptyListInsertionMap: self.emptyListInsertionMap.clone(), modifierChangeMap: self.modifierChangeMap.clone() } } }
+impl Standard {
+}
+impl php_rt::Truthy for Standard { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for Standard { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\PrettyPrinter\\Standard")) } }
+impl php_rt::Identical for Standard { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for Standard { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for Standard { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for Standard { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<Standard> for Mixed { fn cast_to(self) -> Standard { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::pretty_printer::Standard>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\PrettyPrinter\\Standard") } }
+impl php_rt::TryDowncast for Standard { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::pretty_printer::Standard>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for Standard { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<Standard> for AnyObject { fn cast_to(self) -> Standard { cast::<Standard>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<Standard> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\prettyprinter\\standard") } }
+impl php_rt::InstanceOf<Standard> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\prettyprinter\\standard") } }
+impl php_rt::InstanceOf<Standard> for Standard { fn is_instance(&self) -> bool { true } }

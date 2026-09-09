@@ -1,0 +1,168 @@
+//! Arithmetic and string operators with PHP semantics.
+
+use crate::conv::Num;
+use crate::error::RtError;
+use crate::string::Str;
+use crate::traits::ToStr;
+
+#[inline]
+pub fn iadd(a: i64, b: i64) -> i64 {
+    a.wrapping_add(b)
+}
+#[inline]
+pub fn isub(a: i64, b: i64) -> i64 {
+    a.wrapping_sub(b)
+}
+#[inline]
+pub fn imul(a: i64, b: i64) -> i64 {
+    a.wrapping_mul(b)
+}
+/// `intdiv` / `%` helpers.
+pub fn imod(a: i64, b: i64) -> Result<i64, RtError> {
+    if b == 0 {
+        return Err(RtError::new("DivisionByZeroError", "Modulo by zero"));
+    }
+    if b == -1 {
+        return Ok(0);
+    }
+    Ok(a % b)
+}
+pub fn intdiv(a: i64, b: i64) -> Result<i64, RtError> {
+    if b == 0 {
+        return Err(RtError::division_by_zero());
+    }
+    if a == i64::MIN && b == -1 {
+        return Err(RtError::new("ArithmeticError", "Division of PHP_INT_MIN by -1 is not an integer"));
+    }
+    Ok(a / b)
+}
+/// PHP `/`: int when exact, float otherwise.
+pub fn div(a: Num, b: Num) -> Result<Num, RtError> {
+    let bf = b.to_f64();
+    if bf == 0.0 {
+        return Err(RtError::division_by_zero());
+    }
+    if let (Num::Int(x), Num::Int(y)) = (a, b) {
+        if y != 0 && x % y == 0 && !(x == i64::MIN && y == -1) {
+            return Ok(Num::Int(x / y));
+        }
+    }
+    Ok(Num::Float(a.to_f64() / bf))
+}
+pub fn div_f(a: f64, b: f64) -> Result<f64, RtError> {
+    if b == 0.0 {
+        return Err(RtError::division_by_zero());
+    }
+    Ok(a / b)
+}
+pub fn div_i(a: i64, b: i64) -> Result<i64, RtError> {
+    match div(Num::Int(a), Num::Int(b))? {
+        Num::Int(i) => Ok(i),
+        Num::Float(f) => Ok(f as i64),
+    }
+}
+pub fn pow_i(a: i64, b: i64) -> Num {
+    if b >= 0 {
+        if let Some(r) = a.checked_pow(b as u32) {
+            return Num::Int(r);
+        }
+    }
+    Num::Float((a as f64).powf(b as f64))
+}
+pub fn pow_f(a: f64, b: f64) -> f64 {
+    a.powf(b)
+}
+pub fn fmod(a: f64, b: f64) -> f64 {
+    a % b
+}
+
+// ---------------------------------------------------------------- strings
+
+/// `$a . $b`
+#[inline]
+pub fn concat<A: ToStr, B: ToStr>(a: A, b: B) -> Str {
+    let mut s = a.to_php_str();
+    let r = b.to_php_str();
+    s.push_bytes(r.as_bytes());
+    s
+}
+/// `$a .= $b`
+#[inline]
+pub fn append<B: ToStr>(a: &mut Str, b: B) {
+    let r = b.to_php_str();
+    a.push_bytes(r.as_bytes());
+}
+/// Concatenate many parts (string interpolation).
+pub fn concat_all(parts: &[&dyn ToStr]) -> Str {
+    let mut out = Vec::new();
+    for p in parts {
+        out.extend_from_slice(p.to_php_str().as_bytes());
+    }
+    Str::from_vec(out)
+}
+#[macro_export]
+macro_rules! cat {
+    ($($e:expr),+ $(,)?) => { $crate::ops::concat_all(&[$(&$e as &dyn $crate::traits::ToStr),+]) };
+}
+
+/// `$s[$i]` on strings.
+pub fn str_index(s: &Str, i: i64) -> Str {
+    let b = s.as_bytes();
+    let idx = if i < 0 { b.len() as i64 + i } else { i };
+    if idx < 0 || idx as usize >= b.len() {
+        return Str::empty();
+    }
+    Str::from_bytes(&b[idx as usize..idx as usize + 1])
+}
+pub fn str_index_byte(s: &[u8], i: i64) -> Option<u8> {
+    let idx = if i < 0 { s.len() as i64 + i } else { i };
+    if idx < 0 || idx as usize >= s.len() {
+        None
+    } else {
+        Some(s[idx as usize])
+    }
+}
+/// `$s[$i] = $c`
+pub fn str_set_index(s: &mut Str, i: i64, c: &[u8]) {
+    let len = s.len() as i64;
+    let idx = if i < 0 { len + i } else { i };
+    if idx < 0 {
+        return;
+    }
+    let v = s.make_mut();
+    let idx = idx as usize;
+    while v.len() <= idx {
+        v.push(b' ');
+    }
+    v[idx] = c.first().copied().unwrap_or(b' ');
+}
+
+/// PHP string increment (`$s++`): "a" -> "b", "Az" -> "Ba", "zz" -> "aaa".
+pub fn str_increment(s: &Str) -> Str {
+    let mut b = s.to_vec();
+    if b.is_empty() {
+        return Str::from_static("1");
+    }
+    let mut i = b.len();
+    loop {
+        if i == 0 {
+            let first = b[0];
+            let prefix = if first.is_ascii_digit() { b'1' } else if first.is_ascii_uppercase() { b'A' } else { b'a' };
+            b.insert(0, prefix);
+            break;
+        }
+        i -= 1;
+        let c = b[i];
+        match c {
+            b'z' => b[i] = b'a',
+            b'Z' => b[i] = b'A',
+            b'9' => b[i] = b'0',
+            _ if c.is_ascii_alphanumeric() => {
+                b[i] = c + 1;
+                break;
+            }
+            _ => break,
+        }
+    }
+    Str::from_vec(b)
+}

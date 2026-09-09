@@ -1,0 +1,4107 @@
+use php_rt::prelude::*;
+use crate::generated::*;
+use crate::Throw;
+use crate::AnyObject;
+pub mod assign_op;
+pub mod binary_op;
+pub mod cast;
+pub struct ArrayDimFetchObj {
+    pub attributes: Map<Str, Mixed>,
+    pub var: Late<crate::php_parser::node::Expr>,
+    pub dim: Option<crate::php_parser::node::Expr>,
+}
+#[derive(Clone)]
+pub struct ArrayDimFetch(pub Rc<RefCell<ArrayDimFetchObj>>);
+impl ArrayDimFetch {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_var(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.var.get()) }
+    pub fn p_var_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().var.get().clone() }
+    pub fn p_var_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().var.as_option().cloned() }
+    pub fn p_var_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.var.get_mut()) }
+    pub fn set_p_var(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().var.set(v); }
+    pub fn p_dim(&self) -> Ref<'_, Option<crate::php_parser::node::Expr>> { Ref::map(self.0.borrow(), |o| &o.dim) }
+    pub fn p_dim_get(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().dim.clone() }
+    pub fn p_dim_opt(&self) -> Option<Option<crate::php_parser::node::Expr>> { Some(self.0.borrow().dim.clone()) }
+    pub fn p_dim_mut(&self) -> RefMut<'_, Option<crate::php_parser::node::Expr>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.dim) }
+    pub fn set_p_dim(&self, v: Option<crate::php_parser::node::Expr>) { self.0.borrow_mut().dim = v; }
+    pub fn new(mut var: crate::php_parser::node::Expr, mut dim: Option<crate::php_parser::node::Expr>, mut attributes: Map<Str, Mixed>) -> Result<ArrayDimFetch, Throw> {
+        let this = ArrayDimFetch(Rc::new(RefCell::new(ArrayDimFetchObj {
+            attributes: Default::default(),
+            var: Late::uninit(),
+            dim: Default::default(),
+        })));
+        this.magic__construct(var, dim, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut var: crate::php_parser::node::Expr, mut dim: Option<crate::php_parser::node::Expr>, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_var(var.clone());
+    self.set_p_dim(dim.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("var"))); __m1.push(cast::<Mixed>(Str::from_static("dim"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_ArrayDimFetch"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut var: crate::php_parser::node::Expr, mut dim: Option<crate::php_parser::node::Expr>, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::ArrayDimFetch, Throw> { Ok(Self::new(var, dim, attributes)?) }
+}
+impl php_rt::PhpObject for ArrayDimFetch {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\ArrayDimFetch" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\arraydimfetch", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_var_opt() { out.push((Str::from_static("var"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_dim_get()) { out.push((Str::from_static("dim"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "var" => { self.set_p_var(cast::<crate::php_parser::node::Expr>(value)); true }, "dim" => { self.set_p_dim(value.to_option().map(|__m| cast::<crate::php_parser::node::Expr>(__m))); true }, _ => false } }
+}
+impl ArrayDimFetch { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\ArrayDimFetch could not be converted to string"))) } }
+impl php_rt::PhpClone for ArrayDimFetch { fn php_clone(&self) -> Self { let c = ArrayDimFetch(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for ArrayDimFetchObj { fn clone(&self) -> Self { ArrayDimFetchObj { attributes: self.attributes.clone(), var: self.var.clone(), dim: self.dim.clone() } } }
+impl ArrayDimFetch {
+}
+pub struct Array_Obj {
+    pub attributes: Map<Str, Mixed>,
+    pub items: Map<i64, Option<crate::php_parser::node::ArrayItem>>,
+}
+#[derive(Clone)]
+pub struct Array_(pub Rc<RefCell<Array_Obj>>);
+impl Array_ {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_items(&self) -> Ref<'_, Map<i64, Option<crate::php_parser::node::ArrayItem>>> { Ref::map(self.0.borrow(), |o| &o.items) }
+    pub fn p_items_get(&self) -> Map<i64, Option<crate::php_parser::node::ArrayItem>> { self.0.borrow().items.clone() }
+    pub fn p_items_opt(&self) -> Option<Map<i64, Option<crate::php_parser::node::ArrayItem>>> { Some(self.0.borrow().items.clone()) }
+    pub fn p_items_mut(&self) -> RefMut<'_, Map<i64, Option<crate::php_parser::node::ArrayItem>>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.items) }
+    pub fn set_p_items(&self, v: Map<i64, Option<crate::php_parser::node::ArrayItem>>) { self.0.borrow_mut().items = v; }
+    pub fn new(mut items: Map<ArrayKey, crate::php_parser::node::ArrayItem>, mut attributes: Map<Str, Mixed>) -> Result<Array_, Throw> {
+        let this = Array_(Rc::new(RefCell::new(Array_Obj {
+            attributes: Default::default(),
+            items: Default::default(),
+        })));
+        this.magic__construct(items, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut items: Map<ArrayKey, crate::php_parser::node::ArrayItem>, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_items(items.clone().map_entries(|k, v| (cast::<i64>(k), Some(v))));
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("items"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_Array"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut items: Map<ArrayKey, crate::php_parser::node::ArrayItem>, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::Array_, Throw> { Ok(Self::new(items, attributes)?) }
+}
+impl php_rt::PhpObject for Array_ {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\Array_" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\array_", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_items_get()) { out.push((Str::from_static("items"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "items" => { self.set_p_items(cast::<Map<i64, Option<crate::php_parser::node::ArrayItem>>>(value)); true }, _ => false } }
+}
+impl Array_ { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\Array_ could not be converted to string"))) } }
+impl php_rt::PhpClone for Array_ { fn php_clone(&self) -> Self { let c = Array_(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for Array_Obj { fn clone(&self) -> Self { Array_Obj { attributes: self.attributes.clone(), items: self.items.clone() } } }
+impl Array_ {
+    pub fn KIND_LONG() -> i64 { 1i64 }
+    pub fn KIND_SHORT() -> i64 { 2i64 }
+}
+pub struct ArrowFunctionObj {
+    pub attributes: Map<Str, Mixed>,
+    pub static_: bool,
+    pub byRef: bool,
+    pub params: List<crate::php_parser::node::Param>,
+    pub returnType: Option<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>,
+    pub expr: Late<crate::php_parser::node::Expr>,
+    pub attrGroups: Map<ArrayKey, crate::php_parser::node::AttributeGroup>,
+}
+#[derive(Clone)]
+pub struct ArrowFunction(pub Rc<RefCell<ArrowFunctionObj>>);
+impl ArrowFunction {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_static_(&self) -> Ref<'_, bool> { Ref::map(self.0.borrow(), |o| &o.static_) }
+    pub fn p_static__get(&self) -> bool { self.0.borrow().static_.clone() }
+    pub fn p_static__opt(&self) -> Option<bool> { Some(self.0.borrow().static_.clone()) }
+    pub fn p_static__mut(&self) -> RefMut<'_, bool> { RefMut::map(self.0.borrow_mut(), |o| &mut o.static_) }
+    pub fn set_p_static_(&self, v: bool) { self.0.borrow_mut().static_ = v; }
+    pub fn p_byRef(&self) -> Ref<'_, bool> { Ref::map(self.0.borrow(), |o| &o.byRef) }
+    pub fn p_byRef_get(&self) -> bool { self.0.borrow().byRef.clone() }
+    pub fn p_byRef_opt(&self) -> Option<bool> { Some(self.0.borrow().byRef.clone()) }
+    pub fn p_byRef_mut(&self) -> RefMut<'_, bool> { RefMut::map(self.0.borrow_mut(), |o| &mut o.byRef) }
+    pub fn set_p_byRef(&self, v: bool) { self.0.borrow_mut().byRef = v; }
+    pub fn p_params(&self) -> Ref<'_, List<crate::php_parser::node::Param>> { Ref::map(self.0.borrow(), |o| &o.params) }
+    pub fn p_params_get(&self) -> List<crate::php_parser::node::Param> { self.0.borrow().params.clone() }
+    pub fn p_params_opt(&self) -> Option<List<crate::php_parser::node::Param>> { Some(self.0.borrow().params.clone()) }
+    pub fn p_params_mut(&self) -> RefMut<'_, List<crate::php_parser::node::Param>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.params) }
+    pub fn set_p_params(&self, v: List<crate::php_parser::node::Param>) { self.0.borrow_mut().params = v; }
+    pub fn p_returnType(&self) -> Ref<'_, Option<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>> { Ref::map(self.0.borrow(), |o| &o.returnType) }
+    pub fn p_returnType_get(&self) -> Option<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> { self.0.borrow().returnType.clone() }
+    pub fn p_returnType_opt(&self) -> Option<Option<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>> { Some(self.0.borrow().returnType.clone()) }
+    pub fn p_returnType_mut(&self) -> RefMut<'_, Option<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.returnType) }
+    pub fn set_p_returnType(&self, v: Option<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>) { self.0.borrow_mut().returnType = v; }
+    pub fn p_expr(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.expr.get()) }
+    pub fn p_expr_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().expr.get().clone() }
+    pub fn p_expr_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().expr.as_option().cloned() }
+    pub fn p_expr_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.expr.get_mut()) }
+    pub fn set_p_expr(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().expr.set(v); }
+    pub fn p_attrGroups(&self) -> Ref<'_, Map<ArrayKey, crate::php_parser::node::AttributeGroup>> { Ref::map(self.0.borrow(), |o| &o.attrGroups) }
+    pub fn p_attrGroups_get(&self) -> Map<ArrayKey, crate::php_parser::node::AttributeGroup> { self.0.borrow().attrGroups.clone() }
+    pub fn p_attrGroups_opt(&self) -> Option<Map<ArrayKey, crate::php_parser::node::AttributeGroup>> { Some(self.0.borrow().attrGroups.clone()) }
+    pub fn p_attrGroups_mut(&self) -> RefMut<'_, Map<ArrayKey, crate::php_parser::node::AttributeGroup>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attrGroups) }
+    pub fn set_p_attrGroups(&self, v: Map<ArrayKey, crate::php_parser::node::AttributeGroup>) { self.0.borrow_mut().attrGroups = v; }
+    pub fn new(mut subNodes: Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_6758489adb, mut attributes: Map<Str, Mixed>) -> Result<ArrowFunction, Throw> {
+        let this = ArrowFunction(Rc::new(RefCell::new(ArrowFunctionObj {
+            attributes: Default::default(),
+            static_: Default::default(),
+            byRef: Default::default(),
+            params: List::<crate::php_parser::node::Param>::new(),
+            returnType: Default::default(),
+            expr: Late::uninit(),
+            attrGroups: Default::default(),
+        })));
+        this.magic__construct(subNodes, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut subNodes: Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_6758489adb, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_static_((match Some({ let __c35 = subNodes.clone(); Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_e2827c0dab { attrGroups: __c35.attrGroups, byRef: __c35.byRef, expr: __c35.expr, params: __c35.params, returnType: __c35.returnType, static_: __c35.static_.unwrap() } }).and_then(|__b| Some(__b.static_)) { Some(__v) => __v, None => false }));
+    self.set_p_byRef((match Some({ let __c36 = subNodes.clone(); Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRef_Boo_3eefb46889 { attrGroups: __c36.attrGroups, byRef: __c36.byRef.unwrap(), expr: __c36.expr, params: __c36.params, returnType: __c36.returnType, static_: __c36.static_ } }).and_then(|__b| Some(__b.byRef)) { Some(__v) => __v, None => false }));
+    self.set_p_params(cast::<List<crate::php_parser::node::Param>>((match Some({ let __c37 = subNodes.clone(); Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_2c44f09bfb { attrGroups: __c37.attrGroups, byRef: __c37.byRef, expr: __c37.expr, params: __c37.params.unwrap(), returnType: __c37.returnType, static_: __c37.static_ } }).and_then(|__b| Some(__b.params)) { Some(__v) => __v, None => Map::<ArrayKey, crate::php_parser::node::Param>::new() })));
+    self.set_p_returnType((match Some({ let __c38 = subNodes.clone(); Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_59a23f0d94 { attrGroups: __c38.attrGroups, byRef: __c38.byRef, expr: __c38.expr, params: __c38.params, returnType: __c38.returnType.unwrap(), static_: __c38.static_ } }).and_then(|__b| Some(__b.returnType)) { Some(__v) => Some(__v), None => { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> } }));
+    self.set_p_expr(subNodes.clone().expr);
+    self.set_p_attrGroups((match Some({ let __c39 = subNodes.clone(); Shape_attrGroups_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Boo_3e145ca881 { attrGroups: __c39.attrGroups.unwrap(), byRef: __c39.byRef, expr: __c39.expr, params: __c39.params, returnType: __c39.returnType, static_: __c39.static_ } }).and_then(|__b| Some(__b.attrGroups)) { Some(__v) => __v, None => Map::<ArrayKey, crate::php_parser::node::AttributeGroup>::new() }));
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("attrGroups"))); __m1.push(cast::<Mixed>(Str::from_static("static"))); __m1.push(cast::<Mixed>(Str::from_static("byRef"))); __m1.push(cast::<Mixed>(Str::from_static("params"))); __m1.push(cast::<Mixed>(Str::from_static("returnType"))); __m1.push(cast::<Mixed>(Str::from_static("expr"))); __m1 });
+    }
+    pub fn returnsByRef(&self) -> Result<bool, Throw> {
+    return Ok(self.p_byRef_get());
+    }
+    pub fn getParams(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok(cast::<Map<ArrayKey, Mixed>>(self.p_params_get().map_elems(|v| cast::<Mixed>(v))));
+    }
+    pub fn getReturnType(&self) -> Result<Mixed, Throw> {
+    return Ok(cast::<Mixed>(self.p_returnType_get()));
+    }
+    pub fn getAttrGroups(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok(self.p_attrGroups_get().map_values(|v| cast::<Mixed>(v)));
+    }
+    pub fn getStmts(&self) -> Result<Map<ArrayKey, crate::php_parser::node::stmt::Return_>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, crate::php_parser::node::stmt::Return_> = Map::new(); __m1.push(crate::php_parser::node::stmt::Return_::new(Some(self.p_expr_get()), Map::<Str, Mixed>::new())?); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_ArrowFunction"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut subNodes: Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_6758489adb, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::ArrowFunction, Throw> { Ok(Self::new(subNodes, attributes)?) }
+}
+impl php_rt::PhpObject for ArrowFunction {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\ArrowFunction" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\arrowfunction", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable", "phpparser\\node\\functionlike"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_static__get()) { out.push((Str::from_static("static"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_byRef_get()) { out.push((Str::from_static("byRef"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_params_get()) { out.push((Str::from_static("params"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_returnType_get()) { out.push((Str::from_static("returnType"), cast::<Mixed>(v))); } if let Some(v) = self.p_expr_opt() { out.push((Str::from_static("expr"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_attrGroups_get()) { out.push((Str::from_static("attrGroups"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "static" => { self.set_p_static_(cast::<bool>(value)); true }, "byRef" => { self.set_p_byRef(cast::<bool>(value)); true }, "params" => { self.set_p_params(cast::<List<crate::php_parser::node::Param>>(value)); true }, "returnType" => { self.set_p_returnType(value.to_option().map(|__m| cast::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>(__m))); true }, "expr" => { self.set_p_expr(cast::<crate::php_parser::node::Expr>(value)); true }, "attrGroups" => { self.set_p_attrGroups(cast::<Map<ArrayKey, crate::php_parser::node::AttributeGroup>>(value)); true }, _ => false } }
+}
+impl ArrowFunction { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\ArrowFunction could not be converted to string"))) } }
+impl php_rt::PhpClone for ArrowFunction { fn php_clone(&self) -> Self { let c = ArrowFunction(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for ArrowFunctionObj { fn clone(&self) -> Self { ArrowFunctionObj { attributes: self.attributes.clone(), static_: self.static_.clone(), byRef: self.byRef.clone(), params: self.params.clone(), returnType: self.returnType.clone(), expr: self.expr.clone(), attrGroups: self.attrGroups.clone() } } }
+impl ArrowFunction {
+}
+pub struct AssignObj {
+    pub attributes: Map<Str, Mixed>,
+    pub var: Late<crate::php_parser::node::Expr>,
+    pub expr: Late<crate::php_parser::node::Expr>,
+}
+#[derive(Clone)]
+pub struct Assign(pub Rc<RefCell<AssignObj>>);
+impl Assign {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_var(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.var.get()) }
+    pub fn p_var_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().var.get().clone() }
+    pub fn p_var_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().var.as_option().cloned() }
+    pub fn p_var_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.var.get_mut()) }
+    pub fn set_p_var(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().var.set(v); }
+    pub fn p_expr(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.expr.get()) }
+    pub fn p_expr_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().expr.get().clone() }
+    pub fn p_expr_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().expr.as_option().cloned() }
+    pub fn p_expr_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.expr.get_mut()) }
+    pub fn set_p_expr(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().expr.set(v); }
+    pub fn new(mut var: crate::php_parser::node::Expr, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Assign, Throw> {
+        let this = Assign(Rc::new(RefCell::new(AssignObj {
+            attributes: Default::default(),
+            var: Late::uninit(),
+            expr: Late::uninit(),
+        })));
+        this.magic__construct(var, expr, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut var: crate::php_parser::node::Expr, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_var(var.clone());
+    self.set_p_expr(expr.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("var"))); __m1.push(cast::<Mixed>(Str::from_static("expr"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_Assign"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut var: crate::php_parser::node::Expr, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::Assign, Throw> { Ok(Self::new(var, expr, attributes)?) }
+}
+impl php_rt::PhpObject for Assign {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\Assign" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\assign", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_var_opt() { out.push((Str::from_static("var"), cast::<Mixed>(v))); } if let Some(v) = self.p_expr_opt() { out.push((Str::from_static("expr"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "var" => { self.set_p_var(cast::<crate::php_parser::node::Expr>(value)); true }, "expr" => { self.set_p_expr(cast::<crate::php_parser::node::Expr>(value)); true }, _ => false } }
+}
+impl Assign { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\Assign could not be converted to string"))) } }
+impl php_rt::PhpClone for Assign { fn php_clone(&self) -> Self { let c = Assign(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for AssignObj { fn clone(&self) -> Self { AssignObj { attributes: self.attributes.clone(), var: self.var.clone(), expr: self.expr.clone() } } }
+impl Assign {
+}
+#[derive(Clone)]
+pub enum AssignOp {
+    PhpParser_Node_Expr_AssignOp_BitwiseAnd(crate::php_parser::node::expr::assign_op::BitwiseAnd),
+    PhpParser_Node_Expr_AssignOp_BitwiseOr(crate::php_parser::node::expr::assign_op::BitwiseOr),
+    PhpParser_Node_Expr_AssignOp_BitwiseXor(crate::php_parser::node::expr::assign_op::BitwiseXor),
+    PhpParser_Node_Expr_AssignOp_Coalesce(crate::php_parser::node::expr::assign_op::Coalesce),
+    PhpParser_Node_Expr_AssignOp_Concat(crate::php_parser::node::expr::assign_op::Concat),
+    PhpParser_Node_Expr_AssignOp_Div(crate::php_parser::node::expr::assign_op::Div),
+    PhpParser_Node_Expr_AssignOp_Minus(crate::php_parser::node::expr::assign_op::Minus),
+    PhpParser_Node_Expr_AssignOp_Mod(crate::php_parser::node::expr::assign_op::Mod),
+    PhpParser_Node_Expr_AssignOp_Mul(crate::php_parser::node::expr::assign_op::Mul),
+    PhpParser_Node_Expr_AssignOp_Plus(crate::php_parser::node::expr::assign_op::Plus),
+    PhpParser_Node_Expr_AssignOp_Pow(crate::php_parser::node::expr::assign_op::Pow),
+    PhpParser_Node_Expr_AssignOp_ShiftLeft(crate::php_parser::node::expr::assign_op::ShiftLeft),
+    PhpParser_Node_Expr_AssignOp_ShiftRight(crate::php_parser::node::expr::assign_op::ShiftRight),
+}
+impl php_rt::PhpObject for AssignOp {
+    fn class_name(&self) -> &'static str { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => __h.class_name(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => __h.class_name(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => __h.class_name(), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => __h.class_name(), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => __h.class_name(), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => __h.class_name(), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => __h.class_name(), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => __h.class_name(), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => __h.class_name(), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => __h.class_name(), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => __h.class_name(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => __h.class_name(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => __h.class_name(), _ => unreachable!() } }
+    fn class_ancestors(&self) -> &'static [&'static str] { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => __h.class_ancestors(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => __h.class_ancestors(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => __h.class_ancestors(), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => __h.class_ancestors(), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => __h.class_ancestors(), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => __h.class_ancestors(), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => __h.class_ancestors(), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => __h.class_ancestors(), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => __h.class_ancestors(), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => __h.class_ancestors(), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => __h.class_ancestors(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => __h.class_ancestors(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => __h.class_ancestors(), _ => unreachable!() } }
+    fn obj_id(&self) -> usize { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => __h.obj_id(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => __h.obj_id(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => __h.obj_id(), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => __h.obj_id(), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => __h.obj_id(), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => __h.obj_id(), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => __h.obj_id(), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => __h.obj_id(), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => __h.obj_id(), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => __h.obj_id(), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => __h.obj_id(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => __h.obj_id(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => __h.obj_id(), _ => unreachable!() } }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => __h.props(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => __h.props(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => __h.props(), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => __h.props(), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => __h.props(), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => __h.props(), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => __h.props(), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => __h.props(), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => __h.props(), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => __h.props(), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => __h.props(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => __h.props(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => __h.props(), _ => unreachable!() } }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => __h.set_prop(name, value), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => __h.set_prop(name, value), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => __h.set_prop(name, value), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => __h.set_prop(name, value), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => __h.set_prop(name, value), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => __h.set_prop(name, value), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => __h.set_prop(name, value), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => __h.set_prop(name, value), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => __h.set_prop(name, value), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => __h.set_prop(name, value), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => __h.set_prop(name, value), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => __h.set_prop(name, value), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => __h.set_prop(name, value), _ => unreachable!() } }
+    fn php_to_string(&self) -> Option<Str> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => __h.php_to_string(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => __h.php_to_string(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => __h.php_to_string(), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => __h.php_to_string(), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => __h.php_to_string(), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => __h.php_to_string(), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => __h.php_to_string(), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => __h.php_to_string(), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => __h.php_to_string(), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => __h.php_to_string(), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => __h.php_to_string(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => __h.php_to_string(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => __h.php_to_string(), _ => unreachable!() } }
+}
+impl AssignOp { pub fn to_php_string(&self) -> Result<Str, Throw> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => __h.to_php_string(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => __h.to_php_string(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => __h.to_php_string(), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => __h.to_php_string(), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => __h.to_php_string(), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => __h.to_php_string(), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => __h.to_php_string(), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => __h.to_php_string(), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => __h.to_php_string(), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => __h.to_php_string(), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => __h.to_php_string(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => __h.to_php_string(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => __h.to_php_string(), _ => unreachable!() } } }
+impl php_rt::PhpClone for AssignOp { fn php_clone(&self) -> Self { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h.php_clone()), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h.php_clone()), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h.php_clone()), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h.php_clone()), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h.php_clone()), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h.php_clone()), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h.php_clone()), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h.php_clone()), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h.php_clone()), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h.php_clone()), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h.php_clone()), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h.php_clone()), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h.php_clone()), _ => unreachable!() } } }
+impl AssignOp {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => __h.p_attributes(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => __h.p_attributes(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => __h.p_attributes(), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => __h.p_attributes(), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => __h.p_attributes(), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => __h.p_attributes(), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => __h.p_attributes(), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => __h.p_attributes(), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => __h.p_attributes(), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => __h.p_attributes(), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => __h.p_attributes(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => __h.p_attributes(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => __h.p_attributes(), _ => unreachable!() } }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => __h.p_attributes_get(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => __h.p_attributes_get(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => __h.p_attributes_get(), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => __h.p_attributes_get(), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => __h.p_attributes_get(), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => __h.p_attributes_get(), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => __h.p_attributes_get(), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => __h.p_attributes_get(), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => __h.p_attributes_get(), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => __h.p_attributes_get(), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => __h.p_attributes_get(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => __h.p_attributes_get(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => __h.p_attributes_get(), _ => unreachable!() } }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => __h.p_attributes_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => __h.p_attributes_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => __h.p_attributes_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => __h.p_attributes_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => __h.p_attributes_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => __h.p_attributes_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => __h.p_attributes_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => __h.p_attributes_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => __h.p_attributes_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => __h.p_attributes_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => __h.p_attributes_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => __h.p_attributes_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => __h.p_attributes_opt(), _ => unreachable!() } }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => __h.p_attributes_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => __h.p_attributes_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => __h.p_attributes_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => __h.p_attributes_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => __h.p_attributes_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => __h.p_attributes_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => __h.p_attributes_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => __h.p_attributes_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => __h.p_attributes_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => __h.p_attributes_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => __h.p_attributes_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => __h.p_attributes_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => __h.p_attributes_mut(), _ => unreachable!() } }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => __h.set_p_attributes(v), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => __h.set_p_attributes(v), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => __h.set_p_attributes(v), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => __h.set_p_attributes(v), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => __h.set_p_attributes(v), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => __h.set_p_attributes(v), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => __h.set_p_attributes(v), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => __h.set_p_attributes(v), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => __h.set_p_attributes(v), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => __h.set_p_attributes(v), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => __h.set_p_attributes(v), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => __h.set_p_attributes(v), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => __h.set_p_attributes(v), _ => unreachable!() } }
+    pub fn p_var(&self) -> Ref<'_, crate::php_parser::node::Expr> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => __h.p_var(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => __h.p_var(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => __h.p_var(), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => __h.p_var(), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => __h.p_var(), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => __h.p_var(), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => __h.p_var(), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => __h.p_var(), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => __h.p_var(), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => __h.p_var(), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => __h.p_var(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => __h.p_var(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => __h.p_var(), _ => unreachable!() } }
+    pub fn p_var_get(&self) -> crate::php_parser::node::Expr { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => __h.p_var_get(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => __h.p_var_get(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => __h.p_var_get(), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => __h.p_var_get(), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => __h.p_var_get(), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => __h.p_var_get(), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => __h.p_var_get(), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => __h.p_var_get(), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => __h.p_var_get(), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => __h.p_var_get(), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => __h.p_var_get(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => __h.p_var_get(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => __h.p_var_get(), _ => unreachable!() } }
+    pub fn p_var_opt(&self) -> Option<crate::php_parser::node::Expr> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => __h.p_var_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => __h.p_var_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => __h.p_var_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => __h.p_var_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => __h.p_var_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => __h.p_var_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => __h.p_var_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => __h.p_var_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => __h.p_var_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => __h.p_var_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => __h.p_var_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => __h.p_var_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => __h.p_var_opt(), _ => unreachable!() } }
+    pub fn p_var_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => __h.p_var_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => __h.p_var_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => __h.p_var_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => __h.p_var_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => __h.p_var_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => __h.p_var_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => __h.p_var_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => __h.p_var_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => __h.p_var_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => __h.p_var_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => __h.p_var_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => __h.p_var_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => __h.p_var_mut(), _ => unreachable!() } }
+    pub fn set_p_var(&self, v: crate::php_parser::node::Expr) { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => __h.set_p_var(v), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => __h.set_p_var(v), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => __h.set_p_var(v), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => __h.set_p_var(v), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => __h.set_p_var(v), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => __h.set_p_var(v), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => __h.set_p_var(v), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => __h.set_p_var(v), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => __h.set_p_var(v), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => __h.set_p_var(v), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => __h.set_p_var(v), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => __h.set_p_var(v), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => __h.set_p_var(v), _ => unreachable!() } }
+    pub fn p_expr(&self) -> Ref<'_, crate::php_parser::node::Expr> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => __h.p_expr(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => __h.p_expr(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => __h.p_expr(), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => __h.p_expr(), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => __h.p_expr(), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => __h.p_expr(), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => __h.p_expr(), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => __h.p_expr(), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => __h.p_expr(), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => __h.p_expr(), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => __h.p_expr(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => __h.p_expr(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => __h.p_expr(), _ => unreachable!() } }
+    pub fn p_expr_get(&self) -> crate::php_parser::node::Expr { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => __h.p_expr_get(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => __h.p_expr_get(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => __h.p_expr_get(), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => __h.p_expr_get(), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => __h.p_expr_get(), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => __h.p_expr_get(), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => __h.p_expr_get(), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => __h.p_expr_get(), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => __h.p_expr_get(), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => __h.p_expr_get(), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => __h.p_expr_get(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => __h.p_expr_get(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => __h.p_expr_get(), _ => unreachable!() } }
+    pub fn p_expr_opt(&self) -> Option<crate::php_parser::node::Expr> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => __h.p_expr_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => __h.p_expr_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => __h.p_expr_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => __h.p_expr_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => __h.p_expr_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => __h.p_expr_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => __h.p_expr_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => __h.p_expr_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => __h.p_expr_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => __h.p_expr_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => __h.p_expr_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => __h.p_expr_opt(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => __h.p_expr_opt(), _ => unreachable!() } }
+    pub fn p_expr_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => __h.p_expr_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => __h.p_expr_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => __h.p_expr_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => __h.p_expr_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => __h.p_expr_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => __h.p_expr_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => __h.p_expr_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => __h.p_expr_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => __h.p_expr_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => __h.p_expr_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => __h.p_expr_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => __h.p_expr_mut(), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => __h.p_expr_mut(), _ => unreachable!() } }
+    pub fn set_p_expr(&self, v: crate::php_parser::node::Expr) { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => __h.set_p_expr(v), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => __h.set_p_expr(v), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => __h.set_p_expr(v), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => __h.set_p_expr(v), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => __h.set_p_expr(v), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => __h.set_p_expr(v), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => __h.set_p_expr(v), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => __h.set_p_expr(v), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => __h.set_p_expr(v), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => __h.set_p_expr(v), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => __h.set_p_expr(v), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => __h.set_p_expr(v), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => __h.set_p_expr(v), _ => unreachable!() } }
+    pub fn magic__construct(&self, mut var: crate::php_parser::node::Expr, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => Ok(__h.magic__construct(var, expr, attributes)?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => Ok(__h.magic__construct(var, expr, attributes)?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => Ok(__h.magic__construct(var, expr, attributes)?), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => Ok(__h.magic__construct(var, expr, attributes)?), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => Ok(__h.magic__construct(var, expr, attributes)?), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => Ok(__h.magic__construct(var, expr, attributes)?), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => Ok(__h.magic__construct(var, expr, attributes)?), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => Ok(__h.magic__construct(var, expr, attributes)?), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => Ok(__h.magic__construct(var, expr, attributes)?), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => Ok(__h.magic__construct(var, expr, attributes)?), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => Ok(__h.magic__construct(var, expr, attributes)?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => Ok(__h.magic__construct(var, expr, attributes)?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => Ok(__h.magic__construct(var, expr, attributes)?), _ => unreachable!() } }
+    pub fn magic__construct__impl(&self, mut var: crate::php_parser::node::Expr, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_var(var.clone());
+    self.set_p_expr(expr.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => Ok(__h.getSubNodeNames()?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => Ok(__h.getSubNodeNames()?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => Ok(__h.getSubNodeNames()?), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => Ok(__h.getSubNodeNames()?), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => Ok(__h.getSubNodeNames()?), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => Ok(__h.getSubNodeNames()?), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => Ok(__h.getSubNodeNames()?), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => Ok(__h.getSubNodeNames()?), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => Ok(__h.getSubNodeNames()?), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => Ok(__h.getSubNodeNames()?), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => Ok(__h.getSubNodeNames()?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => Ok(__h.getSubNodeNames()?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => Ok(__h.getSubNodeNames()?), _ => unreachable!() } }
+    pub fn getSubNodeNames__impl(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("var"))); __m1.push(cast::<Mixed>(Str::from_static("expr"))); __m1 });
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => Ok(__h.getLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => Ok(__h.getLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => Ok(__h.getLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => Ok(__h.getLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => Ok(__h.getLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => Ok(__h.getLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => Ok(__h.getLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => Ok(__h.getLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => Ok(__h.getLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => Ok(__h.getLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => Ok(__h.getLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => Ok(__h.getLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => Ok(__h.getLine()?), _ => unreachable!() } }
+    pub fn getLine__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => Ok(__h.getStartLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => Ok(__h.getStartLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => Ok(__h.getStartLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => Ok(__h.getStartLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => Ok(__h.getStartLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => Ok(__h.getStartLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => Ok(__h.getStartLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => Ok(__h.getStartLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => Ok(__h.getStartLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => Ok(__h.getStartLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => Ok(__h.getStartLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => Ok(__h.getStartLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => Ok(__h.getStartLine()?), _ => unreachable!() } }
+    pub fn getStartLine__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => Ok(__h.getEndLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => Ok(__h.getEndLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => Ok(__h.getEndLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => Ok(__h.getEndLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => Ok(__h.getEndLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => Ok(__h.getEndLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => Ok(__h.getEndLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => Ok(__h.getEndLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => Ok(__h.getEndLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => Ok(__h.getEndLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => Ok(__h.getEndLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => Ok(__h.getEndLine()?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => Ok(__h.getEndLine()?), _ => unreachable!() } }
+    pub fn getEndLine__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => Ok(__h.getStartTokenPos()?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => Ok(__h.getStartTokenPos()?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => Ok(__h.getStartTokenPos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => Ok(__h.getStartTokenPos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => Ok(__h.getStartTokenPos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => Ok(__h.getStartTokenPos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => Ok(__h.getStartTokenPos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => Ok(__h.getStartTokenPos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => Ok(__h.getStartTokenPos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => Ok(__h.getStartTokenPos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => Ok(__h.getStartTokenPos()?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => Ok(__h.getStartTokenPos()?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => Ok(__h.getStartTokenPos()?), _ => unreachable!() } }
+    pub fn getStartTokenPos__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => Ok(__h.getEndTokenPos()?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => Ok(__h.getEndTokenPos()?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => Ok(__h.getEndTokenPos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => Ok(__h.getEndTokenPos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => Ok(__h.getEndTokenPos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => Ok(__h.getEndTokenPos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => Ok(__h.getEndTokenPos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => Ok(__h.getEndTokenPos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => Ok(__h.getEndTokenPos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => Ok(__h.getEndTokenPos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => Ok(__h.getEndTokenPos()?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => Ok(__h.getEndTokenPos()?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => Ok(__h.getEndTokenPos()?), _ => unreachable!() } }
+    pub fn getEndTokenPos__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => Ok(__h.getStartFilePos()?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => Ok(__h.getStartFilePos()?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => Ok(__h.getStartFilePos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => Ok(__h.getStartFilePos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => Ok(__h.getStartFilePos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => Ok(__h.getStartFilePos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => Ok(__h.getStartFilePos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => Ok(__h.getStartFilePos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => Ok(__h.getStartFilePos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => Ok(__h.getStartFilePos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => Ok(__h.getStartFilePos()?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => Ok(__h.getStartFilePos()?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => Ok(__h.getStartFilePos()?), _ => unreachable!() } }
+    pub fn getStartFilePos__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => Ok(__h.getEndFilePos()?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => Ok(__h.getEndFilePos()?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => Ok(__h.getEndFilePos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => Ok(__h.getEndFilePos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => Ok(__h.getEndFilePos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => Ok(__h.getEndFilePos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => Ok(__h.getEndFilePos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => Ok(__h.getEndFilePos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => Ok(__h.getEndFilePos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => Ok(__h.getEndFilePos()?), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => Ok(__h.getEndFilePos()?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => Ok(__h.getEndFilePos()?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => Ok(__h.getEndFilePos()?), _ => unreachable!() } }
+    pub fn getEndFilePos__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => Ok(__h.getComments()?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => Ok(__h.getComments()?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => Ok(__h.getComments()?), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => Ok(__h.getComments()?), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => Ok(__h.getComments()?), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => Ok(__h.getComments()?), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => Ok(__h.getComments()?), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => Ok(__h.getComments()?), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => Ok(__h.getComments()?), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => Ok(__h.getComments()?), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => Ok(__h.getComments()?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => Ok(__h.getComments()?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => Ok(__h.getComments()?), _ => unreachable!() } }
+    pub fn getComments__impl(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => Ok(__h.getDocComment()?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => Ok(__h.getDocComment()?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => Ok(__h.getDocComment()?), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => Ok(__h.getDocComment()?), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => Ok(__h.getDocComment()?), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => Ok(__h.getDocComment()?), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => Ok(__h.getDocComment()?), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => Ok(__h.getDocComment()?), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => Ok(__h.getDocComment()?), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => Ok(__h.getDocComment()?), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => Ok(__h.getDocComment()?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => Ok(__h.getDocComment()?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => Ok(__h.getDocComment()?), _ => unreachable!() } }
+    pub fn getDocComment__impl(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => Ok(__h.setDocComment(docComment)?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => Ok(__h.setDocComment(docComment)?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => Ok(__h.setDocComment(docComment)?), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => Ok(__h.setDocComment(docComment)?), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => Ok(__h.setDocComment(docComment)?), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => Ok(__h.setDocComment(docComment)?), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => Ok(__h.setDocComment(docComment)?), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => Ok(__h.setDocComment(docComment)?), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => Ok(__h.setDocComment(docComment)?), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => Ok(__h.setDocComment(docComment)?), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => Ok(__h.setDocComment(docComment)?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => Ok(__h.setDocComment(docComment)?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => Ok(__h.setDocComment(docComment)?), _ => unreachable!() } }
+    pub fn setDocComment__impl(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => Ok(__h.setAttribute(key_v, value)?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => Ok(__h.setAttribute(key_v, value)?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => Ok(__h.setAttribute(key_v, value)?), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => Ok(__h.setAttribute(key_v, value)?), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => Ok(__h.setAttribute(key_v, value)?), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => Ok(__h.setAttribute(key_v, value)?), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => Ok(__h.setAttribute(key_v, value)?), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => Ok(__h.setAttribute(key_v, value)?), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => Ok(__h.setAttribute(key_v, value)?), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => Ok(__h.setAttribute(key_v, value)?), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => Ok(__h.setAttribute(key_v, value)?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => Ok(__h.setAttribute(key_v, value)?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => Ok(__h.setAttribute(key_v, value)?), _ => unreachable!() } }
+    pub fn setAttribute__impl(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => Ok(__h.hasAttribute(key_v)?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => Ok(__h.hasAttribute(key_v)?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => Ok(__h.hasAttribute(key_v)?), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => Ok(__h.hasAttribute(key_v)?), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => Ok(__h.hasAttribute(key_v)?), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => Ok(__h.hasAttribute(key_v)?), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => Ok(__h.hasAttribute(key_v)?), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => Ok(__h.hasAttribute(key_v)?), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => Ok(__h.hasAttribute(key_v)?), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => Ok(__h.hasAttribute(key_v)?), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => Ok(__h.hasAttribute(key_v)?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => Ok(__h.hasAttribute(key_v)?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => Ok(__h.hasAttribute(key_v)?), _ => unreachable!() } }
+    pub fn hasAttribute__impl(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => Ok(__h.getAttribute(key_v, default)?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => Ok(__h.getAttribute(key_v, default)?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => Ok(__h.getAttribute(key_v, default)?), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => Ok(__h.getAttribute(key_v, default)?), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => Ok(__h.getAttribute(key_v, default)?), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => Ok(__h.getAttribute(key_v, default)?), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => Ok(__h.getAttribute(key_v, default)?), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => Ok(__h.getAttribute(key_v, default)?), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => Ok(__h.getAttribute(key_v, default)?), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => Ok(__h.getAttribute(key_v, default)?), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => Ok(__h.getAttribute(key_v, default)?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => Ok(__h.getAttribute(key_v, default)?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => Ok(__h.getAttribute(key_v, default)?), _ => unreachable!() } }
+    pub fn getAttribute__impl(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => Ok(__h.getAttributes()?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => Ok(__h.getAttributes()?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => Ok(__h.getAttributes()?), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => Ok(__h.getAttributes()?), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => Ok(__h.getAttributes()?), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => Ok(__h.getAttributes()?), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => Ok(__h.getAttributes()?), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => Ok(__h.getAttributes()?), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => Ok(__h.getAttributes()?), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => Ok(__h.getAttributes()?), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => Ok(__h.getAttributes()?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => Ok(__h.getAttributes()?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => Ok(__h.getAttributes()?), _ => unreachable!() } }
+    pub fn getAttributes__impl(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => Ok(__h.setAttributes(attributes)?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => Ok(__h.setAttributes(attributes)?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => Ok(__h.setAttributes(attributes)?), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => Ok(__h.setAttributes(attributes)?), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => Ok(__h.setAttributes(attributes)?), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => Ok(__h.setAttributes(attributes)?), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => Ok(__h.setAttributes(attributes)?), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => Ok(__h.setAttributes(attributes)?), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => Ok(__h.setAttributes(attributes)?), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => Ok(__h.setAttributes(attributes)?), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => Ok(__h.setAttributes(attributes)?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => Ok(__h.setAttributes(attributes)?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => Ok(__h.setAttributes(attributes)?), _ => unreachable!() } }
+    pub fn setAttributes__impl(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => Ok(__h.jsonSerialize()?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => Ok(__h.jsonSerialize()?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => Ok(__h.jsonSerialize()?), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => Ok(__h.jsonSerialize()?), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => Ok(__h.jsonSerialize()?), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => Ok(__h.jsonSerialize()?), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => Ok(__h.jsonSerialize()?), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => Ok(__h.jsonSerialize()?), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => Ok(__h.jsonSerialize()?), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => Ok(__h.jsonSerialize()?), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => Ok(__h.jsonSerialize()?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => Ok(__h.jsonSerialize()?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => Ok(__h.jsonSerialize()?), _ => unreachable!() } }
+    pub fn jsonSerialize__impl(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn getType(&self) -> Result<Str, Throw> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => Ok(__h.getType()?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => Ok(__h.getType()?), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => Ok(__h.getType()?), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => Ok(__h.getType()?), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => Ok(__h.getType()?), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => Ok(__h.getType()?), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => Ok(__h.getType()?), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => Ok(__h.getType()?), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => Ok(__h.getType()?), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => Ok(__h.getType()?), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => Ok(__h.getType()?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => Ok(__h.getType()?), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => Ok(__h.getType()?), _ => unreachable!() } }
+    pub fn new_same_class(&self, mut var: crate::php_parser::node::Expr, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<AssignOp, Throw> { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(__h) => Ok(cast::<crate::php_parser::node::expr::AssignOp>(__h.new_same_class(var.clone(), expr.clone(), attributes.clone())?)), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(__h) => Ok(cast::<crate::php_parser::node::expr::AssignOp>(__h.new_same_class(var.clone(), expr.clone(), attributes.clone())?)), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(__h) => Ok(cast::<crate::php_parser::node::expr::AssignOp>(__h.new_same_class(var.clone(), expr.clone(), attributes.clone())?)), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(__h) => Ok(cast::<crate::php_parser::node::expr::AssignOp>(__h.new_same_class(var.clone(), expr.clone(), attributes.clone())?)), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(__h) => Ok(cast::<crate::php_parser::node::expr::AssignOp>(__h.new_same_class(var.clone(), expr.clone(), attributes.clone())?)), AssignOp::PhpParser_Node_Expr_AssignOp_Div(__h) => Ok(cast::<crate::php_parser::node::expr::AssignOp>(__h.new_same_class(var.clone(), expr.clone(), attributes.clone())?)), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(__h) => Ok(cast::<crate::php_parser::node::expr::AssignOp>(__h.new_same_class(var.clone(), expr.clone(), attributes.clone())?)), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(__h) => Ok(cast::<crate::php_parser::node::expr::AssignOp>(__h.new_same_class(var.clone(), expr.clone(), attributes.clone())?)), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(__h) => Ok(cast::<crate::php_parser::node::expr::AssignOp>(__h.new_same_class(var.clone(), expr.clone(), attributes.clone())?)), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(__h) => Ok(cast::<crate::php_parser::node::expr::AssignOp>(__h.new_same_class(var.clone(), expr.clone(), attributes.clone())?)), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(__h) => Ok(cast::<crate::php_parser::node::expr::AssignOp>(__h.new_same_class(var.clone(), expr.clone(), attributes.clone())?)), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(__h) => Ok(cast::<crate::php_parser::node::expr::AssignOp>(__h.new_same_class(var.clone(), expr.clone(), attributes.clone())?)), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(__h) => Ok(cast::<crate::php_parser::node::expr::AssignOp>(__h.new_same_class(var.clone(), expr.clone(), attributes.clone())?)), _ => unreachable!() } }
+}
+pub struct AssignRefObj {
+    pub attributes: Map<Str, Mixed>,
+    pub var: Late<crate::php_parser::node::Expr>,
+    pub expr: Late<crate::php_parser::node::Expr>,
+}
+#[derive(Clone)]
+pub struct AssignRef(pub Rc<RefCell<AssignRefObj>>);
+impl AssignRef {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_var(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.var.get()) }
+    pub fn p_var_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().var.get().clone() }
+    pub fn p_var_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().var.as_option().cloned() }
+    pub fn p_var_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.var.get_mut()) }
+    pub fn set_p_var(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().var.set(v); }
+    pub fn p_expr(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.expr.get()) }
+    pub fn p_expr_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().expr.get().clone() }
+    pub fn p_expr_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().expr.as_option().cloned() }
+    pub fn p_expr_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.expr.get_mut()) }
+    pub fn set_p_expr(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().expr.set(v); }
+    pub fn new(mut var: crate::php_parser::node::Expr, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<AssignRef, Throw> {
+        let this = AssignRef(Rc::new(RefCell::new(AssignRefObj {
+            attributes: Default::default(),
+            var: Late::uninit(),
+            expr: Late::uninit(),
+        })));
+        this.magic__construct(var, expr, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut var: crate::php_parser::node::Expr, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_var(var.clone());
+    self.set_p_expr(expr.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("var"))); __m1.push(cast::<Mixed>(Str::from_static("expr"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_AssignRef"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut var: crate::php_parser::node::Expr, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::AssignRef, Throw> { Ok(Self::new(var, expr, attributes)?) }
+}
+impl php_rt::PhpObject for AssignRef {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\AssignRef" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\assignref", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_var_opt() { out.push((Str::from_static("var"), cast::<Mixed>(v))); } if let Some(v) = self.p_expr_opt() { out.push((Str::from_static("expr"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "var" => { self.set_p_var(cast::<crate::php_parser::node::Expr>(value)); true }, "expr" => { self.set_p_expr(cast::<crate::php_parser::node::Expr>(value)); true }, _ => false } }
+}
+impl AssignRef { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\AssignRef could not be converted to string"))) } }
+impl php_rt::PhpClone for AssignRef { fn php_clone(&self) -> Self { let c = AssignRef(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for AssignRefObj { fn clone(&self) -> Self { AssignRefObj { attributes: self.attributes.clone(), var: self.var.clone(), expr: self.expr.clone() } } }
+impl AssignRef {
+}
+#[derive(Clone)]
+pub enum BinaryOp {
+    PhpParser_Node_Expr_BinaryOp_BitwiseAnd(crate::php_parser::node::expr::binary_op::BitwiseAnd),
+    PhpParser_Node_Expr_BinaryOp_BitwiseOr(crate::php_parser::node::expr::binary_op::BitwiseOr),
+    PhpParser_Node_Expr_BinaryOp_BitwiseXor(crate::php_parser::node::expr::binary_op::BitwiseXor),
+    PhpParser_Node_Expr_BinaryOp_BooleanAnd(crate::php_parser::node::expr::binary_op::BooleanAnd),
+    PhpParser_Node_Expr_BinaryOp_BooleanOr(crate::php_parser::node::expr::binary_op::BooleanOr),
+    PhpParser_Node_Expr_BinaryOp_Coalesce(crate::php_parser::node::expr::binary_op::Coalesce),
+    PhpParser_Node_Expr_BinaryOp_Concat(crate::php_parser::node::expr::binary_op::Concat),
+    PhpParser_Node_Expr_BinaryOp_Div(crate::php_parser::node::expr::binary_op::Div),
+    PhpParser_Node_Expr_BinaryOp_Equal(crate::php_parser::node::expr::binary_op::Equal),
+    PhpParser_Node_Expr_BinaryOp_Greater(crate::php_parser::node::expr::binary_op::Greater),
+    PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(crate::php_parser::node::expr::binary_op::GreaterOrEqual),
+    PhpParser_Node_Expr_BinaryOp_Identical(crate::php_parser::node::expr::binary_op::Identical),
+    PhpParser_Node_Expr_BinaryOp_LogicalAnd(crate::php_parser::node::expr::binary_op::LogicalAnd),
+    PhpParser_Node_Expr_BinaryOp_LogicalOr(crate::php_parser::node::expr::binary_op::LogicalOr),
+    PhpParser_Node_Expr_BinaryOp_LogicalXor(crate::php_parser::node::expr::binary_op::LogicalXor),
+    PhpParser_Node_Expr_BinaryOp_Minus(crate::php_parser::node::expr::binary_op::Minus),
+    PhpParser_Node_Expr_BinaryOp_Mod(crate::php_parser::node::expr::binary_op::Mod),
+    PhpParser_Node_Expr_BinaryOp_Mul(crate::php_parser::node::expr::binary_op::Mul),
+    PhpParser_Node_Expr_BinaryOp_NotEqual(crate::php_parser::node::expr::binary_op::NotEqual),
+    PhpParser_Node_Expr_BinaryOp_NotIdentical(crate::php_parser::node::expr::binary_op::NotIdentical),
+    PhpParser_Node_Expr_BinaryOp_Pipe(crate::php_parser::node::expr::binary_op::Pipe),
+    PhpParser_Node_Expr_BinaryOp_Plus(crate::php_parser::node::expr::binary_op::Plus),
+    PhpParser_Node_Expr_BinaryOp_Pow(crate::php_parser::node::expr::binary_op::Pow),
+    PhpParser_Node_Expr_BinaryOp_ShiftLeft(crate::php_parser::node::expr::binary_op::ShiftLeft),
+    PhpParser_Node_Expr_BinaryOp_ShiftRight(crate::php_parser::node::expr::binary_op::ShiftRight),
+    PhpParser_Node_Expr_BinaryOp_Smaller(crate::php_parser::node::expr::binary_op::Smaller),
+    PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(crate::php_parser::node::expr::binary_op::SmallerOrEqual),
+    PhpParser_Node_Expr_BinaryOp_Spaceship(crate::php_parser::node::expr::binary_op::Spaceship),
+}
+impl php_rt::PhpObject for BinaryOp {
+    fn class_name(&self) -> &'static str { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => __h.class_name(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => __h.class_name(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => __h.class_name(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => __h.class_name(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => __h.class_name(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => __h.class_name(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => __h.class_name(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => __h.class_name(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => __h.class_name(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => __h.class_name(), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => __h.class_name(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => __h.class_name(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => __h.class_name(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => __h.class_name(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => __h.class_name(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => __h.class_name(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => __h.class_name(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => __h.class_name(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => __h.class_name(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => __h.class_name(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => __h.class_name(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => __h.class_name(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => __h.class_name(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => __h.class_name(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => __h.class_name(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => __h.class_name(), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => __h.class_name(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => __h.class_name(), _ => unreachable!() } }
+    fn class_ancestors(&self) -> &'static [&'static str] { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => __h.class_ancestors(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => __h.class_ancestors(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => __h.class_ancestors(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => __h.class_ancestors(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => __h.class_ancestors(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => __h.class_ancestors(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => __h.class_ancestors(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => __h.class_ancestors(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => __h.class_ancestors(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => __h.class_ancestors(), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => __h.class_ancestors(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => __h.class_ancestors(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => __h.class_ancestors(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => __h.class_ancestors(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => __h.class_ancestors(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => __h.class_ancestors(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => __h.class_ancestors(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => __h.class_ancestors(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => __h.class_ancestors(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => __h.class_ancestors(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => __h.class_ancestors(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => __h.class_ancestors(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => __h.class_ancestors(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => __h.class_ancestors(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => __h.class_ancestors(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => __h.class_ancestors(), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => __h.class_ancestors(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => __h.class_ancestors(), _ => unreachable!() } }
+    fn obj_id(&self) -> usize { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => __h.obj_id(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => __h.obj_id(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => __h.obj_id(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => __h.obj_id(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => __h.obj_id(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => __h.obj_id(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => __h.obj_id(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => __h.obj_id(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => __h.obj_id(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => __h.obj_id(), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => __h.obj_id(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => __h.obj_id(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => __h.obj_id(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => __h.obj_id(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => __h.obj_id(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => __h.obj_id(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => __h.obj_id(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => __h.obj_id(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => __h.obj_id(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => __h.obj_id(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => __h.obj_id(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => __h.obj_id(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => __h.obj_id(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => __h.obj_id(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => __h.obj_id(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => __h.obj_id(), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => __h.obj_id(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => __h.obj_id(), _ => unreachable!() } }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => __h.props(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => __h.props(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => __h.props(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => __h.props(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => __h.props(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => __h.props(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => __h.props(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => __h.props(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => __h.props(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => __h.props(), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => __h.props(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => __h.props(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => __h.props(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => __h.props(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => __h.props(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => __h.props(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => __h.props(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => __h.props(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => __h.props(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => __h.props(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => __h.props(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => __h.props(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => __h.props(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => __h.props(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => __h.props(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => __h.props(), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => __h.props(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => __h.props(), _ => unreachable!() } }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => __h.set_prop(name, value), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => __h.set_prop(name, value), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => __h.set_prop(name, value), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => __h.set_prop(name, value), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => __h.set_prop(name, value), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => __h.set_prop(name, value), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => __h.set_prop(name, value), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => __h.set_prop(name, value), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => __h.set_prop(name, value), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => __h.set_prop(name, value), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => __h.set_prop(name, value), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => __h.set_prop(name, value), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => __h.set_prop(name, value), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => __h.set_prop(name, value), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => __h.set_prop(name, value), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => __h.set_prop(name, value), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => __h.set_prop(name, value), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => __h.set_prop(name, value), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => __h.set_prop(name, value), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => __h.set_prop(name, value), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => __h.set_prop(name, value), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => __h.set_prop(name, value), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => __h.set_prop(name, value), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => __h.set_prop(name, value), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => __h.set_prop(name, value), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => __h.set_prop(name, value), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => __h.set_prop(name, value), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => __h.set_prop(name, value), _ => unreachable!() } }
+    fn php_to_string(&self) -> Option<Str> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => __h.php_to_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => __h.php_to_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => __h.php_to_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => __h.php_to_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => __h.php_to_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => __h.php_to_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => __h.php_to_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => __h.php_to_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => __h.php_to_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => __h.php_to_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => __h.php_to_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => __h.php_to_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => __h.php_to_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => __h.php_to_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => __h.php_to_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => __h.php_to_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => __h.php_to_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => __h.php_to_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => __h.php_to_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => __h.php_to_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => __h.php_to_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => __h.php_to_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => __h.php_to_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => __h.php_to_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => __h.php_to_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => __h.php_to_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => __h.php_to_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => __h.php_to_string(), _ => unreachable!() } }
+}
+impl BinaryOp { pub fn to_php_string(&self) -> Result<Str, Throw> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => __h.to_php_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => __h.to_php_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => __h.to_php_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => __h.to_php_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => __h.to_php_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => __h.to_php_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => __h.to_php_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => __h.to_php_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => __h.to_php_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => __h.to_php_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => __h.to_php_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => __h.to_php_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => __h.to_php_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => __h.to_php_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => __h.to_php_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => __h.to_php_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => __h.to_php_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => __h.to_php_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => __h.to_php_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => __h.to_php_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => __h.to_php_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => __h.to_php_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => __h.to_php_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => __h.to_php_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => __h.to_php_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => __h.to_php_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => __h.to_php_string(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => __h.to_php_string(), _ => unreachable!() } } }
+impl php_rt::PhpClone for BinaryOp { fn php_clone(&self) -> Self { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h.php_clone()), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h.php_clone()), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h.php_clone()), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h.php_clone()), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h.php_clone()), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h.php_clone()), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h.php_clone()), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h.php_clone()), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h.php_clone()), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h.php_clone()), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h.php_clone()), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h.php_clone()), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h.php_clone()), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h.php_clone()), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h.php_clone()), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h.php_clone()), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h.php_clone()), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h.php_clone()), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h.php_clone()), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h.php_clone()), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h.php_clone()), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h.php_clone()), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h.php_clone()), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h.php_clone()), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h.php_clone()), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h.php_clone()), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h.php_clone()), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h.php_clone()), _ => unreachable!() } } }
+impl BinaryOp {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => __h.p_attributes(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => __h.p_attributes(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => __h.p_attributes(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => __h.p_attributes(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => __h.p_attributes(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => __h.p_attributes(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => __h.p_attributes(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => __h.p_attributes(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => __h.p_attributes(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => __h.p_attributes(), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => __h.p_attributes(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => __h.p_attributes(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => __h.p_attributes(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => __h.p_attributes(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => __h.p_attributes(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => __h.p_attributes(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => __h.p_attributes(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => __h.p_attributes(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => __h.p_attributes(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => __h.p_attributes(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => __h.p_attributes(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => __h.p_attributes(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => __h.p_attributes(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => __h.p_attributes(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => __h.p_attributes(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => __h.p_attributes(), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => __h.p_attributes(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => __h.p_attributes(), _ => unreachable!() } }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => __h.p_attributes_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => __h.p_attributes_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => __h.p_attributes_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => __h.p_attributes_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => __h.p_attributes_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => __h.p_attributes_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => __h.p_attributes_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => __h.p_attributes_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => __h.p_attributes_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => __h.p_attributes_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => __h.p_attributes_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => __h.p_attributes_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => __h.p_attributes_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => __h.p_attributes_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => __h.p_attributes_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => __h.p_attributes_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => __h.p_attributes_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => __h.p_attributes_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => __h.p_attributes_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => __h.p_attributes_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => __h.p_attributes_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => __h.p_attributes_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => __h.p_attributes_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => __h.p_attributes_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => __h.p_attributes_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => __h.p_attributes_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => __h.p_attributes_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => __h.p_attributes_get(), _ => unreachable!() } }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => __h.p_attributes_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => __h.p_attributes_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => __h.p_attributes_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => __h.p_attributes_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => __h.p_attributes_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => __h.p_attributes_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => __h.p_attributes_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => __h.p_attributes_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => __h.p_attributes_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => __h.p_attributes_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => __h.p_attributes_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => __h.p_attributes_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => __h.p_attributes_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => __h.p_attributes_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => __h.p_attributes_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => __h.p_attributes_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => __h.p_attributes_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => __h.p_attributes_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => __h.p_attributes_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => __h.p_attributes_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => __h.p_attributes_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => __h.p_attributes_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => __h.p_attributes_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => __h.p_attributes_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => __h.p_attributes_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => __h.p_attributes_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => __h.p_attributes_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => __h.p_attributes_opt(), _ => unreachable!() } }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => __h.p_attributes_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => __h.p_attributes_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => __h.p_attributes_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => __h.p_attributes_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => __h.p_attributes_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => __h.p_attributes_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => __h.p_attributes_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => __h.p_attributes_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => __h.p_attributes_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => __h.p_attributes_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => __h.p_attributes_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => __h.p_attributes_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => __h.p_attributes_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => __h.p_attributes_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => __h.p_attributes_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => __h.p_attributes_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => __h.p_attributes_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => __h.p_attributes_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => __h.p_attributes_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => __h.p_attributes_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => __h.p_attributes_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => __h.p_attributes_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => __h.p_attributes_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => __h.p_attributes_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => __h.p_attributes_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => __h.p_attributes_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => __h.p_attributes_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => __h.p_attributes_mut(), _ => unreachable!() } }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => __h.set_p_attributes(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => __h.set_p_attributes(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => __h.set_p_attributes(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => __h.set_p_attributes(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => __h.set_p_attributes(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => __h.set_p_attributes(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => __h.set_p_attributes(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => __h.set_p_attributes(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => __h.set_p_attributes(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => __h.set_p_attributes(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => __h.set_p_attributes(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => __h.set_p_attributes(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => __h.set_p_attributes(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => __h.set_p_attributes(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => __h.set_p_attributes(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => __h.set_p_attributes(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => __h.set_p_attributes(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => __h.set_p_attributes(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => __h.set_p_attributes(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => __h.set_p_attributes(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => __h.set_p_attributes(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => __h.set_p_attributes(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => __h.set_p_attributes(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => __h.set_p_attributes(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => __h.set_p_attributes(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => __h.set_p_attributes(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => __h.set_p_attributes(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => __h.set_p_attributes(v), _ => unreachable!() } }
+    pub fn p_left(&self) -> Ref<'_, crate::php_parser::node::Expr> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => __h.p_left(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => __h.p_left(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => __h.p_left(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => __h.p_left(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => __h.p_left(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => __h.p_left(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => __h.p_left(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => __h.p_left(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => __h.p_left(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => __h.p_left(), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => __h.p_left(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => __h.p_left(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => __h.p_left(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => __h.p_left(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => __h.p_left(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => __h.p_left(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => __h.p_left(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => __h.p_left(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => __h.p_left(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => __h.p_left(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => __h.p_left(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => __h.p_left(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => __h.p_left(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => __h.p_left(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => __h.p_left(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => __h.p_left(), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => __h.p_left(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => __h.p_left(), _ => unreachable!() } }
+    pub fn p_left_get(&self) -> crate::php_parser::node::Expr { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => __h.p_left_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => __h.p_left_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => __h.p_left_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => __h.p_left_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => __h.p_left_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => __h.p_left_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => __h.p_left_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => __h.p_left_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => __h.p_left_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => __h.p_left_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => __h.p_left_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => __h.p_left_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => __h.p_left_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => __h.p_left_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => __h.p_left_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => __h.p_left_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => __h.p_left_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => __h.p_left_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => __h.p_left_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => __h.p_left_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => __h.p_left_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => __h.p_left_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => __h.p_left_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => __h.p_left_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => __h.p_left_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => __h.p_left_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => __h.p_left_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => __h.p_left_get(), _ => unreachable!() } }
+    pub fn p_left_opt(&self) -> Option<crate::php_parser::node::Expr> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => __h.p_left_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => __h.p_left_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => __h.p_left_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => __h.p_left_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => __h.p_left_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => __h.p_left_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => __h.p_left_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => __h.p_left_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => __h.p_left_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => __h.p_left_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => __h.p_left_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => __h.p_left_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => __h.p_left_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => __h.p_left_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => __h.p_left_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => __h.p_left_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => __h.p_left_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => __h.p_left_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => __h.p_left_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => __h.p_left_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => __h.p_left_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => __h.p_left_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => __h.p_left_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => __h.p_left_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => __h.p_left_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => __h.p_left_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => __h.p_left_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => __h.p_left_opt(), _ => unreachable!() } }
+    pub fn p_left_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => __h.p_left_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => __h.p_left_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => __h.p_left_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => __h.p_left_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => __h.p_left_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => __h.p_left_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => __h.p_left_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => __h.p_left_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => __h.p_left_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => __h.p_left_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => __h.p_left_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => __h.p_left_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => __h.p_left_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => __h.p_left_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => __h.p_left_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => __h.p_left_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => __h.p_left_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => __h.p_left_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => __h.p_left_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => __h.p_left_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => __h.p_left_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => __h.p_left_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => __h.p_left_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => __h.p_left_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => __h.p_left_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => __h.p_left_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => __h.p_left_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => __h.p_left_mut(), _ => unreachable!() } }
+    pub fn set_p_left(&self, v: crate::php_parser::node::Expr) { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => __h.set_p_left(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => __h.set_p_left(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => __h.set_p_left(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => __h.set_p_left(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => __h.set_p_left(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => __h.set_p_left(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => __h.set_p_left(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => __h.set_p_left(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => __h.set_p_left(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => __h.set_p_left(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => __h.set_p_left(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => __h.set_p_left(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => __h.set_p_left(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => __h.set_p_left(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => __h.set_p_left(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => __h.set_p_left(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => __h.set_p_left(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => __h.set_p_left(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => __h.set_p_left(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => __h.set_p_left(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => __h.set_p_left(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => __h.set_p_left(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => __h.set_p_left(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => __h.set_p_left(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => __h.set_p_left(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => __h.set_p_left(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => __h.set_p_left(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => __h.set_p_left(v), _ => unreachable!() } }
+    pub fn p_right(&self) -> Ref<'_, crate::php_parser::node::Expr> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => __h.p_right(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => __h.p_right(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => __h.p_right(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => __h.p_right(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => __h.p_right(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => __h.p_right(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => __h.p_right(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => __h.p_right(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => __h.p_right(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => __h.p_right(), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => __h.p_right(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => __h.p_right(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => __h.p_right(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => __h.p_right(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => __h.p_right(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => __h.p_right(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => __h.p_right(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => __h.p_right(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => __h.p_right(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => __h.p_right(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => __h.p_right(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => __h.p_right(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => __h.p_right(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => __h.p_right(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => __h.p_right(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => __h.p_right(), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => __h.p_right(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => __h.p_right(), _ => unreachable!() } }
+    pub fn p_right_get(&self) -> crate::php_parser::node::Expr { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => __h.p_right_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => __h.p_right_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => __h.p_right_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => __h.p_right_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => __h.p_right_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => __h.p_right_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => __h.p_right_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => __h.p_right_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => __h.p_right_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => __h.p_right_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => __h.p_right_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => __h.p_right_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => __h.p_right_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => __h.p_right_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => __h.p_right_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => __h.p_right_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => __h.p_right_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => __h.p_right_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => __h.p_right_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => __h.p_right_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => __h.p_right_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => __h.p_right_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => __h.p_right_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => __h.p_right_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => __h.p_right_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => __h.p_right_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => __h.p_right_get(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => __h.p_right_get(), _ => unreachable!() } }
+    pub fn p_right_opt(&self) -> Option<crate::php_parser::node::Expr> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => __h.p_right_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => __h.p_right_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => __h.p_right_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => __h.p_right_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => __h.p_right_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => __h.p_right_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => __h.p_right_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => __h.p_right_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => __h.p_right_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => __h.p_right_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => __h.p_right_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => __h.p_right_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => __h.p_right_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => __h.p_right_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => __h.p_right_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => __h.p_right_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => __h.p_right_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => __h.p_right_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => __h.p_right_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => __h.p_right_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => __h.p_right_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => __h.p_right_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => __h.p_right_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => __h.p_right_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => __h.p_right_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => __h.p_right_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => __h.p_right_opt(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => __h.p_right_opt(), _ => unreachable!() } }
+    pub fn p_right_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => __h.p_right_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => __h.p_right_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => __h.p_right_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => __h.p_right_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => __h.p_right_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => __h.p_right_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => __h.p_right_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => __h.p_right_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => __h.p_right_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => __h.p_right_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => __h.p_right_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => __h.p_right_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => __h.p_right_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => __h.p_right_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => __h.p_right_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => __h.p_right_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => __h.p_right_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => __h.p_right_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => __h.p_right_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => __h.p_right_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => __h.p_right_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => __h.p_right_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => __h.p_right_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => __h.p_right_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => __h.p_right_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => __h.p_right_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => __h.p_right_mut(), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => __h.p_right_mut(), _ => unreachable!() } }
+    pub fn set_p_right(&self, v: crate::php_parser::node::Expr) { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => __h.set_p_right(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => __h.set_p_right(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => __h.set_p_right(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => __h.set_p_right(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => __h.set_p_right(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => __h.set_p_right(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => __h.set_p_right(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => __h.set_p_right(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => __h.set_p_right(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => __h.set_p_right(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => __h.set_p_right(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => __h.set_p_right(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => __h.set_p_right(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => __h.set_p_right(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => __h.set_p_right(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => __h.set_p_right(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => __h.set_p_right(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => __h.set_p_right(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => __h.set_p_right(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => __h.set_p_right(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => __h.set_p_right(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => __h.set_p_right(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => __h.set_p_right(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => __h.set_p_right(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => __h.set_p_right(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => __h.set_p_right(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => __h.set_p_right(v), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => __h.set_p_right(v), _ => unreachable!() } }
+    pub fn magic__construct(&self, mut left: crate::php_parser::node::Expr, mut right: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => Ok(__h.magic__construct(left, right, attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => Ok(__h.magic__construct(left, right, attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => Ok(__h.magic__construct(left, right, attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => Ok(__h.magic__construct(left, right, attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => Ok(__h.magic__construct(left, right, attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => Ok(__h.magic__construct(left, right, attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => Ok(__h.magic__construct(left, right, attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => Ok(__h.magic__construct(left, right, attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => Ok(__h.magic__construct(left, right, attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => Ok(__h.magic__construct(left, right, attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => Ok(__h.magic__construct(left, right, attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => Ok(__h.magic__construct(left, right, attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => Ok(__h.magic__construct(left, right, attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => Ok(__h.magic__construct(left, right, attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => Ok(__h.magic__construct(left, right, attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => Ok(__h.magic__construct(left, right, attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => Ok(__h.magic__construct(left, right, attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => Ok(__h.magic__construct(left, right, attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => Ok(__h.magic__construct(left, right, attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => Ok(__h.magic__construct(left, right, attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => Ok(__h.magic__construct(left, right, attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => Ok(__h.magic__construct(left, right, attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => Ok(__h.magic__construct(left, right, attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => Ok(__h.magic__construct(left, right, attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => Ok(__h.magic__construct(left, right, attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => Ok(__h.magic__construct(left, right, attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => Ok(__h.magic__construct(left, right, attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => Ok(__h.magic__construct(left, right, attributes)?), _ => unreachable!() } }
+    pub fn magic__construct__impl(&self, mut left: crate::php_parser::node::Expr, mut right: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_left(left.clone());
+    self.set_p_right(right.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => Ok(__h.getSubNodeNames()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => Ok(__h.getSubNodeNames()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => Ok(__h.getSubNodeNames()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => Ok(__h.getSubNodeNames()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => Ok(__h.getSubNodeNames()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => Ok(__h.getSubNodeNames()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => Ok(__h.getSubNodeNames()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => Ok(__h.getSubNodeNames()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => Ok(__h.getSubNodeNames()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => Ok(__h.getSubNodeNames()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => Ok(__h.getSubNodeNames()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => Ok(__h.getSubNodeNames()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => Ok(__h.getSubNodeNames()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => Ok(__h.getSubNodeNames()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => Ok(__h.getSubNodeNames()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => Ok(__h.getSubNodeNames()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => Ok(__h.getSubNodeNames()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => Ok(__h.getSubNodeNames()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => Ok(__h.getSubNodeNames()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => Ok(__h.getSubNodeNames()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => Ok(__h.getSubNodeNames()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => Ok(__h.getSubNodeNames()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => Ok(__h.getSubNodeNames()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => Ok(__h.getSubNodeNames()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => Ok(__h.getSubNodeNames()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => Ok(__h.getSubNodeNames()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => Ok(__h.getSubNodeNames()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => Ok(__h.getSubNodeNames()?), _ => unreachable!() } }
+    pub fn getSubNodeNames__impl(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("left"))); __m1.push(cast::<Mixed>(Str::from_static("right"))); __m1 });
+    }
+    pub fn getOperatorSigil(&self) -> Result<Str, Throw> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => Ok(__h.getOperatorSigil()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => Ok(__h.getOperatorSigil()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => Ok(__h.getOperatorSigil()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => Ok(__h.getOperatorSigil()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => Ok(__h.getOperatorSigil()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => Ok(__h.getOperatorSigil()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => Ok(__h.getOperatorSigil()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => Ok(__h.getOperatorSigil()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => Ok(__h.getOperatorSigil()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => Ok(__h.getOperatorSigil()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => Ok(__h.getOperatorSigil()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => Ok(__h.getOperatorSigil()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => Ok(__h.getOperatorSigil()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => Ok(__h.getOperatorSigil()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => Ok(__h.getOperatorSigil()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => Ok(__h.getOperatorSigil()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => Ok(__h.getOperatorSigil()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => Ok(__h.getOperatorSigil()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => Ok(__h.getOperatorSigil()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => Ok(__h.getOperatorSigil()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => Ok(__h.getOperatorSigil()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => Ok(__h.getOperatorSigil()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => Ok(__h.getOperatorSigil()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => Ok(__h.getOperatorSigil()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => Ok(__h.getOperatorSigil()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => Ok(__h.getOperatorSigil()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => Ok(__h.getOperatorSigil()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => Ok(__h.getOperatorSigil()?), _ => unreachable!() } }
+    pub fn getLine(&self) -> Result<i64, Throw> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => Ok(__h.getLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => Ok(__h.getLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => Ok(__h.getLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => Ok(__h.getLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => Ok(__h.getLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => Ok(__h.getLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => Ok(__h.getLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => Ok(__h.getLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => Ok(__h.getLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => Ok(__h.getLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => Ok(__h.getLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => Ok(__h.getLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => Ok(__h.getLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => Ok(__h.getLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => Ok(__h.getLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => Ok(__h.getLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => Ok(__h.getLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => Ok(__h.getLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => Ok(__h.getLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => Ok(__h.getLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => Ok(__h.getLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => Ok(__h.getLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => Ok(__h.getLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => Ok(__h.getLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => Ok(__h.getLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => Ok(__h.getLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => Ok(__h.getLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => Ok(__h.getLine()?), _ => unreachable!() } }
+    pub fn getLine__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => Ok(__h.getStartLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => Ok(__h.getStartLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => Ok(__h.getStartLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => Ok(__h.getStartLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => Ok(__h.getStartLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => Ok(__h.getStartLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => Ok(__h.getStartLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => Ok(__h.getStartLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => Ok(__h.getStartLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => Ok(__h.getStartLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => Ok(__h.getStartLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => Ok(__h.getStartLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => Ok(__h.getStartLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => Ok(__h.getStartLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => Ok(__h.getStartLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => Ok(__h.getStartLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => Ok(__h.getStartLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => Ok(__h.getStartLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => Ok(__h.getStartLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => Ok(__h.getStartLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => Ok(__h.getStartLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => Ok(__h.getStartLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => Ok(__h.getStartLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => Ok(__h.getStartLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => Ok(__h.getStartLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => Ok(__h.getStartLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => Ok(__h.getStartLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => Ok(__h.getStartLine()?), _ => unreachable!() } }
+    pub fn getStartLine__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => Ok(__h.getEndLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => Ok(__h.getEndLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => Ok(__h.getEndLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => Ok(__h.getEndLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => Ok(__h.getEndLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => Ok(__h.getEndLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => Ok(__h.getEndLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => Ok(__h.getEndLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => Ok(__h.getEndLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => Ok(__h.getEndLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => Ok(__h.getEndLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => Ok(__h.getEndLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => Ok(__h.getEndLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => Ok(__h.getEndLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => Ok(__h.getEndLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => Ok(__h.getEndLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => Ok(__h.getEndLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => Ok(__h.getEndLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => Ok(__h.getEndLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => Ok(__h.getEndLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => Ok(__h.getEndLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => Ok(__h.getEndLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => Ok(__h.getEndLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => Ok(__h.getEndLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => Ok(__h.getEndLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => Ok(__h.getEndLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => Ok(__h.getEndLine()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => Ok(__h.getEndLine()?), _ => unreachable!() } }
+    pub fn getEndLine__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => Ok(__h.getStartTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => Ok(__h.getStartTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => Ok(__h.getStartTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => Ok(__h.getStartTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => Ok(__h.getStartTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => Ok(__h.getStartTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => Ok(__h.getStartTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => Ok(__h.getStartTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => Ok(__h.getStartTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => Ok(__h.getStartTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => Ok(__h.getStartTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => Ok(__h.getStartTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => Ok(__h.getStartTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => Ok(__h.getStartTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => Ok(__h.getStartTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => Ok(__h.getStartTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => Ok(__h.getStartTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => Ok(__h.getStartTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => Ok(__h.getStartTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => Ok(__h.getStartTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => Ok(__h.getStartTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => Ok(__h.getStartTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => Ok(__h.getStartTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => Ok(__h.getStartTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => Ok(__h.getStartTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => Ok(__h.getStartTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => Ok(__h.getStartTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => Ok(__h.getStartTokenPos()?), _ => unreachable!() } }
+    pub fn getStartTokenPos__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => Ok(__h.getEndTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => Ok(__h.getEndTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => Ok(__h.getEndTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => Ok(__h.getEndTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => Ok(__h.getEndTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => Ok(__h.getEndTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => Ok(__h.getEndTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => Ok(__h.getEndTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => Ok(__h.getEndTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => Ok(__h.getEndTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => Ok(__h.getEndTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => Ok(__h.getEndTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => Ok(__h.getEndTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => Ok(__h.getEndTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => Ok(__h.getEndTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => Ok(__h.getEndTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => Ok(__h.getEndTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => Ok(__h.getEndTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => Ok(__h.getEndTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => Ok(__h.getEndTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => Ok(__h.getEndTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => Ok(__h.getEndTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => Ok(__h.getEndTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => Ok(__h.getEndTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => Ok(__h.getEndTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => Ok(__h.getEndTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => Ok(__h.getEndTokenPos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => Ok(__h.getEndTokenPos()?), _ => unreachable!() } }
+    pub fn getEndTokenPos__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => Ok(__h.getStartFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => Ok(__h.getStartFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => Ok(__h.getStartFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => Ok(__h.getStartFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => Ok(__h.getStartFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => Ok(__h.getStartFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => Ok(__h.getStartFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => Ok(__h.getStartFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => Ok(__h.getStartFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => Ok(__h.getStartFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => Ok(__h.getStartFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => Ok(__h.getStartFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => Ok(__h.getStartFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => Ok(__h.getStartFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => Ok(__h.getStartFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => Ok(__h.getStartFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => Ok(__h.getStartFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => Ok(__h.getStartFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => Ok(__h.getStartFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => Ok(__h.getStartFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => Ok(__h.getStartFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => Ok(__h.getStartFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => Ok(__h.getStartFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => Ok(__h.getStartFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => Ok(__h.getStartFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => Ok(__h.getStartFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => Ok(__h.getStartFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => Ok(__h.getStartFilePos()?), _ => unreachable!() } }
+    pub fn getStartFilePos__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => Ok(__h.getEndFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => Ok(__h.getEndFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => Ok(__h.getEndFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => Ok(__h.getEndFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => Ok(__h.getEndFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => Ok(__h.getEndFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => Ok(__h.getEndFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => Ok(__h.getEndFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => Ok(__h.getEndFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => Ok(__h.getEndFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => Ok(__h.getEndFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => Ok(__h.getEndFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => Ok(__h.getEndFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => Ok(__h.getEndFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => Ok(__h.getEndFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => Ok(__h.getEndFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => Ok(__h.getEndFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => Ok(__h.getEndFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => Ok(__h.getEndFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => Ok(__h.getEndFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => Ok(__h.getEndFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => Ok(__h.getEndFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => Ok(__h.getEndFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => Ok(__h.getEndFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => Ok(__h.getEndFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => Ok(__h.getEndFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => Ok(__h.getEndFilePos()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => Ok(__h.getEndFilePos()?), _ => unreachable!() } }
+    pub fn getEndFilePos__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => Ok(__h.getComments()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => Ok(__h.getComments()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => Ok(__h.getComments()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => Ok(__h.getComments()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => Ok(__h.getComments()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => Ok(__h.getComments()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => Ok(__h.getComments()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => Ok(__h.getComments()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => Ok(__h.getComments()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => Ok(__h.getComments()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => Ok(__h.getComments()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => Ok(__h.getComments()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => Ok(__h.getComments()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => Ok(__h.getComments()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => Ok(__h.getComments()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => Ok(__h.getComments()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => Ok(__h.getComments()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => Ok(__h.getComments()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => Ok(__h.getComments()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => Ok(__h.getComments()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => Ok(__h.getComments()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => Ok(__h.getComments()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => Ok(__h.getComments()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => Ok(__h.getComments()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => Ok(__h.getComments()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => Ok(__h.getComments()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => Ok(__h.getComments()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => Ok(__h.getComments()?), _ => unreachable!() } }
+    pub fn getComments__impl(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => Ok(__h.getDocComment()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => Ok(__h.getDocComment()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => Ok(__h.getDocComment()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => Ok(__h.getDocComment()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => Ok(__h.getDocComment()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => Ok(__h.getDocComment()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => Ok(__h.getDocComment()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => Ok(__h.getDocComment()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => Ok(__h.getDocComment()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => Ok(__h.getDocComment()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => Ok(__h.getDocComment()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => Ok(__h.getDocComment()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => Ok(__h.getDocComment()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => Ok(__h.getDocComment()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => Ok(__h.getDocComment()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => Ok(__h.getDocComment()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => Ok(__h.getDocComment()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => Ok(__h.getDocComment()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => Ok(__h.getDocComment()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => Ok(__h.getDocComment()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => Ok(__h.getDocComment()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => Ok(__h.getDocComment()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => Ok(__h.getDocComment()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => Ok(__h.getDocComment()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => Ok(__h.getDocComment()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => Ok(__h.getDocComment()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => Ok(__h.getDocComment()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => Ok(__h.getDocComment()?), _ => unreachable!() } }
+    pub fn getDocComment__impl(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => Ok(__h.setDocComment(docComment)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => Ok(__h.setDocComment(docComment)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => Ok(__h.setDocComment(docComment)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => Ok(__h.setDocComment(docComment)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => Ok(__h.setDocComment(docComment)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => Ok(__h.setDocComment(docComment)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => Ok(__h.setDocComment(docComment)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => Ok(__h.setDocComment(docComment)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => Ok(__h.setDocComment(docComment)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => Ok(__h.setDocComment(docComment)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => Ok(__h.setDocComment(docComment)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => Ok(__h.setDocComment(docComment)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => Ok(__h.setDocComment(docComment)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => Ok(__h.setDocComment(docComment)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => Ok(__h.setDocComment(docComment)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => Ok(__h.setDocComment(docComment)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => Ok(__h.setDocComment(docComment)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => Ok(__h.setDocComment(docComment)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => Ok(__h.setDocComment(docComment)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => Ok(__h.setDocComment(docComment)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => Ok(__h.setDocComment(docComment)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => Ok(__h.setDocComment(docComment)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => Ok(__h.setDocComment(docComment)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => Ok(__h.setDocComment(docComment)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => Ok(__h.setDocComment(docComment)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => Ok(__h.setDocComment(docComment)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => Ok(__h.setDocComment(docComment)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => Ok(__h.setDocComment(docComment)?), _ => unreachable!() } }
+    pub fn setDocComment__impl(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => Ok(__h.setAttribute(key_v, value)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => Ok(__h.setAttribute(key_v, value)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => Ok(__h.setAttribute(key_v, value)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => Ok(__h.setAttribute(key_v, value)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => Ok(__h.setAttribute(key_v, value)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => Ok(__h.setAttribute(key_v, value)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => Ok(__h.setAttribute(key_v, value)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => Ok(__h.setAttribute(key_v, value)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => Ok(__h.setAttribute(key_v, value)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => Ok(__h.setAttribute(key_v, value)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => Ok(__h.setAttribute(key_v, value)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => Ok(__h.setAttribute(key_v, value)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => Ok(__h.setAttribute(key_v, value)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => Ok(__h.setAttribute(key_v, value)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => Ok(__h.setAttribute(key_v, value)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => Ok(__h.setAttribute(key_v, value)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => Ok(__h.setAttribute(key_v, value)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => Ok(__h.setAttribute(key_v, value)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => Ok(__h.setAttribute(key_v, value)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => Ok(__h.setAttribute(key_v, value)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => Ok(__h.setAttribute(key_v, value)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => Ok(__h.setAttribute(key_v, value)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => Ok(__h.setAttribute(key_v, value)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => Ok(__h.setAttribute(key_v, value)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => Ok(__h.setAttribute(key_v, value)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => Ok(__h.setAttribute(key_v, value)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => Ok(__h.setAttribute(key_v, value)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => Ok(__h.setAttribute(key_v, value)?), _ => unreachable!() } }
+    pub fn setAttribute__impl(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => Ok(__h.hasAttribute(key_v)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => Ok(__h.hasAttribute(key_v)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => Ok(__h.hasAttribute(key_v)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => Ok(__h.hasAttribute(key_v)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => Ok(__h.hasAttribute(key_v)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => Ok(__h.hasAttribute(key_v)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => Ok(__h.hasAttribute(key_v)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => Ok(__h.hasAttribute(key_v)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => Ok(__h.hasAttribute(key_v)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => Ok(__h.hasAttribute(key_v)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => Ok(__h.hasAttribute(key_v)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => Ok(__h.hasAttribute(key_v)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => Ok(__h.hasAttribute(key_v)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => Ok(__h.hasAttribute(key_v)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => Ok(__h.hasAttribute(key_v)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => Ok(__h.hasAttribute(key_v)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => Ok(__h.hasAttribute(key_v)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => Ok(__h.hasAttribute(key_v)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => Ok(__h.hasAttribute(key_v)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => Ok(__h.hasAttribute(key_v)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => Ok(__h.hasAttribute(key_v)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => Ok(__h.hasAttribute(key_v)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => Ok(__h.hasAttribute(key_v)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => Ok(__h.hasAttribute(key_v)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => Ok(__h.hasAttribute(key_v)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => Ok(__h.hasAttribute(key_v)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => Ok(__h.hasAttribute(key_v)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => Ok(__h.hasAttribute(key_v)?), _ => unreachable!() } }
+    pub fn hasAttribute__impl(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => Ok(__h.getAttribute(key_v, default)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => Ok(__h.getAttribute(key_v, default)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => Ok(__h.getAttribute(key_v, default)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => Ok(__h.getAttribute(key_v, default)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => Ok(__h.getAttribute(key_v, default)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => Ok(__h.getAttribute(key_v, default)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => Ok(__h.getAttribute(key_v, default)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => Ok(__h.getAttribute(key_v, default)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => Ok(__h.getAttribute(key_v, default)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => Ok(__h.getAttribute(key_v, default)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => Ok(__h.getAttribute(key_v, default)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => Ok(__h.getAttribute(key_v, default)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => Ok(__h.getAttribute(key_v, default)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => Ok(__h.getAttribute(key_v, default)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => Ok(__h.getAttribute(key_v, default)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => Ok(__h.getAttribute(key_v, default)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => Ok(__h.getAttribute(key_v, default)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => Ok(__h.getAttribute(key_v, default)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => Ok(__h.getAttribute(key_v, default)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => Ok(__h.getAttribute(key_v, default)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => Ok(__h.getAttribute(key_v, default)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => Ok(__h.getAttribute(key_v, default)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => Ok(__h.getAttribute(key_v, default)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => Ok(__h.getAttribute(key_v, default)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => Ok(__h.getAttribute(key_v, default)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => Ok(__h.getAttribute(key_v, default)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => Ok(__h.getAttribute(key_v, default)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => Ok(__h.getAttribute(key_v, default)?), _ => unreachable!() } }
+    pub fn getAttribute__impl(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => Ok(__h.getAttributes()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => Ok(__h.getAttributes()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => Ok(__h.getAttributes()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => Ok(__h.getAttributes()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => Ok(__h.getAttributes()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => Ok(__h.getAttributes()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => Ok(__h.getAttributes()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => Ok(__h.getAttributes()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => Ok(__h.getAttributes()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => Ok(__h.getAttributes()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => Ok(__h.getAttributes()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => Ok(__h.getAttributes()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => Ok(__h.getAttributes()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => Ok(__h.getAttributes()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => Ok(__h.getAttributes()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => Ok(__h.getAttributes()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => Ok(__h.getAttributes()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => Ok(__h.getAttributes()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => Ok(__h.getAttributes()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => Ok(__h.getAttributes()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => Ok(__h.getAttributes()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => Ok(__h.getAttributes()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => Ok(__h.getAttributes()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => Ok(__h.getAttributes()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => Ok(__h.getAttributes()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => Ok(__h.getAttributes()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => Ok(__h.getAttributes()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => Ok(__h.getAttributes()?), _ => unreachable!() } }
+    pub fn getAttributes__impl(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => Ok(__h.setAttributes(attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => Ok(__h.setAttributes(attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => Ok(__h.setAttributes(attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => Ok(__h.setAttributes(attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => Ok(__h.setAttributes(attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => Ok(__h.setAttributes(attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => Ok(__h.setAttributes(attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => Ok(__h.setAttributes(attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => Ok(__h.setAttributes(attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => Ok(__h.setAttributes(attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => Ok(__h.setAttributes(attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => Ok(__h.setAttributes(attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => Ok(__h.setAttributes(attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => Ok(__h.setAttributes(attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => Ok(__h.setAttributes(attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => Ok(__h.setAttributes(attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => Ok(__h.setAttributes(attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => Ok(__h.setAttributes(attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => Ok(__h.setAttributes(attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => Ok(__h.setAttributes(attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => Ok(__h.setAttributes(attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => Ok(__h.setAttributes(attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => Ok(__h.setAttributes(attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => Ok(__h.setAttributes(attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => Ok(__h.setAttributes(attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => Ok(__h.setAttributes(attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => Ok(__h.setAttributes(attributes)?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => Ok(__h.setAttributes(attributes)?), _ => unreachable!() } }
+    pub fn setAttributes__impl(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => Ok(__h.jsonSerialize()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => Ok(__h.jsonSerialize()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => Ok(__h.jsonSerialize()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => Ok(__h.jsonSerialize()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => Ok(__h.jsonSerialize()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => Ok(__h.jsonSerialize()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => Ok(__h.jsonSerialize()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => Ok(__h.jsonSerialize()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => Ok(__h.jsonSerialize()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => Ok(__h.jsonSerialize()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => Ok(__h.jsonSerialize()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => Ok(__h.jsonSerialize()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => Ok(__h.jsonSerialize()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => Ok(__h.jsonSerialize()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => Ok(__h.jsonSerialize()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => Ok(__h.jsonSerialize()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => Ok(__h.jsonSerialize()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => Ok(__h.jsonSerialize()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => Ok(__h.jsonSerialize()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => Ok(__h.jsonSerialize()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => Ok(__h.jsonSerialize()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => Ok(__h.jsonSerialize()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => Ok(__h.jsonSerialize()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => Ok(__h.jsonSerialize()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => Ok(__h.jsonSerialize()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => Ok(__h.jsonSerialize()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => Ok(__h.jsonSerialize()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => Ok(__h.jsonSerialize()?), _ => unreachable!() } }
+    pub fn jsonSerialize__impl(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn getType(&self) -> Result<Str, Throw> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => Ok(__h.getType()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => Ok(__h.getType()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => Ok(__h.getType()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => Ok(__h.getType()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => Ok(__h.getType()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => Ok(__h.getType()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => Ok(__h.getType()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => Ok(__h.getType()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => Ok(__h.getType()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => Ok(__h.getType()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => Ok(__h.getType()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => Ok(__h.getType()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => Ok(__h.getType()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => Ok(__h.getType()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => Ok(__h.getType()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => Ok(__h.getType()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => Ok(__h.getType()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => Ok(__h.getType()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => Ok(__h.getType()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => Ok(__h.getType()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => Ok(__h.getType()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => Ok(__h.getType()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => Ok(__h.getType()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => Ok(__h.getType()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => Ok(__h.getType()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => Ok(__h.getType()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => Ok(__h.getType()?), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => Ok(__h.getType()?), _ => unreachable!() } }
+    pub fn new_same_class(&self, mut left: crate::php_parser::node::Expr, mut right: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<BinaryOp, Throw> { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(__h) => Ok(cast::<crate::php_parser::node::expr::BinaryOp>(__h.new_same_class(left.clone(), right.clone(), attributes.clone())?)), _ => unreachable!() } }
+}
+pub struct BitwiseNotObj {
+    pub attributes: Map<Str, Mixed>,
+    pub expr: Late<crate::php_parser::node::Expr>,
+}
+#[derive(Clone)]
+pub struct BitwiseNot(pub Rc<RefCell<BitwiseNotObj>>);
+impl BitwiseNot {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_expr(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.expr.get()) }
+    pub fn p_expr_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().expr.get().clone() }
+    pub fn p_expr_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().expr.as_option().cloned() }
+    pub fn p_expr_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.expr.get_mut()) }
+    pub fn set_p_expr(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().expr.set(v); }
+    pub fn new(mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<BitwiseNot, Throw> {
+        let this = BitwiseNot(Rc::new(RefCell::new(BitwiseNotObj {
+            attributes: Default::default(),
+            expr: Late::uninit(),
+        })));
+        this.magic__construct(expr, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_expr(expr.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    let mut left: Late<crate::php_parser::node::Expr> = Late::uninit();
+    let mut right: Late<crate::php_parser::node::Expr> = Late::uninit();
+    let mut attributes: Map<Str, Mixed> = Default::default();
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("expr"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_BitwiseNot"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::BitwiseNot, Throw> { Ok(Self::new(expr, attributes)?) }
+}
+impl php_rt::PhpObject for BitwiseNot {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\BitwiseNot" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\bitwisenot", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_expr_opt() { out.push((Str::from_static("expr"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "expr" => { self.set_p_expr(cast::<crate::php_parser::node::Expr>(value)); true }, _ => false } }
+}
+impl BitwiseNot { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\BitwiseNot could not be converted to string"))) } }
+impl php_rt::PhpClone for BitwiseNot { fn php_clone(&self) -> Self { let c = BitwiseNot(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for BitwiseNotObj { fn clone(&self) -> Self { BitwiseNotObj { attributes: self.attributes.clone(), expr: self.expr.clone() } } }
+impl BitwiseNot {
+}
+pub struct BooleanNotObj {
+    pub attributes: Map<Str, Mixed>,
+    pub expr: Late<crate::php_parser::node::Expr>,
+}
+#[derive(Clone)]
+pub struct BooleanNot(pub Rc<RefCell<BooleanNotObj>>);
+impl BooleanNot {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_expr(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.expr.get()) }
+    pub fn p_expr_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().expr.get().clone() }
+    pub fn p_expr_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().expr.as_option().cloned() }
+    pub fn p_expr_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.expr.get_mut()) }
+    pub fn set_p_expr(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().expr.set(v); }
+    pub fn new(mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<BooleanNot, Throw> {
+        let this = BooleanNot(Rc::new(RefCell::new(BooleanNotObj {
+            attributes: Default::default(),
+            expr: Late::uninit(),
+        })));
+        this.magic__construct(expr, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_expr(expr.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("expr"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_BooleanNot"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::BooleanNot, Throw> { Ok(Self::new(expr, attributes)?) }
+}
+impl php_rt::PhpObject for BooleanNot {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\BooleanNot" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\booleannot", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_expr_opt() { out.push((Str::from_static("expr"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "expr" => { self.set_p_expr(cast::<crate::php_parser::node::Expr>(value)); true }, _ => false } }
+}
+impl BooleanNot { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\BooleanNot could not be converted to string"))) } }
+impl php_rt::PhpClone for BooleanNot { fn php_clone(&self) -> Self { let c = BooleanNot(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for BooleanNotObj { fn clone(&self) -> Self { BooleanNotObj { attributes: self.attributes.clone(), expr: self.expr.clone() } } }
+impl BooleanNot {
+}
+#[derive(Clone)]
+pub enum CallLike {
+    PhpParser_Node_Expr_FuncCall(crate::php_parser::node::expr::FuncCall),
+    PhpParser_Node_Expr_MethodCall(crate::php_parser::node::expr::MethodCall),
+    PhpParser_Node_Expr_New_(crate::php_parser::node::expr::New_),
+    PhpParser_Node_Expr_NullsafeMethodCall(crate::php_parser::node::expr::NullsafeMethodCall),
+    PhpParser_Node_Expr_StaticCall(crate::php_parser::node::expr::StaticCall),
+}
+impl php_rt::PhpObject for CallLike {
+    fn class_name(&self) -> &'static str { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => __h.class_name(), CallLike::PhpParser_Node_Expr_MethodCall(__h) => __h.class_name(), CallLike::PhpParser_Node_Expr_New_(__h) => __h.class_name(), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => __h.class_name(), CallLike::PhpParser_Node_Expr_StaticCall(__h) => __h.class_name(), _ => unreachable!() } }
+    fn class_ancestors(&self) -> &'static [&'static str] { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => __h.class_ancestors(), CallLike::PhpParser_Node_Expr_MethodCall(__h) => __h.class_ancestors(), CallLike::PhpParser_Node_Expr_New_(__h) => __h.class_ancestors(), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => __h.class_ancestors(), CallLike::PhpParser_Node_Expr_StaticCall(__h) => __h.class_ancestors(), _ => unreachable!() } }
+    fn obj_id(&self) -> usize { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => __h.obj_id(), CallLike::PhpParser_Node_Expr_MethodCall(__h) => __h.obj_id(), CallLike::PhpParser_Node_Expr_New_(__h) => __h.obj_id(), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => __h.obj_id(), CallLike::PhpParser_Node_Expr_StaticCall(__h) => __h.obj_id(), _ => unreachable!() } }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => __h.props(), CallLike::PhpParser_Node_Expr_MethodCall(__h) => __h.props(), CallLike::PhpParser_Node_Expr_New_(__h) => __h.props(), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => __h.props(), CallLike::PhpParser_Node_Expr_StaticCall(__h) => __h.props(), _ => unreachable!() } }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => __h.set_prop(name, value), CallLike::PhpParser_Node_Expr_MethodCall(__h) => __h.set_prop(name, value), CallLike::PhpParser_Node_Expr_New_(__h) => __h.set_prop(name, value), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => __h.set_prop(name, value), CallLike::PhpParser_Node_Expr_StaticCall(__h) => __h.set_prop(name, value), _ => unreachable!() } }
+    fn php_to_string(&self) -> Option<Str> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => __h.php_to_string(), CallLike::PhpParser_Node_Expr_MethodCall(__h) => __h.php_to_string(), CallLike::PhpParser_Node_Expr_New_(__h) => __h.php_to_string(), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => __h.php_to_string(), CallLike::PhpParser_Node_Expr_StaticCall(__h) => __h.php_to_string(), _ => unreachable!() } }
+}
+impl CallLike { pub fn to_php_string(&self) -> Result<Str, Throw> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => __h.to_php_string(), CallLike::PhpParser_Node_Expr_MethodCall(__h) => __h.to_php_string(), CallLike::PhpParser_Node_Expr_New_(__h) => __h.to_php_string(), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => __h.to_php_string(), CallLike::PhpParser_Node_Expr_StaticCall(__h) => __h.to_php_string(), _ => unreachable!() } } }
+impl php_rt::PhpClone for CallLike { fn php_clone(&self) -> Self { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => CallLike::PhpParser_Node_Expr_FuncCall(__h.php_clone()), CallLike::PhpParser_Node_Expr_MethodCall(__h) => CallLike::PhpParser_Node_Expr_MethodCall(__h.php_clone()), CallLike::PhpParser_Node_Expr_New_(__h) => CallLike::PhpParser_Node_Expr_New_(__h.php_clone()), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h.php_clone()), CallLike::PhpParser_Node_Expr_StaticCall(__h) => CallLike::PhpParser_Node_Expr_StaticCall(__h.php_clone()), _ => unreachable!() } } }
+impl CallLike {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => __h.p_attributes(), CallLike::PhpParser_Node_Expr_MethodCall(__h) => __h.p_attributes(), CallLike::PhpParser_Node_Expr_New_(__h) => __h.p_attributes(), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => __h.p_attributes(), CallLike::PhpParser_Node_Expr_StaticCall(__h) => __h.p_attributes(), _ => unreachable!() } }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => __h.p_attributes_get(), CallLike::PhpParser_Node_Expr_MethodCall(__h) => __h.p_attributes_get(), CallLike::PhpParser_Node_Expr_New_(__h) => __h.p_attributes_get(), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => __h.p_attributes_get(), CallLike::PhpParser_Node_Expr_StaticCall(__h) => __h.p_attributes_get(), _ => unreachable!() } }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => __h.p_attributes_opt(), CallLike::PhpParser_Node_Expr_MethodCall(__h) => __h.p_attributes_opt(), CallLike::PhpParser_Node_Expr_New_(__h) => __h.p_attributes_opt(), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => __h.p_attributes_opt(), CallLike::PhpParser_Node_Expr_StaticCall(__h) => __h.p_attributes_opt(), _ => unreachable!() } }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => __h.p_attributes_mut(), CallLike::PhpParser_Node_Expr_MethodCall(__h) => __h.p_attributes_mut(), CallLike::PhpParser_Node_Expr_New_(__h) => __h.p_attributes_mut(), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => __h.p_attributes_mut(), CallLike::PhpParser_Node_Expr_StaticCall(__h) => __h.p_attributes_mut(), _ => unreachable!() } }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => __h.set_p_attributes(v), CallLike::PhpParser_Node_Expr_MethodCall(__h) => __h.set_p_attributes(v), CallLike::PhpParser_Node_Expr_New_(__h) => __h.set_p_attributes(v), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => __h.set_p_attributes(v), CallLike::PhpParser_Node_Expr_StaticCall(__h) => __h.set_p_attributes(v), _ => unreachable!() } }
+    pub fn getRawArgs(&self) -> Result<Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>, Throw> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => Ok(__h.getRawArgs()?.map_values(|v| cast::<U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>(v))), CallLike::PhpParser_Node_Expr_MethodCall(__h) => Ok(__h.getRawArgs()?.map_values(|v| cast::<U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>(v))), CallLike::PhpParser_Node_Expr_New_(__h) => Ok(__h.getRawArgs()?.map_values(|v| cast::<U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>(v))), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => Ok(__h.getRawArgs()?.map_values(|v| cast::<U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>(v))), CallLike::PhpParser_Node_Expr_StaticCall(__h) => Ok(__h.getRawArgs()?.map_values(|v| cast::<U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>(v))), _ => unreachable!() } }
+    pub fn isFirstClassCallable(&self) -> Result<bool, Throw> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => Ok(__h.isFirstClassCallable()?), CallLike::PhpParser_Node_Expr_MethodCall(__h) => Ok(__h.isFirstClassCallable()?), CallLike::PhpParser_Node_Expr_New_(__h) => Ok(__h.isFirstClassCallable()?), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => Ok(__h.isFirstClassCallable()?), CallLike::PhpParser_Node_Expr_StaticCall(__h) => Ok(__h.isFirstClassCallable()?), _ => unreachable!() } }
+    pub fn isFirstClassCallable__impl(&self) -> Result<bool, Throw> {
+    let mut rawArgs: Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder> = Default::default();
+    rawArgs = self.getRawArgs()?;
+    return Ok(((rawArgs.clone().count() == 1i64) && is_instance::<crate::php_parser::node::VariadicPlaceholder>(&rawArgs.clone().first().map(|(_, __v)| __v.clone()).unwrap())));
+    }
+    pub fn getArgs(&self) -> Result<Map<ArrayKey, crate::php_parser::node::Arg>, Throw> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => Ok(__h.getArgs()?), CallLike::PhpParser_Node_Expr_MethodCall(__h) => Ok(__h.getArgs()?), CallLike::PhpParser_Node_Expr_New_(__h) => Ok(__h.getArgs()?), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => Ok(__h.getArgs()?), CallLike::PhpParser_Node_Expr_StaticCall(__h) => Ok(__h.getArgs()?), _ => unreachable!() } }
+    pub fn getArgs__impl(&self) -> Result<Map<ArrayKey, crate::php_parser::node::Arg>, Throw> {
+    let _: bool = { if !((!self.isFirstClassCallable()?)) { return Err(Throw::assertion(Str::from_static("assert(Expr_BooleanNot)"))); } true };
+    return Ok(self.getRawArgs()?.map_values(|v| cast::<crate::php_parser::node::Arg>(v)));
+    }
+    pub fn getArg(&self, mut name: Str, mut position: i64) -> Result<Option<crate::php_parser::node::Arg>, Throw> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => Ok(__h.getArg(name, position)?), CallLike::PhpParser_Node_Expr_MethodCall(__h) => Ok(__h.getArg(name, position)?), CallLike::PhpParser_Node_Expr_New_(__h) => Ok(__h.getArg(name, position)?), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => Ok(__h.getArg(name, position)?), CallLike::PhpParser_Node_Expr_StaticCall(__h) => Ok(__h.getArg(name, position)?), _ => unreachable!() } }
+    pub fn getArg__impl(&self, mut name: Str, mut position: i64) -> Result<Option<crate::php_parser::node::Arg>, Throw> {
+    let mut i: ArrayKey = Default::default();
+    let mut arg: Late<U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder> = Late::uninit();
+    if self.isFirstClassCallable()? {
+        return Ok({ let _ = (); None::<crate::php_parser::node::Arg> });
+    }
+    'l1: for __kv1 in self.getRawArgs()?.into_iter() {
+        i = __kv1.0;
+        arg.set(__kv1.1);
+        if truthy(&(match arg.get().clone() { U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder::PhpParser_Node_Arg(__o) => cast::<Mixed>(__o.p_unpack_get()), _ => unreachable!() })) {
+            { continue 'l1 };
+        }
+        if (((!(match arg.get().clone() { U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder::PhpParser_Node_Arg(__o) => cast::<Mixed>(__o.p_name_get()), _ => unreachable!() }).is_null()) && identical(&mixed_call(&(match arg.get().clone() { U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder::PhpParser_Node_Arg(__o) => cast::<Mixed>(__o.p_name_get()), _ => unreachable!() }), &Str::from_static("toString"), vec![])?, &cast::<Mixed>(name.clone()))) || ((match arg.get().clone() { U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder::PhpParser_Node_Arg(__o) => cast::<Mixed>(__o.p_name_get()), _ => unreachable!() }).is_null() && identical(&i.clone(), &cast::<ArrayKey>(position)))) {
+            return Ok(Some(cast::<crate::php_parser::node::Arg>(arg.get().clone())));
+        }
+    }
+    return Ok({ let _ = (); None::<crate::php_parser::node::Arg> });
+    }
+    pub fn magic__construct(&self, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => Ok(__h.magic__construct(cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Name>(attributes), <Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>>::default(), <Map<Str, Mixed>>::default())?), CallLike::PhpParser_Node_Expr_MethodCall(__h) => Ok(__h.magic__construct(cast::<crate::php_parser::node::Expr>(attributes), unreachable!("no default for U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str"), <Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>>::default(), <Map<Str, Mixed>>::default())?), CallLike::PhpParser_Node_Expr_New_(__h) => Ok(__h.magic__construct(cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Name_or_PhpParser_Node_Stmt_Class_>(attributes), <Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>>::default(), <Map<Str, Mixed>>::default())?), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => Ok(__h.magic__construct(cast::<crate::php_parser::node::Expr>(attributes), unreachable!("no default for U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str"), <Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>>::default(), <Map<Str, Mixed>>::default())?), CallLike::PhpParser_Node_Expr_StaticCall(__h) => Ok(__h.magic__construct(cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Name>(attributes), unreachable!("no default for U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str"), <Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>>::default(), <Map<Str, Mixed>>::default())?), _ => unreachable!() } }
+    pub fn magic__construct__impl(&self, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).magic__construct__impl(attributes) }
+    pub fn getLine(&self) -> Result<i64, Throw> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => Ok(__h.getLine()?), CallLike::PhpParser_Node_Expr_MethodCall(__h) => Ok(__h.getLine()?), CallLike::PhpParser_Node_Expr_New_(__h) => Ok(__h.getLine()?), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => Ok(__h.getLine()?), CallLike::PhpParser_Node_Expr_StaticCall(__h) => Ok(__h.getLine()?), _ => unreachable!() } }
+    pub fn getLine__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => Ok(__h.getStartLine()?), CallLike::PhpParser_Node_Expr_MethodCall(__h) => Ok(__h.getStartLine()?), CallLike::PhpParser_Node_Expr_New_(__h) => Ok(__h.getStartLine()?), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => Ok(__h.getStartLine()?), CallLike::PhpParser_Node_Expr_StaticCall(__h) => Ok(__h.getStartLine()?), _ => unreachable!() } }
+    pub fn getStartLine__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => Ok(__h.getEndLine()?), CallLike::PhpParser_Node_Expr_MethodCall(__h) => Ok(__h.getEndLine()?), CallLike::PhpParser_Node_Expr_New_(__h) => Ok(__h.getEndLine()?), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => Ok(__h.getEndLine()?), CallLike::PhpParser_Node_Expr_StaticCall(__h) => Ok(__h.getEndLine()?), _ => unreachable!() } }
+    pub fn getEndLine__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => Ok(__h.getStartTokenPos()?), CallLike::PhpParser_Node_Expr_MethodCall(__h) => Ok(__h.getStartTokenPos()?), CallLike::PhpParser_Node_Expr_New_(__h) => Ok(__h.getStartTokenPos()?), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => Ok(__h.getStartTokenPos()?), CallLike::PhpParser_Node_Expr_StaticCall(__h) => Ok(__h.getStartTokenPos()?), _ => unreachable!() } }
+    pub fn getStartTokenPos__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => Ok(__h.getEndTokenPos()?), CallLike::PhpParser_Node_Expr_MethodCall(__h) => Ok(__h.getEndTokenPos()?), CallLike::PhpParser_Node_Expr_New_(__h) => Ok(__h.getEndTokenPos()?), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => Ok(__h.getEndTokenPos()?), CallLike::PhpParser_Node_Expr_StaticCall(__h) => Ok(__h.getEndTokenPos()?), _ => unreachable!() } }
+    pub fn getEndTokenPos__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => Ok(__h.getStartFilePos()?), CallLike::PhpParser_Node_Expr_MethodCall(__h) => Ok(__h.getStartFilePos()?), CallLike::PhpParser_Node_Expr_New_(__h) => Ok(__h.getStartFilePos()?), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => Ok(__h.getStartFilePos()?), CallLike::PhpParser_Node_Expr_StaticCall(__h) => Ok(__h.getStartFilePos()?), _ => unreachable!() } }
+    pub fn getStartFilePos__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => Ok(__h.getEndFilePos()?), CallLike::PhpParser_Node_Expr_MethodCall(__h) => Ok(__h.getEndFilePos()?), CallLike::PhpParser_Node_Expr_New_(__h) => Ok(__h.getEndFilePos()?), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => Ok(__h.getEndFilePos()?), CallLike::PhpParser_Node_Expr_StaticCall(__h) => Ok(__h.getEndFilePos()?), _ => unreachable!() } }
+    pub fn getEndFilePos__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => Ok(__h.getComments()?), CallLike::PhpParser_Node_Expr_MethodCall(__h) => Ok(__h.getComments()?), CallLike::PhpParser_Node_Expr_New_(__h) => Ok(__h.getComments()?), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => Ok(__h.getComments()?), CallLike::PhpParser_Node_Expr_StaticCall(__h) => Ok(__h.getComments()?), _ => unreachable!() } }
+    pub fn getComments__impl(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => Ok(__h.getDocComment()?), CallLike::PhpParser_Node_Expr_MethodCall(__h) => Ok(__h.getDocComment()?), CallLike::PhpParser_Node_Expr_New_(__h) => Ok(__h.getDocComment()?), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => Ok(__h.getDocComment()?), CallLike::PhpParser_Node_Expr_StaticCall(__h) => Ok(__h.getDocComment()?), _ => unreachable!() } }
+    pub fn getDocComment__impl(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => Ok(__h.setDocComment(docComment)?), CallLike::PhpParser_Node_Expr_MethodCall(__h) => Ok(__h.setDocComment(docComment)?), CallLike::PhpParser_Node_Expr_New_(__h) => Ok(__h.setDocComment(docComment)?), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => Ok(__h.setDocComment(docComment)?), CallLike::PhpParser_Node_Expr_StaticCall(__h) => Ok(__h.setDocComment(docComment)?), _ => unreachable!() } }
+    pub fn setDocComment__impl(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => Ok(__h.setAttribute(key_v, value)?), CallLike::PhpParser_Node_Expr_MethodCall(__h) => Ok(__h.setAttribute(key_v, value)?), CallLike::PhpParser_Node_Expr_New_(__h) => Ok(__h.setAttribute(key_v, value)?), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => Ok(__h.setAttribute(key_v, value)?), CallLike::PhpParser_Node_Expr_StaticCall(__h) => Ok(__h.setAttribute(key_v, value)?), _ => unreachable!() } }
+    pub fn setAttribute__impl(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => Ok(__h.hasAttribute(key_v)?), CallLike::PhpParser_Node_Expr_MethodCall(__h) => Ok(__h.hasAttribute(key_v)?), CallLike::PhpParser_Node_Expr_New_(__h) => Ok(__h.hasAttribute(key_v)?), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => Ok(__h.hasAttribute(key_v)?), CallLike::PhpParser_Node_Expr_StaticCall(__h) => Ok(__h.hasAttribute(key_v)?), _ => unreachable!() } }
+    pub fn hasAttribute__impl(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => Ok(__h.getAttribute(key_v, default)?), CallLike::PhpParser_Node_Expr_MethodCall(__h) => Ok(__h.getAttribute(key_v, default)?), CallLike::PhpParser_Node_Expr_New_(__h) => Ok(__h.getAttribute(key_v, default)?), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => Ok(__h.getAttribute(key_v, default)?), CallLike::PhpParser_Node_Expr_StaticCall(__h) => Ok(__h.getAttribute(key_v, default)?), _ => unreachable!() } }
+    pub fn getAttribute__impl(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => Ok(__h.getAttributes()?), CallLike::PhpParser_Node_Expr_MethodCall(__h) => Ok(__h.getAttributes()?), CallLike::PhpParser_Node_Expr_New_(__h) => Ok(__h.getAttributes()?), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => Ok(__h.getAttributes()?), CallLike::PhpParser_Node_Expr_StaticCall(__h) => Ok(__h.getAttributes()?), _ => unreachable!() } }
+    pub fn getAttributes__impl(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => Ok(__h.setAttributes(attributes)?), CallLike::PhpParser_Node_Expr_MethodCall(__h) => Ok(__h.setAttributes(attributes)?), CallLike::PhpParser_Node_Expr_New_(__h) => Ok(__h.setAttributes(attributes)?), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => Ok(__h.setAttributes(attributes)?), CallLike::PhpParser_Node_Expr_StaticCall(__h) => Ok(__h.setAttributes(attributes)?), _ => unreachable!() } }
+    pub fn setAttributes__impl(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => Ok(__h.jsonSerialize()?), CallLike::PhpParser_Node_Expr_MethodCall(__h) => Ok(__h.jsonSerialize()?), CallLike::PhpParser_Node_Expr_New_(__h) => Ok(__h.jsonSerialize()?), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => Ok(__h.jsonSerialize()?), CallLike::PhpParser_Node_Expr_StaticCall(__h) => Ok(__h.jsonSerialize()?), _ => unreachable!() } }
+    pub fn jsonSerialize__impl(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn getType(&self) -> Result<Str, Throw> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => Ok(__h.getType()?), CallLike::PhpParser_Node_Expr_MethodCall(__h) => Ok(__h.getType()?), CallLike::PhpParser_Node_Expr_New_(__h) => Ok(__h.getType()?), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => Ok(__h.getType()?), CallLike::PhpParser_Node_Expr_StaticCall(__h) => Ok(__h.getType()?), _ => unreachable!() } }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Str>, Throw> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => Ok(__h.getSubNodeNames()?.map_values(|v| cast::<Str>(v))), CallLike::PhpParser_Node_Expr_MethodCall(__h) => Ok(__h.getSubNodeNames()?.map_values(|v| cast::<Str>(v))), CallLike::PhpParser_Node_Expr_New_(__h) => Ok(__h.getSubNodeNames()?.map_values(|v| cast::<Str>(v))), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => Ok(__h.getSubNodeNames()?.map_values(|v| cast::<Str>(v))), CallLike::PhpParser_Node_Expr_StaticCall(__h) => Ok(__h.getSubNodeNames()?.map_values(|v| cast::<Str>(v))), _ => unreachable!() } }
+    pub fn new_same_class(&self, mut attributes: Map<Str, Mixed>) -> Result<CallLike, Throw> { match self { CallLike::PhpParser_Node_Expr_FuncCall(__h) => Ok(cast::<crate::php_parser::node::expr::CallLike>(__h.new_same_class(cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Name>(attributes.clone()), <Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>>::default(), <Map<Str, Mixed>>::default())?)), CallLike::PhpParser_Node_Expr_MethodCall(__h) => Ok(cast::<crate::php_parser::node::expr::CallLike>(__h.new_same_class(cast::<crate::php_parser::node::Expr>(attributes.clone()), unreachable!("no default for U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str"), <Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>>::default(), <Map<Str, Mixed>>::default())?)), CallLike::PhpParser_Node_Expr_New_(__h) => Ok(cast::<crate::php_parser::node::expr::CallLike>(__h.new_same_class(cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Name_or_PhpParser_Node_Stmt_Class_>(attributes.clone()), <Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>>::default(), <Map<Str, Mixed>>::default())?)), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(__h) => Ok(cast::<crate::php_parser::node::expr::CallLike>(__h.new_same_class(cast::<crate::php_parser::node::Expr>(attributes.clone()), unreachable!("no default for U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str"), <Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>>::default(), <Map<Str, Mixed>>::default())?)), CallLike::PhpParser_Node_Expr_StaticCall(__h) => Ok(cast::<crate::php_parser::node::expr::CallLike>(__h.new_same_class(cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Name>(attributes.clone()), unreachable!("no default for U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str"), <Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>>::default(), <Map<Str, Mixed>>::default())?)), _ => unreachable!() } }
+}
+#[derive(Clone)]
+pub enum Cast {
+    PhpParser_Node_Expr_Cast_Array_(crate::php_parser::node::expr::cast::Array_),
+    PhpParser_Node_Expr_Cast_Bool_(crate::php_parser::node::expr::cast::Bool_),
+    PhpParser_Node_Expr_Cast_Double(crate::php_parser::node::expr::cast::Double),
+    PhpParser_Node_Expr_Cast_Int_(crate::php_parser::node::expr::cast::Int_),
+    PhpParser_Node_Expr_Cast_Object_(crate::php_parser::node::expr::cast::Object_),
+    PhpParser_Node_Expr_Cast_String_(crate::php_parser::node::expr::cast::String_),
+    PhpParser_Node_Expr_Cast_Unset_(crate::php_parser::node::expr::cast::Unset_),
+    PhpParser_Node_Expr_Cast_Void_(crate::php_parser::node::expr::cast::Void_),
+}
+impl php_rt::PhpObject for Cast {
+    fn class_name(&self) -> &'static str { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => __h.class_name(), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => __h.class_name(), Cast::PhpParser_Node_Expr_Cast_Double(__h) => __h.class_name(), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => __h.class_name(), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => __h.class_name(), Cast::PhpParser_Node_Expr_Cast_String_(__h) => __h.class_name(), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => __h.class_name(), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => __h.class_name(), _ => unreachable!() } }
+    fn class_ancestors(&self) -> &'static [&'static str] { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => __h.class_ancestors(), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => __h.class_ancestors(), Cast::PhpParser_Node_Expr_Cast_Double(__h) => __h.class_ancestors(), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => __h.class_ancestors(), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => __h.class_ancestors(), Cast::PhpParser_Node_Expr_Cast_String_(__h) => __h.class_ancestors(), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => __h.class_ancestors(), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => __h.class_ancestors(), _ => unreachable!() } }
+    fn obj_id(&self) -> usize { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => __h.obj_id(), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => __h.obj_id(), Cast::PhpParser_Node_Expr_Cast_Double(__h) => __h.obj_id(), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => __h.obj_id(), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => __h.obj_id(), Cast::PhpParser_Node_Expr_Cast_String_(__h) => __h.obj_id(), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => __h.obj_id(), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => __h.obj_id(), _ => unreachable!() } }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => __h.props(), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => __h.props(), Cast::PhpParser_Node_Expr_Cast_Double(__h) => __h.props(), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => __h.props(), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => __h.props(), Cast::PhpParser_Node_Expr_Cast_String_(__h) => __h.props(), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => __h.props(), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => __h.props(), _ => unreachable!() } }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => __h.set_prop(name, value), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => __h.set_prop(name, value), Cast::PhpParser_Node_Expr_Cast_Double(__h) => __h.set_prop(name, value), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => __h.set_prop(name, value), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => __h.set_prop(name, value), Cast::PhpParser_Node_Expr_Cast_String_(__h) => __h.set_prop(name, value), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => __h.set_prop(name, value), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => __h.set_prop(name, value), _ => unreachable!() } }
+    fn php_to_string(&self) -> Option<Str> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => __h.php_to_string(), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => __h.php_to_string(), Cast::PhpParser_Node_Expr_Cast_Double(__h) => __h.php_to_string(), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => __h.php_to_string(), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => __h.php_to_string(), Cast::PhpParser_Node_Expr_Cast_String_(__h) => __h.php_to_string(), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => __h.php_to_string(), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => __h.php_to_string(), _ => unreachable!() } }
+}
+impl Cast { pub fn to_php_string(&self) -> Result<Str, Throw> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => __h.to_php_string(), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => __h.to_php_string(), Cast::PhpParser_Node_Expr_Cast_Double(__h) => __h.to_php_string(), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => __h.to_php_string(), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => __h.to_php_string(), Cast::PhpParser_Node_Expr_Cast_String_(__h) => __h.to_php_string(), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => __h.to_php_string(), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => __h.to_php_string(), _ => unreachable!() } } }
+impl php_rt::PhpClone for Cast { fn php_clone(&self) -> Self { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => Cast::PhpParser_Node_Expr_Cast_Array_(__h.php_clone()), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => Cast::PhpParser_Node_Expr_Cast_Bool_(__h.php_clone()), Cast::PhpParser_Node_Expr_Cast_Double(__h) => Cast::PhpParser_Node_Expr_Cast_Double(__h.php_clone()), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => Cast::PhpParser_Node_Expr_Cast_Int_(__h.php_clone()), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => Cast::PhpParser_Node_Expr_Cast_Object_(__h.php_clone()), Cast::PhpParser_Node_Expr_Cast_String_(__h) => Cast::PhpParser_Node_Expr_Cast_String_(__h.php_clone()), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => Cast::PhpParser_Node_Expr_Cast_Unset_(__h.php_clone()), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => Cast::PhpParser_Node_Expr_Cast_Void_(__h.php_clone()), _ => unreachable!() } } }
+impl Cast {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => __h.p_attributes(), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => __h.p_attributes(), Cast::PhpParser_Node_Expr_Cast_Double(__h) => __h.p_attributes(), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => __h.p_attributes(), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => __h.p_attributes(), Cast::PhpParser_Node_Expr_Cast_String_(__h) => __h.p_attributes(), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => __h.p_attributes(), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => __h.p_attributes(), _ => unreachable!() } }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => __h.p_attributes_get(), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => __h.p_attributes_get(), Cast::PhpParser_Node_Expr_Cast_Double(__h) => __h.p_attributes_get(), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => __h.p_attributes_get(), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => __h.p_attributes_get(), Cast::PhpParser_Node_Expr_Cast_String_(__h) => __h.p_attributes_get(), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => __h.p_attributes_get(), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => __h.p_attributes_get(), _ => unreachable!() } }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => __h.p_attributes_opt(), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => __h.p_attributes_opt(), Cast::PhpParser_Node_Expr_Cast_Double(__h) => __h.p_attributes_opt(), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => __h.p_attributes_opt(), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => __h.p_attributes_opt(), Cast::PhpParser_Node_Expr_Cast_String_(__h) => __h.p_attributes_opt(), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => __h.p_attributes_opt(), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => __h.p_attributes_opt(), _ => unreachable!() } }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => __h.p_attributes_mut(), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => __h.p_attributes_mut(), Cast::PhpParser_Node_Expr_Cast_Double(__h) => __h.p_attributes_mut(), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => __h.p_attributes_mut(), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => __h.p_attributes_mut(), Cast::PhpParser_Node_Expr_Cast_String_(__h) => __h.p_attributes_mut(), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => __h.p_attributes_mut(), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => __h.p_attributes_mut(), _ => unreachable!() } }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => __h.set_p_attributes(v), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => __h.set_p_attributes(v), Cast::PhpParser_Node_Expr_Cast_Double(__h) => __h.set_p_attributes(v), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => __h.set_p_attributes(v), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => __h.set_p_attributes(v), Cast::PhpParser_Node_Expr_Cast_String_(__h) => __h.set_p_attributes(v), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => __h.set_p_attributes(v), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => __h.set_p_attributes(v), _ => unreachable!() } }
+    pub fn p_expr(&self) -> Ref<'_, crate::php_parser::node::Expr> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => __h.p_expr(), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => __h.p_expr(), Cast::PhpParser_Node_Expr_Cast_Double(__h) => __h.p_expr(), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => __h.p_expr(), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => __h.p_expr(), Cast::PhpParser_Node_Expr_Cast_String_(__h) => __h.p_expr(), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => __h.p_expr(), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => __h.p_expr(), _ => unreachable!() } }
+    pub fn p_expr_get(&self) -> crate::php_parser::node::Expr { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => __h.p_expr_get(), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => __h.p_expr_get(), Cast::PhpParser_Node_Expr_Cast_Double(__h) => __h.p_expr_get(), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => __h.p_expr_get(), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => __h.p_expr_get(), Cast::PhpParser_Node_Expr_Cast_String_(__h) => __h.p_expr_get(), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => __h.p_expr_get(), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => __h.p_expr_get(), _ => unreachable!() } }
+    pub fn p_expr_opt(&self) -> Option<crate::php_parser::node::Expr> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => __h.p_expr_opt(), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => __h.p_expr_opt(), Cast::PhpParser_Node_Expr_Cast_Double(__h) => __h.p_expr_opt(), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => __h.p_expr_opt(), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => __h.p_expr_opt(), Cast::PhpParser_Node_Expr_Cast_String_(__h) => __h.p_expr_opt(), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => __h.p_expr_opt(), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => __h.p_expr_opt(), _ => unreachable!() } }
+    pub fn p_expr_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => __h.p_expr_mut(), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => __h.p_expr_mut(), Cast::PhpParser_Node_Expr_Cast_Double(__h) => __h.p_expr_mut(), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => __h.p_expr_mut(), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => __h.p_expr_mut(), Cast::PhpParser_Node_Expr_Cast_String_(__h) => __h.p_expr_mut(), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => __h.p_expr_mut(), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => __h.p_expr_mut(), _ => unreachable!() } }
+    pub fn set_p_expr(&self, v: crate::php_parser::node::Expr) { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => __h.set_p_expr(v), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => __h.set_p_expr(v), Cast::PhpParser_Node_Expr_Cast_Double(__h) => __h.set_p_expr(v), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => __h.set_p_expr(v), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => __h.set_p_expr(v), Cast::PhpParser_Node_Expr_Cast_String_(__h) => __h.set_p_expr(v), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => __h.set_p_expr(v), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => __h.set_p_expr(v), _ => unreachable!() } }
+    pub fn magic__construct(&self, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => Ok(__h.magic__construct(expr, attributes)?), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => Ok(__h.magic__construct(expr, attributes)?), Cast::PhpParser_Node_Expr_Cast_Double(__h) => Ok(__h.magic__construct(expr, attributes)?), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => Ok(__h.magic__construct(expr, attributes)?), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => Ok(__h.magic__construct(expr, attributes)?), Cast::PhpParser_Node_Expr_Cast_String_(__h) => Ok(__h.magic__construct(expr, attributes)?), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => Ok(__h.magic__construct(expr, attributes)?), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => Ok(__h.magic__construct(expr, attributes)?), _ => unreachable!() } }
+    pub fn magic__construct__impl(&self, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_expr(expr.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => Ok(__h.getSubNodeNames()?), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => Ok(__h.getSubNodeNames()?), Cast::PhpParser_Node_Expr_Cast_Double(__h) => Ok(__h.getSubNodeNames()?), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => Ok(__h.getSubNodeNames()?), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => Ok(__h.getSubNodeNames()?), Cast::PhpParser_Node_Expr_Cast_String_(__h) => Ok(__h.getSubNodeNames()?), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => Ok(__h.getSubNodeNames()?), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => Ok(__h.getSubNodeNames()?), _ => unreachable!() } }
+    pub fn getSubNodeNames__impl(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("expr"))); __m1 });
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => Ok(__h.getLine()?), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => Ok(__h.getLine()?), Cast::PhpParser_Node_Expr_Cast_Double(__h) => Ok(__h.getLine()?), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => Ok(__h.getLine()?), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => Ok(__h.getLine()?), Cast::PhpParser_Node_Expr_Cast_String_(__h) => Ok(__h.getLine()?), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => Ok(__h.getLine()?), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => Ok(__h.getLine()?), _ => unreachable!() } }
+    pub fn getLine__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => Ok(__h.getStartLine()?), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => Ok(__h.getStartLine()?), Cast::PhpParser_Node_Expr_Cast_Double(__h) => Ok(__h.getStartLine()?), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => Ok(__h.getStartLine()?), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => Ok(__h.getStartLine()?), Cast::PhpParser_Node_Expr_Cast_String_(__h) => Ok(__h.getStartLine()?), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => Ok(__h.getStartLine()?), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => Ok(__h.getStartLine()?), _ => unreachable!() } }
+    pub fn getStartLine__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => Ok(__h.getEndLine()?), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => Ok(__h.getEndLine()?), Cast::PhpParser_Node_Expr_Cast_Double(__h) => Ok(__h.getEndLine()?), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => Ok(__h.getEndLine()?), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => Ok(__h.getEndLine()?), Cast::PhpParser_Node_Expr_Cast_String_(__h) => Ok(__h.getEndLine()?), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => Ok(__h.getEndLine()?), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => Ok(__h.getEndLine()?), _ => unreachable!() } }
+    pub fn getEndLine__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => Ok(__h.getStartTokenPos()?), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => Ok(__h.getStartTokenPos()?), Cast::PhpParser_Node_Expr_Cast_Double(__h) => Ok(__h.getStartTokenPos()?), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => Ok(__h.getStartTokenPos()?), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => Ok(__h.getStartTokenPos()?), Cast::PhpParser_Node_Expr_Cast_String_(__h) => Ok(__h.getStartTokenPos()?), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => Ok(__h.getStartTokenPos()?), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => Ok(__h.getStartTokenPos()?), _ => unreachable!() } }
+    pub fn getStartTokenPos__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => Ok(__h.getEndTokenPos()?), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => Ok(__h.getEndTokenPos()?), Cast::PhpParser_Node_Expr_Cast_Double(__h) => Ok(__h.getEndTokenPos()?), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => Ok(__h.getEndTokenPos()?), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => Ok(__h.getEndTokenPos()?), Cast::PhpParser_Node_Expr_Cast_String_(__h) => Ok(__h.getEndTokenPos()?), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => Ok(__h.getEndTokenPos()?), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => Ok(__h.getEndTokenPos()?), _ => unreachable!() } }
+    pub fn getEndTokenPos__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => Ok(__h.getStartFilePos()?), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => Ok(__h.getStartFilePos()?), Cast::PhpParser_Node_Expr_Cast_Double(__h) => Ok(__h.getStartFilePos()?), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => Ok(__h.getStartFilePos()?), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => Ok(__h.getStartFilePos()?), Cast::PhpParser_Node_Expr_Cast_String_(__h) => Ok(__h.getStartFilePos()?), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => Ok(__h.getStartFilePos()?), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => Ok(__h.getStartFilePos()?), _ => unreachable!() } }
+    pub fn getStartFilePos__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => Ok(__h.getEndFilePos()?), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => Ok(__h.getEndFilePos()?), Cast::PhpParser_Node_Expr_Cast_Double(__h) => Ok(__h.getEndFilePos()?), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => Ok(__h.getEndFilePos()?), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => Ok(__h.getEndFilePos()?), Cast::PhpParser_Node_Expr_Cast_String_(__h) => Ok(__h.getEndFilePos()?), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => Ok(__h.getEndFilePos()?), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => Ok(__h.getEndFilePos()?), _ => unreachable!() } }
+    pub fn getEndFilePos__impl(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => Ok(__h.getComments()?), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => Ok(__h.getComments()?), Cast::PhpParser_Node_Expr_Cast_Double(__h) => Ok(__h.getComments()?), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => Ok(__h.getComments()?), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => Ok(__h.getComments()?), Cast::PhpParser_Node_Expr_Cast_String_(__h) => Ok(__h.getComments()?), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => Ok(__h.getComments()?), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => Ok(__h.getComments()?), _ => unreachable!() } }
+    pub fn getComments__impl(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => Ok(__h.getDocComment()?), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => Ok(__h.getDocComment()?), Cast::PhpParser_Node_Expr_Cast_Double(__h) => Ok(__h.getDocComment()?), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => Ok(__h.getDocComment()?), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => Ok(__h.getDocComment()?), Cast::PhpParser_Node_Expr_Cast_String_(__h) => Ok(__h.getDocComment()?), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => Ok(__h.getDocComment()?), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => Ok(__h.getDocComment()?), _ => unreachable!() } }
+    pub fn getDocComment__impl(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => Ok(__h.setDocComment(docComment)?), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => Ok(__h.setDocComment(docComment)?), Cast::PhpParser_Node_Expr_Cast_Double(__h) => Ok(__h.setDocComment(docComment)?), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => Ok(__h.setDocComment(docComment)?), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => Ok(__h.setDocComment(docComment)?), Cast::PhpParser_Node_Expr_Cast_String_(__h) => Ok(__h.setDocComment(docComment)?), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => Ok(__h.setDocComment(docComment)?), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => Ok(__h.setDocComment(docComment)?), _ => unreachable!() } }
+    pub fn setDocComment__impl(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => Ok(__h.setAttribute(key_v, value)?), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => Ok(__h.setAttribute(key_v, value)?), Cast::PhpParser_Node_Expr_Cast_Double(__h) => Ok(__h.setAttribute(key_v, value)?), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => Ok(__h.setAttribute(key_v, value)?), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => Ok(__h.setAttribute(key_v, value)?), Cast::PhpParser_Node_Expr_Cast_String_(__h) => Ok(__h.setAttribute(key_v, value)?), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => Ok(__h.setAttribute(key_v, value)?), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => Ok(__h.setAttribute(key_v, value)?), _ => unreachable!() } }
+    pub fn setAttribute__impl(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => Ok(__h.hasAttribute(key_v)?), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => Ok(__h.hasAttribute(key_v)?), Cast::PhpParser_Node_Expr_Cast_Double(__h) => Ok(__h.hasAttribute(key_v)?), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => Ok(__h.hasAttribute(key_v)?), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => Ok(__h.hasAttribute(key_v)?), Cast::PhpParser_Node_Expr_Cast_String_(__h) => Ok(__h.hasAttribute(key_v)?), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => Ok(__h.hasAttribute(key_v)?), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => Ok(__h.hasAttribute(key_v)?), _ => unreachable!() } }
+    pub fn hasAttribute__impl(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => Ok(__h.getAttribute(key_v, default)?), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => Ok(__h.getAttribute(key_v, default)?), Cast::PhpParser_Node_Expr_Cast_Double(__h) => Ok(__h.getAttribute(key_v, default)?), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => Ok(__h.getAttribute(key_v, default)?), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => Ok(__h.getAttribute(key_v, default)?), Cast::PhpParser_Node_Expr_Cast_String_(__h) => Ok(__h.getAttribute(key_v, default)?), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => Ok(__h.getAttribute(key_v, default)?), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => Ok(__h.getAttribute(key_v, default)?), _ => unreachable!() } }
+    pub fn getAttribute__impl(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => Ok(__h.getAttributes()?), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => Ok(__h.getAttributes()?), Cast::PhpParser_Node_Expr_Cast_Double(__h) => Ok(__h.getAttributes()?), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => Ok(__h.getAttributes()?), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => Ok(__h.getAttributes()?), Cast::PhpParser_Node_Expr_Cast_String_(__h) => Ok(__h.getAttributes()?), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => Ok(__h.getAttributes()?), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => Ok(__h.getAttributes()?), _ => unreachable!() } }
+    pub fn getAttributes__impl(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => Ok(__h.setAttributes(attributes)?), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => Ok(__h.setAttributes(attributes)?), Cast::PhpParser_Node_Expr_Cast_Double(__h) => Ok(__h.setAttributes(attributes)?), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => Ok(__h.setAttributes(attributes)?), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => Ok(__h.setAttributes(attributes)?), Cast::PhpParser_Node_Expr_Cast_String_(__h) => Ok(__h.setAttributes(attributes)?), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => Ok(__h.setAttributes(attributes)?), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => Ok(__h.setAttributes(attributes)?), _ => unreachable!() } }
+    pub fn setAttributes__impl(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => Ok(__h.jsonSerialize()?), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => Ok(__h.jsonSerialize()?), Cast::PhpParser_Node_Expr_Cast_Double(__h) => Ok(__h.jsonSerialize()?), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => Ok(__h.jsonSerialize()?), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => Ok(__h.jsonSerialize()?), Cast::PhpParser_Node_Expr_Cast_String_(__h) => Ok(__h.jsonSerialize()?), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => Ok(__h.jsonSerialize()?), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => Ok(__h.jsonSerialize()?), _ => unreachable!() } }
+    pub fn jsonSerialize__impl(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn getType(&self) -> Result<Str, Throw> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => Ok(__h.getType()?), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => Ok(__h.getType()?), Cast::PhpParser_Node_Expr_Cast_Double(__h) => Ok(__h.getType()?), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => Ok(__h.getType()?), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => Ok(__h.getType()?), Cast::PhpParser_Node_Expr_Cast_String_(__h) => Ok(__h.getType()?), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => Ok(__h.getType()?), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => Ok(__h.getType()?), _ => unreachable!() } }
+    pub fn new_same_class(&self, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Cast, Throw> { match self { Cast::PhpParser_Node_Expr_Cast_Array_(__h) => Ok(cast::<crate::php_parser::node::expr::Cast>(__h.new_same_class(expr.clone(), attributes.clone())?)), Cast::PhpParser_Node_Expr_Cast_Bool_(__h) => Ok(cast::<crate::php_parser::node::expr::Cast>(__h.new_same_class(expr.clone(), attributes.clone())?)), Cast::PhpParser_Node_Expr_Cast_Double(__h) => Ok(cast::<crate::php_parser::node::expr::Cast>(__h.new_same_class(expr.clone(), attributes.clone())?)), Cast::PhpParser_Node_Expr_Cast_Int_(__h) => Ok(cast::<crate::php_parser::node::expr::Cast>(__h.new_same_class(expr.clone(), attributes.clone())?)), Cast::PhpParser_Node_Expr_Cast_Object_(__h) => Ok(cast::<crate::php_parser::node::expr::Cast>(__h.new_same_class(expr.clone(), attributes.clone())?)), Cast::PhpParser_Node_Expr_Cast_String_(__h) => Ok(cast::<crate::php_parser::node::expr::Cast>(__h.new_same_class(expr.clone(), attributes.clone())?)), Cast::PhpParser_Node_Expr_Cast_Unset_(__h) => Ok(cast::<crate::php_parser::node::expr::Cast>(__h.new_same_class(expr.clone(), attributes.clone())?)), Cast::PhpParser_Node_Expr_Cast_Void_(__h) => Ok(cast::<crate::php_parser::node::expr::Cast>(__h.new_same_class(expr.clone(), attributes.clone())?)), _ => unreachable!() } }
+}
+pub struct ClassConstFetchObj {
+    pub attributes: Map<Str, Mixed>,
+    pub class: Late<U_PhpParser_Node_Expr_or_PhpParser_Node_Name>,
+    pub name: Late<U_PhpParser_Node_Expr_or_PhpParser_Node_Expr_Error_or_PhpParser_Node_Identifier>,
+}
+#[derive(Clone)]
+pub struct ClassConstFetch(pub Rc<RefCell<ClassConstFetchObj>>);
+impl ClassConstFetch {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_class(&self) -> Ref<'_, U_PhpParser_Node_Expr_or_PhpParser_Node_Name> { Ref::map(self.0.borrow(), |o| o.class.get()) }
+    pub fn p_class_get(&self) -> U_PhpParser_Node_Expr_or_PhpParser_Node_Name { self.0.borrow().class.get().clone() }
+    pub fn p_class_opt(&self) -> Option<U_PhpParser_Node_Expr_or_PhpParser_Node_Name> { self.0.borrow().class.as_option().cloned() }
+    pub fn p_class_mut(&self) -> RefMut<'_, U_PhpParser_Node_Expr_or_PhpParser_Node_Name> { RefMut::map(self.0.borrow_mut(), |o| o.class.get_mut()) }
+    pub fn set_p_class(&self, v: U_PhpParser_Node_Expr_or_PhpParser_Node_Name) { self.0.borrow_mut().class.set(v); }
+    pub fn p_name(&self) -> Ref<'_, U_PhpParser_Node_Expr_or_PhpParser_Node_Expr_Error_or_PhpParser_Node_Identifier> { Ref::map(self.0.borrow(), |o| o.name.get()) }
+    pub fn p_name_get(&self) -> U_PhpParser_Node_Expr_or_PhpParser_Node_Expr_Error_or_PhpParser_Node_Identifier { self.0.borrow().name.get().clone() }
+    pub fn p_name_opt(&self) -> Option<U_PhpParser_Node_Expr_or_PhpParser_Node_Expr_Error_or_PhpParser_Node_Identifier> { self.0.borrow().name.as_option().cloned() }
+    pub fn p_name_mut(&self) -> RefMut<'_, U_PhpParser_Node_Expr_or_PhpParser_Node_Expr_Error_or_PhpParser_Node_Identifier> { RefMut::map(self.0.borrow_mut(), |o| o.name.get_mut()) }
+    pub fn set_p_name(&self, v: U_PhpParser_Node_Expr_or_PhpParser_Node_Expr_Error_or_PhpParser_Node_Identifier) { self.0.borrow_mut().name.set(v); }
+    pub fn new(mut class: U_PhpParser_Node_Expr_or_PhpParser_Node_Name, mut name: U_PhpParser_Node_Expr_or_PhpParser_Node_Expr_Error_or_PhpParser_Node_Identifier_or_Str, mut attributes: Map<Str, Mixed>) -> Result<ClassConstFetch, Throw> {
+        let this = ClassConstFetch(Rc::new(RefCell::new(ClassConstFetchObj {
+            attributes: Default::default(),
+            class: Late::uninit(),
+            name: Late::uninit(),
+        })));
+        this.magic__construct(class, name, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut class: U_PhpParser_Node_Expr_or_PhpParser_Node_Name, mut name: U_PhpParser_Node_Expr_or_PhpParser_Node_Expr_Error_or_PhpParser_Node_Identifier_or_Str, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    let mut expr: Late<crate::php_parser::node::Expr> = Late::uninit();
+    self.set_p_attributes(attributes.clone());
+    self.set_p_class(class.clone());
+    self.set_p_name(cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Expr_Error_or_PhpParser_Node_Identifier>((if (match cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str>(name.clone()) { U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str::Str(_) => true, _ => false }) { U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier::PhpParser_Node_Identifier(crate::php_parser::node::Identifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())?) } else { cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier>(name.clone()) })));
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("class"))); __m1.push(cast::<Mixed>(Str::from_static("name"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_ClassConstFetch"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut class: U_PhpParser_Node_Expr_or_PhpParser_Node_Name, mut name: U_PhpParser_Node_Expr_or_PhpParser_Node_Expr_Error_or_PhpParser_Node_Identifier_or_Str, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::ClassConstFetch, Throw> { Ok(Self::new(class, name, attributes)?) }
+}
+impl php_rt::PhpObject for ClassConstFetch {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\ClassConstFetch" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\classconstfetch", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_class_opt() { out.push((Str::from_static("class"), cast::<Mixed>(v))); } if let Some(v) = self.p_name_opt() { out.push((Str::from_static("name"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "class" => { self.set_p_class(cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Name>(value)); true }, "name" => { self.set_p_name(cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Expr_Error_or_PhpParser_Node_Identifier>(value)); true }, _ => false } }
+}
+impl ClassConstFetch { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\ClassConstFetch could not be converted to string"))) } }
+impl php_rt::PhpClone for ClassConstFetch { fn php_clone(&self) -> Self { let c = ClassConstFetch(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for ClassConstFetchObj { fn clone(&self) -> Self { ClassConstFetchObj { attributes: self.attributes.clone(), class: self.class.clone(), name: self.name.clone() } } }
+impl ClassConstFetch {
+}
+pub struct Clone_Obj {
+    pub attributes: Map<Str, Mixed>,
+    pub expr: Late<crate::php_parser::node::Expr>,
+}
+#[derive(Clone)]
+pub struct Clone_(pub Rc<RefCell<Clone_Obj>>);
+impl Clone_ {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_expr(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.expr.get()) }
+    pub fn p_expr_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().expr.get().clone() }
+    pub fn p_expr_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().expr.as_option().cloned() }
+    pub fn p_expr_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.expr.get_mut()) }
+    pub fn set_p_expr(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().expr.set(v); }
+    pub fn new(mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Clone_, Throw> {
+        let this = Clone_(Rc::new(RefCell::new(Clone_Obj {
+            attributes: Default::default(),
+            expr: Late::uninit(),
+        })));
+        this.magic__construct(expr, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_expr(expr.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("expr"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_Clone"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::Clone_, Throw> { Ok(Self::new(expr, attributes)?) }
+}
+impl php_rt::PhpObject for Clone_ {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\Clone_" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\clone_", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_expr_opt() { out.push((Str::from_static("expr"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "expr" => { self.set_p_expr(cast::<crate::php_parser::node::Expr>(value)); true }, _ => false } }
+}
+impl Clone_ { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\Clone_ could not be converted to string"))) } }
+impl php_rt::PhpClone for Clone_ { fn php_clone(&self) -> Self { let c = Clone_(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for Clone_Obj { fn clone(&self) -> Self { Clone_Obj { attributes: self.attributes.clone(), expr: self.expr.clone() } } }
+impl Clone_ {
+}
+pub struct ClosureObj {
+    pub attributes: Map<Str, Mixed>,
+    pub static_: bool,
+    pub byRef: bool,
+    pub params: List<crate::php_parser::node::Param>,
+    pub uses: Map<ArrayKey, crate::php_parser::node::ClosureUse>,
+    pub returnType: Option<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>,
+    pub stmts: Map<ArrayKey, crate::php_parser::node::Stmt>,
+    pub attrGroups: Map<ArrayKey, crate::php_parser::node::AttributeGroup>,
+}
+#[derive(Clone)]
+pub struct Closure(pub Rc<RefCell<ClosureObj>>);
+impl Closure {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_static_(&self) -> Ref<'_, bool> { Ref::map(self.0.borrow(), |o| &o.static_) }
+    pub fn p_static__get(&self) -> bool { self.0.borrow().static_.clone() }
+    pub fn p_static__opt(&self) -> Option<bool> { Some(self.0.borrow().static_.clone()) }
+    pub fn p_static__mut(&self) -> RefMut<'_, bool> { RefMut::map(self.0.borrow_mut(), |o| &mut o.static_) }
+    pub fn set_p_static_(&self, v: bool) { self.0.borrow_mut().static_ = v; }
+    pub fn p_byRef(&self) -> Ref<'_, bool> { Ref::map(self.0.borrow(), |o| &o.byRef) }
+    pub fn p_byRef_get(&self) -> bool { self.0.borrow().byRef.clone() }
+    pub fn p_byRef_opt(&self) -> Option<bool> { Some(self.0.borrow().byRef.clone()) }
+    pub fn p_byRef_mut(&self) -> RefMut<'_, bool> { RefMut::map(self.0.borrow_mut(), |o| &mut o.byRef) }
+    pub fn set_p_byRef(&self, v: bool) { self.0.borrow_mut().byRef = v; }
+    pub fn p_params(&self) -> Ref<'_, List<crate::php_parser::node::Param>> { Ref::map(self.0.borrow(), |o| &o.params) }
+    pub fn p_params_get(&self) -> List<crate::php_parser::node::Param> { self.0.borrow().params.clone() }
+    pub fn p_params_opt(&self) -> Option<List<crate::php_parser::node::Param>> { Some(self.0.borrow().params.clone()) }
+    pub fn p_params_mut(&self) -> RefMut<'_, List<crate::php_parser::node::Param>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.params) }
+    pub fn set_p_params(&self, v: List<crate::php_parser::node::Param>) { self.0.borrow_mut().params = v; }
+    pub fn p_uses(&self) -> Ref<'_, Map<ArrayKey, crate::php_parser::node::ClosureUse>> { Ref::map(self.0.borrow(), |o| &o.uses) }
+    pub fn p_uses_get(&self) -> Map<ArrayKey, crate::php_parser::node::ClosureUse> { self.0.borrow().uses.clone() }
+    pub fn p_uses_opt(&self) -> Option<Map<ArrayKey, crate::php_parser::node::ClosureUse>> { Some(self.0.borrow().uses.clone()) }
+    pub fn p_uses_mut(&self) -> RefMut<'_, Map<ArrayKey, crate::php_parser::node::ClosureUse>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.uses) }
+    pub fn set_p_uses(&self, v: Map<ArrayKey, crate::php_parser::node::ClosureUse>) { self.0.borrow_mut().uses = v; }
+    pub fn p_returnType(&self) -> Ref<'_, Option<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>> { Ref::map(self.0.borrow(), |o| &o.returnType) }
+    pub fn p_returnType_get(&self) -> Option<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> { self.0.borrow().returnType.clone() }
+    pub fn p_returnType_opt(&self) -> Option<Option<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>> { Some(self.0.borrow().returnType.clone()) }
+    pub fn p_returnType_mut(&self) -> RefMut<'_, Option<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.returnType) }
+    pub fn set_p_returnType(&self, v: Option<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>) { self.0.borrow_mut().returnType = v; }
+    pub fn p_stmts(&self) -> Ref<'_, Map<ArrayKey, crate::php_parser::node::Stmt>> { Ref::map(self.0.borrow(), |o| &o.stmts) }
+    pub fn p_stmts_get(&self) -> Map<ArrayKey, crate::php_parser::node::Stmt> { self.0.borrow().stmts.clone() }
+    pub fn p_stmts_opt(&self) -> Option<Map<ArrayKey, crate::php_parser::node::Stmt>> { Some(self.0.borrow().stmts.clone()) }
+    pub fn p_stmts_mut(&self) -> RefMut<'_, Map<ArrayKey, crate::php_parser::node::Stmt>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.stmts) }
+    pub fn set_p_stmts(&self, v: Map<ArrayKey, crate::php_parser::node::Stmt>) { self.0.borrow_mut().stmts = v; }
+    pub fn p_attrGroups(&self) -> Ref<'_, Map<ArrayKey, crate::php_parser::node::AttributeGroup>> { Ref::map(self.0.borrow(), |o| &o.attrGroups) }
+    pub fn p_attrGroups_get(&self) -> Map<ArrayKey, crate::php_parser::node::AttributeGroup> { self.0.borrow().attrGroups.clone() }
+    pub fn p_attrGroups_opt(&self) -> Option<Map<ArrayKey, crate::php_parser::node::AttributeGroup>> { Some(self.0.borrow().attrGroups.clone()) }
+    pub fn p_attrGroups_mut(&self) -> RefMut<'_, Map<ArrayKey, crate::php_parser::node::AttributeGroup>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attrGroups) }
+    pub fn set_p_attrGroups(&self, v: Map<ArrayKey, crate::php_parser::node::AttributeGroup>) { self.0.borrow_mut().attrGroups = v; }
+    pub fn new(mut subNodes: Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_c24551735f, mut attributes: Map<Str, Mixed>) -> Result<Closure, Throw> {
+        let this = Closure(Rc::new(RefCell::new(ClosureObj {
+            attributes: Default::default(),
+            static_: Default::default(),
+            byRef: Default::default(),
+            params: Default::default(),
+            uses: Default::default(),
+            returnType: Default::default(),
+            stmts: Default::default(),
+            attrGroups: Default::default(),
+        })));
+        this.magic__construct(subNodes, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut subNodes: Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_c24551735f, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_static_((match Some({ let __c40 = subNodes.clone(); Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_20034d2397 { attrGroups: __c40.attrGroups, byRef: __c40.byRef, params: __c40.params, returnType: __c40.returnType, static_: __c40.static_.unwrap(), stmts: __c40.stmts, uses: __c40.uses } }).and_then(|__b| Some(__b.static_)) { Some(__v) => __v, None => false }));
+    self.set_p_byRef((match Some({ let __c41 = subNodes.clone(); Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRef_Boo_8150778018 { attrGroups: __c41.attrGroups, byRef: __c41.byRef.unwrap(), params: __c41.params, returnType: __c41.returnType, static_: __c41.static_, stmts: __c41.stmts, uses: __c41.uses } }).and_then(|__b| Some(__b.byRef)) { Some(__v) => __v, None => false }));
+    self.set_p_params(cast::<List<crate::php_parser::node::Param>>((match Some({ let __c42 = subNodes.clone(); Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_52127896f3 { attrGroups: __c42.attrGroups, byRef: __c42.byRef, params: __c42.params.unwrap(), returnType: __c42.returnType, static_: __c42.static_, stmts: __c42.stmts, uses: __c42.uses } }).and_then(|__b| Some(__b.params)) { Some(__v) => __v, None => Map::<ArrayKey, crate::php_parser::node::Param>::new() })));
+    self.set_p_uses((match Some({ let __c43 = subNodes.clone(); Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_76b2786531 { attrGroups: __c43.attrGroups, byRef: __c43.byRef, params: __c43.params, returnType: __c43.returnType, static_: __c43.static_, stmts: __c43.stmts, uses: __c43.uses.unwrap() } }).and_then(|__b| Some(__b.uses)) { Some(__v) => __v, None => Map::<ArrayKey, crate::php_parser::node::ClosureUse>::new() }));
+    self.set_p_returnType((match Some({ let __c44 = subNodes.clone(); Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_28097cfd4f { attrGroups: __c44.attrGroups, byRef: __c44.byRef, params: __c44.params, returnType: __c44.returnType.unwrap(), static_: __c44.static_, stmts: __c44.stmts, uses: __c44.uses } }).and_then(|__b| Some(__b.returnType)) { Some(__v) => Some(__v), None => { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> } }));
+    self.set_p_stmts((match Some({ let __c45 = subNodes.clone(); Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_4f7b8041e1 { attrGroups: __c45.attrGroups, byRef: __c45.byRef, params: __c45.params, returnType: __c45.returnType, static_: __c45.static_, stmts: __c45.stmts.unwrap(), uses: __c45.uses } }).and_then(|__b| Some(__b.stmts)) { Some(__v) => __v, None => Map::<ArrayKey, crate::php_parser::node::Stmt>::new() }));
+    self.set_p_attrGroups((match Some({ let __c46 = subNodes.clone(); Shape_attrGroups_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Boo_8240b01dc3 { attrGroups: __c46.attrGroups.unwrap(), byRef: __c46.byRef, params: __c46.params, returnType: __c46.returnType, static_: __c46.static_, stmts: __c46.stmts, uses: __c46.uses } }).and_then(|__b| Some(__b.attrGroups)) { Some(__v) => __v, None => Map::<ArrayKey, crate::php_parser::node::AttributeGroup>::new() }));
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("attrGroups"))); __m1.push(cast::<Mixed>(Str::from_static("static"))); __m1.push(cast::<Mixed>(Str::from_static("byRef"))); __m1.push(cast::<Mixed>(Str::from_static("params"))); __m1.push(cast::<Mixed>(Str::from_static("uses"))); __m1.push(cast::<Mixed>(Str::from_static("returnType"))); __m1.push(cast::<Mixed>(Str::from_static("stmts"))); __m1 });
+    }
+    pub fn returnsByRef(&self) -> Result<bool, Throw> {
+    return Ok(self.p_byRef_get());
+    }
+    pub fn getParams(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok(cast::<Map<ArrayKey, Mixed>>(self.p_params_get().map_elems(|v| cast::<Mixed>(v))));
+    }
+    pub fn getReturnType(&self) -> Result<Mixed, Throw> {
+    return Ok(cast::<Mixed>(self.p_returnType_get()));
+    }
+    pub fn getStmts(&self) -> Result<Map<ArrayKey, crate::php_parser::node::Stmt>, Throw> {
+    return Ok(self.p_stmts_get());
+    }
+    pub fn getAttrGroups(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok(self.p_attrGroups_get().map_values(|v| cast::<Mixed>(v)));
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_Closure"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut subNodes: Shape_attrGroupsq_Map_ArrayKey_PhpParser_Node_AttributeGroup_byRefq_Bo_c24551735f, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::Closure, Throw> { Ok(Self::new(subNodes, attributes)?) }
+}
+impl php_rt::PhpObject for Closure {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\Closure" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\closure", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable", "phpparser\\node\\functionlike"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_static__get()) { out.push((Str::from_static("static"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_byRef_get()) { out.push((Str::from_static("byRef"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_params_get()) { out.push((Str::from_static("params"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_uses_get()) { out.push((Str::from_static("uses"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_returnType_get()) { out.push((Str::from_static("returnType"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_stmts_get()) { out.push((Str::from_static("stmts"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_attrGroups_get()) { out.push((Str::from_static("attrGroups"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "static" => { self.set_p_static_(cast::<bool>(value)); true }, "byRef" => { self.set_p_byRef(cast::<bool>(value)); true }, "params" => { self.set_p_params(cast::<List<crate::php_parser::node::Param>>(value)); true }, "uses" => { self.set_p_uses(cast::<Map<ArrayKey, crate::php_parser::node::ClosureUse>>(value)); true }, "returnType" => { self.set_p_returnType(value.to_option().map(|__m| cast::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>(__m))); true }, "stmts" => { self.set_p_stmts(cast::<Map<ArrayKey, crate::php_parser::node::Stmt>>(value)); true }, "attrGroups" => { self.set_p_attrGroups(cast::<Map<ArrayKey, crate::php_parser::node::AttributeGroup>>(value)); true }, _ => false } }
+}
+impl Closure { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\Closure could not be converted to string"))) } }
+impl php_rt::PhpClone for Closure { fn php_clone(&self) -> Self { let c = Closure(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for ClosureObj { fn clone(&self) -> Self { ClosureObj { attributes: self.attributes.clone(), static_: self.static_.clone(), byRef: self.byRef.clone(), params: self.params.clone(), uses: self.uses.clone(), returnType: self.returnType.clone(), stmts: self.stmts.clone(), attrGroups: self.attrGroups.clone() } } }
+impl Closure {
+}
+pub struct ConstFetchObj {
+    pub attributes: Map<Str, Mixed>,
+    pub name: Late<crate::php_parser::node::Name>,
+}
+#[derive(Clone)]
+pub struct ConstFetch(pub Rc<RefCell<ConstFetchObj>>);
+impl ConstFetch {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_name(&self) -> Ref<'_, crate::php_parser::node::Name> { Ref::map(self.0.borrow(), |o| o.name.get()) }
+    pub fn p_name_get(&self) -> crate::php_parser::node::Name { self.0.borrow().name.get().clone() }
+    pub fn p_name_opt(&self) -> Option<crate::php_parser::node::Name> { self.0.borrow().name.as_option().cloned() }
+    pub fn p_name_mut(&self) -> RefMut<'_, crate::php_parser::node::Name> { RefMut::map(self.0.borrow_mut(), |o| o.name.get_mut()) }
+    pub fn set_p_name(&self, v: crate::php_parser::node::Name) { self.0.borrow_mut().name.set(v); }
+    pub fn new(mut name: crate::php_parser::node::Name, mut attributes: Map<Str, Mixed>) -> Result<ConstFetch, Throw> {
+        let this = ConstFetch(Rc::new(RefCell::new(ConstFetchObj {
+            attributes: Default::default(),
+            name: Late::uninit(),
+        })));
+        this.magic__construct(name, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut name: crate::php_parser::node::Name, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_name(name.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("name"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_ConstFetch"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut name: crate::php_parser::node::Name, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::ConstFetch, Throw> { Ok(Self::new(name, attributes)?) }
+}
+impl php_rt::PhpObject for ConstFetch {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\ConstFetch" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\constfetch", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_name_opt() { out.push((Str::from_static("name"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "name" => { self.set_p_name(cast::<crate::php_parser::node::Name>(value)); true }, _ => false } }
+}
+impl ConstFetch { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\ConstFetch could not be converted to string"))) } }
+impl php_rt::PhpClone for ConstFetch { fn php_clone(&self) -> Self { let c = ConstFetch(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for ConstFetchObj { fn clone(&self) -> Self { ConstFetchObj { attributes: self.attributes.clone(), name: self.name.clone() } } }
+impl ConstFetch {
+}
+pub struct Empty_Obj {
+    pub attributes: Map<Str, Mixed>,
+    pub expr: Late<crate::php_parser::node::Expr>,
+}
+#[derive(Clone)]
+pub struct Empty_(pub Rc<RefCell<Empty_Obj>>);
+impl Empty_ {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_expr(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.expr.get()) }
+    pub fn p_expr_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().expr.get().clone() }
+    pub fn p_expr_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().expr.as_option().cloned() }
+    pub fn p_expr_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.expr.get_mut()) }
+    pub fn set_p_expr(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().expr.set(v); }
+    pub fn new(mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Empty_, Throw> {
+        let this = Empty_(Rc::new(RefCell::new(Empty_Obj {
+            attributes: Default::default(),
+            expr: Late::uninit(),
+        })));
+        this.magic__construct(expr, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_expr(expr.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("expr"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_Empty"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::Empty_, Throw> { Ok(Self::new(expr, attributes)?) }
+}
+impl php_rt::PhpObject for Empty_ {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\Empty_" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\empty_", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_expr_opt() { out.push((Str::from_static("expr"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "expr" => { self.set_p_expr(cast::<crate::php_parser::node::Expr>(value)); true }, _ => false } }
+}
+impl Empty_ { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\Empty_ could not be converted to string"))) } }
+impl php_rt::PhpClone for Empty_ { fn php_clone(&self) -> Self { let c = Empty_(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for Empty_Obj { fn clone(&self) -> Self { Empty_Obj { attributes: self.attributes.clone(), expr: self.expr.clone() } } }
+impl Empty_ {
+}
+pub struct ErrorObj {
+    pub attributes: Map<Str, Mixed>,
+}
+#[derive(Clone)]
+pub struct Error(pub Rc<RefCell<ErrorObj>>);
+impl Error {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn new(mut attributes: Map<Str, Mixed>) -> Result<Error, Throw> {
+        let this = Error(Rc::new(RefCell::new(ErrorObj {
+            attributes: Default::default(),
+        })));
+        this.magic__construct(attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok(Map::<ArrayKey, Mixed>::new());
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_Error"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::Error, Throw> { Ok(Self::new(attributes)?) }
+}
+impl php_rt::PhpObject for Error {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\Error" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\error", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, _ => false } }
+}
+impl Error { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\Error could not be converted to string"))) } }
+impl php_rt::PhpClone for Error { fn php_clone(&self) -> Self { let c = Error(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for ErrorObj { fn clone(&self) -> Self { ErrorObj { attributes: self.attributes.clone() } } }
+impl Error {
+}
+pub struct ErrorSuppressObj {
+    pub attributes: Map<Str, Mixed>,
+    pub expr: Late<crate::php_parser::node::Expr>,
+}
+#[derive(Clone)]
+pub struct ErrorSuppress(pub Rc<RefCell<ErrorSuppressObj>>);
+impl ErrorSuppress {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_expr(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.expr.get()) }
+    pub fn p_expr_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().expr.get().clone() }
+    pub fn p_expr_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().expr.as_option().cloned() }
+    pub fn p_expr_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.expr.get_mut()) }
+    pub fn set_p_expr(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().expr.set(v); }
+    pub fn new(mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<ErrorSuppress, Throw> {
+        let this = ErrorSuppress(Rc::new(RefCell::new(ErrorSuppressObj {
+            attributes: Default::default(),
+            expr: Late::uninit(),
+        })));
+        this.magic__construct(expr, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_expr(expr.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("expr"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_ErrorSuppress"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::ErrorSuppress, Throw> { Ok(Self::new(expr, attributes)?) }
+}
+impl php_rt::PhpObject for ErrorSuppress {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\ErrorSuppress" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\errorsuppress", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_expr_opt() { out.push((Str::from_static("expr"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "expr" => { self.set_p_expr(cast::<crate::php_parser::node::Expr>(value)); true }, _ => false } }
+}
+impl ErrorSuppress { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\ErrorSuppress could not be converted to string"))) } }
+impl php_rt::PhpClone for ErrorSuppress { fn php_clone(&self) -> Self { let c = ErrorSuppress(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for ErrorSuppressObj { fn clone(&self) -> Self { ErrorSuppressObj { attributes: self.attributes.clone(), expr: self.expr.clone() } } }
+impl ErrorSuppress {
+}
+pub struct Eval_Obj {
+    pub attributes: Map<Str, Mixed>,
+    pub expr: Late<crate::php_parser::node::Expr>,
+}
+#[derive(Clone)]
+pub struct Eval_(pub Rc<RefCell<Eval_Obj>>);
+impl Eval_ {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_expr(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.expr.get()) }
+    pub fn p_expr_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().expr.get().clone() }
+    pub fn p_expr_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().expr.as_option().cloned() }
+    pub fn p_expr_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.expr.get_mut()) }
+    pub fn set_p_expr(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().expr.set(v); }
+    pub fn new(mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Eval_, Throw> {
+        let this = Eval_(Rc::new(RefCell::new(Eval_Obj {
+            attributes: Default::default(),
+            expr: Late::uninit(),
+        })));
+        this.magic__construct(expr, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_expr(expr.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("expr"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_Eval"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::Eval_, Throw> { Ok(Self::new(expr, attributes)?) }
+}
+impl php_rt::PhpObject for Eval_ {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\Eval_" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\eval_", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_expr_opt() { out.push((Str::from_static("expr"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "expr" => { self.set_p_expr(cast::<crate::php_parser::node::Expr>(value)); true }, _ => false } }
+}
+impl Eval_ { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\Eval_ could not be converted to string"))) } }
+impl php_rt::PhpClone for Eval_ { fn php_clone(&self) -> Self { let c = Eval_(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for Eval_Obj { fn clone(&self) -> Self { Eval_Obj { attributes: self.attributes.clone(), expr: self.expr.clone() } } }
+impl Eval_ {
+}
+pub struct Exit_Obj {
+    pub attributes: Map<Str, Mixed>,
+    pub expr: Option<crate::php_parser::node::Expr>,
+}
+#[derive(Clone)]
+pub struct Exit_(pub Rc<RefCell<Exit_Obj>>);
+impl Exit_ {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_expr(&self) -> Ref<'_, Option<crate::php_parser::node::Expr>> { Ref::map(self.0.borrow(), |o| &o.expr) }
+    pub fn p_expr_get(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().expr.clone() }
+    pub fn p_expr_opt(&self) -> Option<Option<crate::php_parser::node::Expr>> { Some(self.0.borrow().expr.clone()) }
+    pub fn p_expr_mut(&self) -> RefMut<'_, Option<crate::php_parser::node::Expr>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.expr) }
+    pub fn set_p_expr(&self, v: Option<crate::php_parser::node::Expr>) { self.0.borrow_mut().expr = v; }
+    pub fn new(mut expr: Option<crate::php_parser::node::Expr>, mut attributes: Map<Str, Mixed>) -> Result<Exit_, Throw> {
+        let this = Exit_(Rc::new(RefCell::new(Exit_Obj {
+            attributes: Default::default(),
+            expr: Default::default(),
+        })));
+        this.magic__construct(expr, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut expr: Option<crate::php_parser::node::Expr>, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_expr(expr.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("expr"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_Exit"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut expr: Option<crate::php_parser::node::Expr>, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::Exit_, Throw> { Ok(Self::new(expr, attributes)?) }
+}
+impl php_rt::PhpObject for Exit_ {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\Exit_" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\exit_", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_expr_get()) { out.push((Str::from_static("expr"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "expr" => { self.set_p_expr(value.to_option().map(|__m| cast::<crate::php_parser::node::Expr>(__m))); true }, _ => false } }
+}
+impl Exit_ { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\Exit_ could not be converted to string"))) } }
+impl php_rt::PhpClone for Exit_ { fn php_clone(&self) -> Self { let c = Exit_(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for Exit_Obj { fn clone(&self) -> Self { Exit_Obj { attributes: self.attributes.clone(), expr: self.expr.clone() } } }
+impl Exit_ {
+    pub fn KIND_EXIT() -> i64 { 1i64 }
+    pub fn KIND_DIE() -> i64 { 2i64 }
+}
+pub struct FuncCallObj {
+    pub attributes: Map<Str, Mixed>,
+    pub name: Late<U_PhpParser_Node_Expr_or_PhpParser_Node_Name>,
+    pub args: Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>,
+}
+#[derive(Clone)]
+pub struct FuncCall(pub Rc<RefCell<FuncCallObj>>);
+impl FuncCall {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_name(&self) -> Ref<'_, U_PhpParser_Node_Expr_or_PhpParser_Node_Name> { Ref::map(self.0.borrow(), |o| o.name.get()) }
+    pub fn p_name_get(&self) -> U_PhpParser_Node_Expr_or_PhpParser_Node_Name { self.0.borrow().name.get().clone() }
+    pub fn p_name_opt(&self) -> Option<U_PhpParser_Node_Expr_or_PhpParser_Node_Name> { self.0.borrow().name.as_option().cloned() }
+    pub fn p_name_mut(&self) -> RefMut<'_, U_PhpParser_Node_Expr_or_PhpParser_Node_Name> { RefMut::map(self.0.borrow_mut(), |o| o.name.get_mut()) }
+    pub fn set_p_name(&self, v: U_PhpParser_Node_Expr_or_PhpParser_Node_Name) { self.0.borrow_mut().name.set(v); }
+    pub fn p_args(&self) -> Ref<'_, Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>> { Ref::map(self.0.borrow(), |o| &o.args) }
+    pub fn p_args_get(&self) -> Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder> { self.0.borrow().args.clone() }
+    pub fn p_args_opt(&self) -> Option<Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>> { Some(self.0.borrow().args.clone()) }
+    pub fn p_args_mut(&self) -> RefMut<'_, Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.args) }
+    pub fn set_p_args(&self, v: Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>) { self.0.borrow_mut().args = v; }
+    pub fn new(mut name: U_PhpParser_Node_Expr_or_PhpParser_Node_Name, mut args: Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>, mut attributes: Map<Str, Mixed>) -> Result<FuncCall, Throw> {
+        let this = FuncCall(Rc::new(RefCell::new(FuncCallObj {
+            attributes: Default::default(),
+            name: Late::uninit(),
+            args: Default::default(),
+        })));
+        this.magic__construct(name, args, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut name: U_PhpParser_Node_Expr_or_PhpParser_Node_Name, mut args: Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_name(name.clone());
+    self.set_p_args(args.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("name"))); __m1.push(cast::<Mixed>(Str::from_static("args"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_FuncCall"));
+    }
+    pub fn getRawArgs(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok(self.p_args_get().map_values(|v| cast::<Mixed>(v)));
+    }
+    pub fn isFirstClassCallable(&self) -> Result<bool, Throw> { cast::<crate::php_parser::node::expr::CallLike>(self.clone()).isFirstClassCallable__impl() }
+    pub fn getArgs(&self) -> Result<Map<ArrayKey, crate::php_parser::node::Arg>, Throw> { cast::<crate::php_parser::node::expr::CallLike>(self.clone()).getArgs__impl() }
+    pub fn getArg(&self, mut name: Str, mut position: i64) -> Result<Option<crate::php_parser::node::Arg>, Throw> { cast::<crate::php_parser::node::expr::CallLike>(self.clone()).getArg__impl(name, position) }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut name: U_PhpParser_Node_Expr_or_PhpParser_Node_Name, mut args: Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::FuncCall, Throw> { Ok(Self::new(name, args, attributes)?) }
+}
+impl php_rt::PhpObject for FuncCall {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\FuncCall" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\funccall", "phpparser\\node\\expr\\calllike", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_name_opt() { out.push((Str::from_static("name"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_args_get()) { out.push((Str::from_static("args"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "name" => { self.set_p_name(cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Name>(value)); true }, "args" => { self.set_p_args(cast::<Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>>(value)); true }, _ => false } }
+}
+impl FuncCall { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\FuncCall could not be converted to string"))) } }
+impl php_rt::PhpClone for FuncCall { fn php_clone(&self) -> Self { let c = FuncCall(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for FuncCallObj { fn clone(&self) -> Self { FuncCallObj { attributes: self.attributes.clone(), name: self.name.clone(), args: self.args.clone() } } }
+impl FuncCall {
+}
+pub struct Include_Obj {
+    pub attributes: Map<Str, Mixed>,
+    pub expr: Late<crate::php_parser::node::Expr>,
+    pub type_: i64,
+}
+#[derive(Clone)]
+pub struct Include_(pub Rc<RefCell<Include_Obj>>);
+impl Include_ {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_expr(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.expr.get()) }
+    pub fn p_expr_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().expr.get().clone() }
+    pub fn p_expr_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().expr.as_option().cloned() }
+    pub fn p_expr_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.expr.get_mut()) }
+    pub fn set_p_expr(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().expr.set(v); }
+    pub fn p_type_(&self) -> Ref<'_, i64> { Ref::map(self.0.borrow(), |o| &o.type_) }
+    pub fn p_type__get(&self) -> i64 { self.0.borrow().type_.clone() }
+    pub fn p_type__opt(&self) -> Option<i64> { Some(self.0.borrow().type_.clone()) }
+    pub fn p_type__mut(&self) -> RefMut<'_, i64> { RefMut::map(self.0.borrow_mut(), |o| &mut o.type_) }
+    pub fn set_p_type_(&self, v: i64) { self.0.borrow_mut().type_ = v; }
+    pub fn new(mut expr: crate::php_parser::node::Expr, mut type_: i64, mut attributes: Map<Str, Mixed>) -> Result<Include_, Throw> {
+        let this = Include_(Rc::new(RefCell::new(Include_Obj {
+            attributes: Default::default(),
+            expr: Late::uninit(),
+            type_: Default::default(),
+        })));
+        this.magic__construct(expr, type_, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut expr: crate::php_parser::node::Expr, mut type_: i64, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_expr(expr.clone());
+    self.set_p_type_(type_);
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("expr"))); __m1.push(cast::<Mixed>(Str::from_static("type"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_Include"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut expr: crate::php_parser::node::Expr, mut type_: i64, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::Include_, Throw> { Ok(Self::new(expr, type_, attributes)?) }
+}
+impl php_rt::PhpObject for Include_ {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\Include_" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\include_", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_expr_opt() { out.push((Str::from_static("expr"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_type__get()) { out.push((Str::from_static("type"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "expr" => { self.set_p_expr(cast::<crate::php_parser::node::Expr>(value)); true }, "type" => { self.set_p_type_(cast::<i64>(value)); true }, _ => false } }
+}
+impl Include_ { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\Include_ could not be converted to string"))) } }
+impl php_rt::PhpClone for Include_ { fn php_clone(&self) -> Self { let c = Include_(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for Include_Obj { fn clone(&self) -> Self { Include_Obj { attributes: self.attributes.clone(), expr: self.expr.clone(), type_: self.type_.clone() } } }
+impl Include_ {
+    pub fn TYPE_INCLUDE() -> i64 { 1i64 }
+    pub fn TYPE_INCLUDE_ONCE() -> i64 { 2i64 }
+    pub fn TYPE_REQUIRE() -> i64 { 3i64 }
+    pub fn TYPE_REQUIRE_ONCE() -> i64 { 4i64 }
+}
+pub struct Instanceof_Obj {
+    pub attributes: Map<Str, Mixed>,
+    pub expr: Late<crate::php_parser::node::Expr>,
+    pub class: Late<U_PhpParser_Node_Expr_or_PhpParser_Node_Name>,
+}
+#[derive(Clone)]
+pub struct Instanceof_(pub Rc<RefCell<Instanceof_Obj>>);
+impl Instanceof_ {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_expr(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.expr.get()) }
+    pub fn p_expr_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().expr.get().clone() }
+    pub fn p_expr_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().expr.as_option().cloned() }
+    pub fn p_expr_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.expr.get_mut()) }
+    pub fn set_p_expr(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().expr.set(v); }
+    pub fn p_class(&self) -> Ref<'_, U_PhpParser_Node_Expr_or_PhpParser_Node_Name> { Ref::map(self.0.borrow(), |o| o.class.get()) }
+    pub fn p_class_get(&self) -> U_PhpParser_Node_Expr_or_PhpParser_Node_Name { self.0.borrow().class.get().clone() }
+    pub fn p_class_opt(&self) -> Option<U_PhpParser_Node_Expr_or_PhpParser_Node_Name> { self.0.borrow().class.as_option().cloned() }
+    pub fn p_class_mut(&self) -> RefMut<'_, U_PhpParser_Node_Expr_or_PhpParser_Node_Name> { RefMut::map(self.0.borrow_mut(), |o| o.class.get_mut()) }
+    pub fn set_p_class(&self, v: U_PhpParser_Node_Expr_or_PhpParser_Node_Name) { self.0.borrow_mut().class.set(v); }
+    pub fn new(mut expr: crate::php_parser::node::Expr, mut class: U_PhpParser_Node_Expr_or_PhpParser_Node_Name, mut attributes: Map<Str, Mixed>) -> Result<Instanceof_, Throw> {
+        let this = Instanceof_(Rc::new(RefCell::new(Instanceof_Obj {
+            attributes: Default::default(),
+            expr: Late::uninit(),
+            class: Late::uninit(),
+        })));
+        this.magic__construct(expr, class, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut expr: crate::php_parser::node::Expr, mut class: U_PhpParser_Node_Expr_or_PhpParser_Node_Name, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_expr(expr.clone());
+    self.set_p_class(class.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("expr"))); __m1.push(cast::<Mixed>(Str::from_static("class"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_Instanceof"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut expr: crate::php_parser::node::Expr, mut class: U_PhpParser_Node_Expr_or_PhpParser_Node_Name, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::Instanceof_, Throw> { Ok(Self::new(expr, class, attributes)?) }
+}
+impl php_rt::PhpObject for Instanceof_ {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\Instanceof_" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\instanceof_", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_expr_opt() { out.push((Str::from_static("expr"), cast::<Mixed>(v))); } if let Some(v) = self.p_class_opt() { out.push((Str::from_static("class"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "expr" => { self.set_p_expr(cast::<crate::php_parser::node::Expr>(value)); true }, "class" => { self.set_p_class(cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Name>(value)); true }, _ => false } }
+}
+impl Instanceof_ { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\Instanceof_ could not be converted to string"))) } }
+impl php_rt::PhpClone for Instanceof_ { fn php_clone(&self) -> Self { let c = Instanceof_(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for Instanceof_Obj { fn clone(&self) -> Self { Instanceof_Obj { attributes: self.attributes.clone(), expr: self.expr.clone(), class: self.class.clone() } } }
+impl Instanceof_ {
+}
+pub struct Isset_Obj {
+    pub attributes: Map<Str, Mixed>,
+    pub vars: Map<ArrayKey, crate::php_parser::node::Expr>,
+}
+#[derive(Clone)]
+pub struct Isset_(pub Rc<RefCell<Isset_Obj>>);
+impl Isset_ {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_vars(&self) -> Ref<'_, Map<ArrayKey, crate::php_parser::node::Expr>> { Ref::map(self.0.borrow(), |o| &o.vars) }
+    pub fn p_vars_get(&self) -> Map<ArrayKey, crate::php_parser::node::Expr> { self.0.borrow().vars.clone() }
+    pub fn p_vars_opt(&self) -> Option<Map<ArrayKey, crate::php_parser::node::Expr>> { Some(self.0.borrow().vars.clone()) }
+    pub fn p_vars_mut(&self) -> RefMut<'_, Map<ArrayKey, crate::php_parser::node::Expr>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.vars) }
+    pub fn set_p_vars(&self, v: Map<ArrayKey, crate::php_parser::node::Expr>) { self.0.borrow_mut().vars = v; }
+    pub fn new(mut vars: Map<ArrayKey, crate::php_parser::node::Expr>, mut attributes: Map<Str, Mixed>) -> Result<Isset_, Throw> {
+        let this = Isset_(Rc::new(RefCell::new(Isset_Obj {
+            attributes: Default::default(),
+            vars: Default::default(),
+        })));
+        this.magic__construct(vars, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut vars: Map<ArrayKey, crate::php_parser::node::Expr>, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_vars(vars.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("vars"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_Isset"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut vars: Map<ArrayKey, crate::php_parser::node::Expr>, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::Isset_, Throw> { Ok(Self::new(vars, attributes)?) }
+}
+impl php_rt::PhpObject for Isset_ {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\Isset_" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\isset_", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_vars_get()) { out.push((Str::from_static("vars"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "vars" => { self.set_p_vars(cast::<Map<ArrayKey, crate::php_parser::node::Expr>>(value)); true }, _ => false } }
+}
+impl Isset_ { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\Isset_ could not be converted to string"))) } }
+impl php_rt::PhpClone for Isset_ { fn php_clone(&self) -> Self { let c = Isset_(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for Isset_Obj { fn clone(&self) -> Self { Isset_Obj { attributes: self.attributes.clone(), vars: self.vars.clone() } } }
+impl Isset_ {
+}
+pub struct List_Obj {
+    pub attributes: Map<Str, Mixed>,
+    pub items: Map<i64, Option<crate::php_parser::node::ArrayItem>>,
+}
+#[derive(Clone)]
+pub struct List_(pub Rc<RefCell<List_Obj>>);
+impl List_ {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_items(&self) -> Ref<'_, Map<i64, Option<crate::php_parser::node::ArrayItem>>> { Ref::map(self.0.borrow(), |o| &o.items) }
+    pub fn p_items_get(&self) -> Map<i64, Option<crate::php_parser::node::ArrayItem>> { self.0.borrow().items.clone() }
+    pub fn p_items_opt(&self) -> Option<Map<i64, Option<crate::php_parser::node::ArrayItem>>> { Some(self.0.borrow().items.clone()) }
+    pub fn p_items_mut(&self) -> RefMut<'_, Map<i64, Option<crate::php_parser::node::ArrayItem>>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.items) }
+    pub fn set_p_items(&self, v: Map<i64, Option<crate::php_parser::node::ArrayItem>>) { self.0.borrow_mut().items = v; }
+    pub fn new(mut items: Map<ArrayKey, Option<crate::php_parser::node::ArrayItem>>, mut attributes: Map<Str, Mixed>) -> Result<List_, Throw> {
+        let this = List_(Rc::new(RefCell::new(List_Obj {
+            attributes: Default::default(),
+            items: Default::default(),
+        })));
+        this.magic__construct(items, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut items: Map<ArrayKey, Option<crate::php_parser::node::ArrayItem>>, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_items(items.clone().map_entries(|k, v| (cast::<i64>(k), v)));
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("items"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_List"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut items: Map<ArrayKey, Option<crate::php_parser::node::ArrayItem>>, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::List_, Throw> { Ok(Self::new(items, attributes)?) }
+}
+impl php_rt::PhpObject for List_ {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\List_" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\list_", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_items_get()) { out.push((Str::from_static("items"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "items" => { self.set_p_items(cast::<Map<i64, Option<crate::php_parser::node::ArrayItem>>>(value)); true }, _ => false } }
+}
+impl List_ { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\List_ could not be converted to string"))) } }
+impl php_rt::PhpClone for List_ { fn php_clone(&self) -> Self { let c = List_(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for List_Obj { fn clone(&self) -> Self { List_Obj { attributes: self.attributes.clone(), items: self.items.clone() } } }
+impl List_ {
+    pub fn KIND_LIST() -> i64 { 1i64 }
+    pub fn KIND_ARRAY() -> i64 { 2i64 }
+}
+pub struct Match_Obj {
+    pub attributes: Map<Str, Mixed>,
+    pub cond: Late<crate::php_parser::node::Expr>,
+    pub arms: Map<ArrayKey, crate::php_parser::node::MatchArm>,
+}
+#[derive(Clone)]
+pub struct Match_(pub Rc<RefCell<Match_Obj>>);
+impl Match_ {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_cond(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.cond.get()) }
+    pub fn p_cond_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().cond.get().clone() }
+    pub fn p_cond_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().cond.as_option().cloned() }
+    pub fn p_cond_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.cond.get_mut()) }
+    pub fn set_p_cond(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().cond.set(v); }
+    pub fn p_arms(&self) -> Ref<'_, Map<ArrayKey, crate::php_parser::node::MatchArm>> { Ref::map(self.0.borrow(), |o| &o.arms) }
+    pub fn p_arms_get(&self) -> Map<ArrayKey, crate::php_parser::node::MatchArm> { self.0.borrow().arms.clone() }
+    pub fn p_arms_opt(&self) -> Option<Map<ArrayKey, crate::php_parser::node::MatchArm>> { Some(self.0.borrow().arms.clone()) }
+    pub fn p_arms_mut(&self) -> RefMut<'_, Map<ArrayKey, crate::php_parser::node::MatchArm>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.arms) }
+    pub fn set_p_arms(&self, v: Map<ArrayKey, crate::php_parser::node::MatchArm>) { self.0.borrow_mut().arms = v; }
+    pub fn new(mut cond: crate::php_parser::node::Expr, mut arms: Map<ArrayKey, crate::php_parser::node::MatchArm>, mut attributes: Map<Str, Mixed>) -> Result<Match_, Throw> {
+        let this = Match_(Rc::new(RefCell::new(Match_Obj {
+            attributes: Default::default(),
+            cond: Late::uninit(),
+            arms: Default::default(),
+        })));
+        this.magic__construct(cond, arms, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut cond: crate::php_parser::node::Expr, mut arms: Map<ArrayKey, crate::php_parser::node::MatchArm>, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_cond(cond.clone());
+    self.set_p_arms(arms.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("cond"))); __m1.push(cast::<Mixed>(Str::from_static("arms"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_Match"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut cond: crate::php_parser::node::Expr, mut arms: Map<ArrayKey, crate::php_parser::node::MatchArm>, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::Match_, Throw> { Ok(Self::new(cond, arms, attributes)?) }
+}
+impl php_rt::PhpObject for Match_ {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\Match_" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\match_", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_cond_opt() { out.push((Str::from_static("cond"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_arms_get()) { out.push((Str::from_static("arms"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "cond" => { self.set_p_cond(cast::<crate::php_parser::node::Expr>(value)); true }, "arms" => { self.set_p_arms(cast::<Map<ArrayKey, crate::php_parser::node::MatchArm>>(value)); true }, _ => false } }
+}
+impl Match_ { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\Match_ could not be converted to string"))) } }
+impl php_rt::PhpClone for Match_ { fn php_clone(&self) -> Self { let c = Match_(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for Match_Obj { fn clone(&self) -> Self { Match_Obj { attributes: self.attributes.clone(), cond: self.cond.clone(), arms: self.arms.clone() } } }
+impl Match_ {
+}
+pub struct MethodCallObj {
+    pub attributes: Map<Str, Mixed>,
+    pub var: Late<crate::php_parser::node::Expr>,
+    pub name: Late<U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier>,
+    pub args: Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>,
+}
+#[derive(Clone)]
+pub struct MethodCall(pub Rc<RefCell<MethodCallObj>>);
+impl MethodCall {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_var(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.var.get()) }
+    pub fn p_var_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().var.get().clone() }
+    pub fn p_var_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().var.as_option().cloned() }
+    pub fn p_var_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.var.get_mut()) }
+    pub fn set_p_var(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().var.set(v); }
+    pub fn p_name(&self) -> Ref<'_, U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier> { Ref::map(self.0.borrow(), |o| o.name.get()) }
+    pub fn p_name_get(&self) -> U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier { self.0.borrow().name.get().clone() }
+    pub fn p_name_opt(&self) -> Option<U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier> { self.0.borrow().name.as_option().cloned() }
+    pub fn p_name_mut(&self) -> RefMut<'_, U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier> { RefMut::map(self.0.borrow_mut(), |o| o.name.get_mut()) }
+    pub fn set_p_name(&self, v: U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier) { self.0.borrow_mut().name.set(v); }
+    pub fn p_args(&self) -> Ref<'_, Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>> { Ref::map(self.0.borrow(), |o| &o.args) }
+    pub fn p_args_get(&self) -> Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder> { self.0.borrow().args.clone() }
+    pub fn p_args_opt(&self) -> Option<Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>> { Some(self.0.borrow().args.clone()) }
+    pub fn p_args_mut(&self) -> RefMut<'_, Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.args) }
+    pub fn set_p_args(&self, v: Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>) { self.0.borrow_mut().args = v; }
+    pub fn new(mut var: crate::php_parser::node::Expr, mut name: U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str, mut args: Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>, mut attributes: Map<Str, Mixed>) -> Result<MethodCall, Throw> {
+        let this = MethodCall(Rc::new(RefCell::new(MethodCallObj {
+            attributes: Default::default(),
+            var: Late::uninit(),
+            name: Late::uninit(),
+            args: Default::default(),
+        })));
+        this.magic__construct(var, name, args, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut var: crate::php_parser::node::Expr, mut name: U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str, mut args: Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_var(var.clone());
+    self.set_p_name((if (match name.clone() { U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str::Str(_) => true, _ => false }) { U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier::PhpParser_Node_Identifier(crate::php_parser::node::Identifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())?) } else { cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier>(name.clone()) }));
+    self.set_p_args(args.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("var"))); __m1.push(cast::<Mixed>(Str::from_static("name"))); __m1.push(cast::<Mixed>(Str::from_static("args"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_MethodCall"));
+    }
+    pub fn getRawArgs(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok(self.p_args_get().map_values(|v| cast::<Mixed>(v)));
+    }
+    pub fn isFirstClassCallable(&self) -> Result<bool, Throw> { cast::<crate::php_parser::node::expr::CallLike>(self.clone()).isFirstClassCallable__impl() }
+    pub fn getArgs(&self) -> Result<Map<ArrayKey, crate::php_parser::node::Arg>, Throw> { cast::<crate::php_parser::node::expr::CallLike>(self.clone()).getArgs__impl() }
+    pub fn getArg(&self, mut name: Str, mut position: i64) -> Result<Option<crate::php_parser::node::Arg>, Throw> { cast::<crate::php_parser::node::expr::CallLike>(self.clone()).getArg__impl(name, position) }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut var: crate::php_parser::node::Expr, mut name: U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str, mut args: Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::MethodCall, Throw> { Ok(Self::new(var, name, args, attributes)?) }
+}
+impl php_rt::PhpObject for MethodCall {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\MethodCall" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\methodcall", "phpparser\\node\\expr\\calllike", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_var_opt() { out.push((Str::from_static("var"), cast::<Mixed>(v))); } if let Some(v) = self.p_name_opt() { out.push((Str::from_static("name"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_args_get()) { out.push((Str::from_static("args"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "var" => { self.set_p_var(cast::<crate::php_parser::node::Expr>(value)); true }, "name" => { self.set_p_name(cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier>(value)); true }, "args" => { self.set_p_args(cast::<Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>>(value)); true }, _ => false } }
+}
+impl MethodCall { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\MethodCall could not be converted to string"))) } }
+impl php_rt::PhpClone for MethodCall { fn php_clone(&self) -> Self { let c = MethodCall(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for MethodCallObj { fn clone(&self) -> Self { MethodCallObj { attributes: self.attributes.clone(), var: self.var.clone(), name: self.name.clone(), args: self.args.clone() } } }
+impl MethodCall {
+}
+pub struct New_Obj {
+    pub attributes: Map<Str, Mixed>,
+    pub class: Late<U_PhpParser_Node_Expr_or_PhpParser_Node_Name_or_PhpParser_Node_Stmt_Class_>,
+    pub args: Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>,
+}
+#[derive(Clone)]
+pub struct New_(pub Rc<RefCell<New_Obj>>);
+impl New_ {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_class(&self) -> Ref<'_, U_PhpParser_Node_Expr_or_PhpParser_Node_Name_or_PhpParser_Node_Stmt_Class_> { Ref::map(self.0.borrow(), |o| o.class.get()) }
+    pub fn p_class_get(&self) -> U_PhpParser_Node_Expr_or_PhpParser_Node_Name_or_PhpParser_Node_Stmt_Class_ { self.0.borrow().class.get().clone() }
+    pub fn p_class_opt(&self) -> Option<U_PhpParser_Node_Expr_or_PhpParser_Node_Name_or_PhpParser_Node_Stmt_Class_> { self.0.borrow().class.as_option().cloned() }
+    pub fn p_class_mut(&self) -> RefMut<'_, U_PhpParser_Node_Expr_or_PhpParser_Node_Name_or_PhpParser_Node_Stmt_Class_> { RefMut::map(self.0.borrow_mut(), |o| o.class.get_mut()) }
+    pub fn set_p_class(&self, v: U_PhpParser_Node_Expr_or_PhpParser_Node_Name_or_PhpParser_Node_Stmt_Class_) { self.0.borrow_mut().class.set(v); }
+    pub fn p_args(&self) -> Ref<'_, Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>> { Ref::map(self.0.borrow(), |o| &o.args) }
+    pub fn p_args_get(&self) -> Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder> { self.0.borrow().args.clone() }
+    pub fn p_args_opt(&self) -> Option<Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>> { Some(self.0.borrow().args.clone()) }
+    pub fn p_args_mut(&self) -> RefMut<'_, Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.args) }
+    pub fn set_p_args(&self, v: Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>) { self.0.borrow_mut().args = v; }
+    pub fn new(mut class: U_PhpParser_Node_Expr_or_PhpParser_Node_Name_or_PhpParser_Node_Stmt_Class_, mut args: Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>, mut attributes: Map<Str, Mixed>) -> Result<New_, Throw> {
+        let this = New_(Rc::new(RefCell::new(New_Obj {
+            attributes: Default::default(),
+            class: Late::uninit(),
+            args: Default::default(),
+        })));
+        this.magic__construct(class, args, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut class: U_PhpParser_Node_Expr_or_PhpParser_Node_Name_or_PhpParser_Node_Stmt_Class_, mut args: Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_class(class.clone());
+    self.set_p_args(args.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("class"))); __m1.push(cast::<Mixed>(Str::from_static("args"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_New"));
+    }
+    pub fn getRawArgs(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok(self.p_args_get().map_values(|v| cast::<Mixed>(v)));
+    }
+    pub fn isFirstClassCallable(&self) -> Result<bool, Throw> { cast::<crate::php_parser::node::expr::CallLike>(self.clone()).isFirstClassCallable__impl() }
+    pub fn getArgs(&self) -> Result<Map<ArrayKey, crate::php_parser::node::Arg>, Throw> { cast::<crate::php_parser::node::expr::CallLike>(self.clone()).getArgs__impl() }
+    pub fn getArg(&self, mut name: Str, mut position: i64) -> Result<Option<crate::php_parser::node::Arg>, Throw> { cast::<crate::php_parser::node::expr::CallLike>(self.clone()).getArg__impl(name, position) }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut class: U_PhpParser_Node_Expr_or_PhpParser_Node_Name_or_PhpParser_Node_Stmt_Class_, mut args: Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::New_, Throw> { Ok(Self::new(class, args, attributes)?) }
+}
+impl php_rt::PhpObject for New_ {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\New_" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\new_", "phpparser\\node\\expr\\calllike", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_class_opt() { out.push((Str::from_static("class"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_args_get()) { out.push((Str::from_static("args"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "class" => { self.set_p_class(cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Name_or_PhpParser_Node_Stmt_Class_>(value)); true }, "args" => { self.set_p_args(cast::<Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>>(value)); true }, _ => false } }
+}
+impl New_ { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\New_ could not be converted to string"))) } }
+impl php_rt::PhpClone for New_ { fn php_clone(&self) -> Self { let c = New_(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for New_Obj { fn clone(&self) -> Self { New_Obj { attributes: self.attributes.clone(), class: self.class.clone(), args: self.args.clone() } } }
+impl New_ {
+}
+pub struct NullsafeMethodCallObj {
+    pub attributes: Map<Str, Mixed>,
+    pub var: Late<crate::php_parser::node::Expr>,
+    pub name: Late<U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier>,
+    pub args: Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>,
+}
+#[derive(Clone)]
+pub struct NullsafeMethodCall(pub Rc<RefCell<NullsafeMethodCallObj>>);
+impl NullsafeMethodCall {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_var(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.var.get()) }
+    pub fn p_var_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().var.get().clone() }
+    pub fn p_var_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().var.as_option().cloned() }
+    pub fn p_var_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.var.get_mut()) }
+    pub fn set_p_var(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().var.set(v); }
+    pub fn p_name(&self) -> Ref<'_, U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier> { Ref::map(self.0.borrow(), |o| o.name.get()) }
+    pub fn p_name_get(&self) -> U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier { self.0.borrow().name.get().clone() }
+    pub fn p_name_opt(&self) -> Option<U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier> { self.0.borrow().name.as_option().cloned() }
+    pub fn p_name_mut(&self) -> RefMut<'_, U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier> { RefMut::map(self.0.borrow_mut(), |o| o.name.get_mut()) }
+    pub fn set_p_name(&self, v: U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier) { self.0.borrow_mut().name.set(v); }
+    pub fn p_args(&self) -> Ref<'_, Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>> { Ref::map(self.0.borrow(), |o| &o.args) }
+    pub fn p_args_get(&self) -> Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder> { self.0.borrow().args.clone() }
+    pub fn p_args_opt(&self) -> Option<Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>> { Some(self.0.borrow().args.clone()) }
+    pub fn p_args_mut(&self) -> RefMut<'_, Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.args) }
+    pub fn set_p_args(&self, v: Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>) { self.0.borrow_mut().args = v; }
+    pub fn new(mut var: crate::php_parser::node::Expr, mut name: U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str, mut args: Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>, mut attributes: Map<Str, Mixed>) -> Result<NullsafeMethodCall, Throw> {
+        let this = NullsafeMethodCall(Rc::new(RefCell::new(NullsafeMethodCallObj {
+            attributes: Default::default(),
+            var: Late::uninit(),
+            name: Late::uninit(),
+            args: Default::default(),
+        })));
+        this.magic__construct(var, name, args, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut var: crate::php_parser::node::Expr, mut name: U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str, mut args: Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_var(var.clone());
+    self.set_p_name((if (match name.clone() { U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str::Str(_) => true, _ => false }) { U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier::PhpParser_Node_Identifier(crate::php_parser::node::Identifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())?) } else { cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier>(name.clone()) }));
+    self.set_p_args(args.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("var"))); __m1.push(cast::<Mixed>(Str::from_static("name"))); __m1.push(cast::<Mixed>(Str::from_static("args"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_NullsafeMethodCall"));
+    }
+    pub fn getRawArgs(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok(self.p_args_get().map_values(|v| cast::<Mixed>(v)));
+    }
+    pub fn isFirstClassCallable(&self) -> Result<bool, Throw> { cast::<crate::php_parser::node::expr::CallLike>(self.clone()).isFirstClassCallable__impl() }
+    pub fn getArgs(&self) -> Result<Map<ArrayKey, crate::php_parser::node::Arg>, Throw> { cast::<crate::php_parser::node::expr::CallLike>(self.clone()).getArgs__impl() }
+    pub fn getArg(&self, mut name: Str, mut position: i64) -> Result<Option<crate::php_parser::node::Arg>, Throw> { cast::<crate::php_parser::node::expr::CallLike>(self.clone()).getArg__impl(name, position) }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut var: crate::php_parser::node::Expr, mut name: U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str, mut args: Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::NullsafeMethodCall, Throw> { Ok(Self::new(var, name, args, attributes)?) }
+}
+impl php_rt::PhpObject for NullsafeMethodCall {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\NullsafeMethodCall" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\nullsafemethodcall", "phpparser\\node\\expr\\calllike", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_var_opt() { out.push((Str::from_static("var"), cast::<Mixed>(v))); } if let Some(v) = self.p_name_opt() { out.push((Str::from_static("name"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_args_get()) { out.push((Str::from_static("args"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "var" => { self.set_p_var(cast::<crate::php_parser::node::Expr>(value)); true }, "name" => { self.set_p_name(cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier>(value)); true }, "args" => { self.set_p_args(cast::<Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>>(value)); true }, _ => false } }
+}
+impl NullsafeMethodCall { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\NullsafeMethodCall could not be converted to string"))) } }
+impl php_rt::PhpClone for NullsafeMethodCall { fn php_clone(&self) -> Self { let c = NullsafeMethodCall(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for NullsafeMethodCallObj { fn clone(&self) -> Self { NullsafeMethodCallObj { attributes: self.attributes.clone(), var: self.var.clone(), name: self.name.clone(), args: self.args.clone() } } }
+impl NullsafeMethodCall {
+}
+pub struct NullsafePropertyFetchObj {
+    pub attributes: Map<Str, Mixed>,
+    pub var: Late<crate::php_parser::node::Expr>,
+    pub name: Late<U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier>,
+}
+#[derive(Clone)]
+pub struct NullsafePropertyFetch(pub Rc<RefCell<NullsafePropertyFetchObj>>);
+impl NullsafePropertyFetch {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_var(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.var.get()) }
+    pub fn p_var_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().var.get().clone() }
+    pub fn p_var_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().var.as_option().cloned() }
+    pub fn p_var_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.var.get_mut()) }
+    pub fn set_p_var(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().var.set(v); }
+    pub fn p_name(&self) -> Ref<'_, U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier> { Ref::map(self.0.borrow(), |o| o.name.get()) }
+    pub fn p_name_get(&self) -> U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier { self.0.borrow().name.get().clone() }
+    pub fn p_name_opt(&self) -> Option<U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier> { self.0.borrow().name.as_option().cloned() }
+    pub fn p_name_mut(&self) -> RefMut<'_, U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier> { RefMut::map(self.0.borrow_mut(), |o| o.name.get_mut()) }
+    pub fn set_p_name(&self, v: U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier) { self.0.borrow_mut().name.set(v); }
+    pub fn new(mut var: crate::php_parser::node::Expr, mut name: U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str, mut attributes: Map<Str, Mixed>) -> Result<NullsafePropertyFetch, Throw> {
+        let this = NullsafePropertyFetch(Rc::new(RefCell::new(NullsafePropertyFetchObj {
+            attributes: Default::default(),
+            var: Late::uninit(),
+            name: Late::uninit(),
+        })));
+        this.magic__construct(var, name, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut var: crate::php_parser::node::Expr, mut name: U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_var(var.clone());
+    self.set_p_name((if (match name.clone() { U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str::Str(_) => true, _ => false }) { U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier::PhpParser_Node_Identifier(crate::php_parser::node::Identifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())?) } else { cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier>(name.clone()) }));
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("var"))); __m1.push(cast::<Mixed>(Str::from_static("name"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_NullsafePropertyFetch"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut var: crate::php_parser::node::Expr, mut name: U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::NullsafePropertyFetch, Throw> { Ok(Self::new(var, name, attributes)?) }
+}
+impl php_rt::PhpObject for NullsafePropertyFetch {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\NullsafePropertyFetch" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\nullsafepropertyfetch", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_var_opt() { out.push((Str::from_static("var"), cast::<Mixed>(v))); } if let Some(v) = self.p_name_opt() { out.push((Str::from_static("name"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "var" => { self.set_p_var(cast::<crate::php_parser::node::Expr>(value)); true }, "name" => { self.set_p_name(cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier>(value)); true }, _ => false } }
+}
+impl NullsafePropertyFetch { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\NullsafePropertyFetch could not be converted to string"))) } }
+impl php_rt::PhpClone for NullsafePropertyFetch { fn php_clone(&self) -> Self { let c = NullsafePropertyFetch(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for NullsafePropertyFetchObj { fn clone(&self) -> Self { NullsafePropertyFetchObj { attributes: self.attributes.clone(), var: self.var.clone(), name: self.name.clone() } } }
+impl NullsafePropertyFetch {
+}
+pub struct PostDecObj {
+    pub attributes: Map<Str, Mixed>,
+    pub var: Late<crate::php_parser::node::Expr>,
+}
+#[derive(Clone)]
+pub struct PostDec(pub Rc<RefCell<PostDecObj>>);
+impl PostDec {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_var(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.var.get()) }
+    pub fn p_var_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().var.get().clone() }
+    pub fn p_var_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().var.as_option().cloned() }
+    pub fn p_var_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.var.get_mut()) }
+    pub fn set_p_var(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().var.set(v); }
+    pub fn new(mut var: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<PostDec, Throw> {
+        let this = PostDec(Rc::new(RefCell::new(PostDecObj {
+            attributes: Default::default(),
+            var: Late::uninit(),
+        })));
+        this.magic__construct(var, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut var: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_var(var.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("var"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_PostDec"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut var: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::PostDec, Throw> { Ok(Self::new(var, attributes)?) }
+}
+impl php_rt::PhpObject for PostDec {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\PostDec" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\postdec", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_var_opt() { out.push((Str::from_static("var"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "var" => { self.set_p_var(cast::<crate::php_parser::node::Expr>(value)); true }, _ => false } }
+}
+impl PostDec { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\PostDec could not be converted to string"))) } }
+impl php_rt::PhpClone for PostDec { fn php_clone(&self) -> Self { let c = PostDec(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for PostDecObj { fn clone(&self) -> Self { PostDecObj { attributes: self.attributes.clone(), var: self.var.clone() } } }
+impl PostDec {
+}
+pub struct PostIncObj {
+    pub attributes: Map<Str, Mixed>,
+    pub var: Late<crate::php_parser::node::Expr>,
+}
+#[derive(Clone)]
+pub struct PostInc(pub Rc<RefCell<PostIncObj>>);
+impl PostInc {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_var(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.var.get()) }
+    pub fn p_var_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().var.get().clone() }
+    pub fn p_var_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().var.as_option().cloned() }
+    pub fn p_var_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.var.get_mut()) }
+    pub fn set_p_var(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().var.set(v); }
+    pub fn new(mut var: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<PostInc, Throw> {
+        let this = PostInc(Rc::new(RefCell::new(PostIncObj {
+            attributes: Default::default(),
+            var: Late::uninit(),
+        })));
+        this.magic__construct(var, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut var: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_var(var.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("var"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_PostInc"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut var: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::PostInc, Throw> { Ok(Self::new(var, attributes)?) }
+}
+impl php_rt::PhpObject for PostInc {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\PostInc" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\postinc", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_var_opt() { out.push((Str::from_static("var"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "var" => { self.set_p_var(cast::<crate::php_parser::node::Expr>(value)); true }, _ => false } }
+}
+impl PostInc { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\PostInc could not be converted to string"))) } }
+impl php_rt::PhpClone for PostInc { fn php_clone(&self) -> Self { let c = PostInc(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for PostIncObj { fn clone(&self) -> Self { PostIncObj { attributes: self.attributes.clone(), var: self.var.clone() } } }
+impl PostInc {
+}
+pub struct PreDecObj {
+    pub attributes: Map<Str, Mixed>,
+    pub var: Late<crate::php_parser::node::Expr>,
+}
+#[derive(Clone)]
+pub struct PreDec(pub Rc<RefCell<PreDecObj>>);
+impl PreDec {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_var(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.var.get()) }
+    pub fn p_var_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().var.get().clone() }
+    pub fn p_var_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().var.as_option().cloned() }
+    pub fn p_var_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.var.get_mut()) }
+    pub fn set_p_var(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().var.set(v); }
+    pub fn new(mut var: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<PreDec, Throw> {
+        let this = PreDec(Rc::new(RefCell::new(PreDecObj {
+            attributes: Default::default(),
+            var: Late::uninit(),
+        })));
+        this.magic__construct(var, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut var: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_var(var.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("var"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_PreDec"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut var: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::PreDec, Throw> { Ok(Self::new(var, attributes)?) }
+}
+impl php_rt::PhpObject for PreDec {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\PreDec" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\predec", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_var_opt() { out.push((Str::from_static("var"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "var" => { self.set_p_var(cast::<crate::php_parser::node::Expr>(value)); true }, _ => false } }
+}
+impl PreDec { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\PreDec could not be converted to string"))) } }
+impl php_rt::PhpClone for PreDec { fn php_clone(&self) -> Self { let c = PreDec(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for PreDecObj { fn clone(&self) -> Self { PreDecObj { attributes: self.attributes.clone(), var: self.var.clone() } } }
+impl PreDec {
+}
+pub struct PreIncObj {
+    pub attributes: Map<Str, Mixed>,
+    pub var: Late<crate::php_parser::node::Expr>,
+}
+#[derive(Clone)]
+pub struct PreInc(pub Rc<RefCell<PreIncObj>>);
+impl PreInc {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_var(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.var.get()) }
+    pub fn p_var_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().var.get().clone() }
+    pub fn p_var_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().var.as_option().cloned() }
+    pub fn p_var_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.var.get_mut()) }
+    pub fn set_p_var(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().var.set(v); }
+    pub fn new(mut var: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<PreInc, Throw> {
+        let this = PreInc(Rc::new(RefCell::new(PreIncObj {
+            attributes: Default::default(),
+            var: Late::uninit(),
+        })));
+        this.magic__construct(var, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut var: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_var(var.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("var"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_PreInc"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut var: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::PreInc, Throw> { Ok(Self::new(var, attributes)?) }
+}
+impl php_rt::PhpObject for PreInc {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\PreInc" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\preinc", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_var_opt() { out.push((Str::from_static("var"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "var" => { self.set_p_var(cast::<crate::php_parser::node::Expr>(value)); true }, _ => false } }
+}
+impl PreInc { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\PreInc could not be converted to string"))) } }
+impl php_rt::PhpClone for PreInc { fn php_clone(&self) -> Self { let c = PreInc(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for PreIncObj { fn clone(&self) -> Self { PreIncObj { attributes: self.attributes.clone(), var: self.var.clone() } } }
+impl PreInc {
+}
+pub struct Print_Obj {
+    pub attributes: Map<Str, Mixed>,
+    pub expr: Late<crate::php_parser::node::Expr>,
+}
+#[derive(Clone)]
+pub struct Print_(pub Rc<RefCell<Print_Obj>>);
+impl Print_ {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_expr(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.expr.get()) }
+    pub fn p_expr_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().expr.get().clone() }
+    pub fn p_expr_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().expr.as_option().cloned() }
+    pub fn p_expr_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.expr.get_mut()) }
+    pub fn set_p_expr(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().expr.set(v); }
+    pub fn new(mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Print_, Throw> {
+        let this = Print_(Rc::new(RefCell::new(Print_Obj {
+            attributes: Default::default(),
+            expr: Late::uninit(),
+        })));
+        this.magic__construct(expr, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_expr(expr.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("expr"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_Print"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::Print_, Throw> { Ok(Self::new(expr, attributes)?) }
+}
+impl php_rt::PhpObject for Print_ {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\Print_" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\print_", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_expr_opt() { out.push((Str::from_static("expr"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "expr" => { self.set_p_expr(cast::<crate::php_parser::node::Expr>(value)); true }, _ => false } }
+}
+impl Print_ { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\Print_ could not be converted to string"))) } }
+impl php_rt::PhpClone for Print_ { fn php_clone(&self) -> Self { let c = Print_(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for Print_Obj { fn clone(&self) -> Self { Print_Obj { attributes: self.attributes.clone(), expr: self.expr.clone() } } }
+impl Print_ {
+}
+pub struct PropertyFetchObj {
+    pub attributes: Map<Str, Mixed>,
+    pub var: Late<crate::php_parser::node::Expr>,
+    pub name: Late<U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier>,
+}
+#[derive(Clone)]
+pub struct PropertyFetch(pub Rc<RefCell<PropertyFetchObj>>);
+impl PropertyFetch {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_var(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.var.get()) }
+    pub fn p_var_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().var.get().clone() }
+    pub fn p_var_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().var.as_option().cloned() }
+    pub fn p_var_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.var.get_mut()) }
+    pub fn set_p_var(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().var.set(v); }
+    pub fn p_name(&self) -> Ref<'_, U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier> { Ref::map(self.0.borrow(), |o| o.name.get()) }
+    pub fn p_name_get(&self) -> U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier { self.0.borrow().name.get().clone() }
+    pub fn p_name_opt(&self) -> Option<U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier> { self.0.borrow().name.as_option().cloned() }
+    pub fn p_name_mut(&self) -> RefMut<'_, U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier> { RefMut::map(self.0.borrow_mut(), |o| o.name.get_mut()) }
+    pub fn set_p_name(&self, v: U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier) { self.0.borrow_mut().name.set(v); }
+    pub fn new(mut var: crate::php_parser::node::Expr, mut name: U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str, mut attributes: Map<Str, Mixed>) -> Result<PropertyFetch, Throw> {
+        let this = PropertyFetch(Rc::new(RefCell::new(PropertyFetchObj {
+            attributes: Default::default(),
+            var: Late::uninit(),
+            name: Late::uninit(),
+        })));
+        this.magic__construct(var, name, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut var: crate::php_parser::node::Expr, mut name: U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_var(var.clone());
+    self.set_p_name((if (match name.clone() { U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str::Str(_) => true, _ => false }) { U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier::PhpParser_Node_Identifier(crate::php_parser::node::Identifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())?) } else { cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier>(name.clone()) }));
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("var"))); __m1.push(cast::<Mixed>(Str::from_static("name"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_PropertyFetch"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut var: crate::php_parser::node::Expr, mut name: U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::PropertyFetch, Throw> { Ok(Self::new(var, name, attributes)?) }
+}
+impl php_rt::PhpObject for PropertyFetch {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\PropertyFetch" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\propertyfetch", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_var_opt() { out.push((Str::from_static("var"), cast::<Mixed>(v))); } if let Some(v) = self.p_name_opt() { out.push((Str::from_static("name"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "var" => { self.set_p_var(cast::<crate::php_parser::node::Expr>(value)); true }, "name" => { self.set_p_name(cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier>(value)); true }, _ => false } }
+}
+impl PropertyFetch { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\PropertyFetch could not be converted to string"))) } }
+impl php_rt::PhpClone for PropertyFetch { fn php_clone(&self) -> Self { let c = PropertyFetch(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for PropertyFetchObj { fn clone(&self) -> Self { PropertyFetchObj { attributes: self.attributes.clone(), var: self.var.clone(), name: self.name.clone() } } }
+impl PropertyFetch {
+}
+pub struct ShellExecObj {
+    pub attributes: Map<Str, Mixed>,
+    pub parts: List<crate::php_parser::node::Expr>,
+}
+#[derive(Clone)]
+pub struct ShellExec(pub Rc<RefCell<ShellExecObj>>);
+impl ShellExec {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_parts(&self) -> Ref<'_, List<crate::php_parser::node::Expr>> { Ref::map(self.0.borrow(), |o| &o.parts) }
+    pub fn p_parts_get(&self) -> List<crate::php_parser::node::Expr> { self.0.borrow().parts.clone() }
+    pub fn p_parts_opt(&self) -> Option<List<crate::php_parser::node::Expr>> { Some(self.0.borrow().parts.clone()) }
+    pub fn p_parts_mut(&self) -> RefMut<'_, List<crate::php_parser::node::Expr>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.parts) }
+    pub fn set_p_parts(&self, v: List<crate::php_parser::node::Expr>) { self.0.borrow_mut().parts = v; }
+    pub fn new(mut parts: Map<ArrayKey, U_PhpParser_Node_Expr_or_PhpParser_Node_InterpolatedStringPart>, mut attributes: Map<Str, Mixed>) -> Result<ShellExec, Throw> {
+        let this = ShellExec(Rc::new(RefCell::new(ShellExecObj {
+            attributes: Default::default(),
+            parts: Default::default(),
+        })));
+        this.magic__construct(parts, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut parts: Map<ArrayKey, U_PhpParser_Node_Expr_or_PhpParser_Node_InterpolatedStringPart>, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_parts(cast::<List<crate::php_parser::node::Expr>>(parts.clone().map_values(|v| cast::<crate::php_parser::node::Expr>(v))));
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("parts"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_ShellExec"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut parts: Map<ArrayKey, U_PhpParser_Node_Expr_or_PhpParser_Node_InterpolatedStringPart>, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::ShellExec, Throw> { Ok(Self::new(parts, attributes)?) }
+}
+impl php_rt::PhpObject for ShellExec {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\ShellExec" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\shellexec", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_parts_get()) { out.push((Str::from_static("parts"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "parts" => { self.set_p_parts(cast::<List<crate::php_parser::node::Expr>>(value)); true }, _ => false } }
+}
+impl ShellExec { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\ShellExec could not be converted to string"))) } }
+impl php_rt::PhpClone for ShellExec { fn php_clone(&self) -> Self { let c = ShellExec(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for ShellExecObj { fn clone(&self) -> Self { ShellExecObj { attributes: self.attributes.clone(), parts: self.parts.clone() } } }
+impl ShellExec {
+}
+pub struct StaticCallObj {
+    pub attributes: Map<Str, Mixed>,
+    pub class: Late<U_PhpParser_Node_Expr_or_PhpParser_Node_Name>,
+    pub name: Late<U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier>,
+    pub args: Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>,
+}
+#[derive(Clone)]
+pub struct StaticCall(pub Rc<RefCell<StaticCallObj>>);
+impl StaticCall {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_class(&self) -> Ref<'_, U_PhpParser_Node_Expr_or_PhpParser_Node_Name> { Ref::map(self.0.borrow(), |o| o.class.get()) }
+    pub fn p_class_get(&self) -> U_PhpParser_Node_Expr_or_PhpParser_Node_Name { self.0.borrow().class.get().clone() }
+    pub fn p_class_opt(&self) -> Option<U_PhpParser_Node_Expr_or_PhpParser_Node_Name> { self.0.borrow().class.as_option().cloned() }
+    pub fn p_class_mut(&self) -> RefMut<'_, U_PhpParser_Node_Expr_or_PhpParser_Node_Name> { RefMut::map(self.0.borrow_mut(), |o| o.class.get_mut()) }
+    pub fn set_p_class(&self, v: U_PhpParser_Node_Expr_or_PhpParser_Node_Name) { self.0.borrow_mut().class.set(v); }
+    pub fn p_name(&self) -> Ref<'_, U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier> { Ref::map(self.0.borrow(), |o| o.name.get()) }
+    pub fn p_name_get(&self) -> U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier { self.0.borrow().name.get().clone() }
+    pub fn p_name_opt(&self) -> Option<U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier> { self.0.borrow().name.as_option().cloned() }
+    pub fn p_name_mut(&self) -> RefMut<'_, U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier> { RefMut::map(self.0.borrow_mut(), |o| o.name.get_mut()) }
+    pub fn set_p_name(&self, v: U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier) { self.0.borrow_mut().name.set(v); }
+    pub fn p_args(&self) -> Ref<'_, Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>> { Ref::map(self.0.borrow(), |o| &o.args) }
+    pub fn p_args_get(&self) -> Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder> { self.0.borrow().args.clone() }
+    pub fn p_args_opt(&self) -> Option<Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>> { Some(self.0.borrow().args.clone()) }
+    pub fn p_args_mut(&self) -> RefMut<'_, Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.args) }
+    pub fn set_p_args(&self, v: Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>) { self.0.borrow_mut().args = v; }
+    pub fn new(mut class: U_PhpParser_Node_Expr_or_PhpParser_Node_Name, mut name: U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str, mut args: Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>, mut attributes: Map<Str, Mixed>) -> Result<StaticCall, Throw> {
+        let this = StaticCall(Rc::new(RefCell::new(StaticCallObj {
+            attributes: Default::default(),
+            class: Late::uninit(),
+            name: Late::uninit(),
+            args: Default::default(),
+        })));
+        this.magic__construct(class, name, args, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut class: U_PhpParser_Node_Expr_or_PhpParser_Node_Name, mut name: U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str, mut args: Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_class(class.clone());
+    self.set_p_name((if (match name.clone() { U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str::Str(_) => true, _ => false }) { U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier::PhpParser_Node_Identifier(crate::php_parser::node::Identifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())?) } else { cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier>(name.clone()) }));
+    self.set_p_args(args.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("class"))); __m1.push(cast::<Mixed>(Str::from_static("name"))); __m1.push(cast::<Mixed>(Str::from_static("args"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_StaticCall"));
+    }
+    pub fn getRawArgs(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok(self.p_args_get().map_values(|v| cast::<Mixed>(v)));
+    }
+    pub fn isFirstClassCallable(&self) -> Result<bool, Throw> { cast::<crate::php_parser::node::expr::CallLike>(self.clone()).isFirstClassCallable__impl() }
+    pub fn getArgs(&self) -> Result<Map<ArrayKey, crate::php_parser::node::Arg>, Throw> { cast::<crate::php_parser::node::expr::CallLike>(self.clone()).getArgs__impl() }
+    pub fn getArg(&self, mut name: Str, mut position: i64) -> Result<Option<crate::php_parser::node::Arg>, Throw> { cast::<crate::php_parser::node::expr::CallLike>(self.clone()).getArg__impl(name, position) }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut class: U_PhpParser_Node_Expr_or_PhpParser_Node_Name, mut name: U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str, mut args: Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::StaticCall, Throw> { Ok(Self::new(class, name, args, attributes)?) }
+}
+impl php_rt::PhpObject for StaticCall {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\StaticCall" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\staticcall", "phpparser\\node\\expr\\calllike", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_class_opt() { out.push((Str::from_static("class"), cast::<Mixed>(v))); } if let Some(v) = self.p_name_opt() { out.push((Str::from_static("name"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_args_get()) { out.push((Str::from_static("args"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "class" => { self.set_p_class(cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Name>(value)); true }, "name" => { self.set_p_name(cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier>(value)); true }, "args" => { self.set_p_args(cast::<Map<ArrayKey, U_PhpParser_Node_Arg_or_PhpParser_Node_VariadicPlaceholder>>(value)); true }, _ => false } }
+}
+impl StaticCall { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\StaticCall could not be converted to string"))) } }
+impl php_rt::PhpClone for StaticCall { fn php_clone(&self) -> Self { let c = StaticCall(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for StaticCallObj { fn clone(&self) -> Self { StaticCallObj { attributes: self.attributes.clone(), class: self.class.clone(), name: self.name.clone(), args: self.args.clone() } } }
+impl StaticCall {
+}
+pub struct StaticPropertyFetchObj {
+    pub attributes: Map<Str, Mixed>,
+    pub class: Late<U_PhpParser_Node_Expr_or_PhpParser_Node_Name>,
+    pub name: Late<U_PhpParser_Node_Expr_or_PhpParser_Node_VarLikeIdentifier>,
+}
+#[derive(Clone)]
+pub struct StaticPropertyFetch(pub Rc<RefCell<StaticPropertyFetchObj>>);
+impl StaticPropertyFetch {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_class(&self) -> Ref<'_, U_PhpParser_Node_Expr_or_PhpParser_Node_Name> { Ref::map(self.0.borrow(), |o| o.class.get()) }
+    pub fn p_class_get(&self) -> U_PhpParser_Node_Expr_or_PhpParser_Node_Name { self.0.borrow().class.get().clone() }
+    pub fn p_class_opt(&self) -> Option<U_PhpParser_Node_Expr_or_PhpParser_Node_Name> { self.0.borrow().class.as_option().cloned() }
+    pub fn p_class_mut(&self) -> RefMut<'_, U_PhpParser_Node_Expr_or_PhpParser_Node_Name> { RefMut::map(self.0.borrow_mut(), |o| o.class.get_mut()) }
+    pub fn set_p_class(&self, v: U_PhpParser_Node_Expr_or_PhpParser_Node_Name) { self.0.borrow_mut().class.set(v); }
+    pub fn p_name(&self) -> Ref<'_, U_PhpParser_Node_Expr_or_PhpParser_Node_VarLikeIdentifier> { Ref::map(self.0.borrow(), |o| o.name.get()) }
+    pub fn p_name_get(&self) -> U_PhpParser_Node_Expr_or_PhpParser_Node_VarLikeIdentifier { self.0.borrow().name.get().clone() }
+    pub fn p_name_opt(&self) -> Option<U_PhpParser_Node_Expr_or_PhpParser_Node_VarLikeIdentifier> { self.0.borrow().name.as_option().cloned() }
+    pub fn p_name_mut(&self) -> RefMut<'_, U_PhpParser_Node_Expr_or_PhpParser_Node_VarLikeIdentifier> { RefMut::map(self.0.borrow_mut(), |o| o.name.get_mut()) }
+    pub fn set_p_name(&self, v: U_PhpParser_Node_Expr_or_PhpParser_Node_VarLikeIdentifier) { self.0.borrow_mut().name.set(v); }
+    pub fn new(mut class: U_PhpParser_Node_Expr_or_PhpParser_Node_Name, mut name: U_PhpParser_Node_Expr_or_PhpParser_Node_VarLikeIdentifier_or_Str, mut attributes: Map<Str, Mixed>) -> Result<StaticPropertyFetch, Throw> {
+        let this = StaticPropertyFetch(Rc::new(RefCell::new(StaticPropertyFetchObj {
+            attributes: Default::default(),
+            class: Late::uninit(),
+            name: Late::uninit(),
+        })));
+        this.magic__construct(class, name, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut class: U_PhpParser_Node_Expr_or_PhpParser_Node_Name, mut name: U_PhpParser_Node_Expr_or_PhpParser_Node_VarLikeIdentifier_or_Str, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_class(class.clone());
+    self.set_p_name((if (match name.clone() { U_PhpParser_Node_Expr_or_PhpParser_Node_VarLikeIdentifier_or_Str::Str(_) => true, _ => false }) { U_PhpParser_Node_Expr_or_PhpParser_Node_VarLikeIdentifier::PhpParser_Node_VarLikeIdentifier(crate::php_parser::node::VarLikeIdentifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())?) } else { cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_VarLikeIdentifier>(name.clone()) }));
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("class"))); __m1.push(cast::<Mixed>(Str::from_static("name"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_StaticPropertyFetch"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut class: U_PhpParser_Node_Expr_or_PhpParser_Node_Name, mut name: U_PhpParser_Node_Expr_or_PhpParser_Node_VarLikeIdentifier_or_Str, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::StaticPropertyFetch, Throw> { Ok(Self::new(class, name, attributes)?) }
+}
+impl php_rt::PhpObject for StaticPropertyFetch {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\StaticPropertyFetch" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\staticpropertyfetch", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_class_opt() { out.push((Str::from_static("class"), cast::<Mixed>(v))); } if let Some(v) = self.p_name_opt() { out.push((Str::from_static("name"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "class" => { self.set_p_class(cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Name>(value)); true }, "name" => { self.set_p_name(cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_VarLikeIdentifier>(value)); true }, _ => false } }
+}
+impl StaticPropertyFetch { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\StaticPropertyFetch could not be converted to string"))) } }
+impl php_rt::PhpClone for StaticPropertyFetch { fn php_clone(&self) -> Self { let c = StaticPropertyFetch(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for StaticPropertyFetchObj { fn clone(&self) -> Self { StaticPropertyFetchObj { attributes: self.attributes.clone(), class: self.class.clone(), name: self.name.clone() } } }
+impl StaticPropertyFetch {
+}
+pub struct TernaryObj {
+    pub attributes: Map<Str, Mixed>,
+    pub cond: Late<crate::php_parser::node::Expr>,
+    pub if_: Option<crate::php_parser::node::Expr>,
+    pub else_: Late<crate::php_parser::node::Expr>,
+}
+#[derive(Clone)]
+pub struct Ternary(pub Rc<RefCell<TernaryObj>>);
+impl Ternary {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_cond(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.cond.get()) }
+    pub fn p_cond_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().cond.get().clone() }
+    pub fn p_cond_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().cond.as_option().cloned() }
+    pub fn p_cond_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.cond.get_mut()) }
+    pub fn set_p_cond(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().cond.set(v); }
+    pub fn p_if_(&self) -> Ref<'_, Option<crate::php_parser::node::Expr>> { Ref::map(self.0.borrow(), |o| &o.if_) }
+    pub fn p_if__get(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().if_.clone() }
+    pub fn p_if__opt(&self) -> Option<Option<crate::php_parser::node::Expr>> { Some(self.0.borrow().if_.clone()) }
+    pub fn p_if__mut(&self) -> RefMut<'_, Option<crate::php_parser::node::Expr>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.if_) }
+    pub fn set_p_if_(&self, v: Option<crate::php_parser::node::Expr>) { self.0.borrow_mut().if_ = v; }
+    pub fn p_else_(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.else_.get()) }
+    pub fn p_else__get(&self) -> crate::php_parser::node::Expr { self.0.borrow().else_.get().clone() }
+    pub fn p_else__opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().else_.as_option().cloned() }
+    pub fn p_else__mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.else_.get_mut()) }
+    pub fn set_p_else_(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().else_.set(v); }
+    pub fn new(mut cond: crate::php_parser::node::Expr, mut if_: Option<crate::php_parser::node::Expr>, mut else_: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Ternary, Throw> {
+        let this = Ternary(Rc::new(RefCell::new(TernaryObj {
+            attributes: Default::default(),
+            cond: Late::uninit(),
+            if_: Default::default(),
+            else_: Late::uninit(),
+        })));
+        this.magic__construct(cond, if_, else_, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut cond: crate::php_parser::node::Expr, mut if_: Option<crate::php_parser::node::Expr>, mut else_: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_cond(cond.clone());
+    self.set_p_if_(if_.clone());
+    self.set_p_else_(else_.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("cond"))); __m1.push(cast::<Mixed>(Str::from_static("if"))); __m1.push(cast::<Mixed>(Str::from_static("else"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_Ternary"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut cond: crate::php_parser::node::Expr, mut if_: Option<crate::php_parser::node::Expr>, mut else_: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::Ternary, Throw> { Ok(Self::new(cond, if_, else_, attributes)?) }
+}
+impl php_rt::PhpObject for Ternary {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\Ternary" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\ternary", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_cond_opt() { out.push((Str::from_static("cond"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_if__get()) { out.push((Str::from_static("if"), cast::<Mixed>(v))); } if let Some(v) = self.p_else__opt() { out.push((Str::from_static("else"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "cond" => { self.set_p_cond(cast::<crate::php_parser::node::Expr>(value)); true }, "if" => { self.set_p_if_(value.to_option().map(|__m| cast::<crate::php_parser::node::Expr>(__m))); true }, "else" => { self.set_p_else_(cast::<crate::php_parser::node::Expr>(value)); true }, _ => false } }
+}
+impl Ternary { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\Ternary could not be converted to string"))) } }
+impl php_rt::PhpClone for Ternary { fn php_clone(&self) -> Self { let c = Ternary(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for TernaryObj { fn clone(&self) -> Self { TernaryObj { attributes: self.attributes.clone(), cond: self.cond.clone(), if_: self.if_.clone(), else_: self.else_.clone() } } }
+impl Ternary {
+}
+pub struct Throw_Obj {
+    pub attributes: Map<Str, Mixed>,
+    pub expr: Late<crate::php_parser::node::Expr>,
+}
+#[derive(Clone)]
+pub struct Throw_(pub Rc<RefCell<Throw_Obj>>);
+impl Throw_ {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_expr(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.expr.get()) }
+    pub fn p_expr_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().expr.get().clone() }
+    pub fn p_expr_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().expr.as_option().cloned() }
+    pub fn p_expr_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.expr.get_mut()) }
+    pub fn set_p_expr(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().expr.set(v); }
+    pub fn new(mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Throw_, Throw> {
+        let this = Throw_(Rc::new(RefCell::new(Throw_Obj {
+            attributes: Default::default(),
+            expr: Late::uninit(),
+        })));
+        this.magic__construct(expr, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_expr(expr.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("expr"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_Throw"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::Throw_, Throw> { Ok(Self::new(expr, attributes)?) }
+}
+impl php_rt::PhpObject for Throw_ {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\Throw_" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\throw_", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_expr_opt() { out.push((Str::from_static("expr"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "expr" => { self.set_p_expr(cast::<crate::php_parser::node::Expr>(value)); true }, _ => false } }
+}
+impl Throw_ { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\Throw_ could not be converted to string"))) } }
+impl php_rt::PhpClone for Throw_ { fn php_clone(&self) -> Self { let c = Throw_(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for Throw_Obj { fn clone(&self) -> Self { Throw_Obj { attributes: self.attributes.clone(), expr: self.expr.clone() } } }
+impl Throw_ {
+}
+pub struct UnaryMinusObj {
+    pub attributes: Map<Str, Mixed>,
+    pub expr: Late<crate::php_parser::node::Expr>,
+}
+#[derive(Clone)]
+pub struct UnaryMinus(pub Rc<RefCell<UnaryMinusObj>>);
+impl UnaryMinus {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_expr(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.expr.get()) }
+    pub fn p_expr_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().expr.get().clone() }
+    pub fn p_expr_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().expr.as_option().cloned() }
+    pub fn p_expr_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.expr.get_mut()) }
+    pub fn set_p_expr(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().expr.set(v); }
+    pub fn new(mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<UnaryMinus, Throw> {
+        let this = UnaryMinus(Rc::new(RefCell::new(UnaryMinusObj {
+            attributes: Default::default(),
+            expr: Late::uninit(),
+        })));
+        this.magic__construct(expr, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_expr(expr.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("expr"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_UnaryMinus"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::UnaryMinus, Throw> { Ok(Self::new(expr, attributes)?) }
+}
+impl php_rt::PhpObject for UnaryMinus {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\UnaryMinus" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\unaryminus", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_expr_opt() { out.push((Str::from_static("expr"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "expr" => { self.set_p_expr(cast::<crate::php_parser::node::Expr>(value)); true }, _ => false } }
+}
+impl UnaryMinus { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\UnaryMinus could not be converted to string"))) } }
+impl php_rt::PhpClone for UnaryMinus { fn php_clone(&self) -> Self { let c = UnaryMinus(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for UnaryMinusObj { fn clone(&self) -> Self { UnaryMinusObj { attributes: self.attributes.clone(), expr: self.expr.clone() } } }
+impl UnaryMinus {
+}
+pub struct UnaryPlusObj {
+    pub attributes: Map<Str, Mixed>,
+    pub expr: Late<crate::php_parser::node::Expr>,
+}
+#[derive(Clone)]
+pub struct UnaryPlus(pub Rc<RefCell<UnaryPlusObj>>);
+impl UnaryPlus {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_expr(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.expr.get()) }
+    pub fn p_expr_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().expr.get().clone() }
+    pub fn p_expr_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().expr.as_option().cloned() }
+    pub fn p_expr_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.expr.get_mut()) }
+    pub fn set_p_expr(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().expr.set(v); }
+    pub fn new(mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<UnaryPlus, Throw> {
+        let this = UnaryPlus(Rc::new(RefCell::new(UnaryPlusObj {
+            attributes: Default::default(),
+            expr: Late::uninit(),
+        })));
+        this.magic__construct(expr, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_expr(expr.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("expr"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_UnaryPlus"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::UnaryPlus, Throw> { Ok(Self::new(expr, attributes)?) }
+}
+impl php_rt::PhpObject for UnaryPlus {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\UnaryPlus" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\unaryplus", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_expr_opt() { out.push((Str::from_static("expr"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "expr" => { self.set_p_expr(cast::<crate::php_parser::node::Expr>(value)); true }, _ => false } }
+}
+impl UnaryPlus { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\UnaryPlus could not be converted to string"))) } }
+impl php_rt::PhpClone for UnaryPlus { fn php_clone(&self) -> Self { let c = UnaryPlus(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for UnaryPlusObj { fn clone(&self) -> Self { UnaryPlusObj { attributes: self.attributes.clone(), expr: self.expr.clone() } } }
+impl UnaryPlus {
+}
+pub struct VariableObj {
+    pub attributes: Map<Str, Mixed>,
+    pub name: Late<U_PhpParser_Node_Expr_or_Str>,
+}
+#[derive(Clone)]
+pub struct Variable(pub Rc<RefCell<VariableObj>>);
+impl Variable {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_name(&self) -> Ref<'_, U_PhpParser_Node_Expr_or_Str> { Ref::map(self.0.borrow(), |o| o.name.get()) }
+    pub fn p_name_get(&self) -> U_PhpParser_Node_Expr_or_Str { self.0.borrow().name.get().clone() }
+    pub fn p_name_opt(&self) -> Option<U_PhpParser_Node_Expr_or_Str> { self.0.borrow().name.as_option().cloned() }
+    pub fn p_name_mut(&self) -> RefMut<'_, U_PhpParser_Node_Expr_or_Str> { RefMut::map(self.0.borrow_mut(), |o| o.name.get_mut()) }
+    pub fn set_p_name(&self, v: U_PhpParser_Node_Expr_or_Str) { self.0.borrow_mut().name.set(v); }
+    pub fn new(mut name: U_PhpParser_Node_Expr_or_Str, mut attributes: Map<Str, Mixed>) -> Result<Variable, Throw> {
+        let this = Variable(Rc::new(RefCell::new(VariableObj {
+            attributes: Default::default(),
+            name: Late::uninit(),
+        })));
+        this.magic__construct(name, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut name: U_PhpParser_Node_Expr_or_Str, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_name(name.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("name"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_Variable"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut name: U_PhpParser_Node_Expr_or_Str, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::Variable, Throw> { Ok(Self::new(name, attributes)?) }
+}
+impl php_rt::PhpObject for Variable {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\Variable" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\variable", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_name_opt() { out.push((Str::from_static("name"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "name" => { self.set_p_name(cast::<U_PhpParser_Node_Expr_or_Str>(value)); true }, _ => false } }
+}
+impl Variable { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\Variable could not be converted to string"))) } }
+impl php_rt::PhpClone for Variable { fn php_clone(&self) -> Self { let c = Variable(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for VariableObj { fn clone(&self) -> Self { VariableObj { attributes: self.attributes.clone(), name: self.name.clone() } } }
+impl Variable {
+}
+pub struct YieldFromObj {
+    pub attributes: Map<Str, Mixed>,
+    pub expr: Late<crate::php_parser::node::Expr>,
+}
+#[derive(Clone)]
+pub struct YieldFrom(pub Rc<RefCell<YieldFromObj>>);
+impl YieldFrom {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_expr(&self) -> Ref<'_, crate::php_parser::node::Expr> { Ref::map(self.0.borrow(), |o| o.expr.get()) }
+    pub fn p_expr_get(&self) -> crate::php_parser::node::Expr { self.0.borrow().expr.get().clone() }
+    pub fn p_expr_opt(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().expr.as_option().cloned() }
+    pub fn p_expr_mut(&self) -> RefMut<'_, crate::php_parser::node::Expr> { RefMut::map(self.0.borrow_mut(), |o| o.expr.get_mut()) }
+    pub fn set_p_expr(&self, v: crate::php_parser::node::Expr) { self.0.borrow_mut().expr.set(v); }
+    pub fn new(mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<YieldFrom, Throw> {
+        let this = YieldFrom(Rc::new(RefCell::new(YieldFromObj {
+            attributes: Default::default(),
+            expr: Late::uninit(),
+        })));
+        this.magic__construct(expr, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_expr(expr.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("expr"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_YieldFrom"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut expr: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::YieldFrom, Throw> { Ok(Self::new(expr, attributes)?) }
+}
+impl php_rt::PhpObject for YieldFrom {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\YieldFrom" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\yieldfrom", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = self.p_expr_opt() { out.push((Str::from_static("expr"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "expr" => { self.set_p_expr(cast::<crate::php_parser::node::Expr>(value)); true }, _ => false } }
+}
+impl YieldFrom { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\YieldFrom could not be converted to string"))) } }
+impl php_rt::PhpClone for YieldFrom { fn php_clone(&self) -> Self { let c = YieldFrom(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for YieldFromObj { fn clone(&self) -> Self { YieldFromObj { attributes: self.attributes.clone(), expr: self.expr.clone() } } }
+impl YieldFrom {
+}
+pub struct Yield_Obj {
+    pub attributes: Map<Str, Mixed>,
+    pub key: Option<crate::php_parser::node::Expr>,
+    pub value: Option<crate::php_parser::node::Expr>,
+}
+#[derive(Clone)]
+pub struct Yield_(pub Rc<RefCell<Yield_Obj>>);
+impl Yield_ {
+    pub fn p_attributes(&self) -> Ref<'_, Map<Str, Mixed>> { Ref::map(self.0.borrow(), |o| &o.attributes) }
+    pub fn p_attributes_get(&self) -> Map<Str, Mixed> { self.0.borrow().attributes.clone() }
+    pub fn p_attributes_opt(&self) -> Option<Map<Str, Mixed>> { Some(self.0.borrow().attributes.clone()) }
+    pub fn p_attributes_mut(&self) -> RefMut<'_, Map<Str, Mixed>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.attributes) }
+    pub fn set_p_attributes(&self, v: Map<Str, Mixed>) { self.0.borrow_mut().attributes = v; }
+    pub fn p_key(&self) -> Ref<'_, Option<crate::php_parser::node::Expr>> { Ref::map(self.0.borrow(), |o| &o.key) }
+    pub fn p_key_get(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().key.clone() }
+    pub fn p_key_opt(&self) -> Option<Option<crate::php_parser::node::Expr>> { Some(self.0.borrow().key.clone()) }
+    pub fn p_key_mut(&self) -> RefMut<'_, Option<crate::php_parser::node::Expr>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.key) }
+    pub fn set_p_key(&self, v: Option<crate::php_parser::node::Expr>) { self.0.borrow_mut().key = v; }
+    pub fn p_value(&self) -> Ref<'_, Option<crate::php_parser::node::Expr>> { Ref::map(self.0.borrow(), |o| &o.value) }
+    pub fn p_value_get(&self) -> Option<crate::php_parser::node::Expr> { self.0.borrow().value.clone() }
+    pub fn p_value_opt(&self) -> Option<Option<crate::php_parser::node::Expr>> { Some(self.0.borrow().value.clone()) }
+    pub fn p_value_mut(&self) -> RefMut<'_, Option<crate::php_parser::node::Expr>> { RefMut::map(self.0.borrow_mut(), |o| &mut o.value) }
+    pub fn set_p_value(&self, v: Option<crate::php_parser::node::Expr>) { self.0.borrow_mut().value = v; }
+    pub fn new(mut value: Option<crate::php_parser::node::Expr>, mut key_v: Option<crate::php_parser::node::Expr>, mut attributes: Map<Str, Mixed>) -> Result<Yield_, Throw> {
+        let this = Yield_(Rc::new(RefCell::new(Yield_Obj {
+            attributes: Default::default(),
+            key: Default::default(),
+            value: Default::default(),
+        })));
+        this.magic__construct(value, key_v, attributes)?;
+        Ok(this)
+    }
+    pub fn magic__construct(&self, mut value: Option<crate::php_parser::node::Expr>, mut key_v: Option<crate::php_parser::node::Expr>, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
+    self.set_p_attributes(attributes.clone());
+    self.set_p_key(key_v.clone());
+    self.set_p_value(value.clone());
+    #[allow(unreachable_code)] Ok(Mixed::Null)
+    }
+    pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
+    return Ok({ let mut __m1: Map<ArrayKey, Mixed> = Map::new(); __m1.push(cast::<Mixed>(Str::from_static("key"))); __m1.push(cast::<Mixed>(Str::from_static("value"))); __m1 });
+    }
+    pub fn getType(&self) -> Result<Str, Throw> {
+    return Ok(Str::from_static("Expr_Yield"));
+    }
+    pub fn getLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getLine__impl() }
+    pub fn getStartLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartLine__impl() }
+    pub fn getEndLine(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndLine__impl() }
+    pub fn getStartTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartTokenPos__impl() }
+    pub fn getEndTokenPos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndTokenPos__impl() }
+    pub fn getStartFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getStartFilePos__impl() }
+    pub fn getEndFilePos(&self) -> Result<i64, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getEndFilePos__impl() }
+    pub fn getComments(&self) -> Result<Map<ArrayKey, crate::php_parser::Comment>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getComments__impl() }
+    pub fn getDocComment(&self) -> Result<Option<crate::php_parser::comment::Doc>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getDocComment__impl() }
+    pub fn setDocComment(&self, mut docComment: crate::php_parser::comment::Doc) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setDocComment__impl(docComment) }
+    pub fn setAttribute(&self, mut key_v: Str, mut value: Mixed) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttribute__impl(key_v, value) }
+    pub fn hasAttribute(&self, mut key_v: Str) -> Result<bool, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).hasAttribute__impl(key_v) }
+    pub fn getAttribute(&self, mut key_v: Str, mut default: Mixed) -> Result<Mixed, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttribute__impl(key_v, default) }
+    pub fn getAttributes(&self) -> Result<Map<ArrayKey, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).getAttributes__impl() }
+    pub fn setAttributes(&self, mut attributes: Map<ArrayKey, Mixed>) -> Result<(), Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).setAttributes__impl(attributes) }
+    pub fn jsonSerialize(&self) -> Result<Map<Str, Mixed>, Throw> { cast::<crate::php_parser::NodeAbstract>(self.clone()).jsonSerialize__impl() }
+    pub fn new_same_class(&self, mut value: Option<crate::php_parser::node::Expr>, mut key_v: Option<crate::php_parser::node::Expr>, mut attributes: Map<Str, Mixed>) -> Result<crate::php_parser::node::expr::Yield_, Throw> { Ok(Self::new(value, key_v, attributes)?) }
+}
+impl php_rt::PhpObject for Yield_ {
+    fn class_name(&self) -> &'static str { "PhpParser\\Node\\Expr\\Yield_" }
+    fn class_ancestors(&self) -> &'static [&'static str] { &["phpparser\\node\\expr\\yield_", "phpparser\\node\\expr", "phpparser\\nodeabstract", "phpparser\\node", "jsonserializable"] }
+    fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }
+    fn as_any(&self) -> &dyn std::any::Any { self }
+    fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); if let Some(v) = Some(self.p_attributes_get()) { out.push((Str::from_static("attributes"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_key_get()) { out.push((Str::from_static("key"), cast::<Mixed>(v))); } if let Some(v) = Some(self.p_value_get()) { out.push((Str::from_static("value"), cast::<Mixed>(v))); } out }
+    fn set_prop(&self, name: &str, value: Mixed) -> bool { match name { "attributes" => { self.set_p_attributes(cast::<Map<Str, Mixed>>(value)); true }, "key" => { self.set_p_key(value.to_option().map(|__m| cast::<crate::php_parser::node::Expr>(__m))); true }, "value" => { self.set_p_value(value.to_option().map(|__m| cast::<crate::php_parser::node::Expr>(__m))); true }, _ => false } }
+}
+impl Yield_ { pub fn to_php_string(&self) -> Result<Str, Throw> { Err(Throw::error(Str::from_static("Object of class PhpParser\\Node\\Expr\\Yield_ could not be converted to string"))) } }
+impl php_rt::PhpClone for Yield_ { fn php_clone(&self) -> Self { let c = Yield_(Rc::new(RefCell::new(self.0.borrow().clone()))); c } }
+impl Clone for Yield_Obj { fn clone(&self) -> Self { Yield_Obj { attributes: self.attributes.clone(), key: self.key.clone(), value: self.value.clone() } } }
+impl Yield_ {
+}
+impl php_rt::Truthy for ArrayDimFetch { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for ArrayDimFetch { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\ArrayDimFetch")) } }
+impl php_rt::Identical for ArrayDimFetch { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for ArrayDimFetch { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for ArrayDimFetch { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for ArrayDimFetch { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<ArrayDimFetch> for Mixed { fn cast_to(self) -> ArrayDimFetch { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::ArrayDimFetch>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\ArrayDimFetch") } }
+impl php_rt::TryDowncast for ArrayDimFetch { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::ArrayDimFetch>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for ArrayDimFetch { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<ArrayDimFetch> for AnyObject { fn cast_to(self) -> ArrayDimFetch { cast::<ArrayDimFetch>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<ArrayDimFetch> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\arraydimfetch") } }
+impl php_rt::InstanceOf<ArrayDimFetch> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\arraydimfetch") } }
+impl php_rt::InstanceOf<ArrayDimFetch> for ArrayDimFetch { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for Array_ { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for Array_ { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\Array_")) } }
+impl php_rt::Identical for Array_ { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for Array_ { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for Array_ { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for Array_ { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<Array_> for Mixed { fn cast_to(self) -> Array_ { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Array_>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\Array_") } }
+impl php_rt::TryDowncast for Array_ { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Array_>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for Array_ { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<Array_> for AnyObject { fn cast_to(self) -> Array_ { cast::<Array_>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<Array_> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\array_") } }
+impl php_rt::InstanceOf<Array_> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\array_") } }
+impl php_rt::InstanceOf<Array_> for Array_ { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for ArrowFunction { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for ArrowFunction { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\ArrowFunction")) } }
+impl php_rt::Identical for ArrowFunction { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for ArrowFunction { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for ArrowFunction { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for ArrowFunction { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<ArrowFunction> for Mixed { fn cast_to(self) -> ArrowFunction { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::ArrowFunction>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\ArrowFunction") } }
+impl php_rt::TryDowncast for ArrowFunction { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::ArrowFunction>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for ArrowFunction { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<ArrowFunction> for AnyObject { fn cast_to(self) -> ArrowFunction { cast::<ArrowFunction>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<ArrowFunction> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\arrowfunction") } }
+impl php_rt::InstanceOf<ArrowFunction> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\arrowfunction") } }
+impl php_rt::InstanceOf<ArrowFunction> for ArrowFunction { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for Assign { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for Assign { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\Assign")) } }
+impl php_rt::Identical for Assign { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for Assign { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for Assign { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for Assign { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<Assign> for Mixed { fn cast_to(self) -> Assign { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Assign>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\Assign") } }
+impl php_rt::TryDowncast for Assign { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Assign>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for Assign { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<Assign> for AnyObject { fn cast_to(self) -> Assign { cast::<Assign>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<Assign> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\assign") } }
+impl php_rt::InstanceOf<Assign> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\assign") } }
+impl php_rt::InstanceOf<Assign> for Assign { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for AssignOp { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for AssignOp { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignOp")) } }
+impl php_rt::Identical for AssignOp { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for AssignOp { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for AssignOp { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for AssignOp { fn cast_to(self) -> Mixed { match self { AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(v) => Mixed::Obj(Rc::new(v)), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(v) => Mixed::Obj(Rc::new(v)), AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(v) => Mixed::Obj(Rc::new(v)), AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(v) => Mixed::Obj(Rc::new(v)), AssignOp::PhpParser_Node_Expr_AssignOp_Concat(v) => Mixed::Obj(Rc::new(v)), AssignOp::PhpParser_Node_Expr_AssignOp_Div(v) => Mixed::Obj(Rc::new(v)), AssignOp::PhpParser_Node_Expr_AssignOp_Minus(v) => Mixed::Obj(Rc::new(v)), AssignOp::PhpParser_Node_Expr_AssignOp_Mod(v) => Mixed::Obj(Rc::new(v)), AssignOp::PhpParser_Node_Expr_AssignOp_Mul(v) => Mixed::Obj(Rc::new(v)), AssignOp::PhpParser_Node_Expr_AssignOp_Plus(v) => Mixed::Obj(Rc::new(v)), AssignOp::PhpParser_Node_Expr_AssignOp_Pow(v) => Mixed::Obj(Rc::new(v)), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(v) => Mixed::Obj(Rc::new(v)), AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(v) => Mixed::Obj(Rc::new(v)), _ => unreachable!() } } }
+impl php_rt::CastTo<AssignOp> for Mixed { fn cast_to(self) -> AssignOp { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::assign_op::BitwiseAnd>() { return crate::php_parser::node::expr::AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::assign_op::BitwiseOr>() { return crate::php_parser::node::expr::AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::assign_op::BitwiseXor>() { return crate::php_parser::node::expr::AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::assign_op::Coalesce>() { return crate::php_parser::node::expr::AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::assign_op::Concat>() { return crate::php_parser::node::expr::AssignOp::PhpParser_Node_Expr_AssignOp_Concat(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::assign_op::Div>() { return crate::php_parser::node::expr::AssignOp::PhpParser_Node_Expr_AssignOp_Div(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::assign_op::Minus>() { return crate::php_parser::node::expr::AssignOp::PhpParser_Node_Expr_AssignOp_Minus(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::assign_op::Mod>() { return crate::php_parser::node::expr::AssignOp::PhpParser_Node_Expr_AssignOp_Mod(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::assign_op::Mul>() { return crate::php_parser::node::expr::AssignOp::PhpParser_Node_Expr_AssignOp_Mul(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::assign_op::Plus>() { return crate::php_parser::node::expr::AssignOp::PhpParser_Node_Expr_AssignOp_Plus(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::assign_op::Pow>() { return crate::php_parser::node::expr::AssignOp::PhpParser_Node_Expr_AssignOp_Pow(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::assign_op::ShiftLeft>() { return crate::php_parser::node::expr::AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::assign_op::ShiftRight>() { return crate::php_parser::node::expr::AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(v.clone()); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\AssignOp") } }
+impl php_rt::TryDowncast for AssignOp { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::assign_op::BitwiseAnd>() { return Some(crate::php_parser::node::expr::AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseAnd(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::assign_op::BitwiseOr>() { return Some(crate::php_parser::node::expr::AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseOr(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::assign_op::BitwiseXor>() { return Some(crate::php_parser::node::expr::AssignOp::PhpParser_Node_Expr_AssignOp_BitwiseXor(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::assign_op::Coalesce>() { return Some(crate::php_parser::node::expr::AssignOp::PhpParser_Node_Expr_AssignOp_Coalesce(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::assign_op::Concat>() { return Some(crate::php_parser::node::expr::AssignOp::PhpParser_Node_Expr_AssignOp_Concat(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::assign_op::Div>() { return Some(crate::php_parser::node::expr::AssignOp::PhpParser_Node_Expr_AssignOp_Div(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::assign_op::Minus>() { return Some(crate::php_parser::node::expr::AssignOp::PhpParser_Node_Expr_AssignOp_Minus(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::assign_op::Mod>() { return Some(crate::php_parser::node::expr::AssignOp::PhpParser_Node_Expr_AssignOp_Mod(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::assign_op::Mul>() { return Some(crate::php_parser::node::expr::AssignOp::PhpParser_Node_Expr_AssignOp_Mul(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::assign_op::Plus>() { return Some(crate::php_parser::node::expr::AssignOp::PhpParser_Node_Expr_AssignOp_Plus(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::assign_op::Pow>() { return Some(crate::php_parser::node::expr::AssignOp::PhpParser_Node_Expr_AssignOp_Pow(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::assign_op::ShiftLeft>() { return Some(crate::php_parser::node::expr::AssignOp::PhpParser_Node_Expr_AssignOp_ShiftLeft(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::assign_op::ShiftRight>() { return Some(crate::php_parser::node::expr::AssignOp::PhpParser_Node_Expr_AssignOp_ShiftRight(v.clone())); } None } }
+impl php_rt::CastTo<AnyObject> for AssignOp { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<AssignOp> for AnyObject { fn cast_to(self) -> AssignOp { cast::<AssignOp>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<AssignOp> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\assignop") } }
+impl php_rt::InstanceOf<AssignOp> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\assignop") } }
+impl php_rt::InstanceOf<AssignOp> for AssignOp { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for AssignRef { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for AssignRef { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\AssignRef")) } }
+impl php_rt::Identical for AssignRef { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for AssignRef { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for AssignRef { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for AssignRef { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<AssignRef> for Mixed { fn cast_to(self) -> AssignRef { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::AssignRef>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\AssignRef") } }
+impl php_rt::TryDowncast for AssignRef { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::AssignRef>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for AssignRef { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<AssignRef> for AnyObject { fn cast_to(self) -> AssignRef { cast::<AssignRef>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<AssignRef> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\assignref") } }
+impl php_rt::InstanceOf<AssignRef> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\assignref") } }
+impl php_rt::InstanceOf<AssignRef> for AssignRef { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for BinaryOp { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for BinaryOp { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\BinaryOp")) } }
+impl php_rt::Identical for BinaryOp { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for BinaryOp { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for BinaryOp { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for BinaryOp { fn cast_to(self) -> Mixed { match self { BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(v) => Mixed::Obj(Rc::new(v)), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(v) => Mixed::Obj(Rc::new(v)), BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(v) => Mixed::Obj(Rc::new(v)), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(v) => Mixed::Obj(Rc::new(v)), BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(v) => Mixed::Obj(Rc::new(v)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(v) => Mixed::Obj(Rc::new(v)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(v) => Mixed::Obj(Rc::new(v)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(v) => Mixed::Obj(Rc::new(v)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(v) => Mixed::Obj(Rc::new(v)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(v) => Mixed::Obj(Rc::new(v)), BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(v) => Mixed::Obj(Rc::new(v)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(v) => Mixed::Obj(Rc::new(v)), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(v) => Mixed::Obj(Rc::new(v)), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(v) => Mixed::Obj(Rc::new(v)), BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(v) => Mixed::Obj(Rc::new(v)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(v) => Mixed::Obj(Rc::new(v)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(v) => Mixed::Obj(Rc::new(v)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(v) => Mixed::Obj(Rc::new(v)), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(v) => Mixed::Obj(Rc::new(v)), BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(v) => Mixed::Obj(Rc::new(v)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(v) => Mixed::Obj(Rc::new(v)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(v) => Mixed::Obj(Rc::new(v)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(v) => Mixed::Obj(Rc::new(v)), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(v) => Mixed::Obj(Rc::new(v)), BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(v) => Mixed::Obj(Rc::new(v)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(v) => Mixed::Obj(Rc::new(v)), BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(v) => Mixed::Obj(Rc::new(v)), BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(v) => Mixed::Obj(Rc::new(v)), _ => unreachable!() } } }
+impl php_rt::CastTo<BinaryOp> for Mixed { fn cast_to(self) -> BinaryOp { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::BitwiseAnd>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::BitwiseOr>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::BitwiseXor>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::BooleanAnd>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::BooleanOr>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Coalesce>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Concat>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Div>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Equal>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Greater>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::GreaterOrEqual>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Identical>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::LogicalAnd>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::LogicalOr>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::LogicalXor>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Minus>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Mod>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Mul>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::NotEqual>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::NotIdentical>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Pipe>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Plus>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Pow>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::ShiftLeft>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::ShiftRight>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Smaller>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::SmallerOrEqual>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Spaceship>() { return crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(v.clone()); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\BinaryOp") } }
+impl php_rt::TryDowncast for BinaryOp { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::BitwiseAnd>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseAnd(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::BitwiseOr>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseOr(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::BitwiseXor>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_BitwiseXor(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::BooleanAnd>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanAnd(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::BooleanOr>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_BooleanOr(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Coalesce>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Coalesce(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Concat>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Concat(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Div>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Div(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Equal>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Equal(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Greater>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Greater(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::GreaterOrEqual>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_GreaterOrEqual(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Identical>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Identical(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::LogicalAnd>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalAnd(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::LogicalOr>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalOr(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::LogicalXor>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_LogicalXor(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Minus>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Minus(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Mod>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Mod(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Mul>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Mul(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::NotEqual>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_NotEqual(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::NotIdentical>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_NotIdentical(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Pipe>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Pipe(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Plus>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Plus(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Pow>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Pow(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::ShiftLeft>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftLeft(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::ShiftRight>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_ShiftRight(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Smaller>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Smaller(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::SmallerOrEqual>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_SmallerOrEqual(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::binary_op::Spaceship>() { return Some(crate::php_parser::node::expr::BinaryOp::PhpParser_Node_Expr_BinaryOp_Spaceship(v.clone())); } None } }
+impl php_rt::CastTo<AnyObject> for BinaryOp { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<BinaryOp> for AnyObject { fn cast_to(self) -> BinaryOp { cast::<BinaryOp>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<BinaryOp> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\binaryop") } }
+impl php_rt::InstanceOf<BinaryOp> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\binaryop") } }
+impl php_rt::InstanceOf<BinaryOp> for BinaryOp { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for BitwiseNot { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for BitwiseNot { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\BitwiseNot")) } }
+impl php_rt::Identical for BitwiseNot { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for BitwiseNot { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for BitwiseNot { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for BitwiseNot { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<BitwiseNot> for Mixed { fn cast_to(self) -> BitwiseNot { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::BitwiseNot>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\BitwiseNot") } }
+impl php_rt::TryDowncast for BitwiseNot { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::BitwiseNot>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for BitwiseNot { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<BitwiseNot> for AnyObject { fn cast_to(self) -> BitwiseNot { cast::<BitwiseNot>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<BitwiseNot> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\bitwisenot") } }
+impl php_rt::InstanceOf<BitwiseNot> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\bitwisenot") } }
+impl php_rt::InstanceOf<BitwiseNot> for BitwiseNot { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for BooleanNot { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for BooleanNot { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\BooleanNot")) } }
+impl php_rt::Identical for BooleanNot { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for BooleanNot { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for BooleanNot { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for BooleanNot { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<BooleanNot> for Mixed { fn cast_to(self) -> BooleanNot { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::BooleanNot>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\BooleanNot") } }
+impl php_rt::TryDowncast for BooleanNot { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::BooleanNot>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for BooleanNot { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<BooleanNot> for AnyObject { fn cast_to(self) -> BooleanNot { cast::<BooleanNot>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<BooleanNot> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\booleannot") } }
+impl php_rt::InstanceOf<BooleanNot> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\booleannot") } }
+impl php_rt::InstanceOf<BooleanNot> for BooleanNot { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for CallLike { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for CallLike { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\CallLike")) } }
+impl php_rt::Identical for CallLike { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for CallLike { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for CallLike { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for CallLike { fn cast_to(self) -> Mixed { match self { CallLike::PhpParser_Node_Expr_FuncCall(v) => Mixed::Obj(Rc::new(v)), CallLike::PhpParser_Node_Expr_MethodCall(v) => Mixed::Obj(Rc::new(v)), CallLike::PhpParser_Node_Expr_New_(v) => Mixed::Obj(Rc::new(v)), CallLike::PhpParser_Node_Expr_NullsafeMethodCall(v) => Mixed::Obj(Rc::new(v)), CallLike::PhpParser_Node_Expr_StaticCall(v) => Mixed::Obj(Rc::new(v)), _ => unreachable!() } } }
+impl php_rt::CastTo<CallLike> for Mixed { fn cast_to(self) -> CallLike { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::FuncCall>() { return crate::php_parser::node::expr::CallLike::PhpParser_Node_Expr_FuncCall(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::MethodCall>() { return crate::php_parser::node::expr::CallLike::PhpParser_Node_Expr_MethodCall(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::New_>() { return crate::php_parser::node::expr::CallLike::PhpParser_Node_Expr_New_(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::NullsafeMethodCall>() { return crate::php_parser::node::expr::CallLike::PhpParser_Node_Expr_NullsafeMethodCall(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::StaticCall>() { return crate::php_parser::node::expr::CallLike::PhpParser_Node_Expr_StaticCall(v.clone()); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\CallLike") } }
+impl php_rt::TryDowncast for CallLike { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::FuncCall>() { return Some(crate::php_parser::node::expr::CallLike::PhpParser_Node_Expr_FuncCall(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::MethodCall>() { return Some(crate::php_parser::node::expr::CallLike::PhpParser_Node_Expr_MethodCall(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::New_>() { return Some(crate::php_parser::node::expr::CallLike::PhpParser_Node_Expr_New_(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::NullsafeMethodCall>() { return Some(crate::php_parser::node::expr::CallLike::PhpParser_Node_Expr_NullsafeMethodCall(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::StaticCall>() { return Some(crate::php_parser::node::expr::CallLike::PhpParser_Node_Expr_StaticCall(v.clone())); } None } }
+impl php_rt::CastTo<AnyObject> for CallLike { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<CallLike> for AnyObject { fn cast_to(self) -> CallLike { cast::<CallLike>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<CallLike> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\calllike") } }
+impl php_rt::InstanceOf<CallLike> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\calllike") } }
+impl php_rt::InstanceOf<CallLike> for CallLike { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for Cast { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for Cast { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\Cast")) } }
+impl php_rt::Identical for Cast { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for Cast { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for Cast { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for Cast { fn cast_to(self) -> Mixed { match self { Cast::PhpParser_Node_Expr_Cast_Array_(v) => Mixed::Obj(Rc::new(v)), Cast::PhpParser_Node_Expr_Cast_Bool_(v) => Mixed::Obj(Rc::new(v)), Cast::PhpParser_Node_Expr_Cast_Double(v) => Mixed::Obj(Rc::new(v)), Cast::PhpParser_Node_Expr_Cast_Int_(v) => Mixed::Obj(Rc::new(v)), Cast::PhpParser_Node_Expr_Cast_Object_(v) => Mixed::Obj(Rc::new(v)), Cast::PhpParser_Node_Expr_Cast_String_(v) => Mixed::Obj(Rc::new(v)), Cast::PhpParser_Node_Expr_Cast_Unset_(v) => Mixed::Obj(Rc::new(v)), Cast::PhpParser_Node_Expr_Cast_Void_(v) => Mixed::Obj(Rc::new(v)), _ => unreachable!() } } }
+impl php_rt::CastTo<Cast> for Mixed { fn cast_to(self) -> Cast { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::cast::Array_>() { return crate::php_parser::node::expr::Cast::PhpParser_Node_Expr_Cast_Array_(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::cast::Bool_>() { return crate::php_parser::node::expr::Cast::PhpParser_Node_Expr_Cast_Bool_(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::cast::Double>() { return crate::php_parser::node::expr::Cast::PhpParser_Node_Expr_Cast_Double(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::cast::Int_>() { return crate::php_parser::node::expr::Cast::PhpParser_Node_Expr_Cast_Int_(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::cast::Object_>() { return crate::php_parser::node::expr::Cast::PhpParser_Node_Expr_Cast_Object_(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::cast::String_>() { return crate::php_parser::node::expr::Cast::PhpParser_Node_Expr_Cast_String_(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::cast::Unset_>() { return crate::php_parser::node::expr::Cast::PhpParser_Node_Expr_Cast_Unset_(v.clone()); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::cast::Void_>() { return crate::php_parser::node::expr::Cast::PhpParser_Node_Expr_Cast_Void_(v.clone()); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\Cast") } }
+impl php_rt::TryDowncast for Cast { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::cast::Array_>() { return Some(crate::php_parser::node::expr::Cast::PhpParser_Node_Expr_Cast_Array_(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::cast::Bool_>() { return Some(crate::php_parser::node::expr::Cast::PhpParser_Node_Expr_Cast_Bool_(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::cast::Double>() { return Some(crate::php_parser::node::expr::Cast::PhpParser_Node_Expr_Cast_Double(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::cast::Int_>() { return Some(crate::php_parser::node::expr::Cast::PhpParser_Node_Expr_Cast_Int_(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::cast::Object_>() { return Some(crate::php_parser::node::expr::Cast::PhpParser_Node_Expr_Cast_Object_(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::cast::String_>() { return Some(crate::php_parser::node::expr::Cast::PhpParser_Node_Expr_Cast_String_(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::cast::Unset_>() { return Some(crate::php_parser::node::expr::Cast::PhpParser_Node_Expr_Cast_Unset_(v.clone())); } if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::cast::Void_>() { return Some(crate::php_parser::node::expr::Cast::PhpParser_Node_Expr_Cast_Void_(v.clone())); } None } }
+impl php_rt::CastTo<AnyObject> for Cast { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<Cast> for AnyObject { fn cast_to(self) -> Cast { cast::<Cast>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<Cast> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\cast") } }
+impl php_rt::InstanceOf<Cast> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\cast") } }
+impl php_rt::InstanceOf<Cast> for Cast { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for ClassConstFetch { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for ClassConstFetch { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\ClassConstFetch")) } }
+impl php_rt::Identical for ClassConstFetch { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for ClassConstFetch { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for ClassConstFetch { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for ClassConstFetch { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<ClassConstFetch> for Mixed { fn cast_to(self) -> ClassConstFetch { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::ClassConstFetch>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\ClassConstFetch") } }
+impl php_rt::TryDowncast for ClassConstFetch { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::ClassConstFetch>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for ClassConstFetch { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<ClassConstFetch> for AnyObject { fn cast_to(self) -> ClassConstFetch { cast::<ClassConstFetch>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<ClassConstFetch> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\classconstfetch") } }
+impl php_rt::InstanceOf<ClassConstFetch> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\classconstfetch") } }
+impl php_rt::InstanceOf<ClassConstFetch> for ClassConstFetch { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for Clone_ { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for Clone_ { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\Clone_")) } }
+impl php_rt::Identical for Clone_ { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for Clone_ { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for Clone_ { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for Clone_ { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<Clone_> for Mixed { fn cast_to(self) -> Clone_ { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Clone_>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\Clone_") } }
+impl php_rt::TryDowncast for Clone_ { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Clone_>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for Clone_ { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<Clone_> for AnyObject { fn cast_to(self) -> Clone_ { cast::<Clone_>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<Clone_> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\clone_") } }
+impl php_rt::InstanceOf<Clone_> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\clone_") } }
+impl php_rt::InstanceOf<Clone_> for Clone_ { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for Closure { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for Closure { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\Closure")) } }
+impl php_rt::Identical for Closure { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for Closure { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for Closure { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for Closure { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<Closure> for Mixed { fn cast_to(self) -> Closure { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Closure>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\Closure") } }
+impl php_rt::TryDowncast for Closure { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Closure>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for Closure { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<Closure> for AnyObject { fn cast_to(self) -> Closure { cast::<Closure>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<Closure> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\closure") } }
+impl php_rt::InstanceOf<Closure> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\closure") } }
+impl php_rt::InstanceOf<Closure> for Closure { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for ConstFetch { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for ConstFetch { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\ConstFetch")) } }
+impl php_rt::Identical for ConstFetch { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for ConstFetch { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for ConstFetch { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for ConstFetch { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<ConstFetch> for Mixed { fn cast_to(self) -> ConstFetch { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::ConstFetch>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\ConstFetch") } }
+impl php_rt::TryDowncast for ConstFetch { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::ConstFetch>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for ConstFetch { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<ConstFetch> for AnyObject { fn cast_to(self) -> ConstFetch { cast::<ConstFetch>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<ConstFetch> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\constfetch") } }
+impl php_rt::InstanceOf<ConstFetch> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\constfetch") } }
+impl php_rt::InstanceOf<ConstFetch> for ConstFetch { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for Empty_ { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for Empty_ { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\Empty_")) } }
+impl php_rt::Identical for Empty_ { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for Empty_ { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for Empty_ { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for Empty_ { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<Empty_> for Mixed { fn cast_to(self) -> Empty_ { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Empty_>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\Empty_") } }
+impl php_rt::TryDowncast for Empty_ { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Empty_>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for Empty_ { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<Empty_> for AnyObject { fn cast_to(self) -> Empty_ { cast::<Empty_>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<Empty_> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\empty_") } }
+impl php_rt::InstanceOf<Empty_> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\empty_") } }
+impl php_rt::InstanceOf<Empty_> for Empty_ { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for Error { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for Error { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\Error")) } }
+impl php_rt::Identical for Error { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for Error { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for Error { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for Error { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<Error> for Mixed { fn cast_to(self) -> Error { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Error>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\Error") } }
+impl php_rt::TryDowncast for Error { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Error>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for Error { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<Error> for AnyObject { fn cast_to(self) -> Error { cast::<Error>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<Error> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\error") } }
+impl php_rt::InstanceOf<Error> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\error") } }
+impl php_rt::InstanceOf<Error> for Error { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for ErrorSuppress { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for ErrorSuppress { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\ErrorSuppress")) } }
+impl php_rt::Identical for ErrorSuppress { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for ErrorSuppress { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for ErrorSuppress { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for ErrorSuppress { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<ErrorSuppress> for Mixed { fn cast_to(self) -> ErrorSuppress { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::ErrorSuppress>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\ErrorSuppress") } }
+impl php_rt::TryDowncast for ErrorSuppress { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::ErrorSuppress>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for ErrorSuppress { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<ErrorSuppress> for AnyObject { fn cast_to(self) -> ErrorSuppress { cast::<ErrorSuppress>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<ErrorSuppress> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\errorsuppress") } }
+impl php_rt::InstanceOf<ErrorSuppress> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\errorsuppress") } }
+impl php_rt::InstanceOf<ErrorSuppress> for ErrorSuppress { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for Eval_ { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for Eval_ { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\Eval_")) } }
+impl php_rt::Identical for Eval_ { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for Eval_ { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for Eval_ { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for Eval_ { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<Eval_> for Mixed { fn cast_to(self) -> Eval_ { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Eval_>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\Eval_") } }
+impl php_rt::TryDowncast for Eval_ { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Eval_>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for Eval_ { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<Eval_> for AnyObject { fn cast_to(self) -> Eval_ { cast::<Eval_>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<Eval_> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\eval_") } }
+impl php_rt::InstanceOf<Eval_> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\eval_") } }
+impl php_rt::InstanceOf<Eval_> for Eval_ { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for Exit_ { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for Exit_ { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\Exit_")) } }
+impl php_rt::Identical for Exit_ { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for Exit_ { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for Exit_ { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for Exit_ { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<Exit_> for Mixed { fn cast_to(self) -> Exit_ { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Exit_>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\Exit_") } }
+impl php_rt::TryDowncast for Exit_ { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Exit_>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for Exit_ { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<Exit_> for AnyObject { fn cast_to(self) -> Exit_ { cast::<Exit_>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<Exit_> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\exit_") } }
+impl php_rt::InstanceOf<Exit_> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\exit_") } }
+impl php_rt::InstanceOf<Exit_> for Exit_ { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for FuncCall { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for FuncCall { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\FuncCall")) } }
+impl php_rt::Identical for FuncCall { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for FuncCall { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for FuncCall { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for FuncCall { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<FuncCall> for Mixed { fn cast_to(self) -> FuncCall { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::FuncCall>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\FuncCall") } }
+impl php_rt::TryDowncast for FuncCall { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::FuncCall>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for FuncCall { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<FuncCall> for AnyObject { fn cast_to(self) -> FuncCall { cast::<FuncCall>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<FuncCall> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\funccall") } }
+impl php_rt::InstanceOf<FuncCall> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\funccall") } }
+impl php_rt::InstanceOf<FuncCall> for FuncCall { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for Include_ { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for Include_ { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\Include_")) } }
+impl php_rt::Identical for Include_ { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for Include_ { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for Include_ { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for Include_ { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<Include_> for Mixed { fn cast_to(self) -> Include_ { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Include_>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\Include_") } }
+impl php_rt::TryDowncast for Include_ { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Include_>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for Include_ { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<Include_> for AnyObject { fn cast_to(self) -> Include_ { cast::<Include_>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<Include_> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\include_") } }
+impl php_rt::InstanceOf<Include_> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\include_") } }
+impl php_rt::InstanceOf<Include_> for Include_ { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for Instanceof_ { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for Instanceof_ { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\Instanceof_")) } }
+impl php_rt::Identical for Instanceof_ { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for Instanceof_ { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for Instanceof_ { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for Instanceof_ { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<Instanceof_> for Mixed { fn cast_to(self) -> Instanceof_ { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Instanceof_>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\Instanceof_") } }
+impl php_rt::TryDowncast for Instanceof_ { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Instanceof_>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for Instanceof_ { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<Instanceof_> for AnyObject { fn cast_to(self) -> Instanceof_ { cast::<Instanceof_>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<Instanceof_> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\instanceof_") } }
+impl php_rt::InstanceOf<Instanceof_> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\instanceof_") } }
+impl php_rt::InstanceOf<Instanceof_> for Instanceof_ { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for Isset_ { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for Isset_ { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\Isset_")) } }
+impl php_rt::Identical for Isset_ { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for Isset_ { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for Isset_ { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for Isset_ { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<Isset_> for Mixed { fn cast_to(self) -> Isset_ { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Isset_>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\Isset_") } }
+impl php_rt::TryDowncast for Isset_ { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Isset_>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for Isset_ { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<Isset_> for AnyObject { fn cast_to(self) -> Isset_ { cast::<Isset_>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<Isset_> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\isset_") } }
+impl php_rt::InstanceOf<Isset_> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\isset_") } }
+impl php_rt::InstanceOf<Isset_> for Isset_ { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for List_ { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for List_ { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\List_")) } }
+impl php_rt::Identical for List_ { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for List_ { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for List_ { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for List_ { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<List_> for Mixed { fn cast_to(self) -> List_ { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::List_>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\List_") } }
+impl php_rt::TryDowncast for List_ { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::List_>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for List_ { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<List_> for AnyObject { fn cast_to(self) -> List_ { cast::<List_>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<List_> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\list_") } }
+impl php_rt::InstanceOf<List_> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\list_") } }
+impl php_rt::InstanceOf<List_> for List_ { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for Match_ { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for Match_ { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\Match_")) } }
+impl php_rt::Identical for Match_ { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for Match_ { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for Match_ { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for Match_ { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<Match_> for Mixed { fn cast_to(self) -> Match_ { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Match_>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\Match_") } }
+impl php_rt::TryDowncast for Match_ { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Match_>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for Match_ { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<Match_> for AnyObject { fn cast_to(self) -> Match_ { cast::<Match_>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<Match_> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\match_") } }
+impl php_rt::InstanceOf<Match_> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\match_") } }
+impl php_rt::InstanceOf<Match_> for Match_ { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for MethodCall { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for MethodCall { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\MethodCall")) } }
+impl php_rt::Identical for MethodCall { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for MethodCall { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for MethodCall { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for MethodCall { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<MethodCall> for Mixed { fn cast_to(self) -> MethodCall { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::MethodCall>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\MethodCall") } }
+impl php_rt::TryDowncast for MethodCall { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::MethodCall>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for MethodCall { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<MethodCall> for AnyObject { fn cast_to(self) -> MethodCall { cast::<MethodCall>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<MethodCall> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\methodcall") } }
+impl php_rt::InstanceOf<MethodCall> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\methodcall") } }
+impl php_rt::InstanceOf<MethodCall> for MethodCall { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for New_ { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for New_ { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\New_")) } }
+impl php_rt::Identical for New_ { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for New_ { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for New_ { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for New_ { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<New_> for Mixed { fn cast_to(self) -> New_ { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::New_>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\New_") } }
+impl php_rt::TryDowncast for New_ { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::New_>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for New_ { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<New_> for AnyObject { fn cast_to(self) -> New_ { cast::<New_>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<New_> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\new_") } }
+impl php_rt::InstanceOf<New_> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\new_") } }
+impl php_rt::InstanceOf<New_> for New_ { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for NullsafeMethodCall { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for NullsafeMethodCall { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\NullsafeMethodCall")) } }
+impl php_rt::Identical for NullsafeMethodCall { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for NullsafeMethodCall { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for NullsafeMethodCall { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for NullsafeMethodCall { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<NullsafeMethodCall> for Mixed { fn cast_to(self) -> NullsafeMethodCall { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::NullsafeMethodCall>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\NullsafeMethodCall") } }
+impl php_rt::TryDowncast for NullsafeMethodCall { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::NullsafeMethodCall>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for NullsafeMethodCall { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<NullsafeMethodCall> for AnyObject { fn cast_to(self) -> NullsafeMethodCall { cast::<NullsafeMethodCall>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<NullsafeMethodCall> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\nullsafemethodcall") } }
+impl php_rt::InstanceOf<NullsafeMethodCall> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\nullsafemethodcall") } }
+impl php_rt::InstanceOf<NullsafeMethodCall> for NullsafeMethodCall { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for NullsafePropertyFetch { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for NullsafePropertyFetch { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\NullsafePropertyFetch")) } }
+impl php_rt::Identical for NullsafePropertyFetch { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for NullsafePropertyFetch { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for NullsafePropertyFetch { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for NullsafePropertyFetch { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<NullsafePropertyFetch> for Mixed { fn cast_to(self) -> NullsafePropertyFetch { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::NullsafePropertyFetch>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\NullsafePropertyFetch") } }
+impl php_rt::TryDowncast for NullsafePropertyFetch { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::NullsafePropertyFetch>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for NullsafePropertyFetch { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<NullsafePropertyFetch> for AnyObject { fn cast_to(self) -> NullsafePropertyFetch { cast::<NullsafePropertyFetch>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<NullsafePropertyFetch> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\nullsafepropertyfetch") } }
+impl php_rt::InstanceOf<NullsafePropertyFetch> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\nullsafepropertyfetch") } }
+impl php_rt::InstanceOf<NullsafePropertyFetch> for NullsafePropertyFetch { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for PostDec { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for PostDec { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\PostDec")) } }
+impl php_rt::Identical for PostDec { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for PostDec { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for PostDec { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for PostDec { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<PostDec> for Mixed { fn cast_to(self) -> PostDec { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::PostDec>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\PostDec") } }
+impl php_rt::TryDowncast for PostDec { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::PostDec>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for PostDec { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<PostDec> for AnyObject { fn cast_to(self) -> PostDec { cast::<PostDec>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<PostDec> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\postdec") } }
+impl php_rt::InstanceOf<PostDec> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\postdec") } }
+impl php_rt::InstanceOf<PostDec> for PostDec { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for PostInc { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for PostInc { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\PostInc")) } }
+impl php_rt::Identical for PostInc { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for PostInc { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for PostInc { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for PostInc { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<PostInc> for Mixed { fn cast_to(self) -> PostInc { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::PostInc>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\PostInc") } }
+impl php_rt::TryDowncast for PostInc { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::PostInc>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for PostInc { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<PostInc> for AnyObject { fn cast_to(self) -> PostInc { cast::<PostInc>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<PostInc> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\postinc") } }
+impl php_rt::InstanceOf<PostInc> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\postinc") } }
+impl php_rt::InstanceOf<PostInc> for PostInc { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for PreDec { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for PreDec { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\PreDec")) } }
+impl php_rt::Identical for PreDec { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for PreDec { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for PreDec { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for PreDec { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<PreDec> for Mixed { fn cast_to(self) -> PreDec { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::PreDec>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\PreDec") } }
+impl php_rt::TryDowncast for PreDec { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::PreDec>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for PreDec { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<PreDec> for AnyObject { fn cast_to(self) -> PreDec { cast::<PreDec>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<PreDec> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\predec") } }
+impl php_rt::InstanceOf<PreDec> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\predec") } }
+impl php_rt::InstanceOf<PreDec> for PreDec { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for PreInc { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for PreInc { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\PreInc")) } }
+impl php_rt::Identical for PreInc { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for PreInc { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for PreInc { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for PreInc { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<PreInc> for Mixed { fn cast_to(self) -> PreInc { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::PreInc>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\PreInc") } }
+impl php_rt::TryDowncast for PreInc { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::PreInc>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for PreInc { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<PreInc> for AnyObject { fn cast_to(self) -> PreInc { cast::<PreInc>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<PreInc> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\preinc") } }
+impl php_rt::InstanceOf<PreInc> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\preinc") } }
+impl php_rt::InstanceOf<PreInc> for PreInc { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for Print_ { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for Print_ { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\Print_")) } }
+impl php_rt::Identical for Print_ { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for Print_ { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for Print_ { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for Print_ { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<Print_> for Mixed { fn cast_to(self) -> Print_ { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Print_>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\Print_") } }
+impl php_rt::TryDowncast for Print_ { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Print_>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for Print_ { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<Print_> for AnyObject { fn cast_to(self) -> Print_ { cast::<Print_>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<Print_> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\print_") } }
+impl php_rt::InstanceOf<Print_> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\print_") } }
+impl php_rt::InstanceOf<Print_> for Print_ { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for PropertyFetch { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for PropertyFetch { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\PropertyFetch")) } }
+impl php_rt::Identical for PropertyFetch { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for PropertyFetch { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for PropertyFetch { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for PropertyFetch { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<PropertyFetch> for Mixed { fn cast_to(self) -> PropertyFetch { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::PropertyFetch>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\PropertyFetch") } }
+impl php_rt::TryDowncast for PropertyFetch { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::PropertyFetch>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for PropertyFetch { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<PropertyFetch> for AnyObject { fn cast_to(self) -> PropertyFetch { cast::<PropertyFetch>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<PropertyFetch> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\propertyfetch") } }
+impl php_rt::InstanceOf<PropertyFetch> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\propertyfetch") } }
+impl php_rt::InstanceOf<PropertyFetch> for PropertyFetch { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for ShellExec { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for ShellExec { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\ShellExec")) } }
+impl php_rt::Identical for ShellExec { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for ShellExec { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for ShellExec { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for ShellExec { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<ShellExec> for Mixed { fn cast_to(self) -> ShellExec { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::ShellExec>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\ShellExec") } }
+impl php_rt::TryDowncast for ShellExec { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::ShellExec>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for ShellExec { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<ShellExec> for AnyObject { fn cast_to(self) -> ShellExec { cast::<ShellExec>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<ShellExec> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\shellexec") } }
+impl php_rt::InstanceOf<ShellExec> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\shellexec") } }
+impl php_rt::InstanceOf<ShellExec> for ShellExec { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for StaticCall { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for StaticCall { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\StaticCall")) } }
+impl php_rt::Identical for StaticCall { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for StaticCall { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for StaticCall { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for StaticCall { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<StaticCall> for Mixed { fn cast_to(self) -> StaticCall { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::StaticCall>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\StaticCall") } }
+impl php_rt::TryDowncast for StaticCall { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::StaticCall>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for StaticCall { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<StaticCall> for AnyObject { fn cast_to(self) -> StaticCall { cast::<StaticCall>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<StaticCall> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\staticcall") } }
+impl php_rt::InstanceOf<StaticCall> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\staticcall") } }
+impl php_rt::InstanceOf<StaticCall> for StaticCall { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for StaticPropertyFetch { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for StaticPropertyFetch { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\StaticPropertyFetch")) } }
+impl php_rt::Identical for StaticPropertyFetch { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for StaticPropertyFetch { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for StaticPropertyFetch { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for StaticPropertyFetch { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<StaticPropertyFetch> for Mixed { fn cast_to(self) -> StaticPropertyFetch { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::StaticPropertyFetch>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\StaticPropertyFetch") } }
+impl php_rt::TryDowncast for StaticPropertyFetch { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::StaticPropertyFetch>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for StaticPropertyFetch { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<StaticPropertyFetch> for AnyObject { fn cast_to(self) -> StaticPropertyFetch { cast::<StaticPropertyFetch>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<StaticPropertyFetch> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\staticpropertyfetch") } }
+impl php_rt::InstanceOf<StaticPropertyFetch> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\staticpropertyfetch") } }
+impl php_rt::InstanceOf<StaticPropertyFetch> for StaticPropertyFetch { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for Ternary { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for Ternary { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\Ternary")) } }
+impl php_rt::Identical for Ternary { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for Ternary { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for Ternary { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for Ternary { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<Ternary> for Mixed { fn cast_to(self) -> Ternary { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Ternary>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\Ternary") } }
+impl php_rt::TryDowncast for Ternary { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Ternary>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for Ternary { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<Ternary> for AnyObject { fn cast_to(self) -> Ternary { cast::<Ternary>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<Ternary> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\ternary") } }
+impl php_rt::InstanceOf<Ternary> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\ternary") } }
+impl php_rt::InstanceOf<Ternary> for Ternary { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for Throw_ { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for Throw_ { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\Throw_")) } }
+impl php_rt::Identical for Throw_ { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for Throw_ { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for Throw_ { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for Throw_ { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<Throw_> for Mixed { fn cast_to(self) -> Throw_ { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Throw_>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\Throw_") } }
+impl php_rt::TryDowncast for Throw_ { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Throw_>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for Throw_ { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<Throw_> for AnyObject { fn cast_to(self) -> Throw_ { cast::<Throw_>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<Throw_> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\throw_") } }
+impl php_rt::InstanceOf<Throw_> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\throw_") } }
+impl php_rt::InstanceOf<Throw_> for Throw_ { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for UnaryMinus { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for UnaryMinus { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\UnaryMinus")) } }
+impl php_rt::Identical for UnaryMinus { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for UnaryMinus { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for UnaryMinus { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for UnaryMinus { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<UnaryMinus> for Mixed { fn cast_to(self) -> UnaryMinus { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::UnaryMinus>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\UnaryMinus") } }
+impl php_rt::TryDowncast for UnaryMinus { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::UnaryMinus>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for UnaryMinus { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<UnaryMinus> for AnyObject { fn cast_to(self) -> UnaryMinus { cast::<UnaryMinus>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<UnaryMinus> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\unaryminus") } }
+impl php_rt::InstanceOf<UnaryMinus> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\unaryminus") } }
+impl php_rt::InstanceOf<UnaryMinus> for UnaryMinus { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for UnaryPlus { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for UnaryPlus { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\UnaryPlus")) } }
+impl php_rt::Identical for UnaryPlus { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for UnaryPlus { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for UnaryPlus { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for UnaryPlus { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<UnaryPlus> for Mixed { fn cast_to(self) -> UnaryPlus { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::UnaryPlus>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\UnaryPlus") } }
+impl php_rt::TryDowncast for UnaryPlus { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::UnaryPlus>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for UnaryPlus { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<UnaryPlus> for AnyObject { fn cast_to(self) -> UnaryPlus { cast::<UnaryPlus>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<UnaryPlus> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\unaryplus") } }
+impl php_rt::InstanceOf<UnaryPlus> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\unaryplus") } }
+impl php_rt::InstanceOf<UnaryPlus> for UnaryPlus { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for Variable { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for Variable { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\Variable")) } }
+impl php_rt::Identical for Variable { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for Variable { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for Variable { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for Variable { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<Variable> for Mixed { fn cast_to(self) -> Variable { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Variable>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\Variable") } }
+impl php_rt::TryDowncast for Variable { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Variable>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for Variable { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<Variable> for AnyObject { fn cast_to(self) -> Variable { cast::<Variable>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<Variable> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\variable") } }
+impl php_rt::InstanceOf<Variable> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\variable") } }
+impl php_rt::InstanceOf<Variable> for Variable { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for YieldFrom { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for YieldFrom { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\YieldFrom")) } }
+impl php_rt::Identical for YieldFrom { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for YieldFrom { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for YieldFrom { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for YieldFrom { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<YieldFrom> for Mixed { fn cast_to(self) -> YieldFrom { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::YieldFrom>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\YieldFrom") } }
+impl php_rt::TryDowncast for YieldFrom { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::YieldFrom>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for YieldFrom { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<YieldFrom> for AnyObject { fn cast_to(self) -> YieldFrom { cast::<YieldFrom>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<YieldFrom> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\yieldfrom") } }
+impl php_rt::InstanceOf<YieldFrom> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\yieldfrom") } }
+impl php_rt::InstanceOf<YieldFrom> for YieldFrom { fn is_instance(&self) -> bool { true } }
+impl php_rt::Truthy for Yield_ { fn truthy(&self) -> bool { true } }
+impl php_rt::ToStr for Yield_ { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static("PhpParser\\Node\\Expr\\Yield_")) } }
+impl php_rt::Identical for Yield_ { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }
+impl php_rt::PhpCmp for Yield_ { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }
+impl std::fmt::Debug for Yield_ { fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }
+impl php_rt::CastTo<Mixed> for Yield_ { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }
+impl php_rt::CastTo<Yield_> for Mixed { fn cast_to(self) -> Yield_ { if let Mixed::Obj(o) = &self { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Yield_>() { return v.clone(); } } panic!("Mixed value is not a PhpParser\\Node\\Expr\\Yield_") } }
+impl php_rt::TryDowncast for Yield_ { fn try_downcast(o: &AnyObj) -> Option<Self> { if let Some(v) = o.as_any().downcast_ref::<crate::php_parser::node::expr::Yield_>() { return Some(v.clone()); } None } }
+impl php_rt::CastTo<AnyObject> for Yield_ { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }
+impl php_rt::CastTo<Yield_> for AnyObject { fn cast_to(self) -> Yield_ { cast::<Yield_>(cast::<Mixed>(self)) } }
+impl php_rt::InstanceOf<Yield_> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name("phpparser\\node\\expr\\yield_") } }
+impl php_rt::InstanceOf<Yield_> for Mixed { fn is_instance(&self) -> bool { self.instance_of("phpparser\\node\\expr\\yield_") } }
+impl php_rt::InstanceOf<Yield_> for Yield_ { fn is_instance(&self) -> bool { true } }

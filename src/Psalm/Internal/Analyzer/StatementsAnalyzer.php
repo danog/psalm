@@ -48,6 +48,7 @@ use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\ReferenceConstraint;
 use Psalm\Internal\Scanner\ParsedDocblock;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
+use Psalm\Internal\Transpiler\Transpiler;
 use Psalm\Internal\Type\TypeParser;
 use Psalm\Internal\Type\TypeTokenizer;
 use Psalm\Internal\Type\TypeVariableTracker;
@@ -138,6 +139,8 @@ final class StatementsAnalyzer extends SourceAnalyzer
 
     private ?ParsedDocblock $parsed_docblock = null;
 
+    private int $depth = 0;
+
     private ?string $fake_this_class = null;
 
     public ?TaintFlowGraph $taint_flow_graph = null;
@@ -168,8 +171,11 @@ final class StatementsAnalyzer extends SourceAnalyzer
      */
     public readonly bool $owns_type_variable_tracker;
 
-    public function __construct(protected SourceAnalyzer $source, public NodeDataProvider $node_data)
-    {
+    public function __construct(
+        protected SourceAnalyzer $source,
+        public NodeDataProvider $node_data,
+        private readonly bool $root_scope = false,
+    ) {
         $this->file_analyzer = $source->getFileAnalyzer();
         $this->codebase = $source->getCodebase();
 
@@ -240,6 +246,10 @@ final class StatementsAnalyzer extends SourceAnalyzer
             foreach ($stmts as $stmt) {
                 if (self::analyzeStatement($this, $stmt, $context, $global_context) === false) {
                     return false;
+                }
+
+                if (Transpiler::isEnabled()) {
+                    Transpiler::get()->recordStatement($this, $stmt, $context);
                 }
             }
 
