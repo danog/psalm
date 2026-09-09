@@ -185,6 +185,7 @@ final class CrateEmitter
         $w->line('fn as_any(&self) -> &dyn std::any::Any { self }');
         $w->line('fn props(&self) -> Vec<(Str, Mixed)> { match self { ' . $arms('props()') . ' } }');
         $w->line('fn set_prop(&self, name: &str, value: Mixed) -> bool { match self { ' . $arms('set_prop(name, value)') . ' } }');
+        $w->line('fn get_prop(&self, name: &str) -> Option<Mixed> { match self { ' . $arms('get_prop(name)') . ' } }');
         $w->line('fn php_to_string(&self) -> Option<Str> { match self { ' . $arms('php_to_string()') . ' } }');
         $w->line('fn call_method(&self, name: &str, args: Vec<Mixed>) -> Result<Mixed, DynError> { match self { ' . $arms('call_method(name, args)') . ' } }');
         $w->line('fn public_props(&self) -> Vec<(Str, Mixed)> { match self { ' . $arms('public_props()') . ' } }');
