@@ -231,15 +231,14 @@ pub fn array_map_m<K: MapKey, V: Clone, U: Clone, E, F: FnMut(V) -> Result<U, E>
     }
     Ok(out)
 }
-pub fn array_map2_l<A: Clone, B: Clone, U, E, F: FnMut(A, B) -> Result<U, E>>(a: &List<A>, b: &List<B>, mut f: F) -> Result<List<U>, E>
-where
-    A: Default,
-    B: Default,
-{
+pub fn array_map2_l<A: Clone, B: Clone, U, E, F: FnMut(A, B) -> Result<U, E>>(a: &List<A>, b: &List<B>, mut f: F) -> Result<List<U>, E> {
+    // PHP pads the shorter array with nulls; typed element types cannot express that
     let n = a.len().max(b.len());
     let mut out = Vec::with_capacity(n);
     for i in 0..n {
-        out.push(f(a.get(i as i64).cloned().unwrap_or_default(), b.get(i as i64).cloned().unwrap_or_default())?);
+        let x = a.get(i as i64).cloned().expect("array_map: arrays of different lengths");
+        let y = b.get(i as i64).cloned().expect("array_map: arrays of different lengths");
+        out.push(f(x, y)?);
     }
     Ok(List::from_vec(out))
 }

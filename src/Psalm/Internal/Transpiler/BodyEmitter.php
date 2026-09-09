@@ -338,7 +338,13 @@ final class BodyEmitter
             $this->late[$name] = !$t->hasDefault();
         }
         // out-parameters of calls (`preg_match($re, $s, $matches)`) are assigned by the callee
-        foreach ($finder->findInstanceOf($stmts, Expr\FuncCall::class) as $call) {
+        $calls = [
+            ...$finder->findInstanceOf($stmts, Expr\FuncCall::class),
+            ...$finder->findInstanceOf($stmts, Expr\MethodCall::class),
+            ...$finder->findInstanceOf($stmts, Expr\StaticCall::class),
+            ...$finder->findInstanceOf($stmts, Expr\New_::class),
+        ];
+        foreach ($calls as $call) {
             foreach ($call->args as $arg) {
                 if (!$arg instanceof \PhpParser\Node\Arg || !$arg->value instanceof Expr\Variable || !is_string($arg->value->name)) {
                     continue;
@@ -350,7 +356,7 @@ final class BodyEmitter
                 $pt = $this->psalmType($arg->value);
                 $t = $pt !== null ? $this->types()->map($pt) : RustType::mixed();
                 $this->vars[$name] = $t;
-                $this->late[$name] = false;
+                $this->late[$name] = !$t->hasDefault();
             }
         }
     }
@@ -435,9 +441,9 @@ final class BodyEmitter
             return RustType::map(RustType::str(), RustType::mixed());
         }
         if (!isset($this->vars[$name])) {
+            // never assigned anywhere: reads yield null (see readVar)
             $this->warn('unknown variable $' . $name);
-            $this->vars[$name] = RustType::mixed();
-            $this->late[$name] = false;
+            return RustType::mixed();
         }
         return $this->vars[$name];
     }
