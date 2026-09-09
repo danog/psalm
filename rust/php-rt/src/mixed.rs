@@ -29,6 +29,10 @@ pub trait PhpObject: Any {
     fn set_prop(&self, _name: &str, _value: Mixed) -> bool {
         false
     }
+    /// Dynamic property read (`None` when the property is unknown or uninitialized).
+    fn get_prop(&self, name: &str) -> Option<Mixed> {
+        self.props().into_iter().find(|(k, _)| k.as_bytes() == name.as_bytes()).map(|(_, v)| v)
+    }
     fn instance_of_name(&self, lname: &str) -> bool {
         self.class_ancestors().iter().any(|a| *a == lname)
     }

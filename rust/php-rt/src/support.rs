@@ -307,14 +307,7 @@ pub fn mixed_unset(m: &mut Mixed, k: &ArrayKey) {
 
 pub fn mixed_prop(m: &Mixed, name: &Str) -> Option<Mixed> {
     match m {
-        Mixed::Obj(o) => {
-            for (k, v) in o.props() {
-                if k.as_bytes() == name.as_bytes() {
-                    return v.to_option();
-                }
-            }
-            None
-        }
+        Mixed::Obj(o) => o.get_prop(&name.to_string_lossy()).and_then(|v| v.to_option()),
         _ => None,
     }
 }

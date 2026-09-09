@@ -1,75 +1,75 @@
    Compiling php_parser v0.1.0 (/home/daniil/repos/psalm-port/rust/generated/php_parser)
 warning: unused attribute `allow`
-    --> generated/php_parser/src/g/mod.rs:3262:5
+    --> generated/php_parser/src/g/mod.rs:3303:5
      |
-3262 |     #[allow(unreachable_code)] unreachable!("missing return")
+3303 |     #[allow(unreachable_code)] unreachable!("missing return")
      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
      |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-    --> generated/php_parser/src/g/mod.rs:3262:32
+    --> generated/php_parser/src/g/mod.rs:3303:32
      |
-3262 |     #[allow(unreachable_code)] unreachable!("missing return")
+3303 |     #[allow(unreachable_code)] unreachable!("missing return")
      |                                ^^^^^^^^^^^
      = note: `#[warn(unused_attributes)]` (part of `#[warn(unused)]`) on by default
 
 warning: unused attribute `allow`
-    --> generated/php_parser/src/g/mod.rs:3290:5
+    --> generated/php_parser/src/g/mod.rs:3332:5
      |
-3290 |     #[allow(unreachable_code)] unreachable!("missing return")
+3332 |     #[allow(unreachable_code)] unreachable!("missing return")
      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
      |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-    --> generated/php_parser/src/g/mod.rs:3290:32
+    --> generated/php_parser/src/g/mod.rs:3332:32
      |
-3290 |     #[allow(unreachable_code)] unreachable!("missing return")
+3332 |     #[allow(unreachable_code)] unreachable!("missing return")
      |                                ^^^^^^^^^^^
 
 warning: unused attribute `allow`
-    --> generated/php_parser/src/php_parser/builder/mod.rs:1584:5
+    --> generated/php_parser/src/php_parser/builder/mod.rs:1597:5
      |
-1584 |     #[allow(unreachable_code)] unreachable!("missing return")
+1597 |     #[allow(unreachable_code)] unreachable!("missing return")
      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
      |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-    --> generated/php_parser/src/php_parser/builder/mod.rs:1584:32
+    --> generated/php_parser/src/php_parser/builder/mod.rs:1597:32
      |
-1584 |     #[allow(unreachable_code)] unreachable!("missing return")
+1597 |     #[allow(unreachable_code)] unreachable!("missing return")
      |                                ^^^^^^^^^^^
 
 warning: unused attribute `allow`
-   --> generated/php_parser/src/php_parser/node/scalar/mod.rs:414:5
+   --> generated/php_parser/src/php_parser/node/scalar/mod.rs:418:5
     |
-414 |     #[allow(unreachable_code)] unreachable!("missing return")
+418 |     #[allow(unreachable_code)] unreachable!("missing return")
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-   --> generated/php_parser/src/php_parser/node/scalar/mod.rs:414:32
+   --> generated/php_parser/src/php_parser/node/scalar/mod.rs:418:32
     |
-414 |     #[allow(unreachable_code)] unreachable!("missing return")
+418 |     #[allow(unreachable_code)] unreachable!("missing return")
     |                                ^^^^^^^^^^^
 
 warning: unused attribute `allow`
-   --> generated/php_parser/src/php_parser/node/scalar/mod.rs:441:5
+   --> generated/php_parser/src/php_parser/node/scalar/mod.rs:445:5
     |
-441 |     #[allow(unreachable_code)] unreachable!("missing return")
+445 |     #[allow(unreachable_code)] unreachable!("missing return")
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-   --> generated/php_parser/src/php_parser/node/scalar/mod.rs:441:32
+   --> generated/php_parser/src/php_parser/node/scalar/mod.rs:445:32
     |
-441 |     #[allow(unreachable_code)] unreachable!("missing return")
+445 |     #[allow(unreachable_code)] unreachable!("missing return")
     |                                ^^^^^^^^^^^
 
 warning: unused attribute `allow`
-   --> generated/php_parser/src/php_parser/node_visitor/mod.rs:833:5
+   --> generated/php_parser/src/php_parser/node_visitor/mod.rs:840:5
     |
-833 |     #[allow(unreachable_code)] unreachable!("missing return")
+840 |     #[allow(unreachable_code)] unreachable!("missing return")
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-   --> generated/php_parser/src/php_parser/node_visitor/mod.rs:833:32
+   --> generated/php_parser/src/php_parser/node_visitor/mod.rs:840:32
     |
-833 |     #[allow(unreachable_code)] unreachable!("missing return")
+840 |     #[allow(unreachable_code)] unreachable!("missing return")
     |                                ^^^^^^^^^^^
 
 warning: unused attribute `allow`
@@ -205,70 +205,70 @@ note: the built-in attribute `allow` will be ignored, since it's applied to the 
      |                                ^^^^^^^^^^^
 
 warning: unused attribute `allow`
-    --> generated/php_parser/src/php_parser/mod.rs:2486:5
+    --> generated/php_parser/src/php_parser/mod.rs:2502:5
      |
-2486 |     #[allow(unreachable_code)] unreachable!("missing return")
+2502 |     #[allow(unreachable_code)] unreachable!("missing return")
      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
      |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-    --> generated/php_parser/src/php_parser/mod.rs:2486:32
+    --> generated/php_parser/src/php_parser/mod.rs:2502:32
      |
-2486 |     #[allow(unreachable_code)] unreachable!("missing return")
+2502 |     #[allow(unreachable_code)] unreachable!("missing return")
      |                                ^^^^^^^^^^^
 
 warning: unused attribute `allow`
-    --> generated/php_parser/src/php_parser/mod.rs:3581:5
+    --> generated/php_parser/src/php_parser/mod.rs:3605:5
      |
-3581 |     #[allow(unreachable_code)] unreachable!("missing return")
+3605 |     #[allow(unreachable_code)] unreachable!("missing return")
      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
      |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-    --> generated/php_parser/src/php_parser/mod.rs:3581:32
+    --> generated/php_parser/src/php_parser/mod.rs:3605:32
      |
-3581 |     #[allow(unreachable_code)] unreachable!("missing return")
+3605 |     #[allow(unreachable_code)] unreachable!("missing return")
      |                                ^^^^^^^^^^^
 
 warning: unused attribute `allow`
-    --> generated/php_parser/src/php_parser/mod.rs:3724:5
+    --> generated/php_parser/src/php_parser/mod.rs:3748:5
      |
-3724 |     #[allow(unreachable_code)] unreachable!("missing return")
+3748 |     #[allow(unreachable_code)] unreachable!("missing return")
      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
      |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-    --> generated/php_parser/src/php_parser/mod.rs:3724:32
+    --> generated/php_parser/src/php_parser/mod.rs:3748:32
      |
-3724 |     #[allow(unreachable_code)] unreachable!("missing return")
+3748 |     #[allow(unreachable_code)] unreachable!("missing return")
      |                                ^^^^^^^^^^^
 
 warning: unused attribute `allow`
-    --> generated/php_parser/src/php_parser/mod.rs:3833:5
+    --> generated/php_parser/src/php_parser/mod.rs:3857:5
      |
-3833 |     #[allow(unreachable_code)] unreachable!("missing return")
+3857 |     #[allow(unreachable_code)] unreachable!("missing return")
      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
      |
 note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
-    --> generated/php_parser/src/php_parser/mod.rs:3833:32
+    --> generated/php_parser/src/php_parser/mod.rs:3857:32
      |
-3833 |     #[allow(unreachable_code)] unreachable!("missing return")
+3857 |     #[allow(unreachable_code)] unreachable!("missing return")
      |                                ^^^^^^^^^^^
 
 warning: `php_parser` (lib test) generated 21 warnings (run `cargo fix --lib -p php_parser --tests` to apply 21 suggestions)
 warning: `php_parser` (lib) generated 21 warnings (21 duplicates)
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 53.50s
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2m 07s
      Running unittests src/lib.rs (target/debug/deps/php_parser-6f06c608829caa19)
 
 running 315 tests
-test tests::PhpParser_BuilderFactoryTest__testAttribute ... ok
-test tests::PhpParser_BuilderFactoryTest__testConcat ... ok
 test tests::PhpParser_BuilderFactoryTest__testArgs ... ok
-test tests::PhpParser_BuilderFactoryTest__testCalls ... ok
+test tests::PhpParser_BuilderFactoryTest__testConcat ... ok
+test tests::PhpParser_BuilderFactoryTest__testAttribute ... ok
 test tests::PhpParser_BuilderFactoryTest__testConstFetches ... ok
+test tests::PhpParser_BuilderFactoryTest__testCalls ... ok
 test tests::PhpParser_BuilderFactoryTest__testConcatInvalidExpr ... ok
 test tests::PhpParser_BuilderFactoryTest__testConcatOneError ... ok
-test tests::PhpParser_BuilderFactoryTest__testInvalidIdentifier ... ok
 test tests::PhpParser_BuilderFactoryTest__testFactoryClassConst ... ok
-test tests::PhpParser_BuilderFactoryTest__testFactory ... ok
+test tests::PhpParser_BuilderFactoryTest__testInvalidIdentifier ... ok
 test tests::PhpParser_BuilderFactoryTest__testInvalidIdentifierOrExpr ... ok
+test tests::PhpParser_BuilderFactoryTest__testFactory ... ok
 test tests::PhpParser_BuilderFactoryTest__testInvalidNameOrExpr ... ok
 test tests::PhpParser_BuilderFactoryTest__testInvalidVar ... ok
 test tests::PhpParser_BuilderFactoryTest__testNamedArgs ... ok
@@ -276,92 +276,92 @@ test tests::PhpParser_BuilderFactoryTest__testPropertyFetch ... ok
 test tests::PhpParser_BuilderFactoryTest__testVal ... ok
 test tests::PhpParser_BuilderFactoryTest__testVar ... ok
 test tests::PhpParser_BuilderHelpersTest__testNormalizeAttribute ... ok
+test tests::PhpParser_BuilderHelpersTest__testNormalizeIdentifierOrExpr ... ok
 test tests::PhpParser_BuilderHelpersTest__testNormalizeDocComment ... ok
 test tests::PhpParser_BuilderHelpersTest__testNormalizeIdentifier ... ok
-test tests::PhpParser_BuilderFactoryTest__testIntegration ... ok
-test tests::PhpParser_BuilderHelpersTest__testNormalizeIdentifierOrExpr ... ok
 test tests::PhpParser_BuilderHelpersTest__testNormalizeName ... ok
 test tests::PhpParser_BuilderHelpersTest__testNormalizeNameInvalidType ... ok
+test tests::PhpParser_BuilderFactoryTest__testIntegration ... ok
 test tests::PhpParser_BuilderHelpersTest__testNormalizeNameOrExpInvalidType ... ok
 test tests::PhpParser_BuilderHelpersTest__testNormalizeNameOrExpr ... ok
-test tests::PhpParser_BuilderHelpersTest__testNormalizeStmtInvalidType ... ok
 test tests::PhpParser_BuilderHelpersTest__testNormalizeNode ... ok
+test tests::PhpParser_BuilderHelpersTest__testNormalizeStmtInvalidType ... ok
 test tests::PhpParser_BuilderHelpersTest__testNormalizeStmt ... ok
 test tests::PhpParser_BuilderHelpersTest__testNormalizeTypeNullableMixed ... ok
+test tests::PhpParser_BuilderHelpersTest__testNormalizeTypeNullableVoid ... ok
 test tests::PhpParser_BuilderHelpersTest__testNormalizeType ... ok
 test tests::PhpParser_BuilderHelpersTest__testNormalizeTypeNullableNever ... ok
-test tests::PhpParser_BuilderHelpersTest__testNormalizeTypeNullableVoid ... ok
-test tests::PhpParser_BuilderHelpersTest__testNormalizeValueEnum ... ok
-test tests::PhpParser_Builder_ClassConstTest__testAddAttribute ... ok
 test tests::PhpParser_BuilderHelpersTest__testNormalizeValue ... ok
-test tests::PhpParser_Builder_ClassConstTest__testAddConst ... ok
-test tests::PhpParser_Builder_ClassConstTest__testType ... ok
+test tests::PhpParser_BuilderHelpersTest__testNormalizeValueEnum ... ok
 test tests::PhpParser_Builder_ClassConstTest__testDocComment ... ok
+test tests::PhpParser_Builder_ClassConstTest__testAddConst ... ok
+test tests::PhpParser_Builder_ClassConstTest__testAddAttribute ... ok
 test tests::PhpParser_Builder_ClassConstTest__testModifiers ... ok
-test tests::PhpParser_Builder_ClassTest__testAbstract ... ok
+test tests::PhpParser_Builder_ClassConstTest__testType ... ok
 test tests::PhpParser_Builder_ClassConstTest__testValues ... ok
 test tests::PhpParser_Builder_ClassTest__testAddAttribute ... ok
-test tests::PhpParser_Builder_ClassTest__testEmptyName ... ok
+test tests::PhpParser_Builder_ClassTest__testAbstract ... ok
 test tests::PhpParser_Builder_ClassTest__testDocComment ... ok
+test tests::PhpParser_Builder_ClassTest__testEmptyName ... ok
 test tests::PhpParser_Builder_ClassTest__testInvalidDocComment ... ok
+test tests::PhpParser_Builder_ClassTest__testInvalidName ... ok
 test tests::PhpParser_Builder_ClassTest__testFinal ... ok
 test tests::PhpParser_Builder_ClassTest__testExtendsImplements ... ok
-test tests::PhpParser_Builder_ClassTest__testInvalidName ... ok
 test tests::PhpParser_Builder_ClassTest__testReadonly ... ok
 test tests::PhpParser_Builder_ClassTest__testInvalidStmtError ... ok
-test tests::PhpParser_Builder_ClassTest__testStatementOrder ... ok
-test tests::PhpParser_Builder_EnumCaseTest__testValues ... ok
 test tests::PhpParser_Builder_EnumCaseTest__testAddAttribute ... ok
 test tests::PhpParser_Builder_EnumCaseTest__testDocComment ... ok
-test tests::PhpParser_Builder_EnumTest__testDocComment ... ok
+test tests::PhpParser_Builder_ClassTest__testStatementOrder ... ok
+test tests::PhpParser_Builder_EnumCaseTest__testValues ... ok
 test tests::PhpParser_Builder_EnumTest__testAddAttribute ... ok
+test tests::PhpParser_Builder_EnumTest__testDocComment ... ok
 test tests::PhpParser_Builder_EnumTest__testEmptyName ... ok
 test tests::PhpParser_Builder_EnumTest__testImplements ... ok
 test tests::PhpParser_Builder_EnumTest__testInvalidDocComment ... ok
-test tests::PhpParser_Builder_EnumTest__testInvalidName ... ok
 test tests::PhpParser_Builder_EnumTest__testInvalidStmtError ... ok
+test tests::PhpParser_Builder_EnumTest__testInvalidName ... ok
 test tests::PhpParser_Builder_EnumTest__testSetScalarType ... ok
-test tests::PhpParser_Builder_FunctionTest__testAddAttribute ... ok
 test tests::PhpParser_Builder_FunctionTest__testAddNonStmt ... ok
 test tests::PhpParser_Builder_EnumTest__testStatementOrder ... ok
+test tests::PhpParser_Builder_FunctionTest__testAddAttribute ... ok
 test tests::PhpParser_Builder_FunctionTest__testDocComment ... ok
-test tests::PhpParser_Builder_FunctionTest__testInvalidParamError ... ok
 test tests::PhpParser_Builder_FunctionTest__testInvalidNullableVoidType ... ok
-test tests::PhpParser_Builder_FunctionTest__testReturnType ... ok
+test tests::PhpParser_Builder_FunctionTest__testInvalidParamError ... ok
 test tests::PhpParser_Builder_FunctionTest__testReturnByRef ... ok
+test tests::PhpParser_Builder_FunctionTest__testReturnType ... ok
 test tests::PhpParser_Builder_FunctionTest__testParams ... ok
 test tests::PhpParser_Builder_FunctionTest__testStmts ... ok
-test tests::PhpParser_Builder_InterfaceTest__testAddConst ... ok
 test tests::PhpParser_Builder_InterfaceTest__testAddAttribute ... ok
+test tests::PhpParser_Builder_InterfaceTest__testAddConst ... ok
 test tests::PhpParser_Builder_InterfaceTest__testAddMethod ... ok
 test tests::PhpParser_Builder_InterfaceTest__testDocComment ... ok
 test tests::PhpParser_Builder_InterfaceTest__testEmpty ... ok
 test tests::PhpParser_Builder_InterfaceTest__testInvalidStmtError ... ok
-test tests::PhpParser_Builder_InterfaceTest__testOrder ... ok
 test tests::PhpParser_Builder_InterfaceTest__testExtending ... ok
+test tests::PhpParser_Builder_InterfaceTest__testOrder ... ok
 test tests::PhpParser_Builder_MethodTest__testAddStmtToAbstractMethodError ... ok
 test tests::PhpParser_Builder_MethodTest__testAddAttribute ... ok
-test tests::PhpParser_Builder_MethodTest__testDocComment ... ok
 test tests::PhpParser_Builder_MethodTest__testInvalidParamError ... ok
+test tests::PhpParser_Builder_MethodTest__testDocComment ... ok
 test tests::PhpParser_Builder_MethodTest__testMakeMethodWithStmtsAbstractError ... ok
-test tests::PhpParser_Builder_InterfaceTest__testFullFunctional ... FAILED
 test tests::PhpParser_Builder_MethodTest__testReturnByRef ... ok
-test tests::PhpParser_Builder_MethodTest__testModifiers ... ok
+test tests::PhpParser_Builder_InterfaceTest__testFullFunctional ... FAILED
 test tests::PhpParser_Builder_MethodTest__testParams ... ok
+test tests::PhpParser_Builder_MethodTest__testModifiers ... ok
 test tests::PhpParser_Builder_MethodTest__testReturnType ... ok
 test tests::PhpParser_Builder_MethodTest__testStmts ... ok
-test tests::PhpParser_Builder_ParamTest__testByRef ... ok
 test tests::PhpParser_Builder_ParamTest__testAddAttribute ... ok
+test tests::PhpParser_Builder_ParamTest__testByRef ... ok
 test tests::PhpParser_Builder_NamespaceTest__testCreation ... ok
 test tests::PhpParser_Builder_ParamTest__testInvalidTypeError ... ok
-test tests::PhpParser_Builder_ParamTest__testMakePrivate ... ok
 test tests::PhpParser_Builder_ParamTest__testDefaultValues ... ok
-test tests::PhpParser_Builder_ParamTest__testMakePublic ... ok
 test tests::PhpParser_Builder_ParamTest__testMakeProtected ... ok
+test tests::PhpParser_Builder_ParamTest__testMakePrivate ... ok
 test tests::PhpParser_Builder_ParamTest__testMakeReadonly ... ok
-test tests::PhpParser_Builder_ParamTest__testVoidTypeError ... ok
+test tests::PhpParser_Builder_ParamTest__testMakePublic ... ok
 test tests::PhpParser_Builder_ParamTest__testVariadic ... ok
 test tests::PhpParser_Builder_ParamTest__testTypes ... ok
+test tests::PhpParser_Builder_ParamTest__testVoidTypeError ... ok
 test tests::PhpParser_Builder_PropertyTest__testAbstractWithoutHook ... ok
 test tests::PhpParser_Builder_PropertyTest__testAddAttribute ... ok
 test tests::PhpParser_Builder_PropertyTest__testAddHook ... ok
@@ -373,8 +373,8 @@ test tests::PhpParser_Builder_TraitTest__testGetProperties ... ok
 test tests::PhpParser_Builder_TraitTest__testInvalidStmtError ... ok
 test tests::PhpParser_Builder_PropertyTest__testModifiers ... ok
 test tests::PhpParser_Builder_TraitUseAdaptationTest__testAsOnNotAlias ... ok
-test tests::PhpParser_Builder_TraitUseAdaptationTest__testAsMake ... ok
 test tests::PhpParser_Builder_TraitUseAdaptationTest__testInsteadof ... ok
+test tests::PhpParser_Builder_TraitUseAdaptationTest__testAsMake ... ok
 test tests::PhpParser_Builder_TraitTest__testStmtAddition ... ok
 test tests::PhpParser_Builder_TraitUseAdaptationTest__testInsteadofOnNotPrecedence ... ok
 test tests::PhpParser_Builder_TraitUseAdaptationTest__testInsteadofWithoutTrait ... ok
@@ -389,14 +389,14 @@ test tests::PhpParser_Builder_UseTest__testCreation ... ok
 test tests::PhpParser_CommentTest__testReformatting ... ok
 test tests::PhpParser_CompatibilityTest__testAliases1 ... ok
 test tests::PhpParser_CompatibilityTest__testAliases2 ... ok
-test tests::PhpParser_ConstExprEvaluatorTest__testEvaluateFallbackMagicConst ... ok
 test tests::PhpParser_ConstExprEvaluatorTest__testEvaluateFails ... ok
+test tests::PhpParser_ConstExprEvaluatorTest__testEvaluateFallbackMagicConst ... ok
 test tests::PhpParser_ConstExprEvaluatorTest__testEvaluateFallbackPipeOperator ... ok
 test tests::PhpParser_ConstExprEvaluatorTest__testEvaluateSilently ... ok
 test tests::PhpParser_ErrorHandler_CollectingTest__testHandleError ... ok
 test tests::PhpParser_ErrorHandler_ThrowingTest__testHandleError ... ok
-test tests::PhpParser_ErrorTest__testConstruct ... ok
 test tests::PhpParser_ErrorTest__testColumnInfo ... ok
+test tests::PhpParser_ErrorTest__testConstruct ... ok
 test tests::PhpParser_ErrorTest__testInvalidPosInfo ... ok
 test tests::PhpParser_ErrorTest__testNoColumnInfo ... ok
 test tests::PhpParser_ErrorTest__testSetMessageAndLine ... ok
@@ -412,17 +412,18 @@ test tests::PhpParser_LexerTest__testLex ... ok
 test tests::PhpParser_Lexer_EmulativeTest__testDefaultErrorHandler ... ok
 test tests::PhpParser_Lexer_EmulativeTest__testError ... ok
 test tests::PhpParser_Lexer_EmulativeTest__testErrorAfterEmulation ... ok
+test tests::PhpParser_JsonDecoderTest__testRoundTrip ... ok
 test tests::PhpParser_Lexer_EmulativeTest__testGetTokens ... ok
-test tests::PhpParser_Lexer_EmulativeTest__testLeaveStuffAloneInStrings ... ok
 test tests::PhpParser_Lexer_EmulativeTest__testLex ... ok
 test tests::PhpParser_Lexer_EmulativeTest__testLexNewFeatures ... ok
 test tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterNullsafeObjectOperator ... ok
 test tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterObjectOperator ... ok
+test tests::PhpParser_Lexer_EmulativeTest__testLeaveStuffAloneInStrings ... ok
 test tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterObjectOperatorWithComment ... ok
-test tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterObjectOperatorWithSpaces ... ok
 test tests::PhpParser_Lexer_EmulativeTest__testReplaceKeywords ... ok
-test tests::PhpParser_Lexer_EmulativeTest__testReplaceKeywordsUppercase ... ok
+test tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterObjectOperatorWithSpaces ... ok
 test tests::PhpParser_Lexer_EmulativeTest__testTargetVersion ... ok
+test tests::PhpParser_Lexer_EmulativeTest__testReplaceKeywordsUppercase ... ok
 test tests::PhpParser_ModifiersTest__testToString ... ok
 test tests::PhpParser_ModifiersTest__testToStringInvalid ... ok
 test tests::PhpParser_NameContextTest__testGetPossibleNames ... ok
@@ -431,33 +432,32 @@ test tests::PhpParser_NodeAbstractTest__testChange ... ok
 test tests::PhpParser_NodeAbstractTest__testConstruct ... ok
 test tests::PhpParser_NodeAbstractTest__testGetDocComment ... ok
 test tests::PhpParser_NodeAbstractTest__testIteration ... ok
-test tests::PhpParser_JsonDecoderTest__testRoundTrip ... ok
 test tests::PhpParser_NodeAbstractTest__testSetDocComment ... ok
 test tests::PhpParser_NodeDumperTest__testDump ... ok
 test tests::PhpParser_NodeAbstractTest__testJsonSerialization ... ok
 test tests::PhpParser_NodeDumperTest__testError ... ok
 test tests::PhpParser_NodeFinderTest__testFind ... ok
+test tests::PhpParser_NodeDumperTest__testDumpWithPositions ... ok
 test tests::PhpParser_NodeFinderTest__testFindFirst ... ok
 test tests::PhpParser_NodeFinderTest__testFindFirstInstanceOf ... ok
 test tests::PhpParser_NodeFinderTest__testFindInstanceOf ... ok
-test tests::PhpParser_NodeTraverserTest__testDontTraverseChildren ... ok
 test tests::PhpParser_NodeTraverserTest__testDontTraverseCurrentAndChildren ... ok
+test tests::PhpParser_NodeTraverserTest__testDontTraverseChildren ... ok
 test tests::PhpParser_NodeTraverserTest__testInvalidDeepArray ... FAILED
 test tests::PhpParser_NodeTraverserTest__testInvalidReturn ... ok
 test tests::PhpParser_NodeTraverserTest__testMerge ... ok
-test tests::PhpParser_NodeTraverserTest__testModifying ... ok
 test tests::PhpParser_NodeTraverserTest__testNoCloneNodes ... ok
-test tests::PhpParser_NodeTraverserTest__testNonModifying ... ok
+test tests::PhpParser_NodeTraverserTest__testModifying ... ok
 test tests::PhpParser_NodeTraverserTest__testRemoveFromEnter ... ok
+test tests::PhpParser_NodeTraverserTest__testNonModifying ... ok
 test tests::PhpParser_NodeTraverserTest__testRemoveFromLeave ... ok
 test tests::PhpParser_NodeTraverserTest__testRemovingVisitor ... FAILED
-test tests::PhpParser_NodeTraverserTest__testReplaceWithNull ... ok
 test tests::PhpParser_NodeTraverserTest__testReturnArrayFromEnter ... ok
-test tests::PhpParser_NodeTraverserTest__testStopTraversal ... ok
+test tests::PhpParser_NodeTraverserTest__testReplaceWithNull ... ok
 test tests::PhpParser_NodeVisitor_FindingVisitorTest__testFindAll ... ok
 test tests::PhpParser_NodeVisitor_FindingVisitorTest__testFindVariables ... ok
 test tests::PhpParser_NodeVisitor_FirstFindingVisitorTest__testFindFirstVariable ... ok
-test tests::PhpParser_NodeDumperTest__testDumpWithPositions ... ok
+test tests::PhpParser_NodeTraverserTest__testStopTraversal ... ok
 test tests::PhpParser_NodeVisitor_FirstFindingVisitorTest__testFindNone ... ok
 test tests::PhpParser_NodeVisitor_NameResolverTest__testAddOriginalNames ... ok
 test tests::PhpParser_NodeVisitor_NameResolverTest__testAddDeclarationNamespacedName ... ok
@@ -471,9 +471,10 @@ test tests::PhpParser_NodeVisitor_NameResolverTest__testSpecialClassNamesAreCase
 test tests::PhpParser_NodeVisitor_NodeConnectingVisitorTest__testConnectsNodeToItsParentNodeAndItsSiblingNodes ... ok
 test tests::PhpParser_NodeVisitor_NodeConnectingVisitorTest__testWeakReferences ... ok
 test tests::PhpParser_NodeVisitor_ParentConnectingVisitorTest__testConnectsChildNodeToParentNode ... ok
-test tests::PhpParser_ConstExprEvaluatorTest__testEvaluate ... ok
+test tests::PhpParser_NodeVisitor_NameResolverTest__testResolveLocations ... ok
 test tests::PhpParser_Node_Expr_CallableLikeTest__testGetArg ... ok
 test tests::PhpParser_Node_Expr_CallableLikeTest__testIsFirstClassCallable ... ok
+test tests::PhpParser_NodeVisitor_ParentConnectingVisitorTest__testWeakReferences ... ok
 test tests::PhpParser_Node_IdentifierTest__testConstructorThrows ... ok
 test tests::PhpParser_Node_IdentifierTest__testIsSpecialClassName ... ok
 test tests::PhpParser_Node_IdentifierTest__testToString ... ok
@@ -488,60 +489,59 @@ test tests::PhpParser_Node_NameTest__testNameTypes ... ok
 test tests::PhpParser_Node_NameTest__testSlice ... ok
 test tests::PhpParser_Node_NameTest__testSliceLengthTooLarge ... ok
 test tests::PhpParser_Node_NameTest__testSliceLengthTooLargeWithOffset ... ok
+test tests::PhpParser_ConstExprEvaluatorTest__testEvaluate ... ok
 test tests::PhpParser_Node_NameTest__testSliceLengthTooSmall ... ok
-test tests::PhpParser_Node_NameTest__testSliceOffsetTooLarge ... ok
-test tests::PhpParser_Node_NameTest__testSliceOffsetTooSmall ... ok
 test tests::PhpParser_Node_NameTest__testToString ... ok
+test tests::PhpParser_Node_NameTest__testSliceOffsetTooSmall ... ok
+test tests::PhpParser_Node_NameTest__testSliceOffsetTooLarge ... ok
 test tests::PhpParser_Node_ParamTest__testModifiers ... ok
-test tests::PhpParser_Node_ParamTest__testNoModifiers ... ok
-test tests::PhpParser_Node_ParamTest__testNonPromotedPropertyIsNotPublic ... ok
 test tests::PhpParser_Node_ParamTest__testPromotedPropertyWithoutVisibilityModifier ... ok
+test tests::PhpParser_Node_ParamTest__testNonPromotedPropertyIsNotPublic ... ok
+test tests::PhpParser_Node_ParamTest__testNoModifiers ... ok
 test tests::PhpParser_Node_ParamTest__testSetVisibility ... ok
 test tests::PhpParser_Node_PropertyHookTest__testGetStmts ... ok
-test tests::PhpParser_NodeVisitor_ParentConnectingVisitorTest__testWeakReferences ... ok
 test tests::PhpParser_Node_PropertyHookTest__testGetStmtsSetHookWithoutPropertyName ... ok
 test tests::PhpParser_Node_PropertyHookTest__testGetStmtsUnknownHook ... ok
 test tests::PhpParser_Node_PropertyHookTest__testModifiers ... ok
 test tests::PhpParser_Node_PropertyHookTest__testNoModifiers ... ok
-test tests::PhpParser_Node_Scalar_DNumberTest__testRawValue ... ok
 test tests::PhpParser_Node_Scalar_MagicConstTest__testGetName ... ok
-test tests::PhpParser_Node_Scalar_NumberTest__testRawValue ... ok
-test tests::PhpParser_Node_Scalar_StringTest__testCreate ... ok
+test tests::PhpParser_Node_PropertyHookTest__testGetStmtsSetHookFromParser ... ok
+test tests::PhpParser_Node_Scalar_DNumberTest__testRawValue ... ok
 test tests::PhpParser_Node_Scalar_StringTest__testParseEscapeSequences ... ok
-test tests::PhpParser_Node_Scalar_StringTest__testRawValue ... ok
+test tests::PhpParser_Node_Scalar_StringTest__testCreate ... ok
 test tests::PhpParser_Node_Stmt_ClassConstTest__testModifiers ... ok
+test tests::PhpParser_Node_Scalar_NumberTest__testRawValue ... ok
 test tests::PhpParser_Node_Stmt_ClassConstTest__testNoModifiers ... ok
-test tests::PhpParser_Node_Stmt_ClassMethodTest__testFunctionLike ... ok
 test tests::PhpParser_Node_Stmt_ClassMethodTest__testImplicitPublic ... ok
+test tests::PhpParser_Node_Stmt_ClassMethodTest__testFunctionLike ... ok
+test tests::PhpParser_Node_Scalar_StringTest__testRawValue ... ok
 test tests::PhpParser_Node_Stmt_ClassMethodTest__testMagic ... ok
 test tests::PhpParser_Node_Stmt_ClassMethodTest__testModifiers ... ok
 test tests::PhpParser_Node_Stmt_ClassMethodTest__testNoModifiers ... ok
 test tests::PhpParser_Node_Stmt_ClassTest__testGetConstants ... ok
+test tests::PhpParser_Node_Stmt_ClassTest__testGetProperties ... ok
 test tests::PhpParser_Node_Stmt_ClassTest__testGetMethod ... ok
 test tests::PhpParser_Node_Stmt_ClassTest__testGetMethods ... ok
-test tests::PhpParser_Node_Stmt_ClassTest__testGetProperties ... ok
 test tests::PhpParser_Node_Stmt_ClassTest__testGetProperty ... ok
-test tests::PhpParser_Node_Stmt_ClassTest__testGetTraitUses ... ok
-test tests::PhpParser_Node_Stmt_ClassTest__testIsAbstract ... ok
 test tests::PhpParser_Node_Stmt_ClassTest__testIsFinal ... ok
+test tests::PhpParser_Node_Stmt_ClassTest__testIsAbstract ... ok
+test tests::PhpParser_Node_Stmt_ClassTest__testGetTraitUses ... ok
 test tests::PhpParser_Node_Stmt_InterfaceTest__testGetConstants ... ok
+test tests::PhpParser_Node_Stmt_PropertyTest__testIsFinal ... ok
 test tests::PhpParser_Node_Stmt_InterfaceTest__testGetMethods ... ok
 test tests::PhpParser_Node_Stmt_PropertyTest__testIsAbstract ... ok
-test tests::PhpParser_Node_Stmt_PropertyTest__testIsFinal ... ok
 test tests::PhpParser_Node_Stmt_PropertyTest__testModifiers ... ok
+test tests::PhpParser_Node_Stmt_PropertyTest__testStaticImplicitlyPublic ... ok
 test tests::PhpParser_Node_Stmt_PropertyTest__testNoModifiers ... ok
 test tests::PhpParser_Node_Stmt_PropertyTest__testSetVisibility ... ok
-test tests::PhpParser_Node_Stmt_PropertyTest__testStaticImplicitlyPublic ... ok
 test tests::PhpParser_ParserFactoryTest__testCreate ... ok
-test tests::PhpParser_Node_PropertyHookTest__testGetStmtsSetHookFromParser ... ok
 test tests::PhpParser_Parser_Php7Test__testAttributeAssignment ... ok
 test tests::PhpParser_Parser_Php7Test__testGetTokens ... ok
 test tests::PhpParser_Parser_Php7Test__testInvalidToken ... ok
-test tests::PhpParser_NodeVisitor_NameResolverTest__testResolveLocations ... ok
 test tests::PhpParser_Parser_Php7Test__testParserThrowsLexerError ... ok
+test tests::PhpParser_Parser_Php7Test__testListKindAttribute ... ok
 test tests::PhpParser_Parser_Php7Test__testParserThrowsSpecialError ... ok
 test tests::PhpParser_Parser_Php7Test__testParserThrowsSyntaxError ... ok
-test tests::PhpParser_Parser_Php7Test__testListKindAttribute ... ok
 test tests::PhpParser_Parser_Php8Test__testAttributeAssignment ... ok
 test tests::PhpParser_Parser_Php8Test__testGetTokens ... ok
 test tests::PhpParser_Parser_Php8Test__testInvalidToken ... ok
@@ -570,9 +570,6 @@ test tests::PhpParser_TokenTest__testGetTokenName ... ok
 test tests::PhpParser_TokenTest__testIs ... ok
 test tests::PhpParser_TokenTest__testIsIgnorable ... ok
 test tests::PhpParser_TokenTest__testToString ... ok
-test tests::PhpParser_CodeParsingTest__testParse has been running for over 60 seconds
-test tests::PhpParser_PrettyPrinterTest__testPrettyPrint has been running for over 60 seconds
-test tests::PhpParser_PrettyPrinterTest__testRoundTripPrint has been running for over 60 seconds
 test tests::PhpParser_CodeParsingTest__testParse ... FAILED
 test tests::PhpParser_PrettyPrinterTest__testPrettyPrint ... ok
 test tests::PhpParser_PrettyPrinterTest__testRoundTripPrint ... FAILED
@@ -582,43 +579,43 @@ failures:
 ---- tests::PhpParser_Builder_InterfaceTest__testFullFunctional stdout ----
 [failed] data set "": Error: eval(): unsupported code: interface
 
-thread 'tests::PhpParser_Builder_InterfaceTest__testFullFunctional' (127110) panicked at php-rt/src/testing.rs:42:34:
+thread 'tests::PhpParser_Builder_InterfaceTest__testFullFunctional' (140167) panicked at php-rt/src/testing.rs:42:34:
 Error: eval(): unsupported code: interface
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 
 ---- tests::PhpParser_NodeAbstractTest__testAttributes stdout ----
 
-thread 'PhpParser\NodeAbstractTest::testAttributes' (127295) panicked at generated/php_parser/src/php_parser/mod.rs:8516:12:
+thread 'PhpParser\NodeAbstractTest::testAttributes' (140353) panicked at generated/php_parser/src/php_parser/mod.rs:8561:12:
 internal error: entered unreachable code: unknown method getMockForAbstractClass
 [panicked] data set ""
 
 ---- tests::PhpParser_NodeTraverserTest__testInvalidDeepArray stdout ----
 
-thread 'PhpParser\NodeTraverserTest::testInvalidDeepArray' (127339) panicked at generated/php_parser/src/generated.rs:5811:145:
+thread 'PhpParser\NodeTraverserTest::testInvalidDeepArray' (140385) panicked at generated/php_parser/src/generated.rs:5811:145:
 not implemented: cast ((crate::php_parser::node::scalar::String_,),) => crate::php_parser::Node
 [panicked] data set ""
 
 ---- tests::PhpParser_NodeTraverserTest__testRemovingVisitor stdout ----
 
-thread 'PhpParser\NodeTraverserTest::testRemovingVisitor' (127355) panicked at generated/php_parser/src/php_parser/mod.rs:9334:19:
+thread 'PhpParser\NodeTraverserTest::testRemovingVisitor' (140401) panicked at generated/php_parser/src/php_parser/mod.rs:9382:19:
 internal error: entered unreachable code: method call on Rc<dyn Fn() -> Result<Mixed, Throw>>
 [panicked] data set ""
 
 ---- tests::PhpParser_PrettyPrinterTest__testFormatPreservingPrint stdout ----
 [failed] data set "home/daniil/repos/psalm-port/build/php-parser/test/code/formatPreservation/addingPropertyType.test#0": Error: eval(): unsupported code: use
 
-thread 'tests::PhpParser_PrettyPrinterTest__testFormatPreservingPrint' (127887) panicked at php-rt/src/testing.rs:42:34:
+thread 'tests::PhpParser_PrettyPrinterTest__testFormatPreservingPrint' (140608) panicked at php-rt/src/testing.rs:42:34:
 Error: eval(): unsupported code: use
 
 ---- tests::PhpParser_CodeParsingTest__testParse stdout ----
 
-thread 'PhpParser\CodeParsingTest::testParse' (127209) panicked at generated/php_parser/src/php_parser/node/mod.rs:3500:194:
+thread 'PhpParser\CodeParsingTest::testParse' (140267) panicked at generated/php_parser/src/php_parser/node/mod.rs:3532:194:
 Mixed value is not a PhpParser\Node\Arg
 [panicked] data set "home/daniil/repos/psalm-port/build/php-parser/test/code/parser/expr/firstClassCallables.test#0"
 
 ---- tests::PhpParser_PrettyPrinterTest__testRoundTripPrint stdout ----
 
-thread 'PhpParser\PrettyPrinterTest::testRoundTripPrint' (127948) panicked at generated/php_parser/src/php_parser/node/mod.rs:3500:194:
+thread 'PhpParser\PrettyPrinterTest::testRoundTripPrint' (140627) panicked at generated/php_parser/src/php_parser/node/mod.rs:3532:194:
 Mixed value is not a PhpParser\Node\Arg
 [panicked] data set "home/daniil/repos/psalm-port/build/php-parser/test/code/parser/expr/firstClassCallables.test#0"
 
@@ -632,6 +629,6 @@ failures:
     tests::PhpParser_PrettyPrinterTest__testFormatPreservingPrint
     tests::PhpParser_PrettyPrinterTest__testRoundTripPrint
 
-test result: FAILED. 308 passed; 7 failed; 0 ignored; 0 measured; 0 filtered out; finished in 220.46s
+test result: FAILED. 308 passed; 7 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.70s
 
 error: test failed, to rerun pass `-p php_parser --lib`
