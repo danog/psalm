@@ -170,10 +170,6 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
     ): void {
         $class = $this->class;
 
-        if (Transpiler::isEnabled()) {
-            Transpiler::get()->recordClassLike($this, $class, $this->storage);
-        }
-
         if (!$class instanceof PhpParser\Node\Stmt\Class_ && !$class instanceof PhpParser\Node\Stmt\Enum_) {
             throw new LogicException('Something went badly wrong');
         }
@@ -181,6 +177,19 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         $fq_class_name = $class_context && $class_context->self ? $class_context->self : $this->fq_class_name;
 
         $storage = $this->storage;
+
+        if (Transpiler::isEnabled()) {
+            if ($storage->stmt_location
+                && $class->name
+                && ($storage->stmt_location->file_path !== $this->getFilePath()
+                    || $storage->stmt_location->raw_line_number !== $class->getStartLine())
+            ) {
+                // a duplicate (dead) definition of a class whose storage comes from elsewhere
+                return;
+            }
+
+            Transpiler::get()->recordClassLike($this, $class, $this->storage);
+        }
 
         if ($storage->has_visitor_issues) {
             return;

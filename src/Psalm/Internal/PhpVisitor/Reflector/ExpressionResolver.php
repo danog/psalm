@@ -12,6 +12,7 @@ use PhpParser\Node\Expr\ConstFetch;
 use Psalm\Aliases;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
+use Psalm\Internal\Transpiler\Transpiler;
 use Psalm\Internal\Scanner\UnresolvedConstant\ArrayOffsetFetch;
 use Psalm\Internal\Scanner\UnresolvedConstant\ArraySpread;
 use Psalm\Internal\Scanner\UnresolvedConstant\ArrayValue;
@@ -363,7 +364,7 @@ final class ExpressionResolver
             return $enter_conditional_left !== false || $enter_conditional_right !== false;
         }
 
-        if ($codebase->register_autoload_files) {
+        if ($codebase->register_autoload_files || Transpiler::isEnabled()) {
             if ((
                     $expr instanceof PhpParser\Node\Expr\BinaryOp\GreaterOrEqual
                     || $expr instanceof PhpParser\Node\Expr\BinaryOp\Greater

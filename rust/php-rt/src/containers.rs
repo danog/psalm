@@ -522,17 +522,28 @@ type DynFn = dyn Fn(Vec<Mixed>) -> Result<Mixed, DynError>;
 pub struct DynCallable {
     pub arity: usize,
     f: Rc<DynFn>,
+    is_null: bool,
 }
 impl DynCallable {
     pub fn new<F: Fn(Vec<Mixed>) -> Result<Mixed, DynError> + 'static>(arity: usize, f: F) -> Self {
-        DynCallable { arity, f: Rc::new(f) }
+        DynCallable { arity, f: Rc::new(f), is_null: false }
     }
     pub fn from_rt<F: Fn(Vec<Mixed>) -> Result<Mixed, RtError> + 'static>(arity: usize, f: F) -> Self {
-        DynCallable { arity, f: Rc::new(move |a| f(a).map_err(DynError::Rt)) }
+        DynCallable { arity, f: Rc::new(move |a| f(a).map_err(DynError::Rt)), is_null: false }
     }
-    /// A `null` stored where a callable is expected: invoking it is an Error, as in PHP.
+    /// A `null` stored where a callable is expected (docblocks like `callable[]` holding nulls):
+    /// invoking it is an Error, as in PHP, and `=== null` comparisons see it as null.
     pub fn null_callable() -> Self {
-        DynCallable::from_rt(0, |_| Err(RtError::error("Value of type null is not callable")))
+        let mut c = DynCallable::from_rt(0, |_| Err(RtError::error("Value of type null is not callable")));
+        c.is_null = true;
+        c
+    }
+    pub fn is_null(&self) -> bool {
+        self.is_null
+    }
+    /// `None` for a null callable, `Some` otherwise.
+    pub fn into_option(self) -> Option<DynCallable> {
+        if self.is_null { None } else { Some(self) }
     }
     pub fn call(&self, mut args: Vec<Mixed>) -> Result<Mixed, DynError> {
         while args.len() < self.arity {
@@ -543,12 +554,12 @@ impl DynCallable {
 }
 impl Truthy for DynCallable {
     fn truthy(&self) -> bool {
-        true
+        !self.is_null
     }
 }
 impl Identical for DynCallable {
     fn identical(&self, o: &Self) -> bool {
-        Rc::ptr_eq(&self.f, &o.f)
+        (self.is_null && o.is_null) || Rc::ptr_eq(&self.f, &o.f)
     }
 }
 impl std::fmt::Debug for DynCallable {
@@ -558,7 +569,7 @@ impl std::fmt::Debug for DynCallable {
 }
 impl crate::cast::CastTo<Mixed> for DynCallable {
     fn cast_to(self) -> Mixed {
-        Mixed::Closure(Rc::new(self))
+        if self.is_null { Mixed::Null } else { Mixed::Closure(Rc::new(self)) }
     }
 }
 impl crate::cast::CastTo<DynCallable> for Mixed {
