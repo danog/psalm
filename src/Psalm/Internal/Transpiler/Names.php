@@ -88,7 +88,7 @@ final class Names
     public static function var(string $name): string
     {
         $id = self::ident($name);
-        if (isset(self::reserved()[$id])) {
+        if (isset(self::reserved()[$id]) || $id === '_') {
             return $id . '_v';
         }
         return $id;
@@ -99,6 +99,9 @@ final class Names
         $name = (string) $name;
         if ($name === 'new') {
             return 'new_';
+        }
+        if ($name === '_') {
+            return '_v';
         }
         return self::ident($name);
     }

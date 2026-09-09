@@ -209,11 +209,11 @@ trait ExprTrait
         }
         if ($e instanceof Expr\List_ || $e instanceof Expr\ShellExec) {
             $this->warn('unsupported expression ' . $e->getType(), $e);
-            return new Val('unreachable!("unsupported ' . $e->getType() . '")', RustType::never());
+            return $this->dead('unsupported ' . $e->getType() . '', RustType::never());
         }
 
         $this->warn('unsupported expression ' . $e->getType(), $e);
-        return new Val('unreachable!("unsupported ' . $e->getType() . '")', RustType::never());
+        return $this->dead('unsupported ' . $e->getType() . '', RustType::never());
     }
 
     private function floatLit(float $f): string
@@ -348,14 +348,14 @@ trait ExprTrait
             return new Val('crate::consts::' . Names::constant($user->name) . '()', $user->type);
         }
         $this->warn('unknown constant ' . $resolved, $e);
-        return new Val('unreachable!("unknown constant ' . $resolved . '")', $t ?? RustType::mixed());
+        return $this->dead('unknown constant ' . $resolved . '', $t ?? RustType::mixed());
     }
 
     private function variable(Expr\Variable $e): Val
     {
         if (!is_string($e->name)) {
             $this->warn('variable variable', $e);
-            return new Val('unreachable!("variable variable")', RustType::mixed());
+            return $this->dead('variable variable', RustType::mixed());
         }
         $v = $this->readVar($e->name);
         return $this->narrow($v, $e);
@@ -1073,6 +1073,16 @@ trait ExprTrait
                         : 'Some(__b.' . $field->acc() . '_get())';
                     return $this->flattenOption($base->code . '.and_then(|__b| ' . $getter . ')', $field->type);
                 }
+                $magic_get = $cls !== null ? $this->program->findMethod($cls, '__get') : null;
+                $magic_isset = $cls !== null ? $this->program->findMethod($cls, '__isset') : null;
+                if ($magic_get !== null && $magic_get->node !== null) {
+                    $lit = Names::strLit($name);
+                    $present = $magic_isset !== null && $magic_isset->node !== null
+                        ? 'match __b.' . $magic_isset->rustName() . '(' . $lit . ') { Ok(true) => true, _ => false }'
+                        : 'true';
+                    $code = $base->code . '.and_then(|__b| if ' . $present . ' { __b.' . $magic_get->rustName() . '(' . $lit . ').ok() } else { None })';
+                    return $this->flattenOption($code, $magic_get->return_type);
+                }
             }
             if ($bt->kind === RustType::MIXED) {
                 return new Val($base->code . '.and_then(|__b| mixed_prop(&__b, &' . Names::strLit($name) . '))', RustType::option(RustType::mixed()));
@@ -1172,7 +1182,7 @@ trait ExprTrait
             return new Val('{ let ' . $tmp . ' = ' . $this->casts->convert($place->read(), $t, RustType::mixed()) . '; let __n = ' . $fn . '(&' . $tmp . '); ' . $place->write($this->casts->convert('__n.clone()', RustType::mixed(), $t)) . ' ' . ($is_pre ? '__n' : $tmp) . ' }', RustType::mixed());
         }
         $this->warn('inc/dec on ' . $t->toRust(), $e);
-        return new Val('unreachable!("inc/dec on ' . $t->toRust() . '")', RustType::never());
+        return $this->dead('inc/dec on ' . $t->toRust() . '', RustType::never());
     }
 
     private function cast(Expr\Cast $e): Val
@@ -1389,7 +1399,7 @@ trait ExprTrait
         $inf = $this->inferred($e);
         if ($record === null) {
             $this->warn('closure without analysis record', $e);
-            return new Val('unreachable!("closure without record")', $inf ?? RustType::dynCallable());
+            return $this->dead('closure without record', $inf ?? RustType::dynCallable());
         }
         $child = new BodyEmitter($this->program, $record, $this->class, $this->casts, $this->builtins, $this->diag, $this);
         $storage = $record->storage;

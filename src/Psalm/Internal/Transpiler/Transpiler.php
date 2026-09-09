@@ -132,12 +132,23 @@ final class Transpiler
             return;
         }
 
+        $fq_class_name = $analyzer->getFQCLN();
+        if ($fq_class_name !== null && $context->self !== null && strtolower($fq_class_name) !== strtolower($context->self)) {
+            $codebase = $statements_analyzer->getCodebase();
+            if ($codebase->classlike_storage_provider->has($fq_class_name)
+                && $codebase->classlike_storage_provider->get($fq_class_name)->is_trait
+            ) {
+                // a trait method analyzed for a using class: its body belongs to that class
+                $fq_class_name = $context->self;
+            }
+        }
+
         $record = new FunctionRecord(
             $node,
             $storage,
             $statements_analyzer->node_data,
             $file_path,
-            $analyzer->getFQCLN(),
+            $fq_class_name,
             $node instanceof ClassMethod ? $node->name->name : null,
         );
 

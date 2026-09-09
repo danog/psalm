@@ -287,6 +287,44 @@ final class BodyEmitter
         return $this->expr($e);
     }
 
+    /** A value of type `$t` the transpiler cannot produce (unsupported construct, external code): panics if reached. */
+    public function dead(string $msg, RustType $t): Val
+    {
+        return new Val($this->deadCode($msg, $t), $t);
+    }
+
+    public function deadCode(string $msg, RustType $t): string
+    {
+        if ($t->kind === RustType::NEVER) {
+            return 'unreachable!(' . Names::rustStringLiteral($msg) . ')';
+        }
+        return 'dead::<' . $t->toRust() . '>(' . Names::rustStringLiteral($msg) . ')';
+    }
+
+    /**
+     * Locals assigned in the body that Psalm's statement snapshots never mention (assignments inside
+     * conditions of nested expressions): declared with the assigned expression's inferred type.
+     *
+     * @param list<Stmt> $stmts
+     */
+    private function declareAssignedVars(array $stmts, array $params): void
+    {
+        foreach ((new \PhpParser\NodeFinder())->findInstanceOf($stmts, Expr\Assign::class) as $assign) {
+            $target = $assign->var;
+            if (!$target instanceof Expr\Variable || !is_string($target->name) || $target->name === 'this') {
+                continue;
+            }
+            $name = $target->name;
+            if (isset($this->vars[$name]) || isset($params[$name]) || isset($this->predeclared[$name])) {
+                continue;
+            }
+            $pt = $this->psalmType($assign->expr);
+            $t = $pt !== null ? $this->types()->map($pt) : RustType::mixed();
+            $this->vars[$name] = $t;
+            $this->late[$name] = !$t->hasDefault();
+        }
+    }
+
     public function readVar(string $name): Val
     {
         if ($name === 'this') {
@@ -499,6 +537,7 @@ final class BodyEmitter
 
         $this->scanReferences($stmts ?? []);
         $this->declareLocals($params);
+        $this->declareAssignedVars($stmts ?? [], $params);
         $this->emitLocalDecls($params);
         if ($this->is_generator) {
             $this->w->line('let mut __gen: Vec<(' . $this->gen_key->toRust() . ', ' . $this->gen_val->toRust() . ')> = Vec::new();');

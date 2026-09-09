@@ -372,6 +372,11 @@ final class TypeMapper
             return RustType::anyObject();
         }
         $fqcn = $this->program->canonicalClassName($atomic->value);
+        $model = $this->program->getClass($fqcn);
+        if ($model === null || !$model->is_project) {
+            // no generated code for this class (a vendor dependency that is not transpiled): dynamic object
+            return RustType::anyObject();
+        }
         return RustType::class($fqcn);
     }
 

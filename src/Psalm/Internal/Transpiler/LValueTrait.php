@@ -156,7 +156,7 @@ trait LValueTrait
 
     private function deadPlace(RustType $t): Place
     {
-        return new Place($t, fn() => 'unreachable!("bad lvalue")', fn(string $v) => '{ let _ = ' . $v . '; }');
+        return new Place($t, fn() => $this->deadCode('bad lvalue', $t), fn(string $v) => '{ let _ = ' . $v . '; }');
     }
 
     public function findStaticField(?ClassModel $cls, string $name): ?FieldModel
@@ -220,7 +220,7 @@ trait LValueTrait
             if ($dim === null) {
                 return new Place(
                     $vt,
-                    fn() => 'unreachable!("read of $a[]")',
+                    fn() => $this->deadCode('read of $a[]', $vt),
                     fn(string $v) => $this->hoisted([$v], fn(string $v) => $parent->modify(fn(string $p) => $p . '.push(' . $v . ');')),
                 );
             }
@@ -238,7 +238,7 @@ trait LValueTrait
             if ($dim === null) {
                 return new Place(
                     $vt,
-                    fn() => 'unreachable!("read of $a[]")',
+                    fn() => $this->deadCode('read of $a[]', $vt),
                     fn(string $v) => $this->hoisted([$v], fn(string $v) => $parent->modify(fn(string $p) => $p . '.push(' . $v . ');')),
                 );
             }
@@ -339,7 +339,7 @@ trait LValueTrait
     {
         if ($e->dim === null) {
             $this->warn('read of $a[]', $e);
-            return new Val('unreachable!("read of $a[]")', RustType::never());
+            return $this->dead('read of $a[]', RustType::never());
         }
         $base = $this->expr($e->var);
         $bt = $base->type;
@@ -390,7 +390,7 @@ trait LValueTrait
             }
             if ($k !== null) {
                 $this->warn('read of unknown shape key ' . $k, $e);
-                return new Val('unreachable!("unknown key")', $this->inferredOrMixed($e));
+                return $this->dead('unknown key', $this->inferredOrMixed($e));
             }
             $mt = RustType::map(RustType::arrayKey(), $this->shapeValueType($bt));
             $conv = $this->casts->convert($base->code, $bt, $mt);
@@ -426,7 +426,7 @@ trait LValueTrait
             return $this->narrowOptional(new Val($conv . '.get(&' . $this->keyExpr($dim, RustType::arrayKey()) . ').cloned()', RustType::option(RustType::mixed())), $e);
         }
         $this->warn('array read on ' . $bt->toRust(), $e);
-        return new Val('unreachable!("array read on ' . $bt->toRust() . '")', $this->inferredOrMixed($e));
+        return $this->dead('array read on ' . $bt->toRust() . '', $this->inferredOrMixed($e));
     }
 
     /** Narrow an Option-typed read to what Psalm inferred (unwrapping when Psalm says it is defined). */
@@ -476,6 +476,11 @@ trait LValueTrait
                 $t = $name === 'name' ? RustType::str() : ($cls->storage->enum_type === 'int' ? RustType::int() : RustType::str());
                 return new Val($base->code . '.' . $name . '()', $t);
             }
+            $getter = $cls !== null ? $this->program->findMethod($cls, '__get') : null;
+            if ($getter !== null && $getter->node !== null) {
+                // magic property: `__get($name)`
+                return $this->narrow(new Val($base->code . '.' . $getter->rustName() . '(' . Names::strLit($name) . ')?', $getter->return_type), $e);
+            }
             // interface-typed receiver or undeclared property: dynamic lookup
             $code = 'mixed_prop(&' . $this->casts->convert($base->code, $bt, RustType::mixed()) . ', &' . Names::strLit($name) . ')';
             return $this->narrowOptional(new Val($code, RustType::option(RustType::mixed())), $e);
@@ -510,21 +515,21 @@ trait LValueTrait
             return $this->narrow(new Val($base->code . '.prop_' . Names::field($name) . '()', $this->inferredOrMixed($e)), $e);
         }
         $this->warn('property read on ' . $bt->toRust(), $e);
-        return new Val('unreachable!("property read on ' . $bt->toRust() . '")', $this->inferredOrMixed($e));
+        return $this->dead('property read on ' . $bt->toRust() . '', $this->inferredOrMixed($e));
     }
 
     private function staticPropertyFetch(Expr\StaticPropertyFetch $e): Val
     {
         if (!$e->class instanceof Name || !$e->name instanceof Node\VarLikeIdentifier) {
             $this->warn('dynamic static property', $e);
-            return new Val('unreachable!("dynamic static property")', $this->inferredOrMixed($e));
+            return $this->dead('dynamic static property', $this->inferredOrMixed($e));
         }
         $fqcn = $this->resolveClassName($e->class);
         $cls = $fqcn !== null ? $this->program->getClass($fqcn) : null;
         $field = $this->findStaticField($cls, $e->name->name);
         if ($field === null) {
             $this->warn('unknown static property ' . $e->name->name, $e);
-            return new Val('unreachable!("unknown static property")', $this->inferredOrMixed($e));
+            return $this->dead('unknown static property', $this->inferredOrMixed($e));
         }
         return $this->narrow(new Val($field->declaring->path() . '::st_' . $field->rustName() . '()', $field->type), $e);
     }
@@ -533,7 +538,7 @@ trait LValueTrait
     {
         if (!$e->name instanceof Identifier) {
             $this->warn('dynamic class constant', $e);
-            return new Val('unreachable!("dynamic class constant")', $this->inferredOrMixed($e));
+            return $this->dead('dynamic class constant', $this->inferredOrMixed($e));
         }
         $name = $e->name->name;
         if ($e->class instanceof Name) {
@@ -547,7 +552,7 @@ trait LValueTrait
             $cls = $fqcn !== null ? $this->program->getClass($fqcn) : null;
             if ($cls === null) {
                 $this->warn('constant on unknown class ' . $fqcn, $e);
-                return new Val('unreachable!("unknown class constant")', $this->inferredOrMixed($e));
+                return $this->dead('unknown class constant', $this->inferredOrMixed($e));
             }
             if ($cls->isEnum() && isset($cls->storage->enum_cases[$name])) {
                 return new Val($cls->path() . '::' . Names::typeIdent($name), RustType::class($cls->fqcn));
@@ -580,7 +585,7 @@ trait LValueTrait
                     return new Val(Names::strLit($pt->getSingleStringLiteral()->value), RustType::str());
                 }
                 $this->warn('unknown class constant ' . $fqcn . '::' . $name, $e);
-                return new Val('unreachable!("unknown class constant ' . $name . '")', $this->inferredOrMixed($e));
+                return $this->dead('unknown class constant ' . $name . '', $this->inferredOrMixed($e));
             }
             return $this->narrow(new Val($const->declaring->path() . '::' . $const->rustName() . '()', $const->type), $e);
         }
@@ -590,7 +595,7 @@ trait LValueTrait
             return new Val('class_name_of(&' . $this->casts->convert($base->code, $base->type, RustType::mixed()) . ')', RustType::str());
         }
         $this->warn('constant on expression', $e);
-        return new Val('unreachable!("constant on expression")', $this->inferredOrMixed($e));
+        return $this->dead('constant on expression', $this->inferredOrMixed($e));
     }
 
     public function findConstant(ClassModel $cls, string $name): ?ConstModel

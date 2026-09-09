@@ -713,6 +713,11 @@ impl<T: ?Sized> Identical for Rc<T> {
         Rc::ptr_eq(self, o)
     }
 }
+impl PhpCmp for Rc<Resource> {
+    fn php_cmp(&self, o: &Self) -> std::cmp::Ordering {
+        self.id.cmp(&o.id)
+    }
+}
 impl ToStr for Rc<Resource> {
     fn to_php_str(&self) -> Str {
         crate::sfmt!("Resource id #{}", self.id)

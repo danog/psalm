@@ -631,6 +631,10 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                         $trait_aliases,
                     );
 
+                    if (Transpiler::isEnabled()) {
+                        Transpiler::get()->recordClassLike($trait_analyzer, $trait_node, $trait_storage);
+                    }
+
                     $fq_trait_name_lc = strtolower($fq_trait_name);
 
                     $this->checkTemplateParams(
@@ -1527,6 +1531,10 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 $fq_trait_name_resolved,
                 $trait_aliases,
             );
+
+            if (Transpiler::isEnabled()) {
+                Transpiler::get()->recordClassLike($trait_analyzer, $trait_node, $trait_storage);
+            }
 
             foreach ($trait_node->stmts as $trait_stmt) {
                 if ($trait_stmt instanceof PhpParser\Node\Stmt\ClassMethod) {

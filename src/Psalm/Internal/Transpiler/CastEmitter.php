@@ -373,8 +373,24 @@ final class CastEmitter
         }
     }
 
+    /** A class type whose code is not generated (a vendor dependency): no impls can be written for it. */
+    private function isExternal(RustType $t): bool
+    {
+        if ($t->kind === RustType::OPTION) {
+            return $this->isExternal($t->inner());
+        }
+        if ($t->kind !== RustType::CLASS_) {
+            return false;
+        }
+        $c = $this->program->classOf($t);
+        return $c !== null && !$c->is_project;
+    }
+
     private function emitCast(RustType $from, RustType $to, Writer $w): void
     {
+        if ($this->isExternal($from) || $this->isExternal($to)) {
+            return;
+        }
         $fk = $from->kind;
         $tk = $to->kind;
         // member <-> union and Mixed <-> union impls are emitted together with the union enum
@@ -453,7 +469,8 @@ final class CastEmitter
                             }
                         }
                         if ($target !== null) {
-                            $arms[] = $from->toRust() . '::' . $c->variant() . '(v) => ' . $to->mangle() . '::' . $target->variantName() . '(' . $this->conv('v', RustType::class($c->fqcn), $target) . ')';
+                            $tc = $this->program->classOf($target);
+                            $arms[] = $from->toRust() . '::' . $c->variant() . '(v) => ' . $to->mangle() . '::' . $target->variantName() . '(' . ($tc !== null ? $this->wrapConcrete($tc, $c, 'v') : 'v') . ')';
                         } else {
                             $arms[] = $from->toRust() . '::' . $c->variant() . '(v) => ' . $to->mangle() . '::Other__(' . $this->conv('v', RustType::class($c->fqcn), RustType::mixed()) . ')';
                         }
@@ -523,6 +540,18 @@ final class CastEmitter
         if ($fk === RustType::CLASS_ && $tk === RustType::STR) {
             // (string) $object goes through __toString
             $w->line('impl php_rt::CastTo<Str> for ' . $from->toRust() . ' { fn cast_to(self) -> Str { self.to_php_string().unwrap_or_else(|__e| panic!("{}", __e)) } }');
+            return;
+        }
+        if ($fk === RustType::CLASS_ && ($tk === RustType::INT || $tk === RustType::FLOAT || $tk === RustType::BOOL)) {
+            $fc = $this->program->classOf($from);
+            $has_ts = $fc !== null && $this->program->findMethod($fc, '__tostring') !== null;
+            $via = $has_ts ? 'to_num(&Mixed::Str(self.to_php_string().unwrap_or_default()))' : '{ let _ = self; Num::Int(1) }';
+            $body = match ($tk) {
+                RustType::INT => $via . '.to_i64()',
+                RustType::FLOAT => $via . '.to_f64()',
+                default => '{ let _ = self; true }',
+            };
+            $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ' . $from->toRust() . ' { fn cast_to(self) -> ' . $to->toRust() . ' { ' . $body . ' } }');
             return;
         }
         $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ' . $from->toRust() . ' { fn cast_to(self) -> ' . $to->toRust() . ' { unimplemented!("cast ' . $from->toRust() . ' => ' . $to->toRust() . '") } }');
@@ -620,6 +649,9 @@ final class CastEmitter
 
     private function emitInstanceOf(RustType $subject, RustType $target, Writer $w): void
     {
+        if ($this->isExternal($subject) || $this->isExternal($target)) {
+            return;
+        }
         $th = $target->toRust();
         $tc = $this->program->classOf($target);
         if ($subject->kind === RustType::CLASS_) {
