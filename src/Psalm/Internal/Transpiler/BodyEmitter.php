@@ -189,6 +189,23 @@ final class BodyEmitter
     }
 
     /** Read a local variable as an owned value of its declared type. */
+    /**
+     * A value read with its declared (storage) type rather than the type Psalm narrowed it to at this
+     * point: used by runtime type checks (`is_string($x)`, `$x instanceof C`), where a value that
+     * contradicts the narrowing (an `Other__` union member) must not be unwrapped before the test.
+     */
+    public function rawValue(Expr $e): Val
+    {
+        if (($e instanceof Expr\Variable && is_string($e->name) && $e->name !== 'this')
+            || ($e instanceof Expr\PropertyFetch && $e->name instanceof \PhpParser\Node\Identifier)
+            || ($e instanceof Expr\StaticPropertyFetch && $e->name instanceof \PhpParser\Node\VarLikeIdentifier)
+        ) {
+            $p = $this->place($e);
+            return new Val($p->read(), $p->type);
+        }
+        return $this->expr($e);
+    }
+
     public function readVar(string $name): Val
     {
         if ($name === 'this') {
