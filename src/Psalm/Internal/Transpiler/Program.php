@@ -421,8 +421,15 @@ final class Program
         }
         $body_owner = $declaring;
         if ($declaring->isTrait()) {
-            // trait methods are emitted into every using class
+            // trait methods are emitted into the class that uses the trait; its subclasses inherit them
             $body_owner = $model;
+            $trait_lc = strtolower($declaring->fqcn);
+            for ($c = $model; $c !== null; $c = $c->parent) {
+                if (isset($c->storage->used_traits[$trait_lc])) {
+                    $body_owner = $c;
+                    break;
+                }
+            }
         }
         $key = $body_owner->lc() . '::' . $lc_name;
         if (isset($this->method_cache[$key])) {

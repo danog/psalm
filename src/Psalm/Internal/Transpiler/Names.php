@@ -106,7 +106,7 @@ final class Names
         if ($name === '_') {
             return '_v';
         }
-        if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $name)) {
+        if (!preg_match('/^[A-Za-z0-9_]+$/', $name)) {
             // punctuation-only or otherwise unmappable keys: keep them distinct
             return 'k_' . self::ident($name) . '_' . substr(md5($name), 0, 6);
         }

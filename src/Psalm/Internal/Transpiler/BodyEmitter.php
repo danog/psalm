@@ -337,6 +337,16 @@ final class BodyEmitter
             $this->vars[$name] = $t;
             $this->late[$name] = !$t->hasDefault();
         }
+        // catch variables (possibly unused, which Psalm's snapshots omit)
+        foreach ($finder->findInstanceOf($stmts, Stmt\Catch_::class) as $catch) {
+            if ($catch->var === null || !is_string($catch->var->name) || isset($this->vars[$catch->var->name]) || isset($params[$catch->var->name])) {
+                continue;
+            }
+            $pt = $this->psalmType($catch->var);
+            $t = $pt !== null ? $this->types()->map($pt) : RustType::class('Throwable');
+            $this->vars[$catch->var->name] = $t;
+            $this->late[$catch->var->name] = !$t->hasDefault();
+        }
         // out-parameters of calls (`preg_match($re, $s, $matches)`) are assigned by the callee
         $calls = [
             ...$finder->findInstanceOf($stmts, Expr\FuncCall::class),
