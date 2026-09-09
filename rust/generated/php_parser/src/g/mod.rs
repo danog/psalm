@@ -140,7 +140,7 @@ impl PhpToken {
     pub fn is(&self, mut kind: U_Int_or_Map_ArrayKey_ArrayKey_or_Str) -> Result<bool, Throw> { match self { PhpToken::PhpParser_Token(__h) => Ok(__h.is(kind)?), PhpToken::PhpToken(__h) => Ok(__h.is(kind)?), _ => unreachable!() } }
     pub fn is__impl(&self, mut kind: U_Int_or_Map_ArrayKey_ArrayKey_or_Str) -> Result<bool, Throw> {
     let mut k: ArrayKey = Default::default();
-    if (match kind.clone() { U_Int_or_Map_ArrayKey_ArrayKey_or_Str::Map_ArrayKey_ArrayKey(_) => true, _ => false }) {
+    if (match kind.clone() { U_Int_or_Map_ArrayKey_ArrayKey_or_Str::Map_ArrayKey_ArrayKey(_) => true, U_Int_or_Map_ArrayKey_ArrayKey_or_Str::Other__(__m) => __m.is_array(), _ => false }) {
         'l1: for __kv1 in cast::<Map<ArrayKey, ArrayKey>>(kind.clone()).into_iter() {
             k = __kv1.1;
             if self.is(cast::<U_Int_or_Map_ArrayKey_ArrayKey_or_Str>(k.clone()))? {
@@ -149,7 +149,7 @@ impl PhpToken {
         }
         return Ok(false);
     }
-    if cast::<ArrayKey>(kind.clone()).is_int() {
+    if (match kind.clone() { U_Int_or_Map_ArrayKey_ArrayKey_or_Str::Int(_) => true, U_Int_or_Map_ArrayKey_ArrayKey_or_Str::Other__(__m) => __m.is_int(), _ => false }) {
         return Ok((self.p_id_get() == cast::<i64>(kind.clone())));
     }
     return Ok(identical(&self.p_text_get(), &cast::<Str>(kind.clone())));
@@ -2978,7 +2978,7 @@ impl ReflectionClass {
         Ok(this)
     }
     pub fn magic__construct(&self, mut objectOrClass: U_AnyObject_or_Str) -> Result<Mixed, Throw> {
-    self.set_p_name((if (match objectOrClass.clone() { U_AnyObject_or_Str::AnyObject(_) => true, _ => false }) { class_name_of(&cast::<Mixed>(cast::<AnyObject>(objectOrClass.clone()))) } else { cast::<Str>(objectOrClass.clone()) }));
+    self.set_p_name((if (match objectOrClass.clone() { U_AnyObject_or_Str::AnyObject(_) => true, U_AnyObject_or_Str::Other__(__m) => __m.is_object(), _ => false }) { class_name_of(&cast::<Mixed>(cast::<AnyObject>(objectOrClass.clone()))) } else { cast::<Str>(objectOrClass.clone()) }));
     #[allow(unreachable_code)] Ok(Mixed::Null)
     }
     pub fn getName(&self) -> Result<Str, Throw> {

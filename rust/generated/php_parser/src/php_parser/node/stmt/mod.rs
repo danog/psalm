@@ -645,7 +645,7 @@ impl ClassMethod {
     self.set_p_attributes(attributes.clone());
     self.set_p_flags((match Some(subNodes.clone()).and_then(|__b| __b.flags) { Some(__v) => __v, None => cast::<i64>((match Some(subNodes.clone()).and_then(|__b| __b.type_).and_then(|__m| __m.to_option()) { Some(__v) => __v, None => cast::<Mixed>(0i64) })) }));
     self.set_p_byRef((match Some(subNodes.clone()).and_then(|__b| __b.byRef) { Some(__v) => __v, None => false }));
-    self.set_p_name((if (match name.clone() { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, _ => false }) { crate::php_parser::node::Identifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())? } else { cast::<crate::php_parser::node::Identifier>(name.clone()) }));
+    self.set_p_name((if (match name.clone() { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, U_PhpParser_Node_Identifier_or_Str::Other__(__m) => __m.is_string(), _ => false }) { crate::php_parser::node::Identifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())? } else { cast::<crate::php_parser::node::Identifier>(name.clone()) }));
     self.set_p_params((match Some(subNodes.clone()).and_then(|__b| __b.params) { Some(__v) => __v, None => Map::<ArrayKey, crate::php_parser::node::Param>::new() }));
     self.set_p_returnType((match Some(subNodes.clone()).and_then(|__b| __b.returnType) { Some(__v) => Some(__v), None => { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> } }));
     self.set_p_stmts((if { let __c45 = subNodes.clone(); let mut __m: Map<Str, Mixed> = Default::default(); if let Some(v) = __c45.flags { __m.insert(Str::from_static("flags"), cast::<Mixed>(v)); } if let Some(v) = __c45.byRef { __m.insert(Str::from_static("byRef"), cast::<Mixed>(v)); } if let Some(v) = __c45.params { __m.insert(Str::from_static("params"), cast::<Mixed>(v)); } if let Some(v) = __c45.returnType { __m.insert(Str::from_static("returnType"), cast::<Mixed>(v)); } if let Some(v) = __c45.stmts { __m.insert(Str::from_static("stmts"), cast::<Mixed>(v)); } if let Some(v) = __c45.attrGroups { __m.insert(Str::from_static("attrGroups"), cast::<Mixed>(v)); } if let Some(v) = __c45.type_ { __m.insert(Str::from_static("type"), v); } __m }.contains_key(&Str::from_static("stmts")) { { let __c46 = subNodes.clone(); Shape_flagsq_Int_byRefq_Bool_paramsq_Map_ArrayKey_PhpParser_Node_Param_678f93d5be { flags: __c46.flags, byRef: __c46.byRef, params: __c46.params, returnType: __c46.returnType, stmts: __c46.stmts, attrGroups: __c46.attrGroups, type_: __c46.type_ } }.stmts } else { Some(Map::<ArrayKey, Mixed>::new().map_values(|v| cast::<crate::php_parser::node::Stmt>(v))) }));
@@ -801,7 +801,7 @@ impl Class_ {
     pub fn magic__construct(&self, mut name: Option<U_PhpParser_Node_Identifier_or_Str>, mut subNodes: Shape_flagsq_Int_extendsq_Opt_PhpParser_Node_Name_implementsq_Map_Arra_c35c72206e, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
     self.set_p_attributes(attributes.clone());
     self.set_p_flags((match Some(subNodes.clone()).and_then(|__b| __b.flags) { Some(__v) => __v, None => cast::<i64>((match Some(subNodes.clone()).and_then(|__b| __b.type_).and_then(|__m| __m.to_option()) { Some(__v) => __v, None => cast::<Mixed>(0i64) })) }));
-    self.set_p_name((if (match name.clone() { Some(__u) => match __u { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, _ => false }, None => false }) { Some(crate::php_parser::node::Identifier::new((match name.clone() { Some(__o) => cast::<Str>(__o), None => <Str>::default() }), Map::<Str, Mixed>::new())?) } else { name.clone().map(|v| cast::<crate::php_parser::node::Identifier>(v)) }));
+    self.set_p_name((if (match name.clone() { Some(__u) => match __u { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, U_PhpParser_Node_Identifier_or_Str::Other__(__m) => __m.is_string(), _ => false }, None => false }) { Some(crate::php_parser::node::Identifier::new((match name.clone() { Some(__o) => cast::<Str>(__o), None => <Str>::default() }), Map::<Str, Mixed>::new())?) } else { name.clone().map(|v| cast::<crate::php_parser::node::Identifier>(v)) }));
     self.set_p_extends((match Some(subNodes.clone()).and_then(|__b| __b.extends) { Some(__v) => Some(__v), None => { let _ = (); None::<crate::php_parser::node::Name> } }));
     self.set_p_implements((match Some(subNodes.clone()).and_then(|__b| __b.implements) { Some(__v) => __v, None => Map::<ArrayKey, crate::php_parser::node::Name>::new() }));
     self.set_p_stmts((match Some(subNodes.clone()).and_then(|__b| __b.stmts) { Some(__v) => __v, None => Map::<ArrayKey, crate::php_parser::node::Stmt>::new() }));
@@ -1429,7 +1429,7 @@ impl EnumCase {
     }
     pub fn magic__construct(&self, mut name: U_PhpParser_Node_Identifier_or_Str, mut expr: Option<crate::php_parser::node::Expr>, mut attrGroups: List<crate::php_parser::node::AttributeGroup>, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
     let _: Mixed = cast::<crate::php_parser::NodeAbstract>(self.clone()).magic__construct__impl(attributes.clone())?;
-    self.set_p_name((if (match name.clone() { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, _ => false }) { crate::php_parser::node::Identifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())? } else { cast::<crate::php_parser::node::Identifier>(name.clone()) }));
+    self.set_p_name((if (match name.clone() { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, U_PhpParser_Node_Identifier_or_Str::Other__(__m) => __m.is_string(), _ => false }) { crate::php_parser::node::Identifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())? } else { cast::<crate::php_parser::node::Identifier>(name.clone()) }));
     self.set_p_expr(expr.clone());
     self.set_p_attrGroups(cast::<Map<ArrayKey, crate::php_parser::node::AttributeGroup>>(attrGroups.clone()));
     #[allow(unreachable_code)] Ok(Mixed::Null)
@@ -1534,7 +1534,7 @@ impl Enum_ {
         Ok(this)
     }
     pub fn magic__construct(&self, mut name: Option<U_PhpParser_Node_Identifier_or_Str>, mut subNodes: Shape_scalarTypeq_Opt_PhpParser_Node_Identifier_implementsq_Map_ArrayK_8df4ffaaef, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
-    self.set_p_name((if (match name.clone() { Some(__u) => match __u { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, _ => false }, None => false }) { Some(crate::php_parser::node::Identifier::new((match name.clone() { Some(__o) => cast::<Str>(__o), None => <Str>::default() }), Map::<Str, Mixed>::new())?) } else { name.clone().map(|v| cast::<crate::php_parser::node::Identifier>(v)) }));
+    self.set_p_name((if (match name.clone() { Some(__u) => match __u { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, U_PhpParser_Node_Identifier_or_Str::Other__(__m) => __m.is_string(), _ => false }, None => false }) { Some(crate::php_parser::node::Identifier::new((match name.clone() { Some(__o) => cast::<Str>(__o), None => <Str>::default() }), Map::<Str, Mixed>::new())?) } else { name.clone().map(|v| cast::<crate::php_parser::node::Identifier>(v)) }));
     self.set_p_scalarType((match Some(subNodes.clone()).and_then(|__b| __b.scalarType) { Some(__v) => Some(__v), None => { let _ = (); None::<crate::php_parser::node::Identifier> } }));
     self.set_p_implements((match Some(subNodes.clone()).and_then(|__b| __b.implements) { Some(__v) => __v, None => Map::<ArrayKey, crate::php_parser::node::Name>::new() }));
     self.set_p_stmts((match Some(subNodes.clone()).and_then(|__b| __b.stmts) { Some(__v) => __v, None => Map::<ArrayKey, crate::php_parser::node::Stmt>::new() }));
@@ -1989,7 +1989,7 @@ impl Function_ {
     pub fn magic__construct(&self, mut name: U_PhpParser_Node_Identifier_or_Str, mut subNodes: Shape_byRefq_Bool_paramsq_Map_ArrayKey_PhpParser_Node_Param_returnType_f9581f3a17, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
     self.set_p_attributes(attributes.clone());
     self.set_p_byRef((match Some(subNodes.clone()).and_then(|__b| __b.byRef) { Some(__v) => __v, None => false }));
-    self.set_p_name((if (match name.clone() { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, _ => false }) { crate::php_parser::node::Identifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())? } else { cast::<crate::php_parser::node::Identifier>(name.clone()) }));
+    self.set_p_name((if (match name.clone() { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, U_PhpParser_Node_Identifier_or_Str::Other__(__m) => __m.is_string(), _ => false }) { crate::php_parser::node::Identifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())? } else { cast::<crate::php_parser::node::Identifier>(name.clone()) }));
     self.set_p_params((match Some(subNodes.clone()).and_then(|__b| __b.params) { Some(__v) => __v, None => Map::<ArrayKey, crate::php_parser::node::Param>::new() }));
     self.set_p_returnType((match Some(subNodes.clone()).and_then(|__b| __b.returnType) { Some(__v) => Some(__v), None => { let _ = (); None::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name> } }));
     self.set_p_stmts((match Some(subNodes.clone()).and_then(|__b| __b.stmts) { Some(__v) => __v, None => Map::<ArrayKey, crate::php_parser::node::Stmt>::new() }));
@@ -2146,7 +2146,7 @@ impl Goto_ {
     }
     pub fn magic__construct(&self, mut name: U_PhpParser_Node_Identifier_or_Str, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
     self.set_p_attributes(attributes.clone());
-    self.set_p_name((if (match name.clone() { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, _ => false }) { crate::php_parser::node::Identifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())? } else { cast::<crate::php_parser::node::Identifier>(name.clone()) }));
+    self.set_p_name((if (match name.clone() { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, U_PhpParser_Node_Identifier_or_Str::Other__(__m) => __m.is_string(), _ => false }) { crate::php_parser::node::Identifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())? } else { cast::<crate::php_parser::node::Identifier>(name.clone()) }));
     #[allow(unreachable_code)] Ok(Mixed::Null)
     }
     pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
@@ -2559,7 +2559,7 @@ impl Interface_ {
     }
     pub fn magic__construct(&self, mut name: U_PhpParser_Node_Identifier_or_Str, mut subNodes: Shape_extendsq_Map_ArrayKey_PhpParser_Node_Name_stmtsq_Map_ArrayKey_Ph_f3e6a2cc1f, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
     self.set_p_attributes(attributes.clone());
-    self.set_p_name(Some((if (match name.clone() { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, _ => false }) { crate::php_parser::node::Identifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())? } else { cast::<crate::php_parser::node::Identifier>(name.clone()) })));
+    self.set_p_name(Some((if (match name.clone() { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, U_PhpParser_Node_Identifier_or_Str::Other__(__m) => __m.is_string(), _ => false }) { crate::php_parser::node::Identifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())? } else { cast::<crate::php_parser::node::Identifier>(name.clone()) })));
     self.set_p_extends((match Some(subNodes.clone()).and_then(|__b| __b.extends) { Some(__v) => __v, None => Map::<ArrayKey, crate::php_parser::node::Name>::new() }));
     self.set_p_stmts((match Some(subNodes.clone()).and_then(|__b| __b.stmts) { Some(__v) => __v, None => Map::<ArrayKey, crate::php_parser::node::Stmt>::new() }));
     self.set_p_attrGroups((match Some(subNodes.clone()).and_then(|__b| __b.attrGroups) { Some(__v) => __v, None => Map::<ArrayKey, crate::php_parser::node::AttributeGroup>::new() }));
@@ -2637,7 +2637,7 @@ impl Label {
     }
     pub fn magic__construct(&self, mut name: U_PhpParser_Node_Identifier_or_Str, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
     self.set_p_attributes(attributes.clone());
-    self.set_p_name((if (match name.clone() { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, _ => false }) { crate::php_parser::node::Identifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())? } else { cast::<crate::php_parser::node::Identifier>(name.clone()) }));
+    self.set_p_name((if (match name.clone() { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, U_PhpParser_Node_Identifier_or_Str::Other__(__m) => __m.is_string(), _ => false }) { crate::php_parser::node::Identifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())? } else { cast::<crate::php_parser::node::Identifier>(name.clone()) }));
     #[allow(unreachable_code)] Ok(Mixed::Null)
     }
     pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
@@ -3360,7 +3360,7 @@ impl Trait_ {
     }
     pub fn magic__construct(&self, mut name: U_PhpParser_Node_Identifier_or_Str, mut subNodes: Shape_stmtsq_Map_ArrayKey_PhpParser_Node_Stmt_attrGroupsq_Map_ArrayKey_8a524f8674, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
     self.set_p_attributes(attributes.clone());
-    self.set_p_name(Some((if (match name.clone() { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, _ => false }) { crate::php_parser::node::Identifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())? } else { cast::<crate::php_parser::node::Identifier>(name.clone()) })));
+    self.set_p_name(Some((if (match name.clone() { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, U_PhpParser_Node_Identifier_or_Str::Other__(__m) => __m.is_string(), _ => false }) { crate::php_parser::node::Identifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())? } else { cast::<crate::php_parser::node::Identifier>(name.clone()) })));
     self.set_p_stmts((match Some(subNodes.clone()).and_then(|__b| __b.stmts) { Some(__v) => __v, None => Map::<ArrayKey, crate::php_parser::node::Stmt>::new() }));
     self.set_p_attrGroups((match Some(subNodes.clone()).and_then(|__b| __b.attrGroups) { Some(__v) => __v, None => Map::<ArrayKey, crate::php_parser::node::AttributeGroup>::new() }));
     #[allow(unreachable_code)] Ok(Mixed::Null)

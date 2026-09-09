@@ -676,7 +676,7 @@ final class Builtins
     /** Type predicates: statically decided when the Rust type is known, else on Mixed/unions. */
     private function typeCheck(BodyEmitter $b, Expr $e, string $pred, array $kinds): Val
     {
-        $v = $b->expr($e);
+        $v = $b->rawValue($e);
         $t = $v->type;
         $inner = $t->kind === RustType::OPTION ? $t->inner() : $t;
         if ($t->kind === RustType::MIXED) {
@@ -696,6 +696,9 @@ final class Builtins
                         $arms[] = $u->mangle() . '::' . $m->variantName() . ($unit ? '' : '(_)') . ' => true';
                     }
                 }
+            }
+            if (in_array($pred, ['is_null', 'is_int', 'is_float', 'is_string', 'is_bool', 'is_array', 'is_object', 'is_scalar'], true)) {
+                $arms[] = $u->mangle() . '::Other__(__m) => __m.' . $pred . '()';
             }
             $code = 'match ' . ($t->kind === RustType::OPTION ? $v->code . '.unwrap_or_default_marker()' : $v->code) . ' { ' . implode(', ', $arms) . ($arms ? ', ' : '') . '_ => false }';
             if ($t->kind === RustType::OPTION) {

@@ -215,13 +215,13 @@ impl Class_ {
     }
     pub fn addStmt(&self, mut stmt: U_PhpParser_Builder_or_PhpParser_Node_Stmt) -> Result<crate::php_parser::builder::Class_, Throw> {
     stmt = cast::<U_PhpParser_Builder_or_PhpParser_Node_Stmt>(crate::php_parser::BuilderHelpers::normalizeNode(cast::<U_PhpParser_Builder_or_PhpParser_Node>(stmt.clone()))?);
-    if is_instance::<crate::php_parser::node::stmt::Property>(&cast::<crate::php_parser::Node>(stmt.clone())) {
+    if is_instance::<crate::php_parser::node::stmt::Property>(&stmt.clone()) {
         { let __h1 = cast::<crate::php_parser::node::stmt::Property>(stmt.clone()); (*self.p_properties_mut()).push(__h1); }
-    } else if is_instance::<crate::php_parser::node::stmt::ClassMethod>(&cast::<crate::php_parser::Node>(stmt.clone())) {
+    } else if is_instance::<crate::php_parser::node::stmt::ClassMethod>(&stmt.clone()) {
         { let __h2 = cast::<crate::php_parser::node::stmt::ClassMethod>(stmt.clone()); (*self.p_methods_mut()).push(__h2); }
-    } else if is_instance::<crate::php_parser::node::stmt::TraitUse>(&cast::<crate::php_parser::Node>(stmt.clone())) {
+    } else if is_instance::<crate::php_parser::node::stmt::TraitUse>(&stmt.clone()) {
         { let __h3 = cast::<crate::php_parser::node::stmt::TraitUse>(stmt.clone()); (*self.p_uses_mut()).push(__h3); }
-    } else if is_instance::<crate::php_parser::node::stmt::ClassConst>(&cast::<crate::php_parser::Node>(stmt.clone())) {
+    } else if is_instance::<crate::php_parser::node::stmt::ClassConst>(&stmt.clone()) {
         { let __h4 = cast::<crate::php_parser::node::stmt::ClassConst>(stmt.clone()); (*self.p_constants_mut()).push(__h4); }
     } else {
         return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(sprintf(&Str::from_static("Unexpected node of type \"%s\""), &[FmtArg::from(cast::<crate::php_parser::Node>(stmt.clone()).getType()?)])?, 0i64, { let _ = (); None::<crate::g::Throwable> })?));
@@ -468,13 +468,13 @@ impl Enum_ {
     }
     pub fn addStmt(&self, mut stmt: U_PhpParser_Builder_or_PhpParser_Node_Stmt) -> Result<crate::php_parser::builder::Enum_, Throw> {
     stmt = cast::<U_PhpParser_Builder_or_PhpParser_Node_Stmt>(crate::php_parser::BuilderHelpers::normalizeNode(cast::<U_PhpParser_Builder_or_PhpParser_Node>(stmt.clone()))?);
-    if is_instance::<crate::php_parser::node::stmt::EnumCase>(&cast::<crate::php_parser::Node>(stmt.clone())) {
+    if is_instance::<crate::php_parser::node::stmt::EnumCase>(&stmt.clone()) {
         { let __h1 = cast::<crate::php_parser::node::stmt::EnumCase>(stmt.clone()); (*self.p_enumCases_mut()).push(__h1); }
-    } else if is_instance::<crate::php_parser::node::stmt::ClassMethod>(&cast::<crate::php_parser::Node>(stmt.clone())) {
+    } else if is_instance::<crate::php_parser::node::stmt::ClassMethod>(&stmt.clone()) {
         { let __h2 = cast::<crate::php_parser::node::stmt::ClassMethod>(stmt.clone()); (*self.p_methods_mut()).push(__h2); }
-    } else if is_instance::<crate::php_parser::node::stmt::TraitUse>(&cast::<crate::php_parser::Node>(stmt.clone())) {
+    } else if is_instance::<crate::php_parser::node::stmt::TraitUse>(&stmt.clone()) {
         { let __h3 = cast::<crate::php_parser::node::stmt::TraitUse>(stmt.clone()); (*self.p_uses_mut()).push(__h3); }
-    } else if is_instance::<crate::php_parser::node::stmt::ClassConst>(&cast::<crate::php_parser::Node>(stmt.clone())) {
+    } else if is_instance::<crate::php_parser::node::stmt::ClassConst>(&stmt.clone()) {
         { let __h4 = cast::<crate::php_parser::node::stmt::ClassConst>(stmt.clone()); (*self.p_constants_mut()).push(__h4); }
     } else {
         return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(sprintf(&Str::from_static("Unexpected node of type \"%s\""), &[FmtArg::from(cast::<crate::php_parser::Node>(stmt.clone()).getType()?)])?, 0i64, { let _ = (); None::<crate::g::Throwable> })?));
@@ -554,7 +554,7 @@ impl FunctionLike {
     pub fn addParam(&self, mut param: U_PhpParser_Builder_Param_or_PhpParser_Node_Param) -> Result<crate::php_parser::builder::FunctionLike, Throw> { match self { FunctionLike::PhpParser_Builder_Function_(__h) => Ok(__h.addParam(param)?), FunctionLike::PhpParser_Builder_Method(__h) => Ok(__h.addParam(param)?), _ => unreachable!() } }
     pub fn addParam__impl(&self, mut param: U_PhpParser_Builder_Param_or_PhpParser_Node_Param) -> Result<crate::php_parser::builder::FunctionLike, Throw> {
     param = cast::<U_PhpParser_Builder_Param_or_PhpParser_Node_Param>(crate::php_parser::BuilderHelpers::normalizeNode(cast::<U_PhpParser_Builder_or_PhpParser_Node>(param.clone()))?);
-    if (!is_instance::<crate::php_parser::node::Param>(&cast::<crate::php_parser::Node>(param.clone()))) {
+    if (!is_instance::<crate::php_parser::node::Param>(&param.clone())) {
         return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(sprintf(&Str::from_static("Expected parameter node, got \"%s\""), &[FmtArg::from(cast::<crate::php_parser::Node>(param.clone()).getType()?)])?, 0i64, { let _ = (); None::<crate::g::Throwable> })?));
     }
     { let __h1 = cast::<crate::php_parser::node::Param>(param.clone()); (*self.p_params_mut()).push(__h1); }
@@ -747,9 +747,9 @@ impl Interface_ {
     }
     pub fn addStmt(&self, mut stmt: U_PhpParser_Builder_or_PhpParser_Node_Stmt) -> Result<crate::php_parser::builder::Interface_, Throw> {
     stmt = cast::<U_PhpParser_Builder_or_PhpParser_Node_Stmt>(crate::php_parser::BuilderHelpers::normalizeNode(cast::<U_PhpParser_Builder_or_PhpParser_Node>(stmt.clone()))?);
-    if is_instance::<crate::php_parser::node::stmt::ClassConst>(&cast::<crate::php_parser::Node>(stmt.clone())) {
+    if is_instance::<crate::php_parser::node::stmt::ClassConst>(&stmt.clone()) {
         { let __h1 = cast::<crate::php_parser::node::stmt::ClassConst>(stmt.clone()); (*self.p_constants_mut()).push(__h1); }
-    } else if is_instance::<crate::php_parser::node::stmt::ClassMethod>(&cast::<crate::php_parser::Node>(stmt.clone())) {
+    } else if is_instance::<crate::php_parser::node::stmt::ClassMethod>(&stmt.clone()) {
         cast::<crate::php_parser::node::stmt::ClassMethod>(stmt.clone()).set_p_stmts({ let _ = (); None::<Map<ArrayKey, crate::php_parser::node::Stmt>> });
         { let __h2 = cast::<crate::php_parser::node::stmt::ClassMethod>(stmt.clone()); (*self.p_methods_mut()).push(__h2); }
     } else {
@@ -1295,7 +1295,7 @@ impl TraitUse {
     }
     pub fn with(&self, mut adaptation: U_PhpParser_Builder_TraitUseAdaptation_or_PhpParser_Node_Stmt_TraitUseAdaptation) -> Result<crate::php_parser::builder::TraitUse, Throw> {
     adaptation = cast::<U_PhpParser_Builder_TraitUseAdaptation_or_PhpParser_Node_Stmt_TraitUseAdaptation>(crate::php_parser::BuilderHelpers::normalizeNode(cast::<U_PhpParser_Builder_or_PhpParser_Node>(adaptation.clone()))?);
-    if (!is_instance::<crate::php_parser::node::stmt::TraitUseAdaptation>(&cast::<crate::php_parser::Node>(adaptation.clone()))) {
+    if (!is_instance::<crate::php_parser::node::stmt::TraitUseAdaptation>(&adaptation.clone())) {
         return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(Str::from_static("Adaptation must have type TraitUseAdaptation"), 0i64, { let _ = (); None::<crate::g::Throwable> })?));
     }
     { let __h1 = cast::<crate::php_parser::node::stmt::TraitUseAdaptation>(adaptation.clone()); (*self.p_adaptations_mut()).push(__h1); }
@@ -1535,13 +1535,13 @@ impl Trait_ {
     }
     pub fn addStmt(&self, mut stmt: U_PhpParser_Builder_or_PhpParser_Node_Stmt) -> Result<crate::php_parser::builder::Trait_, Throw> {
     stmt = cast::<U_PhpParser_Builder_or_PhpParser_Node_Stmt>(crate::php_parser::BuilderHelpers::normalizeNode(cast::<U_PhpParser_Builder_or_PhpParser_Node>(stmt.clone()))?);
-    if is_instance::<crate::php_parser::node::stmt::Property>(&cast::<crate::php_parser::Node>(stmt.clone())) {
+    if is_instance::<crate::php_parser::node::stmt::Property>(&stmt.clone()) {
         { let __h1 = cast::<crate::php_parser::node::stmt::Property>(stmt.clone()); (*self.p_properties_mut()).push(__h1); }
-    } else if is_instance::<crate::php_parser::node::stmt::ClassMethod>(&cast::<crate::php_parser::Node>(stmt.clone())) {
+    } else if is_instance::<crate::php_parser::node::stmt::ClassMethod>(&stmt.clone()) {
         { let __h2 = cast::<crate::php_parser::node::stmt::ClassMethod>(stmt.clone()); (*self.p_methods_mut()).push(__h2); }
-    } else if is_instance::<crate::php_parser::node::stmt::TraitUse>(&cast::<crate::php_parser::Node>(stmt.clone())) {
+    } else if is_instance::<crate::php_parser::node::stmt::TraitUse>(&stmt.clone()) {
         { let __h3 = cast::<crate::php_parser::node::stmt::TraitUse>(stmt.clone()); (*self.p_uses_mut()).push(__h3); }
-    } else if is_instance::<crate::php_parser::node::stmt::ClassConst>(&cast::<crate::php_parser::Node>(stmt.clone())) {
+    } else if is_instance::<crate::php_parser::node::stmt::ClassConst>(&stmt.clone()) {
         { let __h4 = cast::<crate::php_parser::node::stmt::ClassConst>(stmt.clone()); (*self.p_constants_mut()).push(__h4); }
     } else {
         return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(sprintf(&Str::from_static("Unexpected node of type \"%s\""), &[FmtArg::from(cast::<crate::php_parser::Node>(stmt.clone()).getType()?)])?, 0i64, { let _ = (); None::<crate::g::Throwable> })?));

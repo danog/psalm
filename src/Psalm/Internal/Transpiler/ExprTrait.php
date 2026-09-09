@@ -1273,7 +1273,7 @@ trait ExprTrait
 
     private function instanceOf(Expr\Instanceof_ $e): Val
     {
-        $v = $this->expr($e->expr);
+        $v = $this->rawValue($e->expr);
         if ($e->class instanceof Name) {
             $fqcn = $this->resolveClassName($e->class);
             if ($fqcn === null) {

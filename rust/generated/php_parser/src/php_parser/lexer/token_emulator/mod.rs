@@ -271,7 +271,7 @@ impl ExplicitOctalEmulator {
     str = substr(&str.clone(), 1i64, None);
     str = str_replace(&Str::from_static("_"), &Str::from_static(""), &str.clone());
     num.set(U_Float_or_Int::Int(octdec(&str.clone())));
-    return Ok((if (match num.get().clone() { U_Float_or_Int::Float(_) => true, _ => false }) { 261i64 } else { 260i64 }));
+    return Ok((if (match num.get().clone() { U_Float_or_Int::Float(_) => true, U_Float_or_Int::Other__(__m) => __m.is_float(), _ => false }) { 261i64 } else { 260i64 }));
     }
     pub fn reverseEmulate(&self, mut code: Str, mut tokens_v: Map<ArrayKey, Mixed>) -> Result<Map<ArrayKey, Mixed>, Throw> {
     return Ok(tokens_v.clone().map_values(|v| cast::<crate::php_parser::Token>(v)).map_values(|v| cast::<Mixed>(v)));

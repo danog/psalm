@@ -409,7 +409,7 @@ impl String_ {
     }
     if identical(&Str::from_static("u"), &str_index(&str.clone(), 0i64)) {
         dec.set(U_Float_or_Int::Int(hexdec(&matches.clone().idx(&to_key(&2i64)).clone())));
-        return Ok(crate::php_parser::node::scalar::String_::codePointToUtf8((if { let _ = cast::<i64>(dec.get().clone()); true } { cast::<i64>(dec.get().clone()) } else { consts::PHP_INT_MAX }))?);
+        return Ok(crate::php_parser::node::scalar::String_::codePointToUtf8((if (match dec.get().clone() { U_Float_or_Int::Int(_) => true, U_Float_or_Int::Other__(__m) => __m.is_int(), _ => false }) { cast::<i64>(dec.get().clone()) } else { consts::PHP_INT_MAX }))?);
     } else {
         return Ok(chr((octdec(&str.clone()) & 255i64)));
     }

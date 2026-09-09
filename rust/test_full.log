@@ -254,154 +254,154 @@ note: the built-in attribute `allow` will be ignored, since it's applied to the 
 
 warning: `php_parser` (lib test) generated 21 warnings (run `cargo fix --lib -p php_parser --tests` to apply 21 suggestions)
 warning: `php_parser` (lib) generated 21 warnings (21 duplicates)
-    Finished `test` profile [unoptimized + debuginfo] target(s) in 2m 07s
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 29s
      Running unittests src/lib.rs (target/debug/deps/php_parser-6f06c608829caa19)
 
 running 315 tests
-test tests::PhpParser_BuilderFactoryTest__testAttribute ... ok
 test tests::PhpParser_BuilderFactoryTest__testArgs ... ok
+test tests::PhpParser_BuilderFactoryTest__testAttribute ... ok
 test tests::PhpParser_BuilderFactoryTest__testConcat ... ok
 test tests::PhpParser_BuilderFactoryTest__testCalls ... ok
-test tests::PhpParser_BuilderFactoryTest__testConstFetches ... ok
+test tests::PhpParser_BuilderFactoryTest__testConcatInvalidExpr ... ok
 test tests::PhpParser_BuilderFactoryTest__testConcatOneError ... ok
+test tests::PhpParser_BuilderFactoryTest__testConstFetches ... ok
 test tests::PhpParser_BuilderFactoryTest__testFactoryClassConst ... ok
+test tests::PhpParser_BuilderFactoryTest__testInvalidIdentifier ... ok
+test tests::PhpParser_BuilderFactoryTest__testInvalidIdentifierOrExpr ... ok
 test tests::PhpParser_BuilderFactoryTest__testFactory ... ok
-test tests::PhpParser_BuilderFactoryTest__testInvalidIdentifier ... FAILED
-test tests::PhpParser_BuilderFactoryTest__testInvalidIdentifierOrExpr ... FAILED
-test tests::PhpParser_BuilderFactoryTest__testConcatInvalidExpr ... FAILED
-test tests::PhpParser_BuilderFactoryTest__testIntegration ... FAILED
-test tests::PhpParser_BuilderFactoryTest__testInvalidVar ... FAILED
-test tests::PhpParser_BuilderFactoryTest__testInvalidNameOrExpr ... FAILED
+test tests::PhpParser_BuilderFactoryTest__testInvalidNameOrExpr ... ok
 test tests::PhpParser_BuilderFactoryTest__testPropertyFetch ... ok
+test tests::PhpParser_BuilderFactoryTest__testInvalidVar ... ok
 test tests::PhpParser_BuilderFactoryTest__testNamedArgs ... ok
 test tests::PhpParser_BuilderFactoryTest__testVal ... ok
+test tests::PhpParser_BuilderHelpersTest__testNormalizeDocComment ... ok
+test tests::PhpParser_BuilderHelpersTest__testNormalizeAttribute ... ok
 test tests::PhpParser_BuilderFactoryTest__testVar ... ok
-test tests::PhpParser_BuilderHelpersTest__testNormalizeDocComment ... FAILED
-test tests::PhpParser_BuilderHelpersTest__testNormalizeAttribute ... FAILED
-test tests::PhpParser_BuilderHelpersTest__testNormalizeIdentifier ... FAILED
-test tests::PhpParser_BuilderHelpersTest__testNormalizeIdentifierOrExpr ... FAILED
+test tests::PhpParser_BuilderHelpersTest__testNormalizeIdentifier ... ok
+test tests::PhpParser_BuilderHelpersTest__testNormalizeIdentifierOrExpr ... ok
+test tests::PhpParser_BuilderHelpersTest__testNormalizeNameOrExpInvalidType ... ok
 test tests::PhpParser_BuilderHelpersTest__testNormalizeName ... ok
-test tests::PhpParser_BuilderHelpersTest__testNormalizeNameInvalidType ... FAILED
-test tests::PhpParser_BuilderHelpersTest__testNormalizeNameOrExpInvalidType ... FAILED
+test tests::PhpParser_BuilderHelpersTest__testNormalizeNameInvalidType ... ok
 test tests::PhpParser_BuilderHelpersTest__testNormalizeNameOrExpr ... ok
+test tests::PhpParser_BuilderHelpersTest__testNormalizeStmtInvalidType ... ok
 test tests::PhpParser_BuilderHelpersTest__testNormalizeStmt ... ok
-test tests::PhpParser_BuilderHelpersTest__testNormalizeNode ... FAILED
-test tests::PhpParser_BuilderHelpersTest__testNormalizeStmtInvalidType ... FAILED
-test tests::PhpParser_BuilderHelpersTest__testNormalizeTypeNullableMixed ... ok
+test tests::PhpParser_BuilderHelpersTest__testNormalizeNode ... ok
 test tests::PhpParser_BuilderHelpersTest__testNormalizeTypeNullableNever ... ok
+test tests::PhpParser_BuilderHelpersTest__testNormalizeTypeNullableMixed ... ok
 test tests::PhpParser_BuilderHelpersTest__testNormalizeTypeNullableVoid ... ok
-test tests::PhpParser_BuilderHelpersTest__testNormalizeType ... FAILED
 test tests::PhpParser_BuilderHelpersTest__testNormalizeValueEnum ... ok
-test tests::PhpParser_Builder_ClassConstTest__testAddConst ... ok
-test tests::PhpParser_BuilderHelpersTest__testNormalizeValue ... FAILED
+test tests::PhpParser_BuilderHelpersTest__testNormalizeValue ... ok
 test tests::PhpParser_Builder_ClassConstTest__testAddAttribute ... ok
+test tests::PhpParser_Builder_ClassConstTest__testAddConst ... ok
+test tests::PhpParser_BuilderFactoryTest__testIntegration ... FAILED
+test tests::PhpParser_BuilderHelpersTest__testNormalizeType ... FAILED
 test tests::PhpParser_Builder_ClassConstTest__testDocComment ... ok
 test tests::PhpParser_Builder_ClassConstTest__testType ... ok
-test tests::PhpParser_Builder_ClassConstTest__testModifiers ... ok
-test tests::PhpParser_Builder_ClassTest__testAbstract ... ok
 test tests::PhpParser_Builder_ClassTest__testAddAttribute ... ok
-test tests::PhpParser_Builder_ClassConstTest__testValues ... ok
-test tests::PhpParser_Builder_ClassTest__testEmptyName ... ok
-test tests::PhpParser_Builder_ClassTest__testExtendsImplements ... ok
+test tests::PhpParser_Builder_ClassTest__testAbstract ... ok
+test tests::PhpParser_Builder_ClassConstTest__testModifiers ... ok
 test tests::PhpParser_Builder_ClassTest__testDocComment ... ok
+test tests::PhpParser_Builder_ClassConstTest__testValues ... ok
+test tests::PhpParser_Builder_ClassTest__testExtendsImplements ... ok
+test tests::PhpParser_Builder_ClassTest__testEmptyName ... ok
 test tests::PhpParser_Builder_ClassTest__testFinal ... ok
-test tests::PhpParser_Builder_ClassTest__testInvalidDocComment ... FAILED
-test tests::PhpParser_Builder_ClassTest__testInvalidName ... FAILED
-test tests::PhpParser_Builder_ClassTest__testReadonly ... ok
+test tests::PhpParser_Builder_ClassTest__testInvalidDocComment ... ok
+test tests::PhpParser_Builder_ClassTest__testInvalidName ... ok
 test tests::PhpParser_Builder_ClassTest__testInvalidStmtError ... ok
+test tests::PhpParser_Builder_ClassTest__testReadonly ... ok
 test tests::PhpParser_Builder_EnumCaseTest__testAddAttribute ... ok
-test tests::PhpParser_Builder_EnumCaseTest__testValues ... ok
 test tests::PhpParser_Builder_ClassTest__testStatementOrder ... ok
+test tests::PhpParser_Builder_EnumTest__testDocComment ... ok
+test tests::PhpParser_Builder_EnumCaseTest__testValues ... ok
 test tests::PhpParser_Builder_EnumCaseTest__testDocComment ... ok
 test tests::PhpParser_Builder_EnumTest__testAddAttribute ... ok
-test tests::PhpParser_Builder_EnumTest__testDocComment ... ok
+test tests::PhpParser_Builder_EnumTest__testInvalidDocComment ... ok
 test tests::PhpParser_Builder_EnumTest__testEmptyName ... ok
-test tests::PhpParser_Builder_EnumTest__testInvalidDocComment ... FAILED
+test tests::PhpParser_Builder_EnumTest__testInvalidName ... ok
+test tests::PhpParser_Builder_EnumTest__testInvalidStmtError ... ok
 test tests::PhpParser_Builder_EnumTest__testImplements ... ok
-test tests::PhpParser_Builder_EnumTest__testInvalidName ... FAILED
-test tests::PhpParser_Builder_EnumTest__testInvalidStmtError ... FAILED
 test tests::PhpParser_Builder_EnumTest__testSetScalarType ... ok
-test tests::PhpParser_Builder_FunctionTest__testAddNonStmt ... ok
-test tests::PhpParser_Builder_FunctionTest__testAddAttribute ... ok
-test tests::PhpParser_Builder_FunctionTest__testInvalidNullableVoidType ... ok
-test tests::PhpParser_Builder_FunctionTest__testDocComment ... ok
 test tests::PhpParser_Builder_EnumTest__testStatementOrder ... ok
-test tests::PhpParser_Builder_FunctionTest__testInvalidParamError ... FAILED
-test tests::PhpParser_Builder_FunctionTest__testReturnByRef ... ok
-test tests::PhpParser_Builder_FunctionTest__testStmts ... FAILED
+test tests::PhpParser_Builder_FunctionTest__testInvalidNullableVoidType ... ok
+test tests::PhpParser_Builder_FunctionTest__testAddNonStmt ... ok
+test tests::PhpParser_Builder_FunctionTest__testInvalidParamError ... ok
+test tests::PhpParser_Builder_FunctionTest__testDocComment ... ok
+test tests::PhpParser_Builder_FunctionTest__testAddAttribute ... ok
 test tests::PhpParser_Builder_FunctionTest__testReturnType ... ok
+test tests::PhpParser_Builder_FunctionTest__testStmts ... ok
+test tests::PhpParser_Builder_FunctionTest__testReturnByRef ... ok
 test tests::PhpParser_Builder_FunctionTest__testParams ... ok
-test tests::PhpParser_Builder_InterfaceTest__testAddMethod ... ok
-test tests::PhpParser_Builder_InterfaceTest__testAddConst ... ok
-test tests::PhpParser_Builder_InterfaceTest__testDocComment ... ok
 test tests::PhpParser_Builder_InterfaceTest__testAddAttribute ... ok
+test tests::PhpParser_Builder_InterfaceTest__testAddConst ... ok
 test tests::PhpParser_Builder_InterfaceTest__testEmpty ... ok
+test tests::PhpParser_Builder_InterfaceTest__testAddMethod ... ok
+test tests::PhpParser_Builder_InterfaceTest__testDocComment ... ok
+test tests::PhpParser_Builder_InterfaceTest__testInvalidStmtError ... ok
 test tests::PhpParser_Builder_InterfaceTest__testExtending ... ok
-test tests::PhpParser_Builder_InterfaceTest__testInvalidStmtError ... FAILED
 test tests::PhpParser_Builder_InterfaceTest__testOrder ... ok
+test tests::PhpParser_Builder_InterfaceTest__testFullFunctional ... FAILED
+test tests::PhpParser_Builder_MethodTest__testInvalidParamError ... ok
 test tests::PhpParser_Builder_MethodTest__testAddStmtToAbstractMethodError ... ok
 test tests::PhpParser_Builder_MethodTest__testAddAttribute ... ok
 test tests::PhpParser_Builder_MethodTest__testDocComment ... ok
-test tests::PhpParser_Builder_MethodTest__testInvalidParamError ... FAILED
-test tests::PhpParser_Builder_InterfaceTest__testFullFunctional ... FAILED
 test tests::PhpParser_Builder_MethodTest__testMakeMethodWithStmtsAbstractError ... ok
 test tests::PhpParser_Builder_MethodTest__testReturnByRef ... ok
-test tests::PhpParser_Builder_MethodTest__testModifiers ... ok
-test tests::PhpParser_Builder_MethodTest__testParams ... ok
 test tests::PhpParser_Builder_MethodTest__testReturnType ... ok
-test tests::PhpParser_Builder_MethodTest__testStmts ... FAILED
-test tests::PhpParser_Builder_ParamTest__testAddAttribute ... ok
+test tests::PhpParser_Builder_MethodTest__testModifiers ... ok
+test tests::PhpParser_Builder_MethodTest__testStmts ... ok
+test tests::PhpParser_Builder_MethodTest__testParams ... ok
 test tests::PhpParser_Builder_ParamTest__testByRef ... ok
-test tests::PhpParser_Builder_ParamTest__testInvalidTypeError ... FAILED
-test tests::PhpParser_Builder_NamespaceTest__testCreation ... ok
+test tests::PhpParser_Builder_ParamTest__testInvalidTypeError ... ok
+test tests::PhpParser_Builder_ParamTest__testAddAttribute ... ok
 test tests::PhpParser_Builder_ParamTest__testDefaultValues ... ok
-test tests::PhpParser_Builder_ParamTest__testMakePrivate ... ok
-test tests::PhpParser_Builder_ParamTest__testMakeProtected ... ok
+test tests::PhpParser_Builder_NamespaceTest__testCreation ... ok
 test tests::PhpParser_Builder_ParamTest__testMakePublic ... ok
+test tests::PhpParser_Builder_ParamTest__testMakeProtected ... ok
+test tests::PhpParser_Builder_ParamTest__testMakePrivate ... ok
 test tests::PhpParser_Builder_ParamTest__testMakeReadonly ... ok
+test tests::PhpParser_Builder_ParamTest__testTypes ... ok
+test tests::PhpParser_Builder_PropertyTest__testAbstractWithoutHook ... ok
 test tests::PhpParser_Builder_ParamTest__testVoidTypeError ... FAILED
 test tests::PhpParser_Builder_ParamTest__testVariadic ... ok
-test tests::PhpParser_Builder_PropertyTest__testAbstractWithoutHook ... ok
-test tests::PhpParser_Builder_ParamTest__testTypes ... ok
 test tests::PhpParser_Builder_PropertyTest__testAddAttribute ... ok
 test tests::PhpParser_Builder_PropertyTest__testAddHook ... ok
 test tests::PhpParser_Builder_PropertyTest__testDocComment ... ok
-test tests::PhpParser_Builder_PropertyTest__testDefaultValues ... ok
-test tests::PhpParser_Builder_TraitTest__testGetMethods ... ok
 test tests::PhpParser_Builder_TraitTest__testAddAttribute ... ok
+test tests::PhpParser_Builder_TraitTest__testGetMethods ... ok
+test tests::PhpParser_Builder_PropertyTest__testDefaultValues ... ok
+test tests::PhpParser_Builder_PropertyTest__testModifiers ... ok
 test tests::PhpParser_Builder_TraitTest__testGetProperties ... ok
 test tests::PhpParser_Builder_TraitTest__testInvalidStmtError ... ok
-test tests::PhpParser_Builder_PropertyTest__testModifiers ... ok
 test tests::PhpParser_Builder_TraitUseAdaptationTest__testAsOnNotAlias ... ok
-test tests::PhpParser_Builder_TraitUseAdaptationTest__testInsteadof ... ok
 test tests::PhpParser_Builder_TraitUseAdaptationTest__testAsMake ... ok
-test tests::PhpParser_Builder_TraitUseAdaptationTest__testInsteadofOnNotPrecedence ... ok
-test tests::PhpParser_Builder_TraitUseAdaptationTest__testInsteadofWithoutTrait ... ok
-test tests::PhpParser_Builder_TraitUseAdaptationTest__testMakeOnNotAlias ... ok
+test tests::PhpParser_Builder_TraitUseAdaptationTest__testInsteadof ... ok
 test tests::PhpParser_Builder_TraitTest__testStmtAddition ... ok
-test tests::PhpParser_Builder_TraitUseAdaptationTest__testMultipleMake ... ok
-test tests::PhpParser_Builder_TraitUseAdaptationTest__testUndefinedType ... ok
-test tests::PhpParser_Builder_TraitUseTest__testInvalidAdaptationNode ... FAILED
+test tests::PhpParser_Builder_TraitUseAdaptationTest__testInsteadofWithoutTrait ... ok
+test tests::PhpParser_Builder_TraitUseAdaptationTest__testInsteadofOnNotPrecedence ... ok
+test tests::PhpParser_Builder_TraitUseAdaptationTest__testMakeOnNotAlias ... ok
 test tests::PhpParser_Builder_TraitUseTest__testAnd ... ok
-test tests::PhpParser_Builder_TraitUseTest__testWith ... ok
+test tests::PhpParser_Builder_TraitUseAdaptationTest__testUndefinedType ... ok
+test tests::PhpParser_Builder_TraitUseAdaptationTest__testMultipleMake ... ok
+test tests::PhpParser_Builder_TraitUseTest__testInvalidAdaptationNode ... ok
 test tests::PhpParser_CommentTest__testGetters ... ok
-test tests::PhpParser_Builder_UseTest__testCreation ... ok
 test tests::PhpParser_CommentTest__testReformatting ... ok
+test tests::PhpParser_Builder_TraitUseTest__testWith ... ok
+test tests::PhpParser_Builder_UseTest__testCreation ... ok
 test tests::PhpParser_CompatibilityTest__testAliases1 ... ok
 test tests::PhpParser_CompatibilityTest__testAliases2 ... ok
-test tests::PhpParser_ConstExprEvaluatorTest__testEvaluateFails ... FAILED
 test tests::PhpParser_ConstExprEvaluatorTest__testEvaluateFallbackMagicConst ... ok
-test tests::PhpParser_ConstExprEvaluatorTest__testEvaluateFallbackPipeOperator ... FAILED
-test tests::PhpParser_ConstExprEvaluatorTest__testEvaluateSilently ... ok
+test tests::PhpParser_ConstExprEvaluatorTest__testEvaluateFails ... FAILED
 test tests::PhpParser_CodeParsingTest__testParse ... ok
+test tests::PhpParser_ConstExprEvaluatorTest__testEvaluateSilently ... ok
 test tests::PhpParser_ErrorHandler_CollectingTest__testHandleError ... ok
+test tests::PhpParser_ConstExprEvaluatorTest__testEvaluateFallbackPipeOperator ... FAILED
 test tests::PhpParser_ErrorHandler_ThrowingTest__testHandleError ... ok
-test tests::PhpParser_ErrorTest__testConstruct ... ok
 test tests::PhpParser_ErrorTest__testColumnInfo ... ok
-test tests::PhpParser_ErrorTest__testInvalidPosInfo ... ok
+test tests::PhpParser_ErrorTest__testConstruct ... ok
 test tests::PhpParser_ErrorTest__testNoColumnInfo ... ok
-test tests::PhpParser_ErrorTest__testSetMessageAndLine ... ok
+test tests::PhpParser_ErrorTest__testInvalidPosInfo ... ok
 test tests::PhpParser_ErrorTest__testUnknownLine ... ok
+test tests::PhpParser_ErrorTest__testSetMessageAndLine ... ok
 test tests::PhpParser_Internal_DifferTest__testNonContiguousIndices ... ok
 test tests::PhpParser_Internal_DifferTest__testDiffWithReplacements ... ok
 test tests::PhpParser_Internal_DifferTest__testDiff ... ok
@@ -417,25 +417,25 @@ test tests::PhpParser_Lexer_EmulativeTest__testErrorAfterEmulation ... ok
 test tests::PhpParser_Lexer_EmulativeTest__testLex ... ok
 test tests::PhpParser_Lexer_EmulativeTest__testLexNewFeatures ... ok
 test tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterNullsafeObjectOperator ... ok
-test tests::PhpParser_Lexer_EmulativeTest__testLeaveStuffAloneInStrings ... ok
-test tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterObjectOperatorWithComment ... FAILED
 test tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterObjectOperator ... ok
+test tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterObjectOperatorWithComment ... FAILED
+test tests::PhpParser_Lexer_EmulativeTest__testLeaveStuffAloneInStrings ... ok
 test tests::PhpParser_Lexer_EmulativeTest__testReplaceKeywords ... ok
 test tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterObjectOperatorWithSpaces ... ok
 test tests::PhpParser_Lexer_EmulativeTest__testReplaceKeywordsUppercase ... ok
 test tests::PhpParser_ModifiersTest__testToString ... ok
-test tests::PhpParser_Lexer_EmulativeTest__testTargetVersion ... ok
 test tests::PhpParser_ModifiersTest__testToStringInvalid ... ok
+test tests::PhpParser_NameContextTest__testGetPossibleNames ... ok
+test tests::PhpParser_Lexer_EmulativeTest__testTargetVersion ... ok
 test tests::PhpParser_NodeAbstractTest__testAttributes ... FAILED
 test tests::PhpParser_NodeAbstractTest__testChange ... FAILED
-test tests::PhpParser_NameContextTest__testGetPossibleNames ... ok
-test tests::PhpParser_NodeAbstractTest__testConstruct ... ok
 test tests::PhpParser_NodeAbstractTest__testGetDocComment ... ok
 test tests::PhpParser_NodeAbstractTest__testIteration ... ok
+test tests::PhpParser_NodeAbstractTest__testConstruct ... ok
 test tests::PhpParser_NodeAbstractTest__testSetDocComment ... ok
 test tests::PhpParser_NodeDumperTest__testDump ... ok
 test tests::PhpParser_NodeDumperTest__testDumpWithPositions ... ok
-test tests::PhpParser_NodeDumperTest__testError ... FAILED
+test tests::PhpParser_NodeDumperTest__testError ... ok
 test tests::PhpParser_NodeFinderTest__testFind ... ok
 test tests::PhpParser_NodeFinderTest__testFindFirst ... ok
 test tests::PhpParser_NodeFinderTest__testFindFirstInstanceOf ... ok
@@ -462,10 +462,10 @@ test tests::PhpParser_NodeVisitor_NameResolverTest__testAddDeclarationNamespaced
 test tests::PhpParser_NodeVisitor_NameResolverTest__testAddOriginalNames ... FAILED
 test tests::PhpParser_NodeVisitor_NameResolverTest__testAddRuntimeResolvedNamespacedName ... FAILED
 test tests::PhpParser_NodeVisitor_NameResolverTest__testAttributeOnlyMode ... FAILED
-test tests::PhpParser_JsonDecoderTest__testRoundTrip ... FAILED
+test tests::PhpParser_NodeAbstractTest__testJsonSerialization ... FAILED
 test tests::PhpParser_NodeVisitor_NameResolverTest__testError ... ok
 test tests::PhpParser_NodeVisitor_NameResolverTest__testNoResolveSpecialName ... ok
-test tests::PhpParser_NodeAbstractTest__testJsonSerialization ... FAILED
+test tests::PhpParser_JsonDecoderTest__testRoundTrip ... FAILED
 test tests::PhpParser_NodeVisitor_NameResolverTest__testClassNameIsCaseInsensitive ... FAILED
 test tests::PhpParser_NodeVisitor_NameResolverTest__testSpecialClassNamesAreCaseInsensitive ... FAILED
 test tests::PhpParser_NodeVisitor_NodeConnectingVisitorTest__testConnectsNodeToItsParentNodeAndItsSiblingNodes ... ok
@@ -480,7 +480,7 @@ test tests::PhpParser_Node_IdentifierTest__testToString ... ok
 test tests::PhpParser_Node_NameTest__testConcat ... ok
 test tests::PhpParser_Node_NameTest__testConstruct ... ok
 test tests::PhpParser_Node_NameTest__testGet ... ok
-test tests::PhpParser_Node_NameTest__testInvalidArg ... FAILED
+test tests::PhpParser_Node_NameTest__testInvalidArg ... ok
 test tests::PhpParser_Node_NameTest__testInvalidEmptyArray ... ok
 test tests::PhpParser_Node_NameTest__testInvalidEmptyString ... ok
 test tests::PhpParser_Node_NameTest__testIsSpecialClassName ... ok
@@ -533,8 +533,8 @@ test tests::PhpParser_Node_Stmt_PropertyTest__testNoModifiers ... ok
 test tests::PhpParser_Node_Stmt_PropertyTest__testSetVisibility ... ok
 test tests::PhpParser_Node_Stmt_PropertyTest__testStaticImplicitlyPublic ... ok
 test tests::PhpParser_ParserFactoryTest__testCreate ... ok
-test tests::PhpParser_Node_PropertyHookTest__testGetStmtsSetHookFromParser ... ok
 test tests::PhpParser_Parser_Php7Test__testAttributeAssignment ... ok
+test tests::PhpParser_Node_PropertyHookTest__testGetStmtsSetHookFromParser ... ok
 test tests::PhpParser_Parser_Php7Test__testGetTokens ... ok
 test tests::PhpParser_Parser_Php7Test__testInvalidToken ... ok
 test tests::PhpParser_Parser_Php7Test__testListKindAttribute ... ok
@@ -576,203 +576,215 @@ test tests::PhpParser_NodeVisitor_NameResolverTest__testResolveLocations ... FAI
 
 failures:
 
----- tests::PhpParser_BuilderFactoryTest__testInvalidIdentifier stdout ----
-
-thread 'PhpParser\BuilderFactoryTest::testInvalidIdentifier' (59384) panicked at generated/php_parser/src/generated.rs:5921:266:
-cannot narrow PhpParser\Node\Name into U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str
-[panicked] data set ""
-
----- tests::PhpParser_BuilderFactoryTest__testInvalidIdentifierOrExpr stdout ----
-
-thread 'PhpParser\BuilderFactoryTest::testInvalidIdentifierOrExpr' (59386) panicked at generated/php_parser/src/generated.rs:5921:266:
-cannot narrow PhpParser\Node\Name into U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str
-[panicked] data set ""
-
----- tests::PhpParser_BuilderFactoryTest__testConcatInvalidExpr stdout ----
-
-thread 'PhpParser\BuilderFactoryTest::testConcatInvalidExpr' (59374) panicked at generated/php_parser/src/generated.rs:193:355:
-cannot narrow Mixed into U_PhpParser_Node_Expr_or_Str
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-[panicked] data set ""
-
 ---- tests::PhpParser_BuilderFactoryTest__testIntegration stdout ----
+[failed] data set "": PHPUnit\Framework\AssertionFailedError: Failed asserting that '<?php
 
-thread 'PhpParser\BuilderFactoryTest::testIntegration' (59382) panicked at generated/php_parser/src/generated.rs:482:493:
-cannot narrow Mixed into U_PhpParser_Builder_or_PhpParser_Node_Stmt
-[panicked] data set ""
+namespace Name\Space;
 
----- tests::PhpParser_BuilderFactoryTest__testInvalidVar stdout ----
+use Foo\Bar\SomeOtherClass;
+use Foo\Bar as A;
+use function strlen;
+use const PHP_VERSION;
+#[ClassAttribute(repository: 'fqcn')]
+abstract class SomeClass extends SomeOtherClass implements A\Few, \Interfaces
+{
+    use FirstTrait;
+    use SecondTrait, ThirdTrait, AnotherTrait {
+        foo as bar;
+        AnotherTrait::baz as test;
+        AnotherTrait::func insteadof SecondTrait;
+    }
+    #[ConstAttribute]
+    public const CONST_WITH_ATTRIBUTE = 1;
+    private const FIRST_CLASS_CONST = 1, SECOND_CLASS_CONST = 2;
+    protected $someProperty;
+    private $anotherProperty = [1, 2, 3];
+    #[Column(options: ['unsigned' => true])]
+    public int $integerProperty = 1;
+    #[Route('/index', name: 'homepage')]
+    function firstMethod()
+    {
+    }
+    /**
+     * This method does something.
+     *
+     * @param SomeClass And takes a parameter
+     */
+    abstract public function someMethod(SomeClass $someParam)
+    {
+    }
+    protected function anotherMethod(
+        #[TaggedIterator('app.handlers')]
+        $someParam = 'test'
+    )
+    {
+        print $someParam;
+    }
+}' equals '<?php
 
-thread 'PhpParser\BuilderFactoryTest::testInvalidVar' (59391) panicked at generated/php_parser/src/generated.rs:193:355:
-cannot narrow Mixed into U_PhpParser_Node_Expr_or_Str
-[panicked] data set ""
+namespace Name\Space;
 
----- tests::PhpParser_BuilderFactoryTest__testInvalidNameOrExpr stdout ----
+use Foo\Bar\SomeOtherClass;
+use Foo\Bar as A;
+use function strlen;
+use const PHP_VERSION;
+#[ClassAttribute(repository: 'fqcn')]
+abstract class SomeClass extends SomeOtherClass implements A\Few, \Interfaces
+{
+    use FirstTrait;
+    use SecondTrait, ThirdTrait, AnotherTrait {
+        foo as bar;
+        AnotherTrait::baz as test;
+        AnotherTrait::func insteadof SecondTrait;
+    }
+    #[ConstAttribute]
+    public const CONST_WITH_ATTRIBUTE = 1;
+    private const FIRST_CLASS_CONST = 1, SECOND_CLASS_CONST = 2;
+    protected $someProperty;
+    private $anotherProperty = [1, 2, 3];
+    #[Column(options: ['unsigned' => true])]
+    public int $integerProperty = 1;
+    #[Route('/index', name: 'homepage')]
+    function firstMethod()
+    {
+    }
+    /**
+     * This method does something.
+     *
+     * @param SomeClass And takes a parameter
+     */
+    abstract public function someMethod(SomeClass $someParam);
+    protected function anotherMethod(
+        #[TaggedIterator('app.handlers')]
+        $someParam = 'test'
+    )
+    {
+        print $someParam;
+    }
+}'.
 
-thread 'PhpParser\BuilderFactoryTest::testInvalidNameOrExpr' (59390) panicked at generated/php_parser/src/generated.rs:626:634:
-cannot narrow Mixed into U_PhpParser_Node_Expr_or_PhpParser_Node_Name_or_Str
-[panicked] data set ""
+thread 'tests::PhpParser_BuilderFactoryTest__testIntegration' (68683) panicked at php-rt/src/testing.rs:42:34:
+PHPUnit\Framework\AssertionFailedError: Failed asserting that '<?php
 
----- tests::PhpParser_BuilderHelpersTest__testNormalizeDocComment stdout ----
+namespace Name\Space;
 
-thread 'PhpParser\BuilderHelpersTest::testNormalizeDocComment' (59402) panicked at generated/php_parser/src/generated.rs:389:367:
-cannot narrow Mixed into U_PhpParser_Comment_Doc_or_Str
-[panicked] data set ""
+use Foo\Bar\SomeOtherClass;
+use Foo\Bar as A;
+use function strlen;
+use const PHP_VERSION;
+#[ClassAttribute(repository: 'fqcn')]
+abstract class SomeClass extends SomeOtherClass implements A\Few, \Interfaces
+{
+    use FirstTrait;
+    use SecondTrait, ThirdTrait, AnotherTrait {
+        foo as bar;
+        AnotherTrait::baz as test;
+        AnotherTrait::func insteadof SecondTrait;
+    }
+    #[ConstAttribute]
+    public const CONST_WITH_ATTRIBUTE = 1;
+    private const FIRST_CLASS_CONST = 1, SECOND_CLASS_CONST = 2;
+    protected $someProperty;
+    private $anotherProperty = [1, 2, 3];
+    #[Column(options: ['unsigned' => true])]
+    public int $integerProperty = 1;
+    #[Route('/index', name: 'homepage')]
+    function firstMethod()
+    {
+    }
+    /**
+     * This method does something.
+     *
+     * @param SomeClass And takes a parameter
+     */
+    abstract public function someMethod(SomeClass $someParam)
+    {
+    }
+    protected function anotherMethod(
+        #[TaggedIterator('app.handlers')]
+        $someParam = 'test'
+    )
+    {
+        print $someParam;
+    }
+}' equals '<?php
 
----- tests::PhpParser_BuilderHelpersTest__testNormalizeAttribute stdout ----
+namespace Name\Space;
 
-thread 'PhpParser\BuilderHelpersTest::testNormalizeAttribute' (59400) panicked at generated/php_parser/src/generated.rs:411:596:
-cannot narrow Mixed into U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup
-[panicked] data set ""
-
----- tests::PhpParser_BuilderHelpersTest__testNormalizeIdentifier stdout ----
-
-thread 'PhpParser\BuilderHelpersTest::testNormalizeIdentifier' (59404) panicked at generated/php_parser/src/generated.rs:39:391:
-cannot narrow Mixed into U_PhpParser_Node_Identifier_or_Str
-[panicked] data set ""
-
----- tests::PhpParser_BuilderHelpersTest__testNormalizeIdentifierOrExpr stdout ----
-
-thread 'PhpParser\BuilderHelpersTest::testNormalizeIdentifierOrExpr' (59406) panicked at generated/php_parser/src/generated.rs:651:676:
-cannot narrow Mixed into U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str
-[panicked] data set ""
-
----- tests::PhpParser_BuilderHelpersTest__testNormalizeNameInvalidType stdout ----
-
-thread 'PhpParser\BuilderHelpersTest::testNormalizeNameInvalidType' (59410) panicked at generated/php_parser/src/generated.rs:460:355:
-cannot narrow Mixed into U_PhpParser_Node_Name_or_Str
-[panicked] data set ""
-
----- tests::PhpParser_BuilderHelpersTest__testNormalizeNameOrExpInvalidType stdout ----
-
-thread 'PhpParser\BuilderHelpersTest::testNormalizeNameOrExpInvalidType' (59412) panicked at generated/php_parser/src/generated.rs:626:634:
-cannot narrow Mixed into U_PhpParser_Node_Expr_or_PhpParser_Node_Name_or_Str
-[panicked] data set ""
-
----- tests::PhpParser_BuilderHelpersTest__testNormalizeNode stdout ----
-
-thread 'PhpParser\BuilderHelpersTest::testNormalizeNode' (59417) panicked at generated/php_parser/src/generated.rs:549:462:
-cannot narrow Mixed into U_PhpParser_Builder_or_PhpParser_Node
-[panicked] data set ""
-
----- tests::PhpParser_BuilderHelpersTest__testNormalizeStmtInvalidType stdout ----
-
-thread 'PhpParser\BuilderHelpersTest::testNormalizeStmtInvalidType' (59420) panicked at generated/php_parser/src/generated.rs:549:462:
-cannot narrow Mixed into U_PhpParser_Builder_or_PhpParser_Node
-[panicked] data set ""
+use Foo\Bar\SomeOtherClass;
+use Foo\Bar as A;
+use function strlen;
+use const PHP_VERSION;
+#[ClassAttribute(repository: 'fqcn')]
+abstract class SomeClass extends SomeOtherClass implements A\Few, \Interfaces
+{
+    use FirstTrait;
+    use SecondTrait, ThirdTrait, AnotherTrait {
+        foo as bar;
+        AnotherTrait::baz as test;
+        AnotherTrait::func insteadof SecondTrait;
+    }
+    #[ConstAttribute]
+    public const CONST_WITH_ATTRIBUTE = 1;
+    private const FIRST_CLASS_CONST = 1, SECOND_CLASS_CONST = 2;
+    protected $someProperty;
+    private $anotherProperty = [1, 2, 3];
+    #[Column(options: ['unsigned' => true])]
+    public int $integerProperty = 1;
+    #[Route('/index', name: 'homepage')]
+    function firstMethod()
+    {
+    }
+    /**
+     * This method does something.
+     *
+     * @param SomeClass And takes a parameter
+     */
+    abstract public function someMethod(SomeClass $someParam);
+    protected function anotherMethod(
+        #[TaggedIterator('app.handlers')]
+        $someParam = 'test'
+    )
+    {
+        print $someParam;
+    }
+}'.
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 
 ---- tests::PhpParser_BuilderHelpersTest__testNormalizeType stdout ----
 
-thread 'PhpParser\BuilderHelpersTest::testNormalizeType' (59422) panicked at generated/php_parser/src/php_parser/mod.rs:5895:113:
+thread 'PhpParser\BuilderHelpersTest::testNormalizeType' (68726) panicked at generated/php_parser/src/php_parser/mod.rs:5895:113:
 internal error: entered unreachable code: property read on U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name
-[panicked] data set ""
-
----- tests::PhpParser_BuilderHelpersTest__testNormalizeValue stdout ----
-
-thread 'PhpParser\BuilderHelpersTest::testNormalizeValue' (59430) panicked at generated/php_parser/src/generated.rs:357:1382:
-cannot narrow Mixed into U_Bool_or_Float_or_Int_or_Map_ArrayKey_Mixed_or_PhpParser_Node_Expr_or_Str_or_UnitEnum
-[panicked] data set ""
-
----- tests::PhpParser_Builder_ClassTest__testInvalidDocComment stdout ----
-
-thread 'PhpParser\Builder\ClassTest::testInvalidDocComment' (59458) panicked at generated/php_parser/src/generated.rs:5899:204:
-cannot narrow PhpParser\Comment into U_PhpParser_Comment_Doc_or_Str
-[panicked] data set ""
-
----- tests::PhpParser_Builder_ClassTest__testInvalidName stdout ----
-
-thread 'PhpParser\Builder\ClassTest::testInvalidName' (59461) panicked at generated/php_parser/src/generated.rs:460:355:
-cannot narrow Mixed into U_PhpParser_Node_Name_or_Str
-[panicked] data set ""
-
----- tests::PhpParser_Builder_EnumTest__testInvalidDocComment stdout ----
-
-thread 'PhpParser\Builder\EnumTest::testInvalidDocComment' (59482) panicked at generated/php_parser/src/generated.rs:5899:204:
-cannot narrow PhpParser\Comment into U_PhpParser_Comment_Doc_or_Str
-[panicked] data set ""
-
----- tests::PhpParser_Builder_EnumTest__testInvalidName stdout ----
-
-thread 'PhpParser\Builder\EnumTest::testInvalidName' (59484) panicked at generated/php_parser/src/generated.rs:460:355:
-cannot narrow Mixed into U_PhpParser_Node_Name_or_Str
-[panicked] data set ""
-
----- tests::PhpParser_Builder_EnumTest__testInvalidStmtError stdout ----
-
-thread 'PhpParser\Builder\EnumTest::testInvalidStmtError' (59486) panicked at generated/php_parser/src/generated.rs:482:493:
-cannot narrow Mixed into U_PhpParser_Builder_or_PhpParser_Node_Stmt
-[panicked] data set ""
-
----- tests::PhpParser_Builder_FunctionTest__testInvalidParamError stdout ----
-
-thread 'PhpParser\Builder\FunctionTest::testInvalidParamError' (59500) panicked at generated/php_parser/src/generated.rs:5906:250:
-cannot narrow PhpParser\Node\Name into U_PhpParser_Builder_Param_or_PhpParser_Node_Param
-[panicked] data set ""
-
----- tests::PhpParser_Builder_FunctionTest__testStmts stdout ----
-
-thread 'PhpParser\Builder\FunctionTest::testStmts' (59508) panicked at generated/php_parser/src/generated.rs:482:493:
-cannot narrow Mixed into U_PhpParser_Builder_or_PhpParser_Node_Stmt
-[panicked] data set ""
-
----- tests::PhpParser_Builder_InterfaceTest__testInvalidStmtError stdout ----
-
-thread 'PhpParser\Builder\InterfaceTest::testInvalidStmtError' (59524) panicked at generated/php_parser/src/generated.rs:482:493:
-cannot narrow Mixed into U_PhpParser_Builder_or_PhpParser_Node_Stmt
-[panicked] data set ""
-
----- tests::PhpParser_Builder_MethodTest__testInvalidParamError stdout ----
-
-thread 'PhpParser\Builder\MethodTest::testInvalidParamError' (59534) panicked at generated/php_parser/src/generated.rs:5906:250:
-cannot narrow PhpParser\Node\Name into U_PhpParser_Builder_Param_or_PhpParser_Node_Param
 [panicked] data set ""
 
 ---- tests::PhpParser_Builder_InterfaceTest__testFullFunctional stdout ----
 
-thread 'PhpParser\Builder\InterfaceTest::testFullFunctional' (59522) panicked at generated/php_parser/src/php_parser/builder/mod.rs:2702:66:
+thread 'PhpParser\Builder\InterfaceTest::testFullFunctional' (68824) panicked at generated/php_parser/src/php_parser/builder/mod.rs:2702:66:
 internal error: entered unreachable code: eval
-[panicked] data set ""
-
----- tests::PhpParser_Builder_MethodTest__testStmts stdout ----
-
-thread 'PhpParser\Builder\MethodTest::testStmts' (59546) panicked at generated/php_parser/src/generated.rs:482:493:
-cannot narrow Mixed into U_PhpParser_Builder_or_PhpParser_Node_Stmt
-[panicked] data set ""
-
----- tests::PhpParser_Builder_ParamTest__testInvalidTypeError stdout ----
-
-thread 'PhpParser\Builder\ParamTest::testInvalidTypeError' (59556) panicked at generated/php_parser/src/generated.rs:434:1063:
-cannot narrow Mixed into U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name_or_Str
 [panicked] data set ""
 
 ---- tests::PhpParser_Builder_ParamTest__testVoidTypeError stdout ----
 [failed] data set "": AssertionError: Failed asserting that exception of type "LogicException" is thrown
 
-thread 'tests::PhpParser_Builder_ParamTest__testVoidTypeError' (59569) panicked at php-rt/src/testing.rs:42:34:
+thread 'tests::PhpParser_Builder_ParamTest__testVoidTypeError' (68871) panicked at php-rt/src/testing.rs:42:34:
 AssertionError: Failed asserting that exception of type "LogicException" is thrown
-
----- tests::PhpParser_Builder_TraitUseTest__testInvalidAdaptationNode stdout ----
-
-thread 'PhpParser\Builder\TraitUseTest::testInvalidAdaptationNode' (59612) panicked at generated/php_parser/src/generated.rs:570:723:
-cannot narrow Mixed into U_PhpParser_Builder_TraitUseAdaptation_or_PhpParser_Node_Stmt_TraitUseAdaptation
-[panicked] data set ""
 
 ---- tests::PhpParser_ConstExprEvaluatorTest__testEvaluateFails stdout ----
 [failed] data set "": AssertionError: Failed asserting that exception of type "PhpParser\ConstExprEvaluationException" is thrown
 
-thread 'tests::PhpParser_ConstExprEvaluatorTest__testEvaluateFails' (59629) panicked at php-rt/src/testing.rs:42:34:
+thread 'tests::PhpParser_ConstExprEvaluatorTest__testEvaluateFails' (68931) panicked at php-rt/src/testing.rs:42:34:
 AssertionError: Failed asserting that exception of type "PhpParser\ConstExprEvaluationException" is thrown
 
 ---- tests::PhpParser_ConstExprEvaluatorTest__testEvaluateFallbackPipeOperator stdout ----
 
-thread 'PhpParser\ConstExprEvaluatorTest::testEvaluateFallbackPipeOperator' (59634) panicked at generated/php_parser/src/php_parser/mod.rs:6956:87:
+thread 'PhpParser\ConstExprEvaluatorTest::testEvaluateFallbackPipeOperator' (68938) panicked at generated/php_parser/src/php_parser/mod.rs:6956:87:
 internal error: entered unreachable code: closure without record
 [panicked] data set ""
 
 ---- tests::PhpParser_JsonDecoderTest__testDecodingError stdout ----
 [failed] data set "2": PHPUnit\Framework\AssertionFailedError: Failed asserting that exception message 'ReflectionClass::newInstanceWithoutConstructor() is not supported' contains 'Attributes must be an array'.
 
-thread 'tests::PhpParser_JsonDecoderTest__testDecodingError' (59659) panicked at php-rt/src/testing.rs:42:34:
+thread 'tests::PhpParser_JsonDecoderTest__testDecodingError' (68961) panicked at php-rt/src/testing.rs:42:34:
 PHPUnit\Framework\AssertionFailedError: Failed asserting that exception message 'ReflectionClass::newInstanceWithoutConstructor() is not supported' contains 'Attributes must be an array'.
 
 ---- tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterObjectOperatorWithComment stdout ----
@@ -850,7 +862,7 @@ PHPUnit\Framework\AssertionFailedError: Failed asserting that exception message 
   )),
 ).
 
-thread 'tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterObjectOperatorWithComment' (59689) panicked at php-rt/src/testing.rs:42:34:
+thread 'tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterObjectOperatorWithComment' (68991) panicked at php-rt/src/testing.rs:42:34:
 PHPUnit\Framework\AssertionFailedError: Failed asserting that array (
   0 => 
   \PhpParser\Token::__set_state(array(
@@ -927,63 +939,701 @@ PHPUnit\Framework\AssertionFailedError: Failed asserting that array (
 
 ---- tests::PhpParser_NodeAbstractTest__testAttributes stdout ----
 
-thread 'PhpParser\NodeAbstractTest::testAttributes' (59706) panicked at generated/php_parser/src/php_parser/mod.rs:8257:12:
+thread 'PhpParser\NodeAbstractTest::testAttributes' (69008) panicked at generated/php_parser/src/php_parser/mod.rs:8257:12:
 internal error: entered unreachable code: unknown method getMockForAbstractClass
 [panicked] data set ""
 
 ---- tests::PhpParser_NodeAbstractTest__testChange stdout ----
 [failed] data set "0": PHPUnit\Framework\AssertionFailedError: Failed asserting that 'newValue' is identical to 'newNewValue'.
 
-thread 'tests::PhpParser_NodeAbstractTest__testChange' (59707) panicked at php-rt/src/testing.rs:42:34:
+thread 'tests::PhpParser_NodeAbstractTest__testChange' (69009) panicked at php-rt/src/testing.rs:42:34:
 PHPUnit\Framework\AssertionFailedError: Failed asserting that 'newValue' is identical to 'newNewValue'.
-
----- tests::PhpParser_NodeDumperTest__testError stdout ----
-
-thread 'PhpParser\NodeDumperTest::testError' (59726) panicked at generated/php_parser/src/generated.rs:800:433:
-cannot narrow Mixed into U_Map_ArrayKey_Mixed_or_PhpParser_Node
-[panicked] data set ""
 
 ---- tests::PhpParser_NodeTraverserTest__testInvalidDeepArray stdout ----
 
-thread 'PhpParser\NodeTraverserTest::testInvalidDeepArray' (59741) panicked at generated/php_parser/src/generated.rs:5983:145:
+thread 'PhpParser\NodeTraverserTest::testInvalidDeepArray' (69040) panicked at generated/php_parser/src/generated.rs:5674:145:
 not implemented: cast ((crate::php_parser::node::scalar::String_,),) => crate::php_parser::Node
 [panicked] data set ""
 
 ---- tests::PhpParser_NodeTraverserTest__testInvalidReturn stdout ----
 
-thread 'PhpParser\NodeTraverserTest::testInvalidReturn' (59743) panicked at generated/php_parser/src/generated.rs:845:627:
-cannot narrow Mixed into U_Int_or_Map_ArrayKey_PhpParser_Node_or_PhpParser_Node
+thread 'PhpParser\NodeTraverserTest::testInvalidReturn' (69042) panicked at php-rt/src/cast.rs:117:5:
+Mixed value narrowed to int but was "foobar"
 [panicked] data set "0"
 
 ---- tests::PhpParser_NodeTraverserTest__testRemovingVisitor stdout ----
 
-thread 'PhpParser\NodeTraverserTest::testRemovingVisitor' (59757) panicked at generated/php_parser/src/php_parser/mod.rs:9034:5:
+thread 'PhpParser\NodeTraverserTest::testRemovingVisitor' (69056) panicked at generated/php_parser/src/php_parser/mod.rs:9034:5:
 internal error: entered unreachable code: transpiler error in testRemovingVisitor
 [panicked] data set ""
 
 ---- tests::PhpParser_NodeVisitor_NameResolverTest__testAddDeclarationNamespacedName stdout ----
 
-thread 'PhpParser\NodeVisitor\NameResolverTest::testAddDeclarationNamespacedName' (59773) panicked at generated/php_parser/src/generated.rs:5987:146:
+thread 'PhpParser\NodeVisitor\NameResolverTest::testAddDeclarationNamespacedName' (69072) panicked at generated/php_parser/src/generated.rs:5678:146:
 cannot cast PhpParser\Node\Expr\New_ to PhpParser\Node\Stmt
 [panicked] data set ""
 
 ---- tests::PhpParser_NodeVisitor_NameResolverTest__testAddOriginalNames stdout ----
 
-thread 'PhpParser\NodeVisitor\NameResolverTest::testAddOriginalNames' (59775) panicked at generated/php_parser/src/generated.rs:5990:157:
+thread 'PhpParser\NodeVisitor\NameResolverTest::testAddOriginalNames' (69074) panicked at generated/php_parser/src/generated.rs:5681:157:
 cannot cast PhpParser\Node\Expr\ClassConstFetch to PhpParser\Node\Stmt
 [panicked] data set ""
 
 ---- tests::PhpParser_NodeVisitor_NameResolverTest__testAddRuntimeResolvedNamespacedName stdout ----
 
-thread 'PhpParser\NodeVisitor\NameResolverTest::testAddRuntimeResolvedNamespacedName' (59777) panicked at generated/php_parser/src/generated.rs:5988:150:
+thread 'PhpParser\NodeVisitor\NameResolverTest::testAddRuntimeResolvedNamespacedName' (69076) panicked at generated/php_parser/src/generated.rs:5679:150:
 cannot cast PhpParser\Node\Expr\FuncCall to PhpParser\Node\Stmt
 [panicked] data set ""
 
 ---- tests::PhpParser_NodeVisitor_NameResolverTest__testAttributeOnlyMode stdout ----
 
-thread 'PhpParser\NodeVisitor\NameResolverTest::testAttributeOnlyMode' (59779) panicked at generated/php_parser/src/generated.rs:5990:157:
+thread 'PhpParser\NodeVisitor\NameResolverTest::testAttributeOnlyMode' (69078) panicked at generated/php_parser/src/generated.rs:5681:157:
 cannot cast PhpParser\Node\Expr\ClassConstFetch to PhpParser\Node\Stmt
 [panicked] data set ""
+
+---- tests::PhpParser_NodeAbstractTest__testJsonSerialization stdout ----
+[failed] data set "": PHPUnit\Framework\AssertionFailedError: Failed asserting that '[
+    {
+        "attributes": {
+            "startLine": 4,
+            "startTokenPos": 5,
+            "startFilePos": 36,
+            "endLine": 6,
+            "endTokenPos": 31,
+            "endFilePos": 95,
+            "comments": [
+                {
+                    "text": "\/\/ comment",
+                    "startLine": 2,
+                    "startFilePos": 6,
+                    "startTokenPos": 1,
+                    "endLine": 2,
+                    "endFilePos": 15,
+                    "endTokenPos": 1
+                },
+                {
+                    "text": "\/** doc comment *\/",
+                    "startLine": 3,
+                    "startFilePos": 17,
+                    "startTokenPos": 3,
+                    "endLine": 3,
+                    "endFilePos": 34,
+                    "endTokenPos": 3
+                }
+            ]
+        },
+        "byRef": false,
+        "name": {
+            "attributes": {
+                "startLine": 4,
+                "startTokenPos": 7,
+                "startFilePos": 45,
+                "endLine": 4,
+                "endTokenPos": 7,
+                "endFilePos": 56
+            },
+            "name": "functionName"
+        },
+        "params": [
+            {
+                "attributes": {
+                    "startLine": 4,
+                    "startTokenPos": 9,
+                    "startFilePos": 58,
+                    "endLine": 4,
+                    "endTokenPos": 14,
+                    "endFilePos": 64
+                },
+                "type": null,
+                "byRef": true,
+                "variadic": false,
+                "var": {
+                    "attributes": {
+                        "startLine": 4,
+                        "startTokenPos": 10,
+                        "startFilePos": 59,
+                        "endLine": 4,
+                        "endTokenPos": 10,
+                        "endFilePos": 60
+                    },
+                    "name": "a"
+                },
+                "default": {
+                    "attributes": {
+                        "startLine": 4,
+                        "startTokenPos": 14,
+                        "startFilePos": 64,
+                        "endLine": 4,
+                        "endTokenPos": 14,
+                        "endFilePos": 64,
+                        "rawValue": "0",
+                        "kind": 10
+                    },
+                    "value": 0
+                },
+                "flags": 0,
+                "attrGroups": [],
+                "hooks": []
+            },
+            {
+                "attributes": {
+                    "startLine": 4,
+                    "startTokenPos": 17,
+                    "startFilePos": 67,
+                    "endLine": 4,
+                    "endTokenPos": 21,
+                    "endFilePos": 74
+                },
+                "type": null,
+                "byRef": false,
+                "variadic": false,
+                "var": {
+                    "attributes": {
+                        "startLine": 4,
+                        "startTokenPos": 17,
+                        "startFilePos": 67,
+                        "endLine": 4,
+                        "endTokenPos": 17,
+                        "endFilePos": 68
+                    },
+                    "name": "b"
+                },
+                "default": {
+                    "attributes": {
+                        "startLine": 4,
+                        "startTokenPos": 21,
+                        "startFilePos": 72,
+                        "endLine": 4,
+                        "endTokenPos": 21,
+                        "endFilePos": 74,
+                        "rawValue": "1.0"
+                    },
+                    "value": 1
+                },
+                "flags": 0,
+                "attrGroups": [],
+                "hooks": []
+            }
+        ],
+        "returnType": null,
+        "stmts": [
+            {
+                "attributes": {
+                    "startLine": 5,
+                    "startTokenPos": 26,
+                    "startFilePos": 83,
+                    "endLine": 5,
+                    "endTokenPos": 29,
+                    "endFilePos": 93
+                },
+                "exprs": [
+                    {
+                        "attributes": {
+                            "startLine": 5,
+                            "startTokenPos": 28,
+                            "startFilePos": 88,
+                            "endLine": 5,
+                            "endTokenPos": 28,
+                            "endFilePos": 92,
+                            "kind": 1,
+                            "rawValue": "'Foo'"
+                        },
+                        "value": "Foo"
+                    }
+                ]
+            }
+        ],
+        "attrGroups": [],
+        "namespacedName": null
+    }
+]' equals '[
+    {
+        "nodeType": "Stmt_Function",
+        "attributes": {
+            "startLine": 4,
+            "startTokenPos": 5,
+            "startFilePos": 36,
+            "endLine": 6,
+            "endTokenPos": 31,
+            "endFilePos": 95,
+            "comments": [
+                {
+                    "nodeType": "Comment",
+                    "text": "\/\/ comment",
+                    "line": 2,
+                    "filePos": 6,
+                    "tokenPos": 1,
+                    "endLine": 2,
+                    "endFilePos": 15,
+                    "endTokenPos": 1
+                },
+                {
+                    "nodeType": "Comment_Doc",
+                    "text": "\/** doc comment *\/",
+                    "line": 3,
+                    "filePos": 17,
+                    "tokenPos": 3,
+                    "endLine": 3,
+                    "endFilePos": 34,
+                    "endTokenPos": 3
+                }
+            ]
+        },
+        "byRef": false,
+        "name": {
+            "nodeType": "Identifier",
+            "attributes": {
+                "startLine": 4,
+                "startTokenPos": 7,
+                "startFilePos": 45,
+                "endLine": 4,
+                "endTokenPos": 7,
+                "endFilePos": 56
+            },
+            "name": "functionName"
+        },
+        "params": [
+            {
+                "nodeType": "Param",
+                "attributes": {
+                    "startLine": 4,
+                    "startTokenPos": 9,
+                    "startFilePos": 58,
+                    "endLine": 4,
+                    "endTokenPos": 14,
+                    "endFilePos": 64
+                },
+                "type": null,
+                "byRef": true,
+                "variadic": false,
+                "var": {
+                    "nodeType": "Expr_Variable",
+                    "attributes": {
+                        "startLine": 4,
+                        "startTokenPos": 10,
+                        "startFilePos": 59,
+                        "endLine": 4,
+                        "endTokenPos": 10,
+                        "endFilePos": 60
+                    },
+                    "name": "a"
+                },
+                "default": {
+                    "nodeType": "Scalar_Int",
+                    "attributes": {
+                        "startLine": 4,
+                        "startTokenPos": 14,
+                        "startFilePos": 64,
+                        "endLine": 4,
+                        "endTokenPos": 14,
+                        "endFilePos": 64,
+                        "rawValue": "0",
+                        "kind": 10
+                    },
+                    "value": 0
+                },
+                "flags": 0,
+                "attrGroups": [],
+                "hooks": []
+            },
+            {
+                "nodeType": "Param",
+                "attributes": {
+                    "startLine": 4,
+                    "startTokenPos": 17,
+                    "startFilePos": 67,
+                    "endLine": 4,
+                    "endTokenPos": 21,
+                    "endFilePos": 74
+                },
+                "type": null,
+                "byRef": false,
+                "variadic": false,
+                "var": {
+                    "nodeType": "Expr_Variable",
+                    "attributes": {
+                        "startLine": 4,
+                        "startTokenPos": 17,
+                        "startFilePos": 67,
+                        "endLine": 4,
+                        "endTokenPos": 17,
+                        "endFilePos": 68
+                    },
+                    "name": "b"
+                },
+                "default": {
+                    "nodeType": "Scalar_Float",
+                    "attributes": {
+                        "startLine": 4,
+                        "startTokenPos": 21,
+                        "startFilePos": 72,
+                        "endLine": 4,
+                        "endTokenPos": 21,
+                        "endFilePos": 74,
+                        "rawValue": "1.0"
+                    },
+                    "value": 1
+                },
+                "flags": 0,
+                "attrGroups": [],
+                "hooks": []
+            }
+        ],
+        "returnType": null,
+        "stmts": [
+            {
+                "nodeType": "Stmt_Echo",
+                "attributes": {
+                    "startLine": 5,
+                    "startTokenPos": 26,
+                    "startFilePos": 83,
+                    "endLine": 5,
+                    "endTokenPos": 29,
+                    "endFilePos": 93
+                },
+                "exprs": [
+                    {
+                        "nodeType": "Scalar_String",
+                        "attributes": {
+                            "startLine": 5,
+                            "startTokenPos": 28,
+                            "startFilePos": 88,
+                            "endLine": 5,
+                            "endTokenPos": 28,
+                            "endFilePos": 92,
+                            "kind": 1,
+                            "rawValue": "'Foo'"
+                        },
+                        "value": "Foo"
+                    }
+                ]
+            }
+        ],
+        "attrGroups": []
+    }
+]'.
+
+thread 'tests::PhpParser_NodeAbstractTest__testJsonSerialization' (69017) panicked at php-rt/src/testing.rs:42:34:
+PHPUnit\Framework\AssertionFailedError: Failed asserting that '[
+    {
+        "attributes": {
+            "startLine": 4,
+            "startTokenPos": 5,
+            "startFilePos": 36,
+            "endLine": 6,
+            "endTokenPos": 31,
+            "endFilePos": 95,
+            "comments": [
+                {
+                    "text": "\/\/ comment",
+                    "startLine": 2,
+                    "startFilePos": 6,
+                    "startTokenPos": 1,
+                    "endLine": 2,
+                    "endFilePos": 15,
+                    "endTokenPos": 1
+                },
+                {
+                    "text": "\/** doc comment *\/",
+                    "startLine": 3,
+                    "startFilePos": 17,
+                    "startTokenPos": 3,
+                    "endLine": 3,
+                    "endFilePos": 34,
+                    "endTokenPos": 3
+                }
+            ]
+        },
+        "byRef": false,
+        "name": {
+            "attributes": {
+                "startLine": 4,
+                "startTokenPos": 7,
+                "startFilePos": 45,
+                "endLine": 4,
+                "endTokenPos": 7,
+                "endFilePos": 56
+            },
+            "name": "functionName"
+        },
+        "params": [
+            {
+                "attributes": {
+                    "startLine": 4,
+                    "startTokenPos": 9,
+                    "startFilePos": 58,
+                    "endLine": 4,
+                    "endTokenPos": 14,
+                    "endFilePos": 64
+                },
+                "type": null,
+                "byRef": true,
+                "variadic": false,
+                "var": {
+                    "attributes": {
+                        "startLine": 4,
+                        "startTokenPos": 10,
+                        "startFilePos": 59,
+                        "endLine": 4,
+                        "endTokenPos": 10,
+                        "endFilePos": 60
+                    },
+                    "name": "a"
+                },
+                "default": {
+                    "attributes": {
+                        "startLine": 4,
+                        "startTokenPos": 14,
+                        "startFilePos": 64,
+                        "endLine": 4,
+                        "endTokenPos": 14,
+                        "endFilePos": 64,
+                        "rawValue": "0",
+                        "kind": 10
+                    },
+                    "value": 0
+                },
+                "flags": 0,
+                "attrGroups": [],
+                "hooks": []
+            },
+            {
+                "attributes": {
+                    "startLine": 4,
+                    "startTokenPos": 17,
+                    "startFilePos": 67,
+                    "endLine": 4,
+                    "endTokenPos": 21,
+                    "endFilePos": 74
+                },
+                "type": null,
+                "byRef": false,
+                "variadic": false,
+                "var": {
+                    "attributes": {
+                        "startLine": 4,
+                        "startTokenPos": 17,
+                        "startFilePos": 67,
+                        "endLine": 4,
+                        "endTokenPos": 17,
+                        "endFilePos": 68
+                    },
+                    "name": "b"
+                },
+                "default": {
+                    "attributes": {
+                        "startLine": 4,
+                        "startTokenPos": 21,
+                        "startFilePos": 72,
+                        "endLine": 4,
+                        "endTokenPos": 21,
+                        "endFilePos": 74,
+                        "rawValue": "1.0"
+                    },
+                    "value": 1
+                },
+                "flags": 0,
+                "attrGroups": [],
+                "hooks": []
+            }
+        ],
+        "returnType": null,
+        "stmts": [
+            {
+                "attributes": {
+                    "startLine": 5,
+                    "startTokenPos": 26,
+                    "startFilePos": 83,
+                    "endLine": 5,
+                    "endTokenPos": 29,
+                    "endFilePos": 93
+                },
+                "exprs": [
+                    {
+                        "attributes": {
+                            "startLine": 5,
+                            "startTokenPos": 28,
+                            "startFilePos": 88,
+                            "endLine": 5,
+                            "endTokenPos": 28,
+                            "endFilePos": 92,
+                            "kind": 1,
+                            "rawValue": "'Foo'"
+                        },
+                        "value": "Foo"
+                    }
+                ]
+            }
+        ],
+        "attrGroups": [],
+        "namespacedName": null
+    }
+]' equals '[
+    {
+        "nodeType": "Stmt_Function",
+        "attributes": {
+            "startLine": 4,
+            "startTokenPos": 5,
+            "startFilePos": 36,
+            "endLine": 6,
+            "endTokenPos": 31,
+            "endFilePos": 95,
+            "comments": [
+                {
+                    "nodeType": "Comment",
+                    "text": "\/\/ comment",
+                    "line": 2,
+                    "filePos": 6,
+                    "tokenPos": 1,
+                    "endLine": 2,
+                    "endFilePos": 15,
+                    "endTokenPos": 1
+                },
+                {
+                    "nodeType": "Comment_Doc",
+                    "text": "\/** doc comment *\/",
+                    "line": 3,
+                    "filePos": 17,
+                    "tokenPos": 3,
+                    "endLine": 3,
+                    "endFilePos": 34,
+                    "endTokenPos": 3
+                }
+            ]
+        },
+        "byRef": false,
+        "name": {
+            "nodeType": "Identifier",
+            "attributes": {
+                "startLine": 4,
+                "startTokenPos": 7,
+                "startFilePos": 45,
+                "endLine": 4,
+                "endTokenPos": 7,
+                "endFilePos": 56
+            },
+            "name": "functionName"
+        },
+        "params": [
+            {
+                "nodeType": "Param",
+                "attributes": {
+                    "startLine": 4,
+                    "startTokenPos": 9,
+                    "startFilePos": 58,
+                    "endLine": 4,
+                    "endTokenPos": 14,
+                    "endFilePos": 64
+                },
+                "type": null,
+                "byRef": true,
+                "variadic": false,
+                "var": {
+                    "nodeType": "Expr_Variable",
+                    "attributes": {
+                        "startLine": 4,
+                        "startTokenPos": 10,
+                        "startFilePos": 59,
+                        "endLine": 4,
+                        "endTokenPos": 10,
+                        "endFilePos": 60
+                    },
+                    "name": "a"
+                },
+                "default": {
+                    "nodeType": "Scalar_Int",
+                    "attributes": {
+                        "startLine": 4,
+                        "startTokenPos": 14,
+                        "startFilePos": 64,
+                        "endLine": 4,
+                        "endTokenPos": 14,
+                        "endFilePos": 64,
+                        "rawValue": "0",
+                        "kind": 10
+                    },
+                    "value": 0
+                },
+                "flags": 0,
+                "attrGroups": [],
+                "hooks": []
+            },
+            {
+                "nodeType": "Param",
+                "attributes": {
+                    "startLine": 4,
+                    "startTokenPos": 17,
+                    "startFilePos": 67,
+                    "endLine": 4,
+                    "endTokenPos": 21,
+                    "endFilePos": 74
+                },
+                "type": null,
+                "byRef": false,
+                "variadic": false,
+                "var": {
+                    "nodeType": "Expr_Variable",
+                    "attributes": {
+                        "startLine": 4,
+                        "startTokenPos": 17,
+                        "startFilePos": 67,
+                        "endLine": 4,
+                        "endTokenPos": 17,
+                        "endFilePos": 68
+                    },
+                    "name": "b"
+                },
+                "default": {
+                    "nodeType": "Scalar_Float",
+                    "attributes": {
+                        "startLine": 4,
+                        "startTokenPos": 21,
+                        "startFilePos": 72,
+                        "endLine": 4,
+                        "endTokenPos": 21,
+                        "endFilePos": 74,
+                        "rawValue": "1.0"
+                    },
+                    "value": 1
+                },
+                "flags": 0,
+                "attrGroups": [],
+                "hooks": []
+            }
+        ],
+        "returnType": null,
+        "stmts": [
+            {
+                "nodeType": "Stmt_Echo",
+                "attributes": {
+                    "startLine": 5,
+                    "startTokenPos": 26,
+                    "startFilePos": 83,
+                    "endLine": 5,
+                    "endTokenPos": 29,
+                    "endFilePos": 93
+                },
+                "exprs": [
+                    {
+                        "nodeType": "Scalar_String",
+                        "attributes": {
+                            "startLine": 5,
+                            "startTokenPos": 28,
+                            "startFilePos": 88,
+                            "endLine": 5,
+                            "endTokenPos": 28,
+                            "endFilePos": 92,
+                            "kind": 1,
+                            "rawValue": "'Foo'"
+                        },
+                        "value": "Foo"
+                    }
+                ]
+            }
+        ],
+        "attrGroups": []
+    }
+]'.
 
 ---- tests::PhpParser_JsonDecoderTest__testRoundTrip stdout ----
 [failed] data set "": PHPUnit\Framework\AssertionFailedError: Failed asserting that array (
@@ -1368,7 +2018,7 @@ cannot cast PhpParser\Node\Expr\ClassConstFetch to PhpParser\Node\Stmt
   )),
 ).
 
-thread 'tests::PhpParser_JsonDecoderTest__testRoundTrip' (59661) panicked at php-rt/src/testing.rs:42:34:
+thread 'tests::PhpParser_JsonDecoderTest__testRoundTrip' (68963) panicked at php-rt/src/testing.rs:42:34:
 PHPUnit\Framework\AssertionFailedError: Failed asserting that array (
   0 => 
   array (
@@ -1751,732 +2401,56 @@ PHPUnit\Framework\AssertionFailedError: Failed asserting that array (
   )),
 ).
 
----- tests::PhpParser_NodeAbstractTest__testJsonSerialization stdout ----
-[failed] data set "": PHPUnit\Framework\AssertionFailedError: Failed asserting that '[
-    {
-        "attributes": {
-            "startLine": 4,
-            "startTokenPos": 5,
-            "startFilePos": 36,
-            "endLine": 6,
-            "endTokenPos": 31,
-            "endFilePos": 95,
-            "comments": [
-                {
-                    "text": "\/\/ comment",
-                    "startLine": 2,
-                    "startFilePos": 6,
-                    "startTokenPos": 1,
-                    "endLine": 2,
-                    "endFilePos": 15,
-                    "endTokenPos": 1
-                },
-                {
-                    "text": "\/** doc comment *\/",
-                    "startLine": 3,
-                    "startFilePos": 17,
-                    "startTokenPos": 3,
-                    "endLine": 3,
-                    "endFilePos": 34,
-                    "endTokenPos": 3
-                }
-            ]
-        },
-        "byRef": false,
-        "name": {
-            "attributes": {
-                "startLine": 4,
-                "startTokenPos": 7,
-                "startFilePos": 45,
-                "endLine": 4,
-                "endTokenPos": 7,
-                "endFilePos": 56
-            },
-            "name": "functionName"
-        },
-        "params": [
-            {
-                "attributes": {
-                    "startLine": 4,
-                    "startTokenPos": 9,
-                    "startFilePos": 58,
-                    "endLine": 4,
-                    "endTokenPos": 14,
-                    "endFilePos": 64
-                },
-                "type": null,
-                "byRef": true,
-                "variadic": false,
-                "var": {
-                    "attributes": {
-                        "startLine": 4,
-                        "startTokenPos": 10,
-                        "startFilePos": 59,
-                        "endLine": 4,
-                        "endTokenPos": 10,
-                        "endFilePos": 60
-                    },
-                    "name": "a"
-                },
-                "default": {
-                    "attributes": {
-                        "startLine": 4,
-                        "startTokenPos": 14,
-                        "startFilePos": 64,
-                        "endLine": 4,
-                        "endTokenPos": 14,
-                        "endFilePos": 64,
-                        "rawValue": "0",
-                        "kind": 10
-                    },
-                    "value": 0
-                },
-                "flags": 0,
-                "attrGroups": [],
-                "hooks": []
-            },
-            {
-                "attributes": {
-                    "startLine": 4,
-                    "startTokenPos": 17,
-                    "startFilePos": 67,
-                    "endLine": 4,
-                    "endTokenPos": 21,
-                    "endFilePos": 74
-                },
-                "type": null,
-                "byRef": false,
-                "variadic": false,
-                "var": {
-                    "attributes": {
-                        "startLine": 4,
-                        "startTokenPos": 17,
-                        "startFilePos": 67,
-                        "endLine": 4,
-                        "endTokenPos": 17,
-                        "endFilePos": 68
-                    },
-                    "name": "b"
-                },
-                "default": {
-                    "attributes": {
-                        "startLine": 4,
-                        "startTokenPos": 21,
-                        "startFilePos": 72,
-                        "endLine": 4,
-                        "endTokenPos": 21,
-                        "endFilePos": 74,
-                        "rawValue": "1.0"
-                    },
-                    "value": 1
-                },
-                "flags": 0,
-                "attrGroups": [],
-                "hooks": []
-            }
-        ],
-        "returnType": null,
-        "stmts": [
-            {
-                "attributes": {
-                    "startLine": 5,
-                    "startTokenPos": 26,
-                    "startFilePos": 83,
-                    "endLine": 5,
-                    "endTokenPos": 29,
-                    "endFilePos": 93
-                },
-                "exprs": [
-                    {
-                        "attributes": {
-                            "startLine": 5,
-                            "startTokenPos": 28,
-                            "startFilePos": 88,
-                            "endLine": 5,
-                            "endTokenPos": 28,
-                            "endFilePos": 92,
-                            "kind": 1,
-                            "rawValue": "'Foo'"
-                        },
-                        "value": "Foo"
-                    }
-                ]
-            }
-        ],
-        "attrGroups": [],
-        "namespacedName": null
-    }
-]' equals '[
-    {
-        "nodeType": "Stmt_Function",
-        "attributes": {
-            "startLine": 4,
-            "startTokenPos": 5,
-            "startFilePos": 36,
-            "endLine": 6,
-            "endTokenPos": 31,
-            "endFilePos": 95,
-            "comments": [
-                {
-                    "nodeType": "Comment",
-                    "text": "\/\/ comment",
-                    "line": 2,
-                    "filePos": 6,
-                    "tokenPos": 1,
-                    "endLine": 2,
-                    "endFilePos": 15,
-                    "endTokenPos": 1
-                },
-                {
-                    "nodeType": "Comment_Doc",
-                    "text": "\/** doc comment *\/",
-                    "line": 3,
-                    "filePos": 17,
-                    "tokenPos": 3,
-                    "endLine": 3,
-                    "endFilePos": 34,
-                    "endTokenPos": 3
-                }
-            ]
-        },
-        "byRef": false,
-        "name": {
-            "nodeType": "Identifier",
-            "attributes": {
-                "startLine": 4,
-                "startTokenPos": 7,
-                "startFilePos": 45,
-                "endLine": 4,
-                "endTokenPos": 7,
-                "endFilePos": 56
-            },
-            "name": "functionName"
-        },
-        "params": [
-            {
-                "nodeType": "Param",
-                "attributes": {
-                    "startLine": 4,
-                    "startTokenPos": 9,
-                    "startFilePos": 58,
-                    "endLine": 4,
-                    "endTokenPos": 14,
-                    "endFilePos": 64
-                },
-                "type": null,
-                "byRef": true,
-                "variadic": false,
-                "var": {
-                    "nodeType": "Expr_Variable",
-                    "attributes": {
-                        "startLine": 4,
-                        "startTokenPos": 10,
-                        "startFilePos": 59,
-                        "endLine": 4,
-                        "endTokenPos": 10,
-                        "endFilePos": 60
-                    },
-                    "name": "a"
-                },
-                "default": {
-                    "nodeType": "Scalar_Int",
-                    "attributes": {
-                        "startLine": 4,
-                        "startTokenPos": 14,
-                        "startFilePos": 64,
-                        "endLine": 4,
-                        "endTokenPos": 14,
-                        "endFilePos": 64,
-                        "rawValue": "0",
-                        "kind": 10
-                    },
-                    "value": 0
-                },
-                "flags": 0,
-                "attrGroups": [],
-                "hooks": []
-            },
-            {
-                "nodeType": "Param",
-                "attributes": {
-                    "startLine": 4,
-                    "startTokenPos": 17,
-                    "startFilePos": 67,
-                    "endLine": 4,
-                    "endTokenPos": 21,
-                    "endFilePos": 74
-                },
-                "type": null,
-                "byRef": false,
-                "variadic": false,
-                "var": {
-                    "nodeType": "Expr_Variable",
-                    "attributes": {
-                        "startLine": 4,
-                        "startTokenPos": 17,
-                        "startFilePos": 67,
-                        "endLine": 4,
-                        "endTokenPos": 17,
-                        "endFilePos": 68
-                    },
-                    "name": "b"
-                },
-                "default": {
-                    "nodeType": "Scalar_Float",
-                    "attributes": {
-                        "startLine": 4,
-                        "startTokenPos": 21,
-                        "startFilePos": 72,
-                        "endLine": 4,
-                        "endTokenPos": 21,
-                        "endFilePos": 74,
-                        "rawValue": "1.0"
-                    },
-                    "value": 1
-                },
-                "flags": 0,
-                "attrGroups": [],
-                "hooks": []
-            }
-        ],
-        "returnType": null,
-        "stmts": [
-            {
-                "nodeType": "Stmt_Echo",
-                "attributes": {
-                    "startLine": 5,
-                    "startTokenPos": 26,
-                    "startFilePos": 83,
-                    "endLine": 5,
-                    "endTokenPos": 29,
-                    "endFilePos": 93
-                },
-                "exprs": [
-                    {
-                        "nodeType": "Scalar_String",
-                        "attributes": {
-                            "startLine": 5,
-                            "startTokenPos": 28,
-                            "startFilePos": 88,
-                            "endLine": 5,
-                            "endTokenPos": 28,
-                            "endFilePos": 92,
-                            "kind": 1,
-                            "rawValue": "'Foo'"
-                        },
-                        "value": "Foo"
-                    }
-                ]
-            }
-        ],
-        "attrGroups": []
-    }
-]'.
-
-thread 'tests::PhpParser_NodeAbstractTest__testJsonSerialization' (59714) panicked at php-rt/src/testing.rs:42:34:
-PHPUnit\Framework\AssertionFailedError: Failed asserting that '[
-    {
-        "attributes": {
-            "startLine": 4,
-            "startTokenPos": 5,
-            "startFilePos": 36,
-            "endLine": 6,
-            "endTokenPos": 31,
-            "endFilePos": 95,
-            "comments": [
-                {
-                    "text": "\/\/ comment",
-                    "startLine": 2,
-                    "startFilePos": 6,
-                    "startTokenPos": 1,
-                    "endLine": 2,
-                    "endFilePos": 15,
-                    "endTokenPos": 1
-                },
-                {
-                    "text": "\/** doc comment *\/",
-                    "startLine": 3,
-                    "startFilePos": 17,
-                    "startTokenPos": 3,
-                    "endLine": 3,
-                    "endFilePos": 34,
-                    "endTokenPos": 3
-                }
-            ]
-        },
-        "byRef": false,
-        "name": {
-            "attributes": {
-                "startLine": 4,
-                "startTokenPos": 7,
-                "startFilePos": 45,
-                "endLine": 4,
-                "endTokenPos": 7,
-                "endFilePos": 56
-            },
-            "name": "functionName"
-        },
-        "params": [
-            {
-                "attributes": {
-                    "startLine": 4,
-                    "startTokenPos": 9,
-                    "startFilePos": 58,
-                    "endLine": 4,
-                    "endTokenPos": 14,
-                    "endFilePos": 64
-                },
-                "type": null,
-                "byRef": true,
-                "variadic": false,
-                "var": {
-                    "attributes": {
-                        "startLine": 4,
-                        "startTokenPos": 10,
-                        "startFilePos": 59,
-                        "endLine": 4,
-                        "endTokenPos": 10,
-                        "endFilePos": 60
-                    },
-                    "name": "a"
-                },
-                "default": {
-                    "attributes": {
-                        "startLine": 4,
-                        "startTokenPos": 14,
-                        "startFilePos": 64,
-                        "endLine": 4,
-                        "endTokenPos": 14,
-                        "endFilePos": 64,
-                        "rawValue": "0",
-                        "kind": 10
-                    },
-                    "value": 0
-                },
-                "flags": 0,
-                "attrGroups": [],
-                "hooks": []
-            },
-            {
-                "attributes": {
-                    "startLine": 4,
-                    "startTokenPos": 17,
-                    "startFilePos": 67,
-                    "endLine": 4,
-                    "endTokenPos": 21,
-                    "endFilePos": 74
-                },
-                "type": null,
-                "byRef": false,
-                "variadic": false,
-                "var": {
-                    "attributes": {
-                        "startLine": 4,
-                        "startTokenPos": 17,
-                        "startFilePos": 67,
-                        "endLine": 4,
-                        "endTokenPos": 17,
-                        "endFilePos": 68
-                    },
-                    "name": "b"
-                },
-                "default": {
-                    "attributes": {
-                        "startLine": 4,
-                        "startTokenPos": 21,
-                        "startFilePos": 72,
-                        "endLine": 4,
-                        "endTokenPos": 21,
-                        "endFilePos": 74,
-                        "rawValue": "1.0"
-                    },
-                    "value": 1
-                },
-                "flags": 0,
-                "attrGroups": [],
-                "hooks": []
-            }
-        ],
-        "returnType": null,
-        "stmts": [
-            {
-                "attributes": {
-                    "startLine": 5,
-                    "startTokenPos": 26,
-                    "startFilePos": 83,
-                    "endLine": 5,
-                    "endTokenPos": 29,
-                    "endFilePos": 93
-                },
-                "exprs": [
-                    {
-                        "attributes": {
-                            "startLine": 5,
-                            "startTokenPos": 28,
-                            "startFilePos": 88,
-                            "endLine": 5,
-                            "endTokenPos": 28,
-                            "endFilePos": 92,
-                            "kind": 1,
-                            "rawValue": "'Foo'"
-                        },
-                        "value": "Foo"
-                    }
-                ]
-            }
-        ],
-        "attrGroups": [],
-        "namespacedName": null
-    }
-]' equals '[
-    {
-        "nodeType": "Stmt_Function",
-        "attributes": {
-            "startLine": 4,
-            "startTokenPos": 5,
-            "startFilePos": 36,
-            "endLine": 6,
-            "endTokenPos": 31,
-            "endFilePos": 95,
-            "comments": [
-                {
-                    "nodeType": "Comment",
-                    "text": "\/\/ comment",
-                    "line": 2,
-                    "filePos": 6,
-                    "tokenPos": 1,
-                    "endLine": 2,
-                    "endFilePos": 15,
-                    "endTokenPos": 1
-                },
-                {
-                    "nodeType": "Comment_Doc",
-                    "text": "\/** doc comment *\/",
-                    "line": 3,
-                    "filePos": 17,
-                    "tokenPos": 3,
-                    "endLine": 3,
-                    "endFilePos": 34,
-                    "endTokenPos": 3
-                }
-            ]
-        },
-        "byRef": false,
-        "name": {
-            "nodeType": "Identifier",
-            "attributes": {
-                "startLine": 4,
-                "startTokenPos": 7,
-                "startFilePos": 45,
-                "endLine": 4,
-                "endTokenPos": 7,
-                "endFilePos": 56
-            },
-            "name": "functionName"
-        },
-        "params": [
-            {
-                "nodeType": "Param",
-                "attributes": {
-                    "startLine": 4,
-                    "startTokenPos": 9,
-                    "startFilePos": 58,
-                    "endLine": 4,
-                    "endTokenPos": 14,
-                    "endFilePos": 64
-                },
-                "type": null,
-                "byRef": true,
-                "variadic": false,
-                "var": {
-                    "nodeType": "Expr_Variable",
-                    "attributes": {
-                        "startLine": 4,
-                        "startTokenPos": 10,
-                        "startFilePos": 59,
-                        "endLine": 4,
-                        "endTokenPos": 10,
-                        "endFilePos": 60
-                    },
-                    "name": "a"
-                },
-                "default": {
-                    "nodeType": "Scalar_Int",
-                    "attributes": {
-                        "startLine": 4,
-                        "startTokenPos": 14,
-                        "startFilePos": 64,
-                        "endLine": 4,
-                        "endTokenPos": 14,
-                        "endFilePos": 64,
-                        "rawValue": "0",
-                        "kind": 10
-                    },
-                    "value": 0
-                },
-                "flags": 0,
-                "attrGroups": [],
-                "hooks": []
-            },
-            {
-                "nodeType": "Param",
-                "attributes": {
-                    "startLine": 4,
-                    "startTokenPos": 17,
-                    "startFilePos": 67,
-                    "endLine": 4,
-                    "endTokenPos": 21,
-                    "endFilePos": 74
-                },
-                "type": null,
-                "byRef": false,
-                "variadic": false,
-                "var": {
-                    "nodeType": "Expr_Variable",
-                    "attributes": {
-                        "startLine": 4,
-                        "startTokenPos": 17,
-                        "startFilePos": 67,
-                        "endLine": 4,
-                        "endTokenPos": 17,
-                        "endFilePos": 68
-                    },
-                    "name": "b"
-                },
-                "default": {
-                    "nodeType": "Scalar_Float",
-                    "attributes": {
-                        "startLine": 4,
-                        "startTokenPos": 21,
-                        "startFilePos": 72,
-                        "endLine": 4,
-                        "endTokenPos": 21,
-                        "endFilePos": 74,
-                        "rawValue": "1.0"
-                    },
-                    "value": 1
-                },
-                "flags": 0,
-                "attrGroups": [],
-                "hooks": []
-            }
-        ],
-        "returnType": null,
-        "stmts": [
-            {
-                "nodeType": "Stmt_Echo",
-                "attributes": {
-                    "startLine": 5,
-                    "startTokenPos": 26,
-                    "startFilePos": 83,
-                    "endLine": 5,
-                    "endTokenPos": 29,
-                    "endFilePos": 93
-                },
-                "exprs": [
-                    {
-                        "nodeType": "Scalar_String",
-                        "attributes": {
-                            "startLine": 5,
-                            "startTokenPos": 28,
-                            "startFilePos": 88,
-                            "endLine": 5,
-                            "endTokenPos": 28,
-                            "endFilePos": 92,
-                            "kind": 1,
-                            "rawValue": "'Foo'"
-                        },
-                        "value": "Foo"
-                    }
-                ]
-            }
-        ],
-        "attrGroups": []
-    }
-]'.
-
 ---- tests::PhpParser_NodeVisitor_NameResolverTest__testClassNameIsCaseInsensitive stdout ----
 [failed] data set "": PhpParser\Error: No code may exist outside of namespace {} on line 3
 
-thread 'tests::PhpParser_NodeVisitor_NameResolverTest__testClassNameIsCaseInsensitive' (59780) panicked at php-rt/src/testing.rs:42:34:
+thread 'tests::PhpParser_NodeVisitor_NameResolverTest__testClassNameIsCaseInsensitive' (69079) panicked at php-rt/src/testing.rs:42:34:
 PhpParser\Error: No code may exist outside of namespace {} on line 3
 
 ---- tests::PhpParser_NodeVisitor_NameResolverTest__testSpecialClassNamesAreCaseInsensitive stdout ----
 [failed] data set "": PhpParser\Error: No code may exist outside of namespace {} on line 4
 
-thread 'tests::PhpParser_NodeVisitor_NameResolverTest__testSpecialClassNamesAreCaseInsensitive' (59790) panicked at php-rt/src/testing.rs:42:34:
+thread 'tests::PhpParser_NodeVisitor_NameResolverTest__testSpecialClassNamesAreCaseInsensitive' (69094) panicked at php-rt/src/testing.rs:42:34:
 PhpParser\Error: No code may exist outside of namespace {} on line 4
 
 ---- tests::PhpParser_NodeVisitor_NodeConnectingVisitorTest__testWeakReferences stdout ----
 [failed] data set "": PHPUnit\Framework\AssertionFailedError: Failed asserting that NULL is an instance of class "WeakReference".
 
-thread 'tests::PhpParser_NodeVisitor_NodeConnectingVisitorTest__testWeakReferences' (59794) panicked at php-rt/src/testing.rs:42:34:
+thread 'tests::PhpParser_NodeVisitor_NodeConnectingVisitorTest__testWeakReferences' (69128) panicked at php-rt/src/testing.rs:42:34:
 PHPUnit\Framework\AssertionFailedError: Failed asserting that NULL is an instance of class "WeakReference".
 
 ---- tests::PhpParser_ConstExprEvaluatorTest__testEvaluate stdout ----
 [failed] data set "12": PHPUnit\Framework\AssertionFailedError: Failed asserting that -1.0 is identical to -1.
 
-thread 'tests::PhpParser_ConstExprEvaluatorTest__testEvaluate' (59627) panicked at php-rt/src/testing.rs:42:34:
+thread 'tests::PhpParser_ConstExprEvaluatorTest__testEvaluate' (68929) panicked at php-rt/src/testing.rs:42:34:
 PHPUnit\Framework\AssertionFailedError: Failed asserting that -1.0 is identical to -1.
-
----- tests::PhpParser_Node_NameTest__testInvalidArg stdout ----
-
-thread 'PhpParser\Node\NameTest::testInvalidArg' (59817) panicked at generated/php_parser/src/generated.rs:754:577:
-cannot narrow Mixed into U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str
-[panicked] data set ""
 
 ---- tests::PhpParser_Node_Stmt_ClassMethodTest__testFunctionLike stdout ----
 [failed] data set "": PHPUnit\Framework\AssertionFailedError: Failed asserting that array (
 ) is null.
 
-thread 'tests::PhpParser_Node_Stmt_ClassMethodTest__testFunctionLike' (59878) panicked at php-rt/src/testing.rs:42:34:
+thread 'tests::PhpParser_Node_Stmt_ClassMethodTest__testFunctionLike' (69212) panicked at php-rt/src/testing.rs:42:34:
 PHPUnit\Framework\AssertionFailedError: Failed asserting that array (
 ) is null.
 
 ---- tests::PhpParser_Node_Stmt_ClassTest__testGetTraitUses stdout ----
 
-thread 'PhpParser\Node\Stmt\ClassTest::testGetTraitUses' (59899) panicked at generated/php_parser/src/generated.rs:5975:148:
+thread 'PhpParser\Node\Stmt\ClassTest::testGetTraitUses' (69233) panicked at generated/php_parser/src/generated.rs:5666:148:
 cannot cast PhpParser\Node\Stmt\Trait_ to PhpParser\Node\Name
 [panicked] data set ""
 
 ---- tests::PhpParser_NodeVisitor_NameResolverTest__testResolveLocations stdout ----
 [failed] data set "": PhpParser\Error: No code may exist outside of namespace {} on line 4
 
-thread 'tests::PhpParser_NodeVisitor_NameResolverTest__testResolveLocations' (59786) panicked at php-rt/src/testing.rs:42:34:
+thread 'tests::PhpParser_NodeVisitor_NameResolverTest__testResolveLocations' (69085) panicked at php-rt/src/testing.rs:42:34:
 PhpParser\Error: No code may exist outside of namespace {} on line 4
 
 
 failures:
-    tests::PhpParser_BuilderFactoryTest__testConcatInvalidExpr
     tests::PhpParser_BuilderFactoryTest__testIntegration
-    tests::PhpParser_BuilderFactoryTest__testInvalidIdentifier
-    tests::PhpParser_BuilderFactoryTest__testInvalidIdentifierOrExpr
-    tests::PhpParser_BuilderFactoryTest__testInvalidNameOrExpr
-    tests::PhpParser_BuilderFactoryTest__testInvalidVar
-    tests::PhpParser_BuilderHelpersTest__testNormalizeAttribute
-    tests::PhpParser_BuilderHelpersTest__testNormalizeDocComment
-    tests::PhpParser_BuilderHelpersTest__testNormalizeIdentifier
-    tests::PhpParser_BuilderHelpersTest__testNormalizeIdentifierOrExpr
-    tests::PhpParser_BuilderHelpersTest__testNormalizeNameInvalidType
-    tests::PhpParser_BuilderHelpersTest__testNormalizeNameOrExpInvalidType
-    tests::PhpParser_BuilderHelpersTest__testNormalizeNode
-    tests::PhpParser_BuilderHelpersTest__testNormalizeStmtInvalidType
     tests::PhpParser_BuilderHelpersTest__testNormalizeType
-    tests::PhpParser_BuilderHelpersTest__testNormalizeValue
-    tests::PhpParser_Builder_ClassTest__testInvalidDocComment
-    tests::PhpParser_Builder_ClassTest__testInvalidName
-    tests::PhpParser_Builder_EnumTest__testInvalidDocComment
-    tests::PhpParser_Builder_EnumTest__testInvalidName
-    tests::PhpParser_Builder_EnumTest__testInvalidStmtError
-    tests::PhpParser_Builder_FunctionTest__testInvalidParamError
-    tests::PhpParser_Builder_FunctionTest__testStmts
     tests::PhpParser_Builder_InterfaceTest__testFullFunctional
-    tests::PhpParser_Builder_InterfaceTest__testInvalidStmtError
-    tests::PhpParser_Builder_MethodTest__testInvalidParamError
-    tests::PhpParser_Builder_MethodTest__testStmts
-    tests::PhpParser_Builder_ParamTest__testInvalidTypeError
     tests::PhpParser_Builder_ParamTest__testVoidTypeError
-    tests::PhpParser_Builder_TraitUseTest__testInvalidAdaptationNode
     tests::PhpParser_ConstExprEvaluatorTest__testEvaluate
     tests::PhpParser_ConstExprEvaluatorTest__testEvaluateFails
     tests::PhpParser_ConstExprEvaluatorTest__testEvaluateFallbackPipeOperator
@@ -2486,7 +2460,6 @@ failures:
     tests::PhpParser_NodeAbstractTest__testAttributes
     tests::PhpParser_NodeAbstractTest__testChange
     tests::PhpParser_NodeAbstractTest__testJsonSerialization
-    tests::PhpParser_NodeDumperTest__testError
     tests::PhpParser_NodeTraverserTest__testInvalidDeepArray
     tests::PhpParser_NodeTraverserTest__testInvalidReturn
     tests::PhpParser_NodeTraverserTest__testRemovingVisitor
@@ -2498,10 +2471,9 @@ failures:
     tests::PhpParser_NodeVisitor_NameResolverTest__testResolveLocations
     tests::PhpParser_NodeVisitor_NameResolverTest__testSpecialClassNamesAreCaseInsensitive
     tests::PhpParser_NodeVisitor_NodeConnectingVisitorTest__testWeakReferences
-    tests::PhpParser_Node_NameTest__testInvalidArg
     tests::PhpParser_Node_Stmt_ClassMethodTest__testFunctionLike
     tests::PhpParser_Node_Stmt_ClassTest__testGetTraitUses
 
-test result: FAILED. 261 passed; 54 failed; 0 ignored; 0 measured; 0 filtered out; finished in 19.61s
+test result: FAILED. 289 passed; 26 failed; 0 ignored; 0 measured; 0 filtered out; finished in 16.63s
 
 error: test failed, to rerun pass `-p php_parser --lib`

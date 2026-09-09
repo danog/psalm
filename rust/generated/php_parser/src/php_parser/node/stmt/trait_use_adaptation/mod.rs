@@ -51,9 +51,9 @@ impl Alias {
     pub fn magic__construct(&self, mut trait_: Option<crate::php_parser::node::Name>, mut method: U_PhpParser_Node_Identifier_or_Str, mut newModifier: Option<i64>, mut newName: Option<U_PhpParser_Node_Identifier_or_Str>, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
     self.set_p_attributes(attributes.clone());
     self.set_p_trait_(trait_.clone());
-    self.set_p_method((if (match method.clone() { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, _ => false }) { crate::php_parser::node::Identifier::new(cast::<Str>(method.clone()), Map::<Str, Mixed>::new())? } else { cast::<crate::php_parser::node::Identifier>(method.clone()) }));
+    self.set_p_method((if (match method.clone() { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, U_PhpParser_Node_Identifier_or_Str::Other__(__m) => __m.is_string(), _ => false }) { crate::php_parser::node::Identifier::new(cast::<Str>(method.clone()), Map::<Str, Mixed>::new())? } else { cast::<crate::php_parser::node::Identifier>(method.clone()) }));
     self.set_p_newModifier(newModifier);
-    self.set_p_newName((if (match newName.clone() { Some(__u) => match __u { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, _ => false }, None => false }) { Some(crate::php_parser::node::Identifier::new((match newName.clone() { Some(__o) => cast::<Str>(__o), None => <Str>::default() }), Map::<Str, Mixed>::new())?) } else { newName.clone().map(|v| cast::<crate::php_parser::node::Identifier>(v)) }));
+    self.set_p_newName((if (match newName.clone() { Some(__u) => match __u { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, U_PhpParser_Node_Identifier_or_Str::Other__(__m) => __m.is_string(), _ => false }, None => false }) { Some(crate::php_parser::node::Identifier::new((match newName.clone() { Some(__o) => cast::<Str>(__o), None => <Str>::default() }), Map::<Str, Mixed>::new())?) } else { newName.clone().map(|v| cast::<crate::php_parser::node::Identifier>(v)) }));
     #[allow(unreachable_code)] Ok(Mixed::Null)
     }
     pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
@@ -137,7 +137,7 @@ impl Precedence {
     pub fn magic__construct(&self, mut trait_: crate::php_parser::node::Name, mut method: U_PhpParser_Node_Identifier_or_Str, mut insteadof: Map<ArrayKey, crate::php_parser::node::Name>, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
     self.set_p_attributes(attributes.clone());
     self.set_p_trait_(Some(trait_.clone()));
-    self.set_p_method((if (match method.clone() { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, _ => false }) { crate::php_parser::node::Identifier::new(cast::<Str>(method.clone()), Map::<Str, Mixed>::new())? } else { cast::<crate::php_parser::node::Identifier>(method.clone()) }));
+    self.set_p_method((if (match method.clone() { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, U_PhpParser_Node_Identifier_or_Str::Other__(__m) => __m.is_string(), _ => false }) { crate::php_parser::node::Identifier::new(cast::<Str>(method.clone()), Map::<Str, Mixed>::new())? } else { cast::<crate::php_parser::node::Identifier>(method.clone()) }));
     self.set_p_insteadof(insteadof.clone());
     #[allow(unreachable_code)] Ok(Mixed::Null)
     }

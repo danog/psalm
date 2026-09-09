@@ -114,7 +114,7 @@ impl BuilderFactory {
     return Ok(crate::php_parser::BuilderHelpers::normalizeValue(value.clone())?);
     }
     pub fn var(&self, mut name: U_PhpParser_Node_Expr_or_Str) -> Result<crate::php_parser::node::expr::Variable, Throw> {
-    if ((!(match name.clone() { U_PhpParser_Node_Expr_or_Str::Str(_) => true, _ => false })) && (!{ let _ = cast::<crate::php_parser::node::Expr>(name.clone()); true })) {
+    if ((!(match name.clone() { U_PhpParser_Node_Expr_or_Str::Str(_) => true, U_PhpParser_Node_Expr_or_Str::Other__(__m) => __m.is_string(), _ => false })) && (!is_instance::<crate::php_parser::node::Expr>(&name.clone()))) {
         return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(Str::from_static("Variable name must be string or Expr"), 0i64, { let _ = (); None::<crate::g::Throwable> })?));
     }
     return Ok(crate::php_parser::node::expr::Variable::new(name.clone(), Map::<Str, Mixed>::new())?);
@@ -183,7 +183,7 @@ impl BuilderFactory {
     if is_instance::<crate::php_parser::node::Expr>(&expr.clone()) {
         return Ok(cast::<crate::php_parser::node::Expr>(expr.clone()));
     }
-    if { let _ = cast::<Str>(expr.clone()); true } {
+    if (match expr.clone() { U_PhpParser_Node_Expr_or_Str::Str(_) => true, U_PhpParser_Node_Expr_or_Str::Other__(__m) => __m.is_string(), _ => false }) {
         return Ok(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::String_::new(cast::<Str>(expr.clone()), Map::<Str, Mixed>::new())?));
     }
     return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(Str::from_static("Expected string or Expr"), 0i64, { let _ = (); None::<crate::g::Throwable> })?));
@@ -219,17 +219,17 @@ impl BuilderHelpers {
     if is_instance::<crate::php_parser::Builder>(&node.clone()) {
         return Ok(cast::<crate::php_parser::Builder>(node.clone()).getNode()?);
     }
-    if { let _ = cast::<crate::php_parser::Node>(node.clone()); true } {
+    if is_instance::<crate::php_parser::Node>(&node.clone()) {
         return Ok(cast::<crate::php_parser::Node>(node.clone()));
     }
     return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(Str::from_static("Expected node or builder object"), 0i64, { let _ = (); None::<crate::g::Throwable> })?));
     }
     pub fn normalizeStmt(mut node: U_PhpParser_Builder_or_PhpParser_Node) -> Result<crate::php_parser::node::Stmt, Throw> {
     node = U_PhpParser_Builder_or_PhpParser_Node::PhpParser_Node(crate::php_parser::BuilderHelpers::normalizeNode(node.clone())?);
-    if is_instance::<crate::php_parser::node::Stmt>(&cast::<crate::php_parser::Node>(node.clone())) {
+    if is_instance::<crate::php_parser::node::Stmt>(&node.clone()) {
         return Ok(cast::<crate::php_parser::node::Stmt>(node.clone()));
     }
-    if is_instance::<crate::php_parser::node::Expr>(&cast::<crate::php_parser::Node>(node.clone())) {
+    if is_instance::<crate::php_parser::node::Expr>(&node.clone()) {
         return Ok(cast::<crate::php_parser::node::Stmt>(crate::php_parser::node::stmt::Expression::new(cast::<crate::php_parser::node::Expr>(node.clone()), Map::<Str, Mixed>::new())?));
     }
     return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(Str::from_static("Expected statement or expression node"), 0i64, { let _ = (); None::<crate::g::Throwable> })?));
@@ -238,16 +238,16 @@ impl BuilderHelpers {
     if is_instance::<crate::php_parser::node::Identifier>(&name.clone()) {
         return Ok(cast::<crate::php_parser::node::Identifier>(name.clone()));
     }
-    if { let _ = cast::<Str>(name.clone()); true } {
+    if (match name.clone() { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, U_PhpParser_Node_Identifier_or_Str::Other__(__m) => __m.is_string(), _ => false }) {
         return Ok(crate::php_parser::node::Identifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())?);
     }
     return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(Str::from_static("Expected string or instance of Node\\Identifier"), 0i64, { let _ = (); None::<crate::g::Throwable> })?));
     }
     pub fn normalizeIdentifierOrExpr(mut name: U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str) -> Result<U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier, Throw> {
-    if (is_instance::<crate::php_parser::node::Identifier>(&name.clone()) || is_instance::<crate::php_parser::node::Expr>(&cast::<U_PhpParser_Node_Expr_or_Str>(name.clone()))) {
+    if (is_instance::<crate::php_parser::node::Identifier>(&name.clone()) || is_instance::<crate::php_parser::node::Expr>(&name.clone())) {
         return Ok(cast::<U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier>(name.clone()));
     }
-    if { let _ = cast::<Str>(name.clone()); true } {
+    if (match name.clone() { U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str::Str(_) => true, U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str::Other__(__m) => __m.is_string(), _ => false }) {
         return Ok(U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier::PhpParser_Node_Identifier(crate::php_parser::node::Identifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())?));
     }
     return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(Str::from_static("Expected string or instance of Node\\Identifier or Node\\Expr"), 0i64, { let _ = (); None::<crate::g::Throwable> })?));
@@ -256,7 +256,7 @@ impl BuilderHelpers {
     if is_instance::<crate::php_parser::node::Name>(&name.clone()) {
         return Ok(cast::<crate::php_parser::node::Name>(name.clone()));
     }
-    if { let _ = cast::<Str>(name.clone()); true } {
+    if (match name.clone() { U_PhpParser_Node_Name_or_Str::Str(_) => true, U_PhpParser_Node_Name_or_Str::Other__(__m) => __m.is_string(), _ => false }) {
         if (!truthy(&cast::<Str>(name.clone()))) {
             return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(Str::from_static("Name cannot be empty"), 0i64, { let _ = (); None::<crate::g::Throwable> })?));
         }
@@ -274,7 +274,7 @@ impl BuilderHelpers {
     if is_instance::<crate::php_parser::node::Expr>(&name.clone()) {
         return Ok(U_PhpParser_Node_Expr_or_PhpParser_Node_Name::PhpParser_Node_Expr(cast::<crate::php_parser::node::Expr>(name.clone())));
     }
-    if ((!(match cast::<U_PhpParser_Node_Name_or_Str>(name.clone()) { U_PhpParser_Node_Name_or_Str::Str(_) => true, _ => false })) && (!{ let _ = cast::<crate::php_parser::node::Name>(name.clone()); true })) {
+    if ((!(match name.clone() { U_PhpParser_Node_Expr_or_PhpParser_Node_Name_or_Str::Str(_) => true, U_PhpParser_Node_Expr_or_PhpParser_Node_Name_or_Str::Other__(__m) => __m.is_string(), _ => false })) && (!is_instance::<crate::php_parser::node::Name>(&name.clone()))) {
         return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(Str::from_static("Name must be a string or an instance of Node\\Name or Node\\Expr"), 0i64, { let _ = (); None::<crate::g::Throwable> })?));
     }
     return Ok(U_PhpParser_Node_Expr_or_PhpParser_Node_Name::PhpParser_Node_Name(crate::php_parser::BuilderHelpers::normalizeName(cast::<U_PhpParser_Node_Name_or_Str>(name.clone()))?));
@@ -284,8 +284,8 @@ impl BuilderHelpers {
     let mut builtinTypes: List<Str> = Default::default();
     let mut lowerType: Str = Default::default();
     let mut notNullableTypes: (Str, Str, Str) = Default::default();
-    if (!(match type_.clone() { U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name_or_Str::Str(_) => true, _ => false })) {
-        if (((!is_instance::<crate::php_parser::node::Name>(&cast::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>(type_.clone()))) && (!is_instance::<crate::php_parser::node::Identifier>(&cast::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier>(type_.clone())))) && (!{ let _ = cast::<crate::php_parser::node::ComplexType>(type_.clone()); true })) {
+    if (!(match type_.clone() { U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name_or_Str::Str(_) => true, U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name_or_Str::Other__(__m) => __m.is_string(), _ => false })) {
+        if (((!is_instance::<crate::php_parser::node::Name>(&type_.clone())) && (!is_instance::<crate::php_parser::node::Identifier>(&type_.clone()))) && (!is_instance::<crate::php_parser::node::ComplexType>(&type_.clone()))) {
             return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(Str::from_static("Type must be a string, or an instance of Name, Identifier or ComplexType"), 0i64, { let _ = (); None::<crate::g::Throwable> })?));
         }
         return Ok(cast::<U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name>(type_.clone()));
@@ -319,19 +319,19 @@ impl BuilderHelpers {
     if value.clone().map(|v| cast::<U_Bool_or_Float_or_Int_or_Map_ArrayKey_Mixed_or_Str_or_UnitEnum>(v)).is_none() {
         return Ok(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::expr::ConstFetch::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("null")), Map::<Str, Mixed>::new())?, Map::<Str, Mixed>::new())?));
     }
-    if (match cast::<U_Bool_or_Float_or_Int_or_Map_ArrayKey_Mixed_or_Str_or_UnitEnum>(value.clone().unwrap()) { U_Bool_or_Float_or_Int_or_Map_ArrayKey_Mixed_or_Str_or_UnitEnum::Bool(_) => true, _ => false }) {
+    if (match value.clone() { Some(__u) => match __u { U_Bool_or_Float_or_Int_or_Map_ArrayKey_Mixed_or_PhpParser_Node_Expr_or_Str_or_UnitEnum::Bool(_) => true, U_Bool_or_Float_or_Int_or_Map_ArrayKey_Mixed_or_PhpParser_Node_Expr_or_Str_or_UnitEnum::Other__(__m) => __m.is_bool(), _ => false }, None => false }) {
         return Ok(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::expr::ConstFetch::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str((if (match value.clone() { Some(__o) => cast::<bool>(__o), None => <bool>::default() }) { Str::from_static("true") } else { Str::from_static("false") })), Map::<Str, Mixed>::new())?, Map::<Str, Mixed>::new())?));
     }
-    if (match cast::<U_Float_or_Int_or_Map_ArrayKey_Mixed_or_Str_or_UnitEnum>(value.clone().unwrap()) { U_Float_or_Int_or_Map_ArrayKey_Mixed_or_Str_or_UnitEnum::Int(_) => true, _ => false }) {
+    if (match value.clone() { Some(__u) => match __u { U_Bool_or_Float_or_Int_or_Map_ArrayKey_Mixed_or_PhpParser_Node_Expr_or_Str_or_UnitEnum::Int(_) => true, U_Bool_or_Float_or_Int_or_Map_ArrayKey_Mixed_or_PhpParser_Node_Expr_or_Str_or_UnitEnum::Other__(__m) => __m.is_int(), _ => false }, None => false }) {
         return Ok(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new((match value.clone() { Some(__o) => cast::<i64>(__o), None => <i64>::default() }), Map::<Str, Mixed>::new())?));
     }
-    if (match cast::<U_Float_or_Map_ArrayKey_Mixed_or_Str_or_UnitEnum>(value.clone().unwrap()) { U_Float_or_Map_ArrayKey_Mixed_or_Str_or_UnitEnum::Float(_) => true, _ => false }) {
+    if (match value.clone() { Some(__u) => match __u { U_Bool_or_Float_or_Int_or_Map_ArrayKey_Mixed_or_PhpParser_Node_Expr_or_Str_or_UnitEnum::Float(_) => true, U_Bool_or_Float_or_Int_or_Map_ArrayKey_Mixed_or_PhpParser_Node_Expr_or_Str_or_UnitEnum::Other__(__m) => __m.is_float(), _ => false }, None => false }) {
         return Ok(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Float_::new((match value.clone() { Some(__o) => cast::<f64>(__o), None => <f64>::default() }), Map::<Str, Mixed>::new())?));
     }
-    if (match cast::<U_Map_ArrayKey_Mixed_or_Str_or_UnitEnum>(value.clone().unwrap()) { U_Map_ArrayKey_Mixed_or_Str_or_UnitEnum::Str(_) => true, _ => false }) {
+    if (match value.clone() { Some(__u) => match __u { U_Bool_or_Float_or_Int_or_Map_ArrayKey_Mixed_or_PhpParser_Node_Expr_or_Str_or_UnitEnum::Str(_) => true, U_Bool_or_Float_or_Int_or_Map_ArrayKey_Mixed_or_PhpParser_Node_Expr_or_Str_or_UnitEnum::Other__(__m) => __m.is_string(), _ => false }, None => false }) {
         return Ok(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::String_::new((match value.clone() { Some(__o) => cast::<Str>(__o), None => <Str>::default() }), Map::<Str, Mixed>::new())?));
     }
-    if (match cast::<U_Map_ArrayKey_Mixed_or_UnitEnum>(value.clone().unwrap()) { U_Map_ArrayKey_Mixed_or_UnitEnum::Map_ArrayKey_Mixed(_) => true, _ => false }) {
+    if (match value.clone() { Some(__u) => match __u { U_Bool_or_Float_or_Int_or_Map_ArrayKey_Mixed_or_PhpParser_Node_Expr_or_Str_or_UnitEnum::Map_ArrayKey_Mixed(_) => true, U_Bool_or_Float_or_Int_or_Map_ArrayKey_Mixed_or_PhpParser_Node_Expr_or_Str_or_UnitEnum::Other__(__m) => __m.is_array(), _ => false }, None => false }) {
         items = List::<crate::php_parser::node::ArrayItem>::new();
         lastKey = Some((1i64).wrapping_neg());
         'l1: for __kv1 in (match value.clone() { Some(__o) => cast::<Map<ArrayKey, Mixed>>(__o), None => <Map<ArrayKey, Mixed>>::default() }).into_iter() {
@@ -346,7 +346,7 @@ impl BuilderHelpers {
         }
         return Ok(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::expr::Array_::new(cast::<Map<ArrayKey, crate::php_parser::node::ArrayItem>>(items.clone()), Map::<Str, Mixed>::new())?));
     }
-    if { let _ = cast::<crate::g::UnitEnum>(value.clone().unwrap()); true } {
+    if value.clone().map_or(false, |__v| is_instance::<crate::g::UnitEnum>(&__v)) {
         return Ok(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::expr::ClassConstFetch::new(U_PhpParser_Node_Expr_or_PhpParser_Node_Name::PhpParser_Node_Name(cast::<crate::php_parser::node::Name>(crate::php_parser::node::name::FullyQualified::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(class_name_of(&cast::<Mixed>(cast::<crate::g::UnitEnum>(value.clone().unwrap())))), Map::<Str, Mixed>::new())?)), U_PhpParser_Node_Expr_or_PhpParser_Node_Expr_Error_or_PhpParser_Node_Identifier_or_Str::PhpParser_Node_Identifier(crate::php_parser::node::Identifier::new((match mixed_prop(&cast::<Mixed>(cast::<crate::g::UnitEnum>(value.clone().unwrap())), &Str::from_static("name")) { Some(__o) => cast::<Str>(__o), None => <Str>::default() }), Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?));
     }
     return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(Str::from_static("Invalid value"), 0i64, { let _ = (); None::<crate::g::Throwable> })?));
@@ -355,7 +355,7 @@ impl BuilderHelpers {
     if is_instance::<crate::php_parser::comment::Doc>(&docComment.clone()) {
         return Ok(cast::<crate::php_parser::comment::Doc>(docComment.clone()));
     }
-    if { let _ = cast::<Str>(docComment.clone()); true } {
+    if (match docComment.clone() { U_PhpParser_Comment_Doc_or_Str::Str(_) => true, U_PhpParser_Comment_Doc_or_Str::Other__(__m) => __m.is_string(), _ => false }) {
         return Ok(crate::php_parser::comment::Doc::new(cast::<Str>(docComment.clone()), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64), (-1i64))?);
     }
     return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(Str::from_static("Doc comment must be a string or an instance of PhpParser\\Comment\\Doc"), 0i64, { let _ = (); None::<crate::g::Throwable> })?));
@@ -364,7 +364,7 @@ impl BuilderHelpers {
     if is_instance::<crate::php_parser::node::AttributeGroup>(&attribute.clone()) {
         return Ok(cast::<crate::php_parser::node::AttributeGroup>(attribute.clone()));
     }
-    if (!{ let _ = cast::<crate::php_parser::node::Attribute>(attribute.clone()); true }) {
+    if (!is_instance::<crate::php_parser::node::Attribute>(&attribute.clone())) {
         return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(Str::from_static("Attribute must be an instance of PhpParser\\Node\\Attribute or PhpParser\\Node\\AttributeGroup"), 0i64, { let _ = (); None::<crate::g::Throwable> })?));
     }
     return Ok(crate::php_parser::node::AttributeGroup::new({ let mut __m1: Map<ArrayKey, crate::php_parser::node::Attribute> = Map::new(); __m1.push(cast::<crate::php_parser::node::Attribute>(attribute.clone())); __m1 }, Map::<Str, Mixed>::new())?);
@@ -2285,11 +2285,11 @@ impl NodeDumper {
                     { let __t8 = self.dumpFlags(cast::<i64>(value.clone()))?; append(&mut (*self.p_res_mut()), __t8); }
                     { continue 'l1 };
                 }
-                if (identical(&Str::from_static("type"), &cast::<Str>(key_v.clone())) && is_instance::<crate::php_parser::node::expr::Include_>(&cast::<U_PhpParser_Node_or_PhpParser_Node_Expr_Include__or_PhpParser_Node_Stm_84971e3de3>(node.clone()))) {
+                if (identical(&Str::from_static("type"), &cast::<Str>(key_v.clone())) && is_instance::<crate::php_parser::node::expr::Include_>(&node.clone())) {
                     { let __t9 = self.dumpIncludeType(cast::<i64>(value.clone()))?; append(&mut (*self.p_res_mut()), __t9); }
                     { continue 'l1 };
                 }
-                if (identical(&Str::from_static("type"), &cast::<Str>(key_v.clone())) && ((is_instance::<crate::php_parser::node::stmt::Use_>(&cast::<U_PhpParser_Node_or_PhpParser_Node_Stmt_GroupUse_or_PhpParser_Node_Stm_c6c490c966>(node.clone())) || is_instance::<crate::php_parser::node::UseItem>(&cast::<U_PhpParser_Node_or_PhpParser_Node_Stmt_GroupUse_or_PhpParser_Node_UseItem>(node.clone()))) || is_instance::<crate::php_parser::node::stmt::GroupUse>(&cast::<crate::php_parser::Node>(node.clone())))) {
+                if (identical(&Str::from_static("type"), &cast::<Str>(key_v.clone())) && ((is_instance::<crate::php_parser::node::stmt::Use_>(&node.clone()) || is_instance::<crate::php_parser::node::UseItem>(&node.clone())) || is_instance::<crate::php_parser::node::stmt::GroupUse>(&node.clone()))) {
                     { let __t10 = self.dumpUseType(cast::<i64>(value.clone()))?; append(&mut (*self.p_res_mut()), __t10); }
                     { continue 'l1 };
                 }
@@ -2310,19 +2310,19 @@ impl NodeDumper {
                 { let __t16 = cat!(self.p_nl_get(), Str::from_static("    "), cast::<Str>(key_v.clone()), Str::from_static(": ")); append(&mut (*self.p_res_mut()), __t16); }
                 if value.clone().is_int() {
                     if identical(&Str::from_static("kind"), &cast::<Str>(key_v.clone())) {
-                        if is_instance::<crate::php_parser::node::scalar::Int_>(&cast::<U_PhpParser_Node_or_PhpParser_Node_Expr_Array__or_PhpParser_Node_Expr__cc9955c83f>(node.clone())) {
+                        if is_instance::<crate::php_parser::node::scalar::Int_>(&node.clone()) {
                             { let __t17 = self.dumpIntKind(cast::<i64>(value.clone()))?; append(&mut (*self.p_res_mut()), __t17); }
                             { continue 'l2 };
                         }
-                        if (is_instance::<crate::php_parser::node::scalar::String_>(&cast::<U_PhpParser_Node_or_PhpParser_Node_Expr_Array__or_PhpParser_Node_Expr__ec33332854>(node.clone())) || is_instance::<crate::php_parser::node::scalar::InterpolatedString>(&cast::<U_PhpParser_Node_or_PhpParser_Node_Expr_Array__or_PhpParser_Node_Expr__f1ab2c566c>(node.clone()))) {
+                        if (is_instance::<crate::php_parser::node::scalar::String_>(&node.clone()) || is_instance::<crate::php_parser::node::scalar::InterpolatedString>(&node.clone())) {
                             { let __t18 = self.dumpStringKind(cast::<i64>(value.clone()))?; append(&mut (*self.p_res_mut()), __t18); }
                             { continue 'l2 };
                         }
-                        if is_instance::<crate::php_parser::node::expr::Array_>(&cast::<U_PhpParser_Node_or_PhpParser_Node_Expr_Array__or_PhpParser_Node_Expr__d4c46fd6ba>(node.clone())) {
+                        if is_instance::<crate::php_parser::node::expr::Array_>(&node.clone()) {
                             { let __t19 = self.dumpArrayKind(cast::<i64>(value.clone()))?; append(&mut (*self.p_res_mut()), __t19); }
                             { continue 'l2 };
                         }
-                        if is_instance::<crate::php_parser::node::expr::List_>(&cast::<U_PhpParser_Node_or_PhpParser_Node_Expr_Include__or_PhpParser_Node_Exp_8db3c8413a>(node.clone())) {
+                        if is_instance::<crate::php_parser::node::expr::List_>(&node.clone()) {
                             { let __t20 = self.dumpListKind(cast::<i64>(value.clone()))?; append(&mut (*self.p_res_mut()), __t20); }
                             { continue 'l2 };
                         }
@@ -2484,7 +2484,7 @@ impl NodeFinder {
     if identical(&nodes.clone(), &U_Map_ArrayKey_PhpParser_Node_or_PhpParser_Node::Map_ArrayKey_PhpParser_Node(Map::<ArrayKey, Mixed>::new().map_values(|v| cast::<crate::php_parser::Node>(v)))) {
         return Ok(Map::<ArrayKey, crate::php_parser::Node>::new());
     }
-    if (!(match nodes.clone() { U_Map_ArrayKey_PhpParser_Node_or_PhpParser_Node::Map_ArrayKey_PhpParser_Node(_) => true, _ => false })) {
+    if (!(match nodes.clone() { U_Map_ArrayKey_PhpParser_Node_or_PhpParser_Node::Map_ArrayKey_PhpParser_Node(_) => true, U_Map_ArrayKey_PhpParser_Node_or_PhpParser_Node::Other__(__m) => __m.is_array(), _ => false })) {
         nodes = U_Map_ArrayKey_PhpParser_Node_or_PhpParser_Node::Map_ArrayKey_PhpParser_Node(cast::<Map<ArrayKey, crate::php_parser::Node>>({ let __c54 = (cast::<crate::php_parser::Node>(nodes.clone()),); List::from_vec(vec![__c54.0]) }));
     }
     visitor.set(crate::php_parser::node_visitor::FindingVisitor::new(filter.clone())?);
@@ -2504,7 +2504,7 @@ impl NodeFinder {
     if identical(&nodes.clone(), &U_Map_ArrayKey_PhpParser_Node_or_PhpParser_Node::Map_ArrayKey_PhpParser_Node(Map::<ArrayKey, Mixed>::new().map_values(|v| cast::<crate::php_parser::Node>(v)))) {
         return Ok({ let _ = (); None::<crate::php_parser::Node> });
     }
-    if (!(match nodes.clone() { U_Map_ArrayKey_PhpParser_Node_or_PhpParser_Node::Map_ArrayKey_PhpParser_Node(_) => true, _ => false })) {
+    if (!(match nodes.clone() { U_Map_ArrayKey_PhpParser_Node_or_PhpParser_Node::Map_ArrayKey_PhpParser_Node(_) => true, U_Map_ArrayKey_PhpParser_Node_or_PhpParser_Node::Other__(__m) => __m.is_array(), _ => false })) {
         nodes = U_Map_ArrayKey_PhpParser_Node_or_PhpParser_Node::Map_ArrayKey_PhpParser_Node(cast::<Map<ArrayKey, crate::php_parser::Node>>({ let __c56 = (cast::<crate::php_parser::Node>(nodes.clone()),); List::from_vec(vec![__c56.0]) }));
     }
     visitor.set(crate::php_parser::node_visitor::FirstFindingVisitor::new(filter.clone())?);
@@ -2629,7 +2629,7 @@ impl NodeTraverser {
             visitor.set(__kv2.1);
             return_ = visitor.get().clone().enterNode(cast::<crate::php_parser::Node>(subNode.clone()))?;
             if (!return_.clone().is_none()) {
-                if is_instance::<crate::php_parser::Node>(&return_.clone().unwrap()) {
+                if return_.clone().map_or(false, |__v| is_instance::<crate::php_parser::Node>(&__v)) {
                     self.ensureReplacementReasonable(cast::<crate::php_parser::Node>(subNode.clone()), cast::<crate::php_parser::Node>(return_.clone().unwrap()))?;
                     subNode = { let __t3 = cast::<Mixed>(cast::<crate::php_parser::Node>(return_.clone().unwrap())); mixed_set_prop(&cast::<Mixed>(node.clone()), &name.clone(), __t3.clone()); __t3 };
                 } else if identical(&U_Int_or_Map_ArrayKey_PhpParser_Node::Int(crate::php_parser::NodeVisitor::DONT_TRAVERSE_CHILDREN()), &cast::<U_Int_or_Map_ArrayKey_PhpParser_Node>(return_.clone().unwrap())) {
@@ -2661,7 +2661,7 @@ impl NodeTraverser {
                     visitor.set(self.p_visitors_get().idx(visitorIndex).clone());
                     return_ = visitor.get().clone().leaveNode(cast::<crate::php_parser::Node>(subNode.clone()))?;
                     if (!return_.clone().is_none()) {
-                        if is_instance::<crate::php_parser::Node>(&return_.clone().unwrap()) {
+                        if return_.clone().map_or(false, |__v| is_instance::<crate::php_parser::Node>(&__v)) {
                             self.ensureReplacementReasonable(cast::<crate::php_parser::Node>(subNode.clone()), cast::<crate::php_parser::Node>(return_.clone().unwrap()))?;
                             subNode = { let __t4 = cast::<Mixed>(cast::<crate::php_parser::Node>(return_.clone().unwrap())); mixed_set_prop(&cast::<Mixed>(node.clone()), &name.clone(), __t4.clone()); __t4 };
                         } else if identical(&U_Int_or_Map_ArrayKey_PhpParser_Node::Int(crate::php_parser::NodeVisitor::STOP_TRAVERSAL()), &cast::<U_Int_or_Map_ArrayKey_PhpParser_Node>(return_.clone().unwrap())) {
@@ -2670,7 +2670,7 @@ impl NodeTraverser {
                         } else if identical(&U_Int_or_Map_ArrayKey_PhpParser_Node::Int(crate::php_parser::NodeVisitor::REPLACE_WITH_NULL()), &cast::<U_Int_or_Map_ArrayKey_PhpParser_Node>(return_.clone().unwrap())) {
                             mixed_set_prop(&cast::<Mixed>(node.clone()), &name.clone(), Mixed::Null);
                             { break 'l3 };
-                        } else if (match cast::<U_Int_or_Map_ArrayKey_PhpParser_Node>(return_.clone().unwrap()) { U_Int_or_Map_ArrayKey_PhpParser_Node::Map_ArrayKey_PhpParser_Node(_) => true, _ => false }) {
+                        } else if (match return_.clone() { Some(__u) => match __u { U_Int_or_Map_ArrayKey_PhpParser_Node_or_PhpParser_Node::Map_ArrayKey_PhpParser_Node(_) => true, U_Int_or_Map_ArrayKey_PhpParser_Node_or_PhpParser_Node::Other__(__m) => __m.is_array(), _ => false }, None => false }) {
                             return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(concat(Str::from_static("leaveNode() may only return an array "), Str::from_static("if the parent structure is an array")), 0i64, { let _ = (); None::<crate::g::Throwable> })?));
                         } else {
                             return Err(cast::<crate::g::Throwable>(crate::g::LogicException::new(concat(Str::from_static("leaveNode() returned invalid value of type "), gettype(&cast::<Mixed>((match return_.clone() { Some(__o) => cast::<i64>(__o), None => <i64>::default() })))), 0i64, { let _ = (); None::<crate::g::Throwable> })?));
@@ -2709,10 +2709,10 @@ impl NodeTraverser {
             visitor.set(__kv2.1);
             return_ = visitor.get().clone().enterNode(node.get().clone())?;
             if (!return_.clone().is_none()) {
-                if is_instance::<crate::php_parser::Node>(&return_.clone().unwrap()) {
+                if return_.clone().map_or(false, |__v| is_instance::<crate::php_parser::Node>(&__v)) {
                     self.ensureReplacementReasonable(node.get().clone(), cast::<crate::php_parser::Node>(return_.clone().unwrap()))?;
                     { let __h4 = i.clone().unwrap_or_default(); let __h5 = { let __t3 = cast::<crate::php_parser::Node>(return_.clone().unwrap()); node.set(__t3.clone()); __t3 }; nodes.insert(__h4, __h5); }
-                } else if (match cast::<U_Int_or_Map_ArrayKey_PhpParser_Node>(return_.clone().unwrap()) { U_Int_or_Map_ArrayKey_PhpParser_Node::Map_ArrayKey_PhpParser_Node(_) => true, _ => false }) {
+                } else if (match return_.clone() { Some(__u) => match __u { U_Int_or_Map_ArrayKey_PhpParser_Node_or_PhpParser_Node::Map_ArrayKey_PhpParser_Node(_) => true, U_Int_or_Map_ArrayKey_PhpParser_Node_or_PhpParser_Node::Other__(__m) => __m.is_array(), _ => false }, None => false }) {
                     { let __h6 = (i.clone().unwrap_or_default(), (match return_.clone() { Some(__o) => cast::<Map<ArrayKey, crate::php_parser::Node>>(__o), None => <Map<ArrayKey, crate::php_parser::Node>>::default() })); doNodes.push(__h6); }
                     { continue 'l1 };
                 } else if (crate::php_parser::NodeVisitor::REMOVE_NODE() == (match return_.clone() { Some(__o) => cast::<i64>(__o), None => <i64>::default() })) {
@@ -2746,10 +2746,10 @@ impl NodeTraverser {
                     visitor.set(self.p_visitors_get().idx(visitorIndex).clone());
                     return_ = visitor.get().clone().leaveNode(node.get().clone())?;
                     if (!return_.clone().is_none()) {
-                        if is_instance::<crate::php_parser::Node>(&return_.clone().unwrap()) {
+                        if return_.clone().map_or(false, |__v| is_instance::<crate::php_parser::Node>(&__v)) {
                             self.ensureReplacementReasonable(node.get().clone(), cast::<crate::php_parser::Node>(return_.clone().unwrap()))?;
                             { let __h9 = i.clone().unwrap_or_default(); let __h10 = { let __t8 = cast::<crate::php_parser::Node>(return_.clone().unwrap()); node.set(__t8.clone()); __t8 }; nodes.insert(__h9, __h10); }
-                        } else if (match cast::<U_Int_or_Map_ArrayKey_PhpParser_Node>(return_.clone().unwrap()) { U_Int_or_Map_ArrayKey_PhpParser_Node::Map_ArrayKey_PhpParser_Node(_) => true, _ => false }) {
+                        } else if (match return_.clone() { Some(__u) => match __u { U_Int_or_Map_ArrayKey_PhpParser_Node_or_PhpParser_Node::Map_ArrayKey_PhpParser_Node(_) => true, U_Int_or_Map_ArrayKey_PhpParser_Node_or_PhpParser_Node::Other__(__m) => __m.is_array(), _ => false }, None => false }) {
                             { let __h11 = (i.clone().unwrap_or_default(), (match return_.clone() { Some(__o) => cast::<Map<ArrayKey, crate::php_parser::Node>>(__o), None => <Map<ArrayKey, crate::php_parser::Node>>::default() })); doNodes.push(__h11); }
                             { break 'l3 };
                         } else if (crate::php_parser::NodeVisitor::REMOVE_NODE() == (match return_.clone() { Some(__o) => cast::<i64>(__o), None => <i64>::default() })) {
@@ -3170,7 +3170,7 @@ impl ParserAbstract {
         node = cast::<Mixed>(__kv2.1);
         'l2: for __kv3 in mixed_iter(cast::<Mixed>(mixed_prop(&node.clone(), &Str::from_static("items"))))? {
             item = __kv3.1;
-            if is_instance::<crate::php_parser::node::expr::Error>(&cast::<Mixed>(mixed_prop(&item.clone(), &Str::from_static("value")))) {
+            if is_instance::<crate::php_parser::node::expr::Error>(&mixed_prop(&item.clone(), &Str::from_static("value")).unwrap_or_default()) {
                 self.p_errorHandler_get().handleError(crate::php_parser::Error::new(Str::from_static("Cannot use empty array elements in arrays"), cast::<Map<Str, Mixed>>(mixed_call(&item.clone(), &Str::from_static("getAttributes"), vec![])?))?)?;
             }
         }
@@ -3630,7 +3630,7 @@ impl ParserAbstract {
         return Ok(U_PhpParser_Node_Scalar_Int__or_PhpParser_Node_Scalar_String_::PhpParser_Node_Scalar_String_(crate::php_parser::node::scalar::String_::new(str.clone(), attributes.clone())?));
     }
     num.set(cast::<U_Float_or_Int>(str.clone()));
-    if (!(match num.get().clone() { U_Float_or_Int::Int(_) => true, _ => false })) {
+    if (!(match num.get().clone() { U_Float_or_Int::Int(_) => true, U_Float_or_Int::Other__(__m) => __m.is_int(), _ => false })) {
         return Ok(U_PhpParser_Node_Scalar_Int__or_PhpParser_Node_Scalar_String_::PhpParser_Node_Scalar_String_(crate::php_parser::node::scalar::String_::new(str.clone(), attributes.clone())?));
     }
     return Ok(U_PhpParser_Node_Scalar_Int__or_PhpParser_Node_Scalar_String_::PhpParser_Node_Scalar_Int_(crate::php_parser::node::scalar::Int_::new(cast::<i64>(num.get().clone()), attributes.clone())?));
@@ -3692,7 +3692,7 @@ impl ParserAbstract {
     }
     indentLen = strlen(&indentation.clone());
     indentChar = (if indentHasSpaces { Str::from_static(" ") } else { Str::from_static("\t") });
-    if (match contents.clone() { U_Map_ArrayKey_U_PhpParser_Node_Expr_or_PhpParser_Node_InterpolatedStringPart_or_Str::Str(_) => true, _ => false }) {
+    if (match contents.clone() { U_Map_ArrayKey_U_PhpParser_Node_Expr_or_PhpParser_Node_InterpolatedStringPart_or_Str::Str(_) => true, U_Map_ArrayKey_U_PhpParser_Node_Expr_or_PhpParser_Node_InterpolatedStringPart_or_Str::Other__(__m) => __m.is_string(), _ => false }) {
         if identical(&cast::<Str>(contents.clone()), &Str::from_static("")) {
             { let __h7 = Str::from_static("rawValue"); let __h8 = cast::<Mixed>(cast::<Str>(contents.clone())); attributes.insert(__h7, __h8); }
             return Ok(cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::String_::new(Str::from_static(""), attributes.clone())?));
@@ -4536,7 +4536,7 @@ impl PrettyPrinterAbstract {
                 }
                 return Ok({ let _ = (); None::<Str> });
             }
-            if ((!is_instance::<crate::php_parser::Node>(&arrItem.clone().unwrap())) || (!is_instance::<crate::php_parser::Node>(&origArrItem.clone().unwrap()))) {
+            if ((!arrItem.clone().map_or(false, |__v| is_instance::<crate::php_parser::Node>(&__v))) || (!origArrItem.clone().map_or(false, |__v| is_instance::<crate::php_parser::Node>(&__v)))) {
                 return Ok({ let _ = (); None::<Str> });
             }
             itemStartPos = cast::<crate::php_parser::Node>(origArrItem.clone().unwrap()).getStartTokenPos()?;
@@ -5017,7 +5017,7 @@ impl PrettyPrinterAbstract {
     let _: bool = { if !(((startPos >= 0i64) && (endPos >= 0i64))) { return Err(Throw::assertion(Str::from_static("assert(Expr_BinaryOp_BooleanAnd)"))); } true };
     fallbackNode.set(node.clone());
     if (is_instance::<crate::php_parser::node::expr::New_>(&node.clone()) && is_instance::<crate::php_parser::node::stmt::Class_>(&cast::<crate::php_parser::node::expr::New_>(node.clone()).p_class_get())) {
-        let _: bool = { if !(is_instance::<crate::php_parser::node::expr::New_>(&origNode.clone().unwrap())) { return Err(Throw::assertion(Str::from_static("assert(Expr_Instanceof)"))); } true };
+        let _: bool = { if !(origNode.clone().map_or(false, |__v| is_instance::<crate::php_parser::node::expr::New_>(&__v))) { return Err(Throw::assertion(Str::from_static("assert(Expr_Instanceof)"))); } true };
         node = cast::<crate::php_parser::Node>(crate::php_parser::internal::PrintableNewAnonClassNode::fromNewNode(cast::<crate::php_parser::node::expr::New_>(node.clone()))?);
         origNode = Some(cast::<crate::php_parser::Node>(crate::php_parser::internal::PrintableNewAnonClassNode::fromNewNode(cast::<crate::php_parser::node::expr::New_>(origNode.clone().unwrap()))?));
         class = Str::from_static("PhpParser\\Internal\\PrintableNewAnonClassNode");
@@ -6742,25 +6742,25 @@ impl CompatibilityTest {
     let mut part: Late<crate::php_parser::node::InterpolatedStringPart> = Late::uninit();
     var.set(crate::php_parser::node::expr::Variable::new(U_PhpParser_Node_Expr_or_Str::Str(Str::from_static("x")), Map::<Str, Mixed>::new())?);
     node.set(U_PhpParser_Node_ArrayItem_or_PhpParser_Node_ClosureUse_or_PhpParser_N_bd24465736::PhpParser_Node_ClosureUse(crate::php_parser::node::ClosureUse::new(var.get().clone(), false, Map::<Str, Mixed>::new())?));
-    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>({ let _ = cast::<crate::php_parser::node::ClosureUse>(node.get().clone()); true }), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>(is_instance::<crate::php_parser::node::ClosureUse>(&node.get().clone())), Str::from_static(""))? };
     node.set(U_PhpParser_Node_ArrayItem_or_PhpParser_Node_ClosureUse_or_PhpParser_N_bd24465736::PhpParser_Node_ArrayItem(crate::php_parser::node::ArrayItem::new(cast::<crate::php_parser::node::Expr>(var.get().clone()), { let _ = (); None::<crate::php_parser::node::Expr> }, false, Map::<Str, Mixed>::new(), false)?));
-    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>({ let _ = cast::<crate::php_parser::node::ArrayItem>(node.get().clone()); true }), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>(is_instance::<crate::php_parser::node::ArrayItem>(&node.get().clone())), Str::from_static(""))? };
     node.set(U_PhpParser_Node_ArrayItem_or_PhpParser_Node_ClosureUse_or_PhpParser_N_bd24465736::PhpParser_Node_StaticVar(crate::php_parser::node::StaticVar::new(var.get().clone(), { let _ = (); None::<crate::php_parser::node::Expr> }, Map::<Str, Mixed>::new())?));
-    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>({ let _ = cast::<crate::php_parser::node::StaticVar>(node.get().clone()); true }), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>(is_instance::<crate::php_parser::node::StaticVar>(&node.get().clone())), Str::from_static(""))? };
     node.set(U_PhpParser_Node_ArrayItem_or_PhpParser_Node_ClosureUse_or_PhpParser_N_bd24465736::PhpParser_Node_Scalar_Float_(crate::php_parser::node::scalar::Float_::new(1.0f64, Map::<Str, Mixed>::new())?));
-    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>({ let _ = cast::<crate::php_parser::node::scalar::Float_>(node.get().clone()); true }), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>(is_instance::<crate::php_parser::node::scalar::Float_>(&node.get().clone())), Str::from_static(""))? };
     node.set(U_PhpParser_Node_ArrayItem_or_PhpParser_Node_ClosureUse_or_PhpParser_N_bd24465736::PhpParser_Node_Scalar_Int_(crate::php_parser::node::scalar::Int_::new(1i64, Map::<Str, Mixed>::new())?));
-    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>({ let _ = cast::<crate::php_parser::node::scalar::Int_>(node.get().clone()); true }), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>(is_instance::<crate::php_parser::node::scalar::Int_>(&node.get().clone())), Str::from_static(""))? };
     part.set(crate::php_parser::node::InterpolatedStringPart::new(Str::from_static("foo"), Map::<Str, Mixed>::new())?);
     { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>({ let _ = part.get().clone(); true }), Str::from_static(""))? };
     node.set(U_PhpParser_Node_ArrayItem_or_PhpParser_Node_ClosureUse_or_PhpParser_N_bd24465736::PhpParser_Node_Scalar_InterpolatedString(crate::php_parser::node::scalar::InterpolatedString::new({ let mut __m1: Map<ArrayKey, U_PhpParser_Node_Expr_or_PhpParser_Node_InterpolatedStringPart> = Map::new(); __m1.push(U_PhpParser_Node_Expr_or_PhpParser_Node_InterpolatedStringPart::PhpParser_Node_InterpolatedStringPart(part.get().clone())); __m1 }, Map::<Str, Mixed>::new())?));
-    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>({ let _ = cast::<crate::php_parser::node::scalar::InterpolatedString>(node.get().clone()); true }), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>(is_instance::<crate::php_parser::node::scalar::InterpolatedString>(&node.get().clone())), Str::from_static(""))? };
     node.set(U_PhpParser_Node_ArrayItem_or_PhpParser_Node_ClosureUse_or_PhpParser_N_bd24465736::PhpParser_Node_DeclareItem(crate::php_parser::node::DeclareItem::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("strict_types")), cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(1i64, Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?));
-    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>({ let _ = cast::<crate::php_parser::node::DeclareItem>(node.get().clone()); true }), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>(is_instance::<crate::php_parser::node::DeclareItem>(&node.get().clone())), Str::from_static(""))? };
     node.set(U_PhpParser_Node_ArrayItem_or_PhpParser_Node_ClosureUse_or_PhpParser_N_bd24465736::PhpParser_Node_PropertyItem(crate::php_parser::node::PropertyItem::new(U_PhpParser_Node_VarLikeIdentifier_or_Str::Str(Str::from_static("x")), { let _ = (); None::<crate::php_parser::node::Expr> }, Map::<Str, Mixed>::new())?));
-    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>({ let _ = cast::<crate::php_parser::node::PropertyItem>(node.get().clone()); true }), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>(is_instance::<crate::php_parser::node::PropertyItem>(&node.get().clone())), Str::from_static(""))? };
     node.set(U_PhpParser_Node_ArrayItem_or_PhpParser_Node_ClosureUse_or_PhpParser_N_bd24465736::PhpParser_Node_UseItem(crate::php_parser::node::UseItem::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("X")), Map::<Str, Mixed>::new())?, { let _ = (); None::<U_PhpParser_Node_Identifier_or_Str> }, cast::<Mixed>(crate::php_parser::node::stmt::Use_::TYPE_UNKNOWN()), Map::<Str, Mixed>::new())?));
-    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>({ let _ = cast::<crate::php_parser::node::UseItem>(node.get().clone()); true }), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>(is_instance::<crate::php_parser::node::UseItem>(&node.get().clone())), Str::from_static(""))? };
     #[allow(unreachable_code)] Ok(())
     }
     pub fn testAliases2(&self) -> Result<(), Throw> {
@@ -6769,25 +6769,25 @@ impl CompatibilityTest {
     let mut part: Late<crate::php_parser::node::InterpolatedStringPart> = Late::uninit();
     var.set(crate::php_parser::node::expr::Variable::new(U_PhpParser_Node_Expr_or_Str::Str(Str::from_static("x")), Map::<Str, Mixed>::new())?);
     node.set(U_PhpParser_Node_ArrayItem_or_PhpParser_Node_ClosureUse_or_PhpParser_N_bd24465736::PhpParser_Node_ClosureUse(crate::php_parser::node::ClosureUse::new(var.get().clone(), false, Map::<Str, Mixed>::new())?));
-    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>({ let _ = cast::<crate::php_parser::node::ClosureUse>(node.get().clone()); true }), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>(is_instance::<crate::php_parser::node::ClosureUse>(&node.get().clone())), Str::from_static(""))? };
     node.set(U_PhpParser_Node_ArrayItem_or_PhpParser_Node_ClosureUse_or_PhpParser_N_bd24465736::PhpParser_Node_ArrayItem(crate::php_parser::node::ArrayItem::new(cast::<crate::php_parser::node::Expr>(var.get().clone()), { let _ = (); None::<crate::php_parser::node::Expr> }, false, Map::<Str, Mixed>::new(), false)?));
-    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>({ let _ = cast::<crate::php_parser::node::ArrayItem>(node.get().clone()); true }), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>(is_instance::<crate::php_parser::node::ArrayItem>(&node.get().clone())), Str::from_static(""))? };
     node.set(U_PhpParser_Node_ArrayItem_or_PhpParser_Node_ClosureUse_or_PhpParser_N_bd24465736::PhpParser_Node_StaticVar(crate::php_parser::node::StaticVar::new(var.get().clone(), { let _ = (); None::<crate::php_parser::node::Expr> }, Map::<Str, Mixed>::new())?));
-    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>({ let _ = cast::<crate::php_parser::node::StaticVar>(node.get().clone()); true }), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>(is_instance::<crate::php_parser::node::StaticVar>(&node.get().clone())), Str::from_static(""))? };
     node.set(U_PhpParser_Node_ArrayItem_or_PhpParser_Node_ClosureUse_or_PhpParser_N_bd24465736::PhpParser_Node_Scalar_Float_(crate::php_parser::node::scalar::Float_::new(1.0f64, Map::<Str, Mixed>::new())?));
-    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>({ let _ = cast::<crate::php_parser::node::scalar::Float_>(node.get().clone()); true }), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>(is_instance::<crate::php_parser::node::scalar::Float_>(&node.get().clone())), Str::from_static(""))? };
     node.set(U_PhpParser_Node_ArrayItem_or_PhpParser_Node_ClosureUse_or_PhpParser_N_bd24465736::PhpParser_Node_Scalar_Int_(crate::php_parser::node::scalar::Int_::new(1i64, Map::<Str, Mixed>::new())?));
-    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>({ let _ = cast::<crate::php_parser::node::scalar::Int_>(node.get().clone()); true }), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>(is_instance::<crate::php_parser::node::scalar::Int_>(&node.get().clone())), Str::from_static(""))? };
     part.set(crate::php_parser::node::InterpolatedStringPart::new(Str::from_static("foo"), Map::<Str, Mixed>::new())?);
     { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>({ let _ = part.get().clone(); true }), Str::from_static(""))? };
     node.set(U_PhpParser_Node_ArrayItem_or_PhpParser_Node_ClosureUse_or_PhpParser_N_bd24465736::PhpParser_Node_Scalar_InterpolatedString(crate::php_parser::node::scalar::InterpolatedString::new({ let mut __m1: Map<ArrayKey, U_PhpParser_Node_Expr_or_PhpParser_Node_InterpolatedStringPart> = Map::new(); __m1.push(U_PhpParser_Node_Expr_or_PhpParser_Node_InterpolatedStringPart::PhpParser_Node_InterpolatedStringPart(part.get().clone())); __m1 }, Map::<Str, Mixed>::new())?));
-    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>({ let _ = cast::<crate::php_parser::node::scalar::InterpolatedString>(node.get().clone()); true }), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>(is_instance::<crate::php_parser::node::scalar::InterpolatedString>(&node.get().clone())), Str::from_static(""))? };
     node.set(U_PhpParser_Node_ArrayItem_or_PhpParser_Node_ClosureUse_or_PhpParser_N_bd24465736::PhpParser_Node_DeclareItem(crate::php_parser::node::DeclareItem::new(U_PhpParser_Node_Identifier_or_Str::Str(Str::from_static("strict_types")), cast::<crate::php_parser::node::Expr>(crate::php_parser::node::scalar::Int_::new(1i64, Map::<Str, Mixed>::new())?), Map::<Str, Mixed>::new())?));
-    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>({ let _ = cast::<crate::php_parser::node::DeclareItem>(node.get().clone()); true }), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>(is_instance::<crate::php_parser::node::DeclareItem>(&node.get().clone())), Str::from_static(""))? };
     node.set(U_PhpParser_Node_ArrayItem_or_PhpParser_Node_ClosureUse_or_PhpParser_N_bd24465736::PhpParser_Node_PropertyItem(crate::php_parser::node::PropertyItem::new(U_PhpParser_Node_VarLikeIdentifier_or_Str::Str(Str::from_static("x")), { let _ = (); None::<crate::php_parser::node::Expr> }, Map::<Str, Mixed>::new())?));
-    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>({ let _ = cast::<crate::php_parser::node::PropertyItem>(node.get().clone()); true }), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>(is_instance::<crate::php_parser::node::PropertyItem>(&node.get().clone())), Str::from_static(""))? };
     node.set(U_PhpParser_Node_ArrayItem_or_PhpParser_Node_ClosureUse_or_PhpParser_N_bd24465736::PhpParser_Node_UseItem(crate::php_parser::node::UseItem::new(crate::php_parser::node::Name::new(U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(Str::from_static("X")), Map::<Str, Mixed>::new())?, { let _ = (); None::<U_PhpParser_Node_Identifier_or_Str> }, cast::<Mixed>(crate::php_parser::node::stmt::Use_::TYPE_UNKNOWN()), Map::<Str, Mixed>::new())?));
-    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>({ let _ = cast::<crate::php_parser::node::UseItem>(node.get().clone()); true }), Str::from_static(""))? };
+    { let _ = self; crate::phpunit::framework::Assert::assertTrue(cast::<Mixed>(is_instance::<crate::php_parser::node::UseItem>(&node.get().clone())), Str::from_static(""))? };
     #[allow(unreachable_code)] Ok(())
     }
     pub fn magic__construct(&self, mut name: Str) -> Result<Mixed, Throw> { cast::<crate::phpunit::framework::TestCase>(self.clone()).magic__construct__impl(name) }

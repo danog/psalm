@@ -1440,7 +1440,7 @@ impl Php7 {
     }) as Rc<dyn Fn(Mixed, Mixed) -> Result<Mixed, Throw>> }; DynCallable::new(2, move |__a: Vec<Mixed>| -> Result<Mixed, DynError> { (|| -> Result<Mixed, Throw> { Ok(__c436(__a[0].clone(), __a[1].clone())?) })().map_err(|__e| DynError::Obj(cast::<Mixed>(__e))) }) }); __m1.insert(to_key(&476i64), { let __c437 = {  Rc::new(move |mut v_self: Mixed, mut stackPos: Mixed| -> Result<Mixed, Throw> { 
     let mut semValue: Mixed = Default::default();
     mixed_set_prop(&v_self.clone(), &Str::from_static("semValue"), cast::<Mixed>(mixed_get(&cast::<Mixed>(mixed_prop(&v_self.clone(), &Str::from_static("semStack"))), &to_key(&num_sub(to_num(&stackPos.clone()), Num::Int((3i64).wrapping_sub(2i64))).to_mixed()))));
-    if is_instance::<crate::php_parser::node::expr::ArrowFunction>(&cast::<Mixed>(mixed_prop(&v_self.clone(), &Str::from_static("semValue")))) {
+    if is_instance::<crate::php_parser::node::expr::ArrowFunction>(&mixed_prop(&v_self.clone(), &Str::from_static("semValue")).unwrap_or_default()) {
         let _: Mixed = mixed_call(&cast::<Mixed>(mixed_prop(&v_self.clone(), &Str::from_static("parenthesizedArrowFunctions"))), &Str::from_static("offsetSet"), vec![cast::<Mixed>(mixed_prop(&v_self.clone(), &Str::from_static("semValue")))])?;
     }
     #[allow(unreachable_code)] Ok(Mixed::Null)
@@ -1832,7 +1832,7 @@ impl Php7 {
     let mut end: i64 = Default::default();
     mixed_set_prop(&v_self.clone(), &Str::from_static("semValue"), cast::<Mixed>(mixed_get(&cast::<Mixed>(mixed_prop(&v_self.clone(), &Str::from_static("semStack"))), &to_key(&num_sub(to_num(&stackPos.clone()), Num::Int((1i64).wrapping_sub(1i64))).to_mixed()))));
     end = (count(&cast::<Mixed>(mixed_prop(&v_self.clone(), &Str::from_static("semValue"))))).wrapping_sub(1i64);
-    if is_instance::<crate::php_parser::node::expr::Error>(&cast::<Mixed>(mixed_prop(&cast::<Mixed>(mixed_get(&cast::<Mixed>(mixed_prop(&v_self.clone(), &Str::from_static("semValue"))), &to_key(&end))), &Str::from_static("value")))) {
+    if is_instance::<crate::php_parser::node::expr::Error>(&mixed_prop(&cast::<Mixed>(mixed_get(&cast::<Mixed>(mixed_prop(&v_self.clone(), &Str::from_static("semValue"))), &to_key(&end))), &Str::from_static("value")).unwrap_or_default()) {
         let _: Option<Mixed> = { let __r = { let mut __p74 = mixed_prop(&v_self.clone(), &Str::from_static("semValue")).unwrap_or_default(); let __r = mixed_pop(&mut __p74); mixed_set_prop(&v_self.clone(), &Str::from_static("semValue"), __p74); __r }; __r };
     }
     #[allow(unreachable_code)] Ok(Mixed::Null)
@@ -3593,7 +3593,7 @@ impl Php8 {
     }) as Rc<dyn Fn(Mixed, Mixed) -> Result<Mixed, Throw>> }; DynCallable::new(2, move |__a: Vec<Mixed>| -> Result<Mixed, DynError> { (|| -> Result<Mixed, Throw> { Ok(__c961(__a[0].clone(), __a[1].clone())?) })().map_err(|__e| DynError::Obj(cast::<Mixed>(__e))) }) }); __m1.insert(to_key(&479i64), { let __c962 = {  Rc::new(move |mut v_self: Mixed, mut stackPos: Mixed| -> Result<Mixed, Throw> { 
     let mut semValue: Mixed = Default::default();
     mixed_set_prop(&v_self.clone(), &Str::from_static("semValue"), cast::<Mixed>(mixed_get(&cast::<Mixed>(mixed_prop(&v_self.clone(), &Str::from_static("semStack"))), &to_key(&num_sub(to_num(&stackPos.clone()), Num::Int((3i64).wrapping_sub(2i64))).to_mixed()))));
-    if is_instance::<crate::php_parser::node::expr::ArrowFunction>(&cast::<Mixed>(mixed_prop(&v_self.clone(), &Str::from_static("semValue")))) {
+    if is_instance::<crate::php_parser::node::expr::ArrowFunction>(&mixed_prop(&v_self.clone(), &Str::from_static("semValue")).unwrap_or_default()) {
         let _: Mixed = mixed_call(&cast::<Mixed>(mixed_prop(&v_self.clone(), &Str::from_static("parenthesizedArrowFunctions"))), &Str::from_static("offsetSet"), vec![cast::<Mixed>(mixed_prop(&v_self.clone(), &Str::from_static("semValue")))])?;
     }
     #[allow(unreachable_code)] Ok(Mixed::Null)
@@ -3979,7 +3979,7 @@ impl Php8 {
     let mut end: i64 = Default::default();
     mixed_set_prop(&v_self.clone(), &Str::from_static("semValue"), cast::<Mixed>(mixed_get(&cast::<Mixed>(mixed_prop(&v_self.clone(), &Str::from_static("semStack"))), &to_key(&num_sub(to_num(&stackPos.clone()), Num::Int((1i64).wrapping_sub(1i64))).to_mixed()))));
     end = (count(&cast::<Mixed>(mixed_prop(&v_self.clone(), &Str::from_static("semValue"))))).wrapping_sub(1i64);
-    if is_instance::<crate::php_parser::node::expr::Error>(&cast::<Mixed>(mixed_prop(&cast::<Mixed>(mixed_get(&cast::<Mixed>(mixed_prop(&v_self.clone(), &Str::from_static("semValue"))), &to_key(&end))), &Str::from_static("value")))) {
+    if is_instance::<crate::php_parser::node::expr::Error>(&mixed_prop(&cast::<Mixed>(mixed_get(&cast::<Mixed>(mixed_prop(&v_self.clone(), &Str::from_static("semValue"))), &to_key(&end))), &Str::from_static("value")).unwrap_or_default()) {
         let _: Option<Mixed> = { let __r = { let mut __p153 = mixed_prop(&v_self.clone(), &Str::from_static("semValue")).unwrap_or_default(); let __r = mixed_pop(&mut __p153); mixed_set_prop(&v_self.clone(), &Str::from_static("semValue"), __p153); __r }; __r };
     }
     #[allow(unreachable_code)] Ok(Mixed::Null)

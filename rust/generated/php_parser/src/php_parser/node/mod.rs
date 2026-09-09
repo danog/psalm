@@ -519,7 +519,7 @@ impl Const_ {
     }
     pub fn magic__construct(&self, mut name: U_PhpParser_Node_Identifier_or_Str, mut value: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
     self.set_p_attributes(attributes.clone());
-    self.set_p_name((if (match name.clone() { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, _ => false }) { crate::php_parser::node::Identifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())? } else { cast::<crate::php_parser::node::Identifier>(name.clone()) }));
+    self.set_p_name((if (match name.clone() { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, U_PhpParser_Node_Identifier_or_Str::Other__(__m) => __m.is_string(), _ => false }) { crate::php_parser::node::Identifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())? } else { cast::<crate::php_parser::node::Identifier>(name.clone()) }));
     self.set_p_value(value.clone());
     #[allow(unreachable_code)] Ok(Mixed::Null)
     }
@@ -596,7 +596,7 @@ impl DeclareItem {
     }
     pub fn magic__construct(&self, mut key_v: U_PhpParser_Node_Identifier_or_Str, mut value: crate::php_parser::node::Expr, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
     self.set_p_attributes(attributes.clone());
-    self.set_p_key((if (match key_v.clone() { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, _ => false }) { crate::php_parser::node::Identifier::new(cast::<Str>(key_v.clone()), Map::<Str, Mixed>::new())? } else { cast::<crate::php_parser::node::Identifier>(key_v.clone()) }));
+    self.set_p_key((if (match key_v.clone() { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, U_PhpParser_Node_Identifier_or_Str::Other__(__m) => __m.is_string(), _ => false }) { crate::php_parser::node::Identifier::new(cast::<Str>(key_v.clone()), Map::<Str, Mixed>::new())? } else { cast::<crate::php_parser::node::Identifier>(key_v.clone()) }));
     self.set_p_value(value.clone());
     #[allow(unreachable_code)] Ok(Mixed::Null)
     }
@@ -1463,19 +1463,19 @@ impl Name {
     }
     pub fn concat__static(&self, mut name1: Option<U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str>, mut name2: Option<U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str>, mut attributes: Map<Str, Mixed>) -> Result<Option<crate::php_parser::node::Name>, Throw> { match self { Name::PhpParser_Node_Name(_) => crate::php_parser::node::Name::concat(name1, name2, attributes), Name::PhpParser_Node_Name_FullyQualified(_) => crate::php_parser::node::name::FullyQualified::concat(name1, name2, attributes), Name::PhpParser_Node_Name_Relative(_) => crate::php_parser::node::name::Relative::concat(name1, name2, attributes), _ => unreachable!() } }
     pub fn prepareName(mut name: U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str) -> Result<Str, Throw> {
-    if (match name.clone() { U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(_) => true, _ => false }) {
+    if (match name.clone() { U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Str(_) => true, U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Other__(__m) => __m.is_string(), _ => false }) {
         if identical(&Str::from_static(""), &cast::<Str>(name.clone())) {
             return Err(cast::<crate::g::Throwable>(crate::g::InvalidArgumentException::new(Str::from_static("Name cannot be empty"), 0i64, { let _ = (); None::<crate::g::Throwable> })?));
         }
         return Ok(cast::<Str>(name.clone()));
     }
-    if (match cast::<U_Map_ArrayKey_Str_or_PhpParser_Node_Name>(name.clone()) { U_Map_ArrayKey_Str_or_PhpParser_Node_Name::Map_ArrayKey_Str(_) => true, _ => false }) {
+    if (match name.clone() { U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Map_ArrayKey_Str(_) => true, U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str::Other__(__m) => __m.is_array(), _ => false }) {
         if (!truthy(&cast::<Map<ArrayKey, Str>>(name.clone()))) {
             return Err(cast::<crate::g::Throwable>(crate::g::InvalidArgumentException::new(Str::from_static("Name cannot be empty"), 0i64, { let _ = (); None::<crate::g::Throwable> })?));
         }
         return Ok(implode_m(&Str::from_static("\\"), &cast::<Map<ArrayKey, Str>>(name.clone())));
     }
-    if { let _ = cast::<crate::php_parser::node::Name>(name.clone()); true } {
+    if is_instance::<crate::php_parser::node::Name>(&name.clone()) {
         return Ok(cast::<crate::php_parser::node::Name>(name.clone()).p_name_get());
     }
     return Err(cast::<crate::g::Throwable>(crate::g::InvalidArgumentException::new(Str::from_static("Expected string, array of parts or Name instance"), 0i64, { let _ = (); None::<crate::g::Throwable> })?));
@@ -1810,7 +1810,7 @@ impl PropertyHook {
     }
     pub fn magic__construct(&self, mut name: U_PhpParser_Node_Identifier_or_Str, mut body: Option<U_Map_ArrayKey_PhpParser_Node_Stmt_or_PhpParser_Node_Expr>, mut subNodes: Shape_flagsq_Int_byRefq_Bool_paramsq_Map_ArrayKey_PhpParser_Node_Param_fbce00147d, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
     self.set_p_attributes(attributes.clone());
-    self.set_p_name((if (match name.clone() { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, _ => false }) { crate::php_parser::node::Identifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())? } else { cast::<crate::php_parser::node::Identifier>(name.clone()) }));
+    self.set_p_name((if (match name.clone() { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, U_PhpParser_Node_Identifier_or_Str::Other__(__m) => __m.is_string(), _ => false }) { crate::php_parser::node::Identifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())? } else { cast::<crate::php_parser::node::Identifier>(name.clone()) }));
     self.set_p_body(body.clone());
     self.set_p_flags((match Some(subNodes.clone()).and_then(|__b| __b.flags) { Some(__v) => __v, None => 0i64 }));
     self.set_p_byRef((match Some(subNodes.clone()).and_then(|__b| __b.byRef) { Some(__v) => __v, None => false }));
@@ -1927,7 +1927,7 @@ impl PropertyItem {
     }
     pub fn magic__construct(&self, mut name: U_PhpParser_Node_VarLikeIdentifier_or_Str, mut default: Option<crate::php_parser::node::Expr>, mut attributes: Map<Str, Mixed>) -> Result<Mixed, Throw> {
     self.set_p_attributes(attributes.clone());
-    self.set_p_name((if (match name.clone() { U_PhpParser_Node_VarLikeIdentifier_or_Str::Str(_) => true, _ => false }) { crate::php_parser::node::VarLikeIdentifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())? } else { cast::<crate::php_parser::node::VarLikeIdentifier>(name.clone()) }));
+    self.set_p_name((if (match name.clone() { U_PhpParser_Node_VarLikeIdentifier_or_Str::Str(_) => true, U_PhpParser_Node_VarLikeIdentifier_or_Str::Other__(__m) => __m.is_string(), _ => false }) { crate::php_parser::node::VarLikeIdentifier::new(cast::<Str>(name.clone()), Map::<Str, Mixed>::new())? } else { cast::<crate::php_parser::node::VarLikeIdentifier>(name.clone()) }));
     self.set_p_default(default.clone());
     #[allow(unreachable_code)] Ok(Mixed::Null)
     }
@@ -2266,7 +2266,7 @@ impl UseItem {
     self.set_p_attributes(attributes.clone());
     self.set_p_type_(cast::<Mixed>(cast::<i64>(type_.clone())));
     self.set_p_name(name.clone());
-    self.set_p_alias((if (match alias.clone() { Some(__u) => match __u { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, _ => false }, None => false }) { Some(crate::php_parser::node::Identifier::new((match alias.clone() { Some(__o) => cast::<Str>(__o), None => <Str>::default() }), Map::<Str, Mixed>::new())?) } else { alias.clone().map(|v| cast::<crate::php_parser::node::Identifier>(v)) }));
+    self.set_p_alias((if (match alias.clone() { Some(__u) => match __u { U_PhpParser_Node_Identifier_or_Str::Str(_) => true, U_PhpParser_Node_Identifier_or_Str::Other__(__m) => __m.is_string(), _ => false }, None => false }) { Some(crate::php_parser::node::Identifier::new((match alias.clone() { Some(__o) => cast::<Str>(__o), None => <Str>::default() }), Map::<Str, Mixed>::new())?) } else { alias.clone().map(|v| cast::<crate::php_parser::node::Identifier>(v)) }));
     #[allow(unreachable_code)] Ok(Mixed::Null)
     }
     pub fn getSubNodeNames(&self) -> Result<Map<ArrayKey, Mixed>, Throw> {
