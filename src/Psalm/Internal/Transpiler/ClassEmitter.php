@@ -293,6 +293,11 @@ final class ClassEmitter
                 $w->line('pub fn ' . $rn . $sig . ' {');
                 $w->raw($this->body($cls, $m));
                 $w->line('}');
+            } elseif (!$m->isAbstract() && $m->uses_lsb) {
+                // late static binding: a copy of the body with `static` bound to this class
+                $w->line('pub fn ' . $rn . $sig . ' {');
+                $w->raw($this->body($declaring, $m, $cls));
+                $w->line('}');
             } elseif (!$m->isAbstract()) {
                 $w->line('pub fn ' . $rn . $sig . ' { ' . $declaring->path() . '::' . $rn . '(' . $this->argNames($m) . ') }');
             }
@@ -341,8 +346,17 @@ final class ClassEmitter
                 $w->line('pub fn ' . $rn . $this->signature($m, false) . ' {');
                 $w->raw($this->body($cls, $m));
                 $w->line('}');
+            } elseif ($m->uses_lsb && !$m->isAbstract()) {
+                $w->line('pub fn ' . $rn . $this->signature($m, false) . ' {');
+                $w->raw($this->body($m->declaring, $m, $cls));
+                $w->line('}');
             } else {
                 $w->line('pub fn ' . $rn . $this->signature($m, false) . ' { ' . $m->declaring->path() . '::' . $rn . '(' . $this->argNames($m) . ') }');
+            }
+            if ($m->uses_lsb && !$m->isAbstract()) {
+                // `static::m()` from an instance: dispatch on the runtime class
+                $arms = array_map(fn(ClassModel $c) => $cls->handle() . '::' . $c->variant() . '(_) => ' . $c->path() . '::' . $rn . '(' . $this->argNames($m) . ')', $cls->concrete);
+                $w->line('pub fn ' . $rn . '__static' . $this->signature($m, true) . ' { match self { ' . implode(', ', $arms) . ($arms ? ', ' : '') . '_ => unreachable!() } }');
             }
             return;
         }
@@ -393,13 +407,13 @@ final class ClassEmitter
         return implode(', ', $args);
     }
 
-    private function body(ClassModel $cls, MethodModel $m): string
+    private function body(ClassModel $cls, MethodModel $m, ?ClassModel $static_class = null): string
     {
         if ($m->record === null || $m->node === null) {
             $this->diag->warn('method without analysis record', $m->node, $cls->fqcn);
             return "    unreachable!(\"method " . $m->name . " was not analyzed\")\n";
         }
-        $b = new BodyEmitter($this->program, $m->record, $cls, $this->casts, $this->builtins, $this->diag, null);
+        $b = new BodyEmitter($this->program, $m->record, $cls, $this->casts, $this->builtins, $this->diag, null, $static_class);
         if ($m->isStatic()) {
             $b->this_type = null;
         }
@@ -475,6 +489,15 @@ final class ClassEmitter
             $props[] = 'if let Some(v) = ' . $get . ' { out.push((Str::from_static(' . Names::rustStringLiteral($f->name) . '), ' . $this->casts->convert('v', $f->type, RustType::mixed()) . ')); }';
         }
         $w->line('fn props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); ' . implode(' ', $props) . ' out }');
+        $pub = [];
+        foreach ($cls->fields as $f) {
+            if ($f->storage->visibility !== \Psalm\Internal\Analyzer\ClassLikeAnalyzer::VISIBILITY_PUBLIC) {
+                continue;
+            }
+            $get = $f->isLate() ? 'self.' . $f->acc() . '_opt()' : 'Some(self.' . $f->acc() . '_get())';
+            $pub[] = 'if let Some(v) = ' . $get . ' { out.push((Str::from_static(' . Names::rustStringLiteral($f->name) . '), ' . $this->casts->convert('v', $f->type, RustType::mixed()) . ')); }';
+        }
+        $w->line('fn public_props(&self) -> Vec<(Str, Mixed)> { let mut out = Vec::new(); ' . implode(' ', $pub) . ' out }');
         $sets = [];
         foreach ($cls->fields as $f) {
             $sets[] = Names::rustStringLiteral($f->name) . ' => { self.set_' . $f->acc() . '(' . $this->casts->convert('value', RustType::mixed(), $f->type) . '); true }';
@@ -484,11 +507,39 @@ final class ClassEmitter
         if ($ts !== null) {
             $w->line('fn php_to_string(&self) -> Option<Str> { self.' . $ts->rustName() . '().ok() }');
         }
+        $w->line('fn call_method(&self, name: &str, args: Vec<Mixed>) -> Result<Mixed, DynError> { match name { ' . $this->callMethodArms($cls) . '_ => Err(DynError::Rt(RtError::error(format!("Call to undefined method {}::{}()", ' . Names::rustStringLiteral($cls->fqcn) . ', name)))) } }');
         $w->close();
         $w->line('impl ' . $own . ' { pub fn to_php_string(&self) -> Result<Str, Throw> { ' . ($ts !== null ? 'self.' . $ts->rustName() . '()' : 'Err(Throw::error(Str::from_static(' . Names::rustStringLiteral('Object of class ' . $cls->fqcn . ' could not be converted to string') . ')))') . ' } }');
         $clone = $this->program->findMethod($cls, '__clone');
         $w->line('impl php_rt::PhpClone for ' . $own . ' { fn php_clone(&self) -> Self { let c = ' . $own . '(Rc::new(RefCell::new(self.0.borrow().clone()))); ' . ($clone !== null ? 'let _ = c.' . $clone->rustName() . '(); ' : '') . 'c } }');
         $w->line('impl Clone for ' . $cls->objStruct() . ' { fn clone(&self) -> Self { ' . $cls->objStruct() . ' { ' . implode(', ', array_map(fn(FieldModel $f) => $f->rustName() . ': self.' . $f->rustName() . '.clone()', $cls->fields)) . ' } } }');
+    }
+
+    /** Match arms (lowercase method name => dynamic invocation) for `PhpObject::call_method`. */
+    private function callMethodArms(ClassModel $cls): string
+    {
+        $arms = '';
+        foreach ($cls->methods as $m) {
+            if ($m->isAbstract() && !$cls->isInterface()) {
+                continue;
+            }
+            $params = [];
+            $ok = true;
+            foreach ($m->storage->params as $i => $p) {
+                if ($p->by_ref || $p->is_variadic) {
+                    $ok = false;
+                    break;
+                }
+                $pt = $m->param_types[$i] ?? RustType::mixed();
+                $params[] = '(match args.get(' . $i . ') { Some(__a) => ' . $this->casts->convert('__a.clone()', RustType::mixed(), $pt) . ', None => ' . $this->casts->defaultOf($pt) . ' })';
+            }
+            if (!$ok) {
+                continue;
+            }
+            $call = ($m->isStatic() ? $m->declaring->path() . '::' : 'self.') . $m->rustName() . '(' . implode(', ', $params) . ')';
+            $arms .= Names::rustStringLiteral($m->lc()) . ' => { let __r = ' . $call . '.map_err(|e| DynError::Obj(' . $this->casts->convert('e', RustType::class('Throwable'), RustType::mixed()) . '))?; Ok(' . $this->casts->convert('__r', $m->return_type, RustType::mixed()) . ') }, ';
+        }
+        return $arms;
     }
 
     private function emitEnumHandleImpls(ClassModel $cls, Writer $w): void
@@ -503,6 +554,8 @@ final class ClassEmitter
         $w->line('fn props(&self) -> Vec<(Str, Mixed)> { match self { ' . $arms('props()') . ' } }');
         $w->line('fn set_prop(&self, name: &str, value: Mixed) -> bool { match self { ' . $arms('set_prop(name, value)') . ' } }');
         $w->line('fn php_to_string(&self) -> Option<Str> { match self { ' . $arms('php_to_string()') . ' } }');
+        $w->line('fn call_method(&self, name: &str, args: Vec<Mixed>) -> Result<Mixed, DynError> { match self { ' . $arms('call_method(name, args)') . ' } }');
+        $w->line('fn public_props(&self) -> Vec<(Str, Mixed)> { match self { ' . $arms('public_props()') . ' } }');
         $w->close();
         $w->line('impl ' . $h . ' { pub fn to_php_string(&self) -> Result<Str, Throw> { match self { ' . $arms('to_php_string()') . ' } } }');
         $w->line('impl php_rt::PhpClone for ' . $h . ' { fn php_clone(&self) -> Self { match self { ' . implode(', ', array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => ' . $h . '::' . $c->variant() . '(__h.php_clone())', $cls->concrete)) . ($cls->concrete ? ', ' : '') . '_ => unreachable!() } } }');

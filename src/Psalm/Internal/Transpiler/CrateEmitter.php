@@ -186,6 +186,8 @@ final class CrateEmitter
         $w->line('fn props(&self) -> Vec<(Str, Mixed)> { match self { ' . $arms('props()') . ' } }');
         $w->line('fn set_prop(&self, name: &str, value: Mixed) -> bool { match self { ' . $arms('set_prop(name, value)') . ' } }');
         $w->line('fn php_to_string(&self) -> Option<Str> { match self { ' . $arms('php_to_string()') . ' } }');
+        $w->line('fn call_method(&self, name: &str, args: Vec<Mixed>) -> Result<Mixed, DynError> { match self { ' . $arms('call_method(name, args)') . ' } }');
+        $w->line('fn public_props(&self) -> Vec<(Str, Mixed)> { match self { ' . $arms('public_props()') . ' } }');
         $w->close();
         $w->open('impl AnyObject {');
         $downs = [];
@@ -238,11 +240,15 @@ final class CrateEmitter
             if (!$cls->is_project || $cls->isTrait()) {
                 continue;
             }
-            foreach ($cls->constants as $c) {
-                if ($c->expr === null) {
-                    continue;
+            $seen = [];
+            foreach ([$cls, ...$cls->ancestors] as $src) {
+                foreach ($src->constants as $c) {
+                    if ($c->expr === null || isset($seen[$c->name])) {
+                        continue;
+                    }
+                    $seen[$c->name] = true;
+                    $w->line('php_rt::registry::define_constant(&Str::from_static(' . Names::rustStringLiteral($cls->fqcn . '::' . $c->name) . '), ' . $this->casts->convert($src->path() . '::' . $c->rustName() . '()', $c->type, RustType::mixed()) . ');');
                 }
-                $w->line('php_rt::registry::define_constant(&Str::from_static(' . Names::rustStringLiteral($cls->fqcn . '::' . $c->name) . '), ' . $this->casts->convert($cls->path() . '::' . $c->rustName() . '()', $c->type, RustType::mixed()) . ');');
             }
         }
         foreach ($this->program->constants as $c) {

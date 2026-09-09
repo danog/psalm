@@ -993,6 +993,9 @@ trait ExprTrait
                 if ($key !== null) {
                     return new Val('{ let _ = ' . $base->code . '; None::<Mixed> }', RustType::option(RustType::mixed()));
                 }
+                $mt = RustType::map(RustType::arrayKey(), $this->shapeValueType($bt));
+                $code = '{ let __k = ' . $this->keyExpr($dim, RustType::arrayKey()) . '; ' . $base->code . '.and_then(|__b| ' . $this->casts->convert('__b', $bt, $mt) . '.get(&__k).cloned()) }';
+                return $this->flattenOption($code, $mt->params[1]);
             }
             if ($bt->kind === RustType::TUPLE) {
                 $key = $this->literalKey($dim);
@@ -1296,6 +1299,9 @@ trait ExprTrait
     {
         $s = $name->toString();
         $lc = strtolower($s);
+        if ($lc === 'static' && $this->static_class !== null) {
+            return $this->static_class->fqcn;
+        }
         if ($lc === 'self' || $lc === 'static') {
             return $this->class?->fqcn;
         }
@@ -1399,14 +1405,18 @@ trait ExprTrait
                 }
             }
         }
+        // the closure's own view of the captured variables (joined over its statements) decides their type
+        $child->declareLocals($param_types);
         foreach ($capture_names as $name) {
             if (!isset($this->vars[$name])) {
                 continue;
             }
             $v = $this->readVar($name);
-            $captures[] = 'let ' . Names::var($name) . ' = ' . $v->code . ';';
-            $child->vars[$name] = $this->vars[$name];
+            $inner_t = $child->vars[$name] ?? $this->vars[$name];
+            $captures[] = 'let ' . Names::var($name) . ' = ' . $this->casts->convert($v->code, $v->type, $inner_t) . ';';
+            $child->vars[$name] = $inner_t;
             $child->late[$name] = false;
+            $child->predeclared[$name] = true;
         }
         $uses_this = !($e instanceof Closure && $e->static) && $this->this_type !== null;
         if ($uses_this) {

@@ -1036,6 +1036,9 @@ final class Builtins
         $repl = 'Vec::new()';
         if (isset($args[3])) {
             $r = $b->expr($args[3]->value);
+            if ($r->type->kind === RustType::OPTION) {
+                $r = new Val($r->code . '.unwrap_or_default()', $r->type->inner());
+            }
             if ($r->type->kind === RustType::LIST || $r->type->kind === RustType::MAP || $r->type->kind === RustType::TUPLE || $r->type->kind === RustType::SHAPE) {
                 $repl = $b->casts->convert($r->code, $r->type, RustType::list($vt)) . '.into_vec()';
             } else {

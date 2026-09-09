@@ -17,6 +17,9 @@ final class MethodModel
 
     public RustType $return_type;
 
+    /** static method whose body refers to `static` (needs a copy per calling class) */
+    public bool $uses_lsb = false;
+
     public function __construct(
         public readonly string $name,
         public readonly ClassModel $declaring,

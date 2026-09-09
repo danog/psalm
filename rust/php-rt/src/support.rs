@@ -323,8 +323,16 @@ pub fn mixed_dec(m: &Mixed) -> Mixed {
     }
 }
 
-pub fn mixed_call(_m: &Mixed, name: &Str, _args: Vec<Mixed>) -> Result<Mixed, RtError> {
-    Err(RtError::error(crate::sfmt!("Call to method {}() on mixed is not supported", name)))
+pub fn mixed_call(m: &Mixed, name: &Str, args: Vec<Mixed>) -> Result<Mixed, crate::containers::DynError> {
+    use crate::containers::{DynError, to_callable};
+    match m {
+        Mixed::Obj(o) => o.call_method(&name.to_string_lossy().to_ascii_lowercase(), args),
+        Mixed::Closure(c) if name.as_bytes().eq_ignore_ascii_case(b"__invoke") || name.as_bytes().eq_ignore_ascii_case(b"call") => {
+            let _ = c;
+            to_callable(m).call(args)
+        }
+        _ => Err(DynError::Rt(RtError::error(crate::sfmt!("Call to a member function {}() on {}", name, m.type_name())))),
+    }
 }
 
 pub fn mixed_iter(m: Mixed) -> Result<std::vec::IntoIter<(ArrayKey, Mixed)>, RtError> {

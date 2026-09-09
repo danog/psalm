@@ -119,8 +119,19 @@ final class Casts
             }
             return $code . '.map(|v| ' . $this->convert('v', $a, $b) . ')';
         }
+        if ($fk === RustType::OPTION && $tk === RustType::UNION && ($this->hasUnit($to, 'False') || $this->hasUnit($to, 'True'))) {
+            $unit = $this->hasUnit($to, 'False') ? 'False' : 'True';
+            return '(match ' . $code . ' { Some(__o) => ' . $this->convert('__o', $from->inner(), $to) . ', None => ' . $to->mangle() . '::' . $unit . ' })';
+        }
         if ($fk === RustType::OPTION) {
-            return $this->convert($code . '.unwrap()', $from->inner(), $to);
+            $inner = $from->inner();
+            if ($to->hasDefault() && $tk !== RustType::CLASS_) {
+                if ($inner->toRust() === $to->toRust()) {
+                    return $code . '.unwrap_or_default()';
+                }
+                return '(match ' . $code . ' { Some(__o) => ' . $this->convert('__o', $inner, $to) . ', None => ' . $this->defaultOf($to) . ' })';
+            }
+            return $this->convert($code . '.unwrap()', $inner, $to);
         }
         if ($tk === RustType::OPTION) {
             if ($fk === RustType::UNIT) {

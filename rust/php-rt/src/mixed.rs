@@ -18,6 +18,10 @@ pub trait PhpObject: Any {
     fn props(&self) -> Vec<(Str, Mixed)> {
         Vec::new()
     }
+    /// Public properties only (object iteration / get_object_vars from outside the class).
+    fn public_props(&self) -> Vec<(Str, Mixed)> {
+        self.props()
+    }
     fn php_to_string(&self) -> Option<Str> {
         None
     }
@@ -27,6 +31,14 @@ pub trait PhpObject: Any {
     }
     fn instance_of_name(&self, lname: &str) -> bool {
         self.class_ancestors().iter().any(|a| *a == lname)
+    }
+    /// Call a method by (case-insensitive) name with dynamically typed arguments.
+    fn call_method(&self, name: &str, _args: Vec<Mixed>) -> Result<Mixed, crate::containers::DynError> {
+        Err(crate::containers::DynError::Rt(crate::error::RtError::error(crate::sfmt!(
+            "Call to undefined method {}::{}()",
+            self.class_name(),
+            name
+        ))))
     }
 }
 

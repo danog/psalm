@@ -415,8 +415,9 @@ trait StmtTrait
         if ($pairs !== null) {
             return $pairs;
         }
-        $this->warn('foreach over object without iterator ' . $cls->fqcn, $s);
-        return ['object_to_array(&' . $this->casts->convert($code, RustType::class($cls->fqcn), RustType::mixed()) . ').into_iter()', RustType::arrayKey(), RustType::mixed()];
+        // plain object: iterate its properties (only the public ones when seen from outside the class)
+        $inside = $this->class !== null && $this->class->isSubclassOf($cls);
+        return ['{ let __o = ' . $code . '; php_rt::PhpObject::' . ($inside ? 'props' : 'public_props') . '(&__o).into_iter().map(|(k, v)| (ArrayKey::from_str_val(k), v)) }', RustType::arrayKey(), RustType::mixed()];
     }
 
     private function switchStmt(Stmt\Switch_ $s): void
