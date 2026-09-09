@@ -107,7 +107,7 @@ pub fn microtime(_as_float: bool) -> f64 {
     let t = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap();
     t.as_secs_f64()
 }
-pub fn hrtime_ns() -> i64 {
+pub fn hrtime_ns(_as_number: bool) -> i64 {
     thread_local! { static START: std::time::Instant = std::time::Instant::now(); }
     START.with(|s| s.elapsed().as_nanos() as i64)
 }

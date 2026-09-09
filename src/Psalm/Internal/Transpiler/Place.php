@@ -73,8 +73,8 @@ final class Place
      */
     public function modifyValue(Closure $f): string
     {
-        if ($this->mut !== null) {
-            return $this->wrap($f(($this->mut)()));
+        if ($this->mut !== null && $this->wrapper === null) {
+            return $f(($this->mut)());
         }
         $p = '__p' . (++self::$counter);
         return '{ let mut ' . $p . ' = ' . $this->read() . '; let __r = ' . $f($p) . '; ' . $this->write($p) . ' __r }';

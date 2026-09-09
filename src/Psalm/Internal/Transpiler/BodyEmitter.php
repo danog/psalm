@@ -18,6 +18,7 @@ use function count;
 use function implode;
 use function in_array;
 use function is_string;
+use function preg_match;
 use function strtolower;
 
 /**
@@ -309,8 +310,21 @@ final class BodyEmitter
      */
     private function declareAssignedVars(array $stmts, array $params): void
     {
-        foreach ((new \PhpParser\NodeFinder())->findInstanceOf($stmts, Expr\Assign::class) as $assign) {
+        $finder = new \PhpParser\NodeFinder();
+        foreach ($finder->findInstanceOf($stmts, Expr\Assign::class) as $assign) {
             $target = $assign->var;
+            if ($target instanceof Expr\List_ || $target instanceof Expr\Array_) {
+                foreach ($finder->findInstanceOf([$target], Expr\Variable::class) as $v) {
+                    if (!is_string($v->name) || $v->name === 'this' || isset($this->vars[$v->name]) || isset($params[$v->name]) || isset($this->predeclared[$v->name])) {
+                        continue;
+                    }
+                    $pt = $this->psalmType($v);
+                    $t = $pt !== null ? $this->types()->map($pt) : RustType::mixed();
+                    $this->vars[$v->name] = $t;
+                    $this->late[$v->name] = !$t->hasDefault();
+                }
+                continue;
+            }
             if (!$target instanceof Expr\Variable || !is_string($target->name) || $target->name === 'this') {
                 continue;
             }
@@ -323,12 +337,33 @@ final class BodyEmitter
             $this->vars[$name] = $t;
             $this->late[$name] = !$t->hasDefault();
         }
+        // out-parameters of calls (`preg_match($re, $s, $matches)`) are assigned by the callee
+        foreach ($finder->findInstanceOf($stmts, Expr\FuncCall::class) as $call) {
+            foreach ($call->args as $arg) {
+                if (!$arg instanceof \PhpParser\Node\Arg || !$arg->value instanceof Expr\Variable || !is_string($arg->value->name)) {
+                    continue;
+                }
+                $name = $arg->value->name;
+                if ($name === 'this' || isset($this->vars[$name]) || isset($params[$name]) || isset($this->predeclared[$name]) || isset(self::SUPERGLOBALS[$name])) {
+                    continue;
+                }
+                $pt = $this->psalmType($arg->value);
+                $t = $pt !== null ? $this->types()->map($pt) : RustType::mixed();
+                $this->vars[$name] = $t;
+                $this->late[$name] = false;
+            }
+        }
     }
+
+    private const SUPERGLOBALS = ['_SERVER' => true, '_ENV' => true, '_GET' => true, '_POST' => true, '_COOKIE' => true, '_FILES' => true, '_REQUEST' => true, 'GLOBALS' => true];
 
     public function readVar(string $name): Val
     {
         if ($name === 'this') {
             return new Val($this->this_expr . '.clone()', $this->this_type ?? RustType::anyObject());
+        }
+        if (isset(self::SUPERGLOBALS[$name])) {
+            return new Val('php_rt::superglobal(' . Names::rustStringLiteral($name) . ')', RustType::map(RustType::str(), RustType::mixed()));
         }
         if (!isset($this->vars[$name])) {
             // variable never seen in snapshots (e.g. only assigned inside a closure use list)
@@ -360,17 +395,18 @@ final class BodyEmitter
     public function storeVar(string $name, string $code): string
     {
         $rn = Names::var($name);
+        $simple = preg_match('/^[A-Za-z_][A-Za-z0-9_]*(?:\.clone\(\))?$/', $code) === 1;
         if (!empty($this->cells[$name])) {
-            return $rn . '.borrow_mut().set(' . $code . ');';
+            return $simple ? $rn . '.borrow_mut().set(' . $code . ');' : '{ let __sv = ' . $code . '; ' . $rn . '.borrow_mut().set(__sv); }';
         }
         if (!empty($this->refvars[$name])) {
-            return $rn . '.set(' . $code . ');';
+            return $simple ? $rn . '.set(' . $code . ');' : '{ let __sv = ' . $code . '; ' . $rn . '.set(__sv); }';
         }
         if (!empty($this->byref[$name])) {
             return '*' . $rn . ' = ' . $code . ';';
         }
         if (!empty($this->late[$name])) {
-            return $rn . '.set(' . $code . ');';
+            return $simple ? $rn . '.set(' . $code . ');' : '{ let __sv = ' . $code . '; ' . $rn . '.set(__sv); }';
         }
         return $rn . ' = ' . $code . ';';
     }
@@ -395,6 +431,9 @@ final class BodyEmitter
     {
         if ($name === 'this') {
             return $this->this_type ?? RustType::anyObject();
+        }
+        if (isset(self::SUPERGLOBALS[$name])) {
+            return RustType::map(RustType::str(), RustType::mixed());
         }
         if (!isset($this->vars[$name])) {
             $this->warn('unknown variable $' . $name);

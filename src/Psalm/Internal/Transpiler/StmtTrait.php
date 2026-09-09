@@ -363,6 +363,27 @@ trait StmtTrait
         $w->close();
     }
 
+    /** `foreach ($mixed as $k => &$v)`: keys from the array view, values written back through `mixed_set`. */
+    private function foreachByRefMixed(Stmt\Foreach_ $s, Place $place, string $label, string $kv): void
+    {
+        $w = $this->w;
+        $keys = $this->tmp('__keys');
+        $w->line('let ' . $keys . ': Vec<ArrayKey> = cast::<Map<ArrayKey, Mixed>>(' . $place->read() . ').keys().cloned().collect();');
+        $val_place = $this->place($s->valueVar);
+        $elem_read = 'mixed_get(&' . $place->read() . ', &' . $kv . ').unwrap_or_default()';
+        $store_back = $place->modify(fn(string $p) => 'mixed_set(&mut ' . $p . ', Some(' . $kv . '.clone()), ' . $this->casts->convert($val_place->read(), $val_place->type, RustType::mixed()) . ');');
+        $w->open($label . ': for ' . $kv . ' in ' . $keys . ' {');
+        if ($s->keyVar !== null) {
+            $w->line($this->assignTo($s->keyVar, new Val($kv . '.clone()', RustType::arrayKey())));
+        }
+        $w->line($val_place->write($this->casts->convert($elem_read, RustType::mixed(), $val_place->type)));
+        $this->pushLoop($label, $label, false, $store_back);
+        $this->block($s->stmts);
+        $this->popLoop();
+        $w->line($store_back);
+        $w->close();
+    }
+
     /** `foreach ($arr as $k => &$v)`: iterate keys and write the value variable back into the container. */
     private function foreachByRef(Stmt\Foreach_ $s, Val $subject, string $label, string $kv): void
     {
@@ -376,6 +397,25 @@ trait StmtTrait
             return;
         }
         $place = $this->place($s->expr);
+        if ($place->type->kind === RustType::OPTION) {
+            // a nullable container Psalm knows to be set here
+            $p = $place;
+            $place = new Place(
+                $p->type->inner(),
+                fn() => $p->read() . '.unwrap_or_default()',
+                fn(string $v) => $p->write('Some(' . $v . ')'),
+                $p->hasMut() ? fn() => '(*' . $p->mut() . ($p->type->inner()->hasDefault() ? '.get_or_insert_with(Default::default))' : '.as_mut().expect("null container"))') : null,
+                fn(string $st) => $p->wrap($st),
+            );
+        }
+        if ($place->type->kind === RustType::MIXED) {
+            $this->foreachByRefMixed($s, $place, $label, $kv);
+            return;
+        }
+        // the container's declared type decides element types (the subject may be narrowed)
+        if ($place->type->kind === RustType::LIST || $place->type->kind === RustType::MAP) {
+            $st = $place->type;
+        }
         $is_list = $st->kind === RustType::LIST;
         $kt = $is_list ? RustType::int() : $st->params[0];
         $vt = $is_list ? $st->inner() : $st->params[1];

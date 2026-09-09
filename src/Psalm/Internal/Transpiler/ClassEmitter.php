@@ -102,12 +102,7 @@ final class ClassEmitter
         }
         $w->close();
 
-        // factories for `new $name(...)`
-        foreach ($this->program->factories as [$fc, $arity]) {
-            if ($fc === $cls) {
-                $this->emitFactory($cls, $w);
-            }
-        }
+        // factories for `new $name(...)` are emitted crate-wide once all bodies have been seen
     }
 
     private function ancestorsLiteral(ClassModel $cls): string
@@ -370,7 +365,11 @@ final class ClassEmitter
             }
             if ($m->uses_lsb && !$m->isAbstract()) {
                 // `static::m()` from an instance: dispatch on the runtime class
-                $arms = array_map(fn(ClassModel $c) => $cls->handle() . '::' . $c->variant() . '(_) => ' . $c->path() . '::' . $rn . '(' . $this->argNames($m) . ')', $cls->concrete);
+                $arms = array_map(function (ClassModel $c) use ($cls, $rn, $m): string {
+                    $cm = $this->program->findMethod($c, $m->lc()) ?? $m;
+                    $call = $c->path() . '::' . $rn . '(' . $this->argNames($m) . ')?';
+                    return $cls->handle() . '::' . $c->variant() . '(_) => Ok(' . $this->casts->convert($call, $cm->return_type, $m->return_type) . ')';
+                }, $cls->concrete);
                 $w->line('pub fn ' . $rn . '__static' . $this->signature($m, true) . ' { match self { ' . implode(', ', $arms) . ($arms ? ', ' : '') . '_ => unreachable!() } }');
             }
             return;

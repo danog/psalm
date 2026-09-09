@@ -465,6 +465,10 @@ identical_tuple!(0 A, 1 B, 2 C, 3 D, 4 E);
 identical_tuple!(0 A, 1 B, 2 C, 3 D, 4 E, 5 F);
 identical_tuple!(0 A, 1 B, 2 C, 3 D, 4 E, 5 F, 6 G);
 identical_tuple!(0 A, 1 B, 2 C, 3 D, 4 E, 5 F, 6 G, 7 H);
+identical_tuple!(0 A, 1 B, 2 C, 3 D, 4 E, 5 F, 6 G, 7 H, 8 I);
+identical_tuple!(0 A, 1 B, 2 C, 3 D, 4 E, 5 F, 6 G, 7 H, 8 I, 9 J);
+identical_tuple!(0 A, 1 B, 2 C, 3 D, 4 E, 5 F, 6 G, 7 H, 8 I, 9 J, 10 K);
+identical_tuple!(0 A, 1 B, 2 C, 3 D, 4 E, 5 F, 6 G, 7 H, 8 I, 9 J, 10 K, 11 L);
 
 #[inline]
 pub fn identical<T: Identical>(a: &T, b: &T) -> bool {
