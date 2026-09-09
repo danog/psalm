@@ -157,8 +157,7 @@ trait StmtTrait
             return;
         }
         if ($e instanceof Expr\AssignRef) {
-            $this->warn('assign by reference', $e);
-            $w->line($this->assignStmt(new Expr\Assign($e->var, $e->expr, $e->getAttributes())));
+            $w->line($this->assignRefStmt($e));
             return;
         }
         if ($e instanceof Expr\PreInc || $e instanceof Expr\PostInc || $e instanceof Expr\PreDec || $e instanceof Expr\PostDec) {

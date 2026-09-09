@@ -12,6 +12,7 @@ pub struct ClassEntry {
 }
 
 thread_local! {
+    static FACTORIES: RefCell<HashMap<Vec<u8>, Box<dyn Fn() -> crate::mixed::Mixed>>> = RefCell::new(HashMap::new());
     static CLASSES: RefCell<HashMap<Vec<u8>, ClassEntry>> = RefCell::new(HashMap::new());
     static FUNCTIONS: RefCell<HashMap<Vec<u8>, DynCallable>> = RefCell::new(HashMap::new());
     static CONSTANTS: RefCell<HashMap<Vec<u8>, crate::mixed::Mixed>> = RefCell::new(HashMap::new());
@@ -21,6 +22,19 @@ pub fn register_class(name: &'static str, ancestors: &'static [&'static str], is
     CLASSES.with(|c| {
         c.borrow_mut().insert(name.to_ascii_lowercase().into_bytes(), ClassEntry { name, ancestors, is_interface });
     });
+}
+
+/// Registers how to build an instance of a class without running its constructor.
+pub fn register_factory(name: &str, f: Box<dyn Fn() -> crate::mixed::Mixed>) {
+    FACTORIES.with(|c| {
+        c.borrow_mut().insert(name.to_ascii_lowercase().into_bytes(), f);
+    });
+}
+
+/// `ReflectionClass::newInstanceWithoutConstructor()`: `None` when the class is unknown.
+pub fn new_uninit(name: &[u8]) -> Option<crate::mixed::Mixed> {
+    let lc = norm(name);
+    FACTORIES.with(|c| c.borrow().get(&lc).map(|f| f()))
 }
 
 pub fn register_function(name: &str, f: DynCallable) {

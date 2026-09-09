@@ -9,6 +9,7 @@ pub mod pcre;
 pub mod json;
 pub mod file;
 pub mod misc;
+pub mod eval;
 
 pub use string::*;
 pub use array::*;
@@ -18,3 +19,4 @@ pub use pcre::*;
 pub use json::*;
 pub use file::*;
 pub use misc::*;
+pub use eval::*;

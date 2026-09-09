@@ -35,7 +35,7 @@ trait LValueTrait
                 $t,
                 fn() => $this->readVar($name)->code,
                 fn(string $v) => $this->storeVar($name, $v),
-                fn() => $this->varPlace($name),
+                $this->hasMutPlace($name) ? fn() => $this->varPlace($name) : null,
             );
         }
         if (($e instanceof Expr\PropertyFetch || $e instanceof Expr\NullsafePropertyFetch) && $e->name instanceof Identifier) {
@@ -609,6 +609,52 @@ trait LValueTrait
         }
         $place = $this->place($target);
         return $place->write($this->casts->convert($value->code, $value->type, $place->type));
+    }
+
+    /**
+     * `$x = &<target>`: rebinds the reference variable `$x` onto the target, or falls back to a copy
+     * when the target can't be referenced.
+     */
+    public function assignRefStmt(Expr\AssignRef $e): string
+    {
+        $var = $e->var;
+        if ($var instanceof Expr\Variable && is_string($var->name) && !empty($this->refvars[$var->name])) {
+            $rn = Names::var($var->name);
+            $rt = $this->varType($var->name);
+            $src = $e->expr;
+            if ($src instanceof Expr\Variable && is_string($src->name) && $src->name !== 'this') {
+                $st = $this->varType($src->name);
+                $sn = Names::var($src->name);
+                if (!empty($this->refvars[$src->name]) && $st->toRust() === $rt->toRust()) {
+                    return $rn . ' = ' . $sn . '.clone();';
+                }
+                if (!empty($this->cells[$src->name])) {
+                    if ($st->toRust() === $rt->toRust()) {
+                        return $rn . ' = PhpRef::from_cell(' . $sn . '.clone());';
+                    }
+                    return $rn . ' = { let __c1 = ' . $sn . '.clone(); let __c2 = ' . $sn . '.clone(); PhpRef::new(move || '
+                        . $this->casts->convert('__c1.borrow().get().clone()', $st, $rt) . ', move |__v| __c2.borrow_mut().set('
+                        . $this->casts->convert('__v', $rt, $st) . ')) };';
+                }
+            }
+            if ($src instanceof Expr\PropertyFetch && $src->name instanceof Identifier) {
+                $base = $this->receiver($src->var);
+                $bt = $base->type->kind === RustType::OPTION ? $base->type->inner() : $base->type;
+                $cls = $bt->kind === RustType::CLASS_ ? $this->program->classOf($bt) : null;
+                $field = $cls?->fields[$src->name->name] ?? null;
+                if ($field !== null) {
+                    $acc = $field->acc();
+                    $bc = $base->type->kind === RustType::OPTION ? $base->code . '.unwrap()' : $base->code;
+                    return $rn . ' = { let __o = ' . $bc . '; let __o2 = __o.clone(); PhpRef::new(move || '
+                        . $this->casts->convert('__o.' . $acc . '_get()', $field->type, $rt) . ', move |__v| __o2.set_' . $acc . '('
+                        . $this->casts->convert('__v', $rt, $field->type) . ')) };';
+                }
+            }
+            $this->warn('reference to an unsupported target', $e);
+            return $rn . ' = PhpRef::of(' . $this->exprTo($src, $rt) . ');';
+        }
+        $this->warn('assign by reference', $e);
+        return $this->assignStmt(new Expr\Assign($e->var, $e->expr, $e->getAttributes()));
     }
 
     public function assignStmt(Expr\Assign $e): string

@@ -150,6 +150,20 @@ final class CastEmitter
                     }
                 }
             }
+            if ($m->kind === RustType::STR) {
+                // `(string) $x` on the other members: scalars and objects with __toString
+                foreach ($u->params as $o) {
+                    if ($o === $m || $this->isUnit($o)) {
+                        continue;
+                    }
+                    $oc = $o->kind === RustType::CLASS_ ? $this->program->classOf($o) : null;
+                    if (in_array($o->kind, [RustType::INT, RustType::FLOAT, RustType::BOOL, RustType::ARRAY_KEY], true)
+                        || ($oc !== null && $this->program->findMethod($oc, '__tostring') !== null)
+                    ) {
+                        $extra .= $name . '::' . $o->variantName() . '(v) => ' . $this->conv('v', $o, $m) . ', ';
+                    }
+                }
+            }
             $extra .= $name . '::Other__(v) => ' . $this->conv('v', RustType::mixed(), $m) . ', ';
             $w->line('impl php_rt::CastTo<' . $m->toRust() . '> for ' . $name . ' { fn cast_to(self) -> ' . $m->toRust() . ' { match self { ' . $name . '::' . $vn . '(v) => v, ' . $extra . '_ => panic!("union ' . $name . ' is not ' . $vn . '") } } }');
             $w->line('impl php_rt::CastTo<' . $name . '> for ' . $m->toRust() . ' { fn cast_to(self) -> ' . $name . ' { ' . $name . '::' . $vn . '(self) } }');

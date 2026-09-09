@@ -37,6 +37,15 @@ impl<T> Late<T> {
             None => panic!("Typed property accessed before initialization"),
         }
     }
+    /// `&mut` access that initializes an uninitialized property with its type's default first
+    /// (PHP auto-vivifies `$this->arr[] = ...` on an uninitialized array property).
+    #[inline]
+    pub fn get_or_default_mut(&mut self) -> &mut T
+    where
+        T: Default,
+    {
+        self.0.get_or_insert_with(T::default)
+    }
     #[inline]
     pub fn take(self) -> T {
         self.0.expect("Typed property accessed before initialization")
