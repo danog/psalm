@@ -292,6 +292,9 @@ final class CastEmitter
             $w->line('impl php_rt::Identical for ' . $h . ' { fn identical(&self, o: &Self) -> bool { match (self, o) { (' . $h . '::Other__(a), ' . $h . '::Other__(b)) => identical(a, b), (' . $h . '::Other__(_), _) | (_, ' . $h . '::Other__(_)) => false, _ => self.obj_id() == o.obj_id() } } }');
         }
         $w->line('impl php_rt::ToStr for ' . $h . ' { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static(' . Names::rustStringLiteral($cls->fqcn) . ')) } }');
+        $num = $this->program->findMethod($cls, '__tostring') !== null ? 'to_num(&Mixed::Str(self.to_php_str()))' : '{ let _ = self; Num::Int(1) }';
+        $w->line('impl php_rt::ToInt for ' . $h . ' { fn to_php_int(&self) -> i64 { ' . $num . '.to_i64() } }');
+        $w->line('impl php_rt::ToFloat for ' . $h . ' { fn to_php_float(&self) -> f64 { ' . $num . '.to_f64() } }');
         $w->line('impl php_rt::PhpCmp for ' . $h . ' { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }');
         $w->line('impl std::fmt::Debug for ' . $h . ' { fn fmt(&self, f: &mut std::fmt::Formatter<\'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }');
         // to Mixed: store the concrete own handle
@@ -421,6 +424,9 @@ final class CastEmitter
             $arms[] = $from->mangle() . '::Other__(v) => ' . $this->conv('v', RustType::mixed(), $to);
             $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ' . $from->toRust() . ' { fn cast_to(self) -> ' . $to->toRust() . ' { match self { ' . implode(', ', $arms) . ' } } }');
             return;
+        }
+        if ($fk === RustType::UNION && $tk === RustType::BOOL && ($this->casts->hasUnit($from, 'True') || $this->casts->hasUnit($from, 'False'))) {
+            return; // emitted with the union enum
         }
         if ($fk === RustType::UNION) {
             // narrowing to a non-member type: try each member that can convert

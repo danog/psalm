@@ -140,6 +140,21 @@ final class ConstExprEmitter
             };
             return new Val('(' . $l . ' ' . $op . ' ' . $r . ')', RustType::int());
         }
+        if ($e instanceof Expr\BitwiseNot) {
+            return new Val('(!' . $this->emit($e->expr, RustType::int()) . ')', RustType::int());
+        }
+        if ($e instanceof Expr\UnaryMinus) {
+            if ($t->kind === RustType::FLOAT) {
+                return new Val('(-' . $this->emit($e->expr, RustType::float()) . ')', RustType::float());
+            }
+            return new Val('(' . $this->emit($e->expr, RustType::int()) . ').wrapping_neg()', RustType::int());
+        }
+        if ($e instanceof Expr\UnaryPlus) {
+            return $this->natural($e->expr, $t);
+        }
+        if ($e instanceof Expr\BooleanNot) {
+            return new Val('(!' . $this->emit($e->expr, RustType::bool()) . ')', RustType::bool());
+        }
         if ($e instanceof Expr\New_ && $e->class instanceof Name) {
             $fqcn = $this->body->resolveClassName($e->class);
             $cls = $fqcn !== null ? $this->body->program->getClass($fqcn) : null;

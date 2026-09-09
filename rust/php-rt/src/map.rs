@@ -373,6 +373,20 @@ impl<K: MapKey, V: Clone> Map<K, V> {
         d.next_index = max + 1;
         Some(v)
     }
+    /// `array_unshift`: prepend a value; integer keys are renumbered.
+    pub fn unshift(&mut self, value: V) {
+        let old = std::mem::take(self);
+        let mut out: Map<K, V> = Map::new();
+        out.push(value);
+        for (k, v) in old.into_iter() {
+            if k.int_value().is_some() {
+                out.push(v);
+            } else {
+                out.insert(k, v);
+            }
+        }
+        *self = out;
+    }
     pub fn shift(&mut self) -> Option<V> {
         if self.0.len == 0 {
             return None;

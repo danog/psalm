@@ -72,6 +72,16 @@ impl CastTo<f64> for Str {
         crate::conv::str_to_float(self.as_bytes())
     }
 }
+impl CastTo<bool> for Str {
+    fn cast_to(self) -> bool {
+        crate::traits::Truthy::truthy(&self)
+    }
+}
+impl CastTo<f64> for bool {
+    fn cast_to(self) -> f64 {
+        if self { 1.0 } else { 0.0 }
+    }
+}
 impl CastTo<i64> for bool {
     fn cast_to(self) -> i64 {
         self as i64

@@ -4,6 +4,7 @@ use crate::error::RtError;
 use crate::key::{ArrayKey, MapKey};
 use crate::list::List;
 use crate::map::Map;
+use crate::mixed::Mixed;
 use crate::string::Str;
 use crate::traits::{Identical, PhpCmp, ToStr, Truthy};
 use std::cmp::Ordering;
@@ -71,6 +72,23 @@ pub fn array_union<K: MapKey, V: Clone>(a: &Map<K, V>, b: &Map<K, V>) -> Map<K, 
         }
     }
     out
+}
+/// `array_replace_recursive` over dynamic arrays.
+pub fn array_replace_recursive(a: &Mixed, b: &Mixed) -> Mixed {
+    match (a, b) {
+        (Mixed::Arr(x), Mixed::Arr(y)) => {
+            let mut out = x.clone();
+            for (k, v) in y.iter() {
+                let merged = match out.get(k) {
+                    Some(Mixed::Arr(_)) if matches!(v, Mixed::Arr(_)) => array_replace_recursive(out.get(k).unwrap(), v),
+                    _ => v.clone(),
+                };
+                out.insert(k.clone(), merged);
+            }
+            Mixed::Arr(out)
+        }
+        _ => b.clone(),
+    }
 }
 pub fn array_replace_m<K: MapKey, V: Clone>(a: &Map<K, V>, b: &Map<K, V>) -> Map<K, V> {
     let mut out = a.clone();

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Transpiler;
 
+use function md5;
+use function substr;
+use function preg_match;
 use function array_map;
 use function explode;
 use function implode;
@@ -102,6 +105,10 @@ final class Names
         }
         if ($name === '_') {
             return '_v';
+        }
+        if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $name)) {
+            // punctuation-only or otherwise unmappable keys: keep them distinct
+            return 'k_' . self::ident($name) . '_' . substr(md5($name), 0, 6);
         }
         return self::ident($name);
     }

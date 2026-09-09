@@ -185,6 +185,33 @@ macro_rules! impl_enum_handle {
     };
 }
 
+// ---------------------------------------------------------------- superglobals
+
+/// `$_SERVER` and friends: a minimal environment view (argv, REQUEST_TIME, env variables).
+pub fn superglobal(name: &str) -> Map<Str, Mixed> {
+    let mut m: Map<Str, Mixed> = Map::new();
+    match name {
+        "_SERVER" => {
+            let argv: Map<ArrayKey, Mixed> = std::env::args().map(|a| Mixed::Str(Str::from_string(a))).collect::<Vec<_>>().into_iter().enumerate().map(|(i, v)| (ArrayKey::Int(i as i64), v)).collect();
+            m.insert(Str::from_static("argc"), Mixed::Int(argv.len() as i64));
+            m.insert(Str::from_static("argv"), Mixed::Arr(argv));
+            let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs_f64()).unwrap_or(0.0);
+            m.insert(Str::from_static("REQUEST_TIME"), Mixed::Int(now as i64));
+            m.insert(Str::from_static("REQUEST_TIME_FLOAT"), Mixed::Float(now));
+            for (k, v) in std::env::vars() {
+                m.insert(Str::from_string(k), Mixed::Str(Str::from_string(v)));
+            }
+        }
+        "_ENV" => {
+            for (k, v) in std::env::vars() {
+                m.insert(Str::from_string(k), Mixed::Str(Str::from_string(v)));
+            }
+        }
+        _ => {}
+    }
+    m
+}
+
 // ---------------------------------------------------------------- escape variants
 
 /// A non-object value stored where a class was declared (`Other__` variants of class enums):

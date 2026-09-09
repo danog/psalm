@@ -341,7 +341,7 @@ impl<K, V> Len for SplObjectStorage<K, V> {
 impl<K, V> PhpObject for SplObjectStorage<K, V>
 where
     K: PhpObject + Clone + 'static,
-    V: Clone + Default + crate::cast::CastTo<Mixed> + 'static,
+    V: Clone + crate::cast::CastTo<Mixed> + 'static,
     Mixed: crate::cast::CastTo<K> + crate::cast::CastTo<V>,
 {
     fn class_name(&self) -> &'static str {
@@ -362,10 +362,7 @@ where
         let key = |i: usize| -> K { CastTo::<K>::cast_to(arg(i)) };
         Ok(match name {
             "attach" | "offsetset" => {
-                let v: V = match arg(1) {
-                    Mixed::Null => V::default(),
-                    m => CastTo::<V>::cast_to(m),
-                };
+                let v: V = CastTo::<V>::cast_to(arg(1));
                 self.attach(key(0), v);
                 Mixed::Null
             }
@@ -396,7 +393,7 @@ where
 impl<K, V> crate::cast::CastTo<Mixed> for SplObjectStorage<K, V>
 where
     K: PhpObject + Clone + 'static,
-    V: Clone + Default + crate::cast::CastTo<Mixed> + 'static,
+    V: Clone + crate::cast::CastTo<Mixed> + 'static,
     Mixed: crate::cast::CastTo<K> + crate::cast::CastTo<V>,
 {
     fn cast_to(self) -> Mixed {
@@ -406,7 +403,7 @@ where
 impl<K, V> crate::cast::CastTo<SplObjectStorage<K, V>> for Mixed
 where
     K: PhpObject + Clone + 'static,
-    V: Clone + Default + crate::cast::CastTo<Mixed> + 'static,
+    V: Clone + crate::cast::CastTo<Mixed> + 'static,
     Mixed: crate::cast::CastTo<K> + crate::cast::CastTo<V>,
 {
     fn cast_to(self) -> SplObjectStorage<K, V> {
@@ -729,7 +726,27 @@ impl crate::cast::CastTo<Mixed> for Rc<Resource> {
     }
 }
 
+impl crate::cast::CastTo<Rc<Resource>> for Mixed {
+    fn cast_to(self) -> Rc<Resource> {
+        match self {
+            Mixed::Int(id) => resource_by_id(id as usize).unwrap_or_else(|| panic!("unknown resource #{}", id)),
+            m => panic!("Mixed value is not a resource: {:?}", m),
+        }
+    }
+}
+
+/// A resource by id (resources travel through `Mixed` as their integer id).
+pub fn resource_by_id(id: usize) -> Option<Rc<Resource>> {
+    match id {
+        1 => Some(stdin_res()),
+        2 => Some(stdout_res()),
+        3 => Some(stderr_res()),
+        _ => RESOURCES.with(|r| r.borrow().get(&id).cloned()),
+    }
+}
+
 thread_local! {
+    static RESOURCES: RefCell<std::collections::HashMap<usize, Rc<Resource>>> = RefCell::new(std::collections::HashMap::new());
     static RES_COUNTER: Cell<usize> = Cell::new(4);
     static STDIN_RES: Rc<Resource> = Rc::new(Resource { id: 1, kind: RefCell::new(ResourceKind::Stdin) });
     static STDOUT_RES: Rc<Resource> = Rc::new(Resource { id: 2, kind: RefCell::new(ResourceKind::Stdout) });
@@ -741,7 +758,9 @@ pub fn new_resource(kind: ResourceKind) -> Rc<Resource> {
         c.set(v + 1);
         v
     });
-    Rc::new(Resource { id, kind: RefCell::new(kind) })
+    let r = Rc::new(Resource { id, kind: RefCell::new(kind) });
+    RESOURCES.with(|m| m.borrow_mut().insert(id, r.clone()));
+    r
 }
 pub fn stdin_res() -> Rc<Resource> {
     STDIN_RES.with(|r| r.clone())

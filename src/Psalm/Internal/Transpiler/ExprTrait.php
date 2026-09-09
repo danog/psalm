@@ -341,7 +341,8 @@ trait ExprTrait
             }
         }
         if ($this->builtins->hasConstant($short)) {
-            return new Val('consts::' . $short, $this->builtins->constantType($short));
+            $ct = $this->builtins->constantType($short);
+            return new Val('consts::' . $short . ($ct->kind === RustType::RESOURCE ? '()' : ''), $ct);
         }
         $user = $this->program->getConstant($resolved) ?? $this->program->getConstant($short);
         if ($user !== null) {
@@ -1310,6 +1311,9 @@ trait ExprTrait
             $target = RustType::class($fqcn);
             $tc = $this->program->getClass($fqcn);
             $t = $v->type;
+            if ($tc !== null && !$tc->is_project) {
+                return new Val('instance_of_name(&' . $this->casts->convert($v->code, $t, RustType::mixed()) . ', &Str::from_static(' . Names::rustStringLiteral($fqcn) . '))', RustType::bool());
+            }
             if ($t->kind === RustType::OPTION) {
                 $inner = $t->inner();
                 $this->casts->needInstanceOf($inner, $target);

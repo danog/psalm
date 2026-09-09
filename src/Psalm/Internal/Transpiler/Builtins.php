@@ -332,6 +332,7 @@ final class Builtins
         'parse_url' => ['parse_url', ['&s', 'i=-1'], 'm'],
         'checkdate' => ['checkdate', ['i', 'i', 'i'], 'b'],
         'array_key_exists_mixed' => ['array_key_exists_mixed', ['&k', '&m'], 'b'],
+        'array_replace_recursive' => ['array_replace_recursive', ['&m', '&m'], 'm'],
         'posix_kill' => ['posix_kill', ['i', 'i'], 'b'],
         'posix_get_last_error' => ['posix_get_last_error', [], 'i'],
         'posix_strerror' => ['posix_strerror', ['i'], 's'],
@@ -875,7 +876,8 @@ final class Builtins
             if ($a->unpack) {
                 $b->warn('array_merge with unpacking', $call);
                 $c = $this->container($b, $a->value);
-                $vals[] = new Val('array_merge_m(&' . $c->code . '.values().map(|__x| __x.clone()).collect::<Vec<_>>().iter().collect::<Vec<_>>())', RustType::map(RustType::arrayKey(), RustType::mixed()));
+                $mm = RustType::map(RustType::arrayKey(), RustType::map(RustType::arrayKey(), RustType::mixed()));
+                $vals[] = new Val('array_merge_m(&' . $b->casts->convert($c->code, $c->type, $mm) . '.values().map(|__x| __x.clone()).collect::<Vec<_>>().iter().collect::<Vec<_>>())', RustType::map(RustType::arrayKey(), RustType::mixed()));
                 continue;
             }
             $c = $this->container($b, $a->value);
@@ -1539,7 +1541,7 @@ final class Builtins
             $cls = $b->program->classOf($vt);
             $f = $cls?->fields[$key] ?? null;
             if ($f !== null) {
-                return new Val('array_column(&' . $m . ', |__v| Some(__v.' . $f->rustName() . '_get()))', RustType::list($f->type));
+                return new Val('array_column(&' . $m . ', |__v| Some(__v.' . $f->acc() . '_get()))', RustType::list($f->type));
             }
         }
         $k = $b->keyExpr($args[1]->value, RustType::arrayKey());
@@ -1689,9 +1691,12 @@ final class Builtins
         $vt = $is_list ? $pt->inner() : $pt->params[1];
         $kt = $is_list ? RustType::int() : $pt->params[0];
         $cb = '';
+        $pre = '';
         if ($has_cb) {
             $params = $fn === 'uksort' ? [$kt, $kt] : [$vt, $vt];
-            $cb = ', ' . $this->cb($b, $args[1]->value, $params, RustType::int());
+            // the callback may capture the container: build it before the container is borrowed mutably
+            $pre = 'let __cb = ' . $this->cb($b, $args[1]->value, $params, RustType::int()) . '; ';
+            $cb = ', __cb';
         }
         $flag_string = isset($args[1]) && !$has_cb && $args[1]->value instanceof Expr\ConstFetch && strtoupper($args[1]->value->name->getLast()) === 'SORT_STRING';
         if ($renumbers) {
@@ -1699,21 +1704,21 @@ final class Builtins
             if ($is_list) {
                 $rf = $flag_string ? 'sort_flag_string_l' : $fn . '_l';
                 $stmt = $place->wrap($rf . '(&mut ' . $place->mut() . $cb . ')' . ($has_cb ? '?' : '') . ';');
-                return new Val('{ ' . $stmt . ' true }', RustType::bool());
+                return new Val('{ ' . $pre . $stmt . ' true }', RustType::bool());
             }
             $tmp = '__sorted';
             $stmt = 'let ' . $tmp . ' = ' . $fn . '_m(&' . $place->read() . $cb . ')' . ($has_cb ? '?' : '') . '; ' . $place->write($b->casts->convert($tmp, RustType::list($vt), $pt));
-            return new Val('{ ' . $stmt . ' true }', RustType::bool());
+            return new Val('{ ' . $pre . $stmt . ' true }', RustType::bool());
         }
         // key-preserving sorts on lists become maps
         if ($is_list) {
             $mt = RustType::map(RustType::int(), $vt);
             $stmt = 'let mut __m = ' . $b->casts->convert($place->read(), $pt, $mt) . '; ' . ($flag_string ? 'ksort_flag_string' : $fn . '_m') . '(&mut __m' . $cb . ')' . ($has_cb ? '?' : '') . '; ' . $place->write($b->casts->convert('__m', $mt, $pt));
-            return new Val('{ ' . $stmt . ' true }', RustType::bool());
+            return new Val('{ ' . $pre . $stmt . ' true }', RustType::bool());
         }
         $rf = $flag_string && $fn === 'ksort' ? 'ksort_flag_string' : $fn . '_m';
         $stmt = $place->wrap($rf . '(&mut ' . $place->mut() . $cb . ')' . ($has_cb ? '?' : '') . ';');
-        return new Val('{ ' . $stmt . ' true }', RustType::bool());
+        return new Val('{ ' . $pre . $stmt . ' true }', RustType::bool());
     }
 
     private function f_sort(BodyEmitter $b, Expr\FuncCall $call, array $args): Val

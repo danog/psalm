@@ -141,7 +141,7 @@ trait LValueTrait
                     fn() => $path . '::st_' . $rn . '()',
                     fn(string $v) => $path . '::st_' . $rn . '_set(' . $v . ');',
                     fn() => '(*__sp)',
-                    fn(string $stmt) => $path . '::st_' . $rn . '_with(|__sp| { ' . $stmt . ' });',
+                    fn(string $stmt) => $path . '::st_' . $rn . '_with(|__sp| -> Result<(), Throw> { ' . $stmt . ' Ok(()) })?;',
                 );
             }
             $this->warn('unknown static property', $e);
@@ -206,7 +206,7 @@ trait LValueTrait
                 $inner,
                 fn() => $p->read() . '.unwrap_or_default()',
                 fn(string $v) => $p->write('Some(' . $v . ')'),
-                $p->hasMut() ? fn() => '(*' . $p->mut() . '.get_or_insert_with(Default::default))' : null,
+                $p->hasMut() ? fn() => '(*' . $p->mut() . ($inner->hasDefault() ? '.get_or_insert_with(Default::default))' : '.as_mut().expect("null container"))') : null,
                 fn(string $s) => $p->wrap($s),
             );
             $pt = $inner;
@@ -336,6 +336,12 @@ trait LValueTrait
     // ------------------------------------------------------------------ reads
 
     private function dimFetch(Expr\ArrayDimFetch $e): Val
+    {
+        $__v = $this->dimFetchInner($e);
+        return $__v;
+    }
+
+    private function dimFetchInner(Expr\ArrayDimFetch $e): Val
     {
         if ($e->dim === null) {
             $this->warn('read of $a[]', $e);

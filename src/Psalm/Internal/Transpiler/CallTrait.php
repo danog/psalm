@@ -44,14 +44,24 @@ trait CallTrait
      */
     public function finishCall(string $call): string
     {
-        $pre = array_pop($this->pending_pre) ?? '';
-        return $pre === '' ? $call : '{ ' . $pre . ' ' . $call . ' }';
+        [$pre, $post] = array_pop($this->pending_pre) ?? ['', ''];
+        if ($pre === '' && $post === '') {
+            return $call;
+        }
+        if ($post === '') {
+            return '{ ' . $pre . ' ' . $call . ' }';
+        }
+        return '{ ' . $pre . ' let __cr = ' . $call . '; ' . $post . ' __cr }';
     }
+
+    /** @var list<array{string, string}> per-args() frames of (pre, post) code produced by byRefArg() */
+    private array $byref_frames = [];
 
     public function args(array $args, FunctionLikeStorage $storage, array $param_types, ?ClassModel $callee_class, string $callee_name): array
     {
+        $this->byref_frames[] = ['', ''];
         $out = $this->argsInner($args, $storage, $param_types, $callee_class, $callee_name);
-        $pre = '';
+        [$pre, $post] = array_pop($this->byref_frames);
         $has_byref = false;
         foreach (array_values($storage->params) as $i => $p) {
             if ($p->by_ref && isset($out[$i])) {
@@ -68,7 +78,7 @@ trait CallTrait
                 $out[$i] = $tmp;
             }
         }
-        $this->pending_pre[] = $pre;
+        $this->pending_pre[] = [$pre, $post];
         return $out;
     }
 
@@ -123,7 +133,7 @@ trait CallTrait
                 continue;
             }
             if ($arg === null) {
-                $out[] = $this->defaultArg($param, $t, $callee_class, $callee_name, $i);
+                $out[] = ($param->by_ref ? '&mut ' : '') . $this->defaultArg($param, $t, $callee_class, $callee_name, $i);
                 continue;
             }
             if ($param->by_ref) {
@@ -138,12 +148,24 @@ trait CallTrait
     /** Pass an lvalue as `&mut T`. */
     private function byRefArg(Expr $e, RustType $t): string
     {
+        if (!($e instanceof Expr\Variable || $e instanceof Expr\PropertyFetch || $e instanceof Expr\StaticPropertyFetch || $e instanceof Expr\ArrayDimFetch)) {
+            // not an lvalue: the callee writes into a temporary
+            return '&mut ' . $this->exprTo($e, $t);
+        }
         $place = $this->place($e);
         if ($place->hasMut() && $place->type->toRust() === $t->toRust()) {
             return '&mut ' . $place->mut();
         }
-        $this->warn('by-ref argument needing conversion (' . $place->type->toRust() . ' vs ' . $t->toRust() . ')', $e);
-        return '&mut ' . $this->casts->defaultOf($t);
+        // a differently typed (or borrow-less) place: pass a converted temporary and write it back after the call
+        $tmp = $this->tmp('__ref');
+        $frame = count($this->byref_frames) - 1;
+        if ($frame < 0) {
+            $this->byref_frames[] = ['', ''];
+            $frame = 0;
+        }
+        $this->byref_frames[$frame][0] .= 'let mut ' . $tmp . ': ' . $t->toRust() . ' = ' . $this->casts->convert($place->read(), $place->type, $t) . '; ';
+        $this->byref_frames[$frame][1] .= $place->write($this->casts->convert($tmp, $t, $place->type)) . ' ';
+        return '&mut ' . $tmp;
     }
 
     /** The default value expression of a parameter, evaluated in the callee's scope. */

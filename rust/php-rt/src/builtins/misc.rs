@@ -73,8 +73,8 @@ pub fn trigger_error(msg: &Str, level: i64) -> Result<bool, RtError> {
     crate::output::eprint(b"\n");
     Ok(true)
 }
-pub fn error_get_last() -> Option<Map<ArrayKey, Mixed>> {
-    LAST_ERROR.with(|e| e.borrow().clone())
+pub fn error_get_last() -> Option<Mixed> {
+    LAST_ERROR.with(|e| e.borrow().clone().map(Mixed::Arr))
 }
 pub fn gc_collect_cycles() -> i64 {
     0
@@ -188,7 +188,7 @@ pub fn get_defined_constants(_cat: bool) -> Map<ArrayKey, Mixed> {
 pub fn get_defined_functions() -> Map<ArrayKey, Mixed> {
     Map::new()
 }
-pub fn opcache_get_status() -> Option<Map<ArrayKey, Mixed>> {
+pub fn opcache_get_status() -> Option<Mixed> {
     None
 }
 pub fn get_cfg_var(_n: &Str) -> Option<Str> {
