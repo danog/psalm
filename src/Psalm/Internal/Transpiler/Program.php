@@ -398,6 +398,18 @@ final class Program
         }
         $record = $node !== null ? $this->transpiler->getFunctionRecord($node, $body_owner->fqcn) : null;
         $method = new MethodModel($storage->cased_name ?? $lc_name, $body_owner, $storage, $node, $record);
+        if ($storage->is_static && $node !== null && $node->stmts !== null) {
+            $method->uses_lsb = (new \PhpParser\NodeFinder())->findFirst($node->stmts, static function (\PhpParser\Node $n): bool {
+                $class = null;
+                if ($n instanceof \PhpParser\Node\Expr\New_ || $n instanceof \PhpParser\Node\Expr\StaticCall
+                    || $n instanceof \PhpParser\Node\Expr\ClassConstFetch || $n instanceof \PhpParser\Node\Expr\StaticPropertyFetch
+                    || $n instanceof \PhpParser\Node\Expr\Instanceof_
+                ) {
+                    $class = $n->class;
+                }
+                return $class instanceof \PhpParser\Node\Name && strtolower($class->toString()) === 'static';
+            }) !== null;
+        }
         $this->method_cache[$key] = $method;
         $saved = $this->types->current_class;
         $this->types->current_class = $body_owner->fqcn;

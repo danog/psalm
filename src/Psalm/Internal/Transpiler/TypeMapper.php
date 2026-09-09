@@ -448,7 +448,6 @@ final class TypeMapper
         foreach ($props as $k => $v) {
             $fields[(string) $k] = [$this->map($v), $v->possibly_undefined];
         }
-        ksort($fields);
         $shape = RustType::shape($fields);
         $this->shapes[$shape->mangle()] = $shape;
         return $shape;

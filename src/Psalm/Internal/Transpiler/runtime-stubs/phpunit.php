@@ -187,7 +187,7 @@ abstract class Assert
             return "'" . $value . "'";
         }
         if (is_object($value)) {
-            return get_class($value) . ' Object';
+            return get_class($value) . ' Object ' . var_export(get_object_vars($value), true);
         }
         return var_export($value, true);
     }

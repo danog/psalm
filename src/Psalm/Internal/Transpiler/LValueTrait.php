@@ -501,6 +501,9 @@ trait LValueTrait
         if ($e->class instanceof Name) {
             $fqcn = $this->resolveClassName($e->class);
             if ($name === 'class') {
+                if (strtolower($e->class->toString()) === 'static' && $this->this_type !== null && $this->static_class === null) {
+                    return new Val('Str::from_str(' . $this->this_expr . '.class_name())', RustType::str());
+                }
                 return new Val(Names::strLit((string) $fqcn), RustType::str());
             }
             $cls = $fqcn !== null ? $this->program->getClass($fqcn) : null;
@@ -610,12 +613,15 @@ trait LValueTrait
     private function destructure(Expr\List_|Expr\Array_ $target, Val $value): string
     {
         $vt = $value->type;
-        if ($vt->kind === RustType::OPTION) {
-            $value = new Val($value->code . '.unwrap()', $vt->inner());
-            $vt = $vt->inner();
-        }
         $tmp = $this->tmp('__d');
-        $code = 'let ' . $tmp . ' = ' . $value->code . '; ';
+        $optional = false;
+        if ($vt->kind === RustType::OPTION) {
+            $optional = true;
+            $vt = $vt->inner();
+            $code = 'if let Some(' . $tmp . ') = ' . $value->code . ' { ';
+        } else {
+            $code = 'let ' . $tmp . ' = ' . $value->code . '; ';
+        }
         $i = 0;
         foreach ($target->items as $item) {
             if ($item === null) {
@@ -649,7 +655,7 @@ trait LValueTrait
             }
             $code .= $this->assignTo($item->value, $elem) . ' ';
         }
-        return $code;
+        return $optional ? $code . '}' : $code;
     }
 
     private function assignOpExpr(Expr\AssignOp $e): Val
@@ -679,7 +685,9 @@ trait LValueTrait
         if ($e instanceof Expr\AssignOp\Concat) {
             $rhs = $this->exprTo($e->expr, RustType::str());
             if ($t->kind === RustType::STR && $place->hasMut()) {
-                return $place->wrap('append(&mut ' . $place->mut() . ', ' . $rhs . ');');
+                // the right side may read the same object: evaluate it before borrowing the place
+                $tmp = $this->tmp();
+                return '{ let ' . $tmp . ' = ' . $rhs . '; ' . $place->wrap('append(&mut ' . $place->mut() . ', ' . $tmp . ');') . ' }';
             }
             if ($t->kind === RustType::OPTION && $t->inner()->kind === RustType::STR) {
                 $tmp = $this->tmp();

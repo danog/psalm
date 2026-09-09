@@ -1,0 +1,5 @@
+    tests::PhpParser_TokenTest__testToString
+
+test result: FAILED. 21 passed; 294 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+error: test failed, to rerun pass `-p php_parser --lib`

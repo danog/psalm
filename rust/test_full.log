@@ -1,0 +1,1407 @@
+   Compiling php_parser v0.1.0 (/home/daniil/repos/psalm-port/rust/generated/php_parser)
+warning: unused attribute `allow`
+    --> generated/php_parser/src/g/mod.rs:2927:5
+     |
+2927 |     #[allow(unreachable_code)] unreachable!("missing return")
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
+    --> generated/php_parser/src/g/mod.rs:2927:32
+     |
+2927 |     #[allow(unreachable_code)] unreachable!("missing return")
+     |                                ^^^^^^^^^^^
+     = note: `#[warn(unused_attributes)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused attribute `allow`
+    --> generated/php_parser/src/g/mod.rs:2954:5
+     |
+2954 |     #[allow(unreachable_code)] unreachable!("missing return")
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
+    --> generated/php_parser/src/g/mod.rs:2954:32
+     |
+2954 |     #[allow(unreachable_code)] unreachable!("missing return")
+     |                                ^^^^^^^^^^^
+
+warning: unused attribute `allow`
+    --> generated/php_parser/src/php_parser/builder/mod.rs:1450:5
+     |
+1450 |     #[allow(unreachable_code)] unreachable!("missing return")
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
+    --> generated/php_parser/src/php_parser/builder/mod.rs:1450:32
+     |
+1450 |     #[allow(unreachable_code)] unreachable!("missing return")
+     |                                ^^^^^^^^^^^
+
+warning: unused attribute `allow`
+   --> generated/php_parser/src/php_parser/node/scalar/mod.rs:389:5
+    |
+389 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
+   --> generated/php_parser/src/php_parser/node/scalar/mod.rs:389:32
+    |
+389 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |                                ^^^^^^^^^^^
+
+warning: unused attribute `allow`
+   --> generated/php_parser/src/php_parser/node/scalar/mod.rs:416:5
+    |
+416 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
+   --> generated/php_parser/src/php_parser/node/scalar/mod.rs:416:32
+    |
+416 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |                                ^^^^^^^^^^^
+
+warning: unused attribute `allow`
+   --> generated/php_parser/src/php_parser/node_visitor/mod.rs:781:5
+    |
+781 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
+   --> generated/php_parser/src/php_parser/node_visitor/mod.rs:781:32
+    |
+781 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |                                ^^^^^^^^^^^
+
+warning: unused attribute `allow`
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:598:5
+    |
+598 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:598:32
+    |
+598 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |                                ^^^^^^^^^^^
+
+warning: unused attribute `allow`
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:609:5
+    |
+609 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:609:32
+    |
+609 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |                                ^^^^^^^^^^^
+
+warning: unused attribute `allow`
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:619:5
+    |
+619 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:619:32
+    |
+619 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |                                ^^^^^^^^^^^
+
+warning: unused attribute `allow`
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:721:5
+    |
+721 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:721:32
+    |
+721 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |                                ^^^^^^^^^^^
+
+warning: unused attribute `allow`
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:729:5
+    |
+729 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:729:32
+    |
+729 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |                                ^^^^^^^^^^^
+
+warning: unused attribute `allow`
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:890:5
+    |
+890 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:890:32
+    |
+890 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |                                ^^^^^^^^^^^
+
+warning: unused attribute `allow`
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:954:5
+    |
+954 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:954:32
+    |
+954 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |                                ^^^^^^^^^^^
+
+warning: unused attribute `allow`
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:962:5
+    |
+962 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:962:32
+    |
+962 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |                                ^^^^^^^^^^^
+
+warning: unused attribute `allow`
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:970:5
+    |
+970 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:970:32
+    |
+970 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |                                ^^^^^^^^^^^
+
+warning: unused attribute `allow`
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:978:5
+    |
+978 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:978:32
+    |
+978 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |                                ^^^^^^^^^^^
+
+warning: unused attribute `allow`
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:996:5
+    |
+996 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
+   --> generated/php_parser/src/php_parser/pretty_printer/mod.rs:996:32
+    |
+996 |     #[allow(unreachable_code)] unreachable!("missing return")
+    |                                ^^^^^^^^^^^
+
+warning: unused attribute `allow`
+    --> generated/php_parser/src/php_parser/mod.rs:2402:5
+     |
+2402 |     #[allow(unreachable_code)] unreachable!("missing return")
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
+    --> generated/php_parser/src/php_parser/mod.rs:2402:32
+     |
+2402 |     #[allow(unreachable_code)] unreachable!("missing return")
+     |                                ^^^^^^^^^^^
+
+warning: unused attribute `allow`
+    --> generated/php_parser/src/php_parser/mod.rs:3481:5
+     |
+3481 |     #[allow(unreachable_code)] unreachable!("missing return")
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
+    --> generated/php_parser/src/php_parser/mod.rs:3481:32
+     |
+3481 |     #[allow(unreachable_code)] unreachable!("missing return")
+     |                                ^^^^^^^^^^^
+
+warning: unused attribute `allow`
+    --> generated/php_parser/src/php_parser/mod.rs:3624:5
+     |
+3624 |     #[allow(unreachable_code)] unreachable!("missing return")
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
+    --> generated/php_parser/src/php_parser/mod.rs:3624:32
+     |
+3624 |     #[allow(unreachable_code)] unreachable!("missing return")
+     |                                ^^^^^^^^^^^
+
+warning: unused attribute `allow`
+    --> generated/php_parser/src/php_parser/mod.rs:3732:5
+     |
+3732 |     #[allow(unreachable_code)] unreachable!("missing return")
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `unreachable`
+    --> generated/php_parser/src/php_parser/mod.rs:3732:32
+     |
+3732 |     #[allow(unreachable_code)] unreachable!("missing return")
+     |                                ^^^^^^^^^^^
+
+warning: `php_parser` (lib test) generated 21 warnings (run `cargo fix --lib -p php_parser --tests` to apply 21 suggestions)
+warning: `php_parser` (lib) generated 21 warnings (21 duplicates)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2m 46s
+     Running unittests src/lib.rs (target/debug/deps/php_parser-6f06c608829caa19)
+
+running 315 tests
+test tests::PhpParser_BuilderFactoryTest__testArgs ... ok
+test tests::PhpParser_BuilderFactoryTest__testConcat ... ok
+test tests::PhpParser_BuilderFactoryTest__testAttribute ... ok
+test tests::PhpParser_BuilderFactoryTest__testConstFetches ... ok
+test tests::PhpParser_BuilderFactoryTest__testCalls ... ok
+test tests::PhpParser_BuilderFactoryTest__testConcatOneError ... ok
+test tests::PhpParser_BuilderFactoryTest__testFactoryClassConst ... ok
+test tests::PhpParser_BuilderFactoryTest__testFactory ... ok
+test tests::PhpParser_BuilderFactoryTest__testIntegration ... FAILED
+test tests::PhpParser_BuilderFactoryTest__testConcatInvalidExpr ... FAILED
+test tests::PhpParser_BuilderFactoryTest__testInvalidIdentifier ... FAILED
+test tests::PhpParser_BuilderFactoryTest__testInvalidNameOrExpr ... FAILED
+test tests::PhpParser_BuilderFactoryTest__testPropertyFetch ... ok
+test tests::PhpParser_BuilderFactoryTest__testInvalidVar ... FAILED
+test tests::PhpParser_BuilderFactoryTest__testInvalidIdentifierOrExpr ... FAILED
+test tests::PhpParser_BuilderFactoryTest__testNamedArgs ... ok
+test tests::PhpParser_BuilderHelpersTest__testNormalizeDocComment ... FAILED
+test tests::PhpParser_BuilderHelpersTest__testNormalizeAttribute ... FAILED
+test tests::PhpParser_BuilderFactoryTest__testVal ... ok
+test tests::PhpParser_BuilderFactoryTest__testVar ... ok
+test tests::PhpParser_BuilderHelpersTest__testNormalizeNameInvalidType ... FAILED
+test tests::PhpParser_BuilderHelpersTest__testNormalizeIdentifierOrExpr ... FAILED
+test tests::PhpParser_BuilderHelpersTest__testNormalizeIdentifier ... FAILED
+test tests::PhpParser_BuilderHelpersTest__testNormalizeNameOrExpr ... ok
+test tests::PhpParser_BuilderHelpersTest__testNormalizeNameOrExpInvalidType ... FAILED
+test tests::PhpParser_BuilderHelpersTest__testNormalizeName ... ok
+test tests::PhpParser_BuilderHelpersTest__testNormalizeStmtInvalidType ... FAILED
+test tests::PhpParser_BuilderHelpersTest__testNormalizeStmt ... ok
+test tests::PhpParser_BuilderHelpersTest__testNormalizeNode ... FAILED
+test tests::PhpParser_BuilderHelpersTest__testNormalizeType ... FAILED
+test tests::PhpParser_BuilderHelpersTest__testNormalizeTypeNullableMixed ... ok
+test tests::PhpParser_BuilderHelpersTest__testNormalizeTypeNullableNever ... ok
+test tests::PhpParser_BuilderHelpersTest__testNormalizeTypeNullableVoid ... ok
+test tests::PhpParser_BuilderHelpersTest__testNormalizeValueEnum ... ok
+test tests::PhpParser_Builder_ClassConstTest__testAddAttribute ... ok
+test tests::PhpParser_BuilderHelpersTest__testNormalizeValue ... FAILED
+test tests::PhpParser_Builder_ClassConstTest__testAddConst ... ok
+test tests::PhpParser_Builder_ClassConstTest__testType ... ok
+test tests::PhpParser_Builder_ClassConstTest__testModifiers ... ok
+test tests::PhpParser_Builder_ClassTest__testAbstract ... ok
+test tests::PhpParser_Builder_ClassConstTest__testDocComment ... ok
+test tests::PhpParser_Builder_ClassConstTest__testValues ... ok
+test tests::PhpParser_Builder_ClassTest__testEmptyName ... ok
+test tests::PhpParser_Builder_ClassTest__testAddAttribute ... ok
+test tests::PhpParser_Builder_ClassTest__testDocComment ... ok
+test tests::PhpParser_Builder_ClassTest__testInvalidName ... FAILED
+test tests::PhpParser_Builder_ClassTest__testExtendsImplements ... ok
+test tests::PhpParser_Builder_ClassTest__testFinal ... ok
+test tests::PhpParser_Builder_ClassTest__testInvalidDocComment ... FAILED
+test tests::PhpParser_Builder_ClassTest__testInvalidStmtError ... ok
+test tests::PhpParser_Builder_ClassTest__testReadonly ... ok
+test tests::PhpParser_Builder_ClassTest__testStatementOrder ... ok
+test tests::PhpParser_Builder_EnumCaseTest__testDocComment ... ok
+test tests::PhpParser_Builder_EnumCaseTest__testAddAttribute ... ok
+test tests::PhpParser_Builder_EnumCaseTest__testValues ... ok
+test tests::PhpParser_Builder_EnumTest__testAddAttribute ... ok
+test tests::PhpParser_Builder_EnumTest__testDocComment ... ok
+test tests::PhpParser_Builder_EnumTest__testEmptyName ... ok
+test tests::PhpParser_Builder_EnumTest__testImplements ... ok
+test tests::PhpParser_Builder_EnumTest__testInvalidDocComment ... FAILED
+test tests::PhpParser_Builder_EnumTest__testInvalidName ... FAILED
+test tests::PhpParser_Builder_EnumTest__testSetScalarType ... ok
+test tests::PhpParser_Builder_EnumTest__testInvalidStmtError ... FAILED
+test tests::PhpParser_Builder_FunctionTest__testAddNonStmt ... ok
+test tests::PhpParser_Builder_FunctionTest__testAddAttribute ... ok
+test tests::PhpParser_Builder_EnumTest__testStatementOrder ... ok
+test tests::PhpParser_Builder_FunctionTest__testDocComment ... ok
+test tests::PhpParser_Builder_FunctionTest__testInvalidNullableVoidType ... ok
+test tests::PhpParser_Builder_FunctionTest__testInvalidParamError ... FAILED
+test tests::PhpParser_Builder_FunctionTest__testReturnByRef ... ok
+test tests::PhpParser_Builder_FunctionTest__testReturnType ... ok
+test tests::PhpParser_Builder_InterfaceTest__testAddAttribute ... ok
+test tests::PhpParser_Builder_FunctionTest__testStmts ... FAILED
+test tests::PhpParser_Builder_FunctionTest__testParams ... ok
+test tests::PhpParser_Builder_InterfaceTest__testAddConst ... ok
+test tests::PhpParser_Builder_InterfaceTest__testAddMethod ... ok
+test tests::PhpParser_Builder_InterfaceTest__testDocComment ... ok
+test tests::PhpParser_Builder_InterfaceTest__testEmpty ... ok
+test tests::PhpParser_Builder_InterfaceTest__testExtending ... ok
+test tests::PhpParser_Builder_InterfaceTest__testInvalidStmtError ... FAILED
+test tests::PhpParser_Builder_InterfaceTest__testOrder ... ok
+test tests::PhpParser_Builder_MethodTest__testAddStmtToAbstractMethodError ... ok
+test tests::PhpParser_Builder_MethodTest__testInvalidParamError ... FAILED
+test tests::PhpParser_Builder_MethodTest__testDocComment ... ok
+test tests::PhpParser_Builder_MethodTest__testAddAttribute ... ok
+test tests::PhpParser_Builder_InterfaceTest__testFullFunctional ... FAILED
+test tests::PhpParser_Builder_MethodTest__testMakeMethodWithStmtsAbstractError ... ok
+test tests::PhpParser_Builder_MethodTest__testReturnByRef ... ok
+test tests::PhpParser_Builder_MethodTest__testModifiers ... FAILED
+test tests::PhpParser_Builder_MethodTest__testParams ... ok
+test tests::PhpParser_Builder_ParamTest__testAddAttribute ... ok
+test tests::PhpParser_Builder_MethodTest__testStmts ... FAILED
+test tests::PhpParser_Builder_ParamTest__testByRef ... ok
+test tests::PhpParser_Builder_MethodTest__testReturnType ... ok
+test tests::PhpParser_Builder_ParamTest__testInvalidTypeError ... FAILED
+test tests::PhpParser_Builder_ParamTest__testDefaultValues ... ok
+test tests::PhpParser_Builder_NamespaceTest__testCreation ... ok
+test tests::PhpParser_Builder_ParamTest__testMakePrivate ... ok
+test tests::PhpParser_Builder_ParamTest__testMakeProtected ... ok
+test tests::PhpParser_Builder_ParamTest__testMakePublic ... ok
+test tests::PhpParser_Builder_ParamTest__testMakeReadonly ... ok
+test tests::PhpParser_Builder_PropertyTest__testAbstractWithoutHook ... ok
+test tests::PhpParser_Builder_ParamTest__testTypes ... ok
+test tests::PhpParser_Builder_ParamTest__testVoidTypeError ... FAILED
+test tests::PhpParser_Builder_ParamTest__testVariadic ... ok
+test tests::PhpParser_Builder_PropertyTest__testAddHook ... ok
+test tests::PhpParser_Builder_PropertyTest__testDocComment ... ok
+test tests::PhpParser_Builder_PropertyTest__testDefaultValues ... ok
+test tests::PhpParser_Builder_PropertyTest__testAddAttribute ... ok
+test tests::PhpParser_Builder_PropertyTest__testModifiers ... ok
+test tests::PhpParser_Builder_TraitTest__testGetMethods ... ok
+test tests::PhpParser_Builder_TraitTest__testAddAttribute ... ok
+test tests::PhpParser_Builder_TraitTest__testGetProperties ... ok
+test tests::PhpParser_Builder_TraitTest__testStmtAddition ... ok
+test tests::PhpParser_Builder_TraitTest__testInvalidStmtError ... ok
+test tests::PhpParser_Builder_TraitUseAdaptationTest__testInsteadofOnNotPrecedence ... ok
+test tests::PhpParser_Builder_TraitUseAdaptationTest__testAsOnNotAlias ... ok
+test tests::PhpParser_Builder_TraitUseAdaptationTest__testInsteadof ... ok
+test tests::PhpParser_Builder_TraitUseAdaptationTest__testInsteadofWithoutTrait ... ok
+test tests::PhpParser_Builder_TraitUseAdaptationTest__testMultipleMake ... ok
+test tests::PhpParser_Builder_TraitUseAdaptationTest__testMakeOnNotAlias ... ok
+test tests::PhpParser_Builder_TraitUseAdaptationTest__testAsMake ... ok
+test tests::PhpParser_Builder_TraitUseAdaptationTest__testUndefinedType ... ok
+test tests::PhpParser_Builder_TraitUseTest__testAnd ... ok
+test tests::PhpParser_Builder_TraitUseTest__testInvalidAdaptationNode ... FAILED
+test tests::PhpParser_CommentTest__testGetters ... ok
+test tests::PhpParser_Builder_TraitUseTest__testWith ... ok
+test tests::PhpParser_CompatibilityTest__testAliases1 ... ok
+test tests::PhpParser_Builder_UseTest__testCreation ... ok
+test tests::PhpParser_CompatibilityTest__testAliases2 ... ok
+test tests::PhpParser_ConstExprEvaluatorTest__testEvaluateFails ... FAILED
+test tests::PhpParser_CommentTest__testReformatting ... ok
+test tests::PhpParser_ConstExprEvaluatorTest__testEvaluateFallbackPipeOperator ... FAILED
+test tests::PhpParser_ConstExprEvaluatorTest__testEvaluateFallbackMagicConst ... ok
+test tests::PhpParser_CodeParsingTest__testParse ... ok
+test tests::PhpParser_ConstExprEvaluatorTest__testEvaluateSilently ... FAILED
+test tests::PhpParser_ErrorHandler_CollectingTest__testHandleError ... ok
+test tests::PhpParser_ErrorHandler_ThrowingTest__testHandleError ... ok
+test tests::PhpParser_ErrorTest__testConstruct ... ok
+test tests::PhpParser_ErrorTest__testNoColumnInfo ... ok
+test tests::PhpParser_ErrorTest__testInvalidPosInfo ... ok
+test tests::PhpParser_ErrorTest__testColumnInfo ... ok
+test tests::PhpParser_ErrorTest__testSetMessageAndLine ... ok
+test tests::PhpParser_ConstExprEvaluatorTest__testEvaluate ... FAILED
+test tests::PhpParser_ErrorTest__testUnknownLine ... ok
+test tests::PhpParser_Internal_DifferTest__testNonContiguousIndices ... ok
+test tests::PhpParser_Internal_DifferTest__testDiff ... ok
+test tests::PhpParser_Internal_DifferTest__testDiffWithReplacements ... ok
+test tests::PhpParser_JsonDecoderTest__testDecodingError ... FAILED
+test tests::PhpParser_LexerTest__testDefaultErrorHandler ... FAILED
+test tests::PhpParser_LexerTest__testError ... FAILED
+test tests::PhpParser_LexerTest__testGetTokens ... FAILED
+test tests::PhpParser_LexerTest__testLex ... FAILED
+test tests::PhpParser_Lexer_EmulativeTest__testError ... FAILED
+test tests::PhpParser_Lexer_EmulativeTest__testDefaultErrorHandler ... FAILED
+test tests::PhpParser_Lexer_EmulativeTest__testGetTokens ... FAILED
+test tests::PhpParser_Lexer_EmulativeTest__testLex ... FAILED
+test tests::PhpParser_Lexer_EmulativeTest__testLeaveStuffAloneInStrings ... FAILED
+test tests::PhpParser_Lexer_EmulativeTest__testErrorAfterEmulation ... FAILED
+test tests::PhpParser_Lexer_EmulativeTest__testLexNewFeatures ... FAILED
+test tests::PhpParser_JsonDecoderTest__testRoundTrip ... FAILED
+test tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterNullsafeObjectOperator ... FAILED
+test tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterObjectOperator ... FAILED
+test tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterObjectOperatorWithSpaces ... FAILED
+test tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterObjectOperatorWithComment ... FAILED
+test tests::PhpParser_ModifiersTest__testToString ... ok
+test tests::PhpParser_Lexer_EmulativeTest__testReplaceKeywords ... FAILED
+test tests::PhpParser_ModifiersTest__testToStringInvalid ... ok
+test tests::PhpParser_Lexer_EmulativeTest__testReplaceKeywordsUppercase ... FAILED
+test tests::PhpParser_Lexer_EmulativeTest__testTargetVersion ... FAILED
+test tests::PhpParser_NameContextTest__testGetPossibleNames ... FAILED
+test tests::PhpParser_NodeAbstractTest__testAttributes ... FAILED
+test tests::PhpParser_NodeAbstractTest__testConstruct ... ok
+test tests::PhpParser_NodeAbstractTest__testChange ... FAILED
+test tests::PhpParser_NodeAbstractTest__testGetDocComment ... ok
+test tests::PhpParser_NodeDumperTest__testDump ... ok
+test tests::PhpParser_NodeAbstractTest__testSetDocComment ... ok
+test tests::PhpParser_NodeAbstractTest__testIteration ... ok
+test tests::PhpParser_NodeDumperTest__testError ... FAILED
+test tests::PhpParser_NodeAbstractTest__testJsonSerialization ... FAILED
+test tests::PhpParser_NodeFinderTest__testFindFirstInstanceOf ... ok
+test tests::PhpParser_NodeFinderTest__testFind ... ok
+test tests::PhpParser_NodeFinderTest__testFindFirst ... ok
+test tests::PhpParser_NodeDumperTest__testDumpWithPositions ... FAILED
+test tests::PhpParser_NodeFinderTest__testFindInstanceOf ... ok
+test tests::PhpParser_NodeTraverserTest__testInvalidDeepArray ... FAILED
+test tests::PhpParser_NodeTraverserTest__testMerge ... ok
+test tests::PhpParser_NodeTraverserTest__testInvalidReturn ... FAILED
+test tests::PhpParser_NodeTraverserTest__testDontTraverseCurrentAndChildren ... ok
+test tests::PhpParser_NodeTraverserTest__testNoCloneNodes ... ok
+test tests::PhpParser_NodeTraverserTest__testNonModifying ... ok
+test tests::PhpParser_NodeTraverserTest__testModifying ... ok
+test tests::PhpParser_NodeTraverserTest__testRemoveFromEnter ... ok
+test tests::PhpParser_NodeTraverserTest__testDontTraverseChildren ... ok
+test tests::PhpParser_NodeTraverserTest__testRemoveFromLeave ... ok
+test tests::PhpParser_NodeTraverserTest__testReturnArrayFromEnter ... ok
+test tests::PhpParser_NodeTraverserTest__testRemovingVisitor ... FAILED
+test tests::PhpParser_NodeVisitor_FindingVisitorTest__testFindAll ... ok
+test tests::PhpParser_NodeVisitor_FirstFindingVisitorTest__testFindFirstVariable ... ok
+test tests::PhpParser_NodeVisitor_FindingVisitorTest__testFindVariables ... ok
+test tests::PhpParser_NodeTraverserTest__testReplaceWithNull ... ok
+test tests::PhpParser_NodeVisitor_FirstFindingVisitorTest__testFindNone ... ok
+test tests::PhpParser_NodeVisitor_NameResolverTest__testAddDeclarationNamespacedName ... FAILED
+test tests::PhpParser_NodeVisitor_NameResolverTest__testAddOriginalNames ... FAILED
+test tests::PhpParser_NodeTraverserTest__testStopTraversal ... ok
+test tests::PhpParser_NodeVisitor_NameResolverTest__testAttributeOnlyMode ... FAILED
+test tests::PhpParser_NodeVisitor_NameResolverTest__testAddRuntimeResolvedNamespacedName ... FAILED
+test tests::PhpParser_NodeVisitor_NameResolverTest__testNoResolveSpecialName ... FAILED
+test tests::PhpParser_NodeVisitor_NameResolverTest__testError ... ok
+test tests::PhpParser_NodeVisitor_NameResolverTest__testClassNameIsCaseInsensitive ... FAILED
+test tests::PhpParser_NodeVisitor_NameResolverTest__testResolveNames ... FAILED
+test tests::PhpParser_NodeVisitor_NameResolverTest__testResolveLocations ... FAILED
+test tests::PhpParser_NodeVisitor_NodeConnectingVisitorTest__testConnectsNodeToItsParentNodeAndItsSiblingNodes ... FAILED
+test tests::PhpParser_NodeVisitor_NameResolverTest__testSpecialClassNamesAreCaseInsensitive ... FAILED
+test tests::PhpParser_NodeVisitor_NodeConnectingVisitorTest__testWeakReferences ... FAILED
+test tests::PhpParser_Node_Expr_CallableLikeTest__testIsFirstClassCallable ... ok
+test tests::PhpParser_Node_IdentifierTest__testConstructorThrows ... ok
+test tests::PhpParser_Node_IdentifierTest__testIsSpecialClassName ... ok
+test tests::PhpParser_Node_Expr_CallableLikeTest__testGetArg ... ok
+test tests::PhpParser_Node_IdentifierTest__testToString ... ok
+test tests::PhpParser_NodeVisitor_ParentConnectingVisitorTest__testConnectsChildNodeToParentNode ... FAILED
+test tests::PhpParser_NodeVisitor_ParentConnectingVisitorTest__testWeakReferences ... FAILED
+test tests::PhpParser_Node_NameTest__testConcat ... ok
+test tests::PhpParser_Node_NameTest__testConstruct ... ok
+test tests::PhpParser_Node_NameTest__testGet ... ok
+test tests::PhpParser_Node_NameTest__testInvalidArg ... FAILED
+test tests::PhpParser_Node_NameTest__testNameTypes ... FAILED
+test tests::PhpParser_Node_NameTest__testSlice ... ok
+test tests::PhpParser_Node_NameTest__testInvalidEmptyArray ... ok
+test tests::PhpParser_Node_NameTest__testInvalidEmptyString ... ok
+test tests::PhpParser_Node_NameTest__testIsSpecialClassName ... ok
+test tests::PhpParser_Node_NameTest__testSliceOffsetTooLarge ... ok
+test tests::PhpParser_Node_NameTest__testSliceOffsetTooSmall ... ok
+test tests::PhpParser_Node_NameTest__testSliceLengthTooLargeWithOffset ... ok
+test tests::PhpParser_Node_NameTest__testSliceLengthTooLarge ... ok
+test tests::PhpParser_Node_NameTest__testSliceLengthTooSmall ... ok
+test tests::PhpParser_Node_ParamTest__testModifiers ... ok
+test tests::PhpParser_Node_ParamTest__testNonPromotedPropertyIsNotPublic ... ok
+test tests::PhpParser_Node_NameTest__testToString ... ok
+test tests::PhpParser_Node_ParamTest__testNoModifiers ... ok
+test tests::PhpParser_Node_ParamTest__testSetVisibility ... ok
+test tests::PhpParser_Node_PropertyHookTest__testGetStmts ... ok
+test tests::PhpParser_Node_ParamTest__testPromotedPropertyWithoutVisibilityModifier ... ok
+test tests::PhpParser_Node_PropertyHookTest__testModifiers ... ok
+test tests::PhpParser_Node_PropertyHookTest__testGetStmtsSetHookWithoutPropertyName ... ok
+test tests::PhpParser_Node_PropertyHookTest__testGetStmtsUnknownHook ... ok
+test tests::PhpParser_Node_PropertyHookTest__testNoModifiers ... ok
+test tests::PhpParser_Node_Scalar_MagicConstTest__testGetName ... ok
+test tests::PhpParser_Node_PropertyHookTest__testGetStmtsSetHookFromParser ... FAILED
+test tests::PhpParser_Node_Scalar_StringTest__testCreate ... ok
+test tests::PhpParser_Node_Scalar_DNumberTest__testRawValue ... FAILED
+test tests::PhpParser_Node_Scalar_StringTest__testParseEscapeSequences ... ok
+test tests::PhpParser_Node_Scalar_NumberTest__testRawValue ... FAILED
+test tests::PhpParser_Node_Stmt_ClassConstTest__testModifiers ... ok
+test tests::PhpParser_Node_Stmt_ClassMethodTest__testImplicitPublic ... ok
+test tests::PhpParser_Node_Stmt_ClassMethodTest__testFunctionLike ... FAILED
+test tests::PhpParser_Node_Stmt_ClassConstTest__testNoModifiers ... ok
+test tests::PhpParser_Node_Stmt_ClassMethodTest__testNoModifiers ... ok
+test tests::PhpParser_Node_Stmt_ClassMethodTest__testModifiers ... FAILED
+test tests::PhpParser_Node_Scalar_StringTest__testRawValue ... FAILED
+test tests::PhpParser_Node_Stmt_ClassMethodTest__testMagic ... ok
+test tests::PhpParser_Node_Stmt_ClassTest__testGetConstants ... ok
+test tests::PhpParser_Node_Stmt_ClassTest__testGetMethod ... ok
+test tests::PhpParser_Node_Stmt_ClassTest__testGetMethods ... ok
+test tests::PhpParser_Node_Stmt_ClassTest__testGetProperty ... ok
+test tests::PhpParser_Node_Stmt_ClassTest__testIsAbstract ... FAILED
+test tests::PhpParser_Node_Stmt_ClassTest__testGetProperties ... ok
+test tests::PhpParser_Node_Stmt_ClassTest__testGetTraitUses ... FAILED
+test tests::PhpParser_Node_Stmt_ClassTest__testIsFinal ... FAILED
+test tests::PhpParser_Node_Stmt_InterfaceTest__testGetConstants ... ok
+test tests::PhpParser_Node_Stmt_PropertyTest__testIsAbstract ... ok
+test tests::PhpParser_Node_Stmt_InterfaceTest__testGetMethods ... ok
+test tests::PhpParser_Node_Stmt_PropertyTest__testModifiers ... ok
+test tests::PhpParser_Node_Stmt_PropertyTest__testIsFinal ... ok
+test tests::PhpParser_Node_Stmt_PropertyTest__testStaticImplicitlyPublic ... ok
+test tests::PhpParser_Node_Stmt_PropertyTest__testNoModifiers ... ok
+test tests::PhpParser_Node_Stmt_PropertyTest__testSetVisibility ... ok
+test tests::PhpParser_Parser_Php7Test__testGetTokens ... FAILED
+test tests::PhpParser_Parser_Php7Test__testExtraAttributes ... FAILED
+test tests::PhpParser_Parser_Php7Test__testAttributeAssignment ... FAILED
+test tests::PhpParser_Parser_Php7Test__testInvalidToken ... FAILED
+test tests::PhpParser_ParserFactoryTest__testCreate ... ok
+test tests::PhpParser_Parser_Php7Test__testListKindAttribute ... FAILED
+test tests::PhpParser_Parser_Php7Test__testParserThrowsSyntaxError ... FAILED
+test tests::PhpParser_Parser_Php7Test__testParserThrowsLexerError ... FAILED
+test tests::PhpParser_Parser_Php7Test__testParserThrowsSpecialError ... FAILED
+test tests::PhpParser_Parser_Php8Test__testAttributeAssignment ... FAILED
+test tests::PhpParser_Parser_Php8Test__testExtraAttributes ... FAILED
+test tests::PhpParser_Parser_Php8Test__testGetTokens ... FAILED
+test tests::PhpParser_Parser_Php8Test__testListKindAttribute ... FAILED
+test tests::PhpParser_Parser_Php8Test__testInvalidToken ... FAILED
+test tests::PhpParser_PhpVersionTest__testConstruction ... ok
+test tests::PhpParser_Parser_Php8Test__testParserThrowsLexerError ... FAILED
+test tests::PhpParser_PhpVersionTest__testInvalidVersion ... ok
+test tests::PhpParser_Parser_Php8Test__testParserThrowsSpecialError ... FAILED
+test tests::PhpParser_PhpVersionTest__testEquals ... ok
+test tests::PhpParser_Parser_Php8Test__testParserThrowsSyntaxError ... FAILED
+test tests::PhpParser_PrettyPrinterTest__testCommentBeforeInlineHTML ... ok
+test tests::PhpParser_PrettyPrinterTest__testFormatPreservingPrint ... ok
+test tests::PhpParser_PrettyPrinterTest__testArraySyntaxDefault ... ok
+test tests::PhpParser_PrettyPrinterTest__testInvalidIndent ... ok
+test tests::PhpParser_PrettyPrinterTest__testInvalidNewline ... ok
+test tests::PhpParser_PrettyPrinterTest__testPrettyPrintExpr ... ok
+test tests::PhpParser_PrettyPrinterTest__testPrettyPrint ... ok
+test tests::PhpParser_PrettyPrinterTest__testPrettyPrintFile ... ok
+test tests::PhpParser_PrettyPrinterTest__testPrettyPrintWithError ... ok
+test tests::PhpParser_PrettyPrinterTest__testPrettyPrintWithErrorInClassConstFetch ... ok
+test tests::PhpParser_PrettyPrinterTest__testKindAttributes ... ok
+test tests::PhpParser_TokenTest__testGetTokenName ... ok
+test tests::PhpParser_PrettyPrinterTest__testRoundTripPrint ... ok
+test tests::PhpParser_PrettyPrinterTest__testUnnaturalLiterals ... ok
+test tests::PhpParser_PrettyPrinterTest__testWindowsNewline ... ok
+test tests::PhpParser_TokenTest__testToString ... ok
+test tests::PhpParser_TokenTest__testIsIgnorable ... ok
+test tests::PhpParser_TokenTest__testIs ... ok
+
+failures:
+
+---- tests::PhpParser_BuilderFactoryTest__testIntegration stdout ----
+
+thread 'PhpParser\BuilderFactoryTest::testIntegration' (27569) panicked at generated/php_parser/src/generated.rs:482:493:
+cannot narrow Mixed into U_PhpParser_Builder_or_PhpParser_Node_Stmt
+[panicked] data set ""
+
+---- tests::PhpParser_BuilderFactoryTest__testConcatInvalidExpr stdout ----
+
+thread 'PhpParser\BuilderFactoryTest::testConcatInvalidExpr' (27562) panicked at generated/php_parser/src/generated.rs:193:355:
+cannot narrow Mixed into U_PhpParser_Node_Expr_or_Str
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+[panicked] data set ""
+
+---- tests::PhpParser_BuilderFactoryTest__testInvalidIdentifier stdout ----
+
+thread 'PhpParser\BuilderFactoryTest::testInvalidIdentifier' (27571) panicked at generated/php_parser/src/generated.rs:5973:266:
+cannot narrow PhpParser\Node\Name into U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str
+[panicked] data set ""
+
+---- tests::PhpParser_BuilderFactoryTest__testInvalidNameOrExpr stdout ----
+
+thread 'PhpParser\BuilderFactoryTest::testInvalidNameOrExpr' (27579) panicked at generated/php_parser/src/generated.rs:626:634:
+cannot narrow Mixed into U_PhpParser_Node_Expr_or_PhpParser_Node_Name_or_Str
+[panicked] data set ""
+
+---- tests::PhpParser_BuilderFactoryTest__testInvalidVar stdout ----
+
+thread 'PhpParser\BuilderFactoryTest::testInvalidVar' (27582) panicked at generated/php_parser/src/generated.rs:193:355:
+cannot narrow Mixed into U_PhpParser_Node_Expr_or_Str
+[panicked] data set ""
+
+---- tests::PhpParser_BuilderFactoryTest__testInvalidIdentifierOrExpr stdout ----
+
+thread 'PhpParser\BuilderFactoryTest::testInvalidIdentifierOrExpr' (27577) panicked at generated/php_parser/src/generated.rs:5973:266:
+cannot narrow PhpParser\Node\Name into U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str
+[panicked] data set ""
+
+---- tests::PhpParser_BuilderHelpersTest__testNormalizeDocComment stdout ----
+
+thread 'PhpParser\BuilderHelpersTest::testNormalizeDocComment' (27593) panicked at generated/php_parser/src/generated.rs:389:367:
+cannot narrow Mixed into U_PhpParser_Comment_Doc_or_Str
+[panicked] data set ""
+
+---- tests::PhpParser_BuilderHelpersTest__testNormalizeAttribute stdout ----
+
+thread 'PhpParser\BuilderHelpersTest::testNormalizeAttribute' (27592) panicked at generated/php_parser/src/generated.rs:411:596:
+cannot narrow Mixed into U_PhpParser_Node_Attribute_or_PhpParser_Node_AttributeGroup
+[panicked] data set ""
+
+---- tests::PhpParser_BuilderHelpersTest__testNormalizeNameInvalidType stdout ----
+
+thread 'PhpParser\BuilderHelpersTest::testNormalizeNameInvalidType' (27601) panicked at generated/php_parser/src/generated.rs:460:355:
+cannot narrow Mixed into U_PhpParser_Node_Name_or_Str
+[panicked] data set ""
+
+---- tests::PhpParser_BuilderHelpersTest__testNormalizeIdentifierOrExpr stdout ----
+
+thread 'PhpParser\BuilderHelpersTest::testNormalizeIdentifierOrExpr' (27597) panicked at generated/php_parser/src/generated.rs:651:676:
+cannot narrow Mixed into U_PhpParser_Node_Expr_or_PhpParser_Node_Identifier_or_Str
+[panicked] data set ""
+
+---- tests::PhpParser_BuilderHelpersTest__testNormalizeIdentifier stdout ----
+
+thread 'PhpParser\BuilderHelpersTest::testNormalizeIdentifier' (27596) panicked at generated/php_parser/src/generated.rs:39:391:
+cannot narrow Mixed into U_PhpParser_Node_Identifier_or_Str
+[panicked] data set ""
+
+---- tests::PhpParser_BuilderHelpersTest__testNormalizeNameOrExpInvalidType stdout ----
+
+thread 'PhpParser\BuilderHelpersTest::testNormalizeNameOrExpInvalidType' (27603) panicked at generated/php_parser/src/generated.rs:626:634:
+cannot narrow Mixed into U_PhpParser_Node_Expr_or_PhpParser_Node_Name_or_Str
+[panicked] data set ""
+
+---- tests::PhpParser_BuilderHelpersTest__testNormalizeStmtInvalidType stdout ----
+
+thread 'PhpParser\BuilderHelpersTest::testNormalizeStmtInvalidType' (27612) panicked at generated/php_parser/src/generated.rs:549:462:
+cannot narrow Mixed into U_PhpParser_Builder_or_PhpParser_Node
+[panicked] data set ""
+
+---- tests::PhpParser_BuilderHelpersTest__testNormalizeNode stdout ----
+
+thread 'PhpParser\BuilderHelpersTest::testNormalizeNode' (27608) panicked at generated/php_parser/src/generated.rs:549:462:
+cannot narrow Mixed into U_PhpParser_Builder_or_PhpParser_Node
+[panicked] data set ""
+
+---- tests::PhpParser_BuilderHelpersTest__testNormalizeType stdout ----
+
+thread 'PhpParser\BuilderHelpersTest::testNormalizeType' (27613) panicked at generated/php_parser/src/php_parser/mod.rs:5895:113:
+internal error: entered unreachable code: property read on U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name
+[panicked] data set ""
+
+---- tests::PhpParser_BuilderHelpersTest__testNormalizeValue stdout ----
+
+thread 'PhpParser\BuilderHelpersTest::testNormalizeValue' (27622) panicked at generated/php_parser/src/generated.rs:357:1382:
+cannot narrow Mixed into U_Bool_or_Float_or_Int_or_Map_ArrayKey_Mixed_or_PhpParser_Node_Expr_or_Str_or_UnitEnum
+[panicked] data set ""
+
+---- tests::PhpParser_Builder_ClassTest__testInvalidName stdout ----
+
+thread 'PhpParser\Builder\ClassTest::testInvalidName' (27651) panicked at generated/php_parser/src/generated.rs:460:355:
+cannot narrow Mixed into U_PhpParser_Node_Name_or_Str
+[panicked] data set ""
+
+---- tests::PhpParser_Builder_ClassTest__testInvalidDocComment stdout ----
+
+thread 'PhpParser\Builder\ClassTest::testInvalidDocComment' (27649) panicked at generated/php_parser/src/generated.rs:5951:204:
+cannot narrow PhpParser\Comment into U_PhpParser_Comment_Doc_or_Str
+[panicked] data set ""
+
+---- tests::PhpParser_Builder_EnumTest__testInvalidDocComment stdout ----
+
+thread 'PhpParser\Builder\EnumTest::testInvalidDocComment' (27673) panicked at generated/php_parser/src/generated.rs:5951:204:
+cannot narrow PhpParser\Comment into U_PhpParser_Comment_Doc_or_Str
+[panicked] data set ""
+
+---- tests::PhpParser_Builder_EnumTest__testInvalidName stdout ----
+
+thread 'PhpParser\Builder\EnumTest::testInvalidName' (27675) panicked at generated/php_parser/src/generated.rs:460:355:
+cannot narrow Mixed into U_PhpParser_Node_Name_or_Str
+[panicked] data set ""
+
+---- tests::PhpParser_Builder_EnumTest__testInvalidStmtError stdout ----
+
+thread 'PhpParser\Builder\EnumTest::testInvalidStmtError' (27679) panicked at generated/php_parser/src/generated.rs:482:493:
+cannot narrow Mixed into U_PhpParser_Builder_or_PhpParser_Node_Stmt
+[panicked] data set ""
+
+---- tests::PhpParser_Builder_FunctionTest__testInvalidParamError stdout ----
+
+thread 'PhpParser\Builder\FunctionTest::testInvalidParamError' (27692) panicked at generated/php_parser/src/generated.rs:5958:250:
+cannot narrow PhpParser\Node\Name into U_PhpParser_Builder_Param_or_PhpParser_Node_Param
+[panicked] data set ""
+
+---- tests::PhpParser_Builder_FunctionTest__testStmts stdout ----
+
+thread 'PhpParser\Builder\FunctionTest::testStmts' (27699) panicked at generated/php_parser/src/generated.rs:482:493:
+cannot narrow Mixed into U_PhpParser_Builder_or_PhpParser_Node_Stmt
+[panicked] data set ""
+
+---- tests::PhpParser_Builder_InterfaceTest__testInvalidStmtError stdout ----
+
+thread 'PhpParser\Builder\InterfaceTest::testInvalidStmtError' (27715) panicked at generated/php_parser/src/generated.rs:482:493:
+cannot narrow Mixed into U_PhpParser_Builder_or_PhpParser_Node_Stmt
+[panicked] data set ""
+
+---- tests::PhpParser_Builder_MethodTest__testInvalidParamError stdout ----
+
+thread 'PhpParser\Builder\MethodTest::testInvalidParamError' (27725) panicked at generated/php_parser/src/generated.rs:5958:250:
+cannot narrow PhpParser\Node\Name into U_PhpParser_Builder_Param_or_PhpParser_Node_Param
+[panicked] data set ""
+
+---- tests::PhpParser_Builder_InterfaceTest__testFullFunctional stdout ----
+
+thread 'PhpParser\Builder\InterfaceTest::testFullFunctional' (27713) panicked at generated/php_parser/src/generated.rs:5927:94:
+not implemented: cast crate::php_parser::node::Identifier => Str
+[panicked] data set ""
+
+---- tests::PhpParser_Builder_MethodTest__testModifiers stdout ----
+[failed] data set "": PHPUnit\Framework\AssertionFailedError: Failed asserting that PhpParser\Node\Stmt\ClassMethod Object array (
+  'attributes' => 
+  array (
+  ),
+  'flags' => 4,
+  'byRef' => false,
+  'name' => 
+  \PhpParser\Node\Identifier::__set_state(array(
+     'attributes' => 
+    array (
+    ),
+     'name' => 'test',
+  )),
+  'params' => 
+  array (
+  ),
+  'returnType' => NULL,
+  'stmts' => 
+  array (
+  ),
+  'attrGroups' => 
+  array (
+  ),
+) equals PhpParser\Node\Stmt\ClassMethod Object array (
+  'attributes' => 
+  array (
+  ),
+  'flags' => 0,
+  'byRef' => false,
+  'name' => 
+  \PhpParser\Node\Identifier::__set_state(array(
+     'attributes' => 
+    array (
+    ),
+     'name' => 'test',
+  )),
+  'params' => 
+  array (
+  ),
+  'returnType' => NULL,
+  'stmts' => 
+  array (
+  ),
+  'attrGroups' => 
+  array (
+  ),
+).
+
+thread 'tests::PhpParser_Builder_MethodTest__testModifiers' (27727) panicked at php-rt/src/testing.rs:42:34:
+PHPUnit\Framework\AssertionFailedError: Failed asserting that PhpParser\Node\Stmt\ClassMethod Object array (
+  'attributes' => 
+  array (
+  ),
+  'flags' => 4,
+  'byRef' => false,
+  'name' => 
+  \PhpParser\Node\Identifier::__set_state(array(
+     'attributes' => 
+    array (
+    ),
+     'name' => 'test',
+  )),
+  'params' => 
+  array (
+  ),
+  'returnType' => NULL,
+  'stmts' => 
+  array (
+  ),
+  'attrGroups' => 
+  array (
+  ),
+) equals PhpParser\Node\Stmt\ClassMethod Object array (
+  'attributes' => 
+  array (
+  ),
+  'flags' => 0,
+  'byRef' => false,
+  'name' => 
+  \PhpParser\Node\Identifier::__set_state(array(
+     'attributes' => 
+    array (
+    ),
+     'name' => 'test',
+  )),
+  'params' => 
+  array (
+  ),
+  'returnType' => NULL,
+  'stmts' => 
+  array (
+  ),
+  'attrGroups' => 
+  array (
+  ),
+).
+
+---- tests::PhpParser_Builder_MethodTest__testStmts stdout ----
+
+thread 'PhpParser\Builder\MethodTest::testStmts' (27737) panicked at generated/php_parser/src/generated.rs:482:493:
+cannot narrow Mixed into U_PhpParser_Builder_or_PhpParser_Node_Stmt
+[panicked] data set ""
+
+---- tests::PhpParser_Builder_ParamTest__testInvalidTypeError stdout ----
+
+thread 'PhpParser\Builder\ParamTest::testInvalidTypeError' (27747) panicked at generated/php_parser/src/generated.rs:434:1063:
+cannot narrow Mixed into U_PhpParser_Node_ComplexType_or_PhpParser_Node_Identifier_or_PhpParser_Node_Name_or_Str
+[panicked] data set ""
+
+---- tests::PhpParser_Builder_ParamTest__testVoidTypeError stdout ----
+[failed] data set "": AssertionError: Failed asserting that exception of type "LogicException" is thrown
+
+thread 'tests::PhpParser_Builder_ParamTest__testVoidTypeError' (27759) panicked at php-rt/src/testing.rs:42:34:
+AssertionError: Failed asserting that exception of type "LogicException" is thrown
+
+---- tests::PhpParser_Builder_TraitUseTest__testInvalidAdaptationNode stdout ----
+
+thread 'PhpParser\Builder\TraitUseTest::testInvalidAdaptationNode' (27804) panicked at generated/php_parser/src/generated.rs:570:723:
+cannot narrow Mixed into U_PhpParser_Builder_TraitUseAdaptation_or_PhpParser_Node_Stmt_TraitUseAdaptation
+[panicked] data set ""
+
+---- tests::PhpParser_ConstExprEvaluatorTest__testEvaluateFails stdout ----
+
+thread 'PhpParser\ConstExprEvaluatorTest::testEvaluateFails' (27821) panicked at generated/php_parser/src/generated.rs:1633:212:
+union U_DynCallable_or_Fn1_PhpParser_Node_Expr_to_Null is not DynCallable
+[panicked] data set ""
+
+---- tests::PhpParser_ConstExprEvaluatorTest__testEvaluateFallbackPipeOperator stdout ----
+
+thread 'PhpParser\ConstExprEvaluatorTest::testEvaluateFallbackPipeOperator' (27825) panicked at generated/php_parser/src/php_parser/mod.rs:6956:67:
+internal error: entered unreachable code: closure without record
+[panicked] data set ""
+
+---- tests::PhpParser_ConstExprEvaluatorTest__testEvaluateSilently stdout ----
+
+thread 'PhpParser\ConstExprEvaluatorTest::testEvaluateSilently' (27827) panicked at generated/php_parser/src/generated.rs:1633:212:
+union U_DynCallable_or_Fn1_PhpParser_Node_Expr_to_Null is not DynCallable
+[panicked] data set "0"
+
+---- tests::PhpParser_ConstExprEvaluatorTest__testEvaluate stdout ----
+
+thread 'PhpParser\ConstExprEvaluatorTest::testEvaluate' (27819) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set "0"
+
+---- tests::PhpParser_JsonDecoderTest__testDecodingError stdout ----
+[failed] data set "2": PHPUnit\Framework\AssertionFailedError: Failed asserting that exception message 'ReflectionClass::newInstanceWithoutConstructor() is not supported' contains 'Attributes must be an array'.
+
+thread 'tests::PhpParser_JsonDecoderTest__testDecodingError' (27850) panicked at php-rt/src/testing.rs:42:34:
+PHPUnit\Framework\AssertionFailedError: Failed asserting that exception message 'ReflectionClass::newInstanceWithoutConstructor() is not supported' contains 'Attributes must be an array'.
+
+---- tests::PhpParser_LexerTest__testDefaultErrorHandler stdout ----
+
+thread 'PhpParser\LexerTest::testDefaultErrorHandler' (27856) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_LexerTest__testError stdout ----
+
+thread 'PhpParser\LexerTest::testError' (27857) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set "0"
+
+---- tests::PhpParser_LexerTest__testGetTokens stdout ----
+
+thread 'PhpParser\LexerTest::testGetTokens' (27859) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_LexerTest__testLex stdout ----
+
+thread 'PhpParser\LexerTest::testLex' (27861) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set "0"
+
+---- tests::PhpParser_Lexer_EmulativeTest__testError stdout ----
+
+thread 'PhpParser\Lexer\EmulativeTest::testError' (27865) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set "0"
+
+---- tests::PhpParser_Lexer_EmulativeTest__testDefaultErrorHandler stdout ----
+
+thread 'PhpParser\Lexer\EmulativeTest::testDefaultErrorHandler' (27863) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_Lexer_EmulativeTest__testGetTokens stdout ----
+
+thread 'PhpParser\Lexer\EmulativeTest::testGetTokens' (27869) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_Lexer_EmulativeTest__testLex stdout ----
+
+thread 'PhpParser\Lexer\EmulativeTest::testLex' (27873) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set "0"
+
+---- tests::PhpParser_Lexer_EmulativeTest__testLeaveStuffAloneInStrings stdout ----
+
+thread 'PhpParser\Lexer\EmulativeTest::testLeaveStuffAloneInStrings' (27871) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set "0"
+
+---- tests::PhpParser_Lexer_EmulativeTest__testErrorAfterEmulation stdout ----
+
+thread 'PhpParser\Lexer\EmulativeTest::testErrorAfterEmulation' (27867) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set "0"
+
+---- tests::PhpParser_Lexer_EmulativeTest__testLexNewFeatures stdout ----
+
+thread 'PhpParser\Lexer\EmulativeTest::testLexNewFeatures' (27875) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set "0"
+
+---- tests::PhpParser_JsonDecoderTest__testRoundTrip stdout ----
+
+thread 'PhpParser\JsonDecoderTest::testRoundTrip' (27854) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterNullsafeObjectOperator stdout ----
+
+thread 'PhpParser\Lexer\EmulativeTest::testNoReplaceKeywordsAfterNullsafeObjectOperator' (27877) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set "0"
+
+---- tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterObjectOperator stdout ----
+
+thread 'PhpParser\Lexer\EmulativeTest::testNoReplaceKeywordsAfterObjectOperator' (27880) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set "0"
+
+---- tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterObjectOperatorWithSpaces stdout ----
+
+thread 'PhpParser\Lexer\EmulativeTest::testNoReplaceKeywordsAfterObjectOperatorWithSpaces' (27883) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set "0"
+
+---- tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterObjectOperatorWithComment stdout ----
+
+thread 'PhpParser\Lexer\EmulativeTest::testNoReplaceKeywordsAfterObjectOperatorWithComment' (27882) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_Lexer_EmulativeTest__testReplaceKeywords stdout ----
+
+thread 'PhpParser\Lexer\EmulativeTest::testReplaceKeywords' (27885) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set "0"
+
+---- tests::PhpParser_Lexer_EmulativeTest__testReplaceKeywordsUppercase stdout ----
+
+thread 'PhpParser\Lexer\EmulativeTest::testReplaceKeywordsUppercase' (27887) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set "0"
+
+---- tests::PhpParser_Lexer_EmulativeTest__testTargetVersion stdout ----
+
+thread 'PhpParser\Lexer\EmulativeTest::testTargetVersion' (27889) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set "0"
+
+---- tests::PhpParser_NameContextTest__testGetPossibleNames stdout ----
+
+thread 'PhpParser\NameContextTest::testGetPossibleNames' (27895) panicked at generated/php_parser/src/generated.rs:5260:88:
+not implemented: cast crate::php_parser::node::Name => Str
+[panicked] data set "0"
+
+---- tests::PhpParser_NodeAbstractTest__testAttributes stdout ----
+
+thread 'PhpParser\NodeAbstractTest::testAttributes' (27897) panicked at generated/php_parser/src/php_parser/mod.rs:8257:12:
+internal error: entered unreachable code: unknown method getMockForAbstractClass
+[panicked] data set ""
+
+---- tests::PhpParser_NodeAbstractTest__testChange stdout ----
+[failed] data set "0": PHPUnit\Framework\AssertionFailedError: Failed asserting that 'newValue' is identical to 'newNewValue'.
+
+thread 'tests::PhpParser_NodeAbstractTest__testChange' (27898) panicked at php-rt/src/testing.rs:42:34:
+PHPUnit\Framework\AssertionFailedError: Failed asserting that 'newValue' is identical to 'newNewValue'.
+
+---- tests::PhpParser_NodeDumperTest__testError stdout ----
+
+thread 'PhpParser\NodeDumperTest::testError' (27915) panicked at generated/php_parser/src/generated.rs:800:433:
+cannot narrow Mixed into U_Map_ArrayKey_Mixed_or_PhpParser_Node
+[panicked] data set ""
+
+---- tests::PhpParser_NodeAbstractTest__testJsonSerialization stdout ----
+
+thread 'PhpParser\NodeAbstractTest::testJsonSerialization' (27907) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_NodeDumperTest__testDumpWithPositions stdout ----
+
+thread 'PhpParser\NodeDumperTest::testDumpWithPositions' (27913) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_NodeTraverserTest__testInvalidDeepArray stdout ----
+
+thread 'PhpParser\NodeTraverserTest::testInvalidDeepArray' (27929) panicked at generated/php_parser/src/generated.rs:6035:145:
+not implemented: cast ((crate::php_parser::node::scalar::String_,),) => crate::php_parser::Node
+[panicked] data set ""
+
+---- tests::PhpParser_NodeTraverserTest__testInvalidReturn stdout ----
+
+thread 'PhpParser\NodeTraverserTest::testInvalidReturn' (27931) panicked at generated/php_parser/src/generated.rs:845:627:
+cannot narrow Mixed into U_Int_or_Map_ArrayKey_PhpParser_Node_or_PhpParser_Node
+[panicked] data set "0"
+
+---- tests::PhpParser_NodeTraverserTest__testRemovingVisitor stdout ----
+
+thread 'PhpParser\NodeTraverserTest::testRemovingVisitor' (27946) panicked at generated/php_parser/src/php_parser/mod.rs:9034:5:
+internal error: entered unreachable code: transpiler error in testRemovingVisitor
+[panicked] data set ""
+
+---- tests::PhpParser_NodeVisitor_NameResolverTest__testAddDeclarationNamespacedName stdout ----
+
+thread 'PhpParser\NodeVisitor\NameResolverTest::testAddDeclarationNamespacedName' (27961) panicked at generated/php_parser/src/generated.rs:6039:146:
+cannot cast PhpParser\Node\Expr\New_ to PhpParser\Node\Stmt
+[panicked] data set ""
+
+---- tests::PhpParser_NodeVisitor_NameResolverTest__testAddOriginalNames stdout ----
+
+thread 'PhpParser\NodeVisitor\NameResolverTest::testAddOriginalNames' (27963) panicked at generated/php_parser/src/generated.rs:6042:157:
+cannot cast PhpParser\Node\Expr\ClassConstFetch to PhpParser\Node\Stmt
+[panicked] data set ""
+
+---- tests::PhpParser_NodeVisitor_NameResolverTest__testAttributeOnlyMode stdout ----
+
+thread 'PhpParser\NodeVisitor\NameResolverTest::testAttributeOnlyMode' (27967) panicked at generated/php_parser/src/generated.rs:6042:157:
+cannot cast PhpParser\Node\Expr\ClassConstFetch to PhpParser\Node\Stmt
+[panicked] data set ""
+
+---- tests::PhpParser_NodeVisitor_NameResolverTest__testAddRuntimeResolvedNamespacedName stdout ----
+
+thread 'PhpParser\NodeVisitor\NameResolverTest::testAddRuntimeResolvedNamespacedName' (27965) panicked at generated/php_parser/src/generated.rs:6040:150:
+cannot cast PhpParser\Node\Expr\FuncCall to PhpParser\Node\Stmt
+[panicked] data set ""
+
+---- tests::PhpParser_NodeVisitor_NameResolverTest__testNoResolveSpecialName stdout ----
+[failed] data set "": PhpParser\Error: '\self' is an invalid class name on unknown line
+
+thread 'tests::PhpParser_NodeVisitor_NameResolverTest__testNoResolveSpecialName' (27972) panicked at php-rt/src/testing.rs:42:34:
+PhpParser\Error: '\self' is an invalid class name on unknown line
+
+---- tests::PhpParser_NodeVisitor_NameResolverTest__testClassNameIsCaseInsensitive stdout ----
+
+thread 'PhpParser\NodeVisitor\NameResolverTest::testClassNameIsCaseInsensitive' (27969) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_NodeVisitor_NameResolverTest__testResolveNames stdout ----
+
+thread 'PhpParser\NodeVisitor\NameResolverTest::testResolveNames' (27976) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_NodeVisitor_NameResolverTest__testResolveLocations stdout ----
+
+thread 'PhpParser\NodeVisitor\NameResolverTest::testResolveLocations' (27977) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_NodeVisitor_NodeConnectingVisitorTest__testConnectsNodeToItsParentNodeAndItsSiblingNodes stdout ----
+
+thread 'PhpParser\NodeVisitor\NodeConnectingVisitorTest::testConnectsNodeToItsParentNodeAndItsSiblingNodes' (27981) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_NodeVisitor_NameResolverTest__testSpecialClassNamesAreCaseInsensitive stdout ----
+
+thread 'PhpParser\NodeVisitor\NameResolverTest::testSpecialClassNamesAreCaseInsensitive' (27979) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_NodeVisitor_NodeConnectingVisitorTest__testWeakReferences stdout ----
+
+thread 'PhpParser\NodeVisitor\NodeConnectingVisitorTest::testWeakReferences' (27983) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_NodeVisitor_ParentConnectingVisitorTest__testConnectsChildNodeToParentNode stdout ----
+
+thread 'PhpParser\NodeVisitor\ParentConnectingVisitorTest::testConnectsChildNodeToParentNode' (27985) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_NodeVisitor_ParentConnectingVisitorTest__testWeakReferences stdout ----
+
+thread 'PhpParser\NodeVisitor\ParentConnectingVisitorTest::testWeakReferences' (27987) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_Node_NameTest__testInvalidArg stdout ----
+
+thread 'PhpParser\Node\NameTest::testInvalidArg' (28005) panicked at generated/php_parser/src/generated.rs:754:577:
+cannot narrow Mixed into U_Map_ArrayKey_Str_or_PhpParser_Node_Name_or_Str
+[panicked] data set ""
+
+---- tests::PhpParser_Node_NameTest__testNameTypes stdout ----
+[failed] data set "": PHPUnit\Framework\AssertionFailedError: Failed asserting that false is true.
+
+thread 'tests::PhpParser_Node_NameTest__testNameTypes' (28012) panicked at php-rt/src/testing.rs:42:34:
+PHPUnit\Framework\AssertionFailedError: Failed asserting that false is true.
+
+---- tests::PhpParser_Node_PropertyHookTest__testGetStmtsSetHookFromParser stdout ----
+
+thread 'PhpParser\Node\PropertyHookTest::testGetStmtsSetHookFromParser' (28041) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_Node_Scalar_DNumberTest__testRawValue stdout ----
+
+thread 'PhpParser\Node\Scalar\DNumberTest::testRawValue' (28051) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_Node_Scalar_NumberTest__testRawValue stdout ----
+
+thread 'PhpParser\Node\Scalar\NumberTest::testRawValue' (28055) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_Node_Stmt_ClassMethodTest__testFunctionLike stdout ----
+[failed] data set "": PHPUnit\Framework\AssertionFailedError: Failed asserting that array (
+) is null.
+
+thread 'tests::PhpParser_Node_Stmt_ClassMethodTest__testFunctionLike' (28070) panicked at php-rt/src/testing.rs:42:34:
+PHPUnit\Framework\AssertionFailedError: Failed asserting that array (
+) is null.
+
+---- tests::PhpParser_Node_Stmt_ClassMethodTest__testModifiers stdout ----
+[failed] data set "1": PHPUnit\Framework\AssertionFailedError: Failed asserting that false is true.
+
+thread 'tests::PhpParser_Node_Stmt_ClassMethodTest__testModifiers' (28076) panicked at php-rt/src/testing.rs:42:34:
+PHPUnit\Framework\AssertionFailedError: Failed asserting that false is true.
+
+---- tests::PhpParser_Node_Scalar_StringTest__testRawValue stdout ----
+
+thread 'PhpParser\Node\Scalar\StringTest::testRawValue' (28065) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_Node_Stmt_ClassTest__testIsAbstract stdout ----
+[failed] data set "": PHPUnit\Framework\AssertionFailedError: Failed asserting that false is true.
+
+thread 'tests::PhpParser_Node_Stmt_ClassTest__testIsAbstract' (28092) panicked at php-rt/src/testing.rs:42:34:
+PHPUnit\Framework\AssertionFailedError: Failed asserting that false is true.
+
+---- tests::PhpParser_Node_Stmt_ClassTest__testGetTraitUses stdout ----
+
+thread 'PhpParser\Node\Stmt\ClassTest::testGetTraitUses' (28091) panicked at generated/php_parser/src/generated.rs:6027:148:
+cannot cast PhpParser\Node\Stmt\Trait_ to PhpParser\Node\Name
+[panicked] data set ""
+
+---- tests::PhpParser_Node_Stmt_ClassTest__testIsFinal stdout ----
+[failed] data set "": PHPUnit\Framework\AssertionFailedError: Failed asserting that false is true.
+
+thread 'tests::PhpParser_Node_Stmt_ClassTest__testIsFinal' (28094) panicked at php-rt/src/testing.rs:42:34:
+PHPUnit\Framework\AssertionFailedError: Failed asserting that false is true.
+
+---- tests::PhpParser_Parser_Php7Test__testGetTokens stdout ----
+
+thread 'PhpParser\Parser\Php7Test::testGetTokens' (28123) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_Parser_Php7Test__testExtraAttributes stdout ----
+
+thread 'PhpParser\Parser\Php7Test::testExtraAttributes' (28121) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set "0"
+
+---- tests::PhpParser_Parser_Php7Test__testAttributeAssignment stdout ----
+
+thread 'PhpParser\Parser\Php7Test::testAttributeAssignment' (28119) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_Parser_Php7Test__testInvalidToken stdout ----
+
+thread 'PhpParser\Parser\Php7Test::testInvalidToken' (28125) panicked at generated/php_parser/src/php_parser/parser/mod.rs:183:52:
+RefCell already mutably borrowed
+[panicked] data set ""
+
+---- tests::PhpParser_Parser_Php7Test__testListKindAttribute stdout ----
+
+thread 'PhpParser\Parser\Php7Test::testListKindAttribute' (28127) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_Parser_Php7Test__testParserThrowsSyntaxError stdout ----
+
+thread 'PhpParser\Parser\Php7Test::testParserThrowsSyntaxError' (28133) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_Parser_Php7Test__testParserThrowsLexerError stdout ----
+
+thread 'PhpParser\Parser\Php7Test::testParserThrowsLexerError' (28129) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_Parser_Php7Test__testParserThrowsSpecialError stdout ----
+
+thread 'PhpParser\Parser\Php7Test::testParserThrowsSpecialError' (28131) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_Parser_Php8Test__testAttributeAssignment stdout ----
+
+thread 'PhpParser\Parser\Php8Test::testAttributeAssignment' (28135) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_Parser_Php8Test__testExtraAttributes stdout ----
+
+thread 'PhpParser\Parser\Php8Test::testExtraAttributes' (28137) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set "0"
+
+---- tests::PhpParser_Parser_Php8Test__testGetTokens stdout ----
+
+thread 'PhpParser\Parser\Php8Test::testGetTokens' (28139) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_Parser_Php8Test__testListKindAttribute stdout ----
+
+thread 'PhpParser\Parser\Php8Test::testListKindAttribute' (28143) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_Parser_Php8Test__testInvalidToken stdout ----
+
+thread 'PhpParser\Parser\Php8Test::testInvalidToken' (28141) panicked at generated/php_parser/src/php_parser/parser/mod.rs:2321:52:
+RefCell already mutably borrowed
+[panicked] data set ""
+
+---- tests::PhpParser_Parser_Php8Test__testParserThrowsLexerError stdout ----
+
+thread 'PhpParser\Parser\Php8Test::testParserThrowsLexerError' (28145) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_Parser_Php8Test__testParserThrowsSpecialError stdout ----
+
+thread 'PhpParser\Parser\Php8Test::testParserThrowsSpecialError' (28147) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+---- tests::PhpParser_Parser_Php8Test__testParserThrowsSyntaxError stdout ----
+
+thread 'PhpParser\Parser\Php8Test::testParserThrowsSyntaxError' (28149) panicked at generated/php_parser/src/php_parser/mod.rs:5410:5:
+internal error: entered unreachable code: method getEndLine was not analyzed
+[panicked] data set ""
+
+
+failures:
+    tests::PhpParser_BuilderFactoryTest__testConcatInvalidExpr
+    tests::PhpParser_BuilderFactoryTest__testIntegration
+    tests::PhpParser_BuilderFactoryTest__testInvalidIdentifier
+    tests::PhpParser_BuilderFactoryTest__testInvalidIdentifierOrExpr
+    tests::PhpParser_BuilderFactoryTest__testInvalidNameOrExpr
+    tests::PhpParser_BuilderFactoryTest__testInvalidVar
+    tests::PhpParser_BuilderHelpersTest__testNormalizeAttribute
+    tests::PhpParser_BuilderHelpersTest__testNormalizeDocComment
+    tests::PhpParser_BuilderHelpersTest__testNormalizeIdentifier
+    tests::PhpParser_BuilderHelpersTest__testNormalizeIdentifierOrExpr
+    tests::PhpParser_BuilderHelpersTest__testNormalizeNameInvalidType
+    tests::PhpParser_BuilderHelpersTest__testNormalizeNameOrExpInvalidType
+    tests::PhpParser_BuilderHelpersTest__testNormalizeNode
+    tests::PhpParser_BuilderHelpersTest__testNormalizeStmtInvalidType
+    tests::PhpParser_BuilderHelpersTest__testNormalizeType
+    tests::PhpParser_BuilderHelpersTest__testNormalizeValue
+    tests::PhpParser_Builder_ClassTest__testInvalidDocComment
+    tests::PhpParser_Builder_ClassTest__testInvalidName
+    tests::PhpParser_Builder_EnumTest__testInvalidDocComment
+    tests::PhpParser_Builder_EnumTest__testInvalidName
+    tests::PhpParser_Builder_EnumTest__testInvalidStmtError
+    tests::PhpParser_Builder_FunctionTest__testInvalidParamError
+    tests::PhpParser_Builder_FunctionTest__testStmts
+    tests::PhpParser_Builder_InterfaceTest__testFullFunctional
+    tests::PhpParser_Builder_InterfaceTest__testInvalidStmtError
+    tests::PhpParser_Builder_MethodTest__testInvalidParamError
+    tests::PhpParser_Builder_MethodTest__testModifiers
+    tests::PhpParser_Builder_MethodTest__testStmts
+    tests::PhpParser_Builder_ParamTest__testInvalidTypeError
+    tests::PhpParser_Builder_ParamTest__testVoidTypeError
+    tests::PhpParser_Builder_TraitUseTest__testInvalidAdaptationNode
+    tests::PhpParser_ConstExprEvaluatorTest__testEvaluate
+    tests::PhpParser_ConstExprEvaluatorTest__testEvaluateFails
+    tests::PhpParser_ConstExprEvaluatorTest__testEvaluateFallbackPipeOperator
+    tests::PhpParser_ConstExprEvaluatorTest__testEvaluateSilently
+    tests::PhpParser_JsonDecoderTest__testDecodingError
+    tests::PhpParser_JsonDecoderTest__testRoundTrip
+    tests::PhpParser_LexerTest__testDefaultErrorHandler
+    tests::PhpParser_LexerTest__testError
+    tests::PhpParser_LexerTest__testGetTokens
+    tests::PhpParser_LexerTest__testLex
+    tests::PhpParser_Lexer_EmulativeTest__testDefaultErrorHandler
+    tests::PhpParser_Lexer_EmulativeTest__testError
+    tests::PhpParser_Lexer_EmulativeTest__testErrorAfterEmulation
+    tests::PhpParser_Lexer_EmulativeTest__testGetTokens
+    tests::PhpParser_Lexer_EmulativeTest__testLeaveStuffAloneInStrings
+    tests::PhpParser_Lexer_EmulativeTest__testLex
+    tests::PhpParser_Lexer_EmulativeTest__testLexNewFeatures
+    tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterNullsafeObjectOperator
+    tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterObjectOperator
+    tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterObjectOperatorWithComment
+    tests::PhpParser_Lexer_EmulativeTest__testNoReplaceKeywordsAfterObjectOperatorWithSpaces
+    tests::PhpParser_Lexer_EmulativeTest__testReplaceKeywords
+    tests::PhpParser_Lexer_EmulativeTest__testReplaceKeywordsUppercase
+    tests::PhpParser_Lexer_EmulativeTest__testTargetVersion
+    tests::PhpParser_NameContextTest__testGetPossibleNames
+    tests::PhpParser_NodeAbstractTest__testAttributes
+    tests::PhpParser_NodeAbstractTest__testChange
+    tests::PhpParser_NodeAbstractTest__testJsonSerialization
+    tests::PhpParser_NodeDumperTest__testDumpWithPositions
+    tests::PhpParser_NodeDumperTest__testError
+    tests::PhpParser_NodeTraverserTest__testInvalidDeepArray
+    tests::PhpParser_NodeTraverserTest__testInvalidReturn
+    tests::PhpParser_NodeTraverserTest__testRemovingVisitor
+    tests::PhpParser_NodeVisitor_NameResolverTest__testAddDeclarationNamespacedName
+    tests::PhpParser_NodeVisitor_NameResolverTest__testAddOriginalNames
+    tests::PhpParser_NodeVisitor_NameResolverTest__testAddRuntimeResolvedNamespacedName
+    tests::PhpParser_NodeVisitor_NameResolverTest__testAttributeOnlyMode
+    tests::PhpParser_NodeVisitor_NameResolverTest__testClassNameIsCaseInsensitive
+    tests::PhpParser_NodeVisitor_NameResolverTest__testNoResolveSpecialName
+    tests::PhpParser_NodeVisitor_NameResolverTest__testResolveLocations
+    tests::PhpParser_NodeVisitor_NameResolverTest__testResolveNames
+    tests::PhpParser_NodeVisitor_NameResolverTest__testSpecialClassNamesAreCaseInsensitive
+    tests::PhpParser_NodeVisitor_NodeConnectingVisitorTest__testConnectsNodeToItsParentNodeAndItsSiblingNodes
+    tests::PhpParser_NodeVisitor_NodeConnectingVisitorTest__testWeakReferences
+    tests::PhpParser_NodeVisitor_ParentConnectingVisitorTest__testConnectsChildNodeToParentNode
+    tests::PhpParser_NodeVisitor_ParentConnectingVisitorTest__testWeakReferences
+    tests::PhpParser_Node_NameTest__testInvalidArg
+    tests::PhpParser_Node_NameTest__testNameTypes
+    tests::PhpParser_Node_PropertyHookTest__testGetStmtsSetHookFromParser
+    tests::PhpParser_Node_Scalar_DNumberTest__testRawValue
+    tests::PhpParser_Node_Scalar_NumberTest__testRawValue
+    tests::PhpParser_Node_Scalar_StringTest__testRawValue
+    tests::PhpParser_Node_Stmt_ClassMethodTest__testFunctionLike
+    tests::PhpParser_Node_Stmt_ClassMethodTest__testModifiers
+    tests::PhpParser_Node_Stmt_ClassTest__testGetTraitUses
+    tests::PhpParser_Node_Stmt_ClassTest__testIsAbstract
+    tests::PhpParser_Node_Stmt_ClassTest__testIsFinal
+    tests::PhpParser_Parser_Php7Test__testAttributeAssignment
+    tests::PhpParser_Parser_Php7Test__testExtraAttributes
+    tests::PhpParser_Parser_Php7Test__testGetTokens
+    tests::PhpParser_Parser_Php7Test__testInvalidToken
+    tests::PhpParser_Parser_Php7Test__testListKindAttribute
+    tests::PhpParser_Parser_Php7Test__testParserThrowsLexerError
+    tests::PhpParser_Parser_Php7Test__testParserThrowsSpecialError
+    tests::PhpParser_Parser_Php7Test__testParserThrowsSyntaxError
+    tests::PhpParser_Parser_Php8Test__testAttributeAssignment
+    tests::PhpParser_Parser_Php8Test__testExtraAttributes
+    tests::PhpParser_Parser_Php8Test__testGetTokens
+    tests::PhpParser_Parser_Php8Test__testInvalidToken
+    tests::PhpParser_Parser_Php8Test__testListKindAttribute
+    tests::PhpParser_Parser_Php8Test__testParserThrowsLexerError
+    tests::PhpParser_Parser_Php8Test__testParserThrowsSpecialError
+    tests::PhpParser_Parser_Php8Test__testParserThrowsSyntaxError
+
+test result: FAILED. 211 passed; 104 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.93s
+
+error: test failed, to rerun pass `-p php_parser --lib`

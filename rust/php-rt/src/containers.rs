@@ -93,7 +93,7 @@ impl<K: Clone, V: Clone> Len for Generator<K, V> {
         self.count()
     }
 }
-impl<K: Clone + Into<Mixed> + 'static, V: Clone + Into<Mixed> + 'static> PhpObject for Generator<K, V> {
+impl<K: Clone + crate::cast::CastTo<Mixed> + 'static, V: Clone + crate::cast::CastTo<Mixed> + 'static> PhpObject for Generator<K, V> {
     fn class_name(&self) -> &'static str {
         "Generator"
     }
@@ -107,7 +107,7 @@ impl<K: Clone + Into<Mixed> + 'static, V: Clone + Into<Mixed> + 'static> PhpObje
         self
     }
 }
-impl<K: Clone + Into<Mixed> + 'static, V: Clone + Into<Mixed> + 'static> crate::cast::CastTo<Mixed> for Generator<K, V> {
+impl<K: Clone + crate::cast::CastTo<Mixed> + 'static, V: Clone + crate::cast::CastTo<Mixed> + 'static> crate::cast::CastTo<Mixed> for Generator<K, V> {
     fn cast_to(self) -> Mixed {
         Mixed::Obj(Rc::new(self))
     }
@@ -115,12 +115,30 @@ impl<K: Clone + Into<Mixed> + 'static, V: Clone + Into<Mixed> + 'static> crate::
 impl<K: Clone + 'static, V: Clone + 'static> crate::cast::CastTo<Generator<K, V>> for Mixed
 where
     Generator<K, V>: PhpObject,
+    Mixed: crate::cast::CastTo<K> + crate::cast::CastTo<V>,
 {
     fn cast_to(self) -> Generator<K, V> {
         if let Mixed::Obj(o) = &self {
             if let Some(g) = o.as_any().downcast_ref::<Generator<K, V>>() {
                 return g.clone();
             }
+            // any other Iterator object: drive it through its methods
+            let call = |name: &str| -> Mixed {
+                o.call_method(name, Vec::new()).unwrap_or_else(|e| match e {
+                    DynError::Rt(r) => panic!("{}", r.message),
+                    DynError::Obj(_) => panic!("exception while iterating {}", o.class_name()),
+                })
+            };
+            let mut pairs = Vec::new();
+            call("rewind");
+            while call("valid").truthy() {
+                pairs.push((crate::cast::cast::<K>(call("key")), crate::cast::cast::<V>(call("current"))));
+                call("next");
+            }
+            return Generator::from_pairs(pairs);
+        }
+        if let Mixed::Arr(a) = self {
+            return Generator::from_pairs(a.into_iter().map(|(k, v)| (crate::cast::cast::<K>(Mixed::from(k)), crate::cast::cast::<V>(v))).collect());
         }
         panic!("Mixed value is not a Generator")
     }

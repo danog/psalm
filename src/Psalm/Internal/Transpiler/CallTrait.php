@@ -14,6 +14,7 @@ use Psalm\Storage\FunctionLikeStorage;
 use function array_values;
 use function count;
 use function implode;
+use function in_array;
 use function is_string;
 use function strtolower;
 
@@ -294,7 +295,6 @@ trait CallTrait
             return $this->firstClassCallable($e);
         }
         if (!$e->name instanceof Identifier) {
-            $this->warn('dynamic method name', $e);
             $recv = $this->expr($e->var);
             $name = $this->exprTo($e->name, RustType::str());
             $argc = [];
@@ -434,11 +434,20 @@ trait CallTrait
         }
         $argc = $this->args($args, $m->storage, $m->param_types, $m->declaring, $m->name);
         if ($m->isStatic()) {
-            if ($kind === 'static' && $this->this_type !== null && $this->class !== null && !$this->class->isLeaf()) {
-                // late static binding in instance context: dispatch on the runtime class
-                return new Val($this->this_expr . '.' . $m->rustName() . '__static(' . implode(', ', $argc) . ')?', $m->return_type);
+            $target = $m->declaring;
+            if ($m->uses_lsb) {
+                if (in_array($kind, ['static', 'self', 'parent'], true) && $this->static_class !== null) {
+                    $target = $this->static_class; // forwarded late static binding
+                } elseif ($kind === 'static' && $this->this_type !== null && $this->class !== null) {
+                    if (!$this->class->isLeaf()) {
+                        return new Val($this->this_expr . '.' . $m->rustName() . '__static(' . implode(', ', $argc) . ')?', $m->return_type);
+                    }
+                    $target = $this->class;
+                } elseif ($kind !== 'self' && $kind !== 'parent') {
+                    $target = $cls; // explicitly named class
+                }
             }
-            return new Val($m->declaring->path() . '::' . $m->rustName() . '(' . implode(', ', $argc) . ')?', $m->return_type);
+            return new Val($target->path() . '::' . $m->rustName() . '(' . implode(', ', $argc) . ')?', $m->return_type);
         }
         // instance method called with self::/parent::/static:: => non-virtual call on $this
         if ($this->this_type === null) {

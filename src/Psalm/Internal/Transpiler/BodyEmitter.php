@@ -46,6 +46,9 @@ final class BodyEmitter
     /** @var array<string, bool> locals stored as Rc<RefCell<T>> (captured by reference) */
     public array $cells = [];
 
+    /** @var array<string, true> locals already declared by the enclosing code (closure captures) */
+    public array $predeclared = [];
+
     /** @var list<array{break: string, continue: string, try_depth: int, is_block_continue: bool, writeback: string}> */
     private array $loops = [];
 
@@ -76,6 +79,8 @@ final class BodyEmitter
         public readonly Builtins $builtins,
         public readonly Diagnostics $diag,
         public readonly ?BodyEmitter $parent = null,
+        /** class bound to `static` when emitting a late-static-binding copy of a static method */
+        public readonly ?ClassModel $static_class = null,
     ) {
         $this->w = new Writer();
         $this->ret_type = RustType::unit();
@@ -148,7 +153,7 @@ final class BodyEmitter
         }
         foreach ($this->record->var_types as $var_id => $types) {
             $name = substr($var_id, 1);
-            if ($name === 'this' || isset($params[$name])) {
+            if ($name === 'this' || isset($params[$name]) || isset($this->predeclared[$name])) {
                 continue;
             }
             $joined = $this->types()->join($types);
@@ -162,7 +167,7 @@ final class BodyEmitter
     public function emitLocalDecls(array $params): void
     {
         foreach ($this->vars as $name => $type) {
-            if (isset($params[$name])) {
+            if (isset($params[$name]) || isset($this->predeclared[$name])) {
                 continue;
             }
             $rn = Names::var($name);
