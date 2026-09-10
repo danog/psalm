@@ -463,6 +463,12 @@ final class CastEmitter
                 $cls = $this->program->classOf($from);
                 $arms = [];
                 if ($cls !== null && !$cls->isLeaf()) {
+                    // through Mixed: one downcast attempt per union member instead of an arm per descendant
+                    // (keeps the generated code small for classes with hundreds of subclasses)
+                    $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ' . $from->toRust() . ' { fn cast_to(self) -> ' . $to->toRust() . ' { ' . $this->conv($this->conv('self', $from, RustType::mixed()), RustType::mixed(), $to) . ' } }');
+                    return;
+                }
+                if (false) {
                     foreach ($cls->concrete as $c) {
                         $target = null;
                         foreach ($to->params as $m) {

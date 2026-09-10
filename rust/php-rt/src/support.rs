@@ -185,6 +185,27 @@ macro_rules! impl_enum_handle {
     };
 }
 
+// ---------------------------------------------------------------- dynamic dispatch arguments
+
+/// Argument `i` of a dynamic call converted to the parameter type (its default when missing).
+pub fn dyn_arg<T: Default>(args: &[Mixed], i: usize) -> T
+where
+    Mixed: crate::cast::CastTo<T>,
+{
+    match args.get(i) {
+        Some(a) => crate::cast::cast::<T>(a.clone()),
+        None => T::default(),
+    }
+}
+
+/// Argument `i` of a dynamic call converted to the parameter type (null when missing).
+pub fn dyn_arg_req<T>(args: &[Mixed], i: usize) -> T
+where
+    Mixed: crate::cast::CastTo<T>,
+{
+    crate::cast::cast::<T>(args.get(i).cloned().unwrap_or(Mixed::Null))
+}
+
 // ---------------------------------------------------------------- superglobals
 
 /// `$_SERVER` and friends: a minimal environment view (argv, REQUEST_TIME, env variables).
