@@ -331,7 +331,7 @@ final class Analyzer
 
             // Wait for all tasks to complete and collect the results.
             await($pool->runAll(new InitAnalyzerTask));
-            $pool->run($this->files_to_analyze, AnalyzerTask::class, $task_done_closure);
+            $pool->run($this->files_to_analyze, static fn(string $file): AnalyzerTask => new AnalyzerTask($file), $task_done_closure);
             $forked_pool_data = $pool->runAll(new ShutdownAnalyzerTask);
 
             $this->progress->debug('Collecting forked analysis results' . "\n");
@@ -1565,10 +1565,10 @@ final class Analyzer
 
         $filetype_analyzers = $config->getFiletypeAnalyzers();
         if (isset($filetype_analyzers[$extension])) {
-            $file_analyzer = new $filetype_analyzers[$extension](
+            $file_analyzer = $filetype_analyzers[$extension](
                 ProjectAnalyzer::getInstance(),
                 $file_path,
-                $file_name
+                $file_name,
             );
         } else {
             $file_analyzer = new FileAnalyzer(ProjectAnalyzer::getInstance(), $file_path, $file_name);

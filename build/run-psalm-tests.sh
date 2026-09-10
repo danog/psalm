@@ -1,7 +1,7 @@
 #!/bin/bash
 # regenerate, build and test the psalm crate; writes build/pipeline-psalm-tests.log
 cd /home/daniil/repos/psalm-port
-php -d memory_limit=5000M psalm -c psalm-transpile-psalm-tests.xml --no-cache --no-progress --transpile-rust=rust/generated/psalm_base --transpile-rust-split=rust/generated/psalm_src:src --transpile-rust-split=rust/generated/psalm_tests:tests --transpile-rust-data='dictionaries/*.php' > build/transpile-psalm-tests.log 2>&1
+php -d memory_limit=5000M psalm -c psalm-transpile-psalm-tests.xml --no-cache --no-progress --threads=1 --scan-threads=1 --transpile-rust=rust/generated/psalm_base --transpile-rust-split=rust/generated/psalm_data:dictionaries --transpile-rust-split=rust/generated/psalm_src:src --transpile-rust-split=rust/generated/psalm_tests:tests --transpile-rust-data='dictionaries/*.php' > build/transpile-psalm-tests.log 2>&1
 grep -n "\[transpiler\] [0-9]\|crashed\|Uncaught\|Fatal" build/transpile-psalm-tests.log | head -5
 cd rust
 cargo build -j1 -p psalm_tests --tests > build-psalm.log 2>&1

@@ -11,6 +11,15 @@ use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Context;
 use Psalm\Issue\CodeIssue;
+use Psalm\Issue\ImpureByReferenceAssignment;
+use Psalm\Issue\ImpureFunctionCall;
+use Psalm\Issue\ImpureGlobalVariable;
+use Psalm\Issue\ImpureMethodCall;
+use Psalm\Issue\ImpurePropertyAssignment;
+use Psalm\Issue\ImpurePropertyFetch;
+use Psalm\Issue\ImpureStaticProperty;
+use Psalm\Issue\ImpureStaticVariable;
+use Psalm\Issue\ImpureVariable;
 use Psalm\IssueBuffer;
 use Psalm\NodeTypeProvider;
 use Psalm\StatementsSource;
@@ -18,6 +27,7 @@ use Psalm\Storage\FunctionLikeStorage;
 use Psalm\Storage\MethodStorage;
 use Psalm\Storage\Mutations;
 use Psalm\Type\Union;
+use UnexpectedValueException;
 
 use function max;
 
@@ -308,12 +318,21 @@ abstract class SourceAnalyzer implements StatementsSource
                 $msg,
                 $mutation_level,
             );
+            $location = new CodeLocation($this, $node);
             IssueBuffer::maybeAdd(
-                /** @psalm-suppress UnsafeInstantiation */
-                new $class(
-                    $msg,
-                    new CodeLocation($this, $node),
-                ),
+                // the issue classes are enumerated: the program is compiled, classes are never instantiated by name
+                match ($class) {
+                    ImpureByReferenceAssignment::class => new ImpureByReferenceAssignment($msg, $location),
+                    ImpureFunctionCall::class => new ImpureFunctionCall($msg, $location),
+                    ImpureGlobalVariable::class => new ImpureGlobalVariable($msg, $location),
+                    ImpureMethodCall::class => new ImpureMethodCall($msg, $location),
+                    ImpurePropertyAssignment::class => new ImpurePropertyAssignment($msg, $location),
+                    ImpurePropertyFetch::class => new ImpurePropertyFetch($msg, $location),
+                    ImpureStaticProperty::class => new ImpureStaticProperty($msg, $location),
+                    ImpureStaticVariable::class => new ImpureStaticVariable($msg, $location),
+                    ImpureVariable::class => new ImpureVariable($msg, $location),
+                    default => throw new UnexpectedValueException('Unknown mutation issue class ' . $class),
+                },
                 $this->getSuppressedIssues(),
             );
         }

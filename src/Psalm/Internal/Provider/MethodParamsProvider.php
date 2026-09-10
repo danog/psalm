@@ -15,7 +15,6 @@ use Psalm\StatementsSource;
 use Psalm\Storage\FunctionLikeParameter;
 
 use function array_values;
-use function is_subclass_of;
 use function strtolower;
 
 /**
@@ -35,18 +34,18 @@ final class MethodParamsProvider
     {
         self::$handlers = [];
 
-        $this->registerClass(PdoStatementSetFetchMode::class);
+        $this->registerClass(new PdoStatementSetFetchMode());
     }
 
     /**
-     * @param class-string $class
+     * Registers a provider object (classes are never looked up by name: the program is compiled).
      */
-    public function registerClass(string $class): void
+    public function registerClass(object $class): void
     {
-        if (is_subclass_of($class, MethodParamsProviderInterface::class, true)) {
-            $callable = $class::getMethodParams(...);
+        if ($class instanceof MethodParamsProviderInterface) {
+            $callable = $class->getMethodParams(...);
 
-            foreach ($class::getClassLikeNames() as $fq_classlike_name) {
+            foreach ($class->getClassLikeNames() as $fq_classlike_name) {
                 $this->registerClosure($fq_classlike_name, $callable);
             }
         }

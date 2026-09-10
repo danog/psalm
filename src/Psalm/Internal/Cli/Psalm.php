@@ -468,8 +468,9 @@ final class Psalm
     /** @return int<1, max> */
     public static function getThreads(array $options, Config $config, bool $in_ci, bool $for_scan): int
     {
-        if (isset($options['transpile-rust'])) {
-            // the transpiler collects analysis data in-process
+        if (isset($options['transpile-rust']) && !$for_scan) {
+            // the transpiler collects analysis data in-process (scanning may still fork: its results are
+            // serialized back)
             return 1;
         }
         if (defined('PHP_WINDOWS_VERSION_MAJOR')) {

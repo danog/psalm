@@ -13,6 +13,7 @@ use PhpParser\Node\Scalar;
 
 use function preg_match;
 use function count;
+use function array_map;
 use function implode;
 use function in_array;
 use function is_string;
@@ -126,16 +127,9 @@ trait LValueTrait
             return $this->deadPlace($this->inferredOrMixed($e));
         }
         if (($e instanceof Expr\PropertyFetch || $e instanceof Expr\NullsafePropertyFetch) && !$e->name instanceof Identifier) {
-            // $obj->$name
-            $base = $this->receiver($e->var);
-            $bc = $this->casts->convert($base->code, $base->type, RustType::mixed());
-            $nm = $this->exprTo($e->name, RustType::str());
-            $inf = $this->inferredOrMixed($e);
-            return new Place(
-                $inf,
-                fn() => $this->casts->convert('mixed_prop(&' . $bc . ', &' . $nm . ').unwrap_or_default()', RustType::mixed(), $inf),
-                fn(string $v) => 'mixed_set_prop(&' . $bc . ', &' . $nm . ', ' . $this->casts->convert($v, $inf, RustType::mixed()) . ');',
-            );
+            // `$obj->$name`: properties are never looked up by name (closed world)
+            $this->warn('dynamic property name', $e);
+            return $this->deadPlace($this->inferredOrMixed($e));
         }
         if ($e instanceof Expr\StaticPropertyFetch && $e->name instanceof Node\VarLikeIdentifier && $e->class instanceof Name) {
             $fqcn = $this->resolveClassName($e->class);
@@ -624,10 +618,19 @@ trait LValueTrait
         if ($name === 'class') {
             return new Val('class_name_of(&' . $this->casts->convert($base->code, $base->type, RustType::mixed()) . ')', RustType::str());
         }
-        // `$class::CONST` / `$object::CONST`: looked up by name in the runtime registry
         $res = $this->inferredOrMixed($e);
-        $code = 'php_rt::registry::class_constant(&' . $this->casts->convert($base->code, $base->type, RustType::mixed()) . ', ' . Names::rustStringLiteral($name) . ')';
-        return $this->narrow(new Val($this->casts->convert($code, RustType::mixed(), $res), $res), $e);
+        $bt = $base->type->kind === RustType::OPTION ? $base->type->inner() : $base->type;
+        if ($bt->kind === RustType::CLASS_) {
+            // `$object::CONST`: constants are not overridable per instance beyond the static class
+            $cls = $this->program->classOf($bt);
+            $const = $cls !== null ? $this->findConstant($cls, $name) : null;
+            if ($const !== null) {
+                return $this->narrow(new Val('{ let _ = ' . $base->code . '; ' . $const->declaring->path() . '::' . $const->rustName() . '() }', $const->type), $e);
+            }
+        }
+        // `$class::CONST` with a class name: classes are never looked up by name (closed world)
+        $this->warn('class constant on a class name', $e);
+        return $this->dead('class constant on a class name', $res);
     }
 
     public function findConstant(ClassModel $cls, string $name): ?ConstModel
@@ -699,14 +702,8 @@ trait LValueTrait
                 }
             }
             if ($src instanceof Expr\PropertyFetch && !$src->name instanceof Identifier) {
-                // `$sub = &$node->$name`: a reference to a dynamically named property, read and written by name
-                $base = $this->receiver($src->var);
-                $bt = $base->type->kind === RustType::OPTION ? $base->type->inner() : $base->type;
-                $bc = $this->casts->convert($base->type->kind === RustType::OPTION ? $base->code . '.unwrap()' : $base->code, $bt, RustType::mixed());
-                $nm = $this->exprTo($src->name, RustType::str());
-                return $rn . ' = { let __o = ' . $bc . '; let __o2 = __o.clone(); let __n = ' . $nm . '; let __n2 = __n.clone(); PhpRef::new(move || '
-                    . $this->casts->convert('mixed_prop(&__o, &__n).unwrap_or_default()', RustType::mixed(), $rt) . ', move |__v| mixed_set_prop(&__o2, &__n2, '
-                    . $this->casts->convert('__v', $rt, RustType::mixed()) . ')) };';
+                $this->warn('reference to a dynamically named property', $e);
+                return $rn . ' = PhpRef::of(' . $this->deadCode('dynamic property name', $rt) . ');';
             }
             $this->warn('reference to an unsupported target', $e);
             return $rn . ' = PhpRef::of(' . $this->exprTo($src, $rt) . ');';

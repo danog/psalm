@@ -52,8 +52,6 @@ final class Program
     /** @var array<lowercase-string, GlobalConstModel> global constants by lowercase name */
     public array $constants = [];
 
-    /** @var array<string, array{ClassModel, int}> `new $name(...)` factories needed, keyed by class and arity */
-    public array $factories = [];
 
     public function __construct(
         public readonly Codebase $codebase,
@@ -980,11 +978,6 @@ final class Program
     public function getConstant(string $name): ?GlobalConstModel
     {
         return $this->constants[strtolower(ltrim($name, '\\'))] ?? null;
-    }
-
-    public function needFactory(ClassModel $cls, int $arity): void
-    {
-        $this->factories[$cls->lc() . '/' . $arity] = [$cls, $arity];
     }
 
     public function getFunction(string $fq_name): ?FunctionModel

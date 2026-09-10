@@ -52,7 +52,6 @@ use Psalm\Plugin\EventHandler\FunctionReturnTypeProviderInterface;
 use Psalm\StatementsSource;
 use Psalm\Type\Union;
 
-use function is_subclass_of;
 use function strtolower;
 
 /**
@@ -72,56 +71,56 @@ final class FunctionReturnTypeProvider
     {
         self::$handlers = [];
 
-        $this->registerClass(ArrayChunkReturnTypeProvider::class);
-        $this->registerClass(ArrayColumnReturnTypeProvider::class);
-        $this->registerClass(ArrayCombineReturnTypeProvider::class);
-        $this->registerClass(ArrayFilterReturnTypeProvider::class);
-        $this->registerClass(ArrayMapReturnTypeProvider::class);
-        $this->registerClass(ArrayMergeReturnTypeProvider::class);
-        $this->registerClass(ArrayPadReturnTypeProvider::class);
-        $this->registerClass(ArrayPointerAdjustmentReturnTypeProvider::class);
-        $this->registerClass(ArrayPopReturnTypeProvider::class);
-        $this->registerClass(ArrayRandReturnTypeProvider::class);
-        $this->registerClass(ArrayReduceReturnTypeProvider::class);
-        $this->registerClass(ArraySliceReturnTypeProvider::class);
-        $this->registerClass(ArraySpliceReturnTypeProvider::class);
-        $this->registerClass(ArrayReverseReturnTypeProvider::class);
-        $this->registerClass(ArrayFillReturnTypeProvider::class);
-        $this->registerClass(ArrayFillKeysReturnTypeProvider::class);
-        $this->registerClass(FilterInputReturnTypeProvider::class);
-        $this->registerClass(FilterVarReturnTypeProvider::class);
-        $this->registerClass(IteratorToArrayReturnTypeProvider::class);
-        $this->registerClass(ParseUrlReturnTypeProvider::class);
-        $this->registerClass(StrReplaceReturnTypeProvider::class);
-        $this->registerClass(StrTrReturnTypeProvider::class);
-        $this->registerClass(VersionCompareReturnTypeProvider::class);
-        $this->registerClass(MktimeReturnTypeProvider::class);
-        $this->registerClass(BasenameReturnTypeProvider::class);
-        $this->registerClass(DirnameReturnTypeProvider::class);
-        $this->registerClass(GetObjectVarsReturnTypeProvider::class);
-        $this->registerClass(GetClassMethodsReturnTypeProvider::class);
-        $this->registerClass(FirstArgStringReturnTypeProvider::class);
-        $this->registerClass(HexdecReturnTypeProvider::class);
-        $this->registerClass(MinMaxReturnTypeProvider::class);
-        $this->registerClass(TriggerErrorReturnTypeProvider::class);
-        $this->registerClass(RandReturnTypeProvider::class);
-        $this->registerClass(InArrayReturnTypeProvider::class);
-        $this->registerClass(RoundReturnTypeProvider::class);
-        $this->registerClass(MbInternalEncodingReturnTypeProvider::class);
-        $this->registerClass(DateReturnTypeProvider::class);
-        $this->registerClass(PowReturnTypeProvider::class);
-        $this->registerClass(SprintfReturnTypeProvider::class);
+        $this->registerClass(new ArrayChunkReturnTypeProvider());
+        $this->registerClass(new ArrayColumnReturnTypeProvider());
+        $this->registerClass(new ArrayCombineReturnTypeProvider());
+        $this->registerClass(new ArrayFilterReturnTypeProvider());
+        $this->registerClass(new ArrayMapReturnTypeProvider());
+        $this->registerClass(new ArrayMergeReturnTypeProvider());
+        $this->registerClass(new ArrayPadReturnTypeProvider());
+        $this->registerClass(new ArrayPointerAdjustmentReturnTypeProvider());
+        $this->registerClass(new ArrayPopReturnTypeProvider());
+        $this->registerClass(new ArrayRandReturnTypeProvider());
+        $this->registerClass(new ArrayReduceReturnTypeProvider());
+        $this->registerClass(new ArraySliceReturnTypeProvider());
+        $this->registerClass(new ArraySpliceReturnTypeProvider());
+        $this->registerClass(new ArrayReverseReturnTypeProvider());
+        $this->registerClass(new ArrayFillReturnTypeProvider());
+        $this->registerClass(new ArrayFillKeysReturnTypeProvider());
+        $this->registerClass(new FilterInputReturnTypeProvider());
+        $this->registerClass(new FilterVarReturnTypeProvider());
+        $this->registerClass(new IteratorToArrayReturnTypeProvider());
+        $this->registerClass(new ParseUrlReturnTypeProvider());
+        $this->registerClass(new StrReplaceReturnTypeProvider());
+        $this->registerClass(new StrTrReturnTypeProvider());
+        $this->registerClass(new VersionCompareReturnTypeProvider());
+        $this->registerClass(new MktimeReturnTypeProvider());
+        $this->registerClass(new BasenameReturnTypeProvider());
+        $this->registerClass(new DirnameReturnTypeProvider());
+        $this->registerClass(new GetObjectVarsReturnTypeProvider());
+        $this->registerClass(new GetClassMethodsReturnTypeProvider());
+        $this->registerClass(new FirstArgStringReturnTypeProvider());
+        $this->registerClass(new HexdecReturnTypeProvider());
+        $this->registerClass(new MinMaxReturnTypeProvider());
+        $this->registerClass(new TriggerErrorReturnTypeProvider());
+        $this->registerClass(new RandReturnTypeProvider());
+        $this->registerClass(new InArrayReturnTypeProvider());
+        $this->registerClass(new RoundReturnTypeProvider());
+        $this->registerClass(new MbInternalEncodingReturnTypeProvider());
+        $this->registerClass(new DateReturnTypeProvider());
+        $this->registerClass(new PowReturnTypeProvider());
+        $this->registerClass(new SprintfReturnTypeProvider());
     }
 
     /**
-     * @param class-string $class
+     * Registers a provider object (classes are never looked up by name: the program is compiled).
      */
-    public function registerClass(string $class): void
+    public function registerClass(object $class): void
     {
-        if (is_subclass_of($class, FunctionReturnTypeProviderInterface::class, true)) {
-            $callable = $class::getFunctionReturnType(...);
+        if ($class instanceof FunctionReturnTypeProviderInterface) {
+            $callable = $class->getFunctionReturnType(...);
 
-            foreach ($class::getFunctionIds() as $function_id) {
+            foreach ($class->getFunctionIds() as $function_id) {
                 $this->registerClosure($function_id, $callable);
             }
         }

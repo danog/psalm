@@ -32,6 +32,7 @@ use Psalm\Internal\TypeVisitor\TypeVariableResolver;
 use Psalm\Issue\ArgumentTypeCoercion;
 use Psalm\Issue\DeprecatedConstant;
 use Psalm\Issue\ImplicitToStringCast;
+use Psalm\Issue\CodeIssue;
 use Psalm\Issue\InvalidArgument;
 use Psalm\Issue\InvalidLiteralArgument;
 use Psalm\Issue\InvalidScalarArgument;
@@ -605,26 +606,27 @@ final class ArgumentAnalyzer
                     }
                 }
 
-                $issue_type = $possibly_matches ? PossiblyInvalidArgument::class : InvalidArgument::class;
+                // the issue class depends on the match: instantiated explicitly (never by name)
+                $make_issue = static fn(string $message, CodeLocation $location): CodeIssue => $possibly_matches
+                    ? new PossiblyInvalidArgument($message, $location, $cased_method_id)
+                    : new InvalidArgument($message, $location, $cased_method_id);
                 if ($non_iterable) {
                     IssueBuffer::maybeAdd(
-                        new $issue_type(
+                        $make_issue(
                             'Tried to unpack non-iterable ' . $arg_value_type->getId(),
                             new CodeLocation($statements_analyzer->getSource(), $arg->value),
-                            $cased_method_id,
                         ),
                         $statements_analyzer->getSuppressedIssues(),
                     );
                 }
                 if ($invalid_key) {
                     IssueBuffer::maybeAdd(
-                        new $issue_type(
+                        $make_issue(
                             'Method ' . $cased_method_id
                                 . ' called with unpacked iterable ' . $arg_value_type->getId()
                                 . ' with invalid key (must be '
                                 . ($codebase->analysis_php_version_id < 8_00_00 ? 'int' : 'int|string') . ')',
                             new CodeLocation($statements_analyzer->getSource(), $arg->value),
-                            $cased_method_id,
                         ),
                         $statements_analyzer->getSuppressedIssues(),
                     );
@@ -632,10 +634,9 @@ final class ArgumentAnalyzer
                 if ($invalid_string_key) {
                     if ($codebase->analysis_php_version_id < 8_00_00) {
                         IssueBuffer::maybeAdd(
-                            new $issue_type(
+                            $make_issue(
                                 'String keys not supported in unpacked arguments',
                                 new CodeLocation($statements_analyzer->getSource(), $arg->value),
-                                $cased_method_id,
                             ),
                             $statements_analyzer->getSuppressedIssues(),
                         );

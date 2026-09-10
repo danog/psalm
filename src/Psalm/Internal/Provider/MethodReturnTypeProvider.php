@@ -18,7 +18,6 @@ use Psalm\Plugin\EventHandler\MethodReturnTypeProviderInterface;
 use Psalm\StatementsSource;
 use Psalm\Type\Union;
 
-use function is_subclass_of;
 use function strtolower;
 
 /**
@@ -38,22 +37,22 @@ final class MethodReturnTypeProvider
     {
         self::$handlers = [];
 
-        $this->registerClass(DomNodeAppendChild::class);
-        $this->registerClass(ImagickPixelColorReturnTypeProvider::class);
-        $this->registerClass(PdoStatementReturnTypeProvider::class);
-        $this->registerClass(ClosureFromCallableReturnTypeProvider::class);
-        $this->registerClass(DateTimeModifyReturnTypeProvider::class);
+        $this->registerClass(new DomNodeAppendChild());
+        $this->registerClass(new ImagickPixelColorReturnTypeProvider());
+        $this->registerClass(new PdoStatementReturnTypeProvider());
+        $this->registerClass(new ClosureFromCallableReturnTypeProvider());
+        $this->registerClass(new DateTimeModifyReturnTypeProvider());
     }
 
     /**
-     * @param class-string $class
+     * Registers a provider object (classes are never looked up by name: the program is compiled).
      */
-    public function registerClass(string $class): void
+    public function registerClass(object $class): void
     {
-        if (is_subclass_of($class, MethodReturnTypeProviderInterface::class, true)) {
-            $callable = $class::getMethodReturnType(...);
+        if ($class instanceof MethodReturnTypeProviderInterface) {
+            $callable = $class->getMethodReturnType(...);
 
-            foreach ($class::getClassLikeNames() as $fq_classlike_name) {
+            foreach ($class->getClassLikeNames() as $fq_classlike_name) {
                 $this->registerClosure($fq_classlike_name, $callable);
             }
         }

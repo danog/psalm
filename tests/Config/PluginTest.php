@@ -23,6 +23,12 @@ use Psalm\Plugin\EventHandler\Event\AfterEveryFunctionCallAnalysisEvent;
 use Psalm\PluginRegistrationSocket;
 use Psalm\Report;
 use Psalm\Report\ReportOptions;
+use Psalm\Test\Config\Plugin\AfterAnalysisPlugin;
+use Psalm\Test\Config\Plugin\FilePlugin;
+use Psalm\Test\Config\Plugin\FunctionPlugin;
+use Psalm\Test\Config\Plugin\MethodPlugin;
+use Psalm\Test\Config\Plugin\PropertyPlugin;
+use Psalm\Tests\Config\Plugin\StoragePlugin;
 use Psalm\Tests\Internal\Provider\FakeParserCacheProvider;
 use Psalm\Tests\TestCase;
 use Psalm\Tests\TestConfig;
@@ -48,6 +54,14 @@ final class PluginTest extends TestCase
         // hack to isolate Psalm from PHPUnit cli arguments
         global $argv;
         $argv = [];
+
+        // plugin classes named in the config files below (the program is compiled: registered explicitly)
+        Config::registerPluginFactory(FilePlugin::class, static fn(): FilePlugin => new FilePlugin());
+        Config::registerPluginFactory(PropertyPlugin::class, static fn(): PropertyPlugin => new PropertyPlugin());
+        Config::registerPluginFactory(MethodPlugin::class, static fn(): MethodPlugin => new MethodPlugin());
+        Config::registerPluginFactory(FunctionPlugin::class, static fn(): FunctionPlugin => new FunctionPlugin());
+        Config::registerPluginFactory(AfterAnalysisPlugin::class, static fn(): AfterAnalysisPlugin => new AfterAnalysisPlugin());
+        Config::registerPluginFactory(StoragePlugin::class, static fn(): StoragePlugin => new StoragePlugin());
 
         new TestConfig();
     }
@@ -521,10 +535,10 @@ final class PluginTest extends TestCase
 
         $config = $codebase->config;
 
-        (new PluginRegistrationSocket($config, $codebase))->registerHooksFromClass(get_class($hook));
+        (new PluginRegistrationSocket($config, $codebase))->registerHooksFromClass($hook);
 
         $this->assertContains(
-            get_class($hook),
+            $hook,
             $this->project_analyzer->getCodebase()->config->eventDispatcher->after_codebase_populated,
         );
     }

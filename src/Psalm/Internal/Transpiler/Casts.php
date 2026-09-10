@@ -447,7 +447,8 @@ final class Casts
             return $this->convertClosure($code, $from, $to);
         }
         if ($fk === RustType::STR && ($tk === RustType::CLOSURE || $tk === RustType::DYN_CALLABLE)) {
-            // a function name used as a callable
+            // a function name used as a callable: functions are never looked up by name (closed world)
+            $this->warn('string used as a callable');
             return $this->convert('to_callable(&Mixed::Str(' . $code . '))', RustType::dynCallable(), $to);
         }
         if ($fk === RustType::CLOSURE && $tk === RustType::DYN_CALLABLE) {

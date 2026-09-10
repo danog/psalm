@@ -11,7 +11,6 @@ use Psalm\Plugin\EventHandler\Event\PropertyExistenceProviderEvent;
 use Psalm\Plugin\EventHandler\PropertyExistenceProviderInterface;
 use Psalm\StatementsSource;
 
-use function is_subclass_of;
 use function strtolower;
 
 /**
@@ -35,16 +34,12 @@ final class PropertyExistenceProvider
         self::$handlers = [];
     }
 
-    /**
-     * @param class-string<LegacyPropertyExistenceProviderInterface>
-     *     |class-string<PropertyExistenceProviderInterface> $class
-     */
-    public function registerClass(string $class): void
+    public function registerClass(object $class): void
     {
-        if (is_subclass_of($class, PropertyExistenceProviderInterface::class, true)) {
-            $callable = $class::doesPropertyExist(...);
+        if ($class instanceof PropertyExistenceProviderInterface) {
+            $callable = $class->doesPropertyExist(...);
 
-            foreach ($class::getClassLikeNames() as $fq_classlike_name) {
+            foreach ($class->getClassLikeNames() as $fq_classlike_name) {
                 $this->registerClosure($fq_classlike_name, $callable);
             }
         }

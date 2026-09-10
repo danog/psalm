@@ -43,8 +43,6 @@ final class PHPMarkdownContent extends MarkupContent implements JsonSerializable
     #[ReturnTypeWillChange]
     public function jsonSerialize(): mixed
     {
-        $vars = get_object_vars($this);
-        unset($vars['title'], $vars['description'], $vars['code']);
-        return $vars;
+        return ['kind' => $this->kind, 'value' => $this->value];
     }
 }

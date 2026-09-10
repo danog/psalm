@@ -90,12 +90,6 @@ final class CrateEmitter
                 $this->diag->warn('class emission error: ' . $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine(), $cls->node, $cls->fqcn);
             }
         }
-        // factories are discovered during body emission; emit them now
-        foreach ($this->program->factories as [$fc, $arity]) {
-            $w = $this->module($fc->crate, Names::modulePath($fc->fqcn));
-            $fake = new \ReflectionMethod($class_emitter, 'emitFactory');
-            $fake->invoke($class_emitter, $fc, $w);
-        }
         foreach ($project_classes as $cls) {
             $w = $this->module($cls->crate, Names::modulePath($cls->fqcn));
             $cast_emitter->emitClassImpls($cls, $w);
@@ -362,110 +356,119 @@ final class CrateEmitter
         }
     }
 
-    /** `init()`: registers classes and constants with the runtime registry (for class_exists, is_a, constant(), ...). */
+    /** `init()`: runs the upstream crates' initializers (kept as the program's entry hook). */
     private function emitInit(Writer $w, int $crate): void
     {
         $w->line('thread_local! { static __INIT: std::cell::Cell<bool> = std::cell::Cell::new(false); }');
         $w->open('pub fn init() {');
         $w->line('if __INIT.with(|c| c.replace(true)) { return; }');
-        if ($crate === 0) {
-            // lets the sources know they run as a compiled program (no runtime code loading)
-            $w->line('php_rt::registry::define_constant(&Str::from_static("PSALM_COMPILED"), Mixed::Bool(true));');
-        }
         for ($i = 0; $i < $crate; $i++) {
             $w->line('::' . $this->transpiler->crateName($i) . '::init();');
         }
+        $w->close();
+        $this->emitNames($w, $crate);
+    }
+
+    /**
+     * `names`: static tables of the crate's classes, functions and constants for the name-based builtins
+     * (`class_exists`, `is_subclass_of` on class names, `defined`, `constant`, `get_declared_classes`, ...).
+     * Each crate's tables fall back to the upstream crate's, the main crate to the runtime's builtin tables.
+     */
+    private function emitNames(Writer $w, int $crate): void
+    {
+        $up = $crate > 0 ? '::' . $this->transpiler->crateName($crate - 1) . '::names::' : null;
+        $w->open('pub mod names {');
+        $w->line('use php_rt::prelude::*;');
+        for ($i = 0; $i < $crate; $i++) {
+            $w->line('use ::' . $this->transpiler->crateName($i) . '::generated::*;');
+        }
+        $w->line('use crate::generated::*;');
+        $w->line('use crate::Throw;');
+        $w->line('pub struct ClassInfo { pub name: &\'static str, pub ancestors: &\'static [&\'static str], pub kind: u8, pub file: &\'static str }');
+        $classes = [];
+        $all_functions = [];
         foreach ($this->program->uniqueClasses() as $cls) {
             if (!$cls->is_project || $cls->crate !== $crate) {
                 continue;
             }
-            $names = [strtolower($cls->fqcn)];
+            $classes[$cls->lc()] = $cls;
+        }
+        ksort($classes);
+        $rows = [];
+        foreach ($classes as $lc => $cls) {
+            $names = [];
             foreach ($cls->ancestors as $a) {
-                $names[] = strtolower($a->fqcn);
+                $names[] = Names::rustStringLiteral(strtolower($a->fqcn));
             }
-            $file = $this->transpiler->classes[$cls->lc()]->file_path ?? '';
-            $w->line('php_rt::registry::register_class(' . Names::rustStringLiteral($cls->fqcn) . ', &[' . implode(', ', array_map(fn($n) => Names::rustStringLiteral($n), $names)) . '], ' . ($cls->isInterface() ? 'true' : 'false') . ', ' . ($cls->isTrait() ? 'true' : 'false') . ', ' . Names::rustStringLiteral($file) . ');');
+            $kind = $cls->isInterface() ? 1 : ($cls->isTrait() ? 2 : ($cls->isEnum() ? 3 : 0));
+            $file = $this->transpiler->classes[$lc]->file_path ?? '';
+            $rows[] = '(' . Names::byteStrLiteral($lc) . ', ClassInfo { name: ' . Names::rustStringLiteral($cls->fqcn) . ', ancestors: &[' . implode(', ', $names) . '], kind: ' . $kind . ', file: ' . Names::rustStringLiteral($file) . ' })';
+        }
+        $w->line('static CLASSES: &[(&[u8], ClassInfo)] = &[' . implode(', ', $rows) . '];');
+        $w->line('pub fn class_info(name: &Str) -> Option<&\'static ClassInfo> { class_info_lc(&php_rt::names::norm(name)) }');
+        $w->line('pub fn class_info_lc(lc: &[u8]) -> Option<&\'static ClassInfo> { match CLASSES.binary_search_by(|(k, _)| (*k).cmp(lc)) { Ok(i) => Some(&CLASSES[i].1), Err(_) => ' . ($up !== null ? $up . 'class_info_lc(lc)' : 'None') . ' } }');
+        $w->line('pub fn class_exists(name: &Str) -> bool { let lc = php_rt::names::norm(name); match class_info_lc(&lc) { Some(i) => i.kind == 0 || i.kind == 3, None => php_rt::names::builtin_class_exists(&lc) } }');
+        $w->line('pub fn interface_exists(name: &Str) -> bool { let lc = php_rt::names::norm(name); match class_info_lc(&lc) { Some(i) => i.kind == 1, None => php_rt::names::builtin_interface_exists(&lc) } }');
+        $w->line('pub fn trait_exists(name: &Str) -> bool { class_info(name).map_or(false, |i| i.kind == 2) }');
+        $w->line('pub fn enum_exists(name: &Str) -> bool { class_info(name).map_or(false, |i| i.kind == 3) }');
+        $w->line('pub fn class_is_trait(name: &Str) -> bool { trait_exists(name) }');
+        $w->line('pub fn class_file(name: &Str) -> Option<Str> { class_info(name).and_then(|i| if i.file.is_empty() { None } else { Some(Str::from_static(i.file)) }) }');
+        $w->line('/// `is_subclass_of($sub, $parent)` / `is_a($sub, $parent, true)` on two class names.');
+        $w->line('pub fn is_subclass(sub: &Str, parent: &Str, allow_same: bool) -> bool { let s = php_rt::names::norm(sub); let p = php_rt::names::norm(parent); if s == p { return allow_same; } class_info_lc(&s).map_or(false, |i| i.ancestors.iter().any(|a| a.as_bytes() == p.as_slice())) }');
+        $w->line('pub fn declared_classlikes(interfaces: bool) -> List<Str> { let mut out: List<Str> = ' . ($up !== null ? $up . 'declared_classlikes(interfaces)' : 'php_rt::names::builtin_declared(interfaces)') . '; for (_, i) in CLASSES { if (interfaces && i.kind == 1) || (!interfaces && (i.kind == 0 || i.kind == 3)) { out.push(Str::from_static(i.name)); } } out }');
+        // functions
+        $fns = [];
+        foreach ($this->program->functions as $fn) {
+            $fc = $this->program->crateOfRecord($fn->record);
+            if ($fc <= $crate) {
+                $all_functions[] = Names::rustStringLiteral(strtolower($fn->fq_name));
+            }
+            if ($fc === $crate) {
+                $fns[strtolower($fn->fq_name)] = true;
+            }
+        }
+        ksort($fns);
+        $w->line('static FUNCTIONS: &[&[u8]] = &[' . implode(', ', array_map(fn($n) => Names::byteStrLiteral($n), array_keys($fns))) . '];');
+        $w->line('pub static USER_FUNCTIONS: &[&str] = &[' . implode(', ', $all_functions) . '];');
+        $w->line('pub fn function_exists(name: &Str) -> bool { let lc = php_rt::names::norm(name); FUNCTIONS.binary_search(&lc.as_slice()).is_ok() || ' . ($up !== null ? $up . 'function_exists(name)' : 'php_rt::builtins::misc::builtin_function_exists(&lc)') . ' }');
+        // constants
+        $arms = [];
+        foreach ($this->program->constants as $c) {
+            if ($this->program->crateOfRecord($c->record) !== $crate) {
+                continue;
+            }
+            $arms[] = Names::byteStrLiteral($c->name) . ' => Some(' . $this->casts->convert('crate::consts::' . Names::constant($c->name) . '()', $c->type, RustType::mixed()) . ')';
+        }
+        $w->line('pub fn constant_value(name: &Str) -> Option<Mixed> { if let Some(pos) = name.as_bytes().windows(2).position(|w| w == b"::") { let cls = php_rt::names::norm(&Str::from_bytes(&name.as_bytes()[..pos])); return class_constants_lc(&cls).get(&ArrayKey::from(Str::from_bytes(&name.as_bytes()[pos + 2..]))).cloned(); } match name.as_bytes() { ' . implode(', ', $arms) . ($arms ? ', ' : '') . '_ => ' . ($up !== null ? $up . 'constant_value(name)' : 'php_rt::consts::builtin_value(name.as_bytes())') . ' } }');
+        $w->line('pub fn constant_defined(name: &Str) -> bool { constant_value(name).is_some() }');
+        $w->line('pub fn constant(name: &Str) -> Result<Mixed, Throw> { constant_value(name).ok_or_else(|| Throw::error(cat!(Str::from_static("Undefined constant \""), name.clone(), Str::from_static("\"")))) }');
+        $carms = [];
+        foreach ($classes as $lc => $cls) {
             if ($cls->isTrait()) {
                 continue;
             }
-            if ($cls->isConcrete() && !$cls->isEnum()) {
-                $w->line('php_rt::registry::register_factory(' . Names::rustStringLiteral($cls->fqcn) . ', Box::new(|| ' . $this->casts->convert($cls->ownPath() . '::new_uninit()', RustType::class($cls->fqcn), RustType::mixed()) . '));');
-                $ctor_args = $this->dynamicCtorArgs($cls);
-                if ($ctor_args !== null) {
-                    $w->line('php_rt::registry::register_ctor(' . Names::rustStringLiteral($cls->fqcn) . ', Box::new(|__a| Ok(' . $this->casts->convert($cls->ownPath() . '::new(' . $ctor_args . ').map_err(|e| DynError::Obj(cast::<Mixed>(e)))?', RustType::class($cls->fqcn), RustType::mixed()) . ')));');
-                }
-            }
-            if (!$cls->isInterface() && !$cls->isEnum()) {
-                $w->line('php_rt::registry::register_static(' . Names::rustStringLiteral($cls->fqcn) . ', Box::new(|__m, __a| ' . $cls->path() . '::call_static(__m, __a)));');
-            }
-        }
-        foreach ($this->program->uniqueClasses() as $cls) {
-            if (!$cls->is_project || $cls->isTrait() || $cls->crate !== $crate) {
-                continue;
-            }
             $seen = [];
+            $inserts = [];
             foreach ([$cls, ...$cls->ancestors] as $src) {
                 foreach ($src->constants as $c) {
                     if ($c->expr === null || isset($seen[$c->name])) {
                         continue;
                     }
                     $seen[$c->name] = true;
-                    $w->line('php_rt::registry::define_constant(&Str::from_static(' . Names::rustStringLiteral($cls->fqcn . '::' . $c->name) . '), ' . $this->casts->convert($src->path() . '::' . $c->rustName() . '()', $c->type, RustType::mixed()) . ');');
+                    $inserts[] = 'm.insert(ArrayKey::from(Str::from_static(' . Names::rustStringLiteral($c->name) . ')), ' . $this->casts->convert($src->path() . '::' . $c->rustName() . '()', $c->type, RustType::mixed()) . ');';
                 }
             }
-        }
-        foreach ($this->program->constants as $c) {
-            if ($this->program->crateOfRecord($c->record) !== $crate) {
+            if ($inserts === []) {
                 continue;
             }
-            $w->line('php_rt::registry::define_constant(&Str::from_static(' . Names::rustStringLiteral($c->name) . '), ' . $this->casts->convert('crate::consts::' . Names::constant($c->name) . '()', $c->type, RustType::mixed()) . ');');
+            $carms[] = Names::byteStrLiteral($lc) . ' => { let mut m: Map<ArrayKey, Mixed> = Map::new(); ' . implode(' ', $inserts) . ' m }';
         }
-        // includable files: compiled data files and units of declarations (whose inclusion yields 1)
-        $w->line('let __unit: Rc<dyn Fn() -> Result<Mixed, DynError>> = Rc::new(|| Ok(Mixed::Int(1)));');
-        foreach ($this->program->files as $file) {
-            if ($file === null || $file->crate !== $crate) {
-                continue;
-            }
-            if ($file->isData()) {
-                $w->line('php_rt::registry::register_file(' . Names::rustStringLiteral($file->rel_path) . ', Rc::new(|| ' . $file->path() . '().map_err(|e| DynError::Obj(cast::<Mixed>(e)))));');
-            } else {
-                $w->line('php_rt::registry::register_file(' . Names::rustStringLiteral($file->rel_path) . ', __unit.clone());');
-            }
-        }
+        $w->line('/// All constants of a class (declared or inherited), by name.');
+        $w->line('pub fn class_constants(name: &Str) -> Map<ArrayKey, Mixed> { class_constants_lc(&php_rt::names::norm(name)) }');
+        $w->line('pub fn class_constants_lc(lc: &[u8]) -> Map<ArrayKey, Mixed> { match lc { ' . implode(', ', $carms) . ($carms ? ', ' : '') . '_ => ' . ($up !== null ? $up . 'class_constants_lc(lc)' : 'Map::new()') . ' } }');
         $w->close();
     }
 
-    /** Constructor arguments taken from a dynamic argument list (`new $class(...)`), or null when not expressible. */
-    private function dynamicCtorArgs(ClassModel $cls): ?string
-    {
-        $ctor = $this->program->findMethod($cls, '__construct');
-        if ($ctor === null) {
-            return '';
-        }
-        $parts = [];
-        foreach ($ctor->storage->params as $i => $p) {
-            if ($p->by_ref || $p->is_variadic) {
-                return null;
-            }
-            $pt = $ctor->param_types[$i] ?? RustType::mixed();
-            if (Casts::isLocal($pt)) {
-                $this->casts->needMixedTo($pt);
-            }
-            $inner = $pt->kind === RustType::OPTION ? $pt->inner() : $pt;
-            if ($pt->kind === RustType::MIXED) {
-                $parts[] = 'dyn_arg_req::<Mixed>(&__a, ' . $i . ')';
-            } elseif (in_array($inner->kind, [RustType::CLOSURE, RustType::TUPLE, RustType::DYN_CALLABLE, RustType::RT_GENERIC, RustType::RESOURCE], true)) {
-                $parts[] = $this->casts->convert('dyn_arg_req::<Mixed>(&__a, ' . $i . ')', RustType::mixed(), $pt);
-            } elseif ($pt->hasDefault() && $pt->kind !== RustType::CLASS_) {
-                $parts[] = 'dyn_arg::<' . $pt->toRust() . '>(&__a, ' . $i . ')';
-            } else {
-                $parts[] = 'dyn_arg_req::<' . $pt->toRust() . '>(&__a, ' . $i . ')';
-            }
-        }
-        return implode(', ', $parts);
-    }
-
-    /** Constructors for runtime-raised errors, and conversion from php_rt::RtError. */
     private function emitThrowSupport(ClassModel $throwable, Writer $w): void
     {
         $tt = RustType::class($throwable->fqcn);
