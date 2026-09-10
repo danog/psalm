@@ -322,6 +322,12 @@ class RecursiveCallbackFilterIterator implements RecursiveIterator
         return $this->iterator;
     }
 
+    /** @internal the wrapped iterator, typed precisely for the flattening iterator */
+    public function innerIterator(): RecursiveIterator
+    {
+        return $this->iterator;
+    }
+
     public function accept(): bool
     {
         return (bool) ($this->callback)($this->iterator->current(), $this->iterator->key(), $this->iterator);
@@ -404,7 +410,7 @@ class RecursiveIteratorIterator extends RecursiveDirectoryIterator
         for ($iterator->rewind(); $iterator->valid(); $iterator->next()) {
             $key = $iterator->key();
             $value = $iterator->current();
-            $source = $iterator instanceof RecursiveCallbackFilterIterator ? $iterator->getInnerIterator() : $iterator;
+            $source = $iterator instanceof RecursiveCallbackFilterIterator ? $iterator->innerIterator() : $iterator;
             $pathname = $source instanceof RecursiveDirectoryIterator ? $source->getPathname() : (string) $key;
             $name = basename($pathname);
             if ($name === '.' || $name === '..') {

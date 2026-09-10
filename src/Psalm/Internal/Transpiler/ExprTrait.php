@@ -22,6 +22,7 @@ use function count;
 use function dirname;
 use function str_starts_with;
 use function strtoupper;
+use function array_keys;
 use function implode;
 use function max;
 use function in_array;
@@ -474,6 +475,23 @@ trait ExprTrait
         }
         if ($to->kind === RustType::ANY_OBJECT && $from->kind === RustType::CLASS_) {
             return true;
+        }
+        // a shape whose optional fields would become required (values invented for absent keys) is not
+        // more precise than the stored one; the same holds inside containers
+        if ($from->kind === RustType::SHAPE && $to->kind === RustType::SHAPE && array_keys($from->fields) == array_keys($to->fields)) {
+            foreach ($from->fields as $k => [$ft, $opt]) {
+                [$tt, $topt] = $to->fields[$k];
+                if (($opt && !$topt) || $this->isWidening($ft, $tt)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        if ($from->kind === RustType::MAP && $to->kind === RustType::MAP && $from->params[0]->toRust() === $to->params[0]->toRust()) {
+            return $this->isWidening($from->params[1], $to->params[1]);
+        }
+        if (($from->kind === RustType::LIST && $to->kind === RustType::LIST) || ($from->kind === RustType::OPTION && $to->kind === RustType::OPTION)) {
+            return $this->isWidening($from->inner(), $to->inner());
         }
         return false;
     }

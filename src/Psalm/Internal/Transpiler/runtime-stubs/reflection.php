@@ -151,6 +151,24 @@ class ReflectionClass
         return __rt_class_constants($this->name)[$name] ?? false;
     }
 
+    /** @return list<never> members of builtin classes are not reflectable in a compiled program */
+    public function getMethods(?int $filter = null): array
+    {
+        return [];
+    }
+
+    /** @return list<never> */
+    public function getProperties(?int $filter = null): array
+    {
+        return [];
+    }
+
+    /** @return list<string> */
+    public function getInterfaceNames(): array
+    {
+        return [];
+    }
+
     public function getParentClass(): ReflectionClass|false
     {
         $parent = get_parent_class($this->name);
