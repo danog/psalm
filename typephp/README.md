@@ -109,12 +109,13 @@ whose functions are compiled in are skipped by the runner.
 The native binary (all of `src/` plus 1,122 reachable vendor files, 2,300
 translation units) analyses projects with the same results as plain PHP:
 
-- a sample project (taint analysis included): identical 9 issues, 1.4 s;
-- worker forks (`--threads=4`) work;
+- a sample project (taint analysis included): identical 9 issues;
+- worker forks (`--threads=N`) work;
 - plugins are loaded at runtime (psalm/plugin-phpunit, plugin-mockery);
-- a subset of Psalm's own sources: identical issues.
+- `psalm-native /path/to/psalter ...` runs the other launchers.
 
-Full self-analysis of Psalm is being compared next.
+The PHPUnit suite is run inside the open-world build (see above) and compared
+with plain PHP per test; the remaining differences are being worked through.
 
 ## Compiler fixes carried by the forks
 
@@ -129,6 +130,19 @@ danog/typephp:
 - `open-world` project option (see above); promoted constructor properties
   are written in the declaring class scope; first-class callables of
   namespaced functions.
+- Files without `declare(strict_types=1)` get PHP's weak typing: scalar
+  parameters and return values coerce instead of throwing.
+- Array properties without a default are uninitialized (`??=` initializers,
+  `isset()`); `$this->prop` of a non-final class uses the declaring class
+  slot; nullsafe/isset/empty reads are silent; virtual properties of
+  internal classes (DOM) go through the property handlers.
+- A local whose scalar type changes (`$x = false; $x = 1;`) and locals passed
+  to dynamic by-reference parameters get dynamic storage; call write-backs
+  run before the enclosing assignment; runtime-dispatched calls with a scalar
+  declared return type are converted.
+- Runtime: the compiled module registers with permanent interned strings
+  (OPcache), uninitialized property slots follow PHP semantics,
+  `typephp_set_server_argv()`, warnings are attributed to the right function.
 - Error collection mode (`TYPEPHP_COLLECT_ERRORS`), also during trait
   composition.
 - Function generation is retried with a dynamic local when a local receives
