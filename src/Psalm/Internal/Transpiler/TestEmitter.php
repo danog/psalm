@@ -207,7 +207,7 @@ final class TestEmitter
             $this->emitInvocation($cls, $m, $body, $dep_args, 'Str::from_static("")');
         } else {
             [$iter, $kt, $vt] = $rows;
-            $body->line('let (__key, __row) = match (' . $iter . ').into_iter().nth(__i) { Some(__p) => __p, None => return Err(Throw::error(Str::from_static("data set vanished"))) };');
+            $body->line('let (__key, __row) = __rows[__i].clone();');
             $body->line('let __t = ' . $new . ';');
             $args = [...$this->rowArgs($m, $vt, $first_dep_param), ...$dep_args];
             $this->emitInvocation($cls, $m, $body, $args, 'to_str(&__key)');
@@ -218,20 +218,31 @@ final class TestEmitter
         $body->line('Ok(())');
 
         if ($rows === null) {
-            $w->line('let __i: usize = 0;');
             $w->open('trials.push(libtest_mimic::Trial::test(' . $name . '.to_string(), move || php_rt::testing::run_trial(' . $name . ', ' . $root . ', move || -> Result<(), Throw> {');
             $w->raw($body->get());
             $w->close('}).map_err(libtest_mimic::Failed::from)));');
         } else {
             [$iter] = $rows;
-            // the data sets are named by running the provider once
+            // the data sets are named by running the provider once; the trials then share one worker thread
+            // (started on first use) that evaluates the provider again and runs the requested rows
             $w->line('let __keys: Result<Vec<String>, String> = php_rt::testing::in_thread(' . $root . ', || -> Result<Vec<String>, Throw> { crate::init(); Ok((' . $iter . ').into_iter().map(|(__k, _)| to_str(&__k).to_string()).collect()) });');
             $w->open('match __keys {');
             $w->line('Err(__msg) => trials.push(libtest_mimic::Trial::test(' . $name . '.to_string(), move || Err(libtest_mimic::Failed::from(format!("data provider failed: {}", __msg))))),');
-            $w->open('Ok(__keys) => for (__i, __key) in __keys.into_iter().enumerate() {');
-            $w->open('trials.push(libtest_mimic::Trial::test(format!("{} [{}]", ' . $name . ', __key), move || php_rt::testing::run_trial(' . $name . ', ' . $root . ', move || -> Result<(), Throw> {');
+            $w->open('Ok(__keys) => {');
+            $w->line('let __worker: php_rt::testing::RowWorker = Default::default();');
+            $w->open('for (__i, __key) in __keys.into_iter().enumerate() {');
+            $w->line('let __worker = __worker.clone();');
+            $w->open('trials.push(libtest_mimic::Trial::test(format!("{} [{}]", ' . $name . ', __key), move || php_rt::testing::run_on_worker(&__worker, ' . $root . ', __i, move |__requests| {');
+            $w->line('crate::init();');
+            $w->line('let __rows = match (|| -> Result<Vec<_>, Throw> { Ok((' . $iter . ').into_iter().collect()) })() { Ok(__r) => __r, Err(__e) => { for (_, __reply) in __requests { let _ = __reply.send(Err(format!("data provider failed: {}", __e))); } return; } };');
+            $w->open('for (__i, __reply) in __requests {');
+            $w->open('let __outcome = php_rt::testing::run_row(' . $name . ', || -> Result<(), Throw> {');
             $w->raw($body->get());
+            $w->close('});');
+            $w->line('let _ = __reply.send(__outcome);');
+            $w->close();
             $w->close('}).map_err(libtest_mimic::Failed::from)));');
+            $w->close();
             $w->close('},');
             $w->close();
         }
