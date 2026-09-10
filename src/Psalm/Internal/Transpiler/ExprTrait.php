@@ -1441,8 +1441,16 @@ trait ExprTrait
             }
         } else {
             // arrow functions capture the entire enclosing scope by value
+            $mentioned = [];
             foreach ($record->var_types as $var_id => $_) {
-                $name = substr($var_id, 1);
+                $mentioned[substr($var_id, 1)] = true;
+            }
+            foreach ((new \PhpParser\NodeFinder())->findInstanceOf([$e->expr], Expr\Variable::class) as $v) {
+                if (is_string($v->name)) {
+                    $mentioned[$v->name] = true;
+                }
+            }
+            foreach ($mentioned as $name => $_) {
                 if ($name !== 'this' && !isset($param_types[$name]) && isset($this->vars[$name])) {
                     $capture_names[] = $name;
                 }

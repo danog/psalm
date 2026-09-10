@@ -169,6 +169,18 @@ abstract class TestCase extends Assert
 
 abstract class Assert
 {
+    /** Evaluates a constraint (the subset of PHPUnit's constraint API used by the ported tests). */
+    public static function assertThat(mixed $value, \PHPUnit\Framework\Constraint\Constraint $constraint, string $message = ''): void
+    {
+        self::$count++;
+        $constraint->evaluate($value, $message);
+    }
+
+    public static function stringContains(string $needle, bool $ignoreCase = false): \PHPUnit\Framework\Constraint\StringContains
+    {
+        return new \PHPUnit\Framework\Constraint\StringContains($needle, $ignoreCase);
+    }
+
     private static int $count = 0;
 
     public static function getCount(): int
@@ -547,5 +559,72 @@ abstract class Assert
         if (!property_exists($object, $propertyName)) {
             throw new AssertionFailedError(($message !== '' ? $message . "\n" : '') . 'Failed asserting that object has property "' . $propertyName . '".');
         }
+    }
+}
+
+namespace PHPUnit\Framework\Constraint;
+
+abstract class Constraint implements \Countable
+{
+    /**
+     * @return bool|null true/false when $returnResult, otherwise throws on mismatch
+     */
+    public function evaluate(mixed $other, string $description = '', bool $returnResult = false): ?bool
+    {
+        $success = $this->matches($other);
+        if ($returnResult) {
+            return $success;
+        }
+        if (!$success) {
+            $this->fail($other, $description);
+        }
+        return null;
+    }
+
+    protected function matches(mixed $other): bool
+    {
+        return false;
+    }
+
+    abstract public function toString(): string;
+
+    protected function failureDescription(mixed $other): string
+    {
+        return \PHPUnit\Framework\Assert::describeValue($other) . ' ' . $this->toString();
+    }
+
+    protected function fail(mixed $other, string $description): never
+    {
+        $failureDescription = 'Failed asserting that ' . $this->failureDescription($other) . '.';
+        if ($description !== '') {
+            $failureDescription = $description . "\n" . $failureDescription;
+        }
+        throw new \PHPUnit\Framework\ExpectationFailedException($failureDescription);
+    }
+
+    public function count(): int
+    {
+        return 1;
+    }
+}
+
+final class StringContains extends Constraint
+{
+    public function __construct(private string $needle, private bool $ignoreCase = false)
+    {
+    }
+
+    protected function matches(mixed $other): bool
+    {
+        $haystack = (string) $other;
+        if ($this->ignoreCase) {
+            return stripos($haystack, $this->needle) !== false;
+        }
+        return strpos($haystack, $this->needle) !== false;
+    }
+
+    public function toString(): string
+    {
+        return 'contains "' . $this->needle . '"';
     }
 }

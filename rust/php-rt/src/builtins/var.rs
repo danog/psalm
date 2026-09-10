@@ -116,9 +116,13 @@ fn print_r_inner(m: &Mixed, indent: usize, out: &mut Vec<u8>) {
         other => out.extend_from_slice(crate::traits::ToStr::to_php_str(other).as_bytes()),
     }
 }
-pub fn print_r(m: &Mixed) -> Str {
+pub fn print_r(m: &Mixed, ret: bool) -> Str {
     let mut out = Vec::new();
     print_r_inner(m, 0, &mut out);
+    if !ret {
+        crate::output::echo(&out);
+        return Str::from_static("1");
+    }
     Str::from_vec(out)
 }
 

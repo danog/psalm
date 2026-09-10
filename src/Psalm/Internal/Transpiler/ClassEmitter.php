@@ -565,6 +565,9 @@ final class ClassEmitter
             if ($static_only && !$m->isStatic()) {
                 continue;
             }
+            if ($m->isPrivate() && $m->declaring !== $cls) {
+                continue;
+            }
             $params = [];
             $ok = true;
             foreach ($m->storage->params as $i => $p) {

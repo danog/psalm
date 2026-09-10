@@ -669,6 +669,8 @@ final class Casts
             case RustType::UNION:
             case RustType::SHAPE:
             case RustType::ANY_OBJECT:
+            case RustType::CLOSURE:
+            case RustType::TUPLE:
                 $this->need($from, RustType::mixed());
                 break;
             case RustType::OPTION:
