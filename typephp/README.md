@@ -115,7 +115,17 @@ translation units) analyses projects with the same results as plain PHP:
 - `psalm-native /path/to/psalter ...` runs the other launchers.
 
 The PHPUnit suite is run inside the open-world build (see above) and compared
-with plain PHP per test; the remaining differences are being worked through.
+with plain PHP per test. Known differences:
+
+- TypePHP generators run in fibers, so a `Fiber::suspend()` issued from
+  inside a generator body (Revolt's suspension inside amphp's
+  `Future::iterate()`) suspends the generator instead of the enclosing fiber;
+  the two `LanguageServer\DiagnosticTest` tests hit this.
+- Tests with `@runInSeparateProcess` expect `PHP_BINARY` to behave like the
+  PHP CLI (stdin script, `-d` options); the binary only runs Psalm's
+  launchers.
+- Environment: the embed PHP has no curl extension and `short_open_tag=1`
+  (no php.ini), which changes a handful of test expectations.
 
 ## Compiler fixes carried by the forks
 
