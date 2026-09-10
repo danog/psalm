@@ -95,7 +95,7 @@ script on top of the compiled runtime. `typephp/run-tests.php` uses this to
 run PHPUnit (interpreted, loaded through Composer) against the compiled Psalm:
 
     $PHP_HOME/bin/php typephp/gen-vendor-build.php --open-world
-    php /path/to/typephp/bin/tpc.php typephp/project.yml -o psalm-native --build-dir /tmp/psalm-typephp-open -j 12
+    php /path/to/typephp/bin/tpc.php typephp/project-open-world.yml -o psalm-native --build-dir /tmp/psalm-typephp-open -j 12
     ./psalm-native --typephp-run typephp/run-tests.php tests/ArgTest.php
 
 `--open-world` sets the fork's `open-world` project option: classes are
