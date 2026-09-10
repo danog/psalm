@@ -21,6 +21,8 @@ use function array_chunk;
 use function count;
 use function dirname;
 use function str_starts_with;
+use function preg_match;
+use function stripcslashes;
 use function strtoupper;
 use function array_keys;
 use function implode;
@@ -702,6 +704,15 @@ trait ExprTrait
             return $v->code;
         }
         if ($kt->kind === RustType::ARRAY_KEY) {
+            // literal keys need no runtime numeric-string check
+            if ($ft->kind === RustType::INT && preg_match('/^-?[0-9]+i64$/', $v->code)) {
+                return 'ArrayKey::Int(' . $v->code . ')';
+            }
+            if ($ft->kind === RustType::STR && preg_match('/^Str::from_static\("((?:[^"\\]|\\.)*)"\)$/', $v->code, $m)
+                && !preg_match('/^(0|-?[1-9][0-9]{0,18})$/', stripcslashes($m[1]))
+            ) {
+                return 'ArrayKey::from_static("' . $m[1] . '")';
+            }
             if ($ft->kind === RustType::INT || $ft->kind === RustType::STR || $ft->kind === RustType::BOOL || $ft->kind === RustType::FLOAT) {
                 return 'to_key(&' . $v->code . ')';
             }
