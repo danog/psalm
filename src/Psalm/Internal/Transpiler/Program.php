@@ -349,6 +349,10 @@ final class Program
             } catch (\PhpParser\Error $e) {
                 return null;
             }
+            // resolve `use` imports so class constants in data files name their class fully
+            $traverser = new \PhpParser\NodeTraverser();
+            $traverser->addVisitor(new \PhpParser\NodeVisitor\NameResolver(null, ['preserveOriginalNames' => true, 'replaceNodes' => false]));
+            $parsed = $traverser->traverse($parsed);
             $stmts = self::leftoverStatements($parsed);
         }
         $data = null;

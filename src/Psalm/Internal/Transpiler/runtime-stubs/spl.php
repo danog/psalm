@@ -405,7 +405,7 @@ class RecursiveIteratorIterator extends RecursiveDirectoryIterator
             $key = $iterator->key();
             $value = $iterator->current();
             $source = $iterator instanceof RecursiveCallbackFilterIterator ? $iterator->getInnerIterator() : $iterator;
-            $pathname = $source instanceof SplFileInfo ? $source->getPathname() : (string) $key;
+            $pathname = $source instanceof RecursiveDirectoryIterator ? $source->getPathname() : (string) $key;
             $name = basename($pathname);
             if ($name === '.' || $name === '..') {
                 continue;

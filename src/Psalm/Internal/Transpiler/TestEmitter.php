@@ -9,6 +9,7 @@ use function array_slice;
 use function basename;
 use function count;
 use function implode;
+use function in_array;
 use function max;
 use function preg_match;
 use function preg_match_all;
@@ -75,6 +76,27 @@ final class TestEmitter
         return false;
     }
 
+    /** Why the test cannot run in the compiled suite (PHPUnit mocks, closure rebinding), or null. */
+    private function unsupportedMechanism(MethodModel $m): ?string
+    {
+        if ($m->node->stmts === null) {
+            return null;
+        }
+        $finder = new \PhpParser\NodeFinder();
+        foreach ($finder->findInstanceOf($m->node->stmts, \PhpParser\Node\Expr\MethodCall::class) as $call) {
+            if ($call->name instanceof \PhpParser\Node\Identifier) {
+                $name = strtolower($call->name->name);
+                if (in_array($name, ['createmock', 'getmockbuilder', 'createstub', 'createconfiguredmock', 'createpartialmock'], true)) {
+                    return 'PHPUnit mocks are not available in the compiled test suite';
+                }
+                if ($name === 'bindto') {
+                    return 'Closure rebinding is not available in the compiled test suite';
+                }
+            }
+        }
+        return null;
+    }
+
     private function dataProvider(MethodModel $m): ?string
     {
         foreach ($m->node->attrGroups as $group) {
@@ -133,6 +155,17 @@ final class TestEmitter
         $w->open('fn ' . $fn_name . '() {');
         $w->open('php_rt::testing::run(' . Names::rustStringLiteral($cls->fqcn . '::' . $m->name) . ', ' . Names::rustStringLiteral($root) . ', || -> Result<(), Throw> {');
         $w->line('crate::init();');
+        $unsupported = $this->unsupportedMechanism($m);
+        if ($unsupported !== null) {
+            // mocks and closure rebinding need runtime code generation: the test is reported as skipped
+            $skip = $this->program->getClass('PHPUnit\\Framework\\SkippedTestError');
+            if ($skip !== null && $skip->is_project) {
+                $w->line('return Err(' . $this->casts->convert($skip->path() . '::new(Str::from_static(' . Names::rustStringLiteral($unsupported) . '), 0i64, None)?', RustType::class($skip->fqcn), RustType::class('Throwable')) . ');');
+                $w->close('});');
+                $w->close();
+                return;
+            }
+        }
         if ($has_setup_class) {
             $w->line($path . '::' . Names::method('setUpBeforeClass') . '()?;');
         }
@@ -225,10 +258,17 @@ final class TestEmitter
         $params = array_slice($m->storage->params, 0, max(0, $n_params));
         $args = [];
         if ($vt->kind === RustType::SHAPE) {
-            // PHPUnit passes `array_values($row)`: the i-th field goes to the i-th parameter
+            // PHPUnit passes `array_values($row)`: the i-th field goes to the i-th parameter. Rows keyed by
+            // parameter names are matched by name (the struct keeps the docblock's field order, not the row's).
             $keys = array_keys($vt->fields);
+            $by_name = $params !== [];
+            foreach ($params as $p) {
+                if (!isset($vt->fields[$p->name])) {
+                    $by_name = false;
+                }
+            }
             foreach ($params as $i => $p) {
-                $key = $keys[$i] ?? null;
+                $key = $by_name ? $p->name : ($keys[$i] ?? null);
                 $pt = $m->param_types[$i] ?? RustType::mixed();
                 if ($key !== null && isset($vt->fields[$key])) {
                     [$ft, $opt] = $vt->fields[$key];

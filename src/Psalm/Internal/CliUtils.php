@@ -69,6 +69,10 @@ final class CliUtils
         bool $has_explicit_root,
         string $vendor_dir,
     ): array {
+        if (\defined('PSALM_COMPILED')) {
+            // a compiled program has no composer autoloaders to load
+            return [];
+        }
         $autoload_roots = [$current_dir];
 
         $psalm_dir = dirname(__DIR__, 3);

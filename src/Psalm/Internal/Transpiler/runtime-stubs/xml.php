@@ -717,9 +717,27 @@ class DOMDocument extends DOMNode
 /**
  * @implements IteratorAggregate<int, DOMNode>
  */
-class DOMNodeList implements Countable, IteratorAggregate
+class DOMNodeList implements Countable, IteratorAggregate, ArrayAccess
 {
     public int $length;
+
+    public function offsetExists($offset): bool
+    {
+        return is_int($offset) && isset($this->nodes[$offset]);
+    }
+
+    public function offsetGet($offset): ?DOMNode
+    {
+        return is_int($offset) ? ($this->nodes[$offset] ?? null) : null;
+    }
+
+    public function offsetSet($offset, $value): void
+    {
+    }
+
+    public function offsetUnset($offset): void
+    {
+    }
 
     /** @param list<DOMNode> $nodes */
     public function __construct(private array $nodes = [])

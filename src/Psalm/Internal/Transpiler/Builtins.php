@@ -327,6 +327,14 @@ final class Builtins
         'strstr' => ['strstr', ['&s', '&s', 'b=false'], 'os'],
         'substr_compare' => ['substr_compare', ['&s', '&s', 'i', '?i', 'b=false'], 'i'],
         'pack' => ['pack', ['&s', '&m'], 's'],
+        'unpack' => ['unpack', ['&s', '&s', 'i=0'], 'mkm'],
+        'hash_init' => ['hash_init', ['&s'], 'm'],
+        'hash_update' => ['hash_update', ['&m', '&s'], 'b'],
+        'hash_final' => ['hash_final', ['&m', 'b=false'], 's'],
+        '__rt_class_file' => ['rt_class_file', ['&s'], 'os'],
+        '__rt_function_is_builtin' => ['rt_function_is_builtin', ['&s'], 'b'],
+        '__rt_class_is_trait' => ['rt_class_is_trait', ['&s'], 'b'],
+        '__rt_class_constants' => ['rt_class_constants', ['&s'], 'mkm'],
         'lz4_compress' => ['lz4_compress', ['&s'], 'os'],
         'lz4_uncompress' => ['lz4_uncompress', ['&s'], 'os'],
         'parse_url' => ['parse_url', ['&s', 'i=-1'], 'm'],
@@ -1274,6 +1282,25 @@ final class Builtins
     private function f_join(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
         return $this->f_implode($b, $call, $args);
+    }
+
+    private function f_hrtime(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        if (isset($args[0])) {
+            return new Val('hrtime_ns(' . $b->exprTo($args[0]->value, RustType::bool()) . ')', RustType::int());
+        }
+        // hrtime(): [seconds, nanoseconds]
+        return new Val('hrtime_parts()', RustType::tuple([RustType::int(), RustType::int()]));
+    }
+
+    private function f_pathinfo(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        $path = $b->exprTo($args[0]->value, RustType::str());
+        if (isset($args[1])) {
+            // pathinfo($path, PATHINFO_EXTENSION): a single component
+            return new Val('pathinfo_flag(&' . $path . ', ' . $b->exprTo($args[1]->value, RustType::int()) . ')', RustType::str());
+        }
+        return new Val('pathinfo(&' . $path . ')', RustType::map(RustType::str(), RustType::str()));
     }
 
     private function f_explode(BodyEmitter $b, Expr\FuncCall $call, array $args): Val

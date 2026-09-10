@@ -17,7 +17,7 @@
     </stubs>
     <projectFiles>
         <directory name="src/Psalm/Internal/Transpiler/runtime-stubs"/>
-        <directory name="vendor/nikic/php-parser/lib"/>
+        <directory name="../php-parser/lib"/>
         <directory name="src"/>
         <ignoreFiles>
             <file name="src/Psalm/Internal/Transpiler/BodyEmitter.php"/>

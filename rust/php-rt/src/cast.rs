@@ -37,6 +37,21 @@ impl CastTo<ArrayKey> for i64 {
         ArrayKey::Int(self)
     }
 }
+impl CastTo<ArrayKey> for f64 {
+    fn cast_to(self) -> ArrayKey {
+        ArrayKey::Int(crate::conv::float_to_int(self))
+    }
+}
+impl CastTo<ArrayKey> for bool {
+    fn cast_to(self) -> ArrayKey {
+        ArrayKey::Int(if self { 1 } else { 0 })
+    }
+}
+impl CastTo<ArrayKey> for () {
+    fn cast_to(self) -> ArrayKey {
+        ArrayKey::from_str_val(Str::from_static(""))
+    }
+}
 impl CastTo<ArrayKey> for Str {
     fn cast_to(self) -> ArrayKey {
         ArrayKey::from_str_val(self)
@@ -122,7 +137,8 @@ impl<K: MapKey, V: CastTo<Mixed> + Clone> CastTo<Mixed> for Map<K, V> {
     }
 }
 
-// --- out of Mixed (checked narrowing; panics on mismatch since Psalm proved the type)
+// --- out of Mixed: PHP's scalar juggling where a scalar was declared (docblocks may be imprecise);
+// panics only when a scalar was declared and a container or object shows up
 fn mismatch(expected: &str, got: &Mixed) -> ! {
     panic!("Mixed value narrowed to {} but was {:?}", expected, got)
 }
@@ -132,6 +148,8 @@ impl CastTo<i64> for Mixed {
             Mixed::Int(i) => i,
             Mixed::Bool(b) => b as i64,
             Mixed::Float(f) => crate::conv::float_to_int(f),
+            Mixed::Null => 0,
+            Mixed::Str(s) => crate::conv::str_to_int(s.as_bytes()),
             m => mismatch("int", &m),
         }
     }
@@ -141,6 +159,9 @@ impl CastTo<f64> for Mixed {
         match self {
             Mixed::Float(f) => f,
             Mixed::Int(i) => i as f64,
+            Mixed::Bool(b) => if b { 1.0 } else { 0.0 },
+            Mixed::Null => 0.0,
+            Mixed::Str(s) => crate::conv::str_to_float(s.as_bytes()),
             m => mismatch("float", &m),
         }
     }
@@ -149,7 +170,8 @@ impl CastTo<bool> for Mixed {
     fn cast_to(self) -> bool {
         match self {
             Mixed::Bool(b) => b,
-            m => mismatch("bool", &m),
+            Mixed::Obj(_) => true,
+            m => crate::traits::Truthy::truthy(&m),
         }
     }
 }
@@ -157,6 +179,14 @@ impl CastTo<Str> for Mixed {
     fn cast_to(self) -> Str {
         match self {
             Mixed::Str(s) => s,
+            Mixed::Null => Str::from_static(""),
+            Mixed::Bool(b) => Str::from_static(if b { "1" } else { "" }),
+            Mixed::Int(i) => Str::from_string(i.to_string()),
+            Mixed::Float(f) => Str::from_string(crate::conv::float_to_string(f)),
+            Mixed::Obj(o) => match o.php_to_string() {
+                Some(s) => s,
+                None => panic!("Object of class {} could not be converted to string", o.class_name()),
+            },
             m => mismatch("string", &m),
         }
     }
@@ -174,6 +204,9 @@ impl CastTo<ArrayKey> for Mixed {
         match self {
             Mixed::Int(i) => ArrayKey::Int(i),
             Mixed::Str(s) => ArrayKey::from_str_val(s),
+            Mixed::Bool(b) => ArrayKey::Int(b as i64),
+            Mixed::Float(f) => ArrayKey::Int(crate::conv::float_to_int(f)),
+            Mixed::Null => ArrayKey::from_str_val(Str::from_static("")),
             m => mismatch("array-key", &m),
         }
     }

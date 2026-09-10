@@ -10,6 +10,9 @@ pub struct ClassEntry {
     pub name: &'static str,
     pub ancestors: &'static [&'static str],
     pub is_interface: bool,
+    pub is_trait: bool,
+    /// source file the class was compiled from ("" for runtime stubs)
+    pub file: &'static str,
 }
 
 type StaticDispatch = Box<dyn Fn(&str, Vec<crate::mixed::Mixed>) -> Result<crate::mixed::Mixed, crate::containers::DynError>>;
@@ -23,13 +26,107 @@ thread_local! {
     static CLASS_CONSTANTS: RefCell<HashMap<Vec<u8>, crate::mixed::Mixed>> = RefCell::new(HashMap::new());
 }
 
-pub fn register_class(name: &'static str, ancestors: &'static [&'static str], is_interface: bool) {
+pub fn register_class(name: &'static str, ancestors: &'static [&'static str], is_interface: bool, is_trait: bool, file: &'static str) {
     CLASSES.with(|c| {
-        c.borrow_mut().insert(name.to_ascii_lowercase().into_bytes(), ClassEntry { name, ancestors, is_interface });
+        c.borrow_mut().insert(name.to_ascii_lowercase().into_bytes(), ClassEntry { name, ancestors, is_interface, is_trait, file });
     });
 }
 
+/// Names of the builtin and compiled classes (or interfaces), builtins first.
+pub fn declared_classlikes(interfaces: bool) -> crate::list::List<Str> {
+    let mut out = crate::list::List::new();
+    let builtin = if interfaces { BUILTIN_INTERFACES } else { BUILTIN_CLASSES };
+    for b in builtin {
+        out.push(Str::from_str(&canonical_builtin_name(b)));
+    }
+    CLASSES.with(|c| {
+        for e in c.borrow().values() {
+            if e.is_interface == interfaces && !e.is_trait {
+                out.push(Str::from_str(e.name));
+            }
+        }
+    });
+    out
+}
+
+/// PHP's spelling of a builtin class name known only in lowercase.
+fn canonical_builtin_name(lc: &str) -> String {
+    match lc {
+        "stdclass" => "stdClass".into(),
+        "datetime" => "DateTime".into(),
+        "datetimeimmutable" => "DateTimeImmutable".into(),
+        "datetimeinterface" => "DateTimeInterface".into(),
+        "dateinterval" => "DateInterval".into(),
+        "dateperiod" => "DatePeriod".into(),
+        "datetimezone" => "DateTimeZone".into(),
+        "arrayobject" => "ArrayObject".into(),
+        "arrayiterator" => "ArrayIterator".into(),
+        "arrayaccess" => "ArrayAccess".into(),
+        "iteratoraggregate" => "IteratorAggregate".into(),
+        "jsonserializable" => "JsonSerializable".into(),
+        "splobjectstorage" => "SplObjectStorage".into(),
+        "weakmap" => "WeakMap".into(),
+        "weakreference" => "WeakReference".into(),
+        "unitenum" => "UnitEnum".into(),
+        "backedenum" => "BackedEnum".into(),
+        other => {
+            let mut s = other.to_string();
+            if let Some(f) = s.get_mut(0..1) {
+                f.make_ascii_uppercase();
+            }
+            s
+        }
+    }
+}
+
+/// Source file of a compiled class (None for classes the runtime does not know).
+pub fn class_file(name: &[u8]) -> Option<Str> {
+    let lc = norm(name);
+    CLASSES.with(|c| c.borrow().get(&lc).map(|e| Str::from_str(e.file)))
+}
+
+pub fn class_is_trait(name: &[u8]) -> bool {
+    let lc = norm(name);
+    CLASSES.with(|c| c.borrow().get(&lc).map_or(false, |e| e.is_trait))
+}
+
+/// All constants of a class (declared or inherited), by name.
+pub fn class_constants(name: &[u8]) -> crate::map::Map<crate::key::ArrayKey, crate::mixed::Mixed> {
+    let mut prefix = norm(name);
+    prefix.extend_from_slice(b"::");
+    let mut out = crate::map::Map::new();
+    CLASS_CONSTANTS.with(|c| {
+        for (k, v) in c.borrow().iter() {
+            if k.starts_with(&prefix) {
+                out.insert(crate::key::ArrayKey::from_str_val(Str::from_bytes(&k[prefix.len()..])), v.clone());
+            }
+        }
+    });
+    out
+}
+
 /// Registers how to build an instance of a class without running its constructor.
+thread_local! {
+    static CTORS: RefCell<HashMap<Vec<u8>, Box<dyn Fn(Vec<crate::mixed::Mixed>) -> Result<crate::mixed::Mixed, crate::containers::DynError>>>> = RefCell::new(HashMap::new());
+}
+
+/// Registers the constructor of a class for `new $name(...)` with a runtime class name.
+pub fn register_ctor(name: &str, f: Box<dyn Fn(Vec<crate::mixed::Mixed>) -> Result<crate::mixed::Mixed, crate::containers::DynError>>) {
+    CTORS.with(|c| {
+        c.borrow_mut().insert(name.to_ascii_lowercase().into_bytes(), f);
+    });
+}
+
+/// `new $name(...args)`.
+pub fn construct(name: &Str, args: Vec<crate::mixed::Mixed>) -> Result<crate::mixed::Mixed, crate::containers::DynError> {
+    let lc = norm(name.as_bytes());
+    let r = CTORS.with(|c| c.borrow().get(&lc).map(|f| f(args)));
+    match r {
+        Some(r) => r,
+        None => Err(crate::containers::DynError::Rt(RtError::error(crate::sfmt!("Class \"{}\" not found", name)))),
+    }
+}
+
 pub fn register_factory(name: &str, f: Box<dyn Fn() -> crate::mixed::Mixed>) {
     FACTORIES.with(|c| {
         c.borrow_mut().insert(name.to_ascii_lowercase().into_bytes(), f);

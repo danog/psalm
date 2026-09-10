@@ -158,6 +158,13 @@ trait LValueTrait
         if ($e instanceof Expr\ArrayDimFetch) {
             return $this->dimPlace($e);
         }
+        if ($e instanceof Expr\FuncCall || $e instanceof Expr\MethodCall || $e instanceof Expr\StaticCall || $e instanceof Expr\New_
+            || $e instanceof Expr\Ternary || $e instanceof Expr\BinaryOp || $e instanceof Expr\Array_
+        ) {
+            // an rvalue used where a place is expected (`array_pop(f())`): modifications apply to a temporary
+            $v = $this->expr($e);
+            return new Place($v->type, fn() => $v->code, fn(string $w) => '{ let _ = ' . $w . '; }');
+        }
         $this->warn('unsupported lvalue ' . $e->getType(), $e);
         return $this->deadPlace($this->inferredOrMixed($e));
     }
@@ -335,6 +342,17 @@ trait LValueTrait
                 fn(string $v) => $this->hoisted([$key(), $v], fn(string $k, string $v) => $parent->modify(fn(string $p) => 'mixed_set(&mut ' . $p . ', ' . $k . ', ' . $v . ');')),
                 $has_mut ? fn() => '(*mixed_entry(&mut ' . $parent->mut() . ', ' . $key() . '))' : null,
                 $wrap,
+            );
+        }
+        if ($pt->kind === RustType::UNION || $pt->kind === RustType::ANY_OBJECT || $pt->kind === RustType::CLASS_ || $pt->kind === RustType::SHAPE || $pt->kind === RustType::TUPLE) {
+            // a union of array forms, a shape written with a runtime key, or an ArrayAccess object typed
+            // loosely: modified as a Mixed value
+            $key = fn() => $dim === null ? 'None' : 'Some(' . $this->keyExpr($dim, RustType::arrayKey()) . ')';
+            $to_mixed = fn(string $p) => $this->casts->convert($p, $pt, RustType::mixed());
+            return new Place(
+                RustType::mixed(),
+                fn() => $dim === null ? 'Mixed::Null' : 'mixed_get(&' . $to_mixed($parent->read()) . ', &' . $this->keyExpr($dim, RustType::arrayKey()) . ').unwrap_or_default()',
+                fn(string $v) => $this->hoisted([$key(), $v], fn(string $k, string $v) => $parent->modify(fn(string $p) => '{ let mut __mm = ' . $to_mixed($p . '.clone()') . '; mixed_set(&mut __mm, ' . $k . ', ' . $v . '); ' . $p . ' = ' . $this->casts->convert('__mm', RustType::mixed(), $pt) . '; }')),
             );
         }
         $this->warn('array write on ' . $pt->toRust(), $e);

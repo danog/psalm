@@ -82,6 +82,15 @@ trait CallTrait
         return $out;
     }
 
+    /** Code evaluated before the call being built (see finishCall). */
+    private function addPre(string $code): void
+    {
+        if ($this->byref_frames === []) {
+            $this->byref_frames[] = ['', ''];
+        }
+        $this->byref_frames[count($this->byref_frames) - 1][0] .= $code . ' ';
+    }
+
     private function argsInner(array $args, FunctionLikeStorage $storage, array $param_types, ?ClassModel $callee_class, string $callee_name): array
     {
         $params = array_values($storage->params);
@@ -104,6 +113,8 @@ trait CallTrait
                 $variadic_index = $i;
             }
         }
+        /** @var array{string, int}|null hoisted list of a spread argument and the parameter index it starts at */
+        $unpacked = null;
         foreach ($params as $i => $param) {
             $t = $param_types[$i] ?? RustType::mixed();
             if ($param->is_variadic) {
@@ -126,10 +137,19 @@ trait CallTrait
                 break;
             }
             $arg = $positional[$i] ?? $named[$param->name] ?? null;
+            if ($unpacked !== null) {
+                // parameters fed by a spread argument (`f(...$pair)`): element i-k of the hoisted list
+                $k = $i - $unpacked[1];
+                $default = ($param->by_ref ? '&mut ' : '') . $this->defaultArg($param, $t, $callee_class, $callee_name, $i);
+                $out[] = '(match ' . $unpacked[0] . '.get(' . $k . ').cloned() { Some(__ua) => ' . $this->casts->convert('__ua', RustType::mixed(), $t) . ', None => ' . $default . ' })';
+                continue;
+            }
             if ($arg !== null && $arg->unpack) {
-                $this->warn('argument unpacking', $arg);
                 $sv = $this->expr($arg->value);
-                $out[] = $this->casts->convert($sv->code . '.idx(0).clone()', RustType::mixed(), $t);
+                $tmp = $this->tmp('__ul');
+                $this->addPre('let ' . $tmp . ': List<Mixed> = ' . $this->casts->convert($sv->code, $sv->type, RustType::list(RustType::mixed())) . ';');
+                $unpacked = [$tmp, $i];
+                $out[] = '(match ' . $tmp . '.get(0).cloned() { Some(__ua) => ' . $this->casts->convert('__ua', RustType::mixed(), $t) . ', None => ' . $this->defaultArg($param, $t, $callee_class, $callee_name, $i) . ' })';
                 continue;
             }
             if ($arg === null) {
@@ -671,8 +691,16 @@ trait CallTrait
             $this->program->needFactory($target, count($argc));
             return new Val($target->path() . '::new_by_name(&' . $this->casts->convert($cv->code, $cv->type, RustType::str()) . ', ' . implode(', ', $argc) . ')?', RustType::class($target->fqcn));
         }
-        $this->warn('dynamic new without known class', $e);
-        return $this->dead('dynamic new', $inf ?? RustType::anyObject());
+        // `new $class(...)` with a class name only known at runtime: the registry's constructors
+        $argc = [];
+        foreach ($args as $a) {
+            if ($a instanceof \PhpParser\Node\Arg) {
+                $argc[] = $this->exprTo($a->value, RustType::mixed());
+            }
+        }
+        $res = $inf ?? RustType::anyObject();
+        $call = 'php_rt::registry::construct(&' . $this->casts->convert($cv->code, $cv->type, RustType::str()) . ', vec![' . implode(', ', $argc) . '])?';
+        return new Val($this->casts->convert($call, RustType::mixed(), $res), $res);
     }
 
     private function newRuntimeGeneric(RustType $t, array $args, Expr $e): Val

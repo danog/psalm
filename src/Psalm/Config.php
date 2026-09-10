@@ -1742,6 +1742,10 @@ final class Config
      */
     private static function requirePath(string $path): void
     {
+        if (\defined('PSALM_COMPILED')) {
+            // every class of the program is compiled in: nothing to load
+            return;
+        }
         /** @psalm-suppress UnresolvableInclude */
         require_once($path);
     }
@@ -2593,7 +2597,7 @@ final class Config
             = $this->base_dir . DIRECTORY_SEPARATOR . 'vendor'
                 . DIRECTORY_SEPARATOR . 'composer' . DIRECTORY_SEPARATOR . 'autoload_files.php';
 
-        if (file_exists($vendor_autoload_files_path)) {
+        if (!\defined('PSALM_COMPILED') && file_exists($vendor_autoload_files_path)) {
             $this->include_collector->runAndCollect(
                 static fn(): array =>
                     /**
@@ -2910,6 +2914,9 @@ final class Config
      */
     public function requireAutoloader(): void
     {
+        if (\defined('PSALM_COMPILED')) {
+            return;
+        }
         /** @psalm-suppress UnresolvableInclude */
         require $this->autoloader;
     }

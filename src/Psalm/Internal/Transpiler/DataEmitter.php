@@ -146,6 +146,13 @@ final class DataEmitter
         }
         if ($e instanceof Expr\ClassConstFetch && $e->class instanceof Name && $e->name instanceof \PhpParser\Node\Identifier) {
             $fqcn = (string) ($e->class->getAttribute('resolvedName') ?? $e->class->toString());
+            // the transpiler runs inside PHP with the project's classes loaded: the actual constant value
+            if (defined($fqcn . '::' . $e->name->name)) {
+                $v = constant($fqcn . '::' . $e->name->name);
+                if (is_int($v) || is_float($v) || is_string($v) || is_bool($v) || $v === null) {
+                    return $v;
+                }
+            }
             $type = $this->codebase->classlikes->getClassConstantType($fqcn, $e->name->name, \ReflectionProperty::IS_PRIVATE);
             if ($type !== null) {
                 if ($type->isSingleIntLiteral()) {
