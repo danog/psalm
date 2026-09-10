@@ -11,6 +11,6 @@ grep -n "^error" -A12 build.log | grep -E "^[0-9]+-\s+-->" | head -8
 if ! grep -q "^error" build.log; then
   timeout 900 cargo test -p php_parser > test_full.log 2>&1
   grep "test result" test_full.log
-  awk '/^---- tests::/{name=$2; got=0} /^\[failed\]/{ if(!got){got=1; sub(/^\[failed\] data set "[^"]*": /,""); print name " :: " substr($0,1,170)} } /panicked at/{ if(!got){got=1; getline msg; print name " :: " substr(msg,1,170)} }' test_full.log > fail_map.txt
+  awk '/^---- .* stdout ----$/{name=$2; got=0} /^\[failed\]/{ if(!got){got=1; sub(/^\[failed\] data set "[^"]*": /,""); print name " :: " substr($0,1,170)} } /panicked at/{ if(!got){got=1; getline msg; print name " :: " substr(msg,1,170)} }' test_full.log > fail_map.txt
   cut -d: -f4- fail_map.txt | sed -E 's/[0-9]+/N/g' | sort | uniq -c | sort -rn | head -45
 fi
