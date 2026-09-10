@@ -106,23 +106,58 @@ final class FunctionLikeParameter implements HasAttributesInterface, TypeNode
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        foreach (['type', 'signature_type', 'out_type', 'default_type'] as $key) {
-            if (!$node->{$key} instanceof TypeNode) {
-                continue;
-            }
-
-            /** @var TypeNode */
-            $value = $node->{$key};
-            $value_orig = $value;
+        if ($node->type instanceof TypeNode) {
+            $value = $node->type;
             $result = $visitor->traverse($value);
-            if ($value !== $value_orig) {
+            if ($value !== $node->type) {
                 if (!$cloned) {
                     $node = clone $node;
                     $cloned = true;
                 }
-                $node->{$key} = $value;
+                $node->type = $value;
             }
-
+            if (!$result) {
+                return false;
+            }
+        }
+        if ($node->signature_type instanceof TypeNode) {
+            $value = $node->signature_type;
+            $result = $visitor->traverse($value);
+            if ($value !== $node->signature_type) {
+                if (!$cloned) {
+                    $node = clone $node;
+                    $cloned = true;
+                }
+                $node->signature_type = $value;
+            }
+            if (!$result) {
+                return false;
+            }
+        }
+        if ($node->out_type instanceof TypeNode) {
+            $value = $node->out_type;
+            $result = $visitor->traverse($value);
+            if ($value !== $node->out_type) {
+                if (!$cloned) {
+                    $node = clone $node;
+                    $cloned = true;
+                }
+                $node->out_type = $value;
+            }
+            if (!$result) {
+                return false;
+            }
+        }
+        if ($node->default_type instanceof TypeNode) {
+            $value = $node->default_type;
+            $result = $visitor->traverse($value);
+            if ($value !== $node->default_type) {
+                if (!$cloned) {
+                    $node = clone $node;
+                    $cloned = true;
+                }
+                $node->default_type = $value;
+            }
             if (!$result) {
                 return false;
             }

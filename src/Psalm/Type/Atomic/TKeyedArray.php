@@ -735,6 +735,30 @@ final class TKeyedArray extends Atomic
     }
 
     #[Override]
+    protected function getChildNode(string $key): mixed
+    {
+        return match ($key) {
+            'properties' => $this->properties,
+            'fallback_params' => $this->fallback_params,
+            default => throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class),
+        };
+    }
+
+    #[Override]
+    protected function setChildNode(string $key, mixed $value): void
+    {
+        switch ($key) {
+            case 'properties':
+                $this->properties = $value;
+                return;
+            case 'fallback_params':
+                $this->fallback_params = $value;
+                return;
+        }
+        throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class);
+    }
+
+    #[Override]
     public function equals(Atomic $other_type, bool $ensure_source_equality): bool
     {
         if ($other_type::class !== static::class) {

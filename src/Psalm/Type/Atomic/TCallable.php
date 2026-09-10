@@ -124,6 +124,30 @@ final class TCallable extends Atomic
         return $this->getCallableChildNodeKeys();
     }
 
+    #[Override]
+    protected function getChildNode(string $key): mixed
+    {
+        return match ($key) {
+            'params' => $this->params,
+            'return_type' => $this->return_type,
+            default => throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class),
+        };
+    }
+
+    #[Override]
+    protected function setChildNode(string $key, mixed $value): void
+    {
+        switch ($key) {
+            case 'params':
+                $this->params = $value;
+                return;
+            case 'return_type':
+                $this->return_type = $value;
+                return;
+        }
+        throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class);
+    }
+
     /**
      * @return true
      * @psalm-pure

@@ -212,6 +212,26 @@ final class TClassStringMap extends Atomic
     }
 
     #[Override]
+    protected function getChildNode(string $key): mixed
+    {
+        return match ($key) {
+            'value_param' => $this->value_param,
+            default => throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class),
+        };
+    }
+
+    #[Override]
+    protected function setChildNode(string $key, mixed $value): void
+    {
+        switch ($key) {
+            case 'value_param':
+                $this->value_param = $value;
+                return;
+        }
+        throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class);
+    }
+
+    #[Override]
     public function equals(Atomic $other_type, bool $ensure_source_equality): bool
     {
         if ($other_type::class !== self::class) {

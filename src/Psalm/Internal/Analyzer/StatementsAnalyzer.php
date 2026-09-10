@@ -719,7 +719,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
         }
 
         foreach ($checked_types as [$check_type_line, $is_exact]) {
-            [$checked_var, $check_type_string] = array_map('trim', explode('=', $check_type_line, 2)) + ['', ''];
+            [$checked_var, $check_type_string] = array_map(static fn(string $part): string => trim($part), explode('=', $check_type_line, 2)) + ['', ''];
 
             if ($check_type_string === '' || $checked_var === '') {
                 IssueBuffer::maybeAdd(

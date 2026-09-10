@@ -22,7 +22,7 @@ final class XmlReport extends Report
             [
                 'item' => array_map(
                     static function (IssueData $issue_data): array {
-                        $issue_data = get_object_vars($issue_data);
+                        $issue_data = $issue_data->toArray();
                         unset($issue_data['dupe_key']);
 
                         if (null !== $issue_data['taint_trace']) {

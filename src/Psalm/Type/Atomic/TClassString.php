@@ -150,6 +150,26 @@ class TClassString extends TString
         return $this->as_type ? ['as_type'] : [];
     }
 
+    #[Override]
+    protected function getChildNode(string $key): mixed
+    {
+        return match ($key) {
+            'as_type' => $this->as_type,
+            default => throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class),
+        };
+    }
+
+    #[Override]
+    protected function setChildNode(string $key, mixed $value): void
+    {
+        switch ($key) {
+            case 'as_type':
+                $this->as_type = $value;
+                return;
+        }
+        throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class);
+    }
+
     /**
      * @return static
      */

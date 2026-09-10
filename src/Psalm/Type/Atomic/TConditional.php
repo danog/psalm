@@ -122,6 +122,34 @@ final class TConditional extends Atomic
         return ['conditional_type', 'if_type', 'else_type'];
     }
 
+    #[Override]
+    protected function getChildNode(string $key): mixed
+    {
+        return match ($key) {
+            'conditional_type' => $this->conditional_type,
+            'if_type' => $this->if_type,
+            'else_type' => $this->else_type,
+            default => throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class),
+        };
+    }
+
+    #[Override]
+    protected function setChildNode(string $key, mixed $value): void
+    {
+        switch ($key) {
+            case 'conditional_type':
+                $this->conditional_type = $value;
+                return;
+            case 'if_type':
+                $this->if_type = $value;
+                return;
+            case 'else_type':
+                $this->else_type = $value;
+                return;
+        }
+        throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class);
+    }
+
     /**
      * @psalm-pure
      */

@@ -88,6 +88,26 @@ final class TPropertiesOf extends Atomic
     }
 
     #[Override]
+    protected function getChildNode(string $key): mixed
+    {
+        return match ($key) {
+            'classlike_type' => $this->classlike_type,
+            default => throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class),
+        };
+    }
+
+    #[Override]
+    protected function setChildNode(string $key, mixed $value): void
+    {
+        switch ($key) {
+            case 'classlike_type':
+                $this->classlike_type = $value;
+                return;
+        }
+        throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class);
+    }
+
+    #[Override]
     public function getKey(bool $include_extra = true): string
     {
         return self::tokenNameForFilter($this->visibility_filter) . '<' . $this->classlike_type . '>';

@@ -314,6 +314,30 @@ final class TObjectWithProperties extends TObject
     }
 
     #[Override]
+    protected function getChildNode(string $key): mixed
+    {
+        return match ($key) {
+            'properties' => $this->properties,
+            'extra_types' => $this->extra_types,
+            default => throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class),
+        };
+    }
+
+    #[Override]
+    protected function setChildNode(string $key, mixed $value): void
+    {
+        switch ($key) {
+            case 'properties':
+                $this->properties = $value;
+                return;
+            case 'extra_types':
+                $this->extra_types = $value;
+                return;
+        }
+        throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class);
+    }
+
+    #[Override]
     public function getAssertionString(): string
     {
         return $this->getKey();

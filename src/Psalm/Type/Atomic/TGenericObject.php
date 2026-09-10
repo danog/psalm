@@ -141,6 +141,26 @@ final class TGenericObject extends TNamedObject
         return [...parent::getChildNodeKeys(), 'type_params'];
     }
 
+    #[Override]
+    protected function getChildNode(string $key): mixed
+    {
+        return match ($key) {
+            'type_params' => $this->type_params,
+            default => parent::getChildNode($key),
+        };
+    }
+
+    #[Override]
+    protected function setChildNode(string $key, mixed $value): void
+    {
+        switch ($key) {
+            case 'type_params':
+                $this->type_params = $value;
+                return;
+        }
+        parent::setChildNode($key, $value);
+    }
+
     /**
      * @return static
      */

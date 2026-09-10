@@ -490,11 +490,11 @@ class FileFilter
             } else {
                 $list = array_filter(
                     glob($parts[0], GLOB_NOSORT) ?: [],
-                    'file_exists',
+                    static fn(string $path): bool => file_exists($path),
                 );
             }
 
-            return array_map('realpath', $list);
+            return array_map(static fn(string $path): string|false => realpath($path), $list);
         }
 
         $first_dir = self::slashify($parts[0]);

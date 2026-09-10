@@ -90,31 +90,7 @@ class CodeLocation
     public const CATCH_VAR = 6;
     public const FUNCTION_PHPDOC_METHOD = 7;
 
-    private const PROPERTY_KEYS_FOR_UNSERIALIZE = [
-        'file_path' => 'file_path',
-        'file_name' => 'file_name',
-        'raw_line_number' => 'raw_line_number',
-        "\0" . self::class . "\0" . 'end_line_number' => 'end_line_number',
-        'raw_file_start' => 'raw_file_start',
-        'raw_file_end' => 'raw_file_end',
-        "\0*\0" . 'file_start' => 'file_start',
-        "\0*\0" . 'file_end' => 'file_end',
-        "\0*\0" . 'single_line' => 'single_line',
-        "\0*\0" . 'preview_start' => 'preview_start',
-        "\0" . self::class . "\0" . 'preview_end' => 'preview_end',
-        "\0" . self::class . "\0" . 'selection_start' => 'selection_start',
-        "\0" . self::class . "\0" . 'selection_end' => 'selection_end',
-        "\0" . self::class . "\0" . 'column_from' => 'column_from',
-        "\0" . self::class . "\0" . 'column_to' => 'column_to',
-        "\0" . self::class . "\0" . 'snippet' => 'snippet',
-        "\0" . self::class . "\0" . 'text' => 'text',
-        'docblock_start' => 'docblock_start',
-        "\0" . self::class . "\0" . 'docblock_start_line_number' => 'docblock_start_line_number',
-        "\0*\0" . 'docblock_line_number' => 'docblock_line_number',
-        "\0" . self::class . "\0" . 'regex_type' => 'regex_type',
-        "\0" . self::class . "\0" . 'have_recalculated' => 'have_recalculated',
-        'previous_location' => 'previous_location',
-    ];
+    // serialized property keys: see __unserialize()
 
     public function __construct(
         FileSource $file_source,
@@ -160,10 +136,30 @@ class CodeLocation
      */
     public function __unserialize(array $properties): void
     {
-        foreach (self::PROPERTY_KEYS_FOR_UNSERIALIZE as $key => $property_name) {
-            /** @psalm-suppress PossiblyUndefinedStringArrayOffset */
-            $this->$property_name = $properties[$key];
-        }
+        /** @psalm-suppress PossiblyUndefinedStringArrayOffset */
+        $this->file_path = $properties['file_path'];
+        $this->file_name = $properties['file_name'];
+        $this->raw_line_number = $properties['raw_line_number'];
+        $this->end_line_number = $properties["\0" . self::class . "\0" . 'end_line_number'];
+        $this->raw_file_start = $properties['raw_file_start'];
+        $this->raw_file_end = $properties['raw_file_end'];
+        $this->file_start = $properties["\0*\0" . 'file_start'];
+        $this->file_end = $properties["\0*\0" . 'file_end'];
+        $this->single_line = $properties["\0*\0" . 'single_line'];
+        $this->preview_start = $properties["\0*\0" . 'preview_start'];
+        $this->preview_end = $properties["\0" . self::class . "\0" . 'preview_end'];
+        $this->selection_start = $properties["\0" . self::class . "\0" . 'selection_start'];
+        $this->selection_end = $properties["\0" . self::class . "\0" . 'selection_end'];
+        $this->column_from = $properties["\0" . self::class . "\0" . 'column_from'];
+        $this->column_to = $properties["\0" . self::class . "\0" . 'column_to'];
+        $this->snippet = $properties["\0" . self::class . "\0" . 'snippet'];
+        $this->text = $properties["\0" . self::class . "\0" . 'text'];
+        $this->docblock_start = $properties['docblock_start'];
+        $this->docblock_start_line_number = $properties["\0" . self::class . "\0" . 'docblock_start_line_number'];
+        $this->docblock_line_number = $properties["\0*\0" . 'docblock_line_number'];
+        $this->regex_type = $properties["\0" . self::class . "\0" . 'regex_type'];
+        $this->have_recalculated = $properties["\0" . self::class . "\0" . 'have_recalculated'];
+        $this->previous_location = $properties['previous_location'];
     }
 
     /**

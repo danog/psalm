@@ -698,6 +698,16 @@ trait LValueTrait
                         . $this->casts->convert('__v', $rt, $field->type) . ')) };';
                 }
             }
+            if ($src instanceof Expr\PropertyFetch && !$src->name instanceof Identifier) {
+                // `$sub = &$node->$name`: a reference to a dynamically named property, read and written by name
+                $base = $this->receiver($src->var);
+                $bt = $base->type->kind === RustType::OPTION ? $base->type->inner() : $base->type;
+                $bc = $this->casts->convert($base->type->kind === RustType::OPTION ? $base->code . '.unwrap()' : $base->code, $bt, RustType::mixed());
+                $nm = $this->exprTo($src->name, RustType::str());
+                return $rn . ' = { let __o = ' . $bc . '; let __o2 = __o.clone(); let __n = ' . $nm . '; let __n2 = __n.clone(); PhpRef::new(move || '
+                    . $this->casts->convert('mixed_prop(&__o, &__n).unwrap_or_default()', RustType::mixed(), $rt) . ', move |__v| mixed_set_prop(&__o2, &__n2, '
+                    . $this->casts->convert('__v', $rt, RustType::mixed()) . ')) };';
+            }
             $this->warn('reference to an unsupported target', $e);
             return $rn . ' = PhpRef::of(' . $this->exprTo($src, $rt) . ');';
         }
