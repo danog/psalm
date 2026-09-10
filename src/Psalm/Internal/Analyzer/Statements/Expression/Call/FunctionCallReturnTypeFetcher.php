@@ -20,6 +20,7 @@ use Psalm\Internal\Type\TemplateBound;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TypeExpander;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Plugin\EventHandler\Event\AddRemoveTaintsEvent;
 use Psalm\Plugin\EventHandler\Event\AfterFunctionCallAnalysisEvent;
 use Psalm\Storage\FunctionLikeStorage;
@@ -280,9 +281,9 @@ final class FunctionCallReturnTypeFetcher
 
                 if (str_contains($proxy_call['fqn'], '::')) {
                     [$fqcn, $method] = explode('::', $proxy_call['fqn']);
-                    $fake_call = $fake_call_factory->staticCall($fqcn, $method, $fake_call_arguments);
+                    $fake_call = Dynamic::any($fake_call_factory->staticCall($fqcn, $method, $fake_call_arguments));
                 } else {
-                    $fake_call = $fake_call_factory->funcCall($proxy_call['fqn'], $fake_call_arguments);
+                    $fake_call = Dynamic::any($fake_call_factory->funcCall($proxy_call['fqn'], $fake_call_arguments));
                 }
 
                 $old_node_data = $statements_analyzer->node_data;

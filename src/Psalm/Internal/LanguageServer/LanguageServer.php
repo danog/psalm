@@ -12,7 +12,6 @@ use AdvancedJsonRpc\Request;
 use AdvancedJsonRpc\Response;
 use AdvancedJsonRpc\SuccessResponse;
 use InvalidArgumentException;
-use JsonMapper;
 use LanguageServerProtocol\ClientCapabilities;
 use LanguageServerProtocol\ClientInfo;
 use LanguageServerProtocol\CodeDescription;
@@ -46,6 +45,7 @@ use Psalm\Internal\Provider\FileStorageCacheProvider;
 use Psalm\Internal\Provider\ParserCacheProvider;
 use Psalm\Internal\Provider\ProjectCacheProvider;
 use Psalm\Internal\Provider\Providers;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\IssueBuffer;
 use Revolt\EventLoop;
 use Throwable;
@@ -179,7 +179,7 @@ final class LanguageServer extends Dispatcher
                  */
                 if (Request::isRequest($msg->body)) {
                     if ($error !== null) {
-                        $responseBody = new ErrorResponse($msg->body->id, $error);
+                        $responseBody = Dynamic::any(new ErrorResponse($msg->body->id, $error));
                     } else {
                         $responseBody = new SuccessResponse($msg->body->id, $result);
                     }

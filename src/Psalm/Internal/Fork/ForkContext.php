@@ -16,6 +16,7 @@ use Amp\Serialization\NativeSerializer;
 use Amp\Serialization\SerializationException;
 use Amp\TimeoutCancellation;
 use Override;
+use Psalm\Internal\TypePhp\Dynamic;
 use Revolt\EventLoop;
 use RuntimeException;
 use Throwable;
@@ -113,7 +114,7 @@ final class ForkContext extends AbstractContext
 
         try {
             /** @psalm-suppress InternalClass, InternalMethod */
-            $result = new ExitSuccess(TaskRunner::run(new ContextChannel($ipcChannel)));
+            $result = Dynamic::any(new ExitSuccess(TaskRunner::run(new ContextChannel($ipcChannel))));
         } catch (Throwable $exception) {
             $result = new ExitFailure($exception);
         }

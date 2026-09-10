@@ -280,64 +280,244 @@ function flatten(array $stmts, string $namespace, array &$fileConsts, string $fi
 if (is_dir($overrides)) {
     exec('rm -rf ' . escapeshellarg($overrides));
 }
-$overridden = 0;
-foreach ($sources as $source) {
-    foreach (phpFiles($source) as $file) {
-        $code = (string) file_get_contents($file);
-        // fast path: nothing executable at file scope
-        if (!preg_match('/^(if|return|require|include|class_alias|\\\\?define|trigger_deprecation|\\\\?defineCompatibilityTokens|[A-Za-z_\\\\]+\()/m', $code)) {
-            continue;
-        }
-        $stmts = $parser->parse($code) ?? [];
-        $consts = [];
-        [$flat, $changed] = flatten($stmts, '', $consts, substr($file, strlen($vendor) + 1), $report);
-        // (the third element, whether the file returned early, only matters inside flatten())
-        if (!$changed) {
-            continue;
-        }
-        $hasDecl = false;
-        $throws = false;
-        foreach ($flat as $s) {
-            $inner = $s instanceof Stmt\Namespace_ ? $s->stmts : [$s];
-            foreach ($inner as $i) {
-                if ($i instanceof Stmt\ClassLike || $i instanceof Stmt\Function_ || $i instanceof Stmt\Const_) {
-                    $hasDecl = true;
-                }
-                if ($i instanceof Stmt\Expression && $i->expr instanceof Expr\Throw_) {
-                    $throws = true;
+
+/*
+ * Closed world: only the vendor files reachable (by name) from Psalm's sources
+ * are compiled. Every candidate file is parsed once to index the classes,
+ * functions and constants it declares and the names it references.
+ */
+use PhpParser\NodeTraverser;
+use PhpParser\NodeVisitor\NameResolver;
+use PhpParser\NodeVisitorAbstract;
+
+final class SymbolCollector extends NodeVisitorAbstract
+{
+    /** @var list<string> */
+    public array $classes = [];
+    /** @var list<string> */
+    public array $functions = [];
+    /** @var list<string> */
+    public array $constants = [];
+    /** @var list<string> */
+    public array $classRefs = [];
+    /** @var list<string> */
+    public array $functionRefs = [];
+    /** @var list<string> */
+    public array $constantRefs = [];
+
+    public function enterNode(Node $node): null
+    {
+        if ($node instanceof Stmt\ClassLike && isset($node->namespacedName)) {
+            $this->classes[] = $node->namespacedName->toString();
+        } elseif ($node instanceof Stmt\Function_ && isset($node->namespacedName)) {
+            $this->functions[] = $node->namespacedName->toString();
+        } elseif ($node instanceof Stmt\Const_) {
+            foreach ($node->consts as $const) {
+                if (isset($const->namespacedName)) {
+                    $this->constants[] = $const->namespacedName->toString();
                 }
             }
         }
-        $ignore[] = $file;
-        if (!$hasDecl) {
-            continue; // alias/bootstrap/data file with nothing left to compile
+        if ($node instanceof Stmt\Class_) {
+            foreach ([$node->extends, ...$node->implements] as $name) {
+                if ($name !== null) {
+                    $this->classRefs[] = $name->toString();
+                }
+            }
+        } elseif ($node instanceof Stmt\Interface_) {
+            foreach ($node->extends as $name) {
+                $this->classRefs[] = $name->toString();
+            }
+        } elseif ($node instanceof Stmt\Enum_) {
+            foreach ($node->implements as $name) {
+                $this->classRefs[] = $name->toString();
+            }
+        } elseif ($node instanceof Stmt\TraitUse) {
+            foreach ($node->traits as $name) {
+                $this->classRefs[] = $name->toString();
+            }
+        } elseif ($node instanceof Stmt\Catch_) {
+            foreach ($node->types as $name) {
+                $this->classRefs[] = $name->toString();
+            }
+        } elseif ($node instanceof Expr\New_ || $node instanceof Expr\StaticCall || $node instanceof Expr\StaticPropertyFetch
+            || $node instanceof Expr\Instanceof_ || $node instanceof Expr\ClassConstFetch
+        ) {
+            $class = $node->class;
+            if ($class instanceof Node\Name) {
+                $lower = $class->toLowerString();
+                if (!in_array($lower, ['self', 'static', 'parent'], true)) {
+                    // X::class is only a string; it does not need the class
+                    if (!($node instanceof Expr\ClassConstFetch && $node->name instanceof Node\Identifier && $node->name->toLowerString() === 'class')) {
+                        $this->classRefs[] = $class->toString();
+                    }
+                }
+            }
+        } elseif ($node instanceof Expr\FuncCall && $node->name instanceof Node\Name) {
+            $this->functionRefs[] = $node->name->toString();
+            if ($node->name->hasAttribute('namespacedName')) {
+                $this->functionRefs[] = $node->name->getAttribute('namespacedName')->toString();
+            }
+        } elseif ($node instanceof Expr\ConstFetch) {
+            $this->constantRefs[] = $node->name->toString();
+            if ($node->name->hasAttribute('namespacedName')) {
+                $this->constantRefs[] = $node->name->getAttribute('namespacedName')->toString();
+            }
+        } elseif ($node instanceof Node\Name && !$node instanceof Node\Name\FullyQualified) {
+            // leftover (type hints etc. are resolved to FullyQualified by the NameResolver)
+        } elseif ($node instanceof Node\Name\FullyQualified) {
+            $this->classRefs[] = $node->toString();
+        } elseif ($node instanceof Node\Attribute) {
+            $this->classRefs[] = $node->name->toString();
         }
-        if ($throws) {
-            $report[] = substr($file, strlen($vendor) + 1) . ': throws at file scope, excluded';
-            continue;
-        }
-        $target = $overrides . substr($file, strlen($vendor));
-        @mkdir(dirname($target), 0777, true);
-        file_put_contents($target, $printer->prettyPrintFile($flat) . "\n");
-        $overridden++;
+        return null;
     }
 }
 
+/** @return array{SymbolCollector, list<Node\Stmt>} */
+function collectSymbols(string $file, PhpParser\Parser $parser): array
+{
+    $stmts = $parser->parse((string) file_get_contents($file)) ?? [];
+    $traverser = new NodeTraverser();
+    $traverser->addVisitor(new NameResolver(null, ['preserveOriginalNames' => false, 'replaceNodes' => true]));
+    $collector = new SymbolCollector();
+    $traverser->addVisitor($collector);
+    $traverser->traverse($stmts);
+    return [$collector, $stmts];
+}
+
+$index = ['class' => [], 'function' => [], 'constant' => []];
+/** @var array<string, SymbolCollector> $symbols */
+$symbols = [];
+$candidates = [];
+foreach ($sources as $source) {
+    foreach (phpFiles($source) as $file) {
+        $candidates[] = $file;
+    }
+}
+$candidates = array_values(array_unique($candidates));
+foreach ($candidates as $file) {
+    try {
+        [$collector] = collectSymbols($file, $parser);
+    } catch (PhpParser\Error $e) {
+        $report[] = substr($file, strlen($vendor) + 1) . ': parse error ' . $e->getMessage();
+        continue;
+    }
+    $symbols[$file] = $collector;
+    foreach ($collector->classes as $name) {
+        $index['class'][strtolower($name)] ??= $file;
+    }
+    foreach ($collector->functions as $name) {
+        $index['function'][strtolower($name)] ??= $file;
+    }
+    foreach ($collector->constants as $name) {
+        $index['constant'][$name] ??= $file;
+    }
+}
+
+// roots: Psalm's sources, the native entry point and the native overrides
+$reachable = [];
+$queue = [];
+foreach ([$root . '/src', __DIR__ . '/main.php', __DIR__ . '/overrides'] as $rootSource) {
+    foreach (phpFiles($rootSource) as $file) {
+        if ($file === $root . '/src/Psalm/Internal/CodeLoader.php') {
+            continue;
+        }
+        [$collector] = collectSymbols($file, $parser);
+        $queue[] = $collector;
+    }
+}
+$vendorRefs = ['class' => [], 'function' => [], 'constant' => []];
+while ($queue) {
+    $collector = array_pop($queue);
+    $targets = [];
+    foreach ($collector->classRefs as $name) {
+        $targets[] = $index['class'][strtolower(ltrim($name, '\\'))] ?? null;
+    }
+    foreach ($collector->functionRefs as $name) {
+        $targets[] = $index['function'][strtolower(ltrim($name, '\\'))] ?? null;
+    }
+    foreach ($collector->constantRefs as $name) {
+        $targets[] = $index['constant'][ltrim($name, '\\')] ?? null;
+    }
+    foreach ($targets as $target) {
+        if ($target === null || isset($reachable[$target])) {
+            continue;
+        }
+        $reachable[$target] = true;
+        $queue[] = $symbols[$target];
+    }
+}
+// composer "files" entries (functions) of reachable packages are always loaded
+foreach ($candidates as $file) {
+    if (!isset($reachable[$file]) && str_contains($file, '/functions.php')) {
+        $reachable[$file] = true;
+    }
+}
+$reachableFiles = array_keys($reachable);
+sort($reachableFiles);
+
+$compiled = [];
+$overridden = 0;
+$excluded = [];
+$manual = __DIR__ . '/vendor-manual';
+foreach ($reachableFiles as $file) {
+    $relative = substr($file, strlen($vendor) + 1);
+    if (is_file($manual . '/' . $relative)) {
+        // hand-written replacement (see typephp/vendor-manual/README.md)
+        $compiled[] = $manual . '/' . $relative;
+        continue;
+    }
+    $code = (string) file_get_contents($file);
+    // fast path: nothing executable at file scope
+    if (!preg_match('/^(if|return|require|include|class_alias|\\\\?define|trigger_deprecation|\\\\?defineCompatibilityTokens|[A-Za-z_\\\\]+\()/m', $code)) {
+        $compiled[] = $file;
+        continue;
+    }
+    $stmts = $parser->parse($code) ?? [];
+    $consts = [];
+    [$flat, $changed] = flatten($stmts, '', $consts, $relative, $report);
+    if (!$changed) {
+        $compiled[] = $file;
+        continue;
+    }
+    $hasDecl = false;
+    $throws = false;
+    foreach ($flat as $s) {
+        $inner = $s instanceof Stmt\Namespace_ ? $s->stmts : [$s];
+        foreach ($inner as $i) {
+            if ($i instanceof Stmt\ClassLike || $i instanceof Stmt\Function_ || $i instanceof Stmt\Const_) {
+                $hasDecl = true;
+            }
+            if ($i instanceof Stmt\Expression && $i->expr instanceof Expr\Throw_) {
+                $throws = true;
+            }
+        }
+    }
+    if (!$hasDecl) {
+        $excluded[] = $relative; // alias/bootstrap/data file with nothing left to compile
+        continue;
+    }
+    if ($throws) {
+        $report[] = "$relative: throws at file scope, excluded";
+        $excluded[] = $relative;
+        continue;
+    }
+    $target = $overrides . '/' . $relative;
+    @mkdir(dirname($target), 0777, true);
+    file_put_contents($target, $printer->prettyPrintFile($flat) . "\n");
+    $compiled[] = $target;
+    $overridden++;
+}
+
 $yaml = "# Generated by typephp/gen-vendor-build.php - do not edit.\n";
-$yaml .= "name: psalm\nbuild-mode: bin\ncxx-std: c++17\nsources:\n  - ./main.php\n  - ./overrides\n  - ./vendor-overrides\n  - ../src\n";
-foreach ($sources as $s) {
-    $yaml .= '  - ' . str_replace($root . '/', '../', $s) . "\n";
+$yaml .= "name: psalm\nbuild-mode: bin\ncxx-std: c++17\nsources:\n  - ./main.php\n  - ./overrides\n  - ./vendor-extra\n  - ../src\n";
+foreach ($compiled as $file) {
+    $yaml .= '  - ' . str_replace([__DIR__ . '/', $root . '/'], ['./', '../'], $file) . "\n";
 }
 $yaml .= "ignore:\n  - ../src/Psalm/Internal/CodeLoader.php\n";
-foreach ($ignore as $i) {
-    $yaml .= '  - ' . str_replace($root . '/', '../', $i) . "\n";
-}
 file_put_contents(__DIR__ . '/project.yml', $yaml);
-echo count($sources) . " vendor source entries, $overridden overrides, " . count($ignore) . " ignored files\n";
+echo count($candidates) . " candidate vendor files, " . count($compiled) . " reachable and compiled ($overridden rewritten), " . count($excluded) . " excluded\n";
 foreach ($report as $line) {
-    $reported = explode(':', $line, 2)[0];
-    if (in_array($vendor . '/' . $reported, $ignore, true) && !is_file($overrides . '/' . $reported)) {
-        continue; // the file is excluded from the build anyway
-    }
     echo "  $line\n";
 }
