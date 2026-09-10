@@ -701,6 +701,20 @@ trait LValueTrait
             $this->warn('reference to an unsupported target', $e);
             return $rn . ' = PhpRef::of(' . $this->exprTo($src, $rt) . ');';
         }
+        if ($var instanceof Expr\ArrayDimFetch && $e->expr instanceof Expr\ArrayDimFetch && $var->dim !== null && $e->expr->dim !== null) {
+            // `$a[$x] = &$a[$y]`: both keys share one slot of the same array (see php_rt::Map::alias)
+            $printer = new \PhpParser\PrettyPrinter\Standard();
+            if ($printer->prettyPrintExpr($var->var) === $printer->prettyPrintExpr($e->expr->var)) {
+                $base = $this->place($var->var);
+                $bt = $base->type->kind === RustType::OPTION ? $base->type->inner() : $base->type;
+                if ($bt->kind === RustType::MAP) {
+                    $kt = $bt->params[0];
+                    $k1 = $this->keyExpr($var->dim, $kt);
+                    $k2 = $this->keyExpr($e->expr->dim, $kt);
+                    return $this->hoisted([$k1, $k2], fn(string $a, string $b) => $base->modify(fn(string $p) => $p . '.alias(' . $a . ', ' . $b . ');'));
+                }
+            }
+        }
         $this->warn('assign by reference', $e);
         return $this->assignStmt(new Expr\Assign($e->var, $e->expr, $e->getAttributes()));
     }
