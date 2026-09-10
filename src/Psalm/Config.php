@@ -1244,7 +1244,6 @@ final class Config
 
         $paths_to_check = null;
 
-        /** @var list<string> $argv */
         $argv = $_SERVER['argv'] ?? [];
 
         // Hack for Symfonys own argv resolution.
