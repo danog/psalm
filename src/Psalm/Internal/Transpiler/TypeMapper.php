@@ -444,6 +444,14 @@ final class TypeMapper
             return RustType::list($this->combine($values));
         }
 
+        // a keyed array with many keys is a map, not a record (a dictionary literal such as the call maps,
+        // whose union of thousands of entries would otherwise yield a shape with every parameter name as an
+        // optional key): one generic type, computed by Psalm from the combined keys and values
+        if (count($props) > 32) {
+            $generic = $t->getGenericArrayType();
+            return RustType::map($this->mapKey($generic->type_params[0]), $this->mapValue($generic->type_params[1]));
+        }
+
         if ($t->fallback_params !== null) {
             $key_types = [];
             $value_types = [];

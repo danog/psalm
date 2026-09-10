@@ -36,7 +36,7 @@ abstract class MutableTypeVisitor
             return false;
         }
 
-        return $node::visitMutable($this, $node, $node !== $nodeOrig);
+        return $node->visitMutable($this, $node, $node !== $nodeOrig);
     }
 
     /**

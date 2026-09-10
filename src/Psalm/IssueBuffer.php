@@ -347,7 +347,7 @@ final class IssueBuffer
         foreach ($recorded_issues as $issue) {
             [$from] = $issue->code_location->getSelectionBounds();
 
-            if ($issue::getIssueType() !== $issue_type || $from !== $file_offset) {
+            if ($issue->getIssueType() !== $issue_type || $from !== $file_offset) {
                 $filtered_issues[] = $issue;
             }
         }

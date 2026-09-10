@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Codebase;
 
+use Closure;
 use Psalm\Codebase;
 use Psalm\Config;
 use Psalm\Internal\Analyzer\IssueData;
@@ -338,7 +339,7 @@ final class Scanner
             );
 
             await($pool->runAll(new InitScannerTask));
-            $pool->run($files_to_scan, ScannerTask::class, function (): void {
+            $pool->run($files_to_scan, static fn(string $file): ScannerTask => new ScannerTask($file), function (): void {
                 $this->progress->taskDone(0);
             });
 
@@ -454,7 +455,7 @@ final class Scanner
     }
 
     /**
-     * @param  array<string, class-string<FileScanner>>  $filetype_scanners
+     * @param  array<string, Closure(string, string, bool): FileScanner>  $filetype_scanners
      */
     private function scanFile(
         string $file_path,
@@ -553,7 +554,7 @@ final class Scanner
     }
 
     /**
-     * @param  array<string, class-string<FileScanner>>  $filetype_scanners
+     * @param  array<string, Closure(string, string, bool): FileScanner>  $filetype_scanners
      */
     private function getScannerForPath(
         string $file_path,
@@ -567,7 +568,7 @@ final class Scanner
         $file_name = $this->config->shortenFileName($file_path);
 
         if (isset($filetype_scanners[$extension])) {
-            return new $filetype_scanners[$extension]($file_path, $file_name, $will_analyze);
+            return $filetype_scanners[$extension]($file_path, $file_name, $will_analyze);
         }
 
         return new FileScanner($file_path, $file_name, $will_analyze);
@@ -611,8 +612,7 @@ final class Scanner
         }
 
         foreach ($this->config->eventDispatcher->file_path_provider_interface as $provider) {
-            /** @psalm-suppress ArgumentTypeCoercion */
-            $file_path = $provider::getClassFilePath($fq_class_name);
+            $file_path = $provider->getClassFilePath($fq_class_name);
 
             if ($file_path !== null && file_exists($file_path)) {
                 $this->progress->debug('Using custom file path provider to locate file for ' . $fq_class_name . "\n");

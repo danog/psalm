@@ -90,11 +90,7 @@ class ReflectionClass
 
     public function newInstanceWithoutConstructor(): object
     {
-        $object = __rt_new_uninit($this->name);
-        if ($object === null) {
-            throw new ReflectionException('Class "' . $this->name . '" does not exist');
-        }
-        return $object;
+        throw new ReflectionException('Instantiation by class name is not supported in a compiled program');
     }
 
     public function isInstantiable(): bool

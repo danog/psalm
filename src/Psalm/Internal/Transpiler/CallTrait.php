@@ -313,6 +313,9 @@ trait CallTrait
             return new Val('(' . $callee->code . ')(' . implode(', ', $argc) . ')?', $t->ret);
         }
         if ($t->kind === RustType::DYN_CALLABLE || $t->kind === RustType::MIXED || $t->kind === RustType::STR) {
+            if ($t->kind === RustType::STR) {
+                $this->warn('string used as a callable', $site);
+            }
             $argc = [];
             foreach ($args as $a) {
                 $argc[] = $this->exprTo($a->value, RustType::mixed());
@@ -387,13 +390,9 @@ trait CallTrait
             return $this->firstClassCallable($e);
         }
         if (!$e->name instanceof Identifier) {
-            $recv = $this->expr($e->var);
-            $name = $this->exprTo($e->name, RustType::str());
-            $argc = [];
-            foreach ($e->getArgs() as $a) {
-                $argc[] = $this->exprTo($a->value, RustType::mixed());
-            }
-            return $this->narrow(new Val('mixed_call(&' . $this->casts->convert($recv->code, $recv->type, RustType::mixed()) . ', &' . $name . ', vec![' . implode(', ', $argc) . '])?', RustType::mixed()), $e);
+            // `$obj->$name()`: methods are never looked up by name (closed world)
+            $this->warn('dynamic method name', $e);
+            return $this->dead('dynamic method name', $this->inferredOrMixed($e));
         }
         $name = $e->name->name;
         $lc = strtolower($name);
@@ -424,6 +423,10 @@ trait CallTrait
             if ($m !== null) {
                 $argc = $this->args($args, $m->storage, $m->param_types, $m->declaring, $m->name);
                 if ($m->isStatic()) {
+                    if (!$cls->isLeaf() && !$m->isPrivate() && !$m->declaring->isEnum()) {
+                        // a static method called on an instance: the runtime class' implementation
+                        return new Val($this->finishCall($recv->code . '.' . $m->rustName() . '__static(' . implode(', ', $argc) . ')?'), $m->return_type);
+                    }
                     return new Val('{ let _ = ' . $recv->code . '; ' . $this->finishCall($m->declaring->path() . '::' . $m->rustName() . '(' . implode(', ', $argc) . ')?') . ' }', $m->return_type);
                 }
                 return new Val($this->finishCall($recv->code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')?'), $m->return_type);
@@ -509,19 +512,12 @@ trait CallTrait
             if ($cv->type->kind === RustType::CLASS_) {
                 return $this->methodCallOn($cv, $name, $e);
             }
-            if ($e->name instanceof Identifier) {
-                // `$class::method(...)` with a runtime class name: registry dispatch
-                $argc = [];
-                foreach ($args as $a) {
-                    if ($a instanceof \PhpParser\Node\Arg) {
-                        $argc[] = $this->exprTo($a->value, RustType::mixed());
-                    }
-                }
-                $class_str = $this->casts->convert($cv->code, $cv->type, RustType::str());
-                return $this->narrow(new Val('php_rt::registry::call_static(' . $class_str . '.as_bytes(), ' . Names::rustStringLiteral($name) . ', vec![' . implode(', ', $argc) . '])?', RustType::mixed()), $e);
+            if ($cv->type->kind === RustType::UNION || $cv->type->kind === RustType::ANY_OBJECT || $cv->type->kind === RustType::OPTION) {
+                return $this->methodCallOn($cv, $name, $e);
             }
-            $this->warn('static call on expression', $e);
-            return $this->dead('static call on expression', $this->inferredOrMixed($e));
+            // `$class::method(...)` with a class name: classes are never looked up by name (closed world)
+            $this->warn('static call on a class name', $e);
+            return $this->dead('static call on a class name', $this->inferredOrMixed($e));
         }
         $kind = strtolower($e->class->toString());
         $fqcn = $this->resolveClassName($e->class);
@@ -686,21 +682,9 @@ trait CallTrait
                 return new Val($cv->code . '.new_same_class(' . implode(', ', $argc) . ')?', RustType::class($cls->fqcn));
             }
         }
-        if ($target !== null) {
-            $argc = $this->constructorArgs($target, $args);
-            $this->program->needFactory($target, count($argc));
-            return new Val($target->path() . '::new_by_name(&' . $this->casts->convert($cv->code, $cv->type, RustType::str()) . ', ' . implode(', ', $argc) . ')?', RustType::class($target->fqcn));
-        }
-        // `new $class(...)` with a class name only known at runtime: the registry's constructors
-        $argc = [];
-        foreach ($args as $a) {
-            if ($a instanceof \PhpParser\Node\Arg) {
-                $argc[] = $this->exprTo($a->value, RustType::mixed());
-            }
-        }
-        $res = $inf ?? RustType::anyObject();
-        $call = 'php_rt::registry::construct(&' . $this->casts->convert($cv->code, $cv->type, RustType::str()) . ', vec![' . implode(', ', $argc) . '])?';
-        return new Val($this->casts->convert($call, RustType::mixed(), $res), $res);
+        // `new $class(...)` with a class name: classes are never instantiated by name (closed world)
+        $this->warn('new on a class name', $e);
+        return $this->dead('new on a class name', $inf ?? RustType::anyObject());
     }
 
     private function newRuntimeGeneric(RustType $t, array $args, Expr $e): Val

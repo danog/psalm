@@ -6,11 +6,16 @@ namespace Psalm\Internal\Transpiler;
 
 use PhpParser\Node\Arg;
 use PhpParser\Node\Expr;
+use PhpParser\Node\Identifier;
+use PhpParser\Node\Name;
+use PhpParser\Node\Scalar;
 
 use function array_map;
 use function count;
 use function implode;
 use function in_array;
+use function ltrim;
+use function sort;
 use function strtolower;
 
 /**
@@ -250,7 +255,7 @@ final class Builtins
         'usleep' => ['usleep', ['i'], 'u'],
         'sleep' => ['sleep', ['i'], 'i'],
         'extension_loaded' => ['extension_loaded', ['&s'], 'b'],
-        'function_exists' => ['function_exists', ['&s'], 'b'],
+        'function_exists' => ['crate::names::function_exists', ['&s'], 'b'],
         'phpversion' => ['phpversion', ['?&s'], 'os'],
         'php_sapi_name' => ['php_sapi_name', [], 's'],
         'error_get_last' => ['error_get_last', [], 'om'],
@@ -267,21 +272,16 @@ final class Builtins
         'token_name' => ['token_name', ['i'], 's'],
         'spl_object_id' => ['spl_object_id', ['&m'], 'i'],
         'spl_object_hash' => ['spl_object_hash', ['&m'], 's'],
-        'class_exists' => ['class_exists', ['&s', 'b=true'], 'b'],
-        'interface_exists' => ['interface_exists', ['&s', 'b=true'], 'b'],
-        'trait_exists' => ['trait_exists', ['&s', 'b=true'], 'b'],
-        'enum_exists' => ['enum_exists', ['&s', 'b=true'], 'b'],
+        'class_exists' => ['crate::names::class_exists', ['&s'], 'b'],
+        'interface_exists' => ['crate::names::interface_exists', ['&s'], 'b'],
+        'trait_exists' => ['crate::names::trait_exists', ['&s'], 'b'],
+        'enum_exists' => ['crate::names::enum_exists', ['&s'], 'b'],
         'get_class' => ['get_class', ['&m'], 's'],
         'get_parent_class' => ['get_parent_class_of', ['&m'], 'os'],
         'get_object_vars' => ['get_object_vars', ['&m'], 'mkm'],
-        'method_exists' => ['method_exists', ['&m', '&s'], 'b'],
-        'property_exists' => ['property_exists', ['&m', '&s'], 'b'],
         'is_callable' => ['is_callable', ['&m'], 'b'],
-        'is_a' => ['is_a_name', ['&m', '&s', 'b=false'], 'b'],
-        'is_subclass_of' => ['is_subclass_of_name', ['&m', '&s', 'b=true'], 'b'],
-        'defined' => ['defined', ['&s'], 'b'],
-        'constant' => ['constant', ['&s'], 'Sm'],
-        'define' => ['define', ['&s', 'm'], 'b'],
+        'defined' => ['crate::names::constant_defined', ['&s'], 'b'],
+        'constant' => ['crate::names::constant', ['&s'], 'Sm'],
         'fwrite' => ['fwrite', ['&r', '&s'], 'oi'],
         'fputs' => ['fwrite', ['&r', '&s'], 'oi'],
         'fclose' => ['fclose', ['&r'], 'b'],
@@ -310,10 +310,10 @@ final class Builtins
         'get_include_path' => ['get_include_path', [], 's'],
         'get_included_files' => ['get_included_files', [], 'ls'],
         'get_loaded_extensions' => ['get_loaded_extensions', [], 'ls'],
-        'get_declared_classes' => ['get_declared_classes', [], 'ls'],
-        'get_declared_interfaces' => ['get_declared_interfaces', [], 'ls'],
+        'get_declared_classes' => ['crate::names::declared_classlikes', ['b=false'], 'ls'],
+        'get_declared_interfaces' => ['crate::names::declared_classlikes', ['b=true'], 'ls'],
         'get_defined_constants' => ['get_defined_constants', ['b=false'], 'mkm'],
-        'get_defined_functions' => ['get_defined_functions', [], 'mkm'],
+        'get_defined_functions' => ['get_defined_functions', ['x=crate::names::USER_FUNCTIONS'], 'mkm'],
         'opcache_get_status' => ['opcache_get_status', [], 'om'],
         'get_cfg_var' => ['get_cfg_var', ['&s'], 'os'],
         'filter_var' => ['filter_var', ['&m', 'i=516', 'm=Mixed::Null'], 'm'],
@@ -331,10 +331,10 @@ final class Builtins
         'hash_init' => ['hash_init', ['&s'], 'm'],
         'hash_update' => ['hash_update', ['&m', '&s'], 'b'],
         'hash_final' => ['hash_final', ['&m', 'b=false'], 's'],
-        '__rt_class_file' => ['rt_class_file', ['&s'], 'os'],
+        '__rt_class_file' => ['crate::names::class_file', ['&s'], 'os'],
         '__rt_function_is_builtin' => ['rt_function_is_builtin', ['&s'], 'b'],
-        '__rt_class_is_trait' => ['rt_class_is_trait', ['&s'], 'b'],
-        '__rt_class_constants' => ['rt_class_constants', ['&s'], 'mkm'],
+        '__rt_class_is_trait' => ['crate::names::class_is_trait', ['&s'], 'b'],
+        '__rt_class_constants' => ['crate::names::class_constants', ['&s'], 'mkm'],
         'lz4_compress' => ['lz4_compress', ['&s'], 'os'],
         'lz4_uncompress' => ['lz4_uncompress', ['&s'], 'os'],
         'parse_url' => ['parse_url', ['&s', 'i=-1'], 'm'],
@@ -1951,11 +1951,6 @@ final class Builtins
         return $b->narrow(new Val($callee . '.call(' . $list . '.into_vec())?', RustType::mixed()), $call);
     }
 
-    private function f_is_a_class(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
-    {
-        return $this->simple($b, $call, $args, ['is_a_name', ['&m', '&s', 'b=false'], 'b']);
-    }
-
     private function f_class_alias(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
         $b->warn('class_alias', $call);
@@ -2018,19 +2013,81 @@ final class Builtins
 
     private function f_is_subclass_of(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
-        $v = $b->expr($args[0]->value);
-        $cls = $b->exprTo($args[1]->value, RustType::str());
-        $vc = $v->type->kind === RustType::STR ? 'Mixed::Str(' . $v->code . ')' : $b->casts->convert($v->code, $v->type, RustType::mixed());
-        return new Val('is_subclass_of_name(&' . $vc . ', &' . $cls . ')', RustType::bool());
+        return $this->classRelation($b, $call, $args, false);
     }
 
     private function f_is_a(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
-        $v = $b->expr($args[0]->value);
-        $cls = $b->exprTo($args[1]->value, RustType::str());
-        $allow = isset($args[2]) ? $b->exprTo($args[2]->value, RustType::bool()) : 'false';
-        $vc = $v->type->kind === RustType::STR ? 'Mixed::Str(' . $v->code . ')' : $b->casts->convert($v->code, $v->type, RustType::mixed());
-        return new Val('is_a_name(&' . $vc . ', &' . $cls . ', ' . $allow . ')', RustType::bool());
+        return $this->classRelation($b, $call, $args, true);
+    }
+
+    /**
+     * `is_a()` / `is_subclass_of()`: an object is checked against its class' static ancestor list, a class
+     * name against the closed set of classes (a `match` when the target class is known, else the
+     * generated name tables).
+     */
+    private function classRelation(BodyEmitter $b, Expr\FuncCall $call, array $args, bool $is_a): Val
+    {
+        $v = $b->rawValue($args[0]->value);
+        $t = $v->type;
+        $inner = $t->kind === RustType::OPTION ? $t->inner() : $t;
+        $target = $args[1]->value;
+        $lit = null;
+        if ($target instanceof Expr\ClassConstFetch && $target->class instanceof Name && $target->name instanceof Identifier && strtolower($target->name->name) === 'class') {
+            $lit = $b->resolveClassName($target->class);
+        } elseif ($target instanceof Scalar\String_) {
+            $lit = ltrim($target->value, '\\');
+        }
+        $allow_string = $is_a ? (isset($args[2]) && $b->exprTo($args[2]->value, RustType::bool()) === 'true') : true;
+        // class name subject
+        $name_check = function (string $s_code) use ($b, $lit, $is_a, $target): string {
+            $cls = $lit !== null ? $b->program->getClass($lit) : null;
+            if ($cls !== null) {
+                $names = [];
+                foreach ($b->program->uniqueClasses() as $c) {
+                    if ($c->is_project && $c->crate <= $b->types()->current_crate && $c->isSubclassOf($cls) && ($is_a || $c !== $cls)) {
+                        $names[] = Names::byteStrLiteral($c->lc());
+                    }
+                }
+                sort($names);
+                return $names === [] ? '{ let _ = ' . $s_code . '; false }' : 'matches!(php_rt::names::norm(&' . $s_code . ').as_slice(), ' . implode(' | ', $names) . ')';
+            }
+            return 'crate::names::is_subclass(&' . $s_code . ', &' . $b->exprTo($target, RustType::str()) . ', ' . ($is_a ? 'true' : 'false') . ')';
+        };
+        if (in_array($inner->kind, [RustType::STR, RustType::ARRAY_KEY], true)) {
+            $s = $b->casts->convert($v->code, $t, RustType::str());
+            return new Val($allow_string ? $name_check($s) : '{ let _ = ' . $s . '; false }', RustType::bool());
+        }
+        // object subject
+        $obj_check = function (string $m_code) use ($b, $lit, $is_a, $target, $args): string {
+            if ($lit !== null) {
+                $inst = $b->expr(new Expr\Instanceof_($args[0]->value, new Name\FullyQualified($lit)));
+                if ($is_a) {
+                    return $inst->code;
+                }
+                return '(' . $inst->code . ' && !class_name_of(&' . $m_code . ').as_bytes().eq_ignore_ascii_case(' . Names::byteStrLiteral($lit) . '))';
+            }
+            $cls = $b->exprTo($target, RustType::str());
+            return $is_a ? 'is_a_name(&' . $m_code . ', &' . $cls . ', false)' : 'is_subclass_of_name(&' . $m_code . ', &' . $cls . ')';
+        };
+        if ($t->kind === RustType::MIXED) {
+            $m = $b->tmp('__m');
+            $s_branch = $allow_string ? $name_check('Str::clone(__s)') : 'false';
+            return new Val('{ let ' . $m . ' = ' . $v->code . '; if let Mixed::Str(__s) = &' . $m . ' { ' . $s_branch . ' } else { ' . $obj_check($m) . ' } }', RustType::bool());
+        }
+        $m = $b->casts->convert($v->code, $t, RustType::mixed());
+        return new Val($obj_check($m), RustType::bool());
+    }
+
+    private function f_define(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        // constants are compile-time: `define()` of a runtime-provided one (PSALM_VERSION) is a no-op
+        $name = $args[0]->value;
+        if ($name instanceof Scalar\String_ && $this->hasConstant($name->value)) {
+            return new Val('{ let _ = ' . $b->exprTo($args[1]->value, RustType::mixed()) . '; true }', RustType::bool());
+        }
+        $b->warn('define of a constant unknown to the compiled program', $call);
+        return new Val('{ let _ = ' . $b->exprTo($args[1]->value, RustType::mixed()) . '; false }', RustType::bool());
     }
 
     private function f_get_class(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -2074,12 +2131,6 @@ final class Builtins
     private function f___rt_xml_escape(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
         return new Val('php_rt::xml::xml_escape(&' . $b->exprTo($args[0]->value, RustType::str()) . ', ' . (isset($args[1]) ? $b->exprTo($args[1]->value, RustType::bool()) : 'false') . ')', RustType::str());
-    }
-
-    /** runtime hook: an instance of the named class without running its constructor (null if unknown) */
-    private function f___rt_new_uninit(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
-    {
-        return new Val('php_rt::registry::new_uninit(' . $b->exprTo($args[0]->value, RustType::str()) . '.as_bytes())', RustType::option(RustType::mixed()));
     }
 
     private function f_extract(BodyEmitter $b, Expr\FuncCall $call, array $args): Val

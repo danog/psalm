@@ -61,6 +61,12 @@ abstract class CodeIssue
         return $this->code_location->file_path;
     }
 
+    /** The ERROR_LEVEL of this issue's class. */
+    public function getErrorLevel(): int
+    {
+        return static::ERROR_LEVEL;
+    }
+
     /**
      * @psalm-pure
      */

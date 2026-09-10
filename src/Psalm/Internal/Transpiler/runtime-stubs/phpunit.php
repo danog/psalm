@@ -583,7 +583,7 @@ abstract class Assert
     public static function assertObjectHasProperty(string $propertyName, object $object, string $message = ''): void
     {
         self::$count++;
-        if (!property_exists($object, $propertyName)) {
+        if (!array_key_exists($propertyName, get_object_vars($object))) {
             throw new AssertionFailedError(($message !== '' ? $message . "\n" : '') . 'Failed asserting that object has property "' . $propertyName . '".');
         }
     }

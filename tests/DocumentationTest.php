@@ -18,6 +18,7 @@ use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\Provider\FakeFileProvider;
 use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\RuntimeCaches;
+use Psalm\Issue\IssueRegistry;
 use Psalm\Issue\UnusedBaselineEntry;
 use Psalm\Issue\UnusedIssueHandlerSuppression;
 use Psalm\Tests\Internal\Provider\FakeParserCacheProvider;
@@ -385,10 +386,8 @@ final class DocumentationTest extends TestCase
         $all_shortcodes = [];
 
         foreach ($all_issues as $issue_type) {
-            /** @var class-string $issue_class */
-            $issue_class = '\\Psalm\\Issue\\' . $issue_type;
-            /** @var int $shortcode */
-            $shortcode = $issue_class::SHORTCODE;
+            $shortcode = IssueRegistry::shortcode($issue_type);
+            $this->assertNotNull($shortcode, 'Unknown issue type ' . $issue_type);
             $all_shortcodes[$shortcode][] = $issue_type;
         }
 

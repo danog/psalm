@@ -201,8 +201,8 @@ trait ExprTrait
             return new Val($v->code . '.php_clone()', $v->type);
         }
         if ($e instanceof Expr\Include_) {
-            // closed world: every includable file is compiled; a path known at compile time binds to the
-            // compiled file directly, any other path is looked up in the runtime's file registry
+            // closed world: every includable file is compiled and bound by its compile-time path; nothing
+            // is ever loaded at runtime
             $static = $this->staticPath($e->expr);
             if ($static !== null) {
                 if (!str_starts_with($static, '/')) {
@@ -210,14 +210,18 @@ trait ExprTrait
                 }
                 $file = $this->program->fileForPath($static);
                 if ($file !== null) {
+                    // the value of a data file has ONE type: the type declared at the include site (the
+                    // conversion from Mixed happens there), never the literal's own shape
                     if ($file->isData()) {
-                        return $this->narrow(new Val($file->path() . '()?', RustType::mixed()), $e);
+                        return new Val($file->path() . '()?', RustType::mixed());
                     }
-                    return $this->narrow(new Val('Mixed::Int(1)', RustType::mixed()), $e);
+                    return new Val('Mixed::Int(1)', RustType::mixed());
                 }
                 $this->warn('include of a file that is not compiled: ' . $static, $e);
+                return $this->dead('include of a file that is not compiled: ' . $static, $this->inferredOrMixed($e));
             }
-            return $this->narrow(new Val('php_rt::registry::include_file(&' . $this->exprTo($e->expr, RustType::str()) . ')?', RustType::mixed()), $e);
+            $this->warn('include with a runtime path', $e);
+            return $this->dead('include with a runtime path', $this->inferredOrMixed($e));
         }
         if ($e instanceof Expr\Eval_) {
             // only constant expressions (`return "\t";`) are supported by the runtime evaluator

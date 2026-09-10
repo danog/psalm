@@ -12,8 +12,6 @@ use Psalm\Plugin\RegistrationInterface;
 use SimpleXMLElement;
 use UnexpectedValueException;
 
-use function assert;
-use function class_exists;
 use function count;
 use function reset;
 use function str_replace;
@@ -45,14 +43,8 @@ final class FileBasedPluginAdapter implements PluginEntryPointInterface
     {
         $fq_class_name = $this->getPluginClassForPath($this->path);
 
-        if (!\defined('PSALM_COMPILED')) {
-            /** @psalm-suppress UnresolvableInclude */
-            require_once($this->path);
-        }
-
-        assert(class_exists($fq_class_name));
-
-        $registration->registerHooksFromClass($fq_class_name);
+        // the class is compiled in and instantiated through its registered factory (never loaded by name)
+        $registration->registerHooksFromClass(Config::instantiatePluginClass($fq_class_name));
     }
 
     private function getPluginClassForPath(string $path): string

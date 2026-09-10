@@ -83,13 +83,6 @@ final class ClassEmitter
 
         // ---- statics, constants and bodies live on the handle type
         $w->open('impl ' . $handle . ' {');
-        if (!$cls->isInterface() && !$cls->isEnum()) {
-            // `$class::method(...)` with a runtime class name; inherited statics are looked up in the parent
-            $fallback = $cls->parent !== null && $cls->parent->is_project && !$cls->parent->isInterface() && !$cls->parent->isEnum()
-                ? $cls->parent->path() . '::call_static(name, args)'
-                : 'Err(DynError::Rt(RtError::error(format!("Call to undefined static method {}::{}()", ' . Names::rustStringLiteral($cls->fqcn) . ', name))))';
-            $w->line('pub fn call_static(name: &str, args: Vec<Mixed>) -> Result<Mixed, DynError> { match name { ' . $this->callMethodArms($cls, true) . '_ => ' . $fallback . ' } }');
-        }
         foreach ($cls->static_fields as $f) {
             $this->emitStatic($cls, $f, $w);
         }
@@ -109,8 +102,6 @@ final class ClassEmitter
             $w->line('pub fn new_same_class' . $this->ctorSig($cls, true) . ' -> Result<' . $handle . ', Throw> { match self { ' . implode(', ', array_map(fn(ClassModel $c) => $handle . '::' . $c->variant() . '(__h) => Ok(' . $this->casts->convert('__h.new_same_class(' . $this->ctorArgsFor($cls, $c) . ')?', RustType::class($c->fqcn), RustType::class($cls->fqcn)) . ')', $cls->concrete)) . ($cls->concrete ? ', ' : '') . '_ => unreachable!() } }');
         }
         $w->close();
-
-        // factories for `new $name(...)` are emitted crate-wide once all bodies have been seen
     }
 
     private function ancestorsLiteral(ClassModel $cls): string
@@ -375,16 +366,20 @@ final class ClassEmitter
             } else {
                 $w->line('pub fn ' . $rn . $this->signature($m, false) . ' { ' . $m->declaring->path() . '::' . $rn . '(' . $this->argNames($m) . ') }');
             }
-            if ($m->uses_lsb && !$m->isAbstract()) {
-                // `static::m()` from an instance: dispatch on the runtime class
+            if (!$m->isPrivate()) {
+                // `static::m()` / `$obj->m()` on a static method: dispatched on the runtime class (plugin hook
+                // handlers are called through instances, classes are never looked up by name)
                 $arms = array_map(function (ClassModel $c) use ($cls, $rn, $m): string {
-                    $cm = $this->program->findMethod($c, $m->lc()) ?? $m;
-                    // private static methods are never overridden: `static::` still resolves to the declaring class
-                    $target = $m->isPrivate() ? $m->declaring : $c;
-                    $call = $target->path() . '::' . $rn . '(' . $this->argNames($m) . ')?';
+                    $cm = $this->program->findMethod($c, $m->lc());
+                    if ($cm === null || $cm->isAbstract()) {
+                        return $cls->handle() . '::' . $c->variant() . '(_) => unreachable!("abstract static method ' . $rn . '")';
+                    }
+                    $target = $cm->uses_lsb ? $c : $cm->declaring;
+                    $call = $target->path() . '::' . $cm->rustName() . '(' . $this->convertedArgs($m, $cm) . ')?';
                     return $cls->handle() . '::' . $c->variant() . '(_) => Ok(' . $this->casts->convert($call, $cm->return_type, $m->return_type) . ')';
                 }, $cls->concrete);
-                $w->line('pub fn ' . $rn . '__static' . $this->signature($m, true) . ' { match self { ' . implode(', ', $arms) . ($arms ? ', ' : '') . '_ => unreachable!() } }');
+                $arms[] = $cls->handle() . '::Other__(__m) => ' . $this->dynamicCall($m);
+                $w->line('pub fn ' . $rn . '__static' . $this->signature($m, true) . ' { match self { ' . implode(', ', $arms) . ', _ => unreachable!() } }');
             }
             return;
         }
@@ -702,36 +697,6 @@ final class ClassEmitter
         $w->line('impl ' . $h . ' { pub fn to_php_string(&self) -> Result<Str, Throw> { match self { ' . $to_string_arms . ' } } }');
         $w->line('impl ' . $h . ' { pub fn inner_any(&self) -> &dyn std::any::Any { match self { ' . implode(', ', array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => __h', $cls->concrete)) . ($cls->concrete ? ', ' : '') . $h . '::Other__(__m) => __m, _ => unreachable!() } } }');
         $w->line('impl php_rt::PhpClone for ' . $h . ' { fn php_clone(&self) -> Self { match self { ' . implode(', ', array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => ' . $h . '::' . $c->variant() . '(__h.php_clone())', $cls->concrete)) . ($cls->concrete ? ', ' : '') . '' . $h . '::Other__(__m) => ' . $h . '::Other__(__m.clone()), _ => unreachable!() } } }');
-    }
-
-    private function emitFactory(ClassModel $cls, Writer $w): void
-    {
-        $h = $cls->handle();
-        $ctor = $this->program->findMethod($cls, '__construct');
-        $params = [];
-        $names = [];
-        if ($ctor !== null) {
-            foreach ($ctor->storage->params as $i => $p) {
-                $params[] = Names::var($p->name) . ': ' . ($ctor->param_types[$i] ?? RustType::mixed())->toRust();
-                $names[] = Names::var($p->name);
-            }
-        }
-        $arms = [];
-        foreach ($cls->concrete as $c) {
-            $cc = $this->program->findMethod($c, '__construct');
-            $args = [];
-            if ($cc !== null) {
-                foreach ($cc->storage->params as $i => $p) {
-                    if (isset($names[$i]) && $ctor !== null) {
-                        $args[] = $this->casts->convert($names[$i], $ctor->param_types[$i] ?? RustType::mixed(), $cc->param_types[$i] ?? RustType::mixed());
-                    } else {
-                        $args[] = $this->casts->defaultOf($cc->param_types[$i] ?? RustType::mixed());
-                    }
-                }
-            }
-            $arms[] = Names::byteStrLiteral(strtolower($c->fqcn)) . ' => Ok(' . $this->casts->convert($c->path() . '::new(' . implode(', ', $args) . ')?', RustType::class($c->fqcn), RustType::class($cls->fqcn)) . ')';
-        }
-        $w->line('impl ' . $h . ' { pub fn new_by_name(__name: &Str, ' . implode(', ', $params) . ') -> Result<' . $h . ', Throw> { match __name.to_lowercase().as_bytes().strip_prefix(b"\\\\").unwrap_or(__name.to_lowercase().as_bytes()) { ' . implode(', ', $arms) . ($arms ? ', ' : '') . '_ => Err(Throw::error(cat!(Str::from_static("Class not found: "), __name.clone()))) } } }');
     }
 
     // ------------------------------------------------------------------ enums

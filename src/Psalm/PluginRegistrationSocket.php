@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm;
 
-use InvalidArgumentException;
 use Override;
 use Psalm\Plugin\EventHandler\DynamicFunctionStorageProviderInterface;
 use Psalm\Plugin\EventHandler\FunctionExistenceProviderInterface;
@@ -19,8 +18,6 @@ use Psalm\Plugin\EventHandler\PropertyTypeProviderInterface;
 use Psalm\Plugin\EventHandler\PropertyVisibilityProviderInterface;
 use Psalm\Plugin\RegistrationInterface;
 
-use function class_exists;
-use function is_subclass_of;
 
 final class PluginRegistrationSocket implements RegistrationInterface
 {
@@ -44,55 +41,51 @@ final class PluginRegistrationSocket implements RegistrationInterface
     }
 
     #[Override]
-    public function registerHooksFromClass(string $handler): void
+    public function registerHooksFromClass(object $handler): void
     {
-        if (!class_exists($handler, false)) {
-            throw new InvalidArgumentException('Plugins must be loaded before registration');
-        }
-
         $this->config->eventDispatcher->registerClass($handler);
 
-        if (is_subclass_of($handler, PropertyExistenceProviderInterface::class)) {
+        if ($handler instanceof PropertyExistenceProviderInterface) {
             $this->codebase->properties->property_existence_provider->registerClass($handler);
         }
 
-        if (is_subclass_of($handler, PropertyVisibilityProviderInterface::class)) {
+        if ($handler instanceof PropertyVisibilityProviderInterface) {
             $this->codebase->properties->property_visibility_provider->registerClass($handler);
         }
 
-        if (is_subclass_of($handler, PropertyTypeProviderInterface::class)) {
+        if ($handler instanceof PropertyTypeProviderInterface) {
             $this->codebase->properties->property_type_provider->registerClass($handler);
         }
 
-        if (is_subclass_of($handler, MethodExistenceProviderInterface::class)) {
+        if ($handler instanceof MethodExistenceProviderInterface) {
             $this->codebase->methods->existence_provider->registerClass($handler);
         }
 
-        if (is_subclass_of($handler, MethodVisibilityProviderInterface::class)) {
+        if ($handler instanceof MethodVisibilityProviderInterface) {
             $this->codebase->methods->visibility_provider->registerClass($handler);
         }
 
-        if (is_subclass_of($handler, MethodReturnTypeProviderInterface::class)) {
+        if ($handler instanceof MethodReturnTypeProviderInterface) {
             $this->codebase->methods->return_type_provider->registerClass($handler);
         }
 
-        if (is_subclass_of($handler, MethodParamsProviderInterface::class)) {
+        if ($handler instanceof MethodParamsProviderInterface) {
             $this->codebase->methods->params_provider->registerClass($handler);
         }
 
-        if (is_subclass_of($handler, FunctionExistenceProviderInterface::class)) {
+        if ($handler instanceof FunctionExistenceProviderInterface) {
             $this->codebase->functions->existence_provider->registerClass($handler);
         }
 
-        if (is_subclass_of($handler, FunctionParamsProviderInterface::class)) {
+        if ($handler instanceof FunctionParamsProviderInterface) {
             $this->codebase->functions->params_provider->registerClass($handler);
         }
 
-        if (is_subclass_of($handler, FunctionReturnTypeProviderInterface::class)) {
+        if ($handler instanceof FunctionReturnTypeProviderInterface) {
             $this->codebase->functions->return_type_provider->registerClass($handler);
         }
 
-        if (is_subclass_of($handler, DynamicFunctionStorageProviderInterface::class)) {
+        if ($handler instanceof DynamicFunctionStorageProviderInterface) {
             $this->codebase->functions->dynamic_storage_provider->registerClass($handler);
         }
     }

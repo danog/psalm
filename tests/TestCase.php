@@ -196,7 +196,7 @@ class TestCase extends BaseTestCase
 
     public static function assertArrayKeysAreStrings(array $array, string $message = ''): void
     {
-        $validKeys = array_filter($array, 'is_string', ARRAY_FILTER_USE_KEY);
+        $validKeys = array_filter($array, is_string(...), ARRAY_FILTER_USE_KEY);
         self::assertTrue(count($array) === count($validKeys), $message);
     }
 
@@ -209,13 +209,13 @@ class TestCase extends BaseTestCase
 
     public static function assertArrayValuesAreArrays(array $array, string $message = ''): void
     {
-        $validValues = array_filter($array, 'is_array');
+        $validValues = array_filter($array, is_array(...));
         self::assertTrue(count($array) === count($validValues), $message);
     }
 
     public static function assertArrayValuesAreStrings(array $array, string $message = ''): void
     {
-        $validValues = array_filter($array, 'is_string');
+        $validValues = array_filter($array, is_string(...));
         self::assertTrue(count($array) === count($validValues), $message);
     }
 
