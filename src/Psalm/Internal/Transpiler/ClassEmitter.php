@@ -83,8 +83,11 @@ final class ClassEmitter
         // ---- statics, constants and bodies live on the handle type
         $w->open('impl ' . $handle . ' {');
         if (!$cls->isInterface() && !$cls->isEnum()) {
-            // `$class::method(...)` with a runtime class name
-            $w->line('pub fn call_static(name: &str, args: Vec<Mixed>) -> Result<Mixed, DynError> { match name { ' . $this->callMethodArms($cls, true) . '_ => Err(DynError::Rt(RtError::error(format!("Call to undefined static method {}::{}()", ' . Names::rustStringLiteral($cls->fqcn) . ', name)))) } }');
+            // `$class::method(...)` with a runtime class name; inherited statics are looked up in the parent
+            $fallback = $cls->parent !== null && $cls->parent->is_project && !$cls->parent->isInterface() && !$cls->parent->isEnum()
+                ? $cls->parent->path() . '::call_static(name, args)'
+                : 'Err(DynError::Rt(RtError::error(format!("Call to undefined static method {}::{}()", ' . Names::rustStringLiteral($cls->fqcn) . ', name))))';
+            $w->line('pub fn call_static(name: &str, args: Vec<Mixed>) -> Result<Mixed, DynError> { match name { ' . $this->callMethodArms($cls, true) . '_ => ' . $fallback . ' } }');
         }
         foreach ($cls->static_fields as $f) {
             $this->emitStatic($cls, $f, $w);
@@ -577,7 +580,15 @@ final class ClassEmitter
             if ($m->isPrivate() && $m->declaring !== $cls) {
                 continue;
             }
+            if ($m->storage->visibility !== \Psalm\Internal\Analyzer\ClassLikeAnalyzer::VISIBILITY_PUBLIC) {
+                // dynamic calls come from outside the class: only public methods are reachable
+                continue;
+            }
             if ($m->isPrivate() && $m->declaring !== $cls) {
+                continue;
+            }
+            if ($static_only && $m->declaring !== $cls) {
+                // inherited statics are dispatched by the declaring class (see the `_` arm)
                 continue;
             }
             $params = [];
@@ -588,7 +599,16 @@ final class ClassEmitter
                     break;
                 }
                 $pt = $m->param_types[$i] ?? RustType::mixed();
-                $params[] = '(match args.get(' . $i . ') { Some(__a) => ' . $this->casts->convert('__a.clone()', RustType::mixed(), $pt) . ', None => ' . $this->casts->defaultOf($pt) . ' })';
+                if (Casts::isLocal($pt)) {
+                    $this->casts->needMixedTo($pt);
+                }
+                if ($pt->kind === RustType::MIXED) {
+                    $params[] = 'dyn_arg_req::<Mixed>(&args, ' . $i . ')';
+                } elseif ($pt->hasDefault() && $pt->kind !== RustType::CLASS_) {
+                    $params[] = 'dyn_arg::<' . $pt->toRust() . '>(&args, ' . $i . ')';
+                } else {
+                    $params[] = 'dyn_arg_req::<' . $pt->toRust() . '>(&args, ' . $i . ')';
+                }
             }
             if (!$ok) {
                 continue;
