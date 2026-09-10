@@ -2584,6 +2584,17 @@ final class Config
 
         $autoload_included_files = $this->include_collector->getFilteredIncludedFiles();
 
+        // The analyzed project's autoloaders are never executed by this tool (see CliUtils::requireAutoloaders):
+        // the files collected so far were included by the tool's own autoloader and belong to the tool, not to
+        // the closed world of the analyzed program.
+        $tool_dir = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR;
+        if (realpath($this->base_dir) !== realpath(dirname(__DIR__, 2))) {
+            $autoload_included_files = array_values(array_filter(
+                $autoload_included_files,
+                static fn(string $file): bool => !str_starts_with($file, $tool_dir),
+            ));
+        }
+
         if ($autoload_included_files) {
             $codebase->register_autoload_files = true;
 
