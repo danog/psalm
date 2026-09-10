@@ -600,13 +600,6 @@ final class Scanner
 
         $composer_file_path = $this->config->getComposerFilePathForClassLike($fq_class_name);
 
-        // Closed world: a class whose composer file lives in an ignored directory is not part of the
-        // compiled program. The project files (or runtime stubs) must define it; consulting the
-        // classmap here would let a forked scan worker register the ignored copy instead.
-        if ($composer_file_path && $this->config->mustBeIgnored((string) realpath($composer_file_path))) {
-            $composer_file_path = false;
-        }
-
         if ($composer_file_path && file_exists($composer_file_path)) {
             $this->progress->debug('Using composer to locate file for ' . $fq_class_name . "\n");
 
