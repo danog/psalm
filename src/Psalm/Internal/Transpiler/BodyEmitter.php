@@ -78,6 +78,9 @@ final class BodyEmitter
 
     public ?RustType $this_type = null;
 
+    /** class `self`/`parent` refer to (the declaring class of an inherited body emitted for a subclass); defaults to `class` */
+    public ?ClassModel $self_class = null;
+
     public function __construct(
         public readonly Program $program,
         public readonly FunctionRecord $record,
@@ -581,6 +584,7 @@ final class BodyEmitter
     public function emitBody(array $params, ?array $stmts, RustType $ret_type): string
     {
         $this->types()->current_class = $this->class?->fqcn;
+        $this->types()->current_crate = $this->class !== null ? $this->class->crate : $this->program->crateOfRecord($this->record);
         $this->ret_type = $ret_type;
         $storage = $this->record->storage;
         $this->is_generator = $storage->has_yield;

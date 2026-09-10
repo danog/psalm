@@ -8,6 +8,7 @@ use PhpParser\Node\Stmt\ClassMethod;
 
 use function count;
 use function implode;
+use function in_array;
 use function strtolower;
 
 /**
@@ -156,12 +157,16 @@ final class ClassEmitter
         $rn = $f->acc();
         $t = $f->type->toRust();
         $h = $cls->handle();
-        $arms = fn(string $call) => implode(', ', array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => __h.' . $call, $cls->concrete)) . ($cls->concrete ? ', ' : '') . '_ => unreachable!()';
-        $w->line('pub fn ' . $rn . '(&self) -> Ref<\'_, ' . $t . '> { match self { ' . $arms($rn . '()') . ' } }');
-        $w->line('pub fn ' . $rn . '_get(&self) -> ' . $t . ' { match self { ' . $arms($rn . '_get()') . ' } }');
-        $w->line('pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { match self { ' . $arms($rn . '_opt()') . ' } }');
-        $w->line('pub fn ' . $rn . '_mut(&self) -> RefMut<\'_, ' . $t . '> { match self { ' . $arms($rn . '_mut()') . ' } }');
-        $w->line('pub fn set_' . $rn . '(&self, v: ' . $t . ') { match self { ' . $arms('set_' . $rn . '(v)') . ' } }');
+        $name = Names::rustStringLiteral($f->name);
+        // instances of subclasses from other crates are reached through the escape variant: their
+        // properties are read and written dynamically
+        $dyn_get = $this->casts->convert('php_rt::dyn_prop(__m, ' . $name . ')', RustType::mixed(), $f->type);
+        $arms = fn(string $call, string $other) => implode(', ', array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => ' . $call, $cls->concrete)) . ($cls->concrete ? ', ' : '') . $h . '::Other__(__m) => ' . $other . ', _ => unreachable!()';
+        $w->line('pub fn ' . $rn . '(&self) -> PropRef<\'_, ' . $t . '> { match self { ' . $arms('PropRef::Borrowed(__h.' . $rn . '())', 'PropRef::Owned(' . $dyn_get . ')') . ' } }');
+        $w->line('pub fn ' . $rn . '_get(&self) -> ' . $t . ' { match self { ' . $arms('__h.' . $rn . '_get()', $dyn_get) . ' } }');
+        $w->line('pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { match self { ' . $arms('__h.' . $rn . '_opt()', 'php_rt::other_obj(__m).get_prop(' . $name . ').map(|__v| ' . $this->casts->convert('__v', RustType::mixed(), $f->type) . ')') . ' } }');
+        $w->line('pub fn ' . $rn . '_mut(&self) -> PropMut<\'_, ' . $t . '> { match self { ' . $arms('PropMut::Borrowed(__h.' . $rn . '_mut())', '{ let __o = php_rt::other_obj(__m); PropMut::owned(' . $dyn_get . ', Box::new(move |__v: ' . $t . '| { __o.set_prop(' . $name . ', ' . $this->casts->convert('__v', $f->type, RustType::mixed()) . '); })) }') . ' } }');
+        $w->line('pub fn set_' . $rn . '(&self, v: ' . $t . ') { match self { ' . $arms('__h.set_' . $rn . '(v)', '{ php_rt::other_obj(__m).set_prop(' . $name . ', ' . $this->casts->convert('v', $f->type, RustType::mixed()) . '); }') . ' } }');
     }
 
     // ------------------------------------------------------------------ constructor
@@ -383,7 +388,9 @@ final class ClassEmitter
             }
             return;
         }
-        // virtual dispatch
+        // virtual dispatch: an arm per concrete class that overrides the method; the others run the shared
+        // body (`__impl`, present on this handle for every non-abstract method) with `self` being this enum
+        $shared = $m->isAbstract() ? null : 'self.' . $rn . '__impl(' . $this->argNames($m) . ')';
         $arms = [];
         foreach ($cls->concrete as $c) {
             $cm = $this->program->findMethod($c, $m->lc());
@@ -391,10 +398,15 @@ final class ClassEmitter
                 $arms[] = $h . '::' . $c->variant() . '(_) => unreachable!("abstract method ' . $rn . '")';
                 continue;
             }
+            if ($shared !== null && $cm === $m) {
+                continue;
+            }
             $call = '__h.' . $rn . '(' . $this->convertedArgs($m, $cm) . ')?';
             $arms[] = $h . '::' . $c->variant() . '(__h) => Ok(' . $this->casts->convert($call, $cm->return_type, $m->return_type) . ')';
         }
-        $w->line('pub fn ' . $rn . $this->signature($m, true) . ' { match self { ' . implode(', ', $arms) . ($arms ? ', ' : '') . '_ => unreachable!() } }');
+        $arms[] = $h . '::Other__(__m) => ' . $this->dynamicCall($m);
+        $arms[] = '_ => ' . ($shared ?? 'unreachable!()');
+        $w->line('pub fn ' . $rn . $this->signature($m, true) . ' { match self { ' . implode(', ', $arms) . ' } }');
         if ($m->declaring === $cls && !$m->isAbstract()) {
             $w->line('pub fn ' . $rn . '__impl' . $this->signature($m, true) . ' {');
             $w->raw($this->body($cls, $m));
@@ -404,6 +416,29 @@ final class ClassEmitter
             $up = $this->casts->convert('self.clone()', RustType::class($cls->fqcn), RustType::class($m->declaring->fqcn));
             $w->line('pub fn ' . $rn . '__impl' . $this->signature($m, true) . ' { ' . $up . '.' . $rn . '__impl(' . $this->argNames($m) . ') }');
         }
+    }
+
+    /**
+     * A call of `$m` on an object held in the escape variant (an instance of a subclass defined in
+     * another crate, or a value the docblocks lied about): dispatched by name through `PhpObject::call_method`.
+     */
+    private function dynamicCall(MethodModel $m): string
+    {
+        $args = [];
+        foreach ($m->storage->params as $i => $p) {
+            $pt = $m->param_types[$i] ?? RustType::mixed();
+            $name = Names::var($p->name);
+            $args[] = $this->casts->convert($p->by_ref ? '(*' . $name . ').clone()' : $name, $pt, RustType::mixed());
+        }
+        $call = 'php_rt::other_obj(__m).call_method(' . Names::rustStringLiteral($m->lc()) . ', vec![' . implode(', ', $args) . '])?';
+        $rt = $m->return_type;
+        if ($rt->kind === RustType::UNIT) {
+            return '{ let _ = ' . $call . '; Ok(()) }';
+        }
+        if ($rt->kind === RustType::NEVER) {
+            return '{ let _ = ' . $call . '; unreachable!() }';
+        }
+        return 'Ok(' . $this->casts->convert($call, RustType::mixed(), $rt) . ')';
     }
 
     /** Arguments passed from a base-class signature to an overriding method (contravariant params). */
@@ -441,6 +476,10 @@ final class ClassEmitter
         if ($m->isStatic()) {
             $b->this_type = null;
         }
+        if ($m->origin()->declaring !== $cls) {
+            // a body inherited from another crate: `self`/`parent` keep referring to the declaring class
+            $b->self_class = $m->origin()->declaring;
+        }
         $params = [];
         foreach ($m->storage->params as $i => $p) {
             $params[$p->name] = $m->param_types[$i] ?? RustType::mixed();
@@ -469,6 +508,16 @@ final class ClassEmitter
             $code = $pre . $code;
         }
         return $this->indent($code);
+    }
+
+    /** A copy of upstream method `$m` on `$root`'s handle type, named `$name` (see Program::requestSuperCopy). */
+    public function emitSuperCopy(ClassModel $root, MethodModel $m, string $name, Writer $w): void
+    {
+        $w->line('impl ' . $root->handle() . ' {');
+        $w->line('pub fn ' . $name . $this->signature($m, true) . ' {');
+        $w->raw($this->body($root, $m));
+        $w->line('}');
+        $w->line('}');
     }
 
     private function indent(string $code): string
@@ -602,8 +651,11 @@ final class ClassEmitter
                 if (Casts::isLocal($pt)) {
                     $this->casts->needMixedTo($pt);
                 }
+                $inner = $pt->kind === RustType::OPTION ? $pt->inner() : $pt;
                 if ($pt->kind === RustType::MIXED) {
                     $params[] = 'dyn_arg_req::<Mixed>(&args, ' . $i . ')';
+                } elseif (in_array($inner->kind, [RustType::CLOSURE, RustType::TUPLE, RustType::DYN_CALLABLE, RustType::RT_GENERIC, RustType::RESOURCE], true)) {
+                    $params[] = $this->casts->convert('dyn_arg_req::<Mixed>(&args, ' . $i . ')', RustType::mixed(), $pt);
                 } elseif ($pt->hasDefault() && $pt->kind !== RustType::CLASS_) {
                     $params[] = 'dyn_arg::<' . $pt->toRust() . '>(&args, ' . $i . ')';
                 } else {
@@ -637,6 +689,7 @@ final class ClassEmitter
         $w->close();
         $to_string_arms = implode(', ', array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => __h.to_php_string()', $cls->concrete)) . ($cls->concrete ? ', ' : '') . $h . '::Other__(__m) => Ok(to_str(__m)), _ => unreachable!()';
         $w->line('impl ' . $h . ' { pub fn to_php_string(&self) -> Result<Str, Throw> { match self { ' . $to_string_arms . ' } } }');
+        $w->line('impl ' . $h . ' { pub fn inner_any(&self) -> &dyn std::any::Any { match self { ' . implode(', ', array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => __h', $cls->concrete)) . ($cls->concrete ? ', ' : '') . $h . '::Other__(__m) => __m, _ => unreachable!() } } }');
         $w->line('impl php_rt::PhpClone for ' . $h . ' { fn php_clone(&self) -> Self { match self { ' . implode(', ', array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => ' . $h . '::' . $c->variant() . '(__h.php_clone())', $cls->concrete)) . ($cls->concrete ? ', ' : '') . '' . $h . '::Other__(__m) => ' . $h . '::Other__(__m.clone()), _ => unreachable!() } } }');
     }
 

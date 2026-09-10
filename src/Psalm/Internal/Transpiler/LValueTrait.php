@@ -220,7 +220,7 @@ trait LValueTrait
             if ($dim === null) {
                 return new Place(
                     $vt,
-                    fn() => $this->deadCode('read of $a[]', $vt),
+                    fn() => $vt->hasDefault() ? $this->casts->defaultOf($vt) : $this->deadCode('read of $a[]', $vt), // `$a[]['k'] = v`: a fresh element
                     fn(string $v) => $this->hoisted([$v], fn(string $v) => $parent->modify(fn(string $p) => $p . '.push(' . $v . ');')),
                 );
             }
@@ -238,7 +238,7 @@ trait LValueTrait
             if ($dim === null) {
                 return new Place(
                     $vt,
-                    fn() => $this->deadCode('read of $a[]', $vt),
+                    fn() => $vt->hasDefault() ? $this->casts->defaultOf($vt) : $this->deadCode('read of $a[]', $vt), // `$a[]['k'] = v`: a fresh element
                     fn(string $v) => $this->hoisted([$v], fn(string $v) => $parent->modify(fn(string $p) => $p . '.push(' . $v . ');')),
                 );
             }

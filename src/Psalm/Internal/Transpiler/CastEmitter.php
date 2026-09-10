@@ -278,7 +278,11 @@ final class CastEmitter
 
     public function emitClassImpls(ClassModel $cls, Writer $w): void
     {
-        if ($cls->isTrait() || $cls->isEnum()) {
+        if ($cls->isTrait()) {
+            return;
+        }
+        if ($cls->isEnum()) {
+            $this->emitLeafMarker($cls, $w);
             return;
         }
         $h = $cls->handle();
@@ -330,6 +334,23 @@ final class CastEmitter
             $w->line('impl php_rt::InstanceOf<' . $h . '> for ' . $h . ' { fn is_instance(&self) -> bool { true } }');
         } else {
             $w->line('impl php_rt::InstanceOf<' . $h . '> for ' . $h . ' { fn is_instance(&self) -> bool { match self { ' . $h . '::Other__(__m) => __m.instance_of(' . Names::rustStringLiteral(strtolower($cls->fqcn)) . '), _ => true } } }');
+            // narrowing to any leaf class (of this crate or a downstream one) in a single generic impl
+            // instead of one impl with an arm per descendant for each target class
+            $w->line('impl<T: crate::Leaf__ + Clone + \'static> php_rt::CastTo<T> for ' . $h . ' where Mixed: php_rt::CastTo<T> { fn cast_to(self) -> T { if let Some(v) = self.inner_any().downcast_ref::<T>() { return v.clone(); } cast::<T>(cast::<Mixed>(self)) } }');
+        }
+        $this->emitLeafMarker($cls, $w);
+    }
+
+    /** Leaf classes implement the marker trait of their crate and of every upstream crate. */
+    public function emitLeafMarker(ClassModel $cls, Writer $w): void
+    {
+        if (!$cls->isLeaf()) {
+            return;
+        }
+        $h = $cls->handle();
+        $w->line('impl crate::Leaf__ for ' . $h . ' {}');
+        for ($i = 0; $i < $cls->crate; $i++) {
+            $w->line('impl ::' . $this->program->transpiler->crateName($i) . '::Leaf__ for ' . $h . ' {}');
         }
     }
 
@@ -339,6 +360,10 @@ final class CastEmitter
         if ($cls->isLeaf()) {
             return $code;
         }
+        if (!in_array($c, $cls->concrete, true)) {
+            // a subclass from a downstream crate: the enum has no variant for it
+            return $cls->path() . '::Other__(Mixed::Obj(Rc::new(' . $code . ')))';
+        }
         return $cls->path() . '::' . $c->variant() . '(' . $code . ')';
     }
 
@@ -346,7 +371,8 @@ final class CastEmitter
     /** @var array<string, bool> */
     private array $done = [];
 
-    public function emitRecordedCasts(Writer $w): void
+    /** @param callable(RustType, RustType): ?Writer $select writer for the crate an impl belongs to (null: cannot be written) */
+    public function emitRecordedCasts(callable $select): void
     {
         $done = &$this->done;
         // iterate until no new needs are added (emitting casts may require nested ones)
@@ -367,6 +393,10 @@ final class CastEmitter
             }
             foreach ($pending as $k => [$from, $to]) {
                 $done[$k] = true;
+                $w = $select($from, $to);
+                if ($w === null) {
+                    continue;
+                }
                 if (str_starts_with($k, 'is:')) {
                     $this->emitInstanceOf($from, $to, $w);
                 } else {
@@ -636,13 +666,25 @@ final class CastEmitter
         if ($fc->isLeaf()) {
             // upcast of a leaf into an ancestor enum, or (impossible) sideways cast
             if ($fc->isSubclassOf($tc)) {
-                $body = $tc->isLeaf() ? 'self' : $th . '::' . $fc->variant() . '(self)';
+                $body = $this->wrapConcrete($tc, $fc, 'self');
             } elseif (!$tc->isLeaf()) {
                 $body = $th . '::Other__(Mixed::Obj(Rc::new(self)))';
             } else {
                 $body = 'panic!(' . Names::rustStringLiteral('cannot cast ' . $fc->fqcn . ' to ' . $tc->fqcn) . ')';
             }
             $w->line('impl php_rt::CastTo<' . $th . '> for ' . $fh . ' { fn cast_to(self) -> ' . $th . ' { ' . $body . ' } }');
+            return;
+        }
+        if ($tc->isLeaf() && $tc->crate >= $fc->crate) {
+            // covered by the generic `CastTo<T: Leaf__>` impl of the source enum
+            $this->casts->needMixedTo($to);
+            return;
+        }
+        if (count($fc->concrete) > 8) {
+            // large enums (Node, CodeIssue, ...): narrowing through Mixed (one downcast attempt per concrete
+            // class of the target) instead of an arm per concrete class of the source
+            $this->casts->needMixedTo($to);
+            $w->line('impl php_rt::CastTo<' . $th . '> for ' . $fh . ' { fn cast_to(self) -> ' . $th . ' { ' . $this->conv($this->conv('self', $from, RustType::mixed()), RustType::mixed(), $to) . ' } }');
             return;
         }
         foreach ($fc->concrete as $c) {

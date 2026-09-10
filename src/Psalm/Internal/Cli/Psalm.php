@@ -181,6 +181,7 @@ final class Psalm
         'find-unused-psalm-suppress',
         'error-level:',
         'transpile-rust:',
+        'transpile-rust-split:',
     ];
 
     /**
@@ -404,7 +405,8 @@ final class Psalm
         InternalCallMapHandler::getCallMap();
 
         if (isset($options['transpile-rust']) && is_string($options['transpile-rust'])) {
-            Transpiler::enable($options['transpile-rust'], $config, $current_dir);
+            $splits = $options['transpile-rust-split'] ?? [];
+            Transpiler::enable($options['transpile-rust'], $config, $current_dir, is_array($splits) ? array_values($splits) : [$splits]);
         }
 
         if ($paths_to_check === null) {

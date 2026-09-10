@@ -74,6 +74,9 @@ final class TypeMapper
     /** Class that `static`/`self` types refer to while mapping. */
     public ?string $current_class = null;
 
+    /** crate whose code is being emitted: types may only name classes of this crate and upstream ones */
+    public int $current_crate = 0;
+
     /** Runtime-provided generic classes. */
     private const RT_GENERICS = [
         'splobjectstorage' => 'SplObjectStorage',
@@ -377,7 +380,15 @@ final class TypeMapper
             // no generated code for this class (a vendor dependency that is not transpiled): dynamic object
             return RustType::anyObject();
         }
-        return RustType::class($fqcn);
+        while ($model !== null && $model->crate > $this->current_crate) {
+            // a class of a downstream crate (a test subclass seen by inference): the upstream crate can only
+            // name its nearest ancestor defined there
+            $model = $model->parent;
+        }
+        if ($model === null || !$model->is_project) {
+            return RustType::anyObject();
+        }
+        return RustType::class($model->fqcn);
     }
 
     private function mapArray(Union $key, Union $value): RustType

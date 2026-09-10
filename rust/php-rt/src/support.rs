@@ -641,3 +641,64 @@ pub fn iterate_php_iterator<K, V, E>(
 pub fn iterate_object<K, V>(_o: impl PhpObject) -> Result<std::vec::IntoIter<(K, V)>, RtError> {
     Err(RtError::error("iterate_object: dynamic iteration is not supported for this object"))
 }
+
+// ---------------------------------------------------------------- dynamic property access
+
+/// A property read through a dispatch enum: borrowed from a known object, or a copy fetched
+/// dynamically (`get_prop`) from an object of a class defined in another crate.
+pub enum PropRef<'a, T> {
+    Borrowed(std::cell::Ref<'a, T>),
+    Owned(T),
+}
+impl<T> std::ops::Deref for PropRef<'_, T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        match self {
+            PropRef::Borrowed(r) => r,
+            PropRef::Owned(v) => v,
+        }
+    }
+}
+
+/// A mutable property access through a dispatch enum; the owned form hands the value to a
+/// write-back closure (`set_prop`) when dropped.
+pub enum PropMut<'a, T> {
+    Borrowed(std::cell::RefMut<'a, T>),
+    Owned { value: Option<T>, write: Option<Box<dyn FnOnce(T) + 'a>> },
+}
+impl<'a, T> PropMut<'a, T> {
+    pub fn owned(value: T, write: Box<dyn FnOnce(T) + 'a>) -> Self {
+        PropMut::Owned { value: Some(value), write: Some(write) }
+    }
+}
+impl<T> std::ops::Deref for PropMut<'_, T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        match self {
+            PropMut::Borrowed(r) => r,
+            PropMut::Owned { value, .. } => value.as_ref().unwrap(),
+        }
+    }
+}
+impl<T> std::ops::DerefMut for PropMut<'_, T> {
+    fn deref_mut(&mut self) -> &mut T {
+        match self {
+            PropMut::Borrowed(r) => r,
+            PropMut::Owned { value, .. } => value.as_mut().unwrap(),
+        }
+    }
+}
+impl<T> Drop for PropMut<'_, T> {
+    fn drop(&mut self) {
+        if let PropMut::Owned { value, write } = self {
+            if let (Some(v), Some(w)) = (value.take(), write.take()) {
+                w(v);
+            }
+        }
+    }
+}
+
+/// Property `name` of an object held in a `Mixed` (an instance of a class from another crate).
+pub fn dyn_prop(m: &Mixed, name: &str) -> Mixed {
+    other_obj(m).get_prop(name).unwrap_or(Mixed::Null)
+}

@@ -20,6 +20,12 @@ final class MethodModel
     /** static method whose body refers to `static` (needs a copy per calling class) */
     public bool $uses_lsb = false;
 
+    /**
+     * For a method inherited from a class in another crate: the inherited method. Its body is emitted
+     * again for `$declaring` (the topmost class of this crate) with `$this` bound to that class.
+     */
+    public ?MethodModel $import_of = null;
+
     public function __construct(
         public readonly string $name,
         public readonly ClassModel $declaring,
@@ -28,6 +34,27 @@ final class MethodModel
         public readonly ?FunctionRecord $record,
     ) {
         $this->return_type = RustType::unit();
+    }
+
+    /** A copy of this method as if declared by `$declaring` (a subclass in another crate). */
+    public function importedInto(ClassModel $declaring): MethodModel
+    {
+        $m = new MethodModel($this->name, $declaring, $this->storage, $this->node, $this->record);
+        $m->param_types = $this->param_types;
+        $m->return_type = $this->return_type;
+        $m->uses_lsb = $this->uses_lsb;
+        $m->import_of = $this;
+        return $m;
+    }
+
+    /** The method as originally declared (following imports). */
+    public function origin(): MethodModel
+    {
+        $m = $this;
+        while ($m->import_of !== null) {
+            $m = $m->import_of;
+        }
+        return $m;
     }
 
     public function lc(): string

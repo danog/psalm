@@ -21,11 +21,19 @@ use Psalm\Type\Union;
 use Psalm\Storage\FunctionLikeStorage;
 use RuntimeException;
 
+use function basename;
+use function count;
 use function file_get_contents;
 use function fwrite;
 use function glob;
 use function preg_match;
 use function preg_split;
+use function rtrim;
+use function str_replace;
+use function str_starts_with;
+use function strrpos;
+use function substr;
+use function trim;
 use function is_dir;
 use function mkdir;
 use function spl_object_id;
@@ -59,13 +67,65 @@ final class Transpiler
     ) {
     }
 
-    public static function enable(string $out_dir, Config $config, string $root_dir): void
+    /**
+     * Additional crates: files under `prefix` (relative to the root directory) are emitted into crate `dir`,
+     * which depends on the main crate and on all crates listed before it.
+     *
+     * @var list<array{dir: string, prefix: string}>
+     */
+    public array $splits = [];
+
+    /** @param list<string> $splits `DIR:PREFIX` specs for additional crates */
+    public static function enable(string $out_dir, Config $config, string $root_dir, array $splits = []): void
     {
         if (!is_dir($out_dir) && !mkdir($out_dir, 0777, true)) {
             throw new RuntimeException("Could not create transpiler output directory $out_dir");
         }
+        $t = new self($out_dir, $config, $root_dir);
+        foreach ($splits as $spec) {
+            $pos = strrpos($spec, ':');
+            if ($pos === false) {
+                throw new RuntimeException("--transpile-rust-split expects DIR:PREFIX, got $spec");
+            }
+            $dir = substr($spec, 0, $pos);
+            $prefix = rtrim($root_dir, '/') . '/' . trim(substr($spec, $pos + 1), '/') . '/';
+            if (!is_dir($dir) && !mkdir($dir, 0777, true)) {
+                throw new RuntimeException("Could not create transpiler output directory $dir");
+            }
+            $t->splits[] = ['dir' => $dir, 'prefix' => $prefix];
+        }
+        self::$instance = $t;
+    }
 
-        self::$instance = new self($out_dir, $config, $root_dir);
+    /** Index of the crate a file is emitted into (0 = the main crate). */
+    public function crateOfFile(string $file_path): int
+    {
+        if (self::isRuntimeStubFile($file_path)) {
+            // the runtime stubs (exceptions, SPL, PHPUnit shim, ...) are always part of the main crate
+            return 0;
+        }
+        foreach ($this->splits as $i => $split) {
+            if (str_starts_with($file_path, $split['prefix'])) {
+                return $i + 1;
+            }
+        }
+        return 0;
+    }
+
+    public function crateCount(): int
+    {
+        return count($this->splits) + 1;
+    }
+
+    public function crateDir(int $i): string
+    {
+        return $i === 0 ? $this->out_dir : $this->splits[$i - 1]['dir'];
+    }
+
+    /** Rust crate name (the output directory's basename). */
+    public function crateName(int $i): string
+    {
+        return str_replace('-', '_', basename($this->crateDir($i)));
     }
 
     public static function isEnabled(): bool

@@ -133,6 +133,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
 
 [[package]]
+name = "psalm_base"
+version = "0.1.0"
+dependencies = [
+ "php-rt",
+]
+
+[[package]]
+name = "psalm_src"
+version = "0.1.0"
+dependencies = [
+ "php-rt",
+ "psalm_base",
+]
+
+[[package]]
+name = "psalm_tests"
+version = "0.1.0"
+dependencies = [
+ "php-rt",
+ "psalm_base",
+ "psalm_src",
+]
+
+[[package]]
 name = "r-efi"
 version = "6.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

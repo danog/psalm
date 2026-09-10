@@ -6,9 +6,25 @@ namespace Psalm\Internal\Transpiler;
 
 use Psalm\Codebase;
 
+use function array_fill;
 use function array_keys;
+use function array_shift;
+use function array_slice;
+use function basename;
+use function dirname;
+use function explode;
+use function file_exists;
+use function max;
+use function preg_replace_callback;
+use function realpath;
+use function str_replace;
+use function strrpos;
+use function substr;
+use function trim;
+use function unlink;
 use function array_map;
 use function count;
+use function file_get_contents;
 use function file_put_contents;
 use function fwrite;
 use function implode;
@@ -31,7 +47,7 @@ final class CrateEmitter
     private Builtins $builtins;
     private Diagnostics $diag;
 
-    /** @var array<string, Writer> module path (a::b::c) => writer */
+    /** @var array<int, array<string, Writer>> crate => module path (a::b::c) => writer */
     private array $modules = [];
 
     public function __construct(
@@ -48,6 +64,7 @@ final class CrateEmitter
         $this->casts = new Casts($this->program);
         $this->builtins = new Builtins();
         $this->diag = new Diagnostics();
+        $n_crates = $this->transpiler->crateCount();
 
         $class_emitter = new ClassEmitter($this->program, $this->casts, $this->builtins, $this->diag);
         $cast_emitter = new CastEmitter($this->program, $this->casts);
@@ -60,7 +77,7 @@ final class CrateEmitter
             }
         }
         foreach ($project_classes as $cls) {
-            $w = $this->module(Names::modulePath($cls->fqcn));
+            $w = $this->module($cls->crate, Names::modulePath($cls->fqcn));
             try {
                 $class_emitter->emit($cls, $w);
             } catch (\Throwable $e) {
@@ -69,59 +86,96 @@ final class CrateEmitter
         }
         // factories are discovered during body emission; emit them now
         foreach ($this->program->factories as [$fc, $arity]) {
-            $w = $this->module(Names::modulePath($fc->fqcn));
+            $w = $this->module($fc->crate, Names::modulePath($fc->fqcn));
             $fake = new \ReflectionMethod($class_emitter, 'emitFactory');
             $fake->invoke($class_emitter, $fc, $w);
         }
         foreach ($project_classes as $cls) {
-            $w = $this->module(Names::modulePath($cls->fqcn));
+            $w = $this->module($cls->crate, Names::modulePath($cls->fqcn));
             $cast_emitter->emitClassImpls($cls, $w);
         }
 
         fwrite(STDERR, "[transpiler] emitting functions\n");
         // free functions
         foreach ($this->program->functions as $fn) {
-            $w = $this->module(Names::modulePath($fn->fq_name));
+            $w = $this->module($this->program->crateOfRecord($fn->record), Names::modulePath($fn->fq_name));
             $this->emitFunction($fn, $w);
         }
 
-        // AnyObject enum over all concrete classes
+        fwrite(STDERR, "[transpiler] emitting tests\n");
+        $tests_w = [];
+        $n_tests = 0;
+        $test_emitter = new TestEmitter($this->program, $this->casts, $this->builtins, $this->diag);
+        for ($i = 0; $i < $n_crates; $i++) {
+            $tests_w[$i] = new Writer();
+            $n_tests += $test_emitter->emit($tests_w[$i], $i);
+        }
+
+        // copies of upstream method bodies requested by `parent::m()` calls (their bodies may request more)
+        $done_copies = [];
+        do {
+            $new = false;
+            foreach ($this->program->super_copies as $k => [$root, $m]) {
+                if (isset($done_copies[$k])) {
+                    continue;
+                }
+                $done_copies[$k] = true;
+                $new = true;
+                $name = substr($k, strrpos($k, '::') + 2);
+                $class_emitter->emitSuperCopy($root, $m, $name, $this->module($root->crate, Names::modulePath($root->fqcn)));
+            }
+        } while ($new);
+
+        // AnyObject enum over all concrete classes of the main crate, init(), Throw
         $any = new Writer();
         $this->emitAnyObject($any);
 
-        fwrite(STDERR, "[transpiler] emitting tests\n");
-        $tests_w = new Writer();
-        $test_emitter = new TestEmitter($this->program, $this->casts, $this->builtins, $this->diag);
-        $n_tests = $test_emitter->emit($tests_w);
-        // generated unions and shapes (emission of casts may add more, so loop)
-        $types_w = new Writer();
+        // generated unions and shapes (emission of casts may add more, so loop); every generated type and
+        // impl lives in the crate of the highest-crate class it mentions
+        $types_w = [];
+        $casts_w = [];
+        for ($i = 0; $i < $n_crates; $i++) {
+            $types_w[$i] = new Writer();
+            $casts_w[$i] = new Writer();
+        }
         $emitted = [];
-        $casts_w = new Writer();
+        $select = function (RustType $from, RustType $to) use ($casts_w): ?Writer {
+            $home = max($this->program->typeCrate($from), $this->program->typeCrate($to));
+            if ($home > 0 && !$this->localTo($from, $home) && !$this->localTo($to, $home)) {
+                // orphan rules: neither side is a type of the crate the impl would have to live in
+                $this->casts->warnings[] = $from->toRust() . ' => ' . $to->toRust() . ' (no crate may implement it)';
+                return null;
+            }
+            return $casts_w[$home];
+        };
         for ($round = 0; $round < 10; $round++) {
             $new = false;
             foreach ($this->program->types->unions as $name => $u) {
                 if (!isset($emitted[$name])) {
                     $emitted[$name] = true;
-                    $cast_emitter->emitUnion($u, $types_w);
+                    $cast_emitter->emitUnion($u, $types_w[$this->program->typeCrate($u)]);
                     $new = true;
                 }
             }
             foreach ($this->program->types->shapes as $name => $s) {
                 if (!isset($emitted[$name])) {
                     $emitted[$name] = true;
-                    $cast_emitter->emitShape($s, $types_w);
+                    $cast_emitter->emitShape($s, $types_w[$this->program->typeCrate($s)]);
                     $new = true;
                 }
             }
             $before = count($this->casts->casts) + count($this->casts->instance_checks);
-            $cast_emitter->emitRecordedCasts($casts_w);
+            $cast_emitter->emitRecordedCasts($select);
             if (!$new && $before === count($this->casts->casts) + count($this->casts->instance_checks)) {
                 break;
             }
         }
 
-        fwrite(STDERR, "[transpiler] $n_tests tests, writing crate\n");
-        $this->writeCrate($types_w, $casts_w, $any, $tests_w);
+        fwrite(STDERR, "[transpiler] $n_tests tests, writing " . $n_crates . " crate(s)\n");
+        $this->buildPathMap();
+        for ($i = 0; $i < $n_crates; $i++) {
+            $this->writeCrate($i, $types_w[$i], $casts_w[$i], $i === 0 ? $any : null, $tests_w[$i]);
+        }
         $this->diag->report();
         foreach ($this->casts->warnings as $wmsg) {
             fwrite(STDERR, "  [casts] unsupported conversion: $wmsg\n");
@@ -131,9 +185,58 @@ final class CrateEmitter
         }
     }
 
-    private function module(string $path): Writer
+    /** Is `$t` a type whose definition is generated in crate `$crate` (so that impls for it may live there)? */
+    private function localTo(RustType $t, int $crate): bool
     {
-        return $this->modules[$path] ??= new Writer();
+        return Casts::isLocal($t) && $t->kind !== RustType::ANY_OBJECT && $this->program->typeCrate($t) === $crate;
+    }
+
+    /** @var array<string, int> `crate::...` path of every generated item => crate it lives in */
+    private array $path_map = [];
+
+    private function buildPathMap(): void
+    {
+        foreach ($this->program->uniqueClasses() as $cls) {
+            if (!$cls->is_project || $cls->isTrait()) {
+                continue;
+            }
+            $this->path_map[$cls->path()] = $cls->crate;
+            $this->path_map[$cls->ownPath()] = $cls->crate;
+            $this->path_map[$cls->objPath()] = $cls->crate;
+        }
+        foreach ($this->program->functions as $fn) {
+            $this->path_map[$fn->path()] = $this->program->crateOfRecord($fn->record);
+        }
+        foreach ($this->program->constants as $c) {
+            $this->path_map['crate::consts::' . Names::constant($c->name)] = $this->program->crateOfRecord($c->record);
+        }
+    }
+
+    /**
+     * Rewrite `crate::...` paths of items that live in another crate to that crate's name (code is emitted
+     * crate-agnostically with `crate::` paths).
+     */
+    private function rewritePaths(string $code, int $crate): string
+    {
+        if ($crate === 0 && count($this->transpiler->splits) === 0) {
+            return $code;
+        }
+        return preg_replace_callback('/\bcrate::((?:[A-Za-z_][A-Za-z0-9_]*::)*[A-Za-z_][A-Za-z0-9_]*)/', function (array $m) use ($crate): string {
+            $segs = explode('::', $m[1]);
+            for ($n = count($segs); $n >= 1; $n--) {
+                $path = 'crate::' . implode('::', array_slice($segs, 0, $n));
+                if (isset($this->path_map[$path])) {
+                    $home = $this->path_map[$path];
+                    return $home === $crate ? $m[0] : '::' . $this->transpiler->crateName($home) . '::' . $m[1];
+                }
+            }
+            return $m[0];
+        }, $code) ?? $code;
+    }
+
+    private function module(int $crate, string $path): Writer
+    {
+        return $this->modules[$crate][$path] ??= new Writer();
     }
 
     private function emitFunction(FunctionModel $fn, Writer $w): void
@@ -166,7 +269,7 @@ final class CrateEmitter
     {
         $concrete = [];
         foreach ($this->program->uniqueClasses() as $cls) {
-            if ($cls->is_project && $cls->isConcrete() && !$cls->isTrait() && !$cls->isEnum()) {
+            if ($cls->is_project && $cls->isConcrete() && !$cls->isTrait() && !$cls->isEnum() && $cls->crate === 0) {
                 $concrete[] = $cls;
             }
         }
@@ -209,7 +312,7 @@ final class CrateEmitter
         $w->line('pub fn php_clone_mixed(m: Mixed) -> Mixed { match m { Mixed::Obj(_) => cast::<Mixed>(AnyObject::from_mixed(m).php_clone()), other => other } }');
         $w->line('impl php_rt::PhpClone for AnyObject { fn php_clone(&self) -> Self { match self { ' . implode(', ', array_map(fn(ClassModel $c) => 'AnyObject::' . $c->variant() . '(h) => AnyObject::' . $c->variant() . '(h.php_clone())', $concrete)) . ($concrete ? ', ' : '') . 'AnyObject::Other(o) => AnyObject::Other(o.clone()) } } }');
 
-        $this->emitInit($w);
+        $this->emitInit($w, 0);
 
         // Throwable alias: the generated Throw type
         $throwable = $this->program->getClass('Throwable');
@@ -222,13 +325,16 @@ final class CrateEmitter
     }
 
     /** `init()`: registers classes and constants with the runtime registry (for class_exists, is_a, constant(), ...). */
-    private function emitInit(Writer $w): void
+    private function emitInit(Writer $w, int $crate): void
     {
         $w->line('thread_local! { static __INIT: std::cell::Cell<bool> = std::cell::Cell::new(false); }');
         $w->open('pub fn init() {');
         $w->line('if __INIT.with(|c| c.replace(true)) { return; }');
+        for ($i = 0; $i < $crate; $i++) {
+            $w->line('::' . $this->transpiler->crateName($i) . '::init();');
+        }
         foreach ($this->program->uniqueClasses() as $cls) {
-            if (!$cls->is_project || $cls->isTrait()) {
+            if (!$cls->is_project || $cls->isTrait() || $cls->crate !== $crate) {
                 continue;
             }
             $names = [strtolower($cls->fqcn)];
@@ -244,7 +350,7 @@ final class CrateEmitter
             }
         }
         foreach ($this->program->uniqueClasses() as $cls) {
-            if (!$cls->is_project || $cls->isTrait()) {
+            if (!$cls->is_project || $cls->isTrait() || $cls->crate !== $crate) {
                 continue;
             }
             $seen = [];
@@ -259,6 +365,9 @@ final class CrateEmitter
             }
         }
         foreach ($this->program->constants as $c) {
+            if ($this->program->crateOfRecord($c->record) !== $crate) {
+                continue;
+            }
             $w->line('php_rt::registry::define_constant(&Str::from_static(' . Names::rustStringLiteral($c->name) . '), ' . $this->casts->convert('crate::consts::' . Names::constant($c->name) . '()', $c->type, RustType::mixed()) . ');');
         }
         $w->close();
@@ -306,19 +415,28 @@ final class CrateEmitter
         $w->line('impl std::fmt::Display for ' . $throwable->path() . ' { fn fmt(&self, f: &mut std::fmt::Formatter<\'_>) -> std::fmt::Result { write!(f, "{}: {}", self.class_name(), self.message()) } }');
     }
 
-    private function writeCrate(Writer $types, Writer $casts, Writer $any, Writer $tests): void
+    private function writeCrate(int $crate, Writer $types, Writer $casts, ?Writer $any, Writer $tests): void
     {
-        $out = $this->transpiler->out_dir;
+        $out = $this->transpiler->crateDir($crate);
+        $name = $this->transpiler->crateName($crate);
         $src = $out . '/src';
         if (!is_dir($src)) {
             mkdir($src, 0777, true);
         }
+        $upstream = [];
+        for ($i = 0; $i < $crate; $i++) {
+            $upstream[] = $this->transpiler->crateName($i);
+        }
         $prelude = "#![allow(unused_imports, unused_variables, unused_mut, dead_code, non_snake_case, non_camel_case_types, unreachable_code, unused_parens, unused_braces, unused_assignments, unused_labels, unused_unsafe, clippy::all, irrefutable_let_patterns, unreachable_patterns, unused_must_use, non_upper_case_globals, deprecated, ambiguous_glob_reexports, hidden_glob_reexports)]\n";
-        $use = "use php_rt::prelude::*;\nuse crate::generated::*;\nuse crate::Throw;\nuse crate::AnyObject;\n";
+        $use = "use php_rt::prelude::*;\n";
+        foreach ($upstream as $up) {
+            $use .= "use ::$up::generated::*;\n";
+        }
+        $use .= "use crate::generated::*;\nuse crate::Throw;\nuse crate::AnyObject;\n";
 
         // module tree
         $tree = [];
-        foreach ($this->modules as $path => $w) {
+        foreach ($this->modules[$crate] ?? [] as $path => $w) {
             $segs = explode('::', $path);
             $node = &$tree;
             foreach ($segs as $s) {
@@ -327,29 +445,69 @@ final class CrateEmitter
             }
             unset($node);
         }
-        $lib = $prelude . "pub mod generated;\npub mod consts;\npub use generated::*;\n" . $this->writeTree($tree, $src, $use, '') . "\n";
-        $lib .= "use php_rt::prelude::*;\nuse crate::generated::*;\n" . $any->get();
-        file_put_contents($src . '/lib.rs', $lib);
-        file_put_contents($src . '/generated.rs', $prelude . "use php_rt::prelude::*;\nuse crate::*;\n" . $types->get() . $casts->get());
-        file_put_contents($src . '/consts.rs', $prelude . $use . $this->constsModule());
+        $lib = $prelude . "pub mod generated;\npub mod consts;\npub use generated::*;\n";
+        $lib .= "/// Marker of the leaf classes of this crate (targets of the generic narrowing casts of dispatch enums).\npub trait Leaf__ {}\n";
+        $lib .= $this->writeTree($crate, $tree, $src, $use, '') . "\n";
+        if ($any !== null) {
+            $lib .= "use php_rt::prelude::*;\nuse crate::generated::*;\n" . $any->get();
+        } else {
+            $base = $this->transpiler->crateName(0);
+            $lib .= "pub use ::$base::{Throw, AnyObject, php_clone_mixed};\nuse php_rt::prelude::*;\nuse crate::generated::*;\n";
+            $init = new Writer();
+            $this->emitInit($init, $crate);
+            $lib .= $init->get();
+        }
+        $this->writeFile($src . '/lib.rs', $this->rewritePaths($lib, $crate));
+        $gen_use = "use php_rt::prelude::*;\n";
+        foreach ($upstream as $up) {
+            $gen_use .= "use ::$up::generated::*;\n";
+        }
+        $gen_use .= "use crate::*;\n";
+        $this->writeFile($src . '/generated.rs', $this->rewritePaths($prelude . $gen_use . $types->get() . $casts->get(), $crate));
+        $this->writeFile($src . '/consts.rs', $this->rewritePaths($prelude . $use . $this->constsModule($crate), $crate));
         // the PHPUnit harness is an integration test crate: it links against the library instead of being
         // compiled into it (a single crate with all tests exhausts memory on large projects)
-        $name = basename($out);
-        $crate = str_replace('-', '_', $name);
         if (!is_dir($out . '/tests')) {
             mkdir($out . '/tests', 0777, true);
         }
-        $harness = $prelude . str_replace('crate::', $crate . '::', $use) . str_replace('crate::', $crate . '::', $tests->get());
-        file_put_contents($out . '/tests/harness.rs', $harness);
+        $harness = $prelude . str_replace('crate::', '::' . $name . '::', $this->rewritePaths($use, $crate)) . str_replace('crate::', '::' . $name . '::', $this->rewritePaths($tests->get(), $crate));
+        $this->writeFile($out . '/tests/harness.rs', $harness);
         if (file_exists($src . '/tests.rs')) {
             unlink($src . '/tests.rs');
         }
-        file_put_contents($out . '/Cargo.toml', "[package]\nname = \"" . str_replace('-', '_', $name) . "\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[lib]\npath = \"src/lib.rs\"\ntest = false\n\n[dependencies]\nphp-rt = { path = \"../../php-rt\" }\n");
-        fwrite(STDERR, 'wrote ' . count($this->modules) . " modules to $out\n");
+        $deps = "php-rt = { path = \"" . $this->relativePath($out, dirname($this->transpiler->out_dir) . '/../php-rt') . "\" }\n";
+        for ($i = 0; $i < $crate; $i++) {
+            $deps .= $this->transpiler->crateName($i) . " = { path = \"" . $this->relativePath($out, $this->transpiler->crateDir($i)) . "\" }\n";
+        }
+        $this->writeFile($out . '/Cargo.toml', "[package]\nname = \"" . $name . "\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[lib]\npath = \"src/lib.rs\"\ntest = false\n\n[dependencies]\n" . $deps);
+        fwrite(STDERR, 'wrote ' . count($this->modules[$crate] ?? []) . " modules to $out\n");
+    }
+
+    /** Write a file unless its content is unchanged (so cargo does not rebuild untouched crates). */
+    private function writeFile(string $path, string $content): void
+    {
+        if (file_exists($path) && file_get_contents($path) === $content) {
+            return;
+        }
+        file_put_contents($path, $content);
+    }
+
+    /** Relative path from directory `$from` to `$to`. */
+    private function relativePath(string $from, string $to): string
+    {
+        $from = realpath($from) ?: $from;
+        $to = realpath($to) ?: $to;
+        $f = explode('/', trim($from, '/'));
+        $t = explode('/', trim($to, '/'));
+        while ($f && $t && $f[0] === $t[0]) {
+            array_shift($f);
+            array_shift($t);
+        }
+        return implode('/', [...array_fill(0, count($f), '..'), ...$t]) ?: '.';
     }
 
     /** Write nested module directories; returns the `pub mod` declarations for this level. */
-    private function writeTree(array $tree, string $dir, string $use, string $prefix): string
+    private function writeTree(int $crate, array $tree, string $dir, string $use, string $prefix): string
     {
         ksort($tree);
         $decls = '';
@@ -359,21 +517,24 @@ final class CrateEmitter
             if (!is_dir($moddir)) {
                 mkdir($moddir, 0777, true);
             }
-            $content = "use php_rt::prelude::*;\nuse crate::generated::*;\nuse crate::Throw;\nuse crate::AnyObject;\n";
-            $content .= $this->writeTree($children, $moddir, $use, $path);
-            if (isset($this->modules[$path])) {
-                $content .= $this->modules[$path]->get();
+            $content = $use;
+            $content .= $this->writeTree($crate, $children, $moddir, $use, $path);
+            if (isset($this->modules[$crate][$path])) {
+                $content .= $this->modules[$crate][$path]->get();
             }
-            file_put_contents($moddir . '/mod.rs', $content);
+            $this->writeFile($moddir . '/mod.rs', $this->rewritePaths($content, $crate));
             $decls .= 'pub mod ' . $seg . ";\n";
         }
         return $decls;
     }
 
-    private function constsModule(): string
+    private function constsModule(int $crate): string
     {
         $out = '';
         foreach ($this->program->constants as $c) {
+            if ($this->program->crateOfRecord($c->record) !== $crate) {
+                continue;
+            }
             $b = new BodyEmitter($this->program, $c->record, null, $this->casts, $this->builtins, $this->diag, null);
             $b->this_type = null;
             $code = $b->constExpr($c->expr, $c->type);
