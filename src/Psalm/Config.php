@@ -36,6 +36,7 @@ use Psalm\Internal\IncludeCollector;
 use Psalm\Internal\Lz4Serializer;
 use Psalm\Internal\Provider\AddRemoveTaints\HtmlFunctionTainter;
 use Psalm\Internal\Scanner\FileScanner;
+use Psalm\Internal\TypePhp\NativeRuntime;
 use Psalm\Issue\ArgumentIssue;
 use Psalm\Issue\ClassConstantIssue;
 use Psalm\Issue\ClassIssue;
@@ -51,6 +52,7 @@ use Psalm\Plugin\PluginFileExtensionsInterface;
 use Psalm\Plugin\PluginInterface;
 use Psalm\Progress\Progress;
 use Psalm\Progress\VoidProgress;
+use ReflectionFunction;
 use RuntimeException;
 use SimpleXMLElement;
 use Symfony\Component\Filesystem\Path;
@@ -2567,7 +2569,12 @@ final class Config
         foreach ($defined_functions['user'] as $function_name) {
             $this->predefined_functions[$function_name] = true;
         }
+        $native = NativeRuntime::extensionName() !== '';
         foreach ($defined_functions['internal'] as $function_name) {
+            if ($native && NativeRuntime::isCompiledIn(new ReflectionFunction($function_name))) {
+                // a function compiled into the Psalm binary is not a predefined PHP function
+                continue;
+            }
             $this->predefined_functions[$function_name] = true;
         }
     }

@@ -24,8 +24,9 @@ use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\PhpVisitor\TraitFinder;
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
 use Psalm\Internal\Provider\FileReferenceProvider;
-use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Internal\Type\TypeExpander;
+use Psalm\Internal\TypePhp\Dynamic;
+use Psalm\Internal\TypePhp\NativeRuntime;
 use Psalm\Issue\ClassMustBeFinal;
 use Psalm\Issue\MissingImmutableAnnotation;
 use Psalm\Issue\MissingInterfaceImmutableAnnotation;
@@ -164,7 +165,10 @@ final class ClassLikes
             /** @psalm-suppress ArgumentTypeCoercion */
             $reflection_class = new ReflectionClass($predefined_class);
 
-            if (!$reflection_class->isUserDefined() && $reflection_class->name === $predefined_class) {
+            if (!$reflection_class->isUserDefined()
+                && $reflection_class->name === $predefined_class
+                && !NativeRuntime::isCompiledIn($reflection_class)
+            ) {
                 $predefined_class_lc = strtolower($predefined_class);
                 $this->existing_classlikes_lc[$predefined_class_lc] = true;
                 $this->existing_classes_lc[$predefined_class_lc] = true;
@@ -180,7 +184,10 @@ final class ClassLikes
             /** @psalm-suppress ArgumentTypeCoercion */
             $reflection_class = new ReflectionClass($predefined_interface);
 
-            if (!$reflection_class->isUserDefined() && $reflection_class->name === $predefined_interface) {
+            if (!$reflection_class->isUserDefined()
+                && $reflection_class->name === $predefined_interface
+                && !NativeRuntime::isCompiledIn($reflection_class)
+            ) {
                 $predefined_interface_lc = strtolower($predefined_interface);
                 $this->existing_classlikes_lc[$predefined_interface_lc] = true;
                 $this->existing_interfaces_lc[$predefined_interface_lc] = true;
