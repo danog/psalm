@@ -1122,10 +1122,10 @@ sources:
   - ../vendor/symfony/string/Exception/ExceptionInterface.php
   - ../vendor/symfony/string/Exception/InvalidArgumentException.php
   - ../vendor/symfony/string/Exception/RuntimeException.php
-  - ./vendor-overrides/symfony/string/Resources/functions.php
   - ../vendor/symfony/string/TruncateMode.php
   - ../vendor/symfony/string/UnicodeString.php
   - ../vendor/webmozart/assert/src/Assert.php
   - ../vendor/webmozart/assert/src/InvalidArgumentException.php
   - ../vendor/webmozart/assert/src/Mixin.php
+  - ./vendor-overrides/class-aliases.php
 ignore: []
