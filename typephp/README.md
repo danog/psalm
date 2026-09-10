@@ -35,7 +35,11 @@ configuration and the helper used to satisfy vendor dependencies.
 3. Generate C++ (`--dry`) or build the binary:
 
        php /path/to/typephp/bin/tpc.php typephp/project.yml --dry --build-dir /tmp/psalm-typephp
-       php /path/to/typephp/bin/tpc.php typephp/project.yml -o psalm-native --build-dir /tmp/psalm-typephp -j 8
+       php /path/to/typephp/bin/tpc.php typephp/project.yml -o psalm-native --build-dir /tmp/psalm-typephp \
+           -j "$(sysctl -n hw.ncpu 2>/dev/null || nproc)"
+
+   The C++ compile step is the slow part; pass `-j` with the machine's core
+   count as above so every core is used.
 
 ## Status and known compiler issues (TypePHP v0.8.1)
 

@@ -2,7 +2,7 @@
 #
 # Run the vendor skeleton generator first, then:
 #   php /path/to/typephp/bin/tpc.php typephp/project.yml --dry   # C++ generation only
-#   php /path/to/typephp/bin/tpc.php typephp/project.yml -o psalm-native -j 8
+#   php /path/to/typephp/bin/tpc.php typephp/project.yml -o psalm-native -j "$(sysctl -n hw.ncpu 2>/dev/null || nproc)"
 name: psalm
 build-mode: bin
 cxx-std: c++17
