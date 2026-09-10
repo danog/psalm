@@ -29,7 +29,6 @@ use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
-use Psalm\Internal\Transpiler\Transpiler;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
 use Psalm\Internal\Type\TypeExpander;
@@ -177,19 +176,6 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         $fq_class_name = $class_context && $class_context->self ? $class_context->self : $this->fq_class_name;
 
         $storage = $this->storage;
-
-        if (Transpiler::isEnabled()) {
-            if ($storage->stmt_location
-                && $class->name
-                && ($storage->stmt_location->file_path !== $this->getFilePath()
-                    || $storage->stmt_location->raw_line_number !== $class->getStartLine())
-            ) {
-                // a duplicate (dead) definition of a class whose storage comes from elsewhere
-                return;
-            }
-
-            Transpiler::get()->recordClassLike($this, $class, $this->storage);
-        }
 
         if ($storage->has_visitor_issues) {
             return;
@@ -630,10 +616,6 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                         $fq_trait_name,
                         $trait_aliases,
                     );
-
-                    if (Transpiler::isEnabled()) {
-                        Transpiler::get()->recordClassLike($trait_analyzer, $trait_node, $trait_storage);
-                    }
 
                     $fq_trait_name_lc = strtolower($fq_trait_name);
 
@@ -1531,10 +1513,6 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 $fq_trait_name_resolved,
                 $trait_aliases,
             );
-
-            if (Transpiler::isEnabled()) {
-                Transpiler::get()->recordClassLike($trait_analyzer, $trait_node, $trait_storage);
-            }
 
             foreach ($trait_node->stmts as $trait_stmt) {
                 if ($trait_stmt instanceof PhpParser\Node\Stmt\ClassMethod) {

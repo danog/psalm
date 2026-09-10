@@ -14,7 +14,6 @@ use Psalm\FileManipulation;
 use Psalm\Internal\Analyzer\Statements\Expression\ClassConstAnalyzer;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\Provider\NodeDataProvider;
-use Psalm\Internal\Transpiler\Transpiler;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Issue\InheritorViolation;
 use Psalm\Issue\ParseError;
@@ -46,10 +45,6 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
     {
         if (!$this->class instanceof PhpParser\Node\Stmt\Interface_) {
             throw new LogicException('Something went badly wrong');
-        }
-
-        if (Transpiler::isEnabled()) {
-            Transpiler::get()->recordClassLike($this, $this->class, $this->storage);
         }
 
         $project_analyzer = $this->file_analyzer->project_analyzer;

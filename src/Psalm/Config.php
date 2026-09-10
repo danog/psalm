@@ -12,6 +12,7 @@ use Composer\Semver\VersionParser;
 use DOMAttr;
 use DOMDocument;
 use DOMElement;
+use Closure;
 use InvalidArgumentException;
 use JsonException;
 use LogicException;
@@ -38,6 +39,7 @@ use Psalm\Issue\ArgumentIssue;
 use Psalm\Issue\ClassConstantIssue;
 use Psalm\Issue\ClassIssue;
 use Psalm\Issue\CodeIssue;
+use Psalm\Issue\IssueRegistry;
 use Psalm\Issue\ConfigIssue;
 use Psalm\Issue\FunctionIssue;
 use Psalm\Issue\MethodIssue;
@@ -82,7 +84,6 @@ use function getcwd;
 use function glob;
 use function implode;
 use function in_array;
-use function is_a;
 use function is_array;
 use function is_dir;
 use function is_file;
@@ -99,6 +100,7 @@ use function preg_match;
 use function preg_quote;
 use function preg_replace;
 use function realpath;
+use function ltrim;
 use function reset;
 use function rmdir;
 use function rtrim;
@@ -264,14 +266,22 @@ final class Config
     private array $file_extensions = ['php'];
 
     /**
-     * @var array<string, class-string<FileScanner>>
+     * @var array<string, Closure(string, string, bool): FileScanner> file extension => scanner factory
      */
     private array $filetype_scanners = [];
 
     /**
-     * @var array<string, class-string<FileAnalyzer>>
+     * @var array<string, Closure(ProjectAnalyzer, string, string): FileAnalyzer> file extension => analyzer factory
      */
     private array $filetype_analyzers = [];
+
+    /**
+     * How to instantiate the plugin classes named in config files (plugin entry points, hook handlers
+     * loaded from files): the program is compiled, classes are never loaded or instantiated by name.
+     *
+     * @var array<string, Closure(): object>
+     */
+    private static array $plugin_factories = [];
 
     /**
      * @var array<string, string>
@@ -1666,28 +1676,13 @@ final class Config
             $project_analyzer->progress->debug('Initialized plugin ' . $plugin_class_name . ' successfully' . PHP_EOL);
         }
 
-        foreach ($this->filetype_scanner_paths as $extension => $path) {
-            $fq_class_name = $this->getPluginClassForPath(
-                $codebase,
-                $path,
-                FileScanner::class,
+        foreach ([...$this->filetype_scanner_paths, ...$this->filetype_analyzer_paths] as $path) {
+            // classes are never loaded from files (the program is compiled): file type scanners and
+            // analyzers are registered by plugins (FileExtensionsInterface)
+            throw new ConfigException(
+                'Cannot load a file type scanner or analyzer from ' . $path
+                . ': register it from a plugin with FileExtensionsInterface instead',
             );
-
-            self::requirePath($path);
-
-            $this->filetype_scanners[$extension] = $fq_class_name;
-        }
-
-        foreach ($this->filetype_analyzer_paths as $extension => $path) {
-            $fq_class_name = $this->getPluginClassForPath(
-                $codebase,
-                $path,
-                FileAnalyzer::class,
-            );
-
-            self::requirePath($path);
-
-            $this->filetype_analyzers[$extension] = $fq_class_name;
         }
 
         foreach ($this->plugin_paths as $path) {
@@ -1699,9 +1694,35 @@ final class Config
             }
         }
 
-        new HtmlFunctionTainter();
+        $socket->registerHooksFromClass(new HtmlFunctionTainter());
+    }
 
-        $socket->registerHooksFromClass(HtmlFunctionTainter::class);
+    /**
+     * Registers how to instantiate a plugin class named in config files (`<pluginClass class="..."/>`,
+     * `<plugin filename="..."/>`).
+     *
+     * @param Closure(): object $factory
+     */
+    public static function registerPluginFactory(string $pluginClassName, Closure $factory): void
+    {
+        self::$plugin_factories[ltrim($pluginClassName, '\\')] = $factory;
+    }
+
+    /**
+     * An instance of a plugin class named in a config file.
+     *
+     * @throws ConfigException when no factory was registered for the class
+     */
+    public static function instantiatePluginClass(string $pluginClassName): object
+    {
+        $factory = self::$plugin_factories[ltrim($pluginClassName, '\\')] ?? null;
+        if ($factory === null) {
+            throw new ConfigException(
+                'Cannot instantiate plugin class ' . $pluginClassName
+                . ': plugin classes must be registered with Config::registerPluginFactory() (the program is compiled)',
+            );
+        }
+        return $factory();
     }
 
     private function loadPlugin(ProjectAnalyzer $projectAnalyzer, string $pluginClassName): PluginInterface
@@ -1710,28 +1731,13 @@ final class Config
             return $this->plugins[$pluginClassName];
         }
         try {
-            // Below will attempt to load plugins from the project directory first.
-            // Failing that, it will use registered autoload chain, which will load
-            // plugins from Psalm directory or phar file. If that fails as well, it
-            // will fall back to project autoloader. It may seem that the last step
-            // will always fail, but it's only true if project uses Composer autoloader
-            if (false !== $pluginclas_class_path = $this->getComposerFilePathForClassLike($pluginClassName)) {
-                $projectAnalyzer->progress->debug(
-                    'Loading plugin ' . $pluginClassName . ' via require' . PHP_EOL,
-                );
-
-                self::requirePath($pluginclas_class_path);
-            } else {
-                if (!class_exists($pluginClassName)) {
-                    throw new UnexpectedValueException($pluginClassName . ' is not a known class');
-                }
-            }
-            if (!is_a($pluginClassName, PluginInterface::class, true)) {
+            $plugin = self::instantiatePluginClass($pluginClassName);
+            if (!$plugin instanceof PluginInterface) {
                 throw new UnexpectedValueException($pluginClassName . ' is not a PluginInterface implementation');
             }
-            $this->plugins[$pluginClassName] = new $pluginClassName;
+            $this->plugins[$pluginClassName] = $plugin;
             $projectAnalyzer->progress->debug('Loaded plugin ' . $pluginClassName . PHP_EOL);
-            return $this->plugins[$pluginClassName];
+            return $plugin;
         } catch (Throwable $e) {
             throw new ConfigException('Failed to load plugin ' . $pluginClassName, 0, $e);
         }
@@ -1748,47 +1754,6 @@ final class Config
         }
         /** @psalm-suppress UnresolvableInclude */
         require_once($path);
-    }
-
-    /**
-     * @template T
-     * @param  T::class $must_extend
-     * @return class-string<T>
-     */
-    private function getPluginClassForPath(Codebase $codebase, string $path, string $must_extend): string
-    {
-        $file_storage = $codebase->createFileStorageForPath($path);
-        $file_to_scan = new FileScanner($path, $this->shortenFileName($path), true);
-        $file_to_scan->scan(
-            $codebase,
-            $file_storage,
-        );
-
-        $declared_classes = ClassLikeAnalyzer::getClassesForFile($codebase, $path);
-
-        if (!count($declared_classes)) {
-            throw new InvalidArgumentException(
-                'Plugins must have at least one class in the file - ' . $path . ' has ' .
-                    count($declared_classes),
-            );
-        }
-
-        $fq_class_name = reset($declared_classes);
-
-        if (!$codebase->classlikes->classExtends(
-            $fq_class_name,
-            $must_extend,
-        )
-        ) {
-            throw new InvalidArgumentException(
-                'This plugin must extend ' . $must_extend . ' - ' . $path . ' does not',
-            );
-        }
-
-        /**
-         * @var class-string<T>
-         */
-        return $fq_class_name;
     }
 
     public function shortenFileName(string $to): string
@@ -1959,8 +1924,7 @@ final class Config
             && $e instanceof PluginIssue
             && !isset($this->issue_handlers[$issue_type])
         ) {
-            /** @var int */
-            $issue_level = $e::ERROR_LEVEL;
+            $issue_level = $e->getErrorLevel();
 
             if ($issue_level > 0 && $issue_level < $this->level) {
                 $reporting_level = self::REPORT_INFO;
@@ -2133,15 +2097,11 @@ final class Config
             return $this->issue_handlers[$issue_type]->getReportingLevelForFile($file_path);
         }
 
-        // this string is replaced by scoper for Phars, so be careful
-        $issue_class = 'Psalm\\Issue\\' . $issue_type;
+        $issue_level = IssueRegistry::errorLevel($issue_type);
 
-        if (!class_exists($issue_class) || !is_a($issue_class, CodeIssue::class, true)) {
+        if ($issue_level === null) {
             return self::REPORT_ERROR;
         }
-
-        /** @var int */
-        $issue_level = $issue_class::ERROR_LEVEL;
 
         if ($issue_level > 0 && $issue_level < $this->level) {
             return self::REPORT_INFO;
@@ -2293,7 +2253,7 @@ final class Config
     }
 
     /**
-     * @return array<string, class-string<FileScanner>>
+     * @return array<string, Closure(string, string, bool): FileScanner>
      */
     public function getFiletypeScanners(): array
     {
@@ -2301,7 +2261,7 @@ final class Config
     }
 
     /**
-     * @return array<string, class-string<FileAnalyzer>>
+     * @return array<string, Closure(ProjectAnalyzer, string, string): FileAnalyzer>
      */
     public function getFiletypeAnalyzers(): array
     {

@@ -245,6 +245,7 @@ pub fn builtin_value(name: &[u8]) -> Option<Mixed> {
         "DIRECTORY_SEPARATOR" => Mixed::Str(DIRECTORY_SEPARATOR),
         "E_ALL" => Mixed::Int(E_ALL),
         "E_STRICT" => Mixed::Int(E_STRICT),
+        "PSALM_COMPILED" => Mixed::Bool(true),
         "PSALM_VERSION" => Mixed::Str(PSALM_VERSION),
         "PHP_PARSER_VERSION" => Mixed::Str(PHP_PARSER_VERSION),
         _ => return None,

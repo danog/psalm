@@ -29,7 +29,6 @@ use Psalm\Internal\Analyzer\Statements\Expression\SimpleTypeInferer;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\Scanner\FileScanner;
-use Psalm\Internal\Transpiler\Transpiler;
 use Psalm\Internal\Type\TypeAlias;
 use Psalm\Issue\DuplicateFunction;
 use Psalm\Issue\DuplicateMethod;
@@ -1014,9 +1013,7 @@ final class FunctionLikeNodeScanner
             $storage = null;
 
             if (isset($classlike_storage->methods[$method_name_lc])) {
-                if (!$this->codebase->register_stub_files
-                    && !(Transpiler::isEnabled() && Transpiler::isRuntimeStubFile($this->file_path))
-                ) {
+                if (!$this->codebase->register_stub_files) {
                     $duplicate_method_storage = $classlike_storage->methods[$method_name_lc];
 
                     IssueBuffer::maybeAdd(

@@ -664,11 +664,9 @@ pub fn to_callable(m: &Mixed) -> DynCallable {
             panic!("unsupported closure payload")
         }
         Mixed::Str(s) => {
+            // functions are never looked up by name (closed world): string callables are resolved at compile time
             let name = s.clone();
-            match crate::registry::function_by_name(&name) {
-                Some(f) => f,
-                None => DynCallable::from_rt(0, move |_| Err(RtError::error(crate::sfmt!("Call to undefined function {}()", name)))),
-            }
+            DynCallable::from_rt(0, move |_| Err(RtError::error(crate::sfmt!("Call to undefined function {}()", name))))
         }
         _ => DynCallable::from_rt(0, |_| Err(RtError::error("Value not callable"))),
     }

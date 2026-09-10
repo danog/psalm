@@ -17,7 +17,6 @@ use Psalm\Exception\DocblockParseException;
 use Psalm\Exception\TypeParseTreeException;
 use Psalm\FileSource;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
-use Psalm\Internal\Transpiler\Transpiler;
 use Psalm\Internal\Analyzer\CommentAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\SimpleTypeInferer;
 use Psalm\Internal\EventDispatcher;
@@ -324,7 +323,7 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
                     // the else node should terminate the agreement
                     $this->skip_if_descendants = $node->else ? $node->else->getLine() : $node->getLine();
                 } elseif ($enter_conditional === true
-                    && Transpiler::isEnabled()
+                    && false
                     && !$this->classlike_node_scanners
                     && !$node->elseifs
                     && !$node->else

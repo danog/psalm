@@ -39,7 +39,6 @@ use Psalm\Internal\Type\TypeAlias;
 use Psalm\Internal\Type\TypeAlias\ClassTypeAlias;
 use Psalm\Internal\Type\TypeAlias\InlineTypeAlias;
 use Psalm\Internal\Type\TypeAlias\LinkableTypeAlias;
-use Psalm\Internal\Transpiler\Transpiler;
 use Psalm\Internal\Type\TypeParser;
 use Psalm\Internal\Type\TypeTokenizer;
 use Psalm\Issue\ConstantDeclarationInTrait;
@@ -166,14 +165,6 @@ final class ClassLikeNodeScanner
 
             $class_name = $node->name->name;
 
-            if (Transpiler::isEnabled()
-                && !Transpiler::isRuntimeStubFile($this->file_path)
-                && Transpiler::isRuntimeStubClass($fq_classlike_name_lc)
-            ) {
-                // the transpiler's runtime stub is the only definition of this class
-                return false;
-            }
-
             if ($this->codebase->classlike_storage_provider->has($fq_classlike_name_lc)) {
                 $duplicate_storage = $this->codebase->classlike_storage_provider->get($fq_classlike_name_lc);
 
@@ -186,9 +177,7 @@ final class ClassLikeNodeScanner
                     return false;
                 }
 
-                $is_runtime_stub = Transpiler::isEnabled() && Transpiler::isRuntimeStubFile($this->file_path);
-
-                if (!$this->codebase->register_stub_files && !$is_runtime_stub) {
+                if (!$this->codebase->register_stub_files) {
                     if (!$duplicate_storage->stmt_location
                         || $duplicate_storage->stmt_location->file_path !== $this->file_path
                         || $class_location->getHash() !== $duplicate_storage->stmt_location->getHash()

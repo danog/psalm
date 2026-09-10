@@ -9,7 +9,6 @@ use Psalm\Plugin\EventHandler\Event\FunctionExistenceProviderEvent;
 use Psalm\Plugin\EventHandler\FunctionExistenceProviderInterface;
 use Psalm\StatementsSource;
 
-use function is_subclass_of;
 use function strtolower;
 
 /**
@@ -34,14 +33,14 @@ final class FunctionExistenceProvider
     }
 
     /**
-     * @param class-string $class
+     * Registers a provider object (classes are never looked up by name: the program is compiled).
      */
-    public function registerClass(string $class): void
+    public function registerClass(object $class): void
     {
-        if (is_subclass_of($class, FunctionExistenceProviderInterface::class, true)) {
-            $callable = $class::doesFunctionExist(...);
+        if ($class instanceof FunctionExistenceProviderInterface) {
+            $callable = $class->doesFunctionExist(...);
 
-            foreach ($class::getFunctionIds() as $function_id) {
+            foreach ($class->getFunctionIds() as $function_id) {
                 $this->registerClosure($function_id, $callable);
             }
         }

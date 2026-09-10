@@ -140,11 +140,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "psalm_data"
+version = "0.1.0"
+dependencies = [
+ "php-rt",
+ "psalm_base",
+]
+
+[[package]]
+name = "psalm_debug"
+version = "0.1.0"
+dependencies = [
+ "php-rt",
+ "psalm_base",
+ "psalm_src",
+ "psalm_tests",
+]
+
+[[package]]
 name = "psalm_src"
 version = "0.1.0"
 dependencies = [
  "php-rt",
  "psalm_base",
+ "psalm_data",
 ]
 
 [[package]]
@@ -153,6 +172,7 @@ version = "0.1.0"
 dependencies = [
  "php-rt",
  "psalm_base",
+ "psalm_data",
  "psalm_src",
 ]
 

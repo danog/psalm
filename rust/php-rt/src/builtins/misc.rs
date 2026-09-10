@@ -177,12 +177,6 @@ pub fn get_included_files() -> List<Str> {
 pub fn get_loaded_extensions() -> List<Str> {
     crate::list![Str::from_static("Core"), Str::from_static("json"), Str::from_static("tokenizer"), Str::from_static("mbstring"), Str::from_static("ctype"), Str::from_static("pcre"), Str::from_static("SPL")]
 }
-pub fn get_declared_classes() -> List<Str> {
-    crate::registry::declared_classlikes(false)
-}
-pub fn get_declared_interfaces() -> List<Str> {
-    crate::registry::declared_classlikes(true)
-}
 pub fn get_defined_constants(_cat: bool) -> Map<ArrayKey, Mixed> {
     Map::new()
 }
@@ -197,15 +191,16 @@ pub const BUILTIN_FUNCTION_NAMES: &[&str] = &[
     "igbinary_serialize", "lz4_compress",
 ];
 
-/// `get_defined_functions()`: the runtime's builtins as `internal`, registered user functions as `user`.
-pub fn get_defined_functions() -> Map<ArrayKey, Mixed> {
+/// `get_defined_functions()`: the runtime's builtins as `internal`, the compiled program's functions
+/// (a static table generated per crate) as `user`.
+pub fn get_defined_functions(user_functions: &[&'static str]) -> Map<ArrayKey, Mixed> {
     let mut internal: Map<ArrayKey, Mixed> = Map::new();
     for n in BUILTIN_FUNCTION_NAMES {
         internal.push(Mixed::Str(Str::from_static(n)));
     }
     let mut user: Map<ArrayKey, Mixed> = Map::new();
-    for n in crate::registry::user_function_names() {
-        user.push(Mixed::Str(Str::from_vec(n)));
+    for n in user_functions {
+        user.push(Mixed::Str(Str::from_static(n)));
     }
     let mut m: Map<ArrayKey, Mixed> = Map::new();
     m.insert(ArrayKey::from(Str::from_static("internal")), Mixed::Arr(internal));
@@ -319,15 +314,6 @@ pub fn rt_function_is_builtin(name: &Str) -> bool {
     let lc = name.as_bytes().to_ascii_lowercase();
     let lc = if lc.first() == Some(&b'\\') { lc[1..].to_vec() } else { lc };
     builtin_function_exists(&lc) || BUILTIN_FUNCTION_NAMES.iter().any(|n| n.as_bytes() == lc.as_slice())
-}
-pub fn rt_class_file(name: &Str) -> Option<Str> {
-    crate::registry::class_file(name.as_bytes())
-}
-pub fn rt_class_is_trait(name: &Str) -> bool {
-    crate::registry::class_is_trait(name.as_bytes())
-}
-pub fn rt_class_constants(name: &Str) -> Map<ArrayKey, Mixed> {
-    crate::registry::class_constants(name.as_bytes())
 }
 
 // ---------------------------------------------------------------- incremental hashing
@@ -583,30 +569,6 @@ pub fn serialize(m: &Mixed) -> Str {
 pub fn unserialize(_s: &Str) -> Mixed {
     Mixed::Bool(false)
 }
-pub fn defined(name: &Str) -> bool {
-    crate::registry::constant_defined(name)
-}
-pub fn constant(name: &Str) -> Result<Mixed, RtError> {
-    crate::registry::constant_value(name).ok_or_else(|| RtError::error(crate::sfmt!("Undefined constant \"{}\"", name)))
-}
-pub fn define(name: &Str, v: Mixed) -> bool {
-    crate::registry::define_constant(name, v)
-}
-pub fn class_exists(name: &Str, _autoload: bool) -> bool {
-    crate::registry::class_exists(name)
-}
-pub fn interface_exists(name: &Str, _autoload: bool) -> bool {
-    crate::registry::interface_exists(name)
-}
-pub fn trait_exists(_name: &Str, _autoload: bool) -> bool {
-    false
-}
-pub fn enum_exists(name: &Str, _autoload: bool) -> bool {
-    crate::registry::class_exists(name)
-}
-pub fn function_exists(name: &Str) -> bool {
-    crate::registry::function_exists(name)
-}
 pub fn get_parent_class_of(m: &Mixed) -> Option<Str> {
     match m {
         Mixed::Obj(o) => o.class_ancestors().get(1).map(|s| Str::from_str(s)),
@@ -615,12 +577,6 @@ pub fn get_parent_class_of(m: &Mixed) -> Option<Str> {
 }
 pub fn get_object_vars(m: &Mixed) -> Map<ArrayKey, Mixed> {
     crate::support::object_to_array(m)
-}
-pub fn method_exists(_m: &Mixed, _name: &Str) -> bool {
-    false
-}
-pub fn property_exists(m: &Mixed, name: &Str) -> bool {
-    crate::support::mixed_prop(m, name).is_some()
 }
 pub fn token_name(id: i64) -> Str {
     crate::consts::token_name(id)

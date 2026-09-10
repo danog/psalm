@@ -11,7 +11,6 @@ use Psalm\Plugin\EventHandler\Event\MethodVisibilityProviderEvent;
 use Psalm\Plugin\EventHandler\MethodVisibilityProviderInterface;
 use Psalm\StatementsSource;
 
-use function is_subclass_of;
 use function strtolower;
 
 /**
@@ -35,16 +34,12 @@ final class MethodVisibilityProvider
         self::$handlers = [];
     }
 
-    /**
-     * @param class-string<LegacyMethodVisibilityProviderInterface>
-     *     |class-string<MethodVisibilityProviderInterface> $class
-     */
-    public function registerClass(string $class): void
+    public function registerClass(object $class): void
     {
-        if (is_subclass_of($class, MethodVisibilityProviderInterface::class, true)) {
-            $callable = $class::isMethodVisible(...);
+        if ($class instanceof MethodVisibilityProviderInterface) {
+            $callable = $class->isMethodVisible(...);
 
-            foreach ($class::getClassLikeNames() as $fq_classlike_name) {
+            foreach ($class->getClassLikeNames() as $fq_classlike_name) {
                 $this->registerClosure($fq_classlike_name, $callable);
             }
         }

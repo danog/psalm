@@ -310,3 +310,50 @@ impl<T: Clone> CastTo<Map<i64, T>> for Map<Str, T> {
         self.into_iter().map(|(k, v)| (i64::from_array_key(ArrayKey::from_str_val(k)), v)).collect()
     }
 }
+
+// ---------------------------------------------------------------- typed closures <-> Mixed
+//
+// A typed closure (`Rc<dyn Fn(A..) -> Result<R, E>>`, the Rust form of a PHP closure with a known
+// signature) stored in a container that is converted to/from `Mixed` (dynamic arguments, property
+// tables) is wrapped into / unwrapped from a `DynCallable`.
+macro_rules! closure_casts {
+    ($n:expr $(, $a:ident)*) => {
+        impl<R, E $(, $a)*> CastTo<Mixed> for std::rc::Rc<dyn Fn($($a),*) -> Result<R, E>>
+        where
+            R: CastTo<Mixed> + 'static,
+            E: CastTo<Mixed> + 'static,
+            $($a: 'static, Mixed: CastTo<$a>,)*
+        {
+            fn cast_to(self) -> Mixed {
+                let f = self.clone();
+                crate::containers::DynCallable::new($n, move |a: Vec<Mixed>| -> Result<Mixed, crate::containers::DynError> {
+                    let mut it = a.into_iter();
+                    $(let $a: $a = cast::<$a>(it.next().unwrap_or(Mixed::Null));)*
+                    f($($a),*).map(cast::<Mixed>).map_err(|e| crate::containers::DynError::Obj(cast::<Mixed>(e)))
+                })
+                .cast_to()
+            }
+        }
+        impl<R, E $(, $a)*> CastTo<std::rc::Rc<dyn Fn($($a),*) -> Result<R, E>>> for Mixed
+        where
+            R: 'static,
+            Mixed: CastTo<R>,
+            E: From<crate::containers::DynError> + 'static,
+            $($a: CastTo<Mixed> + 'static,)*
+        {
+            fn cast_to(self) -> std::rc::Rc<dyn Fn($($a),*) -> Result<R, E>> {
+                let c = crate::containers::to_callable(&self);
+                std::rc::Rc::new(move |$($a: $a),*| -> Result<R, E> {
+                    c.call(vec![$(cast::<Mixed>($a)),*]).map(cast::<R>).map_err(E::from)
+                })
+            }
+        }
+    };
+}
+closure_casts!(0);
+closure_casts!(1, A1);
+closure_casts!(2, A1, A2);
+closure_casts!(3, A1, A2, A3);
+closure_casts!(4, A1, A2, A3, A4);
+closure_casts!(5, A1, A2, A3, A4, A5);
+closure_casts!(6, A1, A2, A3, A4, A5, A6);

@@ -33,13 +33,13 @@ final class DynamicFunctionStorageProvider
     private static array $dynamic_storages = [];
 
     /**
-     * @param class-string<DynamicFunctionStorageProviderInterface> $class
+     * @param DynamicFunctionStorageProviderInterface $class
      */
-    public function registerClass(string $class): void
+    public function registerClass(DynamicFunctionStorageProviderInterface $class): void
     {
-        $callable = $class::getFunctionStorage(...);
+        $callable = $class->getFunctionStorage(...);
 
-        foreach ($class::getFunctionIds() as $function_id) {
+        foreach ($class->getFunctionIds() as $function_id) {
             $this->registerClosure($function_id, $callable);
         }
     }

@@ -34,13 +34,13 @@ final class MethodExistenceProvider
     }
 
     /**
-     * @param class-string<MethodExistenceProviderInterface> $class
+     * @param MethodExistenceProviderInterface $class
      */
-    public function registerClass(string $class): void
+    public function registerClass(MethodExistenceProviderInterface $class): void
     {
-        $callable = $class::doesMethodExist(...);
+        $callable = $class->doesMethodExist(...);
 
-        foreach ($class::getClassLikeNames() as $fq_classlike_name) {
+        foreach ($class->getClassLikeNames() as $fq_classlike_name) {
             $this->registerClosure($fq_classlike_name, $callable);
         }
     }

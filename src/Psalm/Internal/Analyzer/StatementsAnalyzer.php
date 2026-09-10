@@ -48,7 +48,6 @@ use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\ReferenceConstraint;
 use Psalm\Internal\Scanner\ParsedDocblock;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
-use Psalm\Internal\Transpiler\Transpiler;
 use Psalm\Internal\Type\TypeParser;
 use Psalm\Internal\Type\TypeTokenizer;
 use Psalm\Internal\Type\TypeVariableTracker;
@@ -244,16 +243,8 @@ final class StatementsAnalyzer extends SourceAnalyzer
             }
 
             foreach ($stmts as $stmt) {
-                if (Transpiler::isEnabled()) {
-                    Transpiler::get()->recordStatement($this, $stmt, $context);
-                }
-
                 if (self::analyzeStatement($this, $stmt, $context, $global_context) === false) {
                     return false;
-                }
-
-                if (Transpiler::isEnabled()) {
-                    Transpiler::get()->recordStatement($this, $stmt, $context);
                 }
             }
 

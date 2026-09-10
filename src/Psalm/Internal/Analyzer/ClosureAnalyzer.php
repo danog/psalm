@@ -10,7 +10,6 @@ use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\PhpVisitor\ShortClosureVisitor;
-use Psalm\Internal\Transpiler\Transpiler;
 use Psalm\Issue\DuplicateParam;
 use Psalm\Issue\ImpureFunctionCall;
 use Psalm\Issue\PossiblyUndefinedVariable;
@@ -266,13 +265,6 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
 
             if (!$context->hasVariable($use_var_id)) {
                 if ($use_var_id === '$argv' || $use_var_id === '$argc') {
-                    continue;
-                }
-
-                if ($use->byRef && Transpiler::isEnabled() && !isset($context->vars_possibly_in_scope[$use_var_id])) {
-                    // PHP defines an undefined by-reference use as null in the enclosing scope
-                    $context->vars_in_scope[$use_var_id] = Type::getNull();
-                    $context->vars_possibly_in_scope[$use_var_id] = true;
                     continue;
                 }
 

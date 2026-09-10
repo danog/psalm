@@ -516,19 +516,17 @@ pub fn instance_of_name(m: &Mixed, name: &Str) -> bool {
     m.instance_of(std::str::from_utf8(&n).unwrap_or(""))
 }
 
-/// `is_a($obj_or_class, $class, $allow_string)`
-pub fn is_a_name(m: &Mixed, class: &Str, allow_string: bool) -> bool {
+/// `is_a($object, $class)`: class names as subjects are resolved at compile time (closed world).
+pub fn is_a_name(m: &Mixed, class: &Str, _allow_string: bool) -> bool {
     match m {
-        Mixed::Str(s) if allow_string => crate::registry::is_subclass_name(&norm_class(s), &norm_class(class), true),
         Mixed::Obj(_) | Mixed::Closure(_) => instance_of_name(m, class),
         _ => false,
     }
 }
 
-/// `is_subclass_of($obj_or_class, $class)`
+/// `is_subclass_of($object, $class)`: class names as subjects are resolved at compile time (closed world).
 pub fn is_subclass_of_name(m: &Mixed, class: &Str) -> bool {
     match m {
-        Mixed::Str(s) => crate::registry::is_subclass_name(&norm_class(s), &norm_class(class), false),
         Mixed::Obj(o) => {
             let n = norm_class(class);
             let n = std::str::from_utf8(&n).unwrap_or("");
@@ -571,7 +569,6 @@ pub fn is_scalar_val(m: &Mixed) -> bool {
 pub fn is_callable(m: &Mixed) -> bool {
     match m {
         Mixed::Closure(_) => true,
-        Mixed::Str(s) => crate::registry::function_exists(s),
         Mixed::Obj(o) => o.instance_of_name("closure"),
         Mixed::Arr(a) => a.len() == 2,
         _ => false,

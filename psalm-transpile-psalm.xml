@@ -16,40 +16,10 @@
         <file name="stubs/phpparser.phpstub"/>
     </stubs>
     <projectFiles>
-        <directory name="src/Psalm/Internal/Transpiler/runtime-stubs"/>
+        <directory name="../psalm-transpiler/src/Psalm/Internal/Transpiler/runtime-stubs"/>
         <directory name="../php-parser/lib"/>
         <directory name="src"/>
         <ignoreFiles>
-            <file name="src/Psalm/Internal/Transpiler/BodyEmitter.php"/>
-            <file name="src/Psalm/Internal/Transpiler/Builtins.php"/>
-            <file name="src/Psalm/Internal/Transpiler/CallTrait.php"/>
-            <file name="src/Psalm/Internal/Transpiler/CastEmitter.php"/>
-            <file name="src/Psalm/Internal/Transpiler/Casts.php"/>
-            <file name="src/Psalm/Internal/Transpiler/ClassEmitter.php"/>
-            <file name="src/Psalm/Internal/Transpiler/ClassModel.php"/>
-            <file name="src/Psalm/Internal/Transpiler/ClassRecord.php"/>
-            <file name="src/Psalm/Internal/Transpiler/ConstExprEmitter.php"/>
-            <file name="src/Psalm/Internal/Transpiler/ConstModel.php"/>
-            <file name="src/Psalm/Internal/Transpiler/CrateEmitter.php"/>
-            <file name="src/Psalm/Internal/Transpiler/Diagnostics.php"/>
-            <file name="src/Psalm/Internal/Transpiler/ExprTrait.php"/>
-            <file name="src/Psalm/Internal/Transpiler/FieldModel.php"/>
-            <file name="src/Psalm/Internal/Transpiler/FunctionModel.php"/>
-            <file name="src/Psalm/Internal/Transpiler/FunctionRecord.php"/>
-            <file name="src/Psalm/Internal/Transpiler/GlobalConstModel.php"/>
-            <file name="src/Psalm/Internal/Transpiler/LValueTrait.php"/>
-            <file name="src/Psalm/Internal/Transpiler/MethodModel.php"/>
-            <file name="src/Psalm/Internal/Transpiler/Names.php"/>
-            <file name="src/Psalm/Internal/Transpiler/PendingRecord.php"/>
-            <file name="src/Psalm/Internal/Transpiler/Place.php"/>
-            <file name="src/Psalm/Internal/Transpiler/Program.php"/>
-            <file name="src/Psalm/Internal/Transpiler/RustType.php"/>
-            <file name="src/Psalm/Internal/Transpiler/StmtTrait.php"/>
-            <file name="src/Psalm/Internal/Transpiler/TestEmitter.php"/>
-            <file name="src/Psalm/Internal/Transpiler/Transpiler.php"/>
-            <file name="src/Psalm/Internal/Transpiler/TypeMapper.php"/>
-            <file name="src/Psalm/Internal/Transpiler/Val.php"/>
-            <file name="src/Psalm/Internal/Transpiler/Writer.php"/>
             <directory name="src/Psalm/Internal/LanguageServer"/>
             <directory name="src/Psalm/Internal/Fork"/>
             <directory name="src/Psalm/Internal/PluginManager/Command"/>

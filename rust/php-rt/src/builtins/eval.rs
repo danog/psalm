@@ -187,7 +187,7 @@ fn constant(name: &[u8]) -> Result<Mixed, RtError> {
             b"PHP_VERSION_ID" => Mixed::Int(PHP_VERSION_ID),
             _ => {
                 let n = Str::from_bytes(name);
-                match crate::registry::constant_value(&n) {
+                match crate::consts::builtin_value(n.as_bytes()) {
                     Some(v) => v,
                     None => match crate::consts::token_value(name) {
                         Some(v) => Mixed::Int(v),

@@ -14,6 +14,7 @@ use Psalm\Internal\Provider\FakeFileProvider;
 use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\RuntimeCaches;
 use Psalm\Report\ReportOptions;
+use Psalm\Tests\Config\Plugin\EventHandler\AddTaints\TaintBadDataPlugin;
 use Psalm\Tests\Internal\Provider\FakeParserCacheProvider;
 use Psalm\Tests\TestCase;
 use Psalm\Tests\TestConfig;
@@ -59,6 +60,7 @@ final class AddTaintsInterfaceTest extends TestCase
 
     private function setupProjectAnalyzerWithTaintBadDataPlugin(): void
     {
+        Config::registerPluginFactory(TaintBadDataPlugin::class, static fn(): TaintBadDataPlugin => new TaintBadDataPlugin());
         $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
             TestConfig::loadFromXML(
                 dirname(__DIR__, 5) . DIRECTORY_SEPARATOR,

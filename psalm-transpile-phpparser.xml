@@ -13,7 +13,7 @@
     cacheDirectory="build/psalm-cache-phpparser"
 >
     <projectFiles>
-        <directory name="src/Psalm/Internal/Transpiler/runtime-stubs"/>
+        <directory name="../psalm-transpiler/src/Psalm/Internal/Transpiler/runtime-stubs"/>
         <directory name="../php-parser/lib"/>
         <directory name="../php-parser/test/PhpParser"/>
         <file name="../php-parser/test/bootstrap.php"/>

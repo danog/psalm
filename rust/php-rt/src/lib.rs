@@ -17,7 +17,7 @@ pub mod cast;
 pub mod output;
 pub mod support;
 pub mod containers;
-pub mod registry;
+pub mod names;
 pub mod consts;
 pub mod tokenizer;
 pub mod xml;
@@ -55,7 +55,7 @@ pub mod prelude {
     pub use crate::output::*;
     pub use crate::builtins::*;
     pub use crate::consts;
-    pub use crate::registry;
+    pub use crate::names;
     pub use std::rc::Rc;
     pub use std::cell::{Ref, RefCell, RefMut};
 }

@@ -35,13 +35,13 @@ final class PropertyVisibilityProvider
     }
 
     /**
-     * @param class-string<PropertyVisibilityProviderInterface> $class
+     * @param PropertyVisibilityProviderInterface $class
      */
-    public function registerClass(string $class): void
+    public function registerClass(PropertyVisibilityProviderInterface $class): void
     {
-        $callable = $class::isPropertyVisible(...);
+        $callable = $class->isPropertyVisible(...);
 
-        foreach ($class::getClassLikeNames() as $fq_classlike_name) {
+        foreach ($class->getClassLikeNames() as $fq_classlike_name) {
             $this->registerClosure($fq_classlike_name, $callable);
         }
     }

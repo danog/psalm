@@ -32,7 +32,6 @@ use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
-use Psalm\Internal\Transpiler\Transpiler;
 use Psalm\Internal\Type\TypeExpander;
 use Psalm\Issue\ImpureFunctionCall;
 use Psalm\Issue\InvalidDocblockParamName;
@@ -504,13 +503,6 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
         }
 
         $statements_analyzer->analyze($function_stmts, $context, $global_context);
-
-        if (Transpiler::isEnabled()
-            && !$context->collect_initializations
-            && !$context->collect_mutations
-        ) {
-            Transpiler::get()->recordFunctionLike($this, $this->function, $storage, $statements_analyzer, $context);
-        }
 
         if ($statements_analyzer->owns_type_variable_tracker) {
             $statements_analyzer->type_variable_tracker->reconcile(

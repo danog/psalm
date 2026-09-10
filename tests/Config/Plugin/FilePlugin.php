@@ -18,6 +18,6 @@ final class FilePlugin implements PluginEntryPointInterface
     {
         require_once __DIR__ . '/Hook/FileProvider.php';
 
-        $registration->registerHooksFromClass(FileProvider::class);
+        $registration->registerHooksFromClass(new FileProvider());
     }
 }

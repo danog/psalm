@@ -70,6 +70,7 @@ final class RemoveTaintsInterfaceTest extends TestCase
 
     public function testRemoveAllTaints(): void
     {
+        Config::registerPluginFactory(RemoveAllTaintsPlugin::class, static fn(): RemoveAllTaintsPlugin => new RemoveAllTaintsPlugin());
         $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
             TestConfig::loadFromXML(
                 dirname(__DIR__, 5) . DIRECTORY_SEPARATOR,
