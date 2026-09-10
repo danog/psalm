@@ -579,7 +579,7 @@ final class CrateEmitter
         for ($i = 0; $i < $crate; $i++) {
             $deps .= $this->transpiler->crateName($i) . " = { path = \"" . $this->relativePath($out, $this->transpiler->crateDir($i)) . "\" }\n";
         }
-        $this->writeFile($out . '/Cargo.toml', "[package]\nname = \"" . $name . "\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[lib]\npath = \"src/lib.rs\"\ntest = false\n\n[dependencies]\n" . $deps);
+        $this->writeFile($out . '/Cargo.toml', "[package]\nname = \"" . $name . "\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[lib]\npath = \"src/lib.rs\"\ntest = false\n\n[[test]]\nname = \"harness\"\npath = \"tests/harness.rs\"\nharness = false\n\n[dependencies]\n" . $deps . "\n[dev-dependencies]\nlibtest-mimic = \"0.8\"\n");
         fwrite(STDERR, 'wrote ' . count($this->modules[$crate] ?? []) . " modules to $out\n");
     }
 
