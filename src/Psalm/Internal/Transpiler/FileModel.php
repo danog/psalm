@@ -19,14 +19,16 @@ final class FileModel
         public readonly string $rel_path,
         public readonly string $abs_path,
         public readonly int $crate,
-        /** the returned expression of a data file; null for declaration-only files */
+        /** the returned expression of a data file; null for declaration-only files and mechanical data files */
         public readonly ?Expr $data,
+        /** a dictionary whose value is obtained by running the file (never parsed) */
+        public readonly bool $mechanical = false,
     ) {
     }
 
     public function isData(): bool
     {
-        return $this->data !== null;
+        return $this->data !== null || $this->mechanical;
     }
 
     /** Rust name of the file function (data files only). */

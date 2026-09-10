@@ -336,6 +336,12 @@ final class Program
         if (!is_file($abs_path)) {
             return null;
         }
+        if ($this->transpiler->isDataFile($abs_path)) {
+            // a dictionary: compiled mechanically from the value the file returns (see DataEmitter::emitFile)
+            $model = new FileModel($rel, $abs_path, $this->transpiler->crateOfFile($abs_path), null, true);
+            $this->files[$rel] = $model;
+            return $model;
+        }
         $stmts = $this->transpiler->file_stmts[$abs_path] ?? null;
         if ($stmts === null) {
             $code = file_get_contents($abs_path);

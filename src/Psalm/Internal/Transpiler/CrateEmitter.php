@@ -263,7 +263,8 @@ final class CrateEmitter
             }
             $w = $this->module($file->crate, 'files');
             try {
-                $w->line('pub fn ' . $file->rustName() . '() -> Result<Mixed, Throw> { static D: Data = ' . $data_emitter->emit($file->data) . '; Ok(D.to_mixed()) }');
+                $table = $file->data !== null ? $data_emitter->emit($file->data) : $data_emitter->emitFile($file->abs_path);
+                $w->line('pub fn ' . $file->rustName() . '() -> Result<Mixed, Throw> { static D: Data = ' . $table . '; Ok(D.to_mixed()) }');
             } catch (\RuntimeException $e) {
                 fwrite(STDERR, '  [transpiler] data file ' . $rel . ' not compiled: ' . $e->getMessage() . "\n");
                 $w->line('pub fn ' . $file->rustName() . '() -> Result<Mixed, Throw> { Err(Throw::error(Str::from_static(' . Names::rustStringLiteral('include(' . $rel . '): file could not be compiled: ' . $e->getMessage()) . '))) }');

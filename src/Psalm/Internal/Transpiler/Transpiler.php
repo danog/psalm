@@ -22,6 +22,7 @@ use Psalm\Storage\FunctionLikeStorage;
 use RuntimeException;
 
 use function basename;
+use function realpath;
 use function count;
 use function file_get_contents;
 use function fwrite;
@@ -98,11 +99,32 @@ final class Transpiler
             $t->splits[] = ['dir' => $dir, 'prefix' => $prefix];
         }
         $t->data_globs = $data_globs;
+        foreach ($data_globs as $glob) {
+            foreach (glob(str_starts_with($glob, '/') ? $glob : rtrim($root_dir, '/') . '/' . $glob) ?: [] as $path) {
+                $real = realpath($path);
+                if ($real !== false) {
+                    $t->data_files[$real] = true;
+                }
+            }
+        }
         self::$instance = $t;
     }
 
     /** @var list<string> globs (relative to the root directory) of data files compiled as includable values */
     public array $data_globs = [];
+
+    /** @var array<string, true> absolute paths of the data files (`return [...]` dictionaries), never parsed or analyzed */
+    public array $data_files = [];
+
+    /**
+     * Whether a file is one of the data files compiled mechanically: Psalm neither scans nor analyzes them
+     * (their array literals are huge), the include site's docblock is their type.
+     */
+    public function isDataFile(string $file_path): bool
+    {
+        $real = realpath($file_path);
+        return $real !== false && isset($this->data_files[$real]);
+    }
 
     /** @var array<string, list<Stmt>> top-level (non-declaration) statements of analyzed project files */
     public array $file_stmts = [];
