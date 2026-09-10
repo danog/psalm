@@ -344,8 +344,8 @@ final class ClassConstAnalyzer
 
                         if (strtolower($new_fq_class_name) !== $fq_class_name_lc) {
                             $file_manipulations[] = new FileManipulation(
-                                (int) $stmt->class->getAttribute('startFilePos'),
-                                (int) $stmt->class->getAttribute('endFilePos') + 1,
+                                $stmt->class->getStartFilePos(),
+                                $stmt->class->getEndFilePos() + 1,
                                 Type::getStringFromFQCLN(
                                     $new_fq_class_name,
                                     $statements_analyzer->getNamespace(),
@@ -356,8 +356,8 @@ final class ClassConstAnalyzer
                         }
 
                         $file_manipulations[] = new FileManipulation(
-                            (int) $stmt->name->getAttribute('startFilePos'),
-                            (int) $stmt->name->getAttribute('endFilePos') + 1,
+                            $stmt->name->getStartFilePos(),
+                            $stmt->name->getEndFilePos() + 1,
                             $new_const_name,
                         );
 
@@ -647,8 +647,8 @@ final class ClassConstAnalyzer
                         $file_manipulations = [];
 
                         $file_manipulations[] = new FileManipulation(
-                            (int) $stmt->name->getAttribute('startFilePos'),
-                            (int) $stmt->name->getAttribute('endFilePos') + 1,
+                            $stmt->name->getStartFilePos(),
+                            $stmt->name->getEndFilePos() + 1,
                             $new_const_name,
                         );
 

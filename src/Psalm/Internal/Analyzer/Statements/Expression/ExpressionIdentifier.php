@@ -163,7 +163,7 @@ final class ExpressionIdentifier
                     && $stmt->dim->name instanceof PhpParser\Node\Identifier
                 ) {
                     /** @var string|null */
-                    $resolved_name = $stmt->dim->class->getAttribute('resolvedName');
+                    $resolved_name = $stmt->dim->class->attrs()->resolvedName;
 
                     if ($resolved_name) {
                         $offset = $resolved_name . '::' . $stmt->dim->name;
@@ -198,7 +198,7 @@ final class ExpressionIdentifier
             && $stmt->name instanceof PhpParser\Node\Identifier
         ) {
             /** @var string|null */
-            $resolved_name = $stmt->class->getAttribute('resolvedName');
+            $resolved_name = $stmt->class->attrs()->resolvedName;
 
             if ($resolved_name) {
                 if (($resolved_name === 'self' || $resolved_name === 'static') && $this_class_name) {
@@ -216,7 +216,7 @@ final class ExpressionIdentifier
         ) {
             $config = Config::getInstance();
 
-            if ($config->memoize_method_calls || $stmt->getAttribute('memoizable', false)) {
+            if ($config->memoize_method_calls || ($stmt->attrs()->memoizable ?? false)) {
                 $lhs_var_name = self::getExtendedVarId(
                     $stmt->var,
                     $this_class_name,

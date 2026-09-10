@@ -102,9 +102,9 @@ class CodeLocation
         ?int $comment_line = null,
     ) {
         /** @psalm-suppress ImpureMethodCall Actually mutation-free just not marked */
-        $this->file_start = (int)$stmt->getAttribute('startFilePos');
+        $this->file_start = $stmt->getStartFilePos();
         /** @psalm-suppress ImpureMethodCall Actually mutation-free just not marked */
-        $this->file_end = (int)$stmt->getAttribute('endFilePos');
+        $this->file_end = $stmt->getEndFilePos();
         $this->raw_file_start = $this->file_start;
         $this->raw_file_end = $this->file_end;
         $this->file_path = $file_source->getFilePath();
@@ -136,30 +136,8 @@ class CodeLocation
      */
     public function __unserialize(array $properties): void
     {
-        /** @psalm-suppress PossiblyUndefinedStringArrayOffset */
-        $this->file_path = $properties['file_path'];
-        $this->file_name = $properties['file_name'];
-        $this->raw_line_number = $properties['raw_line_number'];
-        $this->end_line_number = $properties["\0" . self::class . "\0" . 'end_line_number'];
-        $this->raw_file_start = $properties['raw_file_start'];
-        $this->raw_file_end = $properties['raw_file_end'];
-        $this->file_start = $properties["\0*\0" . 'file_start'];
-        $this->file_end = $properties["\0*\0" . 'file_end'];
-        $this->single_line = $properties["\0*\0" . 'single_line'];
-        $this->preview_start = $properties["\0*\0" . 'preview_start'];
-        $this->preview_end = $properties["\0" . self::class . "\0" . 'preview_end'];
-        $this->selection_start = $properties["\0" . self::class . "\0" . 'selection_start'];
-        $this->selection_end = $properties["\0" . self::class . "\0" . 'selection_end'];
-        $this->column_from = $properties["\0" . self::class . "\0" . 'column_from'];
-        $this->column_to = $properties["\0" . self::class . "\0" . 'column_to'];
-        $this->snippet = $properties["\0" . self::class . "\0" . 'snippet'];
-        $this->text = $properties["\0" . self::class . "\0" . 'text'];
-        $this->docblock_start = $properties['docblock_start'];
-        $this->docblock_start_line_number = $properties["\0" . self::class . "\0" . 'docblock_start_line_number'];
-        $this->docblock_line_number = $properties["\0*\0" . 'docblock_line_number'];
-        $this->regex_type = $properties["\0" . self::class . "\0" . 'regex_type'];
-        $this->have_recalculated = $properties["\0" . self::class . "\0" . 'have_recalculated'];
-        $this->previous_location = $properties['previous_location'];
+        // objects are never unserialized in the compiled program; property names cannot be looked up dynamically
+        throw new \LogicException('Unserialization of ' . self::class . ' is not supported');
     }
 
     /**

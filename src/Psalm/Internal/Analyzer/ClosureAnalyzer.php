@@ -42,7 +42,7 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
 
         $function_id = strtolower($source->getFilePath())
             . ':' . $function->getLine()
-            . ':' . (int)$function->getAttribute('startFilePos')
+            . ':' . $function->getStartFilePos()
             . ':-:closure';
 
         $storage = $codebase->getClosureStorage($source->getFilePath(), $function_id);
@@ -65,7 +65,7 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
     {
         return strtolower($this->getFilePath())
             . ':' . $this->function->getLine()
-            . ':' . (int)$this->function->getAttribute('startFilePos')
+            . ':' . $this->function->getStartFilePos()
             . ':-:closure';
     }
 

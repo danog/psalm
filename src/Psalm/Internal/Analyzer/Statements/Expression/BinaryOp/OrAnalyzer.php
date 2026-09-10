@@ -81,7 +81,7 @@ final class OrAnalyzer
                     $context,
                     $codebase,
                     $if_scope,
-                    $context->branch_point ?: (int) $stmt->getAttribute('startFilePos'),
+                    $context->branch_point ?: $stmt->getStartFilePos(),
                 );
 
                 $left_context = $if_conditional_scope->if_context;

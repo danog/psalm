@@ -57,7 +57,7 @@ final class TernaryAnalyzer
                 $context,
                 $codebase,
                 $if_scope,
-                $context->branch_point ?: (int) $stmt->getAttribute('startFilePos'),
+                $context->branch_point ?: $stmt->getStartFilePos(),
             );
 
             // this is the context for stuff that happens within the first operand of the ternary

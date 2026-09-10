@@ -456,7 +456,7 @@ final class ArgumentsAnalyzer
 
         $closure_id = strtolower($statements_analyzer->getFilePath())
             . ':' . $arg->value->getLine()
-            . ':' . (int)$arg->value->getAttribute('startFilePos')
+            . ':' . $arg->value->getStartFilePos()
             . ':-:closure';
 
         try {

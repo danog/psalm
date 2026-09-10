@@ -89,6 +89,8 @@ final class CodeClimateReport extends Report
      * Fields with * are the one used by Gitlab for Code Quality
      *
      * @psalm-mutation-free
+     *
+     * @return array{type: string, check_name: string, description: string, categories: list<string>, severity: string, fingerprint: string, location: array{path: string, lines: array{begin: int, end: int}}}
      */
     private function mapToNewStructure(IssueData $issue): array
     {

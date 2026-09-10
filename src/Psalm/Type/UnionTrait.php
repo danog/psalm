@@ -64,13 +64,6 @@ use function strpos;
 trait UnionTrait
 {
     /**
-     * Constructs a Union instance
-     *
-     * @param non-empty-array<Atomic>     $types
-     * @param TProperties $properties
-     * @psalm-mutation-free
-     */
-    /**
      * The construction properties of this union (see TProperties).
      *
      * @return TProperties
@@ -104,6 +97,13 @@ trait UnionTrait
         ];
     }
 
+    /**
+     * Constructs a Union instance
+     *
+     * @param non-empty-array<Atomic>     $types
+     * @param TProperties $properties
+     * @psalm-mutation-free
+     */
     public function __construct(array $types, array $properties = [])
     {
         if (array_key_exists('from_docblock', $properties)) {

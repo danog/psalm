@@ -139,13 +139,19 @@ use const SCANDIR_SORT_NONE;
  * @api
  * @psalm-suppress PropertyNotSetInConstructor
  * @psalm-consistent-constructor
+ *
+ * @psalm-import-type ComposerJson from Composer
  */
 final class Config
 {
     /**
-     * @var bool
+     * Whether the project analyzer collects the project files while it is constructed (tests do, the CLI
+     * does it later, once the config is complete). Overridden by the test config.
      */
-    public const INIT_PROJECT_FILES_NOW = false;
+    public function initProjectFilesNow(): bool
+    {
+        return false;
+    }
 
     final public const DEFAULT_BASELINE_NAME = 'psalm-baseline.xml';
     private const DEFAULT_FILE_NAMES = [
@@ -456,7 +462,7 @@ final class Config
 
     public bool $allow_named_arg_calls = true;
 
-    /** @var array<string, mixed> */
+    /** @var array<string, scalar|null> */
     private array $predefined_constants = [];
 
     /** @var array<callable-string, bool> */
@@ -1040,6 +1046,7 @@ final class Config
         if (file_exists($composer_json_path)) {
             $composer_json_contents = file_get_contents($composer_json_path);
             assert($composer_json_contents !== false);
+            /** @var ComposerJson|scalar|null $composer_json */
             $composer_json = json_decode($composer_json_contents, true, 512, JSON_THROW_ON_ERROR);
             if (!is_array($composer_json)) {
                 throw new UnexpectedValueException('Invalid composer.json at ' . $composer_json_path);
@@ -2504,7 +2511,7 @@ final class Config
     }
 
     /**
-     * @return array<string, mixed>
+     * @return array<string, scalar|null>
      */
     public function getPredefinedConstants(): array
     {
@@ -2513,7 +2520,9 @@ final class Config
 
     public function collectPredefinedConstants(): void
     {
-        $this->predefined_constants = get_defined_constants();
+        /** @var array<string, scalar|null> $constants PHP constants are scalars (arrays are unused by Psalm) */
+        $constants = get_defined_constants();
+        $this->predefined_constants = $constants;
     }
 
     /**
@@ -2843,12 +2852,13 @@ final class Config
             try {
                 $composer_json_contents = file_get_contents($composer_json_path);
                 assert($composer_json_contents !== false);
+                /** @var ComposerJson|scalar|null $composer_json */
                 $composer_json = json_decode($composer_json_contents, true, 512, JSON_THROW_ON_ERROR);
             } catch (JsonException) {
                 $composer_json = null;
             }
 
-            if (!$composer_json) {
+            if (!is_array($composer_json)) {
                 throw new UnexpectedValueException('Invalid composer.json at ' . $composer_json_path);
             }
             $php_version = $composer_json['require']['php'] ?? null;

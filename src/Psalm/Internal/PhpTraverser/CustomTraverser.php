@@ -94,8 +94,8 @@ final class CustomTraverser extends NodeTraverser
     /**
      * Recursively traverse array (usually of nodes).
      *
-     * @param array $nodes Array to traverse
-     * @return array Result of traversal (may be original array or changed one)
+     * @param list<Node|null> $nodes Array to traverse
+     * @return list<Node|null> Result of traversal (may be original array or changed one)
      */
     protected function traverseArray(array $nodes): array
     {

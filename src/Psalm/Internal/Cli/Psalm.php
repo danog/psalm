@@ -1099,8 +1099,8 @@ final class Psalm
     }
 
     /**
-     * @param array<string, false|list<mixed>|string> $options
-     * @param-out array<string, false|list<mixed>|string> $options
+     * @param array<string, false|list<string|false>|string> $options
+     * @param-out array<string, false|list<string|false>|string> $options
      */
     private static function syncShortOptions(array &$options): void
     {

@@ -48,11 +48,11 @@ final class ClassStatementsDiffer extends AstDiffer
                     return false;
                 }
 
-                $a_start = (int)$a->getAttribute('startFilePos');
-                $a_end = (int)$a->getAttribute('endFilePos');
+                $a_start = $a->getStartFilePos();
+                $a_end = $a->getEndFilePos();
 
-                $b_start = (int)$b->getAttribute('startFilePos');
-                $b_end = (int)$b->getAttribute('endFilePos');
+                $b_start = $b->getStartFilePos();
+                $b_end = $b->getEndFilePos();
 
                 $a_comments_end = $a_start;
                 $b_comments_end = $b_start;
@@ -109,7 +109,7 @@ final class ClassStatementsDiffer extends AstDiffer
 
                     if ($a->stmts) {
                         $first_stmt = $a->stmts[0];
-                        $a_stmts_start = (int) $first_stmt->getAttribute('startFilePos');
+                        $a_stmts_start = $first_stmt->getStartFilePos();
 
                         if ($a_stmt_comments = $first_stmt->getComments()) {
                             $a_stmts_start = $a_stmt_comments[0]->getStartFilePos();
@@ -120,7 +120,7 @@ final class ClassStatementsDiffer extends AstDiffer
 
                     if ($b->stmts) {
                         $first_stmt = $b->stmts[0];
-                        $b_stmts_start = (int) $first_stmt->getAttribute('startFilePos');
+                        $b_stmts_start = $first_stmt->getStartFilePos();
 
                         if ($b_stmt_comments = $first_stmt->getComments()) {
                             $b_stmts_start = $b_stmt_comments[0]->getStartFilePos();
@@ -165,10 +165,10 @@ final class ClassStatementsDiffer extends AstDiffer
                     }
 
                     if ($a->type && $b->type) {
-                        $a_type_start = (int) $a->type->getAttribute('startFilePos');
-                        $a_type_end = (int) $a->type->getAttribute('endFilePos');
-                        $b_type_start = (int) $b->type->getAttribute('startFilePos');
-                        $b_type_end = (int) $b->type->getAttribute('endFilePos');
+                        $a_type_start = $a->type->getStartFilePos();
+                        $a_type_end = $a->type->getEndFilePos();
+                        $b_type_start = $b->type->getStartFilePos();
+                        $b_type_end = $b->type->getEndFilePos();
                         if (substr($a_code, $a_type_start, $a_type_end - $a_type_start + 1)
                             !== substr($b_code, $b_type_start, $b_type_end - $b_type_start + 1)
                         ) {
@@ -216,7 +216,7 @@ final class ClassStatementsDiffer extends AstDiffer
                     }
                 } elseif ($diff_elem->old instanceof PhpParser\Node\Stmt\TraitUse) {
                     foreach ($diff_elem->old->traits as $trait) {
-                        $keep[] = $name_lc . '&' . strtolower((string) $trait->getAttribute('resolvedName'));
+                        $keep[] = $name_lc . '&' . strtolower((string) $trait->attrs()->resolvedName);
                     }
                 }
             } elseif ($diff_elem->type === DiffElem::TYPE_KEEP_SIGNATURE) {
@@ -254,7 +254,7 @@ final class ClassStatementsDiffer extends AstDiffer
                     }
                 } elseif ($affected_elem instanceof PhpParser\Node\Stmt\TraitUse) {
                     foreach ($affected_elem->traits as $trait) {
-                        $add_or_delete[] = $name_lc . '&' . strtolower((string) $trait->getAttribute('resolvedName'));
+                        $add_or_delete[] = $name_lc . '&' . strtolower((string) $trait->attrs()->resolvedName);
                     }
                 }
 
@@ -262,12 +262,12 @@ final class ClassStatementsDiffer extends AstDiffer
                     if ($doc = $affected_elem->getDocComment()) {
                         $start = $doc->getStartFilePos();
                     } else {
-                        $start = (int)$affected_elem->getAttribute('startFilePos');
+                        $start = $affected_elem->getStartFilePos();
                     }
 
                     $deletion_ranges[] = [
                         $start,
-                        (int)$affected_elem->getAttribute('endFilePos'),
+                        $affected_elem->getEndFilePos(),
                     ];
                 }
             }

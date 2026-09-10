@@ -218,8 +218,8 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
                         if ($const_id === $original_const_id) {
                             $file_manipulations = [
                                 new FileManipulation(
-                                    (int) $const->name->getAttribute('startFilePos'),
-                                    (int) $const->name->getAttribute('endFilePos') + 1,
+                                    $const->name->getStartFilePos(),
+                                    $const->name->getEndFilePos() + 1,
                                     $new_const_name,
                                 ),
                             ];

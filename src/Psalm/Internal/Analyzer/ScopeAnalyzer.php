@@ -235,7 +235,7 @@ final class ScopeAnalyzer
                     static fn(string $action): bool => $action !== self::ACTION_NONE,
                 );
 
-                if ($has_default_terminator || $stmt->getAttribute('allMatched', false)) {
+                if ($has_default_terminator || ($stmt->attrs()->allMatched ?? false)) {
                     return array_values(array_unique([...$control_actions, ...$all_case_actions]));
                 }
 

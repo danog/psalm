@@ -1139,7 +1139,7 @@ final class FunctionLikeNodeScanner
         ) {
             $function_id = $cased_function_id = strtolower($this->file_path)
                 . ':' . $stmt->getLine()
-                . ':' . (int)$stmt->getAttribute('startFilePos') . ':-:closure';
+                . ':' . $stmt->getStartFilePos() . ':-:closure';
 
             $storage = $this->storage = $this->file_storage->functions[$function_id] = new FunctionStorage();
 
@@ -1155,7 +1155,7 @@ final class FunctionLikeNodeScanner
         } elseif ($stmt instanceof PhpParser\Node\PropertyHook) {
             $function_id = $cased_function_id = strtolower($this->file_path)
                 . ':' . $stmt->getLine()
-                . ':' . (int)$stmt->getAttribute('startFilePos') . ':-:hook';
+                . ':' . $stmt->getStartFilePos() . ':-:hook';
 
             $storage = $this->storage = $this->file_storage->functions[$function_id] = new FunctionStorage();
         } else {

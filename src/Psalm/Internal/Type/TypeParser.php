@@ -929,6 +929,7 @@ final class TypeParser
         }
 
         if ($generic_type_value === 'int-mask') {
+            /** @var list<TLiteralInt|TClassConstant> $atomic_types */
             $atomic_types = [];
 
             foreach ($generic_params as $generic_param) {
@@ -944,7 +945,7 @@ final class TypeParser
 
                 if ($atomic_type instanceof TNamedObject) {
                     if (defined($atomic_type->value)) {
-                        /** @var mixed */
+                        /** @var scalar|null|array<array-key, scalar|null> */
                         $constant_value = constant($atomic_type->value);
 
                         if (!is_int($constant_value)) {
@@ -1194,9 +1195,8 @@ final class TypeParser
 
         if ($onlyTKeyedArray) {
             /**
-             * @var array<TKeyedArray> $intersection_types
-             * @var TKeyedArray $first_type
-             * @var TKeyedArray $last_type
+             * @var Atomic $first_type
+             * @var Atomic $last_type
              */
             return self::getTypeFromKeyedArrays(
                 $codebase,
@@ -1230,10 +1230,9 @@ final class TypeParser
         if ($first_type instanceof TKeyedArray) {
             // assume all types are keyed arrays
             array_unshift($keyed_intersection_types, $first_type);
-            /** @var TKeyedArray $last_type */
+            /** @var Atomic $last_type */
             $last_type = end($keyed_intersection_types);
 
-            /** @var array<TKeyedArray> $keyed_intersection_types */
             return self::getTypeFromKeyedArrays(
                 $codebase,
                 $keyed_intersection_types,
@@ -1745,9 +1744,10 @@ final class TypeParser
     }
 
     /**
-     * @param array<TKeyedArray> $intersection_types
-     * @param TKeyedArray|TArray $first_type
-     * @param TKeyedArray|TArray $last_type
+     * Merges the keyed arrays of an intersection (an unsealed `array` at either end is dropped, other
+     * members are ignored: the caller has checked that only keyed arrays remain).
+     *
+     * @param non-empty-array<Atomic> $intersection_types
      */
     private static function getTypeFromKeyedArrays(
         Codebase $codebase,
@@ -1768,6 +1768,10 @@ final class TypeParser
         $all_sealed = true;
 
         foreach ($intersection_types as $intersection_type) {
+            if (!$intersection_type instanceof TKeyedArray) {
+                continue;
+            }
+
             if ($intersection_type->fallback_params !== null) {
                 $all_sealed = false;
             }

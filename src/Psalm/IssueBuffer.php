@@ -118,7 +118,7 @@ final class IssueBuffer
      */
     private static array $used_suppressions = [];
 
-    /** @var array<array-key,mixed> */
+    /** @var array<string, string|int|float|list<string>> */
     private static array $server = [];
 
     /**
@@ -1136,7 +1136,7 @@ final class IssueBuffer
 
     /**
      * @internal
-     * @param array<array-key,mixed> $server
+     * @param array<string, string|int|float|list<string>> $server
      * @psalm-external-mutation-free
      */
     final public static function captureServer(array $server): void
@@ -1145,7 +1145,7 @@ final class IssueBuffer
     }
     /**
      * @internal
-     * @return array<array-key,mixed>
+     * @return array<string, string|int|float|list<string>>
      * @psalm-external-mutation-free
      */
     final public static function getServer(): array

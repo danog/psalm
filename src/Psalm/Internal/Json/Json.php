@@ -21,6 +21,9 @@ use const JSON_UNESCAPED_UNICODE;
  * Provides ability of pretty printed JSON output.
  *
  * @internal
+ *
+ * @psalm-type JsonScalar = scalar|null|object
+ * @psalm-type JsonValue = JsonScalar|array<array-key, JsonScalar|array<array-key, JsonScalar|array<array-key, JsonScalar|array>>>
  */
 final class Json
 {
@@ -56,7 +59,7 @@ final class Json
     public const DEFAULT = 0;
 
     /**
-     * @param array<array-key, mixed> $data
+     * @param array<array-key, JsonValue> $data
      * @psalm-pure
      */
     public static function encode(array $data, ?int $options = null): string
@@ -79,7 +82,11 @@ final class Json
         return $result;
     }
 
-    /** @psalm-pure */
+    /**
+     * @param array<array-key, JsonValue> $data
+     * @return array<array-key, JsonValue>
+     * @psalm-pure
+     */
     private static function scrub(array $data): array
     {
         /** @psalm-suppress ImpureFunctionCall */
@@ -87,7 +94,7 @@ final class Json
             $data,
             /**
              * @psalm-pure
-             * @param mixed $value
+             * @param JsonValue $value
              */
             function (mixed &$value): void {
                 if (is_string($value)) {
@@ -99,6 +106,7 @@ final class Json
                 }
             },
         );
+        /** @var array<array-key, JsonValue> $data */
         return $data;
     }
 }

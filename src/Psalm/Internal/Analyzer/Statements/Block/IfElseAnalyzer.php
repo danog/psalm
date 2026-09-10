@@ -96,7 +96,7 @@ final class IfElseAnalyzer
             }
         }
 
-        $branch_point = $context->branch_point ?: (int) $stmt->getAttribute('startFilePos');
+        $branch_point = $context->branch_point ?: $stmt->getStartFilePos();
 
         try {
             $if_conditional_scope = IfConditionalAnalyzer::analyze(
@@ -286,7 +286,7 @@ final class IfElseAnalyzer
                 $else_context,
                 $context,
                 $codebase,
-                $else_context->branch_point ?: (int) $stmt->getAttribute('startFilePos'),
+                $else_context->branch_point ?: $stmt->getStartFilePos(),
             ) === false) {
                 return false;
             }
@@ -294,7 +294,7 @@ final class IfElseAnalyzer
 
         if ($stmt->else) {
             if ($codebase->alter_code && $else_context->branch_point === null) {
-                $else_context->branch_point = (int) $stmt->getAttribute('startFilePos');
+                $else_context->branch_point = $stmt->getStartFilePos();
             }
         }
 

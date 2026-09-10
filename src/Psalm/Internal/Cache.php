@@ -60,6 +60,7 @@ final class Cache
 
     private readonly bool $arrayCache;
 
+    /** @param list<string|int> $dependencies */
     public function __construct(
         Config $config,
         string $subdir,
@@ -108,8 +109,11 @@ final class Cache
         $this->lock = $lock;
 
         if (file_exists($this->dir.'consolidated') && $this->arrayCache) {
-            /** @var array<string, list{string, T}> */
-            $this->cache = $this->serializer->unserialize(Providers::safeFileGetContents($this->dir.'consolidated'));
+            $consolidated = $this->serializer->unserialize(Providers::safeFileGetContents($this->dir.'consolidated'));
+            if (is_array($consolidated)) {
+                /** @var array<string, list{string, T}> $consolidated */
+                $this->cache = $consolidated;
+            }
         }
     }
 
@@ -227,7 +231,7 @@ final class Cache
 
         fclose($fp);
 
-        /** @var T */
+        /** @var T $content */
         $content = $this->serializer->unserialize($content);
         if ($this->arrayCache) {
             $this->cache[$key] = [$hash, $content];

@@ -517,9 +517,9 @@ final class ClassLikeDocblockParser
 
                 $method_offset = self::getMethodOffset($comment, $method_entry);
 
-                $statements[0]->stmts[0]->setAttribute('startLine', $node_doc_comment->getStartLine() + $method_offset);
-                $statements[0]->stmts[0]->setAttribute('startFilePos', $node_doc_comment->getStartFilePos());
-                $statements[0]->stmts[0]->setAttribute('endFilePos', $node->getAttribute('startFilePos'));
+                $statements[0]->stmts[0]->attrs()->startLine = $node_doc_comment->getStartLine() + $method_offset;
+                $statements[0]->stmts[0]->attrs()->startFilePos = $node_doc_comment->getStartFilePos();
+                $statements[0]->stmts[0]->attrs()->endFilePos = $node->attrs()->startFilePos;
 
                 if ($doc_comment = $statements[0]->stmts[0]->getDocComment()) {
                     $statements[0]->stmts[0]->setDocComment(

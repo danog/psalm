@@ -17,6 +17,8 @@ use function json_last_error_msg;
 
 /**
  * @internal
+ *
+ * @psalm-type ComposerPackage = array{name?: string|scalar|null, extra?: array{psalm?: array{pluginClass?: string|scalar|null}|scalar|null}|scalar|null}
  */
 final class ComposerLock
 {
@@ -34,12 +36,12 @@ final class ComposerLock
      *      name: string,
      *      extra: array{psalm: array{pluginClass: string}}
      * } $package
+     * @param ComposerPackage $package
      * @psalm-pure
      */
-    public function isPlugin(mixed $package): bool
+    public function isPlugin(array $package): bool
     {
-        return is_array($package)
-            && isset($package['name'], $package['extra']['psalm']['pluginClass'])
+        return isset($package['name'], $package['extra']['psalm']['pluginClass'])
             && is_string($package['name'])
             && is_array($package['extra'])
             && is_array($package['extra']['psalm'])
@@ -60,11 +62,13 @@ final class ComposerLock
         return $ret;
     }
 
+    /** @return array{packages?: list<ComposerPackage>|scalar|null, packages-dev?: list<ComposerPackage>|scalar|null} */
     private function read(string $file_name): array
     {
         $file_contents = file_get_contents($file_name);
         assert($file_contents !== false);
 
+        /** @var array{packages?: list<ComposerPackage>|scalar|null, packages-dev?: list<ComposerPackage>|scalar|null}|scalar|null $contents */
         $contents = json_decode($file_contents, true);
 
         if ($error = json_last_error()) {
@@ -85,7 +89,6 @@ final class ComposerLock
     {
         $packages = $this->getAllPackages();
         $ret = [];
-        /** @psalm-suppress MixedAssignment */
         foreach ($packages as $package) {
             if ($this->isPlugin($package)) {
                 $ret[] = $package;
@@ -95,6 +98,7 @@ final class ComposerLock
         return $ret;
     }
 
+    /** @return list<ComposerPackage> */
     private function getAllPackages(): array
     {
         $packages = [];

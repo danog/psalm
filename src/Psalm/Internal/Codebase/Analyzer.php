@@ -1150,8 +1150,8 @@ final class Analyzer
             throw new UnexpectedValueException('non-empty node_type expected');
         }
 
-        $this->type_map[$file_path][(int)$node->getAttribute('startFilePos')] = [
-            ($parent_node ? (int)$parent_node->getAttribute('endFilePos') : (int)$node->getAttribute('endFilePos')) + 1,
+        $this->type_map[$file_path][$node->getStartFilePos()] = [
+            ($parent_node ? $parent_node->getEndFilePos() : $node->getEndFilePos()) + 1,
             $node_type,
         ];
     }
@@ -1187,8 +1187,8 @@ final class Analyzer
             throw new UnexpectedValueException('non-empty node_type expected');
         }
 
-        $this->reference_map[$file_path][(int)$node->getAttribute('startFilePos')] = [
-            (int)$node->getAttribute('endFilePos') + 1,
+        $this->reference_map[$file_path][$node->getStartFilePos()] = [
+            $node->getEndFilePos() + 1,
             $reference,
         ];
     }

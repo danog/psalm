@@ -14,6 +14,8 @@ use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
+use Psalm\Type\MutableTypeVisitor;
+use Psalm\Type\TypeVisitor;
 
 /**
  * Represents an array where the type of each value
@@ -202,33 +204,34 @@ final class TClassStringMap extends Atomic
         );
     }
 
+    #[Override]
+    public function visit(TypeVisitor $visitor): bool
+    {
+        if ($visitor->traverse($this->value_param) === false) {
+            return false;
+        }
+        return true;
+    }
+
     /**
-     * @psalm-pure
+     * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
-    protected function getChildNodeKeys(): array
+    public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        return ['value_param'];
-    }
-
-    #[Override]
-    protected function getChildNode(string $key): mixed
-    {
-        return match ($key) {
-            'value_param' => $this->value_param,
-            default => throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class),
-        };
-    }
-
-    #[Override]
-    protected function setChildNode(string $key, mixed $value): void
-    {
-        switch ($key) {
-            case 'value_param':
-                $this->value_param = $value;
-                return;
+        $value = $node->value_param;
+        $result = $visitor->traverse($value);
+        if ($value !== $node->value_param) {
+            if (!$cloned) {
+                $node = clone $node;
+                $cloned = true;
+            }
+            $node->value_param = $value;
         }
-        throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class);
+        if ($result === false) {
+            return false;
+        }
+        return true;
     }
 
     #[Override]

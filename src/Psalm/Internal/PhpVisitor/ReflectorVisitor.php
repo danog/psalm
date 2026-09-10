@@ -447,10 +447,10 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
             $this->aliases->constants_flipped,
         );
 
-        $this->file_storage->namespace_aliases[(int) $node->getAttribute('startFilePos')] = $this->aliases;
+        $this->file_storage->namespace_aliases[$node->getStartFilePos()] = $this->aliases;
 
         if ($node->stmts) {
-            $this->aliases->namespace_first_stmt_start = (int) $node->stmts[0]->getAttribute('startFilePos');
+            $this->aliases->namespace_first_stmt_start = $node->stmts[0]->getStartFilePos();
         }
     }
 
@@ -480,10 +480,10 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
         }
 
         if (!$this->aliases->uses_start) {
-            $this->aliases->uses_start = (int) $node->getAttribute('startFilePos');
+            $this->aliases->uses_start = $node->getStartFilePos();
         }
 
-        $this->aliases->uses_end = (int) $node->getAttribute('endFilePos') + 1;
+        $this->aliases->uses_end = $node->getEndFilePos() + 1;
     }
 
     private function handleGroupUse(PhpParser\Node\Stmt\GroupUse $node): void
@@ -513,10 +513,10 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
         }
 
         if (!$this->aliases->uses_start) {
-            $this->aliases->uses_start = (int) $node->getAttribute('startFilePos');
+            $this->aliases->uses_start = $node->getStartFilePos();
         }
 
-        $this->aliases->uses_end = (int) $node->getAttribute('endFilePos') + 1;
+        $this->aliases->uses_end = $node->getEndFilePos() + 1;
     }
 
     /**

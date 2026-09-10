@@ -28,8 +28,6 @@ final class OffsetShifterVisitor extends PhpParser\NodeVisitorAbstract
     #[Override]
     public function enterNode(PhpParser\Node $node): ?int
     {
-        /** @var array{startFilePos: int, endFilePos: int, startLine: int} */
-        $attrs = $node->getAttributes();
 
         if ($cs = $node->getComments()) {
             $new_comments = [];
@@ -50,18 +48,14 @@ final class OffsetShifterVisitor extends PhpParser\NodeVisitorAbstract
                 }
             }
 
-            $node->setAttribute('comments', $new_comments);
+            $node->attrs()->comments = $new_comments;
         }
 
-        $node->setAttribute(
-            'startFilePos',
-            $attrs['startFilePos'] + $this->file_offset + ($this->extra_offsets[$attrs['startFilePos']] ?? 0),
-        );
-        $node->setAttribute(
-            'endFilePos',
-            $attrs['endFilePos'] + $this->file_offset + ($this->extra_offsets[$attrs['endFilePos']] ?? 0),
-        );
-        $node->setAttribute('startLine', $attrs['startLine'] + $this->line_offset);
+        $start_file_pos = $node->getStartFilePos();
+        $end_file_pos = $node->getEndFilePos();
+        $node->attrs()->startFilePos = $start_file_pos + $this->file_offset + ($this->extra_offsets[$start_file_pos] ?? 0);
+        $node->attrs()->endFilePos = $end_file_pos + $this->file_offset + ($this->extra_offsets[$end_file_pos] ?? 0);
+        $node->attrs()->startLine = $node->getStartLine() + $this->line_offset;
 
         return null;
     }

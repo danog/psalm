@@ -796,18 +796,18 @@ final class AssertionFinder
         } elseif (self::hasCallableCheck($expr)) {
             if ($first_var_name) {
                 $if_types[$first_var_name] = [[new IsType(new TCallable())]];
-            } elseif ($expr->getArgs()[0]->value instanceof PhpParser\Node\Expr\Array_
-                && isset($expr->getArgs()[0]->value->items[0], $expr->getArgs()[0]->value->items[1])
-                && $expr->getArgs()[0]->value->items[1]->value instanceof PhpParser\Node\Scalar\String_
+            } elseif (($callable_array = $expr->getArgs()[0]->value) instanceof PhpParser\Node\Expr\Array_
+                && isset($callable_array->items[0], $callable_array->items[1])
+                && ($method_name_node = $callable_array->items[1]->value) instanceof PhpParser\Node\Scalar\String_
             ) {
                 $first_var_name_in_array_argument = ExpressionIdentifier::getExtendedVarId(
-                    $expr->getArgs()[0]->value->items[0]->value,
+                    $callable_array->items[0]->value,
                     $this_class_name,
                     $source,
                 );
                 if ($first_var_name_in_array_argument) {
                     $if_types[$first_var_name_in_array_argument] = [
-                        [new HasMethod($expr->getArgs()[0]->value->items[1]->value->value)],
+                        [new HasMethod($method_name_node->value)],
                     ];
                 }
             }
@@ -841,10 +841,10 @@ final class AssertionFinder
         } elseif ($expr->name instanceof PhpParser\Node\Name
             && strtolower($expr->name->getFirst()) === 'method_exists'
             && isset($expr->getArgs()[1])
-            && $expr->getArgs()[1]->value instanceof PhpParser\Node\Scalar\String_
+            && ($method_name_node = $expr->getArgs()[1]->value) instanceof PhpParser\Node\Scalar\String_
         ) {
             if ($first_var_name) {
-                $if_types[$first_var_name] = [[new HasMethod($expr->getArgs()[1]->value->value)]];
+                $if_types[$first_var_name] = [[new HasMethod($method_name_node->value)]];
             }
         } elseif (self::hasInArrayCheck($expr) && $source instanceof StatementsAnalyzer) {
             return self::getInarrayAssertions($expr, $source, $first_var_name);
@@ -3550,12 +3550,13 @@ final class AssertionFinder
     ): array {
         $if_types = [];
 
-        if ($expr->getArgs()[0]->value instanceof PhpParser\Node\Expr\ClassConstFetch
-            && $expr->getArgs()[0]->value->name instanceof PhpParser\Node\Identifier
-            && strtolower($expr->getArgs()[0]->value->name->name) === 'class'
-            && $expr->getArgs()[0]->value->class instanceof PhpParser\Node\Name
-            && count($expr->getArgs()[0]->value->class->getParts()) === 1
-            && strtolower($expr->getArgs()[0]->value->class->getFirst()) === 'static'
+        $first_arg_value = $expr->getArgs()[0]->value;
+        if ($first_arg_value instanceof PhpParser\Node\Expr\ClassConstFetch
+            && $first_arg_value->name instanceof PhpParser\Node\Identifier
+            && strtolower($first_arg_value->name->name) === 'class'
+            && $first_arg_value->class instanceof PhpParser\Node\Name
+            && count($first_arg_value->class->getParts()) === 1
+            && strtolower($first_arg_value->class->getFirst()) === 'static'
         ) {
             $first_var_name = '$this';
         }
@@ -3811,9 +3812,10 @@ final class AssertionFinder
                     }
                 }
 
-                if ($expr->getArgs()[0]->value instanceof PhpParser\Node\Expr\ClassConstFetch
-                    && $expr->getArgs()[0]->value->name instanceof PhpParser\Node\Identifier
-                    && $expr->getArgs()[0]->value->name->name !== 'class'
+                $first_arg_value = $expr->getArgs()[0]->value;
+                if ($first_arg_value instanceof PhpParser\Node\Expr\ClassConstFetch
+                    && $first_arg_value->name instanceof PhpParser\Node\Identifier
+                    && $first_arg_value->name->name !== 'class'
                 ) {
                     $const_type = null;
 

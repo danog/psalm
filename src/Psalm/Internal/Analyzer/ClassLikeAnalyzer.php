@@ -404,7 +404,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         Aliases $aliases,
     ): string {
         /** @var string|null */
-        $resolved_name = $class_name->getAttribute('resolvedName');
+        $resolved_name = $class_name->attrs()->resolvedName;
 
         if ($resolved_name) {
             return $resolved_name;
@@ -494,6 +494,8 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
 
     /**
      * Gets the Psalm type from a particular value
+     *
+     * @param scalar|null|array<array-key, scalar|null|array<array-key, scalar|null|array>> $value
      */
     public static function getTypeFromValue(mixed $value): Union
     {

@@ -115,15 +115,15 @@ final class FunctionDocblockManipulator
         ProjectAnalyzer $project_analyzer,
     ) {
         $docblock = $stmt->getDocComment();
-        $this->docblock_start = $docblock ? $docblock->getStartFilePos() : (int)$stmt->getAttribute('startFilePos');
-        $this->docblock_end = $function_start = (int)$stmt->getAttribute('startFilePos');
-        $function_end = (int)$stmt->getAttribute('endFilePos');
+        $this->docblock_start = $docblock ? $docblock->getStartFilePos() : $stmt->getStartFilePos();
+        $this->docblock_end = $function_start = $stmt->getStartFilePos();
+        $function_end = $stmt->getEndFilePos();
 
         $attributes = $stmt->getAttrGroups();
         foreach ($attributes as $attribute) {
             // if we have attribute groups, we need to consider that the function starts after them
-            if ((int) $attribute->getAttribute('endFilePos') > $function_start) {
-                $function_start = (int) $attribute->getAttribute('endFilePos');
+            if ($attribute->getEndFilePos() > $function_start) {
+                $function_start = $attribute->getEndFilePos();
             }
         }
 
@@ -131,12 +131,12 @@ final class FunctionDocblockManipulator
             if ($param->var instanceof PhpParser\Node\Expr\Variable
                 && is_string($param->var->name)
             ) {
-                $this->param_offsets[$param->var->name] = (int) $param->getAttribute('startFilePos');
+                $this->param_offsets[$param->var->name] = $param->getStartFilePos();
 
                 if ($param->type) {
                     $this->param_typehint_offsets[$param->var->name] = [
-                        (int) $param->type->getAttribute('startFilePos'),
-                        (int) $param->type->getAttribute('endFilePos') + 1,
+                        $param->type->getStartFilePos(),
+                        $param->type->getEndFilePos() + 1,
                     ];
                 }
             }
@@ -147,11 +147,11 @@ final class FunctionDocblockManipulator
         $file_contents = $codebase->getFileContents($file_path);
 
         $last_arg_position = $stmt->params
-            ? (int) $stmt->params[count($stmt->params) - 1]->getAttribute('endFilePos') + 1
+            ? $stmt->params[count($stmt->params) - 1]->getEndFilePos() + 1
             : null;
 
         if ($stmt instanceof Closure && $stmt->uses) {
-            $last_arg_position = (int) $stmt->uses[count($stmt->uses) - 1]->getAttribute('endFilePos') + 1;
+            $last_arg_position = $stmt->uses[count($stmt->uses) - 1]->getEndFilePos() + 1;
         }
 
         $end_bracket_position = (int) strpos($file_contents, ')', $last_arg_position ?: $function_start);

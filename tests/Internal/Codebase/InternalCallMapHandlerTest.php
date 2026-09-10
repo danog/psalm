@@ -484,7 +484,9 @@ final class InternalCallMapHandlerTest extends TestCase
                     return new ReflectionMethod($functionName);
                 }
 
-                return ReflectionMethod::createFromMethodName($functionName);
+                /** @var ReflectionMethod $method */
+                $method = ReflectionMethod::createFromMethodName($functionName);
+                return $method;
             }
 
             /** @var callable-string $functionName */

@@ -735,7 +735,7 @@ final class InstancePropertyAssignmentAnalyzer
         );
 
         if ($var_id) {
-            $context->assigned_var_ids[$var_id] = (int)$stmt->var->getAttribute('startFilePos');
+            $context->assigned_var_ids[$var_id] = $stmt->var->getStartFilePos();
 
             if ($direct_assignment && isset($context->protected_var_ids[$var_id])) {
                 IssueBuffer::maybeAdd(
@@ -1473,8 +1473,8 @@ final class InstancePropertyAssignmentAnalyzer
             if ($declaring_property_id === $original_property_id) {
                 $file_manipulations = [
                     new FileManipulation(
-                        (int)$stmt->name->getAttribute('startFilePos'),
-                        (int)$stmt->name->getAttribute('endFilePos') + 1,
+                        $stmt->name->getStartFilePos(),
+                        $stmt->name->getEndFilePos() + 1,
                         $new_property_name,
                     ),
                 ];

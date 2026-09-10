@@ -268,7 +268,7 @@ final class ExpressionScanner
                 && strtolower($first_arg->name->name) === 'class'
             ) {
                 /** @var string */
-                $first_arg_value = $first_arg->class->getAttribute('resolvedName');
+                $first_arg_value = $first_arg->class->attrs()->resolvedName;
             } else {
                 $first_arg_value = null;
             }
@@ -281,7 +281,7 @@ final class ExpressionScanner
                 && strtolower($second_arg->name->name) === 'class'
             ) {
                 /** @var string */
-                $second_arg_value = $second_arg->class->getAttribute('resolvedName');
+                $second_arg_value = $second_arg->class->attrs()->resolvedName;
             } else {
                 $second_arg_value = null;
             }

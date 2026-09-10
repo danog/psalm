@@ -90,7 +90,7 @@ final class MatchAnalyzer
                 $first_arg = $stmt->cond->getArgs()[0];
 
                 if (!$first_arg->value instanceof PhpParser\Node\Expr\Variable) {
-                    $switch_var_id = '$__tmp_switch__' . (int) $first_arg->value->getAttribute('startFilePos');
+                    $switch_var_id = '$__tmp_switch__' . $first_arg->value->getStartFilePos();
 
                     $condition_type = $statements_analyzer->node_data->getType($first_arg->value) ?? Type::getMixed();
 
@@ -122,7 +122,7 @@ final class MatchAnalyzer
             ) {
                 // do nothing
             } else {
-                $switch_var_id = '$__tmp_switch__' . (int) $stmt->cond->getAttribute('startFilePos');
+                $switch_var_id = '$__tmp_switch__' . $stmt->cond->getStartFilePos();
 
                 $condition_type = $statements_analyzer->node_data->getType($stmt->cond) ?? Type::getMixed();
 
@@ -320,12 +320,12 @@ final class MatchAnalyzer
 
     /**
      * @param non-empty-list<PhpParser\Node\Expr> $conds
-     * @param array<string, mixed> $attributes
+     * @param PhpParser\NodeAttributes $attributes
      */
     private static function convertCondsToConditional(
         array $conds,
         PhpParser\Node\Expr $match_condition,
-        array $attributes,
+        PhpParser\NodeAttributes $attributes,
     ): PhpParser\Node\Expr {
         if (count($conds) === 1) {
             return new VirtualIdentical(

@@ -28,7 +28,7 @@ final class CloningVisitor extends NodeVisitorAbstract
                 $comments[$i] = clone $comment;
             }
 
-            $node->setAttribute('comments', $comments);
+            $node->attrs()->comments = $comments;
         }
 
         return $node;

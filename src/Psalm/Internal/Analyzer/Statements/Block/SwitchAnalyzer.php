@@ -56,7 +56,7 @@ final class SwitchAnalyzer
                 || $stmt->cond instanceof PhpParser\Node\Expr\StaticCall
             )
         ) {
-            $switch_var_id = '$__tmp_switch__' . (int) $stmt->cond->getAttribute('startFilePos');
+            $switch_var_id = '$__tmp_switch__' . $stmt->cond->getStartFilePos();
 
             $condition_type = $statements_analyzer->node_data->getType($stmt->cond) ?? Type::getMixed();
 
@@ -203,7 +203,7 @@ final class SwitchAnalyzer
                 }
             }
 
-            $stmt->setAttribute('allMatched', true);
+            $stmt->attrs()->allMatched = true;
         } elseif ($switch_scope->possibly_redefined_vars) {
             foreach ($switch_scope->possibly_redefined_vars as $var_id => $type) {
                 if (isset($context->vars_in_scope[$var_id])) {

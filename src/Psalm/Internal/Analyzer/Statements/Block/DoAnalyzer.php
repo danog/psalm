@@ -41,7 +41,7 @@ final class DoAnalyzer
         $codebase = $statements_analyzer->getCodebase();
 
         if ($codebase->alter_code && $do_context->branch_point === null) {
-            $do_context->branch_point = (int) $stmt->getAttribute('startFilePos');
+            $do_context->branch_point = $stmt->getStartFilePos();
         }
 
         $loop_scope = new LoopScope($do_context, $context);

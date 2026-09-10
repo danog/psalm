@@ -733,7 +733,7 @@ final class NewAnalyzer extends CallAnalyzer
         }
 
         if ($storage->isExternalMutationFree()) {
-            $stmt->setAttribute('external_mutation_free', true);
+            $stmt->attrs()->external_mutation_free = true;
             $stmt_type = $statements_analyzer->node_data->getType($stmt);
 
             if ($stmt_type) {

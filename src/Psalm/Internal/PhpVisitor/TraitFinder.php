@@ -39,7 +39,7 @@ final class TraitFinder extends PhpParser\NodeVisitorAbstract
     {
         if ($node instanceof PhpParser\Node\Stmt\Trait_) {
             /** @var ?string */
-            $resolved_name = $node->getAttribute('resolvedName');
+            $resolved_name = $node->attrs()->resolvedName;
 
             if ($resolved_name === null) {
                 // compare ends of names, a temporary hack because PHPParser caches

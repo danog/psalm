@@ -56,7 +56,29 @@ final class IssueData
     /**
      * All properties by name (the report formats' view of an issue).
      *
-     * @return array<string, mixed>
+     * @return array{
+     *     severity: self::SEVERITY_*,
+     *     line_from: int,
+     *     line_to: int,
+     *     type: string,
+     *     message: string,
+     *     file_name: string,
+     *     file_path: string,
+     *     snippet: string,
+     *     selected_text: string,
+     *     from: int,
+     *     to: int,
+     *     snippet_from: int,
+     *     snippet_to: int,
+     *     column_from: int,
+     *     column_to: int,
+     *     shortcode: int,
+     *     error_level: int,
+     *     taint_trace: ?list<DataFlowNodeData|array{label: string, entry_path_type: string}>,
+     *     other_references: ?list<DataFlowNodeData>,
+     *     dupe_key: ?string,
+     *     link: string,
+     * }
      */
     public function toArray(): array
     {

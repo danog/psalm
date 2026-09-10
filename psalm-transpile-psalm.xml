@@ -27,6 +27,7 @@
             <directory name="vendor/amphp"/>
             <directory name="vendor/symfony"/>
             <directory name="vendor/composer"/>
+            <directory name="vendor/nikic"/>
             <directory name="vendor/phpunit"/>
         </ignoreFiles>
     </projectFiles>

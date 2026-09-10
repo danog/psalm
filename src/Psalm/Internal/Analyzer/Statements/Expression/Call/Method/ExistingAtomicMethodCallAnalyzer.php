@@ -488,8 +488,8 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                 if ($declaring_method_id && (strtolower((string) $declaring_method_id)) === $original_method_id) {
                     $file_manipulations = [
                         new FileManipulation(
-                            (int) $stmt_name->getAttribute('startFilePos'),
-                            (int) $stmt_name->getAttribute('endFilePos') + 1,
+                            $stmt_name->getStartFilePos(),
+                            $stmt_name->getEndFilePos() + 1,
                             $new_method_name,
                         ),
                     ];

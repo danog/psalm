@@ -127,7 +127,7 @@ final class NamedFunctionCallHandler
                     && $first_arg->value->name instanceof PhpParser\Node\Identifier
                     && $first_arg->value->name->name === 'class'
                 ) {
-                    $resolved_name = (string) $first_arg->value->class->getAttribute('resolvedName');
+                    $resolved_name = (string) $first_arg->value->class->attrs()->resolvedName;
 
                     if (!$codebase->classlikes->classExists($resolved_name, null, $context)) {
                         $context->phantom_classes[strtolower($resolved_name)] = true;
@@ -149,7 +149,7 @@ final class NamedFunctionCallHandler
                     && $first_arg->value->name instanceof PhpParser\Node\Identifier
                     && $first_arg->value->name->name === 'class'
                 ) {
-                    $resolved_name = (string) $first_arg->value->class->getAttribute('resolvedName');
+                    $resolved_name = (string) $first_arg->value->class->attrs()->resolvedName;
 
                     if (!$codebase->classlikes->interfaceExists($resolved_name, null, $context)) {
                         $context->phantom_classes[strtolower($resolved_name)] = true;
@@ -171,7 +171,7 @@ final class NamedFunctionCallHandler
                     && $first_arg->value->name instanceof PhpParser\Node\Identifier
                     && $first_arg->value->name->name === 'class'
                 ) {
-                    $resolved_name = (string) $first_arg->value->class->getAttribute('resolvedName');
+                    $resolved_name = (string) $first_arg->value->class->attrs()->resolvedName;
 
                     if (!$codebase->classlikes->enumExists($resolved_name)) {
                         $context->phantom_classes[strtolower($resolved_name)] = true;
@@ -325,7 +325,7 @@ final class NamedFunctionCallHandler
                             }
 
                             $context->vars_in_scope[$var_id] = $type;
-                            $context->assigned_var_ids[$var_id] = (int) $stmt->getAttribute('startFilePos');
+                            $context->assigned_var_ids[$var_id] = $stmt->getStartFilePos();
                         }
 
                         if (!isset($array_type->fallback_params)) {
@@ -363,7 +363,7 @@ final class NamedFunctionCallHandler
                 ]);
 
                 $context->vars_in_scope[$var_id] = $mixed_type;
-                $context->assigned_var_ids[$var_id] = (int) $stmt->getAttribute('startFilePos');
+                $context->assigned_var_ids[$var_id] = $stmt->getStartFilePos();
                 $context->possibly_assigned_var_ids[$var_id] = true;
             }
 

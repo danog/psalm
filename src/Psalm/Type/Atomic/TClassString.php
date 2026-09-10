@@ -19,6 +19,8 @@ use function preg_replace;
 use function str_contains;
 use function stripos;
 use function strtolower;
+use Psalm\Type\MutableTypeVisitor;
+use Psalm\Type\TypeVisitor;
 
 /**
  * Denotes the `class-string` type, used to describe a string representing a valid PHP class.
@@ -145,29 +147,35 @@ class TClassString extends TString
     }
 
     #[Override]
-    protected function getChildNodeKeys(): array
+    public function visit(TypeVisitor $visitor): bool
     {
-        return $this->as_type ? ['as_type'] : [];
-    }
-
-    #[Override]
-    protected function getChildNode(string $key): mixed
-    {
-        return match ($key) {
-            'as_type' => $this->as_type,
-            default => throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class),
-        };
-    }
-
-    #[Override]
-    protected function setChildNode(string $key, mixed $value): void
-    {
-        switch ($key) {
-            case 'as_type':
-                $this->as_type = $value;
-                return;
+        if ($this->as_type !== null && $visitor->traverse($this->as_type) === false) {
+            return false;
         }
-        throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class);
+        return true;
+    }
+
+    /**
+     * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
+     */
+    #[Override]
+    public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
+    {
+        if ($node->as_type !== null) {
+            $value = $node->as_type;
+            $result = $visitor->traverse($value);
+            if ($value !== $node->as_type) {
+                if (!$cloned) {
+                    $node = clone $node;
+                    $cloned = true;
+                }
+                $node->as_type = $value;
+            }
+            if ($result === false) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

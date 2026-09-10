@@ -199,37 +199,8 @@ final class Union implements TypeNode
      */
     public function __unserialize(array $properties): void
     {
-        /** @psalm-suppress PossiblyUndefinedStringArrayOffset */
-        $this->types = $properties["\0" . self::class . "\0" . 'types'];
-        $this->from_docblock = $properties['from_docblock'];
-        $this->from_calculation = $properties['from_calculation'];
-        $this->from_property = $properties['from_property'];
-        $this->from_static_property = $properties['from_static_property'];
-        $this->initialized = $properties['initialized'];
-        $this->initialized_class = $properties['initialized_class'];
-        $this->checked = $properties['checked'];
-        $this->failed_reconciliation = $properties['failed_reconciliation'];
-        $this->ignore_nullable_issues = $properties['ignore_nullable_issues'];
-        $this->ignore_falsable_issues = $properties['ignore_falsable_issues'];
-        $this->ignore_isset = $properties['ignore_isset'];
-        $this->possibly_undefined = $properties['possibly_undefined'];
-        $this->possibly_undefined_from_try = $properties['possibly_undefined_from_try'];
-        $this->explicit_never = $properties['explicit_never'];
-        $this->had_template = $properties['had_template'];
-        $this->from_template_default = $properties['from_template_default'];
-        $this->literal_string_types = $properties["\0" . self::class . "\0" . 'literal_string_types'];
-        $this->typed_class_strings = $properties["\0" . self::class . "\0" . 'typed_class_strings'];
-        $this->literal_int_types = $properties["\0" . self::class . "\0" . 'literal_int_types'];
-        $this->literal_float_types = $properties["\0" . self::class . "\0" . 'literal_float_types'];
-        $this->by_ref = $properties['by_ref'];
-        $this->reference_free = $properties['reference_free'];
-        $this->allow_mutations = $properties['allow_mutations'];
-        $this->has_mutations = $properties['has_mutations'];
-        $this->id = $properties["\0" . self::class . "\0" . 'id'];
-        $this->exact_id = $properties["\0" . self::class . "\0" . 'exact_id'];
-        $this->parent_nodes = $properties['parent_nodes'];
-        $this->propagate_parent_nodes = $properties['propagate_parent_nodes'];
-        $this->different = $properties['different'];
+        // objects are never unserialized in the compiled program; property names cannot be looked up dynamically
+        throw new \LogicException('Unserialization of ' . self::class . ' is not supported');
     }
 
     /**

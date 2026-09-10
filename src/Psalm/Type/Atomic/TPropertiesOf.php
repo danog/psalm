@@ -7,6 +7,8 @@ namespace Psalm\Type\Atomic;
 use Override;
 use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type\Atomic;
+use Psalm\Type\MutableTypeVisitor;
+use Psalm\Type\TypeVisitor;
 
 /**
  * Type that resolves to a keyed-array with properties of a class as keys and
@@ -78,33 +80,34 @@ final class TPropertiesOf extends Atomic
         };
     }
 
+    #[Override]
+    public function visit(TypeVisitor $visitor): bool
+    {
+        if ($visitor->traverse($this->classlike_type) === false) {
+            return false;
+        }
+        return true;
+    }
+
     /**
-     * @psalm-pure
+     * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
-    protected function getChildNodeKeys(): array
+    public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        return ['classlike_type'];
-    }
-
-    #[Override]
-    protected function getChildNode(string $key): mixed
-    {
-        return match ($key) {
-            'classlike_type' => $this->classlike_type,
-            default => throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class),
-        };
-    }
-
-    #[Override]
-    protected function setChildNode(string $key, mixed $value): void
-    {
-        switch ($key) {
-            case 'classlike_type':
-                $this->classlike_type = $value;
-                return;
+        $value = $node->classlike_type;
+        $result = $visitor->traverse($value);
+        if ($value !== $node->classlike_type) {
+            if (!$cloned) {
+                $node = clone $node;
+                $cloned = true;
+            }
+            $node->classlike_type = $value;
         }
-        throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class);
+        if ($result === false) {
+            return false;
+        }
+        return true;
     }
 
     #[Override]

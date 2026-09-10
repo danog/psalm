@@ -169,7 +169,7 @@ final class HighOrderFunctionArgHandler
 
         try {
             if ($input_arg_expr instanceof PhpParser\Node\Expr\FuncCall) {
-                $function_id = strtolower((string) $input_arg_expr->name->getAttribute('resolvedName'));
+                $function_id = strtolower((string) $input_arg_expr->name->attrs()->resolvedName);
 
                 if (empty($function_id)) {
                     return null;
@@ -222,7 +222,7 @@ final class HighOrderFunctionArgHandler
                 $input_arg_expr->name instanceof PhpParser\Node\Identifier
             ) {
                 $method_id = new MethodIdentifier(
-                    (string)$input_arg_expr->class->getAttribute('resolvedName'),
+                    (string)$input_arg_expr->class->attrs()->resolvedName,
                     strtolower($input_arg_expr->name->toString()),
                 );
 
@@ -250,7 +250,7 @@ final class HighOrderFunctionArgHandler
                 $input_arg_expr->name instanceof PhpParser\Node\Identifier
             ) {
                 $storage = $codebase->classlikes
-                    ->getStorageFor((string)$input_arg_expr->class->getAttribute('resolvedName'));
+                    ->getStorageFor((string)$input_arg_expr->class->attrs()->resolvedName);
 
                 $constant = null !== $storage
                     ? $storage->constants[$input_arg_expr->name->toString()] ?? null
@@ -265,7 +265,7 @@ final class HighOrderFunctionArgHandler
                 $input_arg_expr->class instanceof PhpParser\Node\Name
             ) {
                 $class_storage = $codebase->classlikes
-                    ->getStorageFor((string) $input_arg_expr->class->getAttribute('resolvedName'));
+                    ->getStorageFor((string) $input_arg_expr->class->attrs()->resolvedName);
 
                 $invoke_storage = $class_storage && isset($class_storage->methods['__invoke'])
                     ? $class_storage->methods['__invoke']

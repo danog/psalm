@@ -172,7 +172,7 @@ final class AssignmentAnalyzer
 
         if ($extended_var_id) {
             unset($context->cond_referenced_var_ids[$extended_var_id]);
-            $context->assigned_var_ids[$extended_var_id] = (int) $assign_var->getAttribute('startFilePos');
+            $context->assigned_var_ids[$extended_var_id] = $assign_var->getStartFilePos();
             $context->possibly_assigned_var_ids[$extended_var_id] = true;
         }
 
@@ -1156,7 +1156,7 @@ final class AssignmentAnalyzer
                 }
             }
 
-            $context->assigned_var_ids[$var_id] = (int) $stmt->getAttribute('startFilePos');
+            $context->assigned_var_ids[$var_id] = $stmt->getStartFilePos();
 
             $context->vars_in_scope[$var_id] = $by_ref_out_type;
 
@@ -1389,7 +1389,7 @@ final class AssignmentAnalyzer
 
                 if ($list_var_id) {
                     $context->vars_possibly_in_scope[$list_var_id] = true;
-                    $context->assigned_var_ids[$list_var_id] = (int)$var->getAttribute('startFilePos');
+                    $context->assigned_var_ids[$list_var_id] = $var->getStartFilePos();
                     $context->possibly_assigned_var_ids[$list_var_id] = true;
 
                     $already_in_scope = isset($context->vars_in_scope[$list_var_id]);

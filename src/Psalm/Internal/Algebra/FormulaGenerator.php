@@ -447,9 +447,8 @@ final class FormulaGenerator
             return $clauses;
         }
 
-        /** @psalm-suppress MixedOperand */
-        $conditional_ref = '*' . $conditional->getAttribute('startFilePos')
-            . ':' . $conditional->getAttribute('endFilePos');
+        $conditional_ref = '*' . $conditional->getStartFilePos()
+            . ':' . $conditional->getEndFilePos();
 
         return [
             new Clause(

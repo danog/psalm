@@ -17,6 +17,8 @@ use function array_keys;
 use function array_map;
 use function count;
 use function implode;
+use Psalm\Type\MutableTypeVisitor;
+use Psalm\Type\TypeVisitor;
 
 /**
  * Denotes an object with specified member variables e.g. `object{foo:int, bar:string}`.
@@ -304,37 +306,72 @@ final class TObjectWithProperties extends TObject
         );
     }
 
+    #[Override]
+    public function visit(TypeVisitor $visitor): bool
+    {
+        foreach ($this->properties as $child) {
+            if ($visitor->traverse($child) === false) {
+                return false;
+            }
+        }
+        foreach ($this->extra_types as $child) {
+            if ($visitor->traverse($child) === false) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /**
-     * @psalm-pure
+     * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
-    protected function getChildNodeKeys(): array
+    public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        return ['properties', 'extra_types'];
-    }
-
-    #[Override]
-    protected function getChildNode(string $key): mixed
-    {
-        return match ($key) {
-            'properties' => $this->properties,
-            'extra_types' => $this->extra_types,
-            default => throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class),
-        };
-    }
-
-    #[Override]
-    protected function setChildNode(string $key, mixed $value): void
-    {
-        switch ($key) {
-            case 'properties':
-                $this->properties = $value;
-                return;
-            case 'extra_types':
-                $this->extra_types = $value;
-                return;
+        $values = $node->properties;
+        $changed = false;
+        $result = true;
+        foreach ($values as &$child) {
+            $child_orig = $child;
+            $result = $visitor->traverse($child);
+            $changed = $changed || $child !== $child_orig;
         }
-        throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class);
+        unset($child);
+        if ($changed) {
+            if (!$cloned) {
+                $node = clone $node;
+                $cloned = true;
+            }
+            $node->properties = $values;
+        }
+        if ($result === false) {
+            return false;
+        }
+        $values = $node->extra_types;
+        $changed = false;
+        $result = true;
+        foreach ($values as &$child) {
+            $child_orig = $child;
+            $result = $visitor->traverse($child);
+            $changed = $changed || $child !== $child_orig;
+        }
+        unset($child);
+        if ($changed) {
+            if (!$cloned) {
+                $node = clone $node;
+                $cloned = true;
+            }
+            $rekeyed = [];
+            foreach ($values as $child) {
+                $rekeyed[$child->getKey()] = $child;
+            }
+            $values = $rekeyed;
+            $node->extra_types = $values;
+        }
+        if ($result === false) {
+            return false;
+        }
+        return true;
     }
 
     #[Override]

@@ -71,8 +71,8 @@ trait CanAlias
                 case PhpParser\Node\Stmt\Use_::TYPE_NORMAL:
                     $codebase->analyzer->addOffsetReference(
                         $this->getFilePath(),
-                        (int) $use->getAttribute('startFilePos'),
-                        (int) $use->getAttribute('endFilePos'),
+                        $use->getStartFilePos(),
+                        $use->getEndFilePos(),
                         $use_path,
                     );
                     if ($codebase->collect_locations) {
@@ -88,8 +88,8 @@ trait CanAlias
                             $file_manipulations = [];
 
                             $file_manipulations[] = new FileManipulation(
-                                (int) $use->getAttribute('startFilePos'),
-                                (int) $use->getAttribute('endFilePos') + 1,
+                                $use->getStartFilePos(),
+                                $use->getEndFilePos() + 1,
                                 $new_fq_class_name . ($use->alias ? ' as ' . $use_alias : ''),
                             );
 

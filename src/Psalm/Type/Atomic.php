@@ -660,26 +660,6 @@ abstract class Atomic implements TypeNode, Stringable
     #[Override]
     public function visit(TypeVisitor $visitor): bool
     {
-        foreach ($this->getChildNodeKeys() as $key) {
-            /** @psalm-suppress MixedAssignment */
-            $value = $this->getChildNode($key);
-            if (is_array($value)) {
-                /** @psalm-suppress MixedAssignment */
-                foreach ($value as $type) {
-                    if (!$type instanceof TypeNode) {
-                        continue;
-                    }
-
-                    if ($visitor->traverse($type) === false) {
-                        return false;
-                    }
-                }
-            } elseif ($value instanceof TypeNode) {
-                if ($visitor->traverse($value) === false) {
-                    return false;
-                }
-            }
-        }
         return true;
     }
 
@@ -689,78 +669,7 @@ abstract class Atomic implements TypeNode, Stringable
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        foreach ($node->getChildNodeKeys() as $key) {
-            /** @psalm-suppress MixedAssignment */
-            $value = $node->getChildNode($key);
-            $result = true;
-            if (is_array($value)) {
-                $changed = false;
-                /** @psalm-suppress MixedAssignment */
-                foreach ($value as &$type) {
-                    if (!$type instanceof TypeNode) {
-                        continue;
-                    }
-
-                    $type_orig = $type;
-                    $result = $visitor->traverse($type);
-                    $changed = $changed || $type !== $type_orig;
-                }
-                unset($type);
-            } elseif ($value instanceof TypeNode) {
-                $value_orig = $value;
-                $result = $visitor->traverse($value);
-                $changed = $value !== $value_orig;
-            } else {
-                continue;
-            }
-
-            if ($changed) {
-                if (!$cloned) {
-                    $node = clone $node;
-                    $cloned = true;
-                }
-                if ($key === 'extra_types') {
-                    /** @var array<Atomic> $value */
-                    $new = [];
-                    foreach ($value as $type) {
-                        $new[$type->getKey()] = $type;
-                    }
-                    $value = $new;
-                }
-                $node->setChildNode($key, $value);
-            }
-            if ($result === false) {
-                return false;
-            }
-        }
         return true;
-    }
-
-    /**
-     * @return list<string>
-     * @psalm-pure
-     */
-    protected function getChildNodeKeys(): array
-    {
-        return [];
-    }
-
-    /**
-     * The child node (or list of child nodes) with the given key (one of getChildNodeKeys()).
-     *
-     * @psalm-mutation-free
-     */
-    protected function getChildNode(string $key): mixed
-    {
-        throw new UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class);
-    }
-
-    /**
-     * @psalm-external-mutation-free
-     */
-    protected function setChildNode(string $key, mixed $value): void
-    {
-        throw new UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class);
     }
 
     #[Override]

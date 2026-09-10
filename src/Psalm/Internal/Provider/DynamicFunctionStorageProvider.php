@@ -74,7 +74,7 @@ final class DynamicFunctionStorageProvider
 
         $dynamic_storage_id = strtolower($statements_analyzer->getFilePath())
             . ':' . $stmt->getLine()
-            . ':' . (int)$stmt->getAttribute('startFilePos')
+            . ':' . $stmt->getStartFilePos()
             . ':dynamic-storage'
             . ':-:' . strtolower($function_id);
 

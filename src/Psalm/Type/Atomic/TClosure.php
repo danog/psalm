@@ -12,6 +12,8 @@ use Psalm\Storage\FunctionLikeParameter;
 use Psalm\Storage\Mutations;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
+use Psalm\Type\MutableTypeVisitor;
+use Psalm\Type\TypeVisitor;
 
 /**
  * Represents a closure where we know the return type and params
@@ -141,32 +143,91 @@ final class TClosure extends TNamedObject
     }
 
     #[Override]
-    protected function getChildNodeKeys(): array
+    public function visit(TypeVisitor $visitor): bool
     {
-        return [...parent::getChildNodeKeys(), ...$this->getCallableChildNodeKeys()];
-    }
-
-    #[Override]
-    protected function getChildNode(string $key): mixed
-    {
-        return match ($key) {
-            'params' => $this->params,
-            'return_type' => $this->return_type,
-            default => parent::getChildNode($key),
-        };
-    }
-
-    #[Override]
-    protected function setChildNode(string $key, mixed $value): void
-    {
-        switch ($key) {
-            case 'params':
-                $this->params = $value;
-                return;
-            case 'return_type':
-                $this->return_type = $value;
-                return;
+        if ($this->params !== null) {
+            foreach ($this->params as $child) {
+                if ($visitor->traverse($child) === false) {
+                    return false;
+                }
+            }
         }
-        parent::setChildNode($key, $value);
+        if ($this->return_type !== null && $visitor->traverse($this->return_type) === false) {
+            return false;
+        }
+        foreach ($this->extra_types as $child) {
+            if ($visitor->traverse($child) === false) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
+     */
+    #[Override]
+    public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
+    {
+        if ($node->params !== null) {
+            $values = $node->params;
+            $changed = false;
+            $result = true;
+            foreach ($values as &$child) {
+                $child_orig = $child;
+                $result = $visitor->traverse($child);
+                $changed = $changed || $child !== $child_orig;
+            }
+            unset($child);
+            if ($changed) {
+                if (!$cloned) {
+                    $node = clone $node;
+                    $cloned = true;
+                }
+                $node->params = $values;
+            }
+            if ($result === false) {
+                return false;
+            }
+        }
+        if ($node->return_type !== null) {
+            $value = $node->return_type;
+            $result = $visitor->traverse($value);
+            if ($value !== $node->return_type) {
+                if (!$cloned) {
+                    $node = clone $node;
+                    $cloned = true;
+                }
+                $node->return_type = $value;
+            }
+            if ($result === false) {
+                return false;
+            }
+        }
+        $values = $node->extra_types;
+        $changed = false;
+        $result = true;
+        foreach ($values as &$child) {
+            $child_orig = $child;
+            $result = $visitor->traverse($child);
+            $changed = $changed || $child !== $child_orig;
+        }
+        unset($child);
+        if ($changed) {
+            if (!$cloned) {
+                $node = clone $node;
+                $cloned = true;
+            }
+            $rekeyed = [];
+            foreach ($values as $child) {
+                $rekeyed[$child->getKey()] = $child;
+            }
+            $values = $rekeyed;
+            $node->extra_types = $values;
+        }
+        if ($result === false) {
+            return false;
+        }
+        return true;
     }
 }

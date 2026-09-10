@@ -14,6 +14,8 @@ use Psalm\Type\Union;
 use function array_map;
 use function array_values;
 use function assert;
+use Psalm\Type\MutableTypeVisitor;
+use Psalm\Type\TypeVisitor;
 
 /**
  * Represents a value of an array or enum.
@@ -55,33 +57,34 @@ final class TValueOf extends Atomic
         ));
     }
 
+    #[Override]
+    public function visit(TypeVisitor $visitor): bool
+    {
+        if ($visitor->traverse($this->type) === false) {
+            return false;
+        }
+        return true;
+    }
+
     /**
-     * @psalm-pure
+     * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
-    protected function getChildNodeKeys(): array
+    public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        return ['type'];
-    }
-
-    #[Override]
-    protected function getChildNode(string $key): mixed
-    {
-        return match ($key) {
-            'type' => $this->type,
-            default => throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class),
-        };
-    }
-
-    #[Override]
-    protected function setChildNode(string $key, mixed $value): void
-    {
-        switch ($key) {
-            case 'type':
-                $this->type = $value;
-                return;
+        $value = $node->type;
+        $result = $visitor->traverse($value);
+        if ($value !== $node->type) {
+            if (!$cloned) {
+                $node = clone $node;
+                $cloned = true;
+            }
+            $node->type = $value;
         }
-        throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class);
+        if ($result === false) {
+            return false;
+        }
+        return true;
     }
 
 

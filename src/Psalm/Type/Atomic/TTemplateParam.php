@@ -13,6 +13,8 @@ use Psalm\Type\Union;
 
 use function array_map;
 use function implode;
+use Psalm\Type\MutableTypeVisitor;
+use Psalm\Type\TypeVisitor;
 
 /**
  * denotes a template parameter that has been previously specified in a `@template` tag.
@@ -129,37 +131,63 @@ final class TTemplateParam extends Atomic
         return $this->param_name . $intersection_types;
     }
 
+    #[Override]
+    public function visit(TypeVisitor $visitor): bool
+    {
+        if ($visitor->traverse($this->as) === false) {
+            return false;
+        }
+        foreach ($this->extra_types as $child) {
+            if ($visitor->traverse($child) === false) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /**
-     * @psalm-pure
+     * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
-    protected function getChildNodeKeys(): array
+    public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        return ['as', 'extra_types'];
-    }
-
-    #[Override]
-    protected function getChildNode(string $key): mixed
-    {
-        return match ($key) {
-            'as' => $this->as,
-            'extra_types' => $this->extra_types,
-            default => throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class),
-        };
-    }
-
-    #[Override]
-    protected function setChildNode(string $key, mixed $value): void
-    {
-        switch ($key) {
-            case 'as':
-                $this->as = $value;
-                return;
-            case 'extra_types':
-                $this->extra_types = $value;
-                return;
+        $value = $node->as;
+        $result = $visitor->traverse($value);
+        if ($value !== $node->as) {
+            if (!$cloned) {
+                $node = clone $node;
+                $cloned = true;
+            }
+            $node->as = $value;
         }
-        throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class);
+        if ($result === false) {
+            return false;
+        }
+        $values = $node->extra_types;
+        $changed = false;
+        $result = true;
+        foreach ($values as &$child) {
+            $child_orig = $child;
+            $result = $visitor->traverse($child);
+            $changed = $changed || $child !== $child_orig;
+        }
+        unset($child);
+        if ($changed) {
+            if (!$cloned) {
+                $node = clone $node;
+                $cloned = true;
+            }
+            $rekeyed = [];
+            foreach ($values as $child) {
+                $rekeyed[$child->getKey()] = $child;
+            }
+            $values = $rekeyed;
+            $node->extra_types = $values;
+        }
+        if ($result === false) {
+            return false;
+        }
+        return true;
     }
 
     /**

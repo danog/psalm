@@ -67,7 +67,7 @@ final class TryAnalyzer
         $try_context = clone $context;
 
         if ($codebase->alter_code && $try_context->branch_point === null) {
-            $try_context->branch_point = (int) $stmt->getAttribute('startFilePos');
+            $try_context->branch_point = $stmt->getStartFilePos();
         }
 
         if ($stmt->finally) {

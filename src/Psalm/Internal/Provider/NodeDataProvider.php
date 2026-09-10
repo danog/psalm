@@ -131,7 +131,7 @@ final class NodeDataProvider implements NodeTypeProvider
     {
         $node_type = $this->getType($node);
 
-        return ($node_type && $node_type->reference_free) || $node->getAttribute('pure', false);
+        return ($node_type && $node_type->reference_free) || ($node->attrs()->pure ?? false);
     }
 
     public function clearNodeOfTypeAndAssertions(Expr $node): void

@@ -11,6 +11,8 @@ use Psalm\Internal\Type\TemplateResult;
 use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
+use Psalm\Type\MutableTypeVisitor;
+use Psalm\Type\TypeVisitor;
 
 /**
  * Internal representation of a conditional return type in phpdoc. For example ($param1 is int ? int : string)
@@ -113,41 +115,64 @@ final class TConditional extends Atomic
         return '';
     }
 
+    #[Override]
+    public function visit(TypeVisitor $visitor): bool
+    {
+        if ($visitor->traverse($this->conditional_type) === false) {
+            return false;
+        }
+        if ($visitor->traverse($this->if_type) === false) {
+            return false;
+        }
+        if ($visitor->traverse($this->else_type) === false) {
+            return false;
+        }
+        return true;
+    }
+
     /**
-     * @psalm-pure
+     * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
-    protected function getChildNodeKeys(): array
+    public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        return ['conditional_type', 'if_type', 'else_type'];
-    }
-
-    #[Override]
-    protected function getChildNode(string $key): mixed
-    {
-        return match ($key) {
-            'conditional_type' => $this->conditional_type,
-            'if_type' => $this->if_type,
-            'else_type' => $this->else_type,
-            default => throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class),
-        };
-    }
-
-    #[Override]
-    protected function setChildNode(string $key, mixed $value): void
-    {
-        switch ($key) {
-            case 'conditional_type':
-                $this->conditional_type = $value;
-                return;
-            case 'if_type':
-                $this->if_type = $value;
-                return;
-            case 'else_type':
-                $this->else_type = $value;
-                return;
+        $value = $node->conditional_type;
+        $result = $visitor->traverse($value);
+        if ($value !== $node->conditional_type) {
+            if (!$cloned) {
+                $node = clone $node;
+                $cloned = true;
+            }
+            $node->conditional_type = $value;
         }
-        throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class);
+        if ($result === false) {
+            return false;
+        }
+        $value = $node->if_type;
+        $result = $visitor->traverse($value);
+        if ($value !== $node->if_type) {
+            if (!$cloned) {
+                $node = clone $node;
+                $cloned = true;
+            }
+            $node->if_type = $value;
+        }
+        if ($result === false) {
+            return false;
+        }
+        $value = $node->else_type;
+        $result = $visitor->traverse($value);
+        if ($value !== $node->else_type) {
+            if (!$cloned) {
+                $node = clone $node;
+                $cloned = true;
+            }
+            $node->else_type = $value;
+        }
+        if ($result === false) {
+            return false;
+        }
+        return true;
     }
 
     /**

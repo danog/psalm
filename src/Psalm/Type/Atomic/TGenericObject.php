@@ -15,6 +15,8 @@ use function count;
 use function implode;
 use function strrpos;
 use function substr;
+use Psalm\Type\MutableTypeVisitor;
+use Psalm\Type\TypeVisitor;
 
 /**
  * Denotes an object type that has generic parameters e.g. `ArrayObject<string, Foo\Bar>`
@@ -132,33 +134,72 @@ final class TGenericObject extends TNamedObject
         return $this->value;
     }
 
+    #[Override]
+    public function visit(TypeVisitor $visitor): bool
+    {
+        foreach ($this->type_params as $child) {
+            if ($visitor->traverse($child) === false) {
+                return false;
+            }
+        }
+        foreach ($this->extra_types as $child) {
+            if ($visitor->traverse($child) === false) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /**
-     * @psalm-pure
+     * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
-    protected function getChildNodeKeys(): array
+    public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        return [...parent::getChildNodeKeys(), 'type_params'];
-    }
-
-    #[Override]
-    protected function getChildNode(string $key): mixed
-    {
-        return match ($key) {
-            'type_params' => $this->type_params,
-            default => parent::getChildNode($key),
-        };
-    }
-
-    #[Override]
-    protected function setChildNode(string $key, mixed $value): void
-    {
-        switch ($key) {
-            case 'type_params':
-                $this->type_params = $value;
-                return;
+        $values = $node->type_params;
+        $changed = false;
+        $result = true;
+        foreach ($values as &$child) {
+            $child_orig = $child;
+            $result = $visitor->traverse($child);
+            $changed = $changed || $child !== $child_orig;
         }
-        parent::setChildNode($key, $value);
+        unset($child);
+        if ($changed) {
+            if (!$cloned) {
+                $node = clone $node;
+                $cloned = true;
+            }
+            $node->type_params = $values;
+        }
+        if ($result === false) {
+            return false;
+        }
+        $values = $node->extra_types;
+        $changed = false;
+        $result = true;
+        foreach ($values as &$child) {
+            $child_orig = $child;
+            $result = $visitor->traverse($child);
+            $changed = $changed || $child !== $child_orig;
+        }
+        unset($child);
+        if ($changed) {
+            if (!$cloned) {
+                $node = clone $node;
+                $cloned = true;
+            }
+            $rekeyed = [];
+            foreach ($values as $child) {
+                $rekeyed[$child->getKey()] = $child;
+            }
+            $values = $rekeyed;
+            $node->extra_types = $values;
+        }
+        if ($result === false) {
+            return false;
+        }
+        return true;
     }
 
     /**

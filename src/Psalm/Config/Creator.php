@@ -39,7 +39,11 @@ use const DIRECTORY_SEPARATOR;
 use const GLOB_NOSORT;
 use const JSON_THROW_ON_ERROR;
 
-/** @internal */
+/**
+ * @internal
+ *
+ * @psalm-import-type ComposerJson from Composer
+ */
 final class Creator
 {
     private const TEMPLATE = '<?xml version="1.0"?>
@@ -202,6 +206,7 @@ final class Creator
             try {
                 $composer_json_contents = file_get_contents($composer_json_location);
                 assert($composer_json_contents !== false);
+                /** @var ComposerJson|scalar|null $composer_json */
                 $composer_json = json_decode(
                     $composer_json_contents,
                     true,
@@ -234,9 +239,8 @@ final class Creator
     }
 
     /**
+     * @param ComposerJson $composer_json
      * @return list<string>
-     * @psalm-suppress MixedAssignment
-     * @psalm-suppress MixedArgument
      */
     private static function getPsr4Or0Paths(string $current_dir, array $composer_json): array
     {

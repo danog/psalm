@@ -174,12 +174,12 @@ final class FileDiffTest extends TestCase
             }
 
             $this->assertSame(
-                $a_stmt->getAttribute('startFilePos'),
-                $b_stmt->getAttribute('startFilePos'),
+                $a_stmt->attrs()->startFilePos,
+                $b_stmt->attrs()->startFilePos,
             );
             $this->assertSame(
-                $a_stmt->getAttribute('endFilePos'),
-                $b_stmt->getAttribute('endFilePos'),
+                $a_stmt->attrs()->endFilePos,
+                $b_stmt->attrs()->endFilePos,
                 ($a_stmt instanceof PhpParser\Node\Stmt\Expression
                     ? get_class($a_stmt->expr)
                     : get_class($a_stmt))

@@ -26,7 +26,9 @@ final class JsonReport extends Report
         $options = $this->pretty ? Json::PRETTY : Json::DEFAULT;
 
         $issues_data = array_map(
+            /** @return array<string, scalar|null|list<object|array<string, scalar|null>>> */
             static function (IssueData $issue_data): array {
+                /** @var array<string, scalar|null|list<object|array<string, scalar|null>>> $issue_data */
                 $issue_data = (array) $issue_data;
                 unset($issue_data['dupe_key']);
                 return $issue_data;

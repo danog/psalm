@@ -28,6 +28,8 @@ use function ksort;
 use function preg_match;
 use function sort;
 use function str_replace;
+use Psalm\Type\MutableTypeVisitor;
+use Psalm\Type\TypeVisitor;
 
 /**
  * Represents an 'object-like array' - an array with known keys.
@@ -725,37 +727,71 @@ final class TKeyedArray extends Atomic
         return $this;
     }
 
+    #[Override]
+    public function visit(TypeVisitor $visitor): bool
+    {
+        foreach ($this->properties as $child) {
+            if ($visitor->traverse($child) === false) {
+                return false;
+            }
+        }
+        if ($this->fallback_params !== null) {
+            foreach ($this->fallback_params as $child) {
+                if ($visitor->traverse($child) === false) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     /**
-     * @psalm-pure
+     * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
-    protected function getChildNodeKeys(): array
+    public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        return ['properties', 'fallback_params'];
-    }
-
-    #[Override]
-    protected function getChildNode(string $key): mixed
-    {
-        return match ($key) {
-            'properties' => $this->properties,
-            'fallback_params' => $this->fallback_params,
-            default => throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class),
-        };
-    }
-
-    #[Override]
-    protected function setChildNode(string $key, mixed $value): void
-    {
-        switch ($key) {
-            case 'properties':
-                $this->properties = $value;
-                return;
-            case 'fallback_params':
-                $this->fallback_params = $value;
-                return;
+        $values = $node->properties;
+        $changed = false;
+        $result = true;
+        foreach ($values as &$child) {
+            $child_orig = $child;
+            $result = $visitor->traverse($child);
+            $changed = $changed || $child !== $child_orig;
         }
-        throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class);
+        unset($child);
+        if ($changed) {
+            if (!$cloned) {
+                $node = clone $node;
+                $cloned = true;
+            }
+            $node->properties = $values;
+        }
+        if ($result === false) {
+            return false;
+        }
+        if ($node->fallback_params !== null) {
+            $values = $node->fallback_params;
+            $changed = false;
+            $result = true;
+            foreach ($values as &$child) {
+                $child_orig = $child;
+                $result = $visitor->traverse($child);
+                $changed = $changed || $child !== $child_orig;
+            }
+            unset($child);
+            if ($changed) {
+                if (!$cloned) {
+                    $node = clone $node;
+                    $cloned = true;
+                }
+                $node->fallback_params = $values;
+            }
+            if ($result === false) {
+                return false;
+            }
+        }
+        return true;
     }
 
     #[Override]

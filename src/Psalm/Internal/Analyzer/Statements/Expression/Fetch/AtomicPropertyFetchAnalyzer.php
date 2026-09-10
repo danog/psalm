@@ -436,8 +436,8 @@ final class AtomicPropertyFetchAnalyzer
                 if ($declaring_property_id === $original_property_id) {
                     $file_manipulations = [
                         new FileManipulation(
-                            (int) $stmt->name->getAttribute('startFilePos'),
-                            (int) $stmt->name->getAttribute('endFilePos') + 1,
+                            $stmt->name->getStartFilePos(),
+                            $stmt->name->getEndFilePos() + 1,
                             $new_property_name,
                         ),
                     ];

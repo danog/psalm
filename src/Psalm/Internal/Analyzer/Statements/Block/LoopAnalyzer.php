@@ -553,7 +553,7 @@ final class LoopAnalyzer
         $codebase = $statements_analyzer->getCodebase();
 
         if ($codebase->alter_code && $for_context->branch_point === null) {
-            $for_context->branch_point = (int) $stmt->getAttribute('startFilePos');
+            $for_context->branch_point = $stmt->getStartFilePos();
         }
 
         $loop_scope = new LoopScope($for_context, $context);

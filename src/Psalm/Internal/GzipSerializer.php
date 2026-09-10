@@ -23,7 +23,7 @@ final class GzipSerializer implements Serializer
     }
 
     #[Override]
-    public function serialize(mixed $data): string
+    public function serialize(array|object|string $data): string
     {
         $data = $this->serializer->serialize($data);
         $data = gzdeflate($data);
@@ -36,7 +36,7 @@ final class GzipSerializer implements Serializer
     }
 
     #[Override]
-    public function unserialize(string $data): mixed
+    public function unserialize(string $data): array|object|string
     {
         $data = gzinflate($data);
         if ($data === false) {

@@ -157,7 +157,7 @@ class FileAnalyzer extends SourceAnalyzer
         if ($codebase->alter_code) {
             foreach ($stmts as $stmt) {
                 if (!$stmt instanceof PhpParser\Node\Stmt\Declare_) {
-                    $this->first_statement_offset = (int) $stmt->getAttribute('startFilePos');
+                    $this->first_statement_offset = $stmt->getStartFilePos();
                     break;
                 }
             }

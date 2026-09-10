@@ -23,9 +23,10 @@ final class Lz4Serializer implements Serializer
     }
 
     #[Override]
-    public function serialize(mixed $data): string
+    public function serialize(array|object|string $data): string
     {
         $data = $this->serializer->serialize($data);
+        /** @var string|false $data */
         $data = lz4_compress($data, 4);
         if ($data === false) {
             $error = error_get_last();
@@ -36,8 +37,9 @@ final class Lz4Serializer implements Serializer
     }
 
     #[Override]
-    public function unserialize(string $data): mixed
+    public function unserialize(string $data): array|object|string
     {
+        /** @var string|false $data */
         $data = lz4_uncompress($data);
         if ($data === false) {
             $error = error_get_last();

@@ -86,15 +86,14 @@ final class SimpleNameResolver extends NodeVisitorAbstract
             && $this->start_change
             && $this->end_change
         ) {
-            /** @var array{startFilePos: int, endFilePos: int} */
-            $attrs = $node->getAttributes();
+            $start_file_pos = $node->getStartFilePos();
 
             if ($cs = $node->getComments()) {
-                $attrs['startFilePos'] = $cs[0]->getStartFilePos();
+                $start_file_pos = $cs[0]->getStartFilePos();
             }
 
-            if ($attrs['endFilePos'] < $this->start_change
-                || $attrs['startFilePos'] > $this->end_change
+            if ($node->getEndFilePos() < $this->start_change
+                || $start_file_pos > $this->end_change
             ) {
                 return PhpParser\NodeVisitor::DONT_TRAVERSE_CHILDREN;
             }
@@ -212,7 +211,7 @@ final class SimpleNameResolver extends NodeVisitorAbstract
     {
         $resolvedName = $this->nameContext->getResolvedName($name, $type);
         if (null !== $resolvedName) {
-            $name->setAttribute('resolvedName', $resolvedName->toString());
+            $name->attrs()->resolvedName = $resolvedName->toString();
         } else {
             $namespaceName = Name\FullyQualified::concat(
                 $this->nameContext->getNamespace(),
@@ -220,7 +219,7 @@ final class SimpleNameResolver extends NodeVisitorAbstract
                 $name->getAttributes(),
             );
             if ($namespaceName instanceof Name) {
-                $name->setAttribute('namespacedName', $namespaceName->toString());
+                $name->attrs()->namespacedName = $namespaceName->toString();
             }
         }
         return $name;
@@ -233,10 +232,10 @@ final class SimpleNameResolver extends NodeVisitorAbstract
 
     private function addNamespacedName(Stmt\Class_ $node): void
     {
-        $node->setAttribute('namespacedName', Name::concat(
+        $node->attrs()->namespacedName = Name::concat(
             $this->nameContext->getNamespace(),
             (string)$node->name,
-        ));
+        );
     }
 
     private function resolveAttrGroups(Stmt\Class_ $node): void
@@ -253,7 +252,7 @@ final class SimpleNameResolver extends NodeVisitorAbstract
         $resolvedName = Name::concat($this->nameContext->getNamespace(), (string) $node->name);
 
         if (null !== $resolvedName) {
-            $node->setAttribute('resolvedName', $resolvedName->toString());
+            $node->attrs()->resolvedName = $resolvedName->toString();
         }
     }
 }

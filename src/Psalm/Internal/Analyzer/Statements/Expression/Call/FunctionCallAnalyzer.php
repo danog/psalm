@@ -1110,7 +1110,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
                         $statements_analyzer->getSuppressedIssues(),
                     );
                 } else {
-                    $stmt->setAttribute('pure', true);
+                    $stmt->attrs()->pure = true;
                 }
             }
         }

@@ -71,7 +71,7 @@ final class GithubActionsReport extends Report
     /**
      * @psalm-pure
      */
-    private function escapeProperty(mixed $value): string
+    private function escapeProperty(string|int $value): string
     {
         return strtr(
             (string) $value,

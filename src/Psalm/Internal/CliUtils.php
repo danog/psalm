@@ -60,6 +60,8 @@ use const STDIN;
 
 /**
  * @internal
+ *
+ * @psalm-import-type ComposerJson from Composer
  */
 final class CliUtils
 {
@@ -133,11 +135,14 @@ final class CliUtils
 
         $autoloaders = [];
         foreach ($autoload_files as $file) {
-            /**
-             * @psalm-suppress UnresolvableInclude
-             * @var mixed
-             */
-            $autoloader = ErrorHandler::runWithExceptionsSuppressed(static fn(): mixed => require_once $file);
+            $autoloader = ErrorHandler::runWithExceptionsSuppressed(static function () use ($file): ClassLoader|bool|int {
+                /**
+                 * @psalm-suppress UnresolvableInclude
+                 * @var ClassLoader|bool|int $result
+                 */
+                $result = require_once $file;
+                return $result;
+            });
 
             if ($autoloader instanceof ClassLoader
             ) {
@@ -181,6 +186,7 @@ final class CliUtils
         try {
             $composer_file_contents = file_get_contents($composer_json_path);
             assert($composer_file_contents !== false);
+            /** @var ComposerJson|scalar|null $composer_json */
             $composer_json = json_decode($composer_file_contents, true, 512, JSON_THROW_ON_ERROR);
         } catch (JsonException $e) {
             fwrite(
@@ -460,7 +466,7 @@ final class CliUtils
     }
 
     /**
-     * @param array<string,string|false|list<mixed>> $options
+     * @param array<string,string|false|list<string|false>> $options
      * @throws ConfigException
      */
     public static function setMemoryLimit(array $options, string $display_error = 'stderr'): void

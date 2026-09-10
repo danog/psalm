@@ -333,8 +333,8 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             ) {
                 $file_manipulations = [
                     new FileManipulation(
-                        (int) $this->function->name->getAttribute('startFilePos'),
-                        (int) $this->function->name->getAttribute('endFilePos') + 1,
+                        $this->function->name->getStartFilePos(),
+                        $this->function->name->getEndFilePos() + 1,
                         $new_method_name,
                     ),
                 ];
@@ -368,7 +368,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
         if ($byref_uses) {
             $ref_context = clone $context;
-            $var = '$__tmp_byref_closure_if__' . (int) $this->function->getAttribute('startFilePos');
+            $var = '$__tmp_byref_closure_if__' . $this->function->getStartFilePos();
 
             $ref_context->vars_in_scope[$var] = Type::getBool();
 
@@ -2269,7 +2269,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             $did_match_param = false;
 
             foreach ($this->function->params as $param) {
-                if ($param->var->getAttribute('endFilePos') === $original_location->raw_file_end) {
+                if ($param->var->attrs()->endFilePos === $original_location->raw_file_end) {
                     $did_match_param = true;
                     break;
                 }

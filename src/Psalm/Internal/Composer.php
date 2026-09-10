@@ -18,6 +18,13 @@ use const PATHINFO_EXTENSION;
 
 /**
  * @internal
+ *
+ * @psalm-type ComposerAutoloadPaths = array<string, string|list<string>>
+ * @psalm-type ComposerJson = array{
+ *     require?: array<string, string>,
+ *     config?: array{vendor-dir?: string},
+ *     autoload?: array{psr-4?: ComposerAutoloadPaths, psr-0?: ComposerAutoloadPaths},
+ * }
  */
 final class Composer
 {

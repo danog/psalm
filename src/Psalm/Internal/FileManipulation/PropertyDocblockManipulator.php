@@ -77,8 +77,8 @@ final class PropertyDocblockManipulator
         string $file_path,
     ) {
         $docblock = $stmt->getDocComment();
-        $this->docblock_start = $docblock ? $docblock->getStartFilePos() : (int)$stmt->getAttribute('startFilePos');
-        $this->docblock_end = (int)$stmt->getAttribute('startFilePos');
+        $this->docblock_start = $docblock ? $docblock->getStartFilePos() : $stmt->getStartFilePos();
+        $this->docblock_end = $stmt->getStartFilePos();
 
         $codebase = $project_analyzer->getCodebase();
 
@@ -98,11 +98,11 @@ final class PropertyDocblockManipulator
         $prop = $stmt->props[0];
 
         if ($stmt->type) {
-            $this->typehint_start = (int)$stmt->type->getAttribute('startFilePos');
-            $this->typehint_end = (int)$stmt->type->getAttribute('endFilePos');
+            $this->typehint_start = $stmt->type->getStartFilePos();
+            $this->typehint_end = $stmt->type->getEndFilePos();
         }
 
-        $this->typehint_area_start = (int)$prop->getAttribute('startFilePos') - 1;
+        $this->typehint_area_start = $prop->getStartFilePos() - 1;
 
         $preceding_newline_pos = strrpos($file_contents, "\n", $this->docblock_end - strlen($file_contents));
 
