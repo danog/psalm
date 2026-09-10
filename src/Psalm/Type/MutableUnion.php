@@ -439,7 +439,7 @@ final class MutableUnion implements TypeNode
     public function freeze(): Union
     {
         /** @psalm-suppress InvalidArgument It's actually filtered internally */
-        return new Union($this->getAtomicTypes(), get_object_vars($this));
+        return new Union($this->getAtomicTypes(), $this->getConstructionProperties());
     }
 
     /**

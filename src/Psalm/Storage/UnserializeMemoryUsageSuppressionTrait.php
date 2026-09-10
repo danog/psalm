@@ -21,9 +21,7 @@ trait UnserializeMemoryUsageSuppressionTrait
      */
     public function __unserialize(array $properties): void
     {
-        /** @psalm-suppress MixedAssignment */
-        foreach ($properties as $key => $value) {
-            $this->$key = $value;
-        }
+        // objects are never unserialized in the compiled program; property names cannot be looked up dynamically
+        throw new \LogicException('Unserialization of ' . static::class . ' is not supported');
     }
 }

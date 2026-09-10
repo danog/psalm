@@ -177,4 +177,24 @@ class TArray extends Atomic
     {
         return ['type_params'];
     }
+
+    #[Override]
+    protected function getChildNode(string $key): mixed
+    {
+        return match ($key) {
+            'type_params' => $this->type_params,
+            default => throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class),
+        };
+    }
+
+    #[Override]
+    protected function setChildNode(string $key, mixed $value): void
+    {
+        switch ($key) {
+            case 'type_params':
+                $this->type_params = $value;
+                return;
+        }
+        throw new \UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class);
+    }
 }

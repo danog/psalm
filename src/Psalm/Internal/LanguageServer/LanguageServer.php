@@ -964,7 +964,7 @@ final class LanguageServer extends Dispatcher
         if (!str_ends_with($first, ':')) {
             $first = rawurlencode($first);
         }
-        $parts = array_map('rawurlencode', $parts);
+        $parts = array_map(static fn(string $part): string => rawurlencode($part), $parts);
         array_unshift($parts, $first);
         $filepath = implode('/', $parts);
 

@@ -7,6 +7,7 @@ namespace Psalm\Type;
 use InvalidArgumentException;
 use Override;
 use Psalm\Codebase;
+use UnexpectedValueException;
 use Psalm\Exception\TypeParseTreeException;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Type\TemplateResult;
@@ -661,7 +662,7 @@ abstract class Atomic implements TypeNode, Stringable
     {
         foreach ($this->getChildNodeKeys() as $key) {
             /** @psalm-suppress MixedAssignment */
-            $value = $this->{$key};
+            $value = $this->getChildNode($key);
             if (is_array($value)) {
                 /** @psalm-suppress MixedAssignment */
                 foreach ($value as $type) {
@@ -690,7 +691,7 @@ abstract class Atomic implements TypeNode, Stringable
     {
         foreach ($node->getChildNodeKeys() as $key) {
             /** @psalm-suppress MixedAssignment */
-            $value = $node->{$key};
+            $value = $node->getChildNode($key);
             $result = true;
             if (is_array($value)) {
                 $changed = false;
@@ -726,7 +727,7 @@ abstract class Atomic implements TypeNode, Stringable
                     }
                     $value = $new;
                 }
-                $node->{$key} = $value;
+                $node->setChildNode($key, $value);
             }
             if ($result === false) {
                 return false;
@@ -742,6 +743,24 @@ abstract class Atomic implements TypeNode, Stringable
     protected function getChildNodeKeys(): array
     {
         return [];
+    }
+
+    /**
+     * The child node (or list of child nodes) with the given key (one of getChildNodeKeys()).
+     *
+     * @psalm-mutation-free
+     */
+    protected function getChildNode(string $key): mixed
+    {
+        throw new UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class);
+    }
+
+    /**
+     * @psalm-external-mutation-free
+     */
+    protected function setChildNode(string $key, mixed $value): void
+    {
+        throw new UnexpectedValueException('Unknown child node ' . $key . ' on ' . static::class);
     }
 
     #[Override]

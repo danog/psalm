@@ -31,10 +31,10 @@ final class CustomTraverser extends NodeTraverser
     protected function traverseNode(Node $node): void
     {
         foreach ($node->getSubNodeNames() as $name) {
-            $subNode = &$node->$name;
+            $subNode = $node->getSubNode($name);
 
             if (is_array($subNode)) {
-                $subNode = $this->traverseArray($subNode);
+                $node->setSubNode($name, $this->traverseArray($subNode));
                 if ($this->stopTraversal) {
                     break;
                 }
@@ -44,6 +44,7 @@ final class CustomTraverser extends NodeTraverser
                     $return = $visitor->enterNode($subNode, $traverseChildren);
                     if (null !== $return) {
                         if ($return instanceof Node) {
+                            $node->setSubNode($name, $return);
                             $subNode = $return;
                         } elseif (self::DONT_TRAVERSE_CHILDREN === $return) {
                             $traverseChildren = false;
@@ -69,6 +70,7 @@ final class CustomTraverser extends NodeTraverser
                     $return = $visitor->leaveNode($subNode);
                     if (null !== $return) {
                         if ($return instanceof Node) {
+                            $node->setSubNode($name, $return);
                             $subNode = $return;
                         } elseif (self::STOP_TRAVERSAL === $return) {
                             $this->stopTraversal = true;

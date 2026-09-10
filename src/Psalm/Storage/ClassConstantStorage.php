@@ -7,6 +7,11 @@ namespace Psalm\Storage;
 use Psalm\CodeLocation;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Scanner\UnresolvedConstantComponent;
+use Psalm\Type\Atomic\TEnumCase;
+use Psalm\Type\Atomic\TLiteralFloat;
+use Psalm\Type\Atomic\TLiteralInt;
+use Psalm\Type\Atomic\TLiteralString;
+use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\Union;
 
 use function array_values;
@@ -68,8 +73,9 @@ final class ClassConstantStorage
         if ($this->type) {
             $types = $this->type->getAtomicTypes();
             $type = array_values($types)[0];
-            if (property_exists($type, 'value')) {
-                /** @psalm-suppress UndefinedPropertyFetch */
+            if ($type instanceof TLiteralString || $type instanceof TLiteralInt || $type instanceof TLiteralFloat
+                || $type instanceof TNamedObject || $type instanceof TEnumCase
+            ) {
                 $value = " = {$type->value};";
             }
         }
