@@ -1,71 +1,125 @@
 # Compiling Psalm with TypePHP
 
 [TypePHP](https://github.com/swoole/typephp) is an ahead-of-time compiler that
-translates PHP into C++ and native binaries. Psalm's own sources (`src/`) are
-kept free of the PHP features TypePHP rejects; this directory holds the build
-configuration and the helper used to satisfy vendor dependencies.
+translates PHP into C++ and native binaries. This directory holds the build
+configuration and the generator that assembles the closed-world source set.
+
+The build uses the [danog/typephp](https://github.com/danog/typephp) and
+[danog/phpx](https://github.com/danog/phpx) forks, which carry the compiler
+fixes listed at the end of this file.
+
+## Closed world
+
+The native binary loads no PHP code at runtime: there is no `include`/`require`
+anywhere in the compiled sources. Everything Psalm needs is compiled in:
+
+- The dictionaries (`dictionaries/*.php`) are embedded as generated classes in
+  `src/Psalm/Internal/Dictionaries/` and read through
+  `Psalm\Internal\Codebase\Dictionaries`. Regenerate them with
+  `bin/generate-dictionaries.php` after editing a dictionary
+  (`--check` verifies they are up to date).
+- Composer autoloaders of the analysed project are not executed. The generated
+  `vendor/composer/autoload_*.php` maps are evaluated statically
+  (`Psalm\Internal\Autoload\ComposerAutoloadFileEvaluator`) and turned into a
+  `ComposerClassLocator`, which resolves class files and, under plain PHP,
+  registers an autoloader for plugin classes.
+- Forked workers run `Psalm\Internal\Fork\TaskRunner` instead of requiring
+  amphp's `task-runner.php`.
+- Runtime code loading that cannot work in a closed world (plugins loaded
+  from files, the `autoloader` config attribute, phar version metadata) goes
+  through `Psalm\Internal\CodeLoader`, the only class containing `require`.
+  The native build replaces it with `typephp/overrides/CodeLoader.php`, which
+  reports that runtime code loading is unavailable; a configured `autoloader`
+  file is still scanned.
+- The plain-PHP launchers (`psalm`, `psalter`, ...) load Psalm's own Composer
+  autoloader before calling the CLI class.
 
 ## Rules the sources follow
 
-- No executable code at file scope: the `require_once` bootstrap lines live in
-  the launcher scripts (`psalm`, `psalter`, ...), not in the CLI classes.
-- A local variable keeps the native type of its first assignment. Locals that
-  are later assigned a sibling class, or that are passed by reference, take
-  their first value through `Psalm\Internal\TypePhp\Dynamic::any()`.
+- No executable code at file scope.
+- A local variable keeps the native type of its first assignment. The forked
+  compiler regenerates a function with a dynamic local when it detects
+  conflicting assignments; `Psalm\Internal\TypePhp\Dynamic::any()` remains the
+  explicit way to request dynamic storage.
 - References to objects are not supported: object by-reference parameters are
   declared `mixed &$param` with `@param`/`@param-out` docblocks.
-- Every `switch` case ends in `break`/`return`/`continue`/`throw`; intentional
-  fallthrough is written out explicitly.
 - No `$GLOBALS` or `global`, no `list()` in loop conditions or `foreach`
-  targets, no `~` on strings (`BitwiseNotAnalyzer::bitwiseNotString()`), no
-  `|=` on typed properties.
+  targets, no `~` on strings, no `|=` on typed properties.
 
 ## Building
 
-1. Install TypePHP (`composer install` in its checkout, then build phpx with
-   `cmake -S vendor/swoole/phpx -B vendor/swoole/phpx/build && cmake --build vendor/swoole/phpx/build`)
-   and a PHP 8.4/8.5 embed SAPI (`./configure --enable-embed=shared ...`);
-   point `PHP_HOME` at that PHP prefix.
-2. Generate compilable skeletons of the vendor classes Psalm extends or
-   implements (the compiler needs their declarations; the real vendor code is
-   not compiled yet):
+1. Check out the forks and build them:
 
-       php typephp/gen-vendor-stubs.php typephp/vendor-classes.txt typephp/vendor-stubs
+       git clone https://github.com/danog/typephp /path/to/typephp
+       cd /path/to/typephp && composer install
+       cmake -S vendor/swoole/phpx -B vendor/swoole/phpx/build && cmake --build vendor/swoole/phpx/build
 
-3. Generate C++ (`--dry`) or build the binary:
+   Build a PHP 8.5 embed SAPI (`./configure --enable-embed=shared ...` with
+   tokenizer, ctype, mbstring, filter, libxml/dom/simplexml/xml*, phar, pcntl,
+   posix, iconv, openssl, zlib, sockets, gmp and intl) and point `PHP_HOME` at
+   its prefix.
+
+2. Generate the closed-world project file. Run the generator with the embed
+   PHP so that `function_exists()`/`extension_loaded()` conditions in vendor
+   code are evaluated for the target runtime:
+
+       $PHP_HOME/bin/php typephp/gen-vendor-build.php
+
+   The generator
+
+   - indexes every file of the runtime vendor packages
+     (`typephp/runtime-packages.txt`) and keeps only the files reachable by
+     name from `src/`, `typephp/main.php` and `typephp/overrides/`;
+   - rewrites vendor files with file-scope code (`typephp/vendor-overrides/`,
+     generated): constant conditions such as `if (PHP_VERSION_ID >= ...)` or
+     `if (!function_exists(...))` are evaluated, `require`, `class_alias()` and
+     preload hints are dropped, `define()` becomes `const`;
+   - uses the hand-written replacements in `typephp/vendor-manual/` where
+     vendor code relies on unsupported features (`Closure::bind()`, private
+     property shadowing, ...), and compiles the stubs in `typephp/vendor-extra/`
+     for optional dependencies that are not installed;
+   - writes `typephp/project.yml`.
+
+3. Generate C++ only (`--dry`) or build the binary, using every core:
 
        php /path/to/typephp/bin/tpc.php typephp/project.yml --dry --build-dir /tmp/psalm-typephp
        php /path/to/typephp/bin/tpc.php typephp/project.yml -o psalm-native --build-dir /tmp/psalm-typephp \
            -j "$(sysctl -n hw.ncpu 2>/dev/null || nproc)"
 
-   The C++ compile step is the slow part; pass `-j` with the machine's core
-   count as above so every core is used.
+   `TYPEPHP_COLLECT_ERRORS=<file>` (fork feature) makes the front end report
+   every rejected construct instead of stopping at the first one.
 
-## Status and known compiler issues (TypePHP v0.8.1)
+## Status
 
-All of `src/` passes TypePHP's front end, and the full build compiles and links
-a native `psalm` binary (1,356 translation units on macOS/arm64). The binary
-runs Psalm's own code: `psalm --version` and `psalm --help` work. Analysing a
-project stops at the first vendor class used (`Composer\XdebugHandler`): the
-skeletons only declare the classes and their methods throw, so the real vendor
-code (php-parser, amphp, symfony console, ...) has to be made compilable next.
+The closed-world source set (all of `src/` plus 1,122 reachable vendor files)
+passes the TypePHP front end with no errors.
 
-Source-level rules learned the hard way:
+## Compiler fixes carried by the forks
 
-- No `$GLOBALS` (not compiled) and no `global $argv`: binding argv with
-  `global` turns the argv entry into a reference, after which `getopt()`
-  returns `false` inside the compiled binary. Read `$_SERVER['argv']` instead.
+danog/phpx:
 
-Compiler-side issues found while developing this, worked around locally:
+- `phpx.h` includes `<cstdlib>`/`<algorithm>`.
+- `typephp_assign_dim()`: PHP dimension-write semantics for dynamic containers
+  (arrays in place, `ArrayAccess` objects through `offsetSet()`).
 
-- `phpx.h` uses `std::abort`/`std::fill` without including `<cstdlib>` and
-  `<algorithm>`, which fails with recent libc++.
-- `gen_stub.php` resolves class names in constant expressions relative to the
-  current namespace and ignores `use` imports (`Mutations::LEVEL_ALL` in
-  parameter defaults), fixed by consulting the resolved name attribute.
-- Reads of typed `int` properties are emitted as `Variant` and cannot be
-  assigned to native `php::Int` locals or properties; `CodeLocation` and
-  `ProtocolStreamReader` carry small workarounds for this.
-- The property read cache (`_object_prop_*`) is declared inside a lowered
-  ternary lambda and used outside it; the affected reads were hoisted into
-  locals in `ClassAnalyzer` and `ReturnTypeAnalyzer`.
+danog/typephp:
+
+- Error collection mode (`TYPEPHP_COLLECT_ERRORS`), also during trait
+  composition.
+- Function generation is retried with a dynamic local when a local receives
+  incompatible static types (sibling classes, `int` then `string`, a `foreach`
+  key into a typed local, parameters included).
+- A namespaced function and a class method with the same name no longer map
+  to the same C++ symbol (`Amp\Future\await()` vs `Amp\Future::await()`).
+- `switch` cases without a terminating statement fall through like PHP.
+- `$x = &$source` binds a Closure-captured local to the source.
+- `$this->readonlyObject[$k] = $v` is an `offsetSet()`, not a rebinding;
+  property dimension writes follow PHP semantics for objects.
+- `__DIR__`/`__FILE__` are resolved in constant expressions; class constant
+  references honour `use` imports; the stub generator finds constants declared
+  in other files.
+- Static calls to methods inherited from internal classes
+  (`PhpToken::tokenize()`) fall back to a runtime call.
+- `__serialize(): never` is accepted; keyword-named user methods
+  (`toDecimal()`) are ordinary calls; by-reference values can be assigned to
+  typed properties.

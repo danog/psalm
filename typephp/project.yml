@@ -731,7 +731,7 @@ sources:
   - ../vendor/nikic/php-parser/lib/PhpParser/NodeAbstract.php
   - ../vendor/nikic/php-parser/lib/PhpParser/NodeDumper.php
   - ../vendor/nikic/php-parser/lib/PhpParser/NodeFinder.php
-  - ../vendor/nikic/php-parser/lib/PhpParser/NodeTraverser.php
+  - ./vendor-manual/nikic/php-parser/lib/PhpParser/NodeTraverser.php
   - ../vendor/nikic/php-parser/lib/PhpParser/NodeTraverserInterface.php
   - ../vendor/nikic/php-parser/lib/PhpParser/NodeVisitor.php
   - ../vendor/nikic/php-parser/lib/PhpParser/NodeVisitor/CloningVisitor.php
