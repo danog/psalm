@@ -1102,6 +1102,17 @@ final class Builtins
     private function arrayPlace(BodyEmitter $b, Place $place): Place
     {
         $pt = $place->type;
+        if ($pt->kind === RustType::OPTION && ($pt->inner()->kind === RustType::LIST || $pt->inner()->kind === RustType::MAP)) {
+            // a nullable array modified in place: PHP treats null as an empty array
+            $inner = $pt->inner();
+            return new Place(
+                $inner,
+                fn() => $place->read() . '.unwrap_or_default()',
+                fn(string $v) => $place->write('Some(' . $v . ')'),
+                $place->hasMut() ? fn() => $place->mut() . '.get_or_insert_with(Default::default)' : null,
+                $place->hasMut() ? fn(string $stmt) => $place->wrap($stmt) : null,
+            );
+        }
         if ($pt->kind !== RustType::UNION) {
             return $place;
         }
