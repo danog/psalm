@@ -344,7 +344,7 @@ final class CrateEmitter
         if (file_exists($src . '/tests.rs')) {
             unlink($src . '/tests.rs');
         }
-        file_put_contents($out . '/Cargo.toml', "[package]\nname = \"" . str_replace('-', '_', $name) . "\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[lib]\npath = \"src/lib.rs\"\n\n[dependencies]\nphp-rt = { path = \"../../php-rt\" }\n");
+        file_put_contents($out . '/Cargo.toml', "[package]\nname = \"" . str_replace('-', '_', $name) . "\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[lib]\npath = \"src/lib.rs\"\ntest = false\n\n[dependencies]\nphp-rt = { path = \"../../php-rt\" }\n");
         fwrite(STDERR, 'wrote ' . count($this->modules) . " modules to $out\n");
     }
 
