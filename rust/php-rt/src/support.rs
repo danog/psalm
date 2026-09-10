@@ -209,7 +209,52 @@ where
 // ---------------------------------------------------------------- superglobals
 
 /// `$_SERVER` and friends: a minimal environment view (argv, REQUEST_TIME, env variables).
+thread_local! {
+    static SUPERGLOBALS: std::cell::RefCell<std::collections::HashMap<String, Map<Str, Mixed>>> = std::cell::RefCell::new(std::collections::HashMap::new());
+    static GLOBALS: std::cell::RefCell<std::collections::HashMap<String, Mixed>> = std::cell::RefCell::new(std::collections::HashMap::new());
+}
+
+/// `$_SERVER` and friends: stored per thread, initialized from the environment on first use.
 pub fn superglobal(name: &str) -> Map<Str, Mixed> {
+    SUPERGLOBALS.with(|s| {
+        if let Some(m) = s.borrow().get(name) {
+            return m.clone();
+        }
+        let m = initial_superglobal(name);
+        s.borrow_mut().insert(name.to_string(), m.clone());
+        m
+    })
+}
+
+pub fn superglobal_set(name: &str, m: Map<Str, Mixed>) {
+    SUPERGLOBALS.with(|s| {
+        s.borrow_mut().insert(name.to_string(), m);
+    });
+}
+
+/// `global $x`: the script-level variable `x` (`$argv`/`$argc` come from the process arguments).
+pub fn global_get(name: &str) -> Mixed {
+    GLOBALS.with(|g| {
+        if let Some(v) = g.borrow().get(name) {
+            return v.clone();
+        }
+        let v = match name {
+            "argv" => superglobal("_SERVER").get(&Str::from_static("argv")).cloned().unwrap_or(Mixed::Null),
+            "argc" => superglobal("_SERVER").get(&Str::from_static("argc")).cloned().unwrap_or(Mixed::Null),
+            _ => Mixed::Null,
+        };
+        g.borrow_mut().insert(name.to_string(), v.clone());
+        v
+    })
+}
+
+pub fn global_set(name: &str, v: Mixed) {
+    GLOBALS.with(|g| {
+        g.borrow_mut().insert(name.to_string(), v);
+    });
+}
+
+fn initial_superglobal(name: &str) -> Map<Str, Mixed> {
     let mut m: Map<Str, Mixed> = Map::new();
     match name {
         "_SERVER" => {
@@ -293,9 +338,12 @@ pub fn mixed_get(m: &Mixed, k: &ArrayKey) -> Option<Mixed> {
             _ => None,
         },
         Mixed::Obj(o) => {
-            // ArrayAccess objects: not resolvable generically
-            let _ = o;
-            None
+            // ArrayAccess objects: offsetExists() then offsetGet()
+            let key = match k { ArrayKey::Int(i) => Mixed::Int(*i), ArrayKey::Str(s) => Mixed::Str(s.clone()) };
+            match o.call_method("offsetexists", vec![key.clone()]) {
+                Ok(exists) if crate::traits::Truthy::truthy(&exists) => o.call_method("offsetget", vec![key]).ok().and_then(|v| v.to_option()),
+                _ => None,
+            }
         }
         _ => None,
     }

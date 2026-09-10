@@ -43,6 +43,7 @@ pub fn ini_get(name: &Str) -> Option<Str> {
         b"memory_limit" => Some(Str::from_static("-1")),
         b"xdebug.scream" => None,
         b"precision" => Some(Str::from_static("14")),
+        b"zend.assertions" => Some(Str::from_static("1")),
         _ => None,
     })
 }
@@ -185,8 +186,31 @@ pub fn get_declared_interfaces() -> List<Str> {
 pub fn get_defined_constants(_cat: bool) -> Map<ArrayKey, Mixed> {
     Map::new()
 }
+/// Names of the functions the runtime implements natively (see `builtin_callable` and the eval call table).
+pub const BUILTIN_FUNCTION_NAMES: &[&str] = &[
+    "strtolower", "strtoupper", "ucfirst", "lcfirst", "trim", "strval", "strlen", "intval", "is_string", "is_int",
+    "is_array", "is_null", "is_numeric", "is_object", "is_bool", "is_float", "is_scalar", "strcmp", "strcasecmp",
+    "strnatcmp", "strnatcasecmp", "ucwords", "ltrim", "rtrim", "md5", "floatval", "boolval", "count", "array_values",
+    "array_keys", "array_unique", "array_merge", "preg_match", "array_map", "array_filter", "str_contains",
+    "str_starts_with", "str_ends_with", "array_is_list", "array_key_first", "array_key_last", "array_find",
+    "array_any", "array_all", "json_validate", "mb_strcut", "opcache_get_status", "posix_kill", "pcntl_fork",
+    "igbinary_serialize", "lz4_compress",
+];
+
+/// `get_defined_functions()`: the runtime's builtins as `internal`, registered user functions as `user`.
 pub fn get_defined_functions() -> Map<ArrayKey, Mixed> {
-    Map::new()
+    let mut internal: Map<ArrayKey, Mixed> = Map::new();
+    for n in BUILTIN_FUNCTION_NAMES {
+        internal.push(Mixed::Str(Str::from_static(n)));
+    }
+    let mut user: Map<ArrayKey, Mixed> = Map::new();
+    for n in crate::registry::user_function_names() {
+        user.push(Mixed::Str(Str::from_vec(n)));
+    }
+    let mut m: Map<ArrayKey, Mixed> = Map::new();
+    m.insert(ArrayKey::from(Str::from_static("internal")), Mixed::Arr(internal));
+    m.insert(ArrayKey::from(Str::from_static("user")), Mixed::Arr(user));
+    m
 }
 pub fn opcache_get_status() -> Option<Mixed> {
     None

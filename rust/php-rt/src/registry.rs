@@ -1,6 +1,7 @@
 //! Runtime class/function registry (populated by the generated crate at startup).
 
 use crate::containers::DynCallable;
+use crate::error::RtError;
 use crate::string::Str;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -19,6 +20,7 @@ thread_local! {
     static CLASSES: RefCell<HashMap<Vec<u8>, ClassEntry>> = RefCell::new(HashMap::new());
     static FUNCTIONS: RefCell<HashMap<Vec<u8>, DynCallable>> = RefCell::new(HashMap::new());
     static CONSTANTS: RefCell<HashMap<Vec<u8>, crate::mixed::Mixed>> = RefCell::new(HashMap::new());
+    static CLASS_CONSTANTS: RefCell<HashMap<Vec<u8>, crate::mixed::Mixed>> = RefCell::new(HashMap::new());
 }
 
 pub fn register_class(name: &'static str, ancestors: &'static [&'static str], is_interface: bool) {
@@ -65,19 +67,36 @@ pub fn register_function(name: &str, f: DynCallable) {
     });
 }
 
+/// Builtin PHP classes that exist in any interpreter even though the runtime has no code for them.
+const BUILTIN_CLASSES: &[&str] = &[
+    "stdclass", "datetime", "datetimeimmutable", "dateinterval", "dateperiod", "datetimezone", "closure", "generator",
+    "arrayobject", "arrayiterator", "splobjectstorage", "splstack", "splqueue", "spldoublylinkedlist", "splfixedarray",
+    "splpriorityqueue", "splminheap", "splmaxheap", "weakmap", "weakreference", "exception", "error", "errorexception",
+    "typeerror", "valueerror", "arithmeticerror", "divisionbyzeroerror", "argumentcounterror", "runtimeexception",
+    "logicexception", "invalidargumentexception", "domainexception", "lengthexception", "outofrangeexception",
+    "outofboundsexception", "rangeexception", "overflowexception", "underflowexception", "unexpectedvalueexception",
+    "reflectionclass", "reflectionmethod", "reflectionproperty", "reflectionfunction", "reflectionnamedtype",
+    "simplexmlelement", "domdocument", "domelement", "domnode", "pdo", "mysqli", "curlhandle", "attribute",
+];
+const BUILTIN_INTERFACES: &[&str] = &[
+    "traversable", "iterator", "iteratoraggregate", "arrayaccess", "countable", "stringable", "throwable",
+    "jsonserializable", "serializable", "unitenum", "backedenum", "datetimeinterface", "outeriterator",
+    "recursiveiterator", "seekableiterator", "splobserver", "splsubject",
+];
+
 pub fn class_exists(name: &[u8]) -> bool {
     let lc = norm(name);
-    CLASSES.with(|c| c.borrow().get(&lc).map_or(false, |e| !e.is_interface))
+    CLASSES.with(|c| c.borrow().get(&lc).map_or(false, |e| !e.is_interface)) || BUILTIN_CLASSES.iter().any(|b| b.as_bytes() == lc.as_slice())
 }
 
 pub fn interface_exists(name: &[u8]) -> bool {
     let lc = norm(name);
-    CLASSES.with(|c| c.borrow().get(&lc).map_or(false, |e| e.is_interface))
+    CLASSES.with(|c| c.borrow().get(&lc).map_or(false, |e| e.is_interface)) || BUILTIN_INTERFACES.iter().any(|b| b.as_bytes() == lc.as_slice())
 }
 
 pub fn classlike_exists(name: &[u8]) -> bool {
     let lc = norm(name);
-    CLASSES.with(|c| c.borrow().contains_key(&lc))
+    CLASSES.with(|c| c.borrow().contains_key(&lc)) || class_exists(name) || interface_exists(name)
 }
 
 /// Canonical (declared-case) class name.
@@ -108,12 +127,93 @@ pub fn function_exists(name: &[u8]) -> bool {
     FUNCTIONS.with(|f| f.borrow().contains_key(&lc)) || crate::builtins::misc::builtin_function_exists(&lc)
 }
 
+/// Lowercased names of the registered user functions.
+pub fn user_function_names() -> Vec<Vec<u8>> {
+    FUNCTIONS.with(|f| f.borrow().keys().cloned().collect())
+}
+
 pub fn function_by_name(name: &Str) -> Option<DynCallable> {
     let lc = norm(name.as_bytes());
     FUNCTIONS.with(|f| f.borrow().get(&lc).cloned()).or_else(|| crate::builtins::misc::builtin_callable(&lc))
 }
 
+thread_local! {
+    static FILES: RefCell<HashMap<Vec<u8>, std::rc::Rc<dyn Fn() -> Result<crate::mixed::Mixed, crate::containers::DynError>>>> = RefCell::new(HashMap::new());
+}
+
+/// Registers a compiled file (path relative to the source root) for `include`/`require` by path.
+pub fn register_file(rel_path: &str, f: std::rc::Rc<dyn Fn() -> Result<crate::mixed::Mixed, crate::containers::DynError>>) {
+    FILES.with(|c| {
+        c.borrow_mut().insert(normalize_path(rel_path.as_bytes()), f);
+    });
+}
+
+/// `include $path`: the value of the compiled file at `path` (absolute, or relative to the source root
+/// or the working directory).
+pub fn include_file(path: &Str) -> Result<crate::mixed::Mixed, crate::containers::DynError> {
+    let key = normalize_path(path.as_bytes());
+    let f = FILES.with(|c| c.borrow().get(&key).cloned());
+    match f {
+        Some(f) => f(),
+        None => Err(crate::containers::DynError::Rt(RtError::error(crate::sfmt!(
+            "include({}): file is not part of the compiled program",
+            path
+        )))),
+    }
+}
+
+/// Canonical registry key: relative to the source root, `.`/`..` resolved, no leading slash.
+fn normalize_path(p: &[u8]) -> Vec<u8> {
+    let root = crate::support::src_root();
+    let root_b = root.as_bytes();
+    let mut rel: Vec<u8> = if !root_b.is_empty() && p.starts_with(root_b) && p.get(root_b.len()) == Some(&b'/') {
+        p[root_b.len() + 1..].to_vec()
+    } else if p.first() == Some(&b'/') {
+        // an absolute path outside the root: resolved as-is
+        p.to_vec()
+    } else {
+        p.to_vec()
+    };
+    if rel.contains(&b'\\') {
+        rel = rel.iter().map(|b| if *b == b'\\' { b'/' } else { *b }).collect();
+    }
+    let absolute = rel.first() == Some(&b'/');
+    let mut parts: Vec<&[u8]> = Vec::new();
+    for seg in rel.split(|b| *b == b'/') {
+        match seg {
+            b"" | b"." => {}
+            b".." => {
+                parts.pop();
+            }
+            s => parts.push(s),
+        }
+    }
+    let mut out = Vec::new();
+    if absolute {
+        out.push(b'/');
+    }
+    for (i, s) in parts.iter().enumerate() {
+        if i > 0 {
+            out.push(b'/');
+        }
+        out.extend_from_slice(s);
+    }
+    // an absolute path that turned out to be inside the root after resolution
+    if absolute && !root_b.is_empty() && out.starts_with(root_b) && out.get(root_b.len()) == Some(&b'/') {
+        return out[root_b.len() + 1..].to_vec();
+    }
+    out
+}
+
 pub fn define_constant(name: &Str, v: crate::mixed::Mixed) -> bool {
+    if let Some(pos) = name.as_bytes().windows(2).position(|w| w == b"::") {
+        // class constant: also indexed by lowercased class name for `$class::NAME` lookups
+        let mut key = name.as_bytes()[..pos].to_ascii_lowercase();
+        key.extend_from_slice(&name.as_bytes()[pos..]);
+        CLASS_CONSTANTS.with(|c| {
+            c.borrow_mut().entry(key).or_insert_with(|| v.clone());
+        });
+    }
     CONSTANTS.with(|c| {
         let mut c = c.borrow_mut();
         if c.contains_key(name.as_bytes()) {
@@ -126,6 +226,20 @@ pub fn define_constant(name: &Str, v: crate::mixed::Mixed) -> bool {
 
 pub fn constant_defined(name: &Str) -> bool {
     CONSTANTS.with(|c| c.borrow().contains_key(name.as_bytes())) || crate::consts::builtin_defined(name.as_bytes())
+}
+
+/// `$class::NAME` / `$object::NAME`: the class constant of a class named by a string or an object.
+pub fn class_constant(class: &crate::mixed::Mixed, name: &str) -> crate::mixed::Mixed {
+    let cls: Vec<u8> = match class {
+        crate::mixed::Mixed::Obj(o) => o.class_name().as_bytes().to_vec(),
+        other => crate::traits::ToStr::to_php_str(other).as_bytes().to_vec(),
+    };
+    let mut key = norm(&cls);
+    key.extend_from_slice(b"::");
+    key.extend_from_slice(name.as_bytes());
+    CLASS_CONSTANTS.with(|c| c.borrow().get(&key).cloned()).unwrap_or_else(|| {
+        panic!("Undefined constant {}::{}", String::from_utf8_lossy(&cls), name)
+    })
 }
 
 pub fn constant_value(name: &Str) -> Option<crate::mixed::Mixed> {

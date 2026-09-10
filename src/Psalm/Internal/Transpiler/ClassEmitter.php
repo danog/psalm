@@ -514,8 +514,14 @@ final class ClassEmitter
     public function emitSuperCopy(ClassModel $root, MethodModel $m, string $name, Writer $w): void
     {
         $w->line('impl ' . $root->handle() . ' {');
-        $w->line('pub fn ' . $name . $this->signature($m, true) . ' {');
-        $w->raw($this->body($root, $m));
+        if ($m->isStatic()) {
+            // `parent::m()` from an overriding static method: the parent's body with `static` bound to `$root`
+            $w->line('pub fn ' . $name . $this->signature($m, false) . ' {');
+            $w->raw($this->body($m->declaring, $m, $root));
+        } else {
+            $w->line('pub fn ' . $name . $this->signature($m, true) . ' {');
+            $w->raw($this->body($root, $m));
+        }
         $w->line('}');
         $w->line('}');
     }
@@ -536,9 +542,19 @@ final class ClassEmitter
         $rn = $f->rustName();
         $t = $f->type->toRust();
         $body = $this->constExprEmitter($cls);
+        if ($f->default === null && !$f->type->hasDefault()) {
+            // `public static Foo $instance;` without initializer: unset until first assigned
+            $w->line('pub fn st_' . $rn . '_cell() -> &\'static std::thread::LocalKey<RefCell<Late<' . $t . '>>> { thread_local! { static CELL: RefCell<Late<' . $t . '>> = RefCell::new(Late::uninit()); } &CELL }');
+            $w->line('pub fn st_' . $rn . '() -> ' . $t . ' { Self::st_' . $rn . '_cell().with(|c| c.borrow().get().clone()) }');
+            $w->line('pub fn st_' . $rn . '_opt() -> Option<' . $t . '> { Self::st_' . $rn . '_cell().with(|c| c.borrow().as_option().cloned()) }');
+            $w->line('pub fn st_' . $rn . '_set(v: ' . $t . ') { Self::st_' . $rn . '_cell().with(|c| { c.borrow_mut().set(v); }) }');
+            $w->line('pub fn st_' . $rn . '_with<R>(f: impl FnOnce(&mut ' . $t . ') -> R) -> R { Self::st_' . $rn . '_cell().with(|c| f(c.borrow_mut().get_mut())) }');
+            return;
+        }
         $init = $f->default !== null ? $body->constExpr($f->default, $f->type) : $this->casts->defaultOf($f->type);
         $w->line('pub fn st_' . $rn . '_cell() -> &\'static std::thread::LocalKey<RefCell<' . $t . '>> { thread_local! { static CELL: RefCell<' . $t . '> = RefCell::new(' . $init . '); } &CELL }');
         $w->line('pub fn st_' . $rn . '() -> ' . $t . ' { Self::st_' . $rn . '_cell().with(|c| c.borrow().clone()) }');
+        $w->line('pub fn st_' . $rn . '_opt() -> Option<' . $t . '> { Some(Self::st_' . $rn . '()) }');
         $w->line('pub fn st_' . $rn . '_set(v: ' . $t . ') { Self::st_' . $rn . '_cell().with(|c| { *c.borrow_mut() = v; }) }');
         $w->line('pub fn st_' . $rn . '_with<R>(f: impl FnOnce(&mut ' . $t . ') -> R) -> R { Self::st_' . $rn . '_cell().with(|c| f(&mut *c.borrow_mut())) }');
     }

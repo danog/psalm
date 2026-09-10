@@ -182,6 +182,7 @@ final class Psalm
         'error-level:',
         'transpile-rust:',
         'transpile-rust-split:',
+        'transpile-rust-data:',
     ];
 
     /**
@@ -406,7 +407,14 @@ final class Psalm
 
         if (isset($options['transpile-rust']) && is_string($options['transpile-rust'])) {
             $splits = $options['transpile-rust-split'] ?? [];
-            Transpiler::enable($options['transpile-rust'], $config, $current_dir, is_array($splits) ? array_values($splits) : [$splits]);
+            $data = $options['transpile-rust-data'] ?? [];
+            Transpiler::enable(
+                $options['transpile-rust'],
+                $config,
+                $current_dir,
+                is_array($splits) ? array_values($splits) : [$splits],
+                is_array($data) ? array_values($data) : [$data],
+            );
         }
 
         if ($paths_to_check === null) {

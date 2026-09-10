@@ -541,13 +541,20 @@ trait CallTrait
         if ($m->isStatic()) {
             $target = $m->declaring;
             if ($m->uses_lsb && !$m->isPrivate()) {
-                if (in_array($kind, ['static', 'self', 'parent'], true) && $this->static_class !== null) {
-                    $target = $this->static_class; // forwarded late static binding
-                } elseif ($kind === 'static' && $this->this_type !== null && $this->class !== null) {
-                    if (!$this->class->isLeaf()) {
-                        return new Val($this->finishCall($this->this_expr . '.' . $m->rustName() . '__static(' . implode(', ', $argc) . ')?'), $m->return_type);
+                $bound = $this->static_class ?? $this->class;
+                if ($kind === 'static' && $this->static_class === null && $this->this_type !== null && $this->class !== null && !$this->class->isLeaf()) {
+                    return new Val($this->finishCall($this->this_expr . '.' . $m->rustName() . '__static(' . implode(', ', $argc) . ')?'), $m->return_type);
+                }
+                if (in_array($kind, ['static', 'self', 'parent'], true) && $bound !== null) {
+                    // forwarded late static binding: `static` stays bound to the calling class
+                    $bm = $this->program->findMethod($bound, $lc);
+                    if (($kind === 'parent' || $kind === 'self') && $bm !== null && $bm->origin() !== $m->origin()) {
+                        // `self::`/`parent::` name a specific body that the bound class overrides: a copy of that
+                        // body with `static` bound to the calling class
+                        $copy = $this->program->requestSuperCopy($bound, $m);
+                        return new Val($this->finishCall($bound->path() . '::' . $copy . '(' . implode(', ', $argc) . ')?'), $m->return_type);
                     }
-                    $target = $this->class;
+                    $target = $bound;
                 } elseif ($kind !== 'self' && $kind !== 'parent') {
                     $target = $cls; // explicitly named class
                 }

@@ -165,6 +165,9 @@ class FileAnalyzer extends SourceAnalyzer
         }
 
         $leftover_stmts = $this->populateCheckers($stmts);
+        if (Transpiler::isEnabled()) {
+            Transpiler::get()->recordFile($this->file_path, $leftover_stmts);
+        }
 
         $this->node_data = new NodeDataProvider();
         $statements_analyzer = new StatementsAnalyzer($this, $this->node_data, true);

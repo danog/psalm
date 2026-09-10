@@ -22,6 +22,7 @@ pub mod consts;
 pub mod tokenizer;
 pub mod xml;
 pub mod builtins;
+pub mod data;
 pub mod testing;
 
 pub use string::Str;

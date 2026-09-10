@@ -68,6 +68,11 @@ final class CrateEmitter
 
         $class_emitter = new ClassEmitter($this->program, $this->casts, $this->builtins, $this->diag);
         $cast_emitter = new CastEmitter($this->program, $this->casts);
+        $data_emitter = new DataEmitter($this->codebase);
+
+        // includable files: the data files listed on the command line (bodies may bind more, see below)
+        $this->program->collectFiles();
+        $this->emitDataFiles($data_emitter);
 
         // classes
         $project_classes = [];
@@ -101,6 +106,9 @@ final class CrateEmitter
             $w = $this->module($this->program->crateOfRecord($fn->record), Names::modulePath($fn->fq_name));
             $this->emitFunction($fn, $w);
         }
+
+        // data files bound by `include` expressions with compile-time paths
+        $this->emitDataFiles($data_emitter);
 
         fwrite(STDERR, "[transpiler] emitting tests\n");
         $tests_w = [];
@@ -210,6 +218,11 @@ final class CrateEmitter
         foreach ($this->program->constants as $c) {
             $this->path_map['crate::consts::' . Names::constant($c->name)] = $this->program->crateOfRecord($c->record);
         }
+        foreach ($this->program->files as $file) {
+            if ($file !== null && $file->isData()) {
+                $this->path_map[$file->path()] = $file->crate;
+            }
+        }
     }
 
     /**
@@ -237,6 +250,30 @@ final class CrateEmitter
     private function module(int $crate, string $path): Writer
     {
         return $this->modules[$crate][$path] ??= new Writer();
+    }
+
+    /** @var array<string, true> data files already emitted (by root-relative path) */
+    private array $emitted_files = [];
+
+    /** Emit the compiled value of every data file not emitted yet into its crate's `files` module. */
+    private function emitDataFiles(DataEmitter $data_emitter): void
+    {
+        foreach ($this->program->files as $rel => $file) {
+            if ($file === null || !$file->isData() || isset($this->emitted_files[$rel])) {
+                continue;
+            }
+            $this->emitted_files[$rel] = true;
+            if (!isset($this->modules[$file->crate]['files'])) {
+                $this->module($file->crate, 'files')->line('use php_rt::data::{Data, DataKey};');
+            }
+            $w = $this->module($file->crate, 'files');
+            try {
+                $w->line('pub fn ' . $file->rustName() . '() -> Result<Mixed, Throw> { static D: Data = ' . $data_emitter->emit($file->data) . '; Ok(D.to_mixed()) }');
+            } catch (\RuntimeException $e) {
+                fwrite(STDERR, '  [transpiler] data file ' . $rel . ' not compiled: ' . $e->getMessage() . "\n");
+                $w->line('pub fn ' . $file->rustName() . '() -> Result<Mixed, Throw> { Err(Throw::error(Str::from_static(' . Names::rustStringLiteral('include(' . $rel . '): file could not be compiled: ' . $e->getMessage()) . '))) }');
+            }
+        }
     }
 
     private function emitFunction(FunctionModel $fn, Writer $w): void
@@ -369,6 +406,18 @@ final class CrateEmitter
                 continue;
             }
             $w->line('php_rt::registry::define_constant(&Str::from_static(' . Names::rustStringLiteral($c->name) . '), ' . $this->casts->convert('crate::consts::' . Names::constant($c->name) . '()', $c->type, RustType::mixed()) . ');');
+        }
+        // includable files: compiled data files and units of declarations (whose inclusion yields 1)
+        $w->line('let __unit: Rc<dyn Fn() -> Result<Mixed, DynError>> = Rc::new(|| Ok(Mixed::Int(1)));');
+        foreach ($this->program->files as $file) {
+            if ($file === null || $file->crate !== $crate) {
+                continue;
+            }
+            if ($file->isData()) {
+                $w->line('php_rt::registry::register_file(' . Names::rustStringLiteral($file->rel_path) . ', Rc::new(|| ' . $file->path() . '().map_err(|e| DynError::Obj(cast::<Mixed>(e)))));');
+            } else {
+                $w->line('php_rt::registry::register_file(' . Names::rustStringLiteral($file->rel_path) . ', __unit.clone());');
+            }
         }
         $w->close();
     }

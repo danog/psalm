@@ -120,8 +120,7 @@ trait StmtTrait
             return;
         }
         if ($s instanceof Stmt\Global_) {
-            $this->warn('global statement', $s);
-            return;
+            return; // declared as runtime-backed reference variables (see BodyEmitter::scanReferences)
         }
         if ($s instanceof Stmt\Function_ || $s instanceof Stmt\Class_ || $s instanceof Stmt\Interface_ || $s instanceof Stmt\Trait_) {
             // hoisted declarations are emitted elsewhere
