@@ -22,20 +22,38 @@ pub struct OrderedMap<K, V> {
     next_index: i64,
     /// PHP's internal array pointer (an index into `entries`).
     pos: usize,
+    /// PHP references between elements (`$a[$x] = &$a[$y]`): alias key => key of the entry that holds the
+    /// shared value. Aliases are resolved by every keyed access and listed after the entries when iterating.
+    aliases: Option<Box<Vec<(K, K)>>>,
 }
 
 impl<K: Clone, V: Clone> Clone for OrderedMap<K, V> {
     fn clone(&self) -> Self {
-        OrderedMap { entries: self.entries.clone(), table: self.table.clone(), len: self.len, next_index: self.next_index, pos: self.pos }
+        OrderedMap { entries: self.entries.clone(), table: self.table.clone(), len: self.len, next_index: self.next_index, pos: self.pos, aliases: self.aliases.clone() }
     }
 }
 
 impl<K: MapKey, V> OrderedMap<K, V> {
     fn new() -> Self {
-        OrderedMap { entries: Vec::new(), table: HashTable::new(), len: 0, next_index: 0, pos: 0 }
+        OrderedMap { entries: Vec::new(), table: HashTable::new(), len: 0, next_index: 0, pos: 0, aliases: None }
     }
     fn with_capacity(n: usize) -> Self {
-        OrderedMap { entries: Vec::with_capacity(n), table: HashTable::with_capacity(n), len: 0, next_index: 0, pos: 0 }
+        OrderedMap { entries: Vec::with_capacity(n), table: HashTable::with_capacity(n), len: 0, next_index: 0, pos: 0, aliases: None }
+    }
+    /// The entry key an alias resolves to, if `q` is an alias.
+    fn alias_target<Q: ?Sized + Hash + Eq>(&self, q: &Q) -> Option<&K>
+    where
+        K: Borrow<Q>,
+    {
+        let aliases = self.aliases.as_ref()?;
+        aliases.iter().find(|(a, _)| a.borrow() == q).map(|(_, c)| c)
+    }
+    fn find_direct<Q: ?Sized + Hash + Eq>(&self, q: &Q) -> Option<usize>
+    where
+        K: Borrow<Q>,
+    {
+        let h = hash_of(q);
+        self.table.find(h, |&idx| self.key_at(idx).borrow() == q).copied()
     }
     #[inline]
     fn key_at(&self, idx: usize) -> &K {
@@ -48,8 +66,14 @@ impl<K: MapKey, V> OrderedMap<K, V> {
     where
         K: Borrow<Q>,
     {
-        let h = hash_of(q);
-        self.table.find(h, |&idx| self.key_at(idx).borrow() == q).copied()
+        if let Some(idx) = self.find_direct(q) {
+            return Some(idx);
+        }
+        if let Some(target) = self.alias_target(q) {
+            let h = hash_of(target);
+            return self.table.find(h, |&idx| self.key_at(idx) == target).copied();
+        }
+        None
     }
     fn insert_new(&mut self, key: K, value: V) -> usize {
         if let Some(i) = key.int_value() {
@@ -110,17 +134,31 @@ impl<K: MapKey, V> Default for Map<K, V> {
 }
 
 pub struct MapIter<'a, K, V> {
-    entries: &'a [Option<(K, V)>],
+    map: &'a OrderedMap<K, V>,
     idx: usize,
+    alias_idx: usize,
 }
-impl<'a, K, V> Iterator for MapIter<'a, K, V> {
+impl<'a, K: MapKey, V> Iterator for MapIter<'a, K, V> {
     type Item = (&'a K, &'a V);
     fn next(&mut self) -> Option<Self::Item> {
-        while self.idx < self.entries.len() {
+        let entries = &self.map.entries;
+        while self.idx < entries.len() {
             let i = self.idx;
             self.idx += 1;
-            if let Some((k, v)) = &self.entries[i] {
+            if let Some((k, v)) = &entries[i] {
                 return Some((k, v));
+            }
+        }
+        // aliased keys share the value of the entry they reference
+        if let Some(aliases) = &self.map.aliases {
+            while self.alias_idx < aliases.len() {
+                let (a, c) = &aliases[self.alias_idx];
+                self.alias_idx += 1;
+                if let Some(idx) = self.map.find_direct(c) {
+                    if let Some((_, v)) = &entries[idx] {
+                        return Some((a, v));
+                    }
+                }
             }
         }
         None
@@ -137,15 +175,39 @@ impl<K: MapKey, V> Map<K, V> {
     }
     #[inline]
     pub fn len(&self) -> usize {
-        self.0.len
+        self.0.len + self.0.aliases.as_ref().map_or(0, |a| a.len())
     }
     #[inline]
     pub fn count(&self) -> i64 {
-        self.0.len as i64
+        self.len() as i64
     }
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.0.len == 0
+        self.len() == 0
+    }
+    /// `$a[$alias] = &$a[$target]`: both keys share one value slot from now on.
+    pub fn alias(&mut self, alias: K, target: K)
+    where
+        V: Clone,
+    {
+        let d = self.data();
+        let target = match d.alias_target(&target) {
+            Some(c) => c.clone(),
+            None => target,
+        };
+        if d.find_direct(&target).is_none() {
+            // nothing to share yet (PHP would create a null entry); the alias is dropped
+            return;
+        }
+        if alias == target {
+            return;
+        }
+        if let Some(idx) = d.find_direct(&alias) {
+            d.remove_at(idx);
+        }
+        let aliases = d.aliases.get_or_insert_with(|| Box::new(Vec::new()));
+        aliases.retain(|(a, _)| *a != alias);
+        aliases.push((alias, target));
     }
     #[inline]
     pub fn ptr_eq(&self, other: &Self) -> bool {
@@ -181,7 +243,7 @@ impl<K: MapKey, V> Map<K, V> {
         self.0.find(q).is_some()
     }
     pub fn iter(&self) -> MapIter<'_, K, V> {
-        MapIter { entries: &self.0.entries, idx: 0 }
+        MapIter { map: &self.0, idx: 0, alias_idx: 0 }
     }
     pub fn keys(&self) -> impl Iterator<Item = &K> {
         self.iter().map(|(k, _)| k)
@@ -314,8 +376,30 @@ impl<K: MapKey, V: Clone> Map<K, V> {
             return None;
         }
         let d = self.data();
-        let idx = d.find(q)?;
-        Some(d.remove_at(idx).1)
+        if d.find_direct(q).is_none() {
+            // unsetting an alias only drops that name; the shared value stays under the other names
+            let aliases = d.aliases.as_mut()?;
+            let pos = aliases.iter().position(|(a, _)| a.borrow() == q)?;
+            aliases.remove(pos);
+            return None;
+        }
+        let idx = d.find_direct(q)?;
+        let (key, value) = d.remove_at(idx);
+        // other names still refer to the value: the first alias becomes the entry
+        let promote = d.aliases.as_ref().and_then(|al| al.iter().position(|(_, c)| *c == key));
+        if let Some(pos) = promote {
+            let aliases = d.aliases.as_mut().unwrap();
+            let (new_key, _) = aliases.remove(pos);
+            for (_, c) in aliases.iter_mut() {
+                if *c == key {
+                    *c = new_key.clone();
+                }
+            }
+            let v = value;
+            d.insert_new(new_key, v);
+            return None;
+        }
+        Some(value)
     }
     pub fn unset<Q: ?Sized + Hash + Eq>(&mut self, q: &Q)
     where
@@ -423,6 +507,9 @@ impl<K: MapKey, V: Clone> Map<K, V> {
         }
     }
     pub fn into_iter(self) -> std::vec::IntoIter<(K, V)> {
+        if self.0.aliases.is_some() {
+            return self.to_pairs().into_iter();
+        }
         match Rc::try_unwrap(self.0) {
             Ok(d) => d.entries.into_iter().flatten().collect::<Vec<_>>().into_iter(),
             Err(rc) => rc.entries.iter().flatten().cloned().collect::<Vec<_>>().into_iter(),
