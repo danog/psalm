@@ -207,7 +207,7 @@ final class TestEmitter
             $this->emitInvocation($cls, $m, $body, $dep_args, 'Str::from_static("")');
         } else {
             [$iter, $kt, $vt] = $rows;
-            $body->line('let (__key, __row) = match ' . $iter . '.nth(__i) { Some(__p) => __p, None => return Err(Throw::error(Str::from_static("data set vanished"))) };');
+            $body->line('let (__key, __row) = match (' . $iter . ').into_iter().nth(__i) { Some(__p) => __p, None => return Err(Throw::error(Str::from_static("data set vanished"))) };');
             $body->line('let __t = ' . $new . ';');
             $args = [...$this->rowArgs($m, $vt, $first_dep_param), ...$dep_args];
             $this->emitInvocation($cls, $m, $body, $args, 'to_str(&__key)');
@@ -225,7 +225,7 @@ final class TestEmitter
         } else {
             [$iter] = $rows;
             // the data sets are named by running the provider once
-            $w->line('let __keys: Result<Vec<String>, String> = php_rt::testing::in_thread(' . $root . ', || -> Result<Vec<String>, Throw> { crate::init(); Ok(' . $iter . '.map(|(__k, _)| to_str(&__k).to_string()).collect()) });');
+            $w->line('let __keys: Result<Vec<String>, String> = php_rt::testing::in_thread(' . $root . ', || -> Result<Vec<String>, Throw> { crate::init(); Ok((' . $iter . ').into_iter().map(|(__k, _)| to_str(&__k).to_string()).collect()) });');
             $w->open('match __keys {');
             $w->line('Err(__msg) => trials.push(libtest_mimic::Trial::test(' . $name . '.to_string(), move || Err(libtest_mimic::Failed::from(format!("data provider failed: {}", __msg))))),');
             $w->open('Ok(__keys) => for (__i, __key) in __keys.into_iter().enumerate() {');
