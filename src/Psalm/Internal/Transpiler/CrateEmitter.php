@@ -385,7 +385,7 @@ final class CrateEmitter
         }
         $w->line('use crate::generated::*;');
         $w->line('use crate::Throw;');
-        $w->line('pub struct ClassInfo { pub name: &\'static str, pub ancestors: &\'static [&\'static str], pub kind: u8, pub file: &\'static str }');
+        $w->line('pub use php_rt::names::ClassInfo;');
         $classes = [];
         $all_functions = [];
         foreach ($this->program->uniqueClasses() as $cls) {
