@@ -16,6 +16,8 @@ use PhpParser\Node\Scalar;
 use Psalm\Type\Atomic\TLiteralInt;
 use Psalm\Type\Atomic\TLiteralString;
 
+use function array_map;
+use function array_chunk;
 use function count;
 use function implode;
 use function in_array;
@@ -194,8 +196,8 @@ trait ExprTrait
             return new Val($v->code . '.php_clone()', $v->type);
         }
         if ($e instanceof Expr\Include_) {
-            $this->warn('include/require', $e);
-            return new Val('{ let _ = ' . $this->expr($e->expr)->code . '; Mixed::Bool(true) }', RustType::mixed());
+            // data files (`return [...]`) are evaluated by the runtime's constant-expression evaluator
+            return $this->narrow(new Val('php_include(&' . $this->exprTo($e->expr, RustType::str()) . ')?', RustType::mixed()), $e);
         }
         if ($e instanceof Expr\Eval_) {
             // only constant expressions (`return "\t";`) are supported by the runtime evaluator
@@ -476,19 +478,24 @@ trait ExprTrait
                 if (count($parts) === 0) {
                     return new Val('List::<' . $elem->toRust() . '>::new()', $target);
                 }
+                if (count($parts) > 24) {
+                    $tmp = $this->tmp('__l');
+                    $stmts = array_map(fn(string $p) => $tmp . '.push(' . $p . '); ', $parts);
+                    return new Val('{ let mut ' . $tmp . ': ' . $target->toRust() . ' = List::new(); ' . $this->chunked($stmts, $tmp, $target) . $tmp . ' }', $target);
+                }
                 return new Val('list![' . implode(', ', $parts) . ']', $target);
             }
             $tmp = $this->tmp('__l');
-            $code = '{ let mut ' . $tmp . ': ' . $target->toRust() . ' = List::new(); ';
+            $stmts = [];
             foreach ($e->items as $item) {
                 if ($item->unpack) {
                     $sv = $this->expr($item->value);
-                    $code .= $tmp . '.extend(' . $this->casts->convert($sv->code, $sv->type, RustType::list($elem)) . '.into_iter()); ';
+                    $stmts[] = $tmp . '.extend(' . $this->casts->convert($sv->code, $sv->type, RustType::list($elem)) . '.into_iter()); ';
                 } else {
-                    $code .= $tmp . '.push(' . $this->exprTo($item->value, $elem) . '); ';
+                    $stmts[] = $tmp . '.push(' . $this->exprTo($item->value, $elem) . '); ';
                 }
             }
-            return new Val($code . $tmp . ' }', $target);
+            return new Val('{ let mut ' . $tmp . ': ' . $target->toRust() . ' = List::new(); ' . $this->chunked($stmts, $tmp, $target) . $tmp . ' }', $target);
         }
         if ($target->kind === RustType::LIST) {
             $target = RustType::map(RustType::arrayKey(), $target->inner());
@@ -502,18 +509,36 @@ trait ExprTrait
             return new Val('Map::<' . $kt->toRust() . ', ' . $vt->toRust() . '>::new()', $target);
         }
         $tmp = $this->tmp('__m');
-        $code = '{ let mut ' . $tmp . ': ' . $target->toRust() . ' = Map::new(); ';
+        $stmts = [];
         foreach ($e->items as $item) {
             if ($item->unpack) {
                 $sv = $this->expr($item->value);
-                $code .= 'for (__k, __v) in ' . $this->casts->convert($sv->code, $sv->type, $target) . '.into_iter() { if __k.int_value().is_some() { ' . $tmp . '.push(__v); } else { ' . $tmp . '.insert(__k, __v); } } ';
+                $stmts[] = 'for (__k, __v) in ' . $this->casts->convert($sv->code, $sv->type, $target) . '.into_iter() { if __k.int_value().is_some() { ' . $tmp . '.push(__v); } else { ' . $tmp . '.insert(__k, __v); } } ';
             } elseif ($item->key === null) {
-                $code .= $tmp . '.push(' . $this->exprTo($item->value, $vt) . '); ';
+                $stmts[] = $tmp . '.push(' . $this->exprTo($item->value, $vt) . '); ';
             } else {
-                $code .= $tmp . '.insert(' . $this->keyExpr($item->key, $kt) . ', ' . $this->exprTo($item->value, $vt) . '); ';
+                $stmts[] = $tmp . '.insert(' . $this->keyExpr($item->key, $kt) . ', ' . $this->exprTo($item->value, $vt) . '); ';
             }
         }
-        return new Val($code . $tmp . ' }', $target);
+        return new Val('{ let mut ' . $tmp . ': ' . $target->toRust() . ' = Map::new(); ' . $this->chunked($stmts, $tmp, $target) . $tmp . ' }', $target);
+    }
+
+    /**
+     * Large literals are built in chunks by immediately-invoked closures, each a separate function body
+     * for the Rust compiler (one huge body makes borrow checking very memory hungry).
+     *
+     * @param list<string> $stmts statements filling `$tmp`
+     */
+    private function chunked(array $stmts, string $tmp, RustType $t): string
+    {
+        if (count($stmts) <= 24) {
+            return implode('', $stmts);
+        }
+        $out = '';
+        foreach (array_chunk($stmts, 24) as $chunk) {
+            $out .= '(|' . $tmp . ': &mut ' . $t->toRust() . '| -> Result<(), Throw> { ' . implode('', $chunk) . ' Ok(()) })(&mut ' . $tmp . ')?; ';
+        }
+        return $out;
     }
 
     private function shapeValueType(RustType $shape): RustType
