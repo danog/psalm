@@ -88,6 +88,22 @@ Psalm itself is loaded at runtime:
    `TYPEPHP_COLLECT_ERRORS=<file>` (fork feature) makes the front end report
    every rejected construct instead of stopping at the first one.
 
+## Running the test suite inside the binary
+
+`psalm-native --typephp-run <script.php> [args]` runs an interpreted PHP
+script on top of the compiled runtime. `typephp/run-tests.php` uses this to
+run PHPUnit (interpreted, loaded through Composer) against the compiled Psalm:
+
+    $PHP_HOME/bin/php typephp/gen-vendor-build.php --open-world
+    php /path/to/typephp/bin/tpc.php typephp/project.yml -o psalm-native --build-dir /tmp/psalm-typephp-open -j 12
+    ./psalm-native --typephp-run typephp/run-tests.php tests/ArgTest.php
+
+`--open-world` sets the fork's `open-world` project option: classes are
+registered without `final` and overridable methods are never devirtualized,
+so test classes can extend (`TestConfig`) and mock the compiled classes the
+same way `dg/bypass-finals` allows under plain PHP. Composer "files" entries
+whose functions are compiled in are skipped by the runner.
+
 ## Status
 
 The native binary (all of `src/` plus 1,122 reachable vendor files, 2,300
@@ -110,6 +126,9 @@ danog/phpx:
 
 danog/typephp:
 
+- `open-world` project option (see above); promoted constructor properties
+  are written in the declaring class scope; first-class callables of
+  namespaced functions.
 - Error collection mode (`TYPEPHP_COLLECT_ERRORS`), also during trait
   composition.
 - Function generation is retried with a dynamic local when a local receives
