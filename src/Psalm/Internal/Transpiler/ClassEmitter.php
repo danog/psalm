@@ -552,7 +552,14 @@ final class ClassEmitter
         $w->close();
         $w->line('impl ' . $own . ' { pub fn to_php_string(&self) -> Result<Str, Throw> { ' . ($ts !== null ? 'self.' . $ts->rustName() . '()' : 'Err(Throw::error(Str::from_static(' . Names::rustStringLiteral('Object of class ' . $cls->fqcn . ' could not be converted to string') . ')))') . ' } }');
         $clone = $this->program->findMethod($cls, '__clone');
-        $w->line('impl php_rt::PhpClone for ' . $own . ' { fn php_clone(&self) -> Self { let c = ' . $own . '(Rc::new(RefCell::new(self.0.borrow().clone()))); ' . ($clone !== null ? 'let _ = c.' . $clone->rustName() . '(); ' : '') . 'c } }');
+        $clone_call = '';
+        if ($clone !== null) {
+            $recv = $clone->declaring === $cls || !$clone->isPrivate()
+                ? 'c'
+                : $this->casts->convert('c.clone()', RustType::class($cls->fqcn), RustType::class($clone->declaring->fqcn));
+            $clone_call = 'let _ = ' . $recv . '.' . $clone->rustName() . '(); ';
+        }
+        $w->line('impl php_rt::PhpClone for ' . $own . ' { fn php_clone(&self) -> Self { let c = ' . $own . '(Rc::new(RefCell::new(self.0.borrow().clone()))); ' . $clone_call . 'c } }');
         $w->line('impl Clone for ' . $cls->objStruct() . ' { fn clone(&self) -> Self { ' . $cls->objStruct() . ' { ' . implode(', ', array_map(fn(FieldModel $f) => $f->rustName() . ': self.' . $f->rustName() . '.clone()', $cls->fields)) . ' } } }');
     }
 

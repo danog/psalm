@@ -125,6 +125,9 @@ final class Casts
             if ($fk === RustType::RESOURCE) {
                 return 'cast::<Mixed>(' . $code . ')';
             }
+            if ($fk === RustType::OPTION && in_array($from->inner()->kind, [RustType::CLOSURE, RustType::TUPLE, RustType::DYN_CALLABLE], true)) {
+                return '(match ' . $code . ' { Some(__o) => ' . $this->convert('__o', $from->inner(), $to) . ', None => Mixed::Null })';
+            }
             $this->needMixedFrom($from);
             return 'cast::<Mixed>(' . $code . ')';
         }
