@@ -256,6 +256,7 @@ final class Scanner
             || ($analyze_too && !isset($this->deep_scanned_classlike_files[$fq_classlike_name_lc]))
         ) {
             if (!isset($this->classes_to_scan[$fq_classlike_name_lc]) || $store_failure) {
+                $this->progress->debug('Queueing ' . $fq_classlike_name . ' for scanning' . "\n");
                 $this->classes_to_scan[$fq_classlike_name_lc] = $fq_classlike_name;
             }
 
