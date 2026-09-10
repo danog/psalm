@@ -371,7 +371,9 @@ final class ClassEmitter
                 // `static::m()` from an instance: dispatch on the runtime class
                 $arms = array_map(function (ClassModel $c) use ($cls, $rn, $m): string {
                     $cm = $this->program->findMethod($c, $m->lc()) ?? $m;
-                    $call = $c->path() . '::' . $rn . '(' . $this->argNames($m) . ')?';
+                    // private static methods are never overridden: `static::` still resolves to the declaring class
+                    $target = $m->isPrivate() ? $m->declaring : $c;
+                    $call = $target->path() . '::' . $rn . '(' . $this->argNames($m) . ')?';
                     return $cls->handle() . '::' . $c->variant() . '(_) => Ok(' . $this->casts->convert($call, $cm->return_type, $m->return_type) . ')';
                 }, $cls->concrete);
                 $w->line('pub fn ' . $rn . '__static' . $this->signature($m, true) . ' { match self { ' . implode(', ', $arms) . ($arms ? ', ' : '') . '_ => unreachable!() } }');
@@ -563,6 +565,9 @@ final class ClassEmitter
                 continue;
             }
             if ($static_only && !$m->isStatic()) {
+                continue;
+            }
+            if ($m->isPrivate() && $m->declaring !== $cls) {
                 continue;
             }
             if ($m->isPrivate() && $m->declaring !== $cls) {

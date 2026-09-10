@@ -341,6 +341,16 @@ trait CallTrait
         $v = $this->expr($call, $inf->ret);
         $this->vars = $child_vars;
         $capt = $this->this_type !== null ? 'let this = ' . $this->this_expr . '.clone(); ' : '';
+        // locals the receiver / class expression mentions are captured by value
+        $receiver = $e instanceof Expr\MethodCall ? $e->var : ($e instanceof Expr\StaticCall ? $e->class : null);
+        if ($receiver instanceof \PhpParser\Node) {
+            foreach ((new \PhpParser\NodeFinder())->findInstanceOf([$receiver], Expr\Variable::class) as $var) {
+                if (is_string($var->name) && $var->name !== 'this' && isset($this->vars[$var->name])) {
+                    $rv = Names::var($var->name);
+                    $capt .= 'let ' . $rv . ' = ' . $this->readVar($var->name)->code . '; ';
+                }
+            }
+        }
         $decls = [];
         foreach ($inf->params as $i => $p) {
             $decls[] = 'let __fcc' . $i . ' = __p' . $i . ';';
@@ -523,7 +533,7 @@ trait CallTrait
         $argc = $this->args($args, $m->storage, $m->param_types, $m->declaring, $m->name);
         if ($m->isStatic()) {
             $target = $m->declaring;
-            if ($m->uses_lsb) {
+            if ($m->uses_lsb && !$m->isPrivate()) {
                 if (in_array($kind, ['static', 'self', 'parent'], true) && $this->static_class !== null) {
                     $target = $this->static_class; // forwarded late static binding
                 } elseif ($kind === 'static' && $this->this_type !== null && $this->class !== null) {

@@ -606,6 +606,11 @@ abstract class Constraint implements \Countable
     {
         return 1;
     }
+
+    protected function exporter(): \SebastianBergmann\Exporter\Exporter
+    {
+        return new \SebastianBergmann\Exporter\Exporter();
+    }
 }
 
 final class StringContains extends Constraint
@@ -626,5 +631,34 @@ final class StringContains extends Constraint
     public function toString(): string
     {
         return 'contains "' . $this->needle . '"';
+    }
+}
+
+namespace SebastianBergmann\Exporter;
+
+/** The parts of the exporter that PHPUnit constraints use for failure messages. */
+final class Exporter
+{
+    public function export(mixed $value, int $indentation = 0): string
+    {
+        return var_export($value, true);
+    }
+
+    public function shortenedExport(mixed $value): string
+    {
+        if (is_string($value)) {
+            $value = str_replace("\n", '', $value);
+            if (strlen($value) > 40) {
+                $value = substr($value, 0, 30) . '...' . substr($value, -7);
+            }
+            return "'" . $value . "'";
+        }
+        if (is_array($value)) {
+            return count($value) === 0 ? '[]' : '[...]';
+        }
+        if (is_object($value)) {
+            return get_class($value) . ' Object (...)';
+        }
+        return var_export($value, true);
     }
 }
