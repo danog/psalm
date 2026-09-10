@@ -27,15 +27,25 @@ $files = require $vendor . '/composer/autoload_files.php';
 foreach ($files as $identifier => $file) {
     $code = file_get_contents($file);
     $namespace = preg_match('/^namespace\s+([^;\s]+)\s*;/m', $code, $m) ? $m[1] . '\\' : '';
-    if (preg_match_all('/^\s*function\s+(\w+)\s*\(/m', $code, $m) === 0) {
-        continue;
-    }
+    $compiled = false;
+    preg_match_all('/^\s*function\s+(\w+)\s*\(/m', $code, $m);
     foreach ($m[1] as $function) {
-        if (function_exists($namespace . $function)) {
-            $GLOBALS['__composer_autoload_files'][$identifier] = true;
-            break;
-        }
+        $compiled = $compiled || function_exists($namespace . $function);
+    }
+    preg_match_all('/^const\s+(\w+)\s*=/m', $code, $m);
+    foreach ($m[1] as $constant) {
+        $compiled = $compiled || defined($namespace . $constant);
+    }
+    if ($compiled) {
+        $GLOBALS['__composer_autoload_files'][$identifier] = true;
     }
 }
 
-require $vendor . '/phpunit/phpunit/phpunit';
+// vendor/phpunit/phpunit/phpunit starts with a shebang line, which cannot be
+// require()d: replicate it.
+if (!ini_get('date.timezone')) {
+    ini_set('date.timezone', 'UTC');
+}
+define('PHPUNIT_COMPOSER_INSTALL', $vendor . '/autoload.php');
+require PHPUNIT_COMPOSER_INSTALL;
+PHPUnit\TextUI\Command::main();
