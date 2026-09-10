@@ -10,6 +10,7 @@ use Psalm\Codebase;
 use Psalm\Internal\Analyzer\Statements\Expression\ArrayAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Internal\Type\AssertionReconciler;
 use Psalm\Internal\Type\TypeExpander;
 use Psalm\Issue\DocblockTypeContradiction;
@@ -583,68 +584,62 @@ class Reconciler
                 continue;
             }
 
-            switch ($char) {
-                case '[':
-                case ']':
-                    $parts_offset++;
-                    $parts[$parts_offset] = $char;
-                    ++$parts_offset;
+            if ($char === '[' || $char === ']') {
+                $parts_offset++;
+                $parts[$parts_offset] = $char;
+                ++$parts_offset;
 
-                    if ($char === '[') {
-                        $brackets++;
-                    } else {
-                        $brackets--;
-                    }
+                if ($char === '[') {
+                    $brackets++;
+                } else {
+                    $brackets--;
+                }
 
-                    continue 2;
-
-                case '\'':
-                case '"':
-                    if (!isset($parts[$parts_offset])) {
-                        $parts[$parts_offset] = '';
-                    }
-                    $parts[$parts_offset] .= $char;
-                    $string_char = $char;
-
-                    continue 2;
-
-                case ':':
-                    if (!$brackets
-                        && $i < $char_count - 2
-                        && $chars[$i + 1] === ':'
-                        && $chars[$i + 2] === '$'
-                    ) {
-                        ++$i;
-                        ++$i;
-
-                        ++$parts_offset;
-                        $parts[$parts_offset] = '::$';
-                        ++$parts_offset;
-                        continue 2;
-                    }
-                    // fall through
-
-                case '-':
-                    if (!$brackets
-                        && $i < $char_count - 1
-                        && $chars[$i + 1] === '>'
-                    ) {
-                        ++$i;
-
-                        ++$parts_offset;
-                        $parts[$parts_offset] = '->';
-                        ++$parts_offset;
-                        continue 2;
-                    }
-                    // fall through
-
-                    // no break
-                default:
-                    if (!isset($parts[$parts_offset])) {
-                        $parts[$parts_offset] = '';
-                    }
-                    $parts[$parts_offset] .= $char;
+                continue;
             }
+
+            if ($char === '\'' || $char === '"') {
+                if (!isset($parts[$parts_offset])) {
+                    $parts[$parts_offset] = '';
+                }
+                $parts[$parts_offset] .= $char;
+                $string_char = $char;
+
+                continue;
+            }
+
+            if ($char === ':'
+                && !$brackets
+                && $i < $char_count - 2
+                && $chars[$i + 1] === ':'
+                && $chars[$i + 2] === '$'
+            ) {
+                ++$i;
+                ++$i;
+
+                ++$parts_offset;
+                $parts[$parts_offset] = '::$';
+                ++$parts_offset;
+                continue;
+            }
+
+            if (($char === ':' || $char === '-')
+                && !$brackets
+                && $i < $char_count - 1
+                && $chars[$i + 1] === '>'
+            ) {
+                ++$i;
+
+                ++$parts_offset;
+                $parts[$parts_offset] = '->';
+                ++$parts_offset;
+                continue;
+            }
+
+            if (!isset($parts[$parts_offset])) {
+                $parts[$parts_offset] = '';
+            }
+            $parts[$parts_offset] .= $char;
         }
 
         $parts = array_values($parts);
@@ -1091,13 +1086,13 @@ class Reconciler
                 );
             } else {
                 if ($assertion_string === 'null' && !$not) {
-                    $issue = new TypeDoesNotContainNull(
+                    $issue = Dynamic::any(new TypeDoesNotContainNull(
                         'Type ' . $old_var_type_string
                             . ' for ' . $key
                             . ' is never ' . $assertion_string,
                         $code_location,
                         $old_var_type_string . ' ' . $assertion_string,
-                    );
+                    ));
                 } else {
                     $issue = new TypeDoesNotContainType(
                         'Type ' . $old_var_type_string

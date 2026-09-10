@@ -86,15 +86,17 @@ final class FilterInputReturnTypeProvider implements FunctionReturnTypeProviderI
 
         $filter_int_used = FILTER_DEFAULT;
         if (isset($call_args[2])) {
-            $filter_int_used = FilterUtils::getFilterArgValueOrError(
+            $filter_arg_value = FilterUtils::getFilterArgValueOrError(
                 $call_args[2],
                 $statements_analyzer,
                 $codebase,
             );
 
-            if (!is_int($filter_int_used)) {
-                return $filter_int_used;
+            if (!is_int($filter_arg_value)) {
+                return $filter_arg_value;
             }
+
+            $filter_int_used = $filter_arg_value;
         }
 
         $options = null;

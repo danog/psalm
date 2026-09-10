@@ -934,7 +934,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             }
 
             if ($property_type_location && !$fleshed_out_type->isMixed()) {
-                $stmt = array_filter(
+                $property_stmts = array_filter(
                     $stmts,
                     static fn($stmt): bool => $stmt instanceof PhpParser\Node\Stmt\Property
                         && isset($stmt->props[0]->name->name)
@@ -942,10 +942,10 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 );
 
                 $suppressed = [];
-                if (count($stmt) > 0) {
-                    $stmt = array_pop($stmt);
+                if (count($property_stmts) > 0) {
+                    $property_stmt = array_pop($property_stmts);
 
-                    $docComment = $stmt->getDocComment();
+                    $docComment = $property_stmt->getDocComment();
                     if ($docComment) {
                         try {
                             $docBlock = DocComment::parsePreservingLength($docComment);
@@ -1665,9 +1665,10 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         );
 
         $codebase = $project_analyzer->getCodebase();
+        $analysis_php_version_id = $codebase->analysis_php_version_id;
 
         $allow_native_type = !$docblock_only
-            && $codebase->analysis_php_version_id >= 7_04_00
+            && $analysis_php_version_id >= 7_04_00
             && $codebase->allow_backwards_incompatible_changes
             // PHP does not support callable properties, but does allow Closure properties
             // hasCallableType() treats Closure as a callable, but getCallableTypes() does not
@@ -1680,7 +1681,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                     $source->getNamespace(),
                     $source->getAliasedClassesFlipped(),
                     $source->getFQCLN(),
-                    $codebase->analysis_php_version_id,
+                    $analysis_php_version_id,
                 ) : null,
             $inferred_type->toNamespacedString(
                 $source->getNamespace(),
@@ -1694,7 +1695,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 $source->getFQCLN(),
                 true,
             ),
-            $inferred_type->canBeFullyExpressedInPhp($codebase->analysis_php_version_id),
+            $inferred_type->canBeFullyExpressedInPhp($analysis_php_version_id),
         );
     }
 
@@ -2135,9 +2136,9 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             );
         }
 
-        foreach ($storage->class_implements as $fq_interface_name_lc => $fq_interface_name) {
+        foreach ($storage->class_implements as $implemented_interface_lc => $fq_interface_name) {
             try {
-                $interface_storage = $classlike_storage_provider->get($fq_interface_name_lc);
+                $interface_storage = $classlike_storage_provider->get($implemented_interface_lc);
             } catch (InvalidArgumentException) {
                 return false;
             }
@@ -2149,7 +2150,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 true,
             );
 
-            if ($fq_interface_name_lc === 'traversable'
+            if ($implemented_interface_lc === 'traversable'
                 && !$storage->abstract
                 && !isset($storage->class_implements['iteratoraggregate'])
                 && !isset($storage->class_implements['iterator'])
@@ -2167,8 +2168,10 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 );
             }
 
-            if ($fq_interface_name_lc === 'throwable'
-                && $codebase->analysis_php_version_id >= 7_00_00
+            $analysis_php_version_id = $codebase->analysis_php_version_id;
+
+            if ($implemented_interface_lc === 'throwable'
+                && $analysis_php_version_id >= 7_00_00
                 && !$storage->abstract
                 && !isset($storage->parent_classes['exception'])
                 && !isset($storage->parent_classes['error'])
@@ -2182,10 +2185,10 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 );
             }
 
-            if (($fq_interface_name_lc === 'unitenum'
-                    || $fq_interface_name_lc === 'backedenum')
+            if (($implemented_interface_lc === 'unitenum'
+                    || $implemented_interface_lc === 'backedenum')
                 && !$storage->is_enum
-                && $codebase->analysis_php_version_id >= 8_01_00
+                && $analysis_php_version_id >= 8_01_00
             ) {
                 IssueBuffer::maybeAdd(
                     new InvalidInterfaceImplementation(

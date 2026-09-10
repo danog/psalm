@@ -13,6 +13,7 @@ use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\PhpVisitor\ParamReplacementVisitor;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
@@ -795,15 +796,15 @@ final class MethodComparator
         CodeLocation $code_location,
         array $suppressed_issues,
     ): void {
-        $implementer_method_storage_param_type = TypeExpander::expandUnion(
+        $implementer_method_storage_param_type = Dynamic::any(TypeExpander::expandUnion(
             $codebase,
             $implementer_param_type,
             $implementer_classlike_storage->name,
             $implementer_called_class_name,
             $implementer_classlike_storage->parent_class,
-        );
+        ));
 
-        $guide_method_storage_param_type = TypeExpander::expandUnion(
+        $guide_method_storage_param_type = Dynamic::any(TypeExpander::expandUnion(
             $codebase,
             $guide_param_type,
             $guide_classlike_storage->is_trait && $guide_method_storage->abstract
@@ -815,7 +816,7 @@ final class MethodComparator
             $guide_classlike_storage->is_trait && $guide_method_storage->abstract
                 ? $implementer_classlike_storage->parent_class
                 : $guide_classlike_storage->parent_class,
-        );
+        ));
 
         $guide_class_name = $guide_classlike_storage->name;
 
@@ -1066,7 +1067,7 @@ final class MethodComparator
         CodeLocation $code_location,
         array $suppressed_issues,
     ): void {
-        $implementer_method_storage_return_type = TypeExpander::expandUnion(
+        $implementer_method_storage_return_type = Dynamic::any(TypeExpander::expandUnion(
             $codebase,
             $implementer_return_type,
             $implementer_classlike_storage->is_trait
@@ -1074,9 +1075,9 @@ final class MethodComparator
                 : $implementer_classlike_storage->name,
             $implementer_called_class_name,
             $implementer_classlike_storage->parent_class,
-        );
+        ));
 
-        $guide_method_storage_return_type = TypeExpander::expandUnion(
+        $guide_method_storage_return_type = Dynamic::any(TypeExpander::expandUnion(
             $codebase,
             $guide_return_type,
             $guide_classlike_storage->is_trait
@@ -1090,7 +1091,7 @@ final class MethodComparator
             true,
             true,
             $implementer_method_storage->final,
-        );
+        ));
 
         $guide_class_name = $guide_classlike_storage->name;
 
@@ -1195,11 +1196,13 @@ final class MethodComparator
 
     /**
      * @param  array<string, array<string, Union>>  $template_extended_params
+     * @param Union $templated_type
+     * @param-out Union $templated_type
      */
     private static function transformTemplates(
         array $template_extended_params,
         string $base_class_name,
-        Union &$templated_type,
+        mixed &$templated_type,
         Codebase $codebase,
     ): void {
         if (isset($template_extended_params[$base_class_name])) {

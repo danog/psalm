@@ -96,10 +96,9 @@ final class ArrayMergeReturnTypeProvider implements FunctionReturnTypeProviderIn
                         }
                         $unpacking_possibly_empty = !$type_part->isNonEmpty();
                     } elseif ($type_part instanceof TArray) {
-                        $unpacked_type_parts = $type_part->type_params[1];
+                        $unpacked_type_parts = $type_part->type_params[1]->getAtomicTypes();
                         $unpacking_indefinite_number_of_args = true;
                         $unpacking_possibly_empty = !$type_part instanceof TNonEmptyArray;
-                        $unpacked_type_parts = $unpacked_type_parts->getAtomicTypes();
                     } else {
                         return Type::getArray();
                     }

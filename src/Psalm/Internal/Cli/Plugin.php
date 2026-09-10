@@ -14,12 +14,6 @@ use Symfony\Component\Console\Application;
 use function dirname;
 use function getcwd;
 
-// phpcs:disable PSR1.Files.SideEffects
-
-require_once __DIR__ . '/../CliUtils.php';
-require_once __DIR__ . '/../ErrorHandler.php';
-require_once __DIR__ . '/../Composer.php';
-
 /**
  * @internal
  */

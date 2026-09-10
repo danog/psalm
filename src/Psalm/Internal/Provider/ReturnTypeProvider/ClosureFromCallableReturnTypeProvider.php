@@ -34,7 +34,8 @@ final class ClosureFromCallableReturnTypeProvider implements MethodReturnTypePro
         $source = $event->getSource();
         $method_name_lowercase = $event->getMethodNameLowercase();
         $call_args = $event->getCallArgs();
-        if (!$source instanceof StatementsAnalyzer) {
+        $statements_analyzer = $source instanceof StatementsAnalyzer ? $source : null;
+        if ($statements_analyzer === null) {
             return null;
         }
 
@@ -53,7 +54,7 @@ final class ClosureFromCallableReturnTypeProvider implements MethodReturnTypePro
                         $codebase,
                         $atomic_type,
                         null,
-                        $source,
+                        $statements_analyzer,
                         $context,
                         true,
                     );

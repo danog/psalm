@@ -217,10 +217,10 @@ final class ErrorBaseline
         // Sort files first
         ksort($groupedIssues);
 
-        foreach ($groupedIssues as &$issues) {
-            ksort($issues);
+        foreach ($groupedIssues as $file_name => $file_issues) {
+            ksort($file_issues);
+            $groupedIssues[$file_name] = $file_issues;
         }
-        unset($issues);
 
         return $groupedIssues;
     }

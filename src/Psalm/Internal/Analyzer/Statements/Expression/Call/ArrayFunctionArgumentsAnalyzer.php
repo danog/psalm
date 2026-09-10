@@ -728,12 +728,14 @@ final class ArrayFunctionArgumentsAnalyzer
 
     /**
      * @param  (TArray|null)[] $array_arg_types
+     * @param Atomic $closure_type
+     * @param-out Atomic $closure_type
      */
     private static function checkClosureType(
         StatementsAnalyzer $statements_analyzer,
         Context $context,
         string $method_id,
-        Atomic &$closure_type,
+        mixed &$closure_type,
         PhpParser\Node\Arg $closure_arg,
         int $min_closure_param_count,
         int $max_closure_param_count,
@@ -789,6 +791,7 @@ final class ArrayFunctionArgumentsAnalyzer
                                 }
 
                                 $callable_fq_class_name = $container_class;
+                                break;
                         }
 
                         if (!$codebase->classOrInterfaceExists($callable_fq_class_name, null, $context)) {
@@ -891,13 +894,14 @@ final class ArrayFunctionArgumentsAnalyzer
 
     /**
      * @param  TClosure|TCallable $closure_type
+     * @param-out Atomic $closure_type
      * @param  (TArray|null)[] $array_arg_types
      */
     private static function checkClosureTypeArgs(
         StatementsAnalyzer $statements_analyzer,
         Context $context,
         string $method_id,
-        Atomic &$closure_type,
+        mixed &$closure_type,
         PhpParser\Node\Arg $closure_arg,
         int $min_closure_param_count,
         int $max_closure_param_count,

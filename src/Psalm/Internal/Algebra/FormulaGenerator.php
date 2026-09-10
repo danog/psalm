@@ -11,6 +11,7 @@ use Psalm\Internal\Algebra;
 use Psalm\Internal\Analyzer\Statements\Expression\AssertionFinder;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Clause;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Node\Expr\BinaryOp\VirtualBooleanAnd;
 use Psalm\Node\Expr\BinaryOp\VirtualBooleanOr;
 use Psalm\Node\Expr\VirtualBooleanNot;
@@ -96,7 +97,7 @@ final class FormulaGenerator
 
         if ($conditional instanceof PhpParser\Node\Expr\BooleanNot) {
             if ($conditional->expr instanceof PhpParser\Node\Expr\BinaryOp\BooleanOr) {
-                $and_expr = new VirtualBooleanAnd(
+                $and_expr = Dynamic::any(new VirtualBooleanAnd(
                     new VirtualBooleanNot(
                         $conditional->expr->left,
                         $conditional->getAttributes(),
@@ -106,7 +107,7 @@ final class FormulaGenerator
                         $conditional->getAttributes(),
                     ),
                     $conditional->expr->getAttributes(),
-                );
+                ));
 
                 return self::getFormula(
                     $conditional_object_id,

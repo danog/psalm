@@ -180,12 +180,12 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
             $traverser->addVisitor($short_closure_visitor);
             $traverser->traverse($stmt->getStmts());
 
-            foreach ($short_closure_visitor->getUsedVariables() as $use_var_id => $_) {
-                if ($context->hasVariable($use_var_id)) {
-                    $use_context->vars_in_scope[$use_var_id] = $context->vars_in_scope[$use_var_id];
+            foreach ($short_closure_visitor->getUsedVariables() as $used_var_id => $_) {
+                if ($context->hasVariable($used_var_id)) {
+                    $use_context->vars_in_scope[$used_var_id] = $context->vars_in_scope[$used_var_id];
 
                     if ($statements_analyzer->variable_use_graph) {
-                        $parent_nodes = $context->vars_in_scope[$use_var_id]->parent_nodes;
+                        $parent_nodes = $context->vars_in_scope[$used_var_id]->parent_nodes;
 
                         foreach ($parent_nodes as $parent_node) {
                             $statements_analyzer->variable_use_graph->addPath(
@@ -197,7 +197,7 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
                     }
                 }
 
-                $use_context->vars_possibly_in_scope[$use_var_id] = true;
+                $use_context->vars_possibly_in_scope[$used_var_id] = true;
             }
         }
 

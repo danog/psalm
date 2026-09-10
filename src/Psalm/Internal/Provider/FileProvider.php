@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider;
 
+use Psalm\Internal\TypePhp\Dynamic;
 use FilesystemIterator;
 use RecursiveCallbackFilterIterator;
 use RecursiveDirectoryIterator;
@@ -185,14 +186,14 @@ class FileProvider
     {
         $file_paths = [];
 
-        $iterator = new RecursiveDirectoryIterator(
+        $directory_iterator = new RecursiveDirectoryIterator(
             $dir_path,
             FilesystemIterator::CURRENT_AS_PATHNAME | FilesystemIterator::SKIP_DOTS,
         );
 
         if ($filter !== null) {
-            $iterator = new RecursiveCallbackFilterIterator(
-                $iterator,
+            $inner_iterator = Dynamic::any(new RecursiveCallbackFilterIterator(
+                $directory_iterator,
                 /** @param mixed $_ */
                 static function (string $current, mixed $_, RecursiveIterator $iterator) use ($filter): bool {
                     if ($iterator->hasChildren()) {
@@ -203,11 +204,13 @@ class FileProvider
 
                     return $filter($path);
                 },
-            );
+            ));
+        } else {
+            $inner_iterator = $directory_iterator;
         }
 
         /** @var RecursiveDirectoryIterator */
-        $iterator = new RecursiveIteratorIterator($iterator);
+        $iterator = new RecursiveIteratorIterator($inner_iterator);
         $iterator->rewind();
 
         while ($iterator->valid()) {

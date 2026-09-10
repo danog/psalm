@@ -253,7 +253,8 @@ class CodeLocation
 
             $key_line = trim((string) preg_replace('@\**/\s*@', '', mb_strcut($key_line, $indentation)));
 
-            $this->selection_start = $preview_offset + $indentation + $this->preview_start;
+            /** @psalm-suppress RedundantCast the cast keeps the dynamic sum assignable to a typed property under TypePHP */
+            $this->selection_start = (int) ($preview_offset + $indentation + $this->preview_start);
             $this->selection_end = $this->selection_start + strlen($key_line);
         }
 
@@ -287,7 +288,8 @@ class CodeLocation
                         . "or regex doesn't contain 1st capturing group, regex type " . $this->regex_type,
                     );
                 }
-                $this->selection_start = $this->selection_start + $matches[1][1];
+                /** @psalm-suppress RedundantCast the cast keeps the dynamic sum assignable to a typed property under TypePHP */
+                $this->selection_start = (int) ($this->selection_start + $matches[1][1]);
                 $this->selection_end = $this->selection_start + strlen($matches[1][0]);
             }
         }

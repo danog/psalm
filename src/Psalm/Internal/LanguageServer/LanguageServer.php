@@ -120,13 +120,6 @@ final class LanguageServer extends Dispatcher
     /** @var array<string,array<string,array{o:int, s: list<string>}>> */
     private array $issue_baseline = [];
 
-    /**
-     * This should actually be a private property on `parent`
-     *
-     * @psalm-suppress UnusedProperty
-     */
-    protected JsonMapper $mapper;
-
     public function __construct(
         protected ProtocolReader $protocolReader,
         protected ProtocolWriter $protocolWriter,

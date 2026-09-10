@@ -37,8 +37,13 @@ final class TypeVariableResolver extends MutableTypeVisitor
     ) {
     }
 
+    /**
+     * @param TypeNode $type
+     * @param-out TypeNode $type
+     * @return self::STOP_TRAVERSAL|self::DONT_TRAVERSE_CHILDREN|null
+     */
     #[Override]
-    protected function enterNode(TypeNode &$type): ?int
+    protected function enterNode(mixed &$type): ?int
     {
         if (!$type instanceof Union) {
             return null;

@@ -13,6 +13,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\AssignmentAnalyzer;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Issue\ImpureGlobalVariable;
 use Psalm\Issue\ImpureVariable;
 use Psalm\Issue\InvalidScope;
@@ -263,11 +264,11 @@ final class VariableFetchAnalyzer
                     || $statements_analyzer->getSource() instanceof FunctionLikeAnalyzer
                 ) {
                     if ($context->is_global || $from_global) {
-                        $exception = new UndefinedGlobalVariable(
+                        $exception = Dynamic::any(new UndefinedGlobalVariable(
                             'Cannot find referenced variable ' . $var_name . ' in global scope',
                             new CodeLocation($statements_analyzer->getSource(), $stmt),
                             $var_name,
-                        );
+                        ));
                     } else {
                         $exception = new UndefinedVariable(
                             'Cannot find referenced variable ' . $var_name,
@@ -425,11 +426,15 @@ final class VariableFetchAnalyzer
         return true;
     }
 
+    /**
+     * @param Union $stmt_type
+     * @param-out Union $stmt_type
+     */
     private static function addDataFlowToVariable(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\Variable $stmt,
         string $var_name,
-        Union &$stmt_type,
+        mixed &$stmt_type,
         Context $context,
     ): void {
         $codebase = $statements_analyzer->getCodebase();
@@ -484,11 +489,15 @@ final class VariableFetchAnalyzer
         }
     }
 
+    /**
+     * @param Union $type
+     * @param-out Union $type
+     */
     private static function taintVariable(
         StatementsAnalyzer $statements_analyzer,
         Context $context,
         string $var_name,
-        Union &$type,
+        mixed &$type,
         PhpParser\Node\Expr\Variable $stmt,
     ): void {
         if (!$graph = $statements_analyzer->getTaintFlowGraphWithSuppressed()) {
@@ -786,8 +795,8 @@ final class VariableFetchAnalyzer
                 $values['full_path'] = $str;
             }
 
-            $type = new Union([TKeyedArray::make($values)]);
-            $parent = new TArray([Type::getNonEmptyString(), $type]);
+            $file_type = new Union([TKeyedArray::make($values)]);
+            $parent = new TArray([Type::getNonEmptyString(), $file_type]);
 
             return new Union([$parent]);
         }

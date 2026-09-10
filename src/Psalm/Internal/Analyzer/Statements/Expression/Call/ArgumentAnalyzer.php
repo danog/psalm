@@ -21,6 +21,7 @@ use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\Codebase\ConstantTypeResolver;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Internal\Type\Comparator\CallableTypeComparator;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
@@ -378,11 +379,9 @@ final class ArgumentAnalyzer
         }
 
         if ($template_result && $template_result->template_types) {
-            $arg_type_param = $arg_value_type;
+            $arg_type_param = $arg->unpack ? null : $arg_value_type;
 
             if ($arg->unpack) {
-                $arg_type_param = null;
-
                 foreach ($arg_value_type->getAtomicTypes() as $arg_atomic_type) {
                     if ($arg_atomic_type instanceof TArray
                         || $arg_atomic_type instanceof TKeyedArray
@@ -902,11 +901,11 @@ final class ArgumentAnalyzer
         if ($param_type->hasCallableType() && $param_type->isSingle()) {
             // we do this replacement early because later we don't have access to the
             // $statements_analyzer, which is necessary to understand string function names
-            $input_type = $input_type->getBuilder();
-            foreach ($input_type->getAtomicTypes() as $key => $atomic_type) {
-                $container_callable_type = $param_type->getSingleAtomic();
-                $container_callable_type = $container_callable_type instanceof TCallable
-                    ? $container_callable_type
+            $input_type_builder = $input_type->getBuilder();
+            foreach ($input_type_builder->getAtomicTypes() as $key => $atomic_type) {
+                $single_param_atomic = $param_type->getSingleAtomic();
+                $container_callable_type = $single_param_atomic instanceof TCallable
+                    ? $single_param_atomic
                     : null;
 
                 $candidate_callable = CallableTypeComparator::getCallableFromAtomic(
@@ -965,11 +964,11 @@ final class ArgumentAnalyzer
                         }
                     }
 
-                    $input_type->removeType($key);
-                    $input_type->addType($candidate_callable);
+                    $input_type_builder->removeType($key);
+                    $input_type_builder->addType($candidate_callable);
                 }
             }
-            $input_type = $input_type->freeze();
+            $input_type = $input_type_builder->freeze();
         }
 
         $union_comparison_results = new TypeComparisonResult();
@@ -1595,6 +1594,7 @@ final class ArgumentAnalyzer
                                         }
 
                                         $callable_fq_class_name = $container_class;
+                                        break;
                                 }
 
                                 if (ClassLikeAnalyzer::checkFullyQualifiedClassLikeName(
@@ -1735,10 +1735,10 @@ final class ArgumentAnalyzer
         $was_cloned = false;
 
         if ($input_type->isNullable() && !$param_type->isNullable()) {
-            $input_type = $input_type->getBuilder();
+            $input_type_builder = $input_type->getBuilder();
             $was_cloned = true;
-            $input_type->removeType('null');
-            $input_type = $input_type->freeze();
+            $input_type_builder->removeType('null');
+            $input_type = $input_type_builder->freeze();
         }
 
         if ($input_type->getId() === $param_type->getId()) {
@@ -2019,13 +2019,15 @@ final class ArgumentAnalyzer
      */
     private static function resolveTypeVariablesInUnion(Union $type, Codebase $codebase, bool &$changed): Union
     {
+        $resolved_type = Dynamic::any($type);
+
         $resolver = new TypeVariableResolver($codebase);
-        $resolver->traverse($type);
+        $resolver->traverse($resolved_type);
 
         if ($resolver->resolved_a_variable) {
             $changed = true;
         }
 
-        return $type;
+        return $resolved_type;
     }
 }

@@ -289,6 +289,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
                 ) {
                     return false;
                 }
+                break;
         }
 
         return true;

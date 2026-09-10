@@ -116,10 +116,11 @@ final class TypeExpander
      * @return non-empty-list<Atomic>
      * @psalm-suppress ConflictingReferenceConstraint, ReferenceConstraintViolation The output type is always Atomic
      * @psalm-suppress ComplexMethod
+     * @param Atomic $return_type
      */
     public static function expandAtomic(
         Codebase $codebase,
-        Atomic &$return_type,
+        mixed &$return_type,
         ?string $self_class,
         string|TNamedObject|TTemplateParam|null $static_class_type,
         ?string $parent_class,
@@ -400,12 +401,12 @@ final class TypeExpander
 
             $potential_ints = [];
 
-            foreach ($new_value_types as $new_value_type) {
-                if (!$new_value_type instanceof TLiteralInt) {
+            foreach ($new_value_types as $expanded_value_type) {
+                if (!$expanded_value_type instanceof TLiteralInt) {
                     return [new TInt()];
                 }
 
-                $potential_ints[] = $new_value_type->value;
+                $potential_ints[] = $expanded_value_type->value;
             }
 
             return TypeParser::getComputedIntsFromMask($potential_ints);
@@ -581,10 +582,11 @@ final class TypeExpander
 
     /**
      * @param-out TNamedObject|TTemplateParam $return_type
+     * @param TNamedObject $return_type
      */
     private static function expandNamedObject(
         Codebase $codebase,
-        TNamedObject &$return_type,
+        mixed &$return_type,
         ?string $self_class,
         string|TNamedObject|TTemplateParam|null $static_class_type,
         ?string $parent_class,
@@ -704,10 +706,12 @@ final class TypeExpander
 
     /**
      * @return non-empty-list<Atomic>
+     * @param TConditional $return_type
+     * @param-out TConditional $return_type
      */
     private static function expandConditional(
         Codebase $codebase,
-        TConditional &$return_type,
+        mixed &$return_type,
         ?string $self_class,
         string|TNamedObject|TTemplateParam|null $static_class_type,
         ?string $parent_class,
@@ -915,10 +919,12 @@ final class TypeExpander
 
     /**
      * @return non-empty-list<Atomic>
+     * @param TPropertiesOf $return_type
+     * @param-out TPropertiesOf $return_type
      */
     private static function expandPropertiesOf(
         Codebase $codebase,
-        TPropertiesOf &$return_type,
+        mixed &$return_type,
         ?string $self_class,
         string|TNamedObject|TTemplateParam|null $static_class_type,
     ): array {
@@ -997,11 +1003,12 @@ final class TypeExpander
 
     /**
      * @param TKeyOf|TValueOf $return_type
+     * @param-out Atomic $return_type
      * @return non-empty-list<Atomic>
      */
     private static function expandKeyOfValueOf(
         Codebase $codebase,
-        Atomic &$return_type,
+        mixed &$return_type,
         ?string $self_class,
         string|TNamedObject|TTemplateParam|null $static_class_type,
         ?string $parent_class,

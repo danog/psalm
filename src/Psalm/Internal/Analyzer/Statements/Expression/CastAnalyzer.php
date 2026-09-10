@@ -13,6 +13,7 @@ use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Internal\Type\TypeCombiner;
 use Psalm\Issue\InvalidCast;
 use Psalm\Issue\PossiblyInvalidCast;
@@ -200,12 +201,12 @@ final class CastAnalyzer
 
                 $all_permissible = true;
 
-                foreach ($stmt_expr_type->getAtomicTypes() as $type) {
-                    if ($type instanceof Scalar) {
-                        $objWithProps = new TObjectWithProperties(['scalar' => new Union([$type])]);
+                foreach ($stmt_expr_type->getAtomicTypes() as $expr_atomic_type) {
+                    if ($expr_atomic_type instanceof Scalar) {
+                        $objWithProps = new TObjectWithProperties(['scalar' => new Union([$expr_atomic_type])]);
                         $permissible_atomic_types[] = $objWithProps;
-                    } elseif ($type instanceof TKeyedArray) {
-                        $permissible_atomic_types[] = new TObjectWithProperties($type->properties);
+                    } elseif ($expr_atomic_type instanceof TKeyedArray) {
+                        $permissible_atomic_types[] = new TObjectWithProperties($expr_atomic_type->properties);
                     } else {
                         $all_permissible = false;
                         break;
@@ -244,21 +245,21 @@ final class CastAnalyzer
 
                 $all_permissible = true;
 
-                foreach ($stmt_expr_type->getAtomicTypes() as $type) {
-                    if ($type instanceof Scalar) {
-                        $keyed_array = TKeyedArray::make([new Union([$type])], null, null, true);
+                foreach ($stmt_expr_type->getAtomicTypes() as $expr_atomic_type) {
+                    if ($expr_atomic_type instanceof Scalar) {
+                        $keyed_array = TKeyedArray::make([new Union([$expr_atomic_type])], null, null, true);
                         $permissible_atomic_types[] = $keyed_array;
-                    } elseif ($type instanceof TNull) {
+                    } elseif ($expr_atomic_type instanceof TNull) {
                         $permissible_atomic_types[] = new TArray([Type::getNever(), Type::getNever()]);
-                    } elseif ($type instanceof TArray
-                        || $type instanceof TKeyedArray
+                    } elseif ($expr_atomic_type instanceof TArray
+                        || $expr_atomic_type instanceof TKeyedArray
                     ) {
-                        $permissible_atomic_types[] = $type;
-                    } elseif ($type instanceof TObjectWithProperties) {
-                        $array_type = $type->properties === []
+                        $permissible_atomic_types[] = $expr_atomic_type;
+                    } elseif ($expr_atomic_type instanceof TObjectWithProperties) {
+                        $array_type = $expr_atomic_type->properties === []
                             ? Type::getArrayAtomic()
                             : TKeyedArray::make(
-                                $type->properties,
+                                $expr_atomic_type->properties,
                                 null,
                                 [Type::getArrayKey(), Type::getMixed()],
                             );
@@ -911,10 +912,10 @@ final class CastAnalyzer
 
         $file_manipulation = null;
         if ($maybe_type->from_docblock) {
-            $issue = new RedundantCastGivenDocblockType(
+            $issue = Dynamic::any(new RedundantCastGivenDocblockType(
                 'Redundant cast to ' . $maybe_type->getKey() . ' given docblock-provided type',
                 new CodeLocation($statements_analyzer->getSource(), $stmt),
-            );
+            ));
 
             if ($codebase->alter_code
                 && isset($project_analyzer->getIssuesToFix()['RedundantCastGivenDocblockType'])

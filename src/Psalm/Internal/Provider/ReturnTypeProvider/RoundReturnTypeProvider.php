@@ -8,7 +8,10 @@ use Override;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Plugin\EventHandler\Event\FunctionReturnTypeProviderEvent;
 use Psalm\Plugin\EventHandler\FunctionReturnTypeProviderInterface;
-use Psalm\Type;
+use Psalm\Type\Atomic\TFloat;
+use Psalm\Type\Atomic\TLiteralFloat;
+use Psalm\Type\Atomic\TLiteralInt;
+use Psalm\Type\Union;
 
 use function array_values;
 use function count;
@@ -32,7 +35,7 @@ final class RoundReturnTypeProvider implements FunctionReturnTypeProviderInterfa
     }
 
     #[Override]
-    public static function getFunctionReturnType(FunctionReturnTypeProviderEvent $event): ?Type\Union
+    public static function getFunctionReturnType(FunctionReturnTypeProviderEvent $event): ?Union
     {
         $call_args = $event->getCallArgs();
         if (count($call_args) === 0) {
@@ -50,7 +53,7 @@ final class RoundReturnTypeProvider implements FunctionReturnTypeProviderInterfa
 
             if ($type !== null && $type->isSingle()) {
                 $atomic_type = array_values($type->getAtomicTypes())[0];
-                if ($atomic_type instanceof Type\Atomic\TLiteralInt) {
+                if ($atomic_type instanceof TLiteralInt) {
                     $precision_val = $atomic_type->value;
                 }
             }
@@ -62,7 +65,7 @@ final class RoundReturnTypeProvider implements FunctionReturnTypeProviderInterfa
 
             if ($type !== null && $type->isSingle()) {
                 $atomic_type = array_values($type->getAtomicTypes())[0];
-                if ($atomic_type instanceof Type\Atomic\TLiteralInt) {
+                if ($atomic_type instanceof TLiteralInt) {
                     /** @var positive-int|0 $mode_val */
                     $mode_val = $atomic_type->value;
                 }
@@ -71,12 +74,13 @@ final class RoundReturnTypeProvider implements FunctionReturnTypeProviderInterfa
 
         if ($num_arg !== null && $num_arg->isSingle()) {
             $num_type = array_values($num_arg->getAtomicTypes())[0];
-            if ($num_type instanceof Type\Atomic\TLiteralFloat || $num_type instanceof Type\Atomic\TLiteralInt) {
-                $rounded_val = round($num_type->value, $precision_val, $mode_val);
-                return new Type\Union([new Type\Atomic\TLiteralFloat($rounded_val)]);
+            if ($num_type instanceof TLiteralFloat || $num_type instanceof TLiteralInt) {
+                $num_value = $num_type->value;
+                $rounded_val = round($num_value, $precision_val, $mode_val);
+                return new Union([new TLiteralFloat($rounded_val)]);
             }
         }
 
-        return new Type\Union([new Type\Atomic\TFloat()]);
+        return new Union([new TFloat()]);
     }
 }

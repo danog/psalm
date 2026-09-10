@@ -680,9 +680,9 @@ final class FilterUtils
         ) {
             foreach ($input_type->getAtomicTypes() as $key => $atomic_type) {
                 if ($atomic_type instanceof TKeyedArray) {
-                    $input_type = $input_type->getBuilder();
-                    $input_type->removeType($key);
-                    $input_type = $input_type->freeze();
+                    $input_type_builder = $input_type->getBuilder();
+                    $input_type_builder->removeType($key);
+                    $input_type = $input_type_builder->freeze();
 
                     $new = [];
                     foreach ($atomic_type->properties as $k => $property) {
@@ -749,9 +749,9 @@ final class FilterUtils
                 }
 
                 if ($atomic_type instanceof TArray) {
-                    $input_type = $input_type->getBuilder();
-                    $input_type->removeType($key);
-                    $input_type = $input_type->freeze();
+                    $input_type_builder = $input_type->getBuilder();
+                    $input_type_builder->removeType($key);
+                    $input_type = $input_type_builder->freeze();
 
                     [$keys_union, $values_union] = $atomic_type->type_params;
                     $values_union = self::getReturnType(
@@ -999,10 +999,10 @@ final class FilterUtils
                 $min_range = $min_range !== null ? (int) $min_range : null;
                 $max_range = $max_range !== null ? (int) $max_range : null;
 
-                if ($min_range !== null || $max_range !== null) {
-                    $int_type = new TIntRange($min_range, $max_range);
-                } else {
+                if ($min_range === null && $max_range === null) {
                     $int_type = new TInt();
+                } else {
+                    $int_type = new TIntRange($min_range, $max_range);
                 }
 
                 foreach ($input_type->getAtomicTypes() as $atomic_type) {
@@ -1180,10 +1180,10 @@ final class FilterUtils
 
                 break;
             case FILTER_VALIDATE_DOMAIN:
-                if (self::hasFlag($flags_int_used, FILTER_FLAG_HOSTNAME)) {
-                    $string_type = new TNonEmptyString();
-                } else {
+                if (!self::hasFlag($flags_int_used, FILTER_FLAG_HOSTNAME)) {
                     $string_type = new TString();
+                } else {
+                    $string_type = new TNonEmptyString();
                 }
 
                 foreach ($input_type->getAtomicTypes() as $atomic_type) {

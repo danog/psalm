@@ -359,7 +359,7 @@ final class FunctionLikeDocblockScanner
         }
 
         // merge taints from doc block to storage, enforce uniqueness and having consecutive index keys
-        $storage->taint_source_types |= $docblock_info->taint_source_types;
+        $storage->taint_source_types = $storage->taint_source_types | $docblock_info->taint_source_types;
         $location = new CodeLocation($file_scanner, $stmt, null, true);
 
         foreach ($docblock_info->added_taints as $taint) {
@@ -738,14 +738,7 @@ final class FunctionLikeDocblockScanner
                 }
             }
 
-            if (!$fake_method) {
-                $docblock_type_location = new DocblockTypeLocation(
-                    $file_scanner,
-                    $docblock_param['start'],
-                    $docblock_param['end'],
-                    $docblock_param['line_number'],
-                );
-            } else {
+            if ($fake_method) {
                 $docblock_type_location = new CodeLocation(
                     $file_scanner,
                     $function,
@@ -753,6 +746,13 @@ final class FunctionLikeDocblockScanner
                     false,
                     CodeLocation::FUNCTION_PHPDOC_METHOD,
                     null,
+                );
+            } else {
+                $docblock_type_location = new DocblockTypeLocation(
+                    $file_scanner,
+                    $docblock_param['start'],
+                    $docblock_param['end'],
+                    $docblock_param['line_number'],
                 );
             }
 
@@ -1177,7 +1177,7 @@ final class FunctionLikeDocblockScanner
                 $function_template_types,
             );
 
-            $removed_taint = TypeParser::parseTokens(
+            $removed_taint_type = TypeParser::parseTokens(
                 array_values($fixed_type_tokens),
                 null,
                 $function_template_types + $class_template_types,
@@ -1185,15 +1185,15 @@ final class FunctionLikeDocblockScanner
             );
 
             /** @psalm-suppress UnusedMethodCall */
-            $removed_taint->queueClassLikesForScanning($codebase, $file_storage);
+            $removed_taint_type->queueClassLikesForScanning($codebase, $file_storage);
 
-            $removed_taint_single = $removed_taint->getSingleAtomic();
+            $removed_taint_single = $removed_taint_type->getSingleAtomic();
 
             if (!$removed_taint_single instanceof TConditional) {
                 throw new TypeParseTreeException('Escaped taint must be a conditional');
             }
 
-            $storage->conditionally_removed_taints[] = $removed_taint;
+            $storage->conditionally_removed_taints[] = $removed_taint_type;
         } catch (TypeParseTreeException $e) {
             $storage->docblock_issues[] = new InvalidDocblock(
                 $e->getMessage() . ' in docblock for ' . $cased_function_id,

@@ -138,24 +138,20 @@ final class PsalmRestarter extends XdebugHandler
         $unit = strtolower($value[strlen($value) - 1]);
 
         if (in_array($unit, ['g', 'm', 'k'], true)) {
-            $value = (int) $value;
+            $bytes = (int) $value;
         } else {
             $unit = '';
-            $value = (int) $value;
+            $bytes = (int) $value;
         }
 
-        switch ($unit) {
-            case 'g':
-                $value *= 1024;
-                // no break
-            case 'm':
-                $value *= 1024;
-                // no break
-            case 'k':
-                $value *= 1024;
-        }
+        $multiplier = match ($unit) {
+            'g' => 1024 ** 3,
+            'm' => 1024 ** 2,
+            'k' => 1024,
+            default => 1,
+        };
 
-        return $value;
+        return $bytes * $multiplier;
     }
 
 

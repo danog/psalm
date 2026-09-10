@@ -19,6 +19,7 @@ use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Codebase\AssertionsFromInheritanceResolver;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TemplateBound;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
@@ -498,7 +499,7 @@ final class ExistingAtomicStaticCallAnalyzer
             $context_final = false;
 
             if ($lhs_type_part instanceof TTemplateParam) {
-                $static_type = $lhs_type_part;
+                $static_type = Dynamic::any($lhs_type_part);
             } elseif ($lhs_type_part instanceof TTemplateParamClass) {
                 $static_type = new TTemplateParam(
                     $lhs_type_part->param_name,
@@ -594,8 +595,10 @@ final class ExistingAtomicStaticCallAnalyzer
      */
     private static function hasStaticInType(Type\TypeNode $type): bool
     {
+        $visited_type = Dynamic::any($type);
+
         $visitor = new ContainsStaticVisitor;
-        $visitor->traverse($type);
+        $visitor->traverse($visited_type);
         return $visitor->matches();
     }
 

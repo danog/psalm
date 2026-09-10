@@ -637,6 +637,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
 
                     return null;
                 }
+                break;
         }
 
         return $emit_issues ? null : true;

@@ -234,15 +234,17 @@ final class ForkContext extends AbstractContext
         }
 
         if (!$this->weKilled && $this->exited > 0) {
-            $signal = $this->exited;
-            if ($signal === 11) {
-                $signal = "11: THIS IS A PHP BUG, please report this to https://github.com/vimeo/psalm/issues".
+            $exit_signal = $this->exited;
+            if ($exit_signal === 11) {
+                $signal_description = "11: THIS IS A PHP BUG, please report this to https://github.com/vimeo/psalm/issues".
                     " AND to https://github.com/php/php-src/issues";
-            } elseif ($signal === 9) {
-                $signal = "9: the process was likely killed by the OOM killer, try increasing the swap space ".
+            } elseif ($exit_signal === 9) {
+                $signal_description = "9: the process was likely killed by the OOM killer, try increasing the swap space ".
                     "or use the arrayCache=\"false\" config to reduce memory usage";
+            } else {
+                $signal_description = (string) $exit_signal;
             }
-            throw new ContextException("Worker exited due to signal $signal!");
+            throw new ContextException("Worker exited due to signal $signal_description!");
         }
 
         return $this->exited;

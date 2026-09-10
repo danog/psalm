@@ -453,9 +453,13 @@ final class TypeParser
         );
     }
 
+    /**
+     * @param Union $as
+     * @param-out Union $as
+     */
     private static function getGenericParamClass(
         string $param_name,
-        Union &$as,
+        mixed &$as,
         string $defining_class,
         bool $from_docblock = false,
     ): TTemplateParamClass {

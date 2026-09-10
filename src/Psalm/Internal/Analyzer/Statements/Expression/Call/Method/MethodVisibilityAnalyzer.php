@@ -195,6 +195,7 @@ final class MethodVisibilityAnalyzer
                         return false;
                     }
                 }
+                break;
         }
 
         return null;

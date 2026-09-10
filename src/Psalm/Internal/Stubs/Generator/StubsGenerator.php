@@ -197,11 +197,11 @@ final class StubsGenerator
 
         $namespace_stmts = [];
 
-        foreach ($namespaced_nodes as $namespace_name => $stmts) {
+        foreach ($namespaced_nodes as $namespace => $stmts) {
             ksort($stmts);
 
             $namespace_stmts[] = new VirtualNamespace(
-                $namespace_name ? new VirtualName($namespace_name) : null,
+                $namespace ? new VirtualName($namespace) : null,
                 array_values($stmts),
                 ['kind' => PhpParser\Node\Stmt\Namespace_::KIND_BRACED]
             );

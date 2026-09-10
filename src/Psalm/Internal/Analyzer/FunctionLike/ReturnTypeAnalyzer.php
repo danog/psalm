@@ -525,10 +525,12 @@ final class ReturnTypeAnalyzer
                 }
             }
 
+            $analysis_php_version_id = $codebase->analysis_php_version_id;
+
             if (!$declared_return_type->isNever()
                 && $function_always_exits
                 // never return type only available from PHP 8.1 in non-docblock
-                && ($declared_return_type->from_docblock || $codebase->analysis_php_version_id >= 8_10_00)
+                && ($declared_return_type->from_docblock || $analysis_php_version_id >= 8_10_00)
                 // no error for single throw, as extending a class might not work without errors
                 // https://3v4l.org/vCSF4#v8.1.12
                 && !ScopeAnalyzer::onlyThrows($function_stmts)
@@ -1024,8 +1026,10 @@ final class ReturnTypeAnalyzer
             $is_final = $function->isFinal() || $class_storage->final;
         }
 
+        $analysis_php_version_id = $codebase->analysis_php_version_id;
+
         $allow_native_type = !$docblock_only
-            && $codebase->analysis_php_version_id >= 7_00_00
+            && $analysis_php_version_id >= 7_00_00
             && (
                 $codebase->allow_backwards_incompatible_changes
                 || $is_final
@@ -1038,7 +1042,7 @@ final class ReturnTypeAnalyzer
                     $source->getNamespace(),
                     $source->getAliasedClassesFlipped(),
                     $source->getFQCLN(),
-                    $codebase->analysis_php_version_id,
+                    $analysis_php_version_id,
                 ) : null,
             $inferred_return_type->toNamespacedString(
                 $source->getNamespace(),
@@ -1052,7 +1056,7 @@ final class ReturnTypeAnalyzer
                 $source->getFQCLN(),
                 true,
             ),
-            $inferred_return_type->canBeFullyExpressedInPhp($codebase->analysis_php_version_id),
+            $inferred_return_type->canBeFullyExpressedInPhp($analysis_php_version_id),
             $function_like_storage->return_type_description ?? null,
         );
     }

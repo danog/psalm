@@ -33,6 +33,7 @@ use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
 use Psalm\Internal\Type\TypeExpander;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Issue\ImpureFunctionCall;
 use Psalm\Issue\InvalidDocblockParamName;
 use Psalm\Issue\InvalidOverride;
@@ -372,11 +373,11 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
             $ref_context->vars_in_scope[$var] = Type::getBool();
 
-            $var = new VirtualVariable(
+            $var_node = new VirtualVariable(
                 substr($var, 1),
             );
             $virtual_while = new VirtualWhile(
-                $var,
+                $var_node,
                 $function_stmts,
             );
 
@@ -924,15 +925,15 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 ];
             }
 
-            foreach ($context->vars_in_scope as $var => $_) {
-                if (!str_starts_with($var, '$this->') && $var !== '$this') {
-                    $context->removePossibleReference($var);
+            foreach ($context->vars_in_scope as $scope_var_id => $_) {
+                if (!str_starts_with($scope_var_id, '$this->') && $scope_var_id !== '$this') {
+                    $context->removePossibleReference($scope_var_id);
                 }
             }
 
-            foreach ($context->vars_possibly_in_scope as $var => $_) {
-                if (!str_starts_with($var, '$this->') && $var !== '$this') {
-                    unset($context->vars_possibly_in_scope[$var]);
+            foreach ($context->vars_possibly_in_scope as $possible_var_id => $_) {
+                if (!str_starts_with($possible_var_id, '$this->') && $possible_var_id !== '$this') {
+                    unset($context->vars_possibly_in_scope[$possible_var_id]);
                 }
             }
 
@@ -1991,12 +1992,12 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                         ]);
                     }
 
-                    $this_object_type = new TGenericObject(
+                    $this_object_type = Dynamic::any(new TGenericObject(
                         $context->self,
                         $template_params,
                         false,
                         !$storage->final,
-                    );
+                    ));
                 } else {
                     $this_object_type = new TNamedObject(
                         $context->self,

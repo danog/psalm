@@ -16,6 +16,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\IncludeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Issue\ForbiddenCode;
 use Psalm\Issue\PossibleRawObjectIteration;
@@ -692,12 +693,12 @@ final class NamedFunctionCallHandler
                 if (isset($context->vars_in_scope[$var_id])) {
                     if (!$context->vars_in_scope[$var_id]->hasTemplate()) {
                         if ($function_id === 'get_class') {
-                            $atomic_type = new TDependentGetClass(
+                            $atomic_type = Dynamic::any(new TDependentGetClass(
                                 $var_id,
                                 $context->vars_in_scope[$var_id]->hasMixed()
                                     ? Type::getObject()
                                     : $context->vars_in_scope[$var_id],
-                            );
+                            ));
                         } elseif ($function_id === 'gettype') {
                             $atomic_type = new TDependentGetType($var_id);
                         } else {

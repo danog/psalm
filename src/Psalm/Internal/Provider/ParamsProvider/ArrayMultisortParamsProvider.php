@@ -68,7 +68,7 @@ final class ArrayMultisortParamsProvider implements FunctionParamsProviderInterf
 
         $code_location = $event->getCodeLocation();
         $params = [];
-        $previous_param = false;
+        $previous_param = '';
         $last_array_index = 0;
         $last_by_ref_index = -1;
         $first_non_ref_index_after_by_ref = -1;
@@ -164,7 +164,7 @@ final class ArrayMultisortParamsProvider implements FunctionParamsProviderInterf
                     SORT_NATURAL|SORT_FLAG_CASE,
                 ];
 
-                $sort_param = false;
+                $sort_param = '';
                 foreach ($param_type->getLiteralInts() as $atomic) {
                     if (in_array($atomic->value, $sort_order, true)) {
                         if ($sort_param === 'sort_order_flags') {
@@ -217,7 +217,7 @@ final class ArrayMultisortParamsProvider implements FunctionParamsProviderInterf
                     }
                 }
 
-                if ($sort_param === false) {
+                if ($sort_param === '') {
                     return null;
                 }
 

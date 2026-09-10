@@ -14,6 +14,7 @@ use Psalm\Type\Atomic\TKeyedArray;
 use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\Atomic\TObjectWithProperties;
 use Psalm\Type\Union;
+use UnexpectedValueException;
 
 use function array_keys;
 use function is_string;
@@ -401,7 +402,13 @@ final class KeyedArrayComparator
             $codebase,
         );
 
-        /** @var TObjectWithProperties */
-        return $replaced_object->getSingleAtomic();
+        $replaced_atomic = $replaced_object->getSingleAtomic();
+        $replaced_object_type = $replaced_atomic instanceof TObjectWithProperties ? $replaced_atomic : null;
+
+        if ($replaced_object_type === null) {
+            throw new UnexpectedValueException('Expected an object with properties');
+        }
+
+        return $replaced_object_type;
     }
 }

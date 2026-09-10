@@ -12,6 +12,7 @@ use Psalm\Context;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\ClassLikeNameOptions;
 use Psalm\Internal\Analyzer\MethodAnalyzer;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TemplateBound;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
@@ -275,7 +276,6 @@ final class TypeChecker extends TypeVisitor
             }
         }
     }
-
     public function checkScalarClassConstant(TClassConstant $atomic): void
     {
         $fq_classlike_name = $atomic->fq_classlike_name === 'self'
@@ -301,9 +301,10 @@ final class TypeChecker extends TypeVisitor
 
         $const_name = $atomic->const_name;
         if (str_contains($const_name, '*')) {
+            $expandable_atomic = Dynamic::any($atomic);
             TypeExpander::expandAtomic(
                 $this->source->getCodebase(),
-                $atomic,
+                $expandable_atomic,
                 $fq_classlike_name,
                 $fq_classlike_name,
                 null,

@@ -153,9 +153,9 @@ final class ClassLikeDocblockParser
         }
 
         foreach ($templates as $template_entries) {
-            foreach (['psalm', 'phpstan', 'none'] as $source_prefix) {
-                if (isset($template_entries[$source_prefix])) {
-                    $info->templates[] = $template_entries[$source_prefix];
+            foreach (['psalm', 'phpstan', 'none'] as $prefix_candidate) {
+                if (isset($template_entries[$prefix_candidate])) {
+                    $info->templates[] = $template_entries[$prefix_candidate];
                     break;
                 }
             }

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<files psalm-version="dev-master@cf404b51daf81d79198a029f7b2c7f64d28ae68e">
+<files psalm-version="dev-master@f4a2cc7ff8c1987a76ffc03e95ebca94196107d2">
   <file src="examples/TemplateChecker.php">
     <PossiblyUndefinedIntArrayOffset>
       <code><![CDATA[$comment_block->tags['variablesfrom'][0]]]></code>

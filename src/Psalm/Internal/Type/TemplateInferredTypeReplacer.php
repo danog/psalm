@@ -430,11 +430,13 @@ final class TemplateInferredTypeReplacer
 
     /**
      * @param array<string, array<string, non-empty-list<TemplateBound>>> $inferred_lower_bounds
+     * @param TConditional $atomic_type
+     * @param-out TConditional $atomic_type
      */
     private static function replaceConditional(
         TemplateResult $template_result,
         Codebase $codebase,
-        TConditional &$atomic_type,
+        mixed &$atomic_type,
         array $inferred_lower_bounds,
     ): Union {
         $template_type = isset($inferred_lower_bounds[$atomic_type->param_name][$atomic_type->defining_class])

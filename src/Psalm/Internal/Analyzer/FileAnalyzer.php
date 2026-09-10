@@ -268,8 +268,8 @@ class FileAnalyzer extends SourceAnalyzer
             }
         }
 
-        $event = new AfterFileAnalysisEvent($this, $this->context, $file_storage, $codebase, $stmts);
-        $codebase->config->eventDispatcher->dispatchAfterFileAnalysis($event);
+        $after_event = new AfterFileAnalysisEvent($this, $this->context, $file_storage, $codebase, $stmts);
+        $codebase->config->eventDispatcher->dispatchAfterFileAnalysis($after_event);
 
         $this->class_analyzers_to_analyze = [];
         $this->interface_analyzers_to_analyze = [];
@@ -349,11 +349,11 @@ class FileAnalyzer extends SourceAnalyzer
                 return;
             }
 
-            $class_analyzer = new InterfaceAnalyzer($stmt, $this, $stmt->name->name);
+            $interface_analyzer = new InterfaceAnalyzer($stmt, $this, $stmt->name->name);
 
-            $fq_class_name = $class_analyzer->getFQCLN();
+            $fq_class_name = $interface_analyzer->getFQCLN();
 
-            $this->interface_analyzers_to_analyze[strtolower($fq_class_name)] = $class_analyzer;
+            $this->interface_analyzers_to_analyze[strtolower($fq_class_name)] = $interface_analyzer;
         }
     }
 

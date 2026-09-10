@@ -22,6 +22,10 @@ use Psalm\Type\Atomic\TLiteralString;
 use Psalm\Type\Atomic\TString;
 use Psalm\Type\Union;
 
+use function chr;
+use function ord;
+use function strlen;
+
 /**
  * @internal
  */
@@ -48,13 +52,17 @@ final class BitwiseNotAnalyzer
             $stmt_expr_type = $stmt_expr_type->getBuilder();
             foreach ($stmt_expr_type->getAtomicTypes() as $type_string => $type_part) {
                 if ($type_part instanceof TInt || $type_part instanceof TString) {
+                    $acceptable_type = $type_part;
                     if ($type_part instanceof TLiteralInt) {
-                        $type_part = new TLiteralInt(~$type_part->value);
+                        $int_value = $type_part->value;
+                        $acceptable_type = new TLiteralInt(~$int_value);
                     } elseif ($type_part instanceof TLiteralString) {
-                        $type_part = Type::getAtomicStringFromLiteral(~$type_part->value);
+                        $acceptable_type = Type::getAtomicStringFromLiteral(
+                            self::bitwiseNotString($type_part->value),
+                        );
                     }
 
-                    $acceptable_types[] = $type_part;
+                    $acceptable_types[] = $acceptable_type;
                     $has_valid_operand = true;
                 } elseif ($type_part instanceof TFloat) {
                     $type_part = ($type_part instanceof TLiteralFloat) ?
@@ -126,5 +134,21 @@ final class BitwiseNotAnalyzer
                 }
             }
         }
+    }
+
+    /**
+     * Byte-wise bitwise NOT of a string, equivalent to PHP's `~$value` on strings.
+     *
+     * @psalm-pure
+     */
+    private static function bitwiseNotString(string $value): string
+    {
+        $result = '';
+
+        for ($i = 0, $length = strlen($value); $i < $length; $i++) {
+            $result .= chr(~ord($value[$i]) & 0xFF);
+        }
+
+        return $result;
     }
 }

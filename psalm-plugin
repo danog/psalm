@@ -6,4 +6,7 @@ namespace Psalm;
 use Psalm\Internal\Cli\Plugin;
 
 require_once __DIR__ . '/src/Psalm/Internal/Cli/Plugin.php';
+require_once __DIR__ . '/src/Psalm/Internal/CliUtils.php';
+require_once __DIR__ . '/src/Psalm/Internal/ErrorHandler.php';
+require_once __DIR__ . '/src/Psalm/Internal/Composer.php';
 Plugin::run();

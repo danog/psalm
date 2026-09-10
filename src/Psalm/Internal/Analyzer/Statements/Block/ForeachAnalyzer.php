@@ -716,36 +716,36 @@ final class ForeachAnalyzer
             $iterator_atomic_types = [$iterator_atomic_type];
         }
 
-        foreach ($iterator_atomic_types as $iterator_atomic_type) {
-            if ($iterator_atomic_type instanceof TTemplateParam
-                || $iterator_atomic_type instanceof TObjectWithProperties
-                || $iterator_atomic_type instanceof TCallableObject
+        foreach ($iterator_atomic_types as $iterator_atomic_type_part) {
+            if ($iterator_atomic_type_part instanceof TTemplateParam
+                || $iterator_atomic_type_part instanceof TObjectWithProperties
+                || $iterator_atomic_type_part instanceof TCallableObject
             ) {
                 throw new UnexpectedValueException('Shouldn’t get a generic param here');
             }
 
-            if ($iterator_atomic_type instanceof TIterable
-                || (strtolower($iterator_atomic_type->value) === 'traversable'
+            if ($iterator_atomic_type_part instanceof TIterable
+                || (strtolower($iterator_atomic_type_part->value) === 'traversable'
                     || $codebase->classImplements(
-                        $iterator_atomic_type->value,
+                        $iterator_atomic_type_part->value,
                         'Traversable',
                     ) ||
                     (
-                        $codebase->interfaceExists($iterator_atomic_type->value, null, $context)
+                        $codebase->interfaceExists($iterator_atomic_type_part->value, null, $context)
                         && $codebase->interfaceExtends(
-                            $iterator_atomic_type->value,
+                            $iterator_atomic_type_part->value,
                             'Traversable',
                         )
                     ))
             ) {
-                if (strtolower($iterator_atomic_type->value) === 'iteratoraggregate'
+                if (strtolower($iterator_atomic_type_part->value) === 'iteratoraggregate'
                     || $codebase->classImplements(
-                        $iterator_atomic_type->value,
+                        $iterator_atomic_type_part->value,
                         'IteratorAggregate',
                     )
-                    || ($codebase->interfaceExists($iterator_atomic_type->value, null, $context)
+                    || ($codebase->interfaceExists($iterator_atomic_type_part->value, null, $context)
                         && $codebase->interfaceExtends(
-                            $iterator_atomic_type->value,
+                            $iterator_atomic_type_part->value,
                             'IteratorAggregate',
                         )
                     )
@@ -822,7 +822,12 @@ final class ForeachAnalyzer
 
                                     // The collection might be an iterator, in which case
                                     // we want to call the iterator function
-                                    /** @psalm-suppress PossiblyUndefinedStringArrayOffset */
+                                    /** @psalm-suppress PossiblyUndefinedStringArrayOffset
+     * @param Union $value_type
+     * @param-out Union $value_type
+     * @param Union $key_type
+     * @param-out Union $key_type
+     */
                                     if (!isset($generic_storage->template_extended_params['Traversable'])
                                         || ($generic_storage
                                                 ->template_extended_params['Traversable']['TKey']->isMixed()
@@ -875,16 +880,16 @@ final class ForeachAnalyzer
                             $value_type = Type::combineUnionTypes($value_type, $value_type_part);
                         }
                     }
-                } elseif ($iterator_atomic_type instanceof TGenericObject
-                    && strtolower($iterator_atomic_type->value) === 'generator'
+                } elseif ($iterator_atomic_type_part instanceof TGenericObject
+                    && strtolower($iterator_atomic_type_part->value) === 'generator'
                 ) {
-                    $type_params = $iterator_atomic_type->type_params;
+                    $type_params = $iterator_atomic_type_part->type_params;
                     if (isset($type_params[2])
                         && !$type_params[2]->isNullable()
                         && !$type_params[2]->isVoid()
                         && !$type_params[2]->isMixed()
                     ) {
-                        $invalid_iterator_types[] = $iterator_atomic_type->getKey();
+                        $invalid_iterator_types[] = $iterator_atomic_type_part->getKey();
                     } else {
                         $has_valid_iterator = true;
                     }
@@ -925,13 +930,13 @@ final class ForeachAnalyzer
                         $key_type = Type::combineUnionTypes($key_type, $iterator_key_type);
                     }
                 } elseif ($codebase->classImplements(
-                    $iterator_atomic_type->value,
+                    $iterator_atomic_type_part->value,
                     'Iterator',
                 ) ||
                     (
-                        $codebase->interfaceExists($iterator_atomic_type->value, null, $context)
+                        $codebase->interfaceExists($iterator_atomic_type_part->value, null, $context)
                         && $codebase->interfaceExtends(
-                            $iterator_atomic_type->value,
+                            $iterator_atomic_type_part->value,
                             'Iterator',
                         )
                     )
@@ -962,7 +967,7 @@ final class ForeachAnalyzer
 
                 if (!$key_type && !$value_type) {
                     self::getKeyValueParamsForTraversableObject(
-                        $iterator_atomic_type,
+                        $iterator_atomic_type_part,
                         $codebase,
                         $key_type,
                         $value_type,
@@ -972,7 +977,7 @@ final class ForeachAnalyzer
                 return;
             }
 
-            if (!$codebase->classlikes->classOrInterfaceExists($iterator_atomic_type->value, null, $context)) {
+            if (!$codebase->classlikes->classOrInterfaceExists($iterator_atomic_type_part->value, null, $context)) {
                 return;
             }
         }

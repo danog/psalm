@@ -113,6 +113,7 @@ final class ConstFetchAnalyzer
                         $statements_analyzer->getSuppressedIssues(),
                     );
                 }
+                break;
         }
     }
 

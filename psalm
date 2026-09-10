@@ -6,4 +6,14 @@ namespace Psalm;
 use Psalm\Internal\Cli\Psalm;
 
 require_once __DIR__ . '/src/Psalm/Internal/Cli/Psalm.php';
+require_once __DIR__ . '/src/Psalm/Internal/Cli/Psalter.php';
+require_once __DIR__ . '/src/Psalm/Internal/Cli/Review.php';
+require_once __DIR__ . '/src/Psalm/Internal/Cli/LanguageServer.php';
+require_once __DIR__ . '/src/Psalm/Internal/Cli/Refactor.php';
+require_once __DIR__ . '/src/Psalm/IssueBuffer.php';
+require_once __DIR__ . '/src/Psalm/Report.php';
+require_once __DIR__ . '/src/Psalm/Internal/ErrorHandler.php';
+require_once __DIR__ . '/src/Psalm/Internal/CliUtils.php';
+require_once __DIR__ . '/src/Psalm/Internal/Composer.php';
+require_once __DIR__ . '/src/Psalm/Internal/IncludeCollector.php';
 Psalm::run($argv);

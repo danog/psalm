@@ -29,6 +29,7 @@ use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
 use Psalm\Internal\Type\TypeExpander;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Issue\InvalidNamedArgument;
 use Psalm\Issue\InvalidPassByReference;
 use Psalm\Issue\PossiblyUndefinedVariable;
@@ -83,6 +84,8 @@ final class ArgumentsAnalyzer
      * @param   list<PhpParser\Node\Arg>          $args
      * @param   array<int, FunctionLikeParameter>|null  $function_params
      * @return  false|null
+     * @param TemplateResult $template_result
+     * @param-out TemplateResult $template_result
      */
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
@@ -546,13 +549,13 @@ final class ArgumentsAnalyzer
             if ($param_storage->type
                 && ($method_id === 'array_map' || in_array($method_id, self::ARRAY_FILTERLIKE, true))
             ) {
-                $temp = Type::getMixed();
+                $unused_offset_type = Dynamic::any(Type::getMixed());
                 ArrayFetchAnalyzer::taintArrayFetch(
                     $statements_analyzer,
                     $args[1 - $argument_offset]->value,
                     null,
                     $param_storage->type,
-                    $temp,
+                    $unused_offset_type,
                 );
             }
         }
@@ -877,7 +880,7 @@ final class ArgumentsAnalyzer
 
             $arg_value_type = $statements_analyzer->node_data->getType($arg->value);
 
-            foreach ($arg_function_params[$argument_offset] as $i => $function_param) {
+            foreach ($arg_function_params[$argument_offset] as $param_offset => $function_param) {
                 if (ArgumentAnalyzer::checkArgumentMatches(
                     $statements_analyzer,
                     $cased_method_id,
@@ -887,8 +890,8 @@ final class ArgumentsAnalyzer
                     $code_location,
                     $function_storage,
                     $function_param,
-                    $argument_offset + $i,
-                    $i,
+                    $argument_offset + $param_offset,
+                    $param_offset,
                     $function_storage->allow_named_arg_calls ?? true,
                     $arg,
                     $arg_value_type,

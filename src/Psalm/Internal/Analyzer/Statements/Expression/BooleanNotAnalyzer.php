@@ -8,6 +8,7 @@ use PhpParser;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Type;
 use Psalm\Type\Atomic\TBool;
 use Psalm\Type\Atomic\TFalse;
@@ -38,7 +39,7 @@ final class BooleanNotAnalyzer
 
         if ($expr_type) {
             if ($expr_type->isAlwaysTruthy()) {
-                $stmt_type = new TFalse($expr_type->from_docblock);
+                $stmt_type = Dynamic::any(new TFalse($expr_type->from_docblock));
             } elseif ($expr_type->isAlwaysFalsy()) {
                 $stmt_type = new TTrue($expr_type->from_docblock);
             } else {

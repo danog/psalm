@@ -349,6 +349,7 @@ final class FunctionCallReturnTypeFetcher
                             ]);
                         }
                     }
+                    break;
             }
         } else {
             switch ($call_map_key) {
@@ -490,11 +491,9 @@ final class FunctionCallReturnTypeFetcher
                             return $returnType;
                         }
                     }
-                    if ($string_arg_type !== null && $string_arg_type->isNonEmptyString()) {
-                        return Type::getNonEmptyString();
-                    } else {
-                        return Type::getString();
-                    }
+                    return $string_arg_type !== null && $string_arg_type->isNonEmptyString()
+                        ? Type::getNonEmptyString()
+                        : Type::getString();
             }
         }
 
@@ -522,18 +521,23 @@ final class FunctionCallReturnTypeFetcher
                 ) {
                     $stmt_type = $stmt_type->setProperties(['ignore_falsable_issues' => true]);
                 }
+                break;
         }
 
         return $stmt_type;
     }
 
+    /**
+     * @param Union $stmt_type
+     * @param-out Union $stmt_type
+     */
     private static function taintReturnType(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\FuncCall $stmt,
         string $function_id,
         string $cased_function_id,
         FunctionLikeStorage $function_storage,
-        Union &$stmt_type,
+        mixed &$stmt_type,
         TemplateResult $template_result,
         Context $context,
     ): ?DataFlowNode {
@@ -706,10 +710,10 @@ final class FunctionCallReturnTypeFetcher
                 }
             }
 
-            foreach ($taintable_arg_index as $arg_index) {
+            foreach ($taintable_arg_index as $taintable_index) {
                 $function_param_sink = DataFlowNode::getForMethodArgument(
                     $function_id,
-                    $arg_index,
+                    $taintable_index,
                     $function_storage,
                     $function_storage->specialize_call ? $node_location : null,
                 );

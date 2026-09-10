@@ -37,6 +37,7 @@ use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\ReferenceConstraint;
 use Psalm\Internal\Scanner\VarDocblockComment;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TypeExpander;
 use Psalm\Issue\AssignmentToVoid;
@@ -815,8 +816,12 @@ final class AssignmentAnalyzer
         }
     }
 
+    /**
+     * @param Union $type
+     * @param-out Union $type
+     */
     private static function taintAssignment(
-        Union &$type,
+        mixed &$type,
         DataFlowGraph $flow_graph,
         string $var_id,
         CodeLocation $var_location,
@@ -856,7 +861,7 @@ final class AssignmentAnalyzer
         Context $context,
     ): bool {
         if ($stmt instanceof PhpParser\Node\Expr\AssignOp\BitwiseAnd) {
-            $operation = new VirtualBitwiseAnd($stmt->var, $stmt->expr, $stmt->getAttributes());
+            $operation = Dynamic::any(new VirtualBitwiseAnd($stmt->var, $stmt->expr, $stmt->getAttributes()));
         } elseif ($stmt instanceof PhpParser\Node\Expr\AssignOp\BitwiseOr) {
             $operation = new VirtualBitwiseOr($stmt->var, $stmt->expr, $stmt->getAttributes());
         } elseif ($stmt instanceof PhpParser\Node\Expr\AssignOp\BitwiseXor) {
@@ -1290,13 +1295,13 @@ final class AssignmentAnalyzer
                                 $keyed_array_var_id = $assign_value_id . '[\'' . $offset_value . '\']';
                             }
 
-                            $temp = Type::getString((string) $offset_value);
+                            $offset_type = Dynamic::any(Type::getString((string) $offset_value));
                             ArrayFetchAnalyzer::taintArrayFetch(
                                 $statements_analyzer,
                                 $assign_value,
                                 $keyed_array_var_id,
                                 $value_type,
-                                $temp,
+                                $offset_type,
                             );
                         }
 
@@ -1421,7 +1426,7 @@ final class AssignmentAnalyzer
                         if ($statements_analyzer->data_flow_graph
                             && $assign_value
                         ) {
-                            $temp = Type::getArrayKey();
+                            $temp = Dynamic::any(Type::getArrayKey());
                             ArrayFetchAnalyzer::taintArrayFetch(
                                 $statements_analyzer,
                                 $assign_value,
@@ -1878,12 +1883,16 @@ final class AssignmentAnalyzer
         return $assign_value_type->setParentNodes($parent_nodes);
     }
 
+    /**
+     * @param Union $assign_value_type
+     * @param-out Union $assign_value_type
+     */
     private static function analyzeAssignValueDataFlow(
         StatementsAnalyzer $statements_analyzer,
         Codebase $codebase,
         PhpParser\Node\Expr $assign_var,
         ?PhpParser\Node\Expr $assign_expr,
-        Union &$assign_value_type,
+        mixed &$assign_value_type,
         string $var_id,
         Context $context,
         int $removed_taints,

@@ -230,17 +230,17 @@ final class TryAnalyzer
             }
 
             if ($catch_context->collect_exceptions) {
-                foreach ($fq_catch_classes as $fq_catch_class) {
-                    $fq_catch_class_lower = strtolower($fq_catch_class);
+                foreach ($fq_catch_classes as $caught_class) {
+                    $fq_catch_class_lower = strtolower($caught_class);
 
                     foreach ($catch_context->possibly_thrown_exceptions as $exception_fqcln => $_) {
                         $exception_fqcln_lower = strtolower($exception_fqcln);
 
                         if ($exception_fqcln_lower === $fq_catch_class_lower
                             || ($codebase->classExists($exception_fqcln, null, $context)
-                                && $codebase->classExtendsOrImplements($exception_fqcln, $fq_catch_class))
+                                && $codebase->classExtendsOrImplements($exception_fqcln, $caught_class))
                             || ($codebase->interfaceExists($exception_fqcln, null, $context)
-                                && $codebase->interfaceExtends($exception_fqcln, $fq_catch_class))
+                                && $codebase->interfaceExtends($exception_fqcln, $caught_class))
                         ) {
                             unset($original_context->possibly_thrown_exceptions[$exception_fqcln]);
                             unset($context->possibly_thrown_exceptions[$exception_fqcln]);

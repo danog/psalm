@@ -15,7 +15,7 @@ abstract class MutableTypeVisitor
      * @param-out T $type
      * @return self::STOP_TRAVERSAL|self::DONT_TRAVERSE_CHILDREN|null
      */
-    abstract protected function enterNode(TypeNode &$type): ?int;
+    abstract protected function enterNode(mixed &$type): ?int;
 
     /**
      * @template T as TypeNode
@@ -23,7 +23,7 @@ abstract class MutableTypeVisitor
      * @param-out T $node
      * @psalm-suppress ReferenceConstraintViolation
      */
-    public function traverse(TypeNode &$node): bool
+    public function traverse(mixed &$node): bool
     {
         $nodeOrig = $node;
         $result = $this->enterNode($node);

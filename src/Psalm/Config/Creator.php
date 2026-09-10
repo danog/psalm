@@ -142,12 +142,12 @@ final class Creator
             $issues_at_level[$issue_level][$issue_type] += 100 / $counted_types;
         }
 
-        foreach ($issues_at_level as $level => $issues) {
-            ksort($issues);
+        foreach ($issues_at_level as $level => $level_issues) {
+            ksort($level_issues);
 
             // remove any issues where < 0.1% of expressions are affected
             $filtered_issues = array_filter(
-                $issues,
+                $level_issues,
                 static fn($amount): bool => $amount > 0.1,
             );
 

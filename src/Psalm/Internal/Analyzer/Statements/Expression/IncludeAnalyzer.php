@@ -327,17 +327,7 @@ final class IncludeAnalyzer
             return $stmt_type->getSingleStringLiteral()->value;
         }
 
-        if ($stmt instanceof PhpParser\Node\Expr\ArrayDimFetch) {
-            if ($stmt->var instanceof PhpParser\Node\Expr\Variable
-                && $stmt->var->name === 'GLOBALS'
-                && $stmt->dim instanceof PhpParser\Node\Scalar\String_
-            ) {
-                if (isset($GLOBALS[$stmt->dim->value]) && is_string($GLOBALS[$stmt->dim->value])) {
-                    /** @var string */
-                    return $GLOBALS[$stmt->dim->value];
-                }
-            }
-        } elseif ($stmt instanceof PhpParser\Node\Expr\BinaryOp\Concat) {
+        if ($stmt instanceof PhpParser\Node\Expr\BinaryOp\Concat) {
             $left_string = self::getPathTo($stmt->left, $type_provider, $statements_analyzer, $file_name, $config);
             $right_string = self::getPathTo($stmt->right, $type_provider, $statements_analyzer, $file_name, $config);
 

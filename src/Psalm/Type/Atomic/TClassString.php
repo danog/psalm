@@ -7,6 +7,7 @@ namespace Psalm\Type\Atomic;
 use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
 use Psalm\Type\Atomic;
@@ -171,14 +172,14 @@ class TClassString extends TString
         }
 
         if ($input_type instanceof TLiteralClassString) {
-            $input_object_type = new TNamedObject($input_type->value);
+            $input_object_type = Dynamic::any(new TNamedObject($input_type->value));
         } elseif ($input_type instanceof TClassString && $input_type->as_type) {
             $input_object_type = $input_type->as_type;
         } else {
             $input_object_type = new TObject();
         }
 
-        $as_type = TemplateStandinTypeReplacer::replace(
+        $replaced_as_type = TemplateStandinTypeReplacer::replace(
             new Union([$this->as_type]),
             $template_result,
             $codebase,
@@ -193,7 +194,7 @@ class TClassString extends TString
             $depth,
         );
 
-        $as_type_types = array_values($as_type->getAtomicTypes());
+        $as_type_types = array_values($replaced_as_type->getAtomicTypes());
 
         $as_type = count($as_type_types) === 1
             && $as_type_types[0] instanceof TNamedObject

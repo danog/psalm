@@ -159,7 +159,9 @@ final class CustomTraverser extends NodeTraverser
         }
 
         if (!empty($doNodes)) {
-            while ([$i, $replace] = array_pop($doNodes)) {
+            while (($do_node = array_pop($doNodes)) !== null) {
+                $i = $do_node[0];
+                $replace = $do_node[1];
                 array_splice($nodes, $i, 1, $replace);
             }
         }

@@ -53,6 +53,8 @@ use function strlen;
 
 /**
  * @internal
+ * @param Union $result_type
+ * @param-out Union $result_type
  */
 final class ConcatAnalyzer
 {

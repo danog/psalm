@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Internal\Type;
 
 use Psalm\Exception\TypeParseTreeException;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Internal\Type\ParseTree\CallableParamTree;
 use Psalm\Internal\Type\ParseTree\CallableTree;
 use Psalm\Internal\Type\ParseTree\CallableWithReturnTypeTree;
@@ -341,7 +342,7 @@ final class ParseTreeCreator
                 throw new TypeParseTreeException('Unexpected token [');
             }
 
-            $new_parent_leaf = new IndexedAccessTree($next_token[0], $current_parent);
+            $new_parent_leaf = Dynamic::any(new IndexedAccessTree($next_token[0], $current_parent));
         } else {
             if ($this->current_leaf instanceof KeyedArrayPropertyTree) {
                 throw new TypeParseTreeException('Unexpected token [');
@@ -525,7 +526,7 @@ final class ParseTreeCreator
         $current_parent = $this->current_leaf->parent;
 
         if ($this->current_leaf instanceof CallableTree) {
-            $new_parent_leaf = new CallableWithReturnTypeTree($current_parent);
+            $new_parent_leaf = Dynamic::any(new CallableWithReturnTypeTree($current_parent));
             $this->current_leaf->parent = $new_parent_leaf;
             $new_parent_leaf->children = [$this->current_leaf];
 
@@ -658,10 +659,10 @@ final class ParseTreeCreator
             if ($this->current_leaf instanceof TemplateIsTree && $this->current_leaf->parent) {
                 $current_parent = $this->current_leaf->parent;
 
-                $new_leaf = new ConditionalTree(
+                $new_leaf = Dynamic::any(new ConditionalTree(
                     $this->current_leaf,
                     $this->current_leaf->parent,
-                );
+                ));
 
                 array_pop($current_parent->children);
                 $current_parent->children[] = $new_leaf;
@@ -832,10 +833,10 @@ final class ParseTreeCreator
 
         switch ($next_token[0] ?? null) {
             case '<':
-                $new_leaf = new GenericTree(
+                $new_leaf = Dynamic::any(new GenericTree(
                     $type_token[0],
                     $new_parent,
-                );
+                ));
                 ++$this->t;
                 break;
 

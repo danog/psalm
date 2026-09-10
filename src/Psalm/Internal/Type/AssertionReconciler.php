@@ -311,12 +311,14 @@ final class AssertionReconciler extends Reconciler
      * @param Reconciler::RECONCILIATION_* $failed_reconciliation
      * @param   string[]    $suppressed_issues
      * @param-out Reconciler::RECONCILIATION_* $failed_reconciliation
+     * @param Union $existing_var_type
+     * @param-out Union $existing_var_type
      */
     private static function refine(
         StatementsAnalyzer $statements_analyzer,
         Assertion $assertion,
         Atomic $new_type_part,
-        Union &$existing_var_type,
+        mixed &$existing_var_type,
         ?string $key,
         bool $negated,
         ?CodeLocation $code_location,
@@ -564,10 +566,12 @@ final class AssertionReconciler extends Reconciler
     /**
      * This method receives two types. The goal is to use data in the new type to reduce the existing_type to a more
      * precise version. For example: new is `array<int>` old is `list<mixed>` so the result is `list<int>`
+     * @param Union $existing_type
+     * @param-out Union $existing_type
      */
     private static function filterTypeWithAnother(
         Codebase $codebase,
-        Union &$existing_type,
+        mixed &$existing_type,
         Union $new_type,
         bool &$any_scalar_type_match_found = false,
     ): ?Union {
@@ -598,8 +602,12 @@ final class AssertionReconciler extends Reconciler
         return null;
     }
 
+    /**
+     * @param Atomic $type_1_atomic
+     * @param-out Atomic $type_1_atomic
+     */
     private static function filterAtomicWithAnother(
-        Atomic &$type_1_atomic,
+        mixed &$type_1_atomic,
         Atomic $type_2_atomic,
         Codebase $codebase,
         bool &$any_scalar_type_match_found,
@@ -1003,15 +1011,15 @@ final class AssertionReconciler extends Reconciler
             $can_be_equal = false;
             $redundant = true;
 
-            $existing_var_type = $existing_var_type->getBuilder();
+            $existing_var_type_builder = $existing_var_type->getBuilder();
             foreach ($existing_var_atomic_types as $atomic_key => $atomic_type) {
                 if ($atomic_type::class === TNamedObject::class
                     && $atomic_type->value === $fq_enum_name
                 ) {
                     $can_be_equal = true;
                     $redundant = false;
-                    $existing_var_type->removeType($atomic_key);
-                    $existing_var_type->addType(new TEnumCase($fq_enum_name, $case_name));
+                    $existing_var_type_builder->removeType($atomic_key);
+                    $existing_var_type_builder->addType(new TEnumCase($fq_enum_name, $case_name));
                 } elseif (AtomicTypeComparator::canBeIdentical(
                     $statements_analyzer->getCodebase(),
                     $atomic_type,
@@ -1019,16 +1027,16 @@ final class AssertionReconciler extends Reconciler
                 )) {
                     $can_be_equal = true;
                     $redundant = $atomic_key === $assertion_type->getKey();
-                    $existing_var_type->removeType($atomic_key);
-                    $existing_var_type->addType(new TEnumCase($fq_enum_name, $case_name));
+                    $existing_var_type_builder->removeType($atomic_key);
+                    $existing_var_type_builder->addType(new TEnumCase($fq_enum_name, $case_name));
                 } elseif ($atomic_key !== $assertion_type->getKey()) {
-                    $existing_var_type->removeType($atomic_key);
+                    $existing_var_type_builder->removeType($atomic_key);
                     $redundant = false;
                 } else {
                     $can_be_equal = true;
                 }
             }
-            $existing_var_type = $existing_var_type->freeze();
+            $existing_var_type = $existing_var_type_builder->freeze();
 
             if ($var_id
                 && $code_location

@@ -18,6 +18,7 @@ use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\Codebase\VariableUseGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Internal\Type\Comparator\AtomicTypeComparator;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
@@ -373,13 +374,17 @@ final class ArrayFetchAnalyzer
 
     /**
      * Used to create a path between a variable $foo and $foo["a"]
+     * @param Union $stmt_type
+     * @param-out Union $stmt_type
+     * @param Union $offset_type
+     * @param-out Union $offset_type
      */
     public static function taintArrayFetch(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr $var,
         ?string $keyed_array_var_id,
-        Union &$stmt_type,
-        Union &$offset_type,
+        mixed &$stmt_type,
+        mixed &$offset_type,
         ?Context $context = null,
     ): void {
         if ($statements_analyzer->data_flow_graph
@@ -475,12 +480,16 @@ final class ArrayFetchAnalyzer
     /**
      * @psalm-suppress ComplexMethod to be refactored.
      * Good type/bad type behaviour could be mutualised with ArrayAnalyzer
+     * @param Union $array_type
+     * @param-out Union $array_type
+     * @param Union $offset_type_original
+     * @param-out Union $offset_type_original
      */
     public static function getArrayAccessTypeGivenOffset(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\ArrayDimFetch $stmt,
-        Union &$array_type,
-        Union &$offset_type_original,
+        mixed &$array_type,
+        mixed &$offset_type_original,
         bool $in_assignment,
         ?string $extended_var_id,
         Context $context,
@@ -1017,34 +1026,34 @@ final class ArrayFetchAnalyzer
      */
     public static function replaceOffsetTypeWithInts(Union $offset_type): Union
     {
-        $offset_type = $offset_type->getBuilder();
-        $offset_types = $offset_type->getAtomicTypes();
+        $offset_type_builder = $offset_type->getBuilder();
+        $offset_types = $offset_type_builder->getAtomicTypes();
 
         foreach ($offset_types as $key => $offset_type_part) {
             if ($offset_type_part instanceof TLiteralString) {
                 $string_to_int = ArrayAnalyzer::getLiteralArrayKeyInt($offset_type_part->value);
                 if ($string_to_int !== false) {
-                    $offset_type->addType(new TLiteralInt($string_to_int));
-                    $offset_type->removeType($key);
+                    $offset_type_builder->addType(new TLiteralInt($string_to_int));
+                    $offset_type_builder->removeType($key);
                 }
             } elseif ($offset_type_part instanceof TBool) {
                 if ($offset_type_part instanceof TFalse) {
-                    if (!$offset_type->ignore_falsable_issues) {
-                        $offset_type->addType(new TLiteralInt(0));
-                        $offset_type->removeType($key);
+                    if (!$offset_type_builder->ignore_falsable_issues) {
+                        $offset_type_builder->addType(new TLiteralInt(0));
+                        $offset_type_builder->removeType($key);
                     }
                 } elseif ($offset_type_part instanceof TTrue) {
-                    $offset_type->addType(new TLiteralInt(1));
-                    $offset_type->removeType($key);
+                    $offset_type_builder->addType(new TLiteralInt(1));
+                    $offset_type_builder->removeType($key);
                 } else {
-                    $offset_type->addType(new TLiteralInt(0));
-                    $offset_type->addType(new TLiteralInt(1));
-                    $offset_type->removeType($key);
+                    $offset_type_builder->addType(new TLiteralInt(0));
+                    $offset_type_builder->addType(new TLiteralInt(1));
+                    $offset_type_builder->removeType($key);
                 }
             }
         }
 
-        return $offset_type->freeze();
+        return $offset_type_builder->freeze();
     }
 
     /**
@@ -1131,7 +1140,7 @@ final class ArrayFetchAnalyzer
      */
     private static function handleArrayAccessOnArray(
         bool $in_assignment,
-        Atomic &$type,
+        mixed &$type,
         array &$key_values,
         bool $hasMixed,
         PhpParser\Node\Expr\ArrayDimFetch $stmt,
@@ -1262,6 +1271,7 @@ final class ArrayFetchAnalyzer
     /**
      * @param list<string> $expected_offset_types
      * @param-out TArray $type
+     * @param TArray $type
      */
     private static function handleArrayAccessOnTArray(
         StatementsAnalyzer $statements_analyzer,
@@ -1270,7 +1280,7 @@ final class ArrayFetchAnalyzer
         PhpParser\Node\Expr\ArrayDimFetch $stmt,
         bool $hasMixed,
         ?string $extended_var_id,
-        TArray &$type,
+        mixed &$type,
         MutableUnion $offset_type,
         bool $in_assignment,
         array &$expected_offset_types,
@@ -1435,9 +1445,13 @@ final class ArrayFetchAnalyzer
         }
     }
 
+    /**
+     * @param TClassStringMap $type
+     * @param-out TClassStringMap $type
+     */
     private static function handleArrayAccessOnClassStringMap(
         Codebase $codebase,
-        TClassStringMap &$type,
+        mixed &$type,
         MutableUnion $offset_type,
         ?Union $replacement_type,
         ?Union &$array_access_type,
@@ -1535,6 +1549,7 @@ final class ArrayFetchAnalyzer
      * @param list<string> $expected_offset_types
      * @param list<TLiteralString|TLiteralInt> $key_values
      * @param-out TArray|TKeyedArray $type
+     * @param TKeyedArray $type
      */
     private static function handleArrayAccessOnKeyedArray(
         StatementsAnalyzer $statements_analyzer,
@@ -1547,7 +1562,7 @@ final class ArrayFetchAnalyzer
         MutableUnion $offset_type,
         ?string $extended_var_id,
         Context $context,
-        TKeyedArray &$type,
+        mixed &$type,
         bool $hasMixed,
         array &$expected_offset_types,
         bool &$has_valid_offset,

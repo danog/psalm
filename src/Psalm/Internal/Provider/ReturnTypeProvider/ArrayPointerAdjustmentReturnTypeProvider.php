@@ -7,6 +7,7 @@ namespace Psalm\Internal\Provider\ReturnTypeProvider;
 use Override;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\ArrayFetchAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Plugin\EventHandler\Event\FunctionReturnTypeProviderEvent;
 use Psalm\Plugin\EventHandler\FunctionReturnTypeProviderInterface;
 use Psalm\Type;
@@ -70,7 +71,7 @@ final class ArrayPointerAdjustmentReturnTypeProvider implements FunctionReturnTy
 
         $atomic_types = $first_arg_type->getAtomicTypes();
 
-        $value_type = null;
+        $value_type = Dynamic::any(null);
         $definitely_has_items = false;
 
         while ($atomic_type = array_shift($atomic_types)) {
@@ -110,13 +111,13 @@ final class ArrayPointerAdjustmentReturnTypeProvider implements FunctionReturnTy
             $value_type = $value_type->freeze();
         }
 
-        $temp = Type::getMixed();
+        $unused_offset_type = Dynamic::any(Type::getMixed());
         ArrayFetchAnalyzer::taintArrayFetch(
             $statements_source,
             $first_arg,
             null,
             $value_type,
-            $temp,
+            $unused_offset_type,
         );
 
         return $value_type;

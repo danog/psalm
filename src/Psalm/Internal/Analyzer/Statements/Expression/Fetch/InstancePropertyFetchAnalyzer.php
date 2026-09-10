@@ -14,6 +14,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\ExpressionIdentifier;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Issue\ImpurePropertyAssignment;
 use Psalm\Issue\ImpurePropertyFetch;
 use Psalm\Issue\InvalidPropertyFetch;
@@ -319,7 +320,7 @@ final class InstancePropertyFetchAnalyzer
         ?string $stmt_var_id,
         bool $in_assignment,
     ): void {
-        $stmt_type = $context->vars_in_scope[$var_id];
+        $stmt_type = Dynamic::any($context->vars_in_scope[$var_id]);
 
         // we don't need to check anything
         $statements_analyzer->node_data->setType($stmt, $stmt_type);

@@ -7,6 +7,7 @@ namespace Psalm\Internal\LanguageServer;
 use AdvancedJsonRpc\Message as MessageBody;
 use Amp\ByteStream\ReadableResourceStream;
 use Exception;
+use Psalm\Internal\TypePhp\Dynamic;
 use Revolt\EventLoop;
 
 use function explode;
@@ -78,7 +79,8 @@ final class ProtocolStreamReader implements ProtocolReader
         $i = 0;
         while (($buffer[$i] ?? '') !== '') {
             $this->buffer .= $buffer[$i++];
-            switch ($this->parsing_mode) {
+            $parsing_mode = Dynamic::any($this->parsing_mode);
+            switch ($parsing_mode) {
                 case self::PARSE_HEADERS:
                     if ($this->buffer === "\r\n") {
                         $this->parsing_mode = self::PARSE_BODY;
@@ -93,7 +95,8 @@ final class ProtocolStreamReader implements ProtocolReader
                     }
                     break;
                 case self::PARSE_BODY:
-                    if (strlen($this->buffer) === $this->content_length) {
+                    $content_length = $this->content_length;
+                    if ($content_length !== null && strlen($this->buffer) === $content_length) {
                         if (!$this->is_accepting_new_requests) {
                             // If we fork, don't read any bytes in the input buffer from the worker process.
                             $this->emitClose();

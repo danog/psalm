@@ -256,12 +256,16 @@ final class StaticCallAnalyzer extends CallAnalyzer
         return true;
     }
 
+    /**
+     * @param Union $return_type_candidate
+     * @param-out Union $return_type_candidate
+     */
     public static function taintReturnType(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\StaticCall $stmt,
         MethodIdentifier $method_id,
         string $cased_method_id,
-        Union &$return_type_candidate,
+        mixed &$return_type_candidate,
         ?MethodStorage $method_storage,
         ?TemplateResult $template_result,
         ?Context $context = null,

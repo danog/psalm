@@ -25,6 +25,7 @@ use Psalm\Internal\Codebase\VariableUseGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TypeExpander;
@@ -484,7 +485,7 @@ final class AtomicPropertyFetchAnalyzer
             }
         }
 
-        $class_property_type = self::getClassPropertyType(
+        $class_property_type = Dynamic::any(self::getClassPropertyType(
             $statements_analyzer,
             $codebase,
             $config,
@@ -496,7 +497,7 @@ final class AtomicPropertyFetchAnalyzer
             $fq_class_name,
             $prop_name,
             $lhs_type_part,
-        );
+        ));
 
         if (!$in_assignment) {
             // reading a property through a type variable resolves it via its
@@ -632,13 +633,13 @@ final class AtomicPropertyFetchAnalyzer
             $has_magic_getter = true;
 
             if (isset($class_storage->pseudo_property_get_types['$' . $prop_name])) {
-                $stmt_type = TypeExpander::expandUnion(
+                $stmt_type = Dynamic::any(TypeExpander::expandUnion(
                     $codebase,
                     $class_storage->pseudo_property_get_types['$' . $prop_name],
                     $class_storage->name,
                     $class_storage->name,
                     $class_storage->parent_class,
-                );
+                ));
 
                 if (count($template_types = $class_storage->getClassTemplateTypes()) !== 0) {
                     if (!$lhs_type_part instanceof TGenericObject) {
@@ -828,10 +829,14 @@ final class AtomicPropertyFetchAnalyzer
         return $class_property_type;
     }
 
+    /**
+     * @param Union $type
+     * @param-out Union $type
+     */
     public static function processTaints(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\PropertyFetch $stmt,
-        Union &$type,
+        mixed &$type,
         string $property_id,
         ClassLikeStorage $class_storage,
         bool $in_assignment,
@@ -937,10 +942,14 @@ final class AtomicPropertyFetchAnalyzer
         }
     }
 
+    /**
+     * @param Union $type
+     * @param-out Union $type
+     */
     public static function processUnspecialTaints(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr $stmt,
-        Union &$type,
+        mixed &$type,
         string $property_id,
         bool $in_assignment,
         int $added_taints,
@@ -1243,7 +1252,7 @@ final class AtomicPropertyFetchAnalyzer
             || $class_storage->hasAttributeIncludingParents('AllowDynamicProperties', $codebase))
             && isset($class_storage->pseudo_property_get_types['$' . $prop_name])
         ) {
-            $stmt_type = $class_storage->pseudo_property_get_types['$' . $prop_name];
+            $stmt_type = Dynamic::any($class_storage->pseudo_property_get_types['$' . $prop_name]);
 
             if (count($template_types = $class_storage->getClassTemplateTypes()) !== 0) {
                 if (!$lhs_type_part instanceof TGenericObject) {

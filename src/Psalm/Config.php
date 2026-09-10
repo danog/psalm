@@ -1806,21 +1806,21 @@ final class Config
         $from = str_replace('\\', '/', $from);
         $to   = str_replace('\\', '/', $to);
 
-        $from     = explode('/', $from);
-        $to       = explode('/', $to);
-        $relPath  = $to;
+        $from_parts = explode('/', $from);
+        $to_parts   = explode('/', $to);
+        $relPath    = $to_parts;
 
-        foreach ($from as $depth => $dir) {
+        foreach ($from_parts as $depth => $dir) {
             // find first non-matching dir
-            if ($dir === $to[$depth]) {
+            if ($dir === $to_parts[$depth]) {
                 // ignore this directory
                 array_shift($relPath);
             } else {
                 // get number of remaining dirs to $from
-                $remaining = count($from) - $depth;
+                $remaining = count($from_parts) - $depth;
                 if ($remaining > 1) {
                     // add traversals up to first matching dir
-                    $padLength = (count($relPath) + $remaining - 1) * -1;
+                    $padLength = -(count($relPath) + $remaining - 1);
                     $relPath = array_pad($relPath, $padLength, '..');
                     break;
                 }

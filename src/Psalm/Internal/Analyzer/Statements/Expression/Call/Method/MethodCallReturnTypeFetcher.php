@@ -221,6 +221,7 @@ final class MethodCallReturnTypeFetcher
                     true,
                 );
 
+                $secondary_return_type_location = null;
                 $return_type_location = $codebase->methods->getMethodReturnTypeLocation(
                     $method_id,
                     $secondary_return_type_location,
@@ -276,10 +277,12 @@ final class MethodCallReturnTypeFetcher
 
     /**
      * @param  array<PhpParser\Node\Arg>   $args
+     * @param Union $return_type_candidate
+     * @param-out Union $return_type_candidate
      */
     public static function taintMethodCallResult(
         StatementsAnalyzer $statements_analyzer,
-        Union &$return_type_candidate,
+        mixed &$return_type_candidate,
         PhpParser\Node $name_expr,
         PhpParser\Node\Expr $var_expr,
         array $args,

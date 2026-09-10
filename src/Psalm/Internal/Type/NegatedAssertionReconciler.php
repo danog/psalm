@@ -95,12 +95,12 @@ final class NegatedAssertionReconciler extends Reconciler
         }
 
         $existing_var_atomic_types = $existing_var_type->getAtomicTypes();
-        $existing_var_type = $existing_var_type->getBuilder();
+        $existing_var_type_builder = $existing_var_type->getBuilder();
 
         $simple_negated_type = SimpleNegatedAssertionReconciler::reconcile(
             $statements_analyzer->getCodebase(),
             $assertion,
-            $existing_var_type->freeze(),
+            $existing_var_type_builder->freeze(),
             $key,
             $negated,
             $code_location,
@@ -121,30 +121,30 @@ final class NegatedAssertionReconciler extends Reconciler
                 && $assertion_type->type_params[1]->isMixed())
             || $assertion instanceof IsNotCountable
         ) {
-            $existing_var_type->removeType('array');
+            $existing_var_type_builder->removeType('array');
         }
 
         if ($assertion instanceof IsNotType && $assertion_type instanceof TClassString) {
-            $existing_var_type->removeType(TClassString::class);
-            $existing_var_type->addType(new TString);
+            $existing_var_type_builder->removeType(TClassString::class);
+            $existing_var_type_builder->addType(new TString);
         }
 
         if (!$is_equality
             && isset($existing_var_atomic_types['int'])
-            && $existing_var_type->from_calculation
+            && $existing_var_type_builder->from_calculation
             && ($assertion_type instanceof TInt || $assertion_type instanceof TFloat)
         ) {
-            $existing_var_type->removeType($assertion_type->getKey());
+            $existing_var_type_builder->removeType($assertion_type->getKey());
 
             if ($assertion_type instanceof TInt) {
-                $existing_var_type->addType(new TFloat);
+                $existing_var_type_builder->addType(new TFloat);
             } else {
-                $existing_var_type->addType(new TInt);
+                $existing_var_type_builder->addType(new TInt);
             }
 
-            $existing_var_type->from_calculation = false;
+            $existing_var_type_builder->from_calculation = false;
 
-            return $existing_var_type->freeze();
+            return $existing_var_type_builder->freeze();
         }
 
         if (!$is_equality
@@ -152,21 +152,21 @@ final class NegatedAssertionReconciler extends Reconciler
             && ($assertion_type->value === 'DateTime' || $assertion_type->value === 'DateTimeImmutable')
             && isset($existing_var_atomic_types['DateTimeInterface'])
         ) {
-            $existing_var_type->removeType('DateTimeInterface');
+            $existing_var_type_builder->removeType('DateTimeInterface');
 
             if ($assertion_type->value === 'DateTime') {
-                $existing_var_type->addType(new TNamedObject('DateTimeImmutable'));
+                $existing_var_type_builder->addType(new TNamedObject('DateTimeImmutable'));
             } else {
-                $existing_var_type->addType(new TNamedObject('DateTime'));
+                $existing_var_type_builder->addType(new TNamedObject('DateTime'));
             }
 
-            return $existing_var_type->freeze();
+            return $existing_var_type_builder->freeze();
         }
 
         if (!$is_equality && $assertion_type instanceof TNamedObject) {
-            foreach ($existing_var_type->getAtomicTypes() as $key => $type) {
+            foreach ($existing_var_type_builder->getAtomicTypes() as $key => $type) {
                 if ($type instanceof TEnumCase && $type->value === $assertion_type->value) {
-                    $existing_var_type->removeType($key);
+                    $existing_var_type_builder->removeType($key);
                 }
             }
         }
@@ -179,8 +179,8 @@ final class NegatedAssertionReconciler extends Reconciler
         ) {
             /** @var TIterable */
             $iterable = $existing_var_atomic_types['iterable'];
-            $existing_var_type->removeType('iterable');
-            $existing_var_type->addType(new TArray(
+            $existing_var_type_builder->removeType('iterable');
+            $existing_var_type_builder->addType(new TArray(
                 [
                     $iterable->type_params[0]->hasMixed()
                         ? Type::getArrayKey()
@@ -189,50 +189,50 @@ final class NegatedAssertionReconciler extends Reconciler
                 ],
             ));
         } elseif ($assertion_type !== null && $assertion_type::class === TInt::class
-            && isset($existing_var_type->getAtomicTypes()['array-key'])
+            && isset($existing_var_type_builder->getAtomicTypes()['array-key'])
             && !$is_equality
         ) {
-            $existing_var_type->removeType('array-key');
-            $existing_var_type->addType(new TString);
+            $existing_var_type_builder->removeType('array-key');
+            $existing_var_type_builder->addType(new TString);
         } elseif ($assertion_type instanceof TNonEmptyString
-            && $existing_var_type->hasString()
+            && $existing_var_type_builder->hasString()
         ) {
             // do nothing
         } elseif ($assertion_type instanceof TNonEmptyNonspecificLiteralString
-            && $existing_var_type->hasString()
+            && $existing_var_type_builder->hasString()
         ) {
             // do nothing
         } elseif ($assertion instanceof IsClassNotEqual) {
             // do nothing
         } elseif ($assertion_type instanceof TClassString && $assertion_type->is_loaded) {
             // do nothing
-        } elseif ($existing_var_type->isSingle()
-            && $existing_var_type->hasNamedObjectType()
+        } elseif ($existing_var_type_builder->isSingle()
+            && $existing_var_type_builder->hasNamedObjectType()
             && $assertion_type instanceof TNamedObject
-            && isset($existing_var_type->getAtomicTypes()[$assertion_type->getKey()])
+            && isset($existing_var_type_builder->getAtomicTypes()[$assertion_type->getKey()])
         ) {
             // checking if two types share a common parent is not enough to guarantee children are instanceof each other
             // fall through
-        } elseif ($existing_var_type->isArray()
+        } elseif ($existing_var_type_builder->isArray()
             && ($assertion->getAtomicType() instanceof TArray
                 || $assertion->getAtomicType() instanceof TKeyedArray)
         ) {
             //if both types are arrays, try to combine them
             $combined_type = TypeCombiner::combine(
-                array_merge(array_values($existing_var_type->getAtomicTypes()), [$assertion->getAtomicType()]),
+                array_merge(array_values($existing_var_type_builder->getAtomicTypes()), [$assertion->getAtomicType()]),
                 $codebase,
             );
-            $existing_var_type->removeType('array');
+            $existing_var_type_builder->removeType('array');
             if ($combined_type->isSingle()) {
-                $existing_var_type->addType($combined_type->getSingleAtomic());
+                $existing_var_type_builder->addType($combined_type->getSingleAtomic());
             }
         } elseif (!$is_equality) {
             $assertion_type = $assertion->getAtomicType();
 
             // if there wasn't a direct hit, go deeper, eliminating subtypes
-            if ($assertion_type && !$existing_var_type->removeType($assertion_type->getKey())) {
+            if ($assertion_type && !$existing_var_type_builder->removeType($assertion_type->getKey())) {
                 if ($assertion_type instanceof TNamedObject) {
-                    foreach ($existing_var_type->getAtomicTypes() as $part_name => $existing_var_type_part) {
+                    foreach ($existing_var_type_builder->getAtomicTypes() as $part_name => $existing_var_type_part) {
                         if (!$existing_var_type_part->isObjectType()) {
                             continue;
                         }
@@ -256,7 +256,7 @@ final class NegatedAssertionReconciler extends Reconciler
                             if (!$forward_comparison_result->type_variable_lower_bounds
                                 && !$forward_comparison_result->type_variable_upper_bounds
                             ) {
-                                $existing_var_type->removeType($part_name);
+                                $existing_var_type_builder->removeType($part_name);
                             }
                         } elseif (AtomicTypeComparator::isContainedBy(
                             $codebase,
@@ -269,7 +269,7 @@ final class NegatedAssertionReconciler extends Reconciler
                             if (!$reverse_comparison_result->type_variable_lower_bounds
                                 && !$reverse_comparison_result->type_variable_upper_bounds
                             ) {
-                                $existing_var_type->different = true;
+                                $existing_var_type_builder->different = true;
                             }
                         }
                     }
@@ -277,7 +277,7 @@ final class NegatedAssertionReconciler extends Reconciler
             }
         }
 
-        $existing_var_type = $existing_var_type->freeze();
+        $existing_var_type = $existing_var_type_builder->freeze();
 
         if ($assertion instanceof IsNotIdentical
             && ($key !== '$this'
@@ -347,8 +347,8 @@ final class NegatedAssertionReconciler extends Reconciler
         ?CodeLocation $code_location,
         array $suppressed_issues,
     ): Union {
-        $existing_var_type = $existing_var_type->getBuilder();
-        $existing_var_atomic_types = $existing_var_type->getAtomicTypes();
+        $existing_var_type_builder = $existing_var_type->getBuilder();
+        $existing_var_atomic_types = $existing_var_type_builder->getAtomicTypes();
 
         $redundant = true;
         $did_match_literal_type = false;
@@ -356,26 +356,26 @@ final class NegatedAssertionReconciler extends Reconciler
         $scalar_var_type = null;
 
         if ($assertion_type instanceof TLiteralInt) {
-            if ($existing_var_type->hasInt()) {
-                if ($existing_var_type->getLiteralInts()) {
+            if ($existing_var_type_builder->hasInt()) {
+                if ($existing_var_type_builder->getLiteralInts()) {
                     $did_match_literal_type = true;
 
-                    if ($existing_var_type->removeType($assertion_type->getKey())) {
+                    if ($existing_var_type_builder->removeType($assertion_type->getKey())) {
                         $redundant = false;
                     }
                 }
 
-                $existing_range_types = $existing_var_type->getRangeInts();
+                $existing_range_types = $existing_var_type_builder->getRangeInts();
 
                 if ($existing_range_types) {
                     foreach ($existing_range_types as $int_key => $literal_type) {
                         if ($literal_type->contains($assertion_type->value)) {
                             $redundant = false;
-                            $existing_var_type->removeType($int_key);
+                            $existing_var_type_builder->removeType($int_key);
                             if ($literal_type->min_bound === null
                                 || $literal_type->min_bound <= $assertion_type->value - 1
                             ) {
-                                $existing_var_type->addType(new Type\Atomic\TIntRange(
+                                $existing_var_type_builder->addType(new Type\Atomic\TIntRange(
                                     $literal_type->min_bound,
                                     $assertion_type->value - 1,
                                 ));
@@ -383,7 +383,7 @@ final class NegatedAssertionReconciler extends Reconciler
                             if ($literal_type->max_bound === null
                                 || $literal_type->max_bound >= $assertion_type->value + 1
                             ) {
-                                $existing_var_type->addType(new Type\Atomic\TIntRange(
+                                $existing_var_type_builder->addType(new Type\Atomic\TIntRange(
                                     $assertion_type->value + 1,
                                     $literal_type->max_bound,
                                 ));
@@ -392,39 +392,39 @@ final class NegatedAssertionReconciler extends Reconciler
                     }
                 }
 
-                if (isset($existing_var_type->getAtomicTypes()['int'])
-                    && $existing_var_type->getAtomicTypes()['int']::class === Type\Atomic\TInt::class
+                if (isset($existing_var_type_builder->getAtomicTypes()['int'])
+                    && $existing_var_type_builder->getAtomicTypes()['int']::class === Type\Atomic\TInt::class
                 ) {
                     $redundant = false;
                     //this may be used to generate a range containing any int except the one that was asserted against
                     //but this is failing some tests
-                    /*$existing_var_type->removeType('int');
-                    $existing_var_type->addType(new Type\Atomic\TIntRange(null, $assertion_type->value - 1));
-                    $existing_var_type->addType(new Type\Atomic\TIntRange($assertion_type->value + 1, null));*/
+                    /*$existing_var_type_builder->removeType('int');
+                    $existing_var_type_builder->addType(new Type\Atomic\TIntRange(null, $assertion_type->value - 1));
+                    $existing_var_type_builder->addType(new Type\Atomic\TIntRange($assertion_type->value + 1, null));*/
                 }
             } else {
                 $scalar_var_type = $assertion_type;
             }
         } elseif ($assertion_type instanceof TLiteralString) {
-            if ($existing_var_type->hasString()) {
-                if ($existing_var_type->getLiteralStrings()) {
+            if ($existing_var_type_builder->hasString()) {
+                if ($existing_var_type_builder->getLiteralStrings()) {
                     $did_match_literal_type = true;
 
-                    if ($existing_var_type->removeType($assertion_type->getKey())) {
+                    if ($existing_var_type_builder->removeType($assertion_type->getKey())) {
                         $redundant = false;
                     }
                 } elseif ($assertion_type->value === "") {
-                    $existing_var_type->addType(new TNonEmptyString());
+                    $existing_var_type_builder->addType(new TNonEmptyString());
                 }
             } elseif ($assertion_type::class === TLiteralString::class) {
                 $scalar_var_type = $assertion_type;
             }
         } elseif ($assertion_type instanceof TLiteralFloat) {
-            if ($existing_var_type->hasFloat()) {
-                if ($existing_var_type->getLiteralFloats()) {
+            if ($existing_var_type_builder->hasFloat()) {
+                if ($existing_var_type_builder->getLiteralFloats()) {
                     $did_match_literal_type = true;
 
-                    if ($existing_var_type->removeType($assertion_type->getKey())) {
+                    if ($existing_var_type_builder->removeType($assertion_type->getKey())) {
                         $redundant = false;
                     }
                 }
@@ -435,7 +435,7 @@ final class NegatedAssertionReconciler extends Reconciler
             $fq_enum_name = $assertion_type->value;
             $case_name = $assertion_type->case_name;
 
-            foreach ($existing_var_type->getAtomicTypes() as $atomic_key => $atomic_type) {
+            foreach ($existing_var_type_builder->getAtomicTypes() as $atomic_key => $atomic_type) {
                 if ($atomic_type::class === TNamedObject::class
                     && $atomic_type->value === $fq_enum_name
                 ) {
@@ -446,7 +446,7 @@ final class NegatedAssertionReconciler extends Reconciler
                     if (!$enum_storage->is_enum || !$enum_storage->enum_cases) {
                         $scalar_var_type = $assertion_type;
                     } else {
-                        $existing_var_type->removeType($atomic_type->getKey());
+                        $existing_var_type_builder->removeType($atomic_type->getKey());
                         $redundant = false;
 
                         foreach ($enum_storage->enum_cases as $alt_case_name => $_) {
@@ -454,7 +454,7 @@ final class NegatedAssertionReconciler extends Reconciler
                                 continue;
                             }
 
-                            $existing_var_type->addType(new TEnumCase($fq_enum_name, $alt_case_name));
+                            $existing_var_type_builder->addType(new TEnumCase($fq_enum_name, $alt_case_name));
                         }
                     }
                 } elseif ($atomic_type instanceof TEnumCase
@@ -463,13 +463,13 @@ final class NegatedAssertionReconciler extends Reconciler
                 ) {
                     $did_match_literal_type = true;
                 } elseif ($atomic_key === $assertion_type->getKey()) {
-                    $existing_var_type->removeType($assertion_type->getKey());
+                    $existing_var_type_builder->removeType($assertion_type->getKey());
                     $redundant = false;
                 }
             }
         }
 
-        $existing_var_type = $existing_var_type->freeze();
+        $existing_var_type = $existing_var_type_builder->freeze();
 
         if ($key && $code_location) {
             if ($did_match_literal_type

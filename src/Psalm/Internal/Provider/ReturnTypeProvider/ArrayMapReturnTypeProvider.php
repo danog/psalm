@@ -13,6 +13,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\Call\MethodCallAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\StaticCallAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\CallAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Internal\Type\ArrayType;
 use Psalm\Node\Expr\VirtualArrayDimFetch;
 use Psalm\Node\Expr\VirtualFuncCall;
@@ -433,7 +434,7 @@ final class ArrayMapReturnTypeProvider implements FunctionReturnTypeProviderInte
                     [$callable_fq_class_name, $callable_method_name] = $method_id_parts;
 
                     if ($is_instance) {
-                        $fake_method_call = new VirtualMethodCall(
+                        $fake_method_call = Dynamic::any(new VirtualMethodCall(
                             new VirtualVariable(
                                 "__fake_{$fake_var_discriminator}_method_call_var__",
                                 $function_call_arg->getAttributes(),
@@ -444,7 +445,7 @@ final class ArrayMapReturnTypeProvider implements FunctionReturnTypeProviderInte
                             ),
                             $fake_args,
                             $function_call_arg->getAttributes(),
-                        );
+                        ));
 
                         $lhs_instance_type = null;
 

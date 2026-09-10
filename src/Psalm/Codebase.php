@@ -50,6 +50,7 @@ use Psalm\Internal\Provider\FileStorageProvider;
 use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\Provider\StatementsProvider;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Issue\InvalidDocblock;
 use Psalm\Progress\Progress;
 use Psalm\Progress\VoidProgress;
@@ -1435,7 +1436,10 @@ final class Codebase
         foreach ($reference_maps as $reference_map) {
             ksort($reference_map);
 
-            foreach ($reference_map as $start_pos => [$end_pos, $possible_reference]) {
+            foreach ($reference_map as $start_pos => $reference_entry) {
+                $end_pos = Dynamic::any($reference_entry[0]);
+                $possible_reference = Dynamic::any($reference_entry[1]);
+
                 if ($offset < $start_pos) {
                     break;
                 }
@@ -1494,7 +1498,11 @@ final class Codebase
 
         ksort($argument_map);
 
-        foreach ($argument_map as $start_pos => [$end_pos, $possible_reference, $possible_argument_number]) {
+        foreach ($argument_map as $start_pos => $argument_entry) {
+            $end_pos = Dynamic::any($argument_entry[0]);
+            $possible_reference = Dynamic::any($argument_entry[1]);
+            $possible_argument_number = Dynamic::any($argument_entry[2]);
+
             if ($offset < $start_pos) {
                 break;
             }
@@ -1627,7 +1635,10 @@ final class Codebase
 
         krsort($type_map);
 
-        foreach ($type_map as $start_pos => [$end_pos_excluding_whitespace, $possible_type]) {
+        foreach ($type_map as $start_pos => $type_entry) {
+            $end_pos_excluding_whitespace = Dynamic::any($type_entry[0]);
+            $possible_type = Dynamic::any($type_entry[1]);
+
             if ($offset < $start_pos) {
                 continue;
             }
@@ -1669,7 +1680,10 @@ final class Codebase
             }
         }
 
-        foreach ($reference_map as $start_pos => [$end_pos, $possible_reference]) {
+        foreach ($reference_map as $start_pos => $reference_entry) {
+            $end_pos = Dynamic::any($reference_entry[0]);
+            $possible_reference = Dynamic::any($reference_entry[1]);
+
             if ($offset < $start_pos) {
                 continue;
             }
@@ -1724,7 +1738,11 @@ final class Codebase
         if (!$reference_map && !$type_map && !$argument_map) {
             return null;
         }
-        foreach ($argument_map as $start_pos => [$end_pos, $function, $argument_num]) {
+        foreach ($argument_map as $start_pos => $argument_entry) {
+            $end_pos = Dynamic::any($argument_entry[0]);
+            $function = Dynamic::any($argument_entry[1]);
+            $argument_num = Dynamic::any($argument_entry[2]);
+
             if ($offset < $start_pos || $offset > $end_pos) {
                 continue;
             }
@@ -1826,11 +1844,11 @@ final class Codebase
 
                     if ($gap === '->') {
                         $pseudo_property_types = [];
-                        foreach ($class_storage->pseudo_property_get_types as $property_name => $type) {
+                        foreach ($class_storage->pseudo_property_get_types as $property_name => $pseudo_property_type) {
                             $pseudo_property_types[$property_name] = new CompletionItem(
                                 str_replace('$', '', $property_name),
                                 CompletionItemKind::PROPERTY,
-                                $type->__toString(),
+                                $pseudo_property_type->__toString(),
                                 null,
                                 '1', //sort text
                                 str_replace('$', '', $property_name),
@@ -1838,11 +1856,11 @@ final class Codebase
                             );
                         }
 
-                        foreach ($class_storage->pseudo_property_set_types as $property_name => $type) {
+                        foreach ($class_storage->pseudo_property_set_types as $property_name => $pseudo_property_type) {
                             $pseudo_property_types[$property_name] = new CompletionItem(
                                 str_replace('$', '', $property_name),
                                 CompletionItemKind::PROPERTY,
-                                $type->__toString(),
+                                $pseudo_property_type->__toString(),
                                 null,
                                 '1',
                                 str_replace('$', '', $property_name),

@@ -7,6 +7,7 @@ namespace Psalm;
 use InvalidArgumentException;
 use LogicException;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Internal\Type\Comparator\AtomicTypeComparator;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TypeCombiner;
@@ -396,10 +397,10 @@ abstract class Type
      */
     public static function getFloat(?float $value = null, bool $from_docblock = false): Union
     {
-        if ($value !== null) {
-            $type = new TLiteralFloat($value, $from_docblock);
-        } else {
+        if ($value === null) {
             $type = new TFloat($from_docblock);
+        } else {
+            $type = new TLiteralFloat($value, $from_docblock);
         }
 
         return new Union([$type]);
@@ -763,7 +764,7 @@ abstract class Type
         $possibly_undefined = $type_1->possibly_undefined && $type_2->possibly_undefined;
 
         if ($type_1_mixed && $type_2_mixed) {
-            $combined_type = new Union([new TMixed()], ['possibly_undefined' => $possibly_undefined]);
+            $combined_type = Dynamic::any(new Union([new TMixed()], ['possibly_undefined' => $possibly_undefined]));
         } else {
             $both_failed_reconciliation = false;
 

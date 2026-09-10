@@ -9,6 +9,7 @@ use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
@@ -63,11 +64,11 @@ final class HighOrderFunctionArgHandler
         Union $container_function_type,
     ): TemplateResult {
         // Try to infer container callable by $inferred_template_result
-        $container_type = TemplateInferredTypeReplacer::replace(
+        $container_type = Dynamic::any(TemplateInferredTypeReplacer::replace(
             $container_function_type,
             $inferred_template_result,
             $statements_analyzer->getCodebase(),
-        );
+        ));
 
         // type variables in the container signature resolve to their
         // construction-site inference before they bind the input function's

@@ -28,6 +28,7 @@ use Psalm\Internal\Provider\ParserCacheProvider;
 use Psalm\Internal\Provider\ProjectCacheProvider;
 use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\Stubs\Generator\StubsGenerator;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\IssueBuffer;
 use Psalm\Progress\DebugProgress;
 use Psalm\Progress\DefaultProgress;
@@ -94,15 +95,6 @@ use const PHP_EOL;
 use const PHP_URL_SCHEME;
 use const PHP_VERSION;
 use const STDERR;
-
-// phpcs:disable PSR1.Files.SideEffects
-
-require_once __DIR__ . '/../ErrorHandler.php';
-require_once __DIR__ . '/../CliUtils.php';
-require_once __DIR__ . '/../Composer.php';
-require_once __DIR__ . '/../IncludeCollector.php';
-require_once __DIR__ . '/../../IssueBuffer.php';
-require_once __DIR__ . '/../../Report.php';
 
 /**
  * @internal
@@ -664,7 +656,7 @@ final class Psalm
             : false;
 
         if ($debug) {
-            $progress = new DebugProgress();
+            $progress = Dynamic::any(new DebugProgress());
         } elseif (isset($options['no-progress'])) {
             $progress = new VoidProgress();
         } else {
@@ -915,7 +907,6 @@ final class Psalm
         exit;
     }
 
-
     private static function consolidateCache(Config $config, string $current_dir): never
     {
         $cache_directory = $config->getCacheDirectory();
@@ -1073,26 +1064,22 @@ final class Psalm
     private static function forwardCliCall(array $options, array $argv): void
     {
         if (isset($options['alter'])) {
-            require_once __DIR__ . '/Psalter.php';
             Psalter::run($argv);
             exit;
         }
 
         if (isset($options['review'])) {
-            require_once __DIR__ . '/Review.php';
             array_shift($argv);
             Review::run(array_values($argv));
             exit;
         }
 
         if (isset($options['language-server'])) {
-            require_once __DIR__ . '/LanguageServer.php';
             LanguageServer::run($argv);
             exit;
         }
 
         if (isset($options['refactor'])) {
-            require_once __DIR__ . '/Refactor.php';
             Refactor::run($argv);
             exit;
         }
@@ -1258,7 +1245,7 @@ final class Psalm
      */
     private static function shouldFindUnusedCode(array $options, Config $config): bool|string
     {
-        $find_unused_code = false;
+        $find_unused_code = Dynamic::any(false);
         if (isset($options['find-dead-code'])) {
             $options['find-unused-code'] = $options['find-dead-code'] === 'always' ? 'always' : 'auto';
         }

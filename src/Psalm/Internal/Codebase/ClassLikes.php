@@ -24,6 +24,7 @@ use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\PhpVisitor\TraitFinder;
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
 use Psalm\Internal\Provider\FileReferenceProvider;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Internal\Type\TypeExpander;
 use Psalm\Issue\ClassMustBeFinal;
 use Psalm\Issue\MissingImmutableAnnotation;
@@ -1960,13 +1961,13 @@ final class ClassLikes
                         }
 
                         if (!$has_parent_references) {
-                            $issue = new PossiblyUnusedMethod(
+                            $issue = Dynamic::any(new PossiblyUnusedMethod(
                                 'Cannot find ' . ($has_variable_calls ? 'explicit' : 'any')
                                     . ' calls to method ' . $method_id
                                     . ($has_variable_calls ? ' (but did find some potential callers)' : ''),
                                 $method_storage->location,
                                 $method_id,
-                            );
+                            ));
 
                             if ($codebase->alter_code) {
                                 if ($method_storage->stmt_location
@@ -2330,13 +2331,13 @@ final class ClassLikes
                         && ($property_storage->visibility === ClassLikeAnalyzer::VISIBILITY_PUBLIC
                             || !isset($classlike_storage->declaring_method_ids['__get']))
                     ) {
-                        $issue = new PossiblyUnusedProperty(
+                        $issue = Dynamic::any(new PossiblyUnusedProperty(
                             'Cannot find ' . ($has_variable_calls ? 'explicit' : 'any')
                                 . ' references to property ' . $property_id
                                 . ($has_variable_calls ? ' (but did find some potential references)' : ''),
                             $property_storage->location,
                             $property_id,
-                        );
+                        ));
 
                         if ($codebase->alter_code) {
                             if ($property_storage->stmt_location

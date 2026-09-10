@@ -336,7 +336,7 @@ final class InstancePropertyAssignmentAnalyzer
             }
         }
 
-        foreach ($invalid_assignment_value_types as $property_id => $invalid_class_property_type) {
+        foreach ($invalid_assignment_value_types as $invalid_property_id => $invalid_class_property_type) {
             if (!$has_valid_assignment_value_type) {
                 if (IssueBuffer::accepts(
                     new InvalidPropertyAssignmentValue(
@@ -347,7 +347,7 @@ final class InstancePropertyAssignmentAnalyzer
                             $assignment_value ?? $stmt,
                             $context->include_location,
                         ),
-                        $property_id,
+                        $invalid_property_id,
                     ),
                     $statements_analyzer->getSuppressedIssues(),
                 )) {
@@ -364,7 +364,7 @@ final class InstancePropertyAssignmentAnalyzer
                             $assignment_value ?? $stmt,
                             $context->include_location,
                         ),
-                        $property_id,
+                        $invalid_property_id,
                     ),
                     $statements_analyzer->getSuppressedIssues(),
                 )) {
@@ -483,12 +483,16 @@ final class InstancePropertyAssignmentAnalyzer
         }
     }
 
+    /**
+     * @param Union $assignment_value_type
+     * @param-out Union $assignment_value_type
+     */
     private static function taintProperty(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\PropertyFetch $stmt,
         string $property_id,
         ClassLikeStorage $class_storage,
-        Union &$assignment_value_type,
+        mixed &$assignment_value_type,
         Context $context,
     ): void {
         if (!$statements_analyzer->data_flow_graph) {
@@ -908,6 +912,7 @@ final class InstancePropertyAssignmentAnalyzer
     /**
      * @param list<string> $invalid_assignment_types
      * @psalm-suppress ComplexMethod Unavoidably complex method
+     * @param Union $assignment_value_type
      */
     private static function analyzeAtomicAssignment(
         StatementsAnalyzer $statements_analyzer,
@@ -920,7 +925,7 @@ final class InstancePropertyAssignmentAnalyzer
         Atomic $lhs_type_part,
         array &$invalid_assignment_types,
         ?string $var_id,
-        Union $assignment_value_type,
+        mixed $assignment_value_type,
         ?string $lhs_var_id,
         bool &$has_valid_assignment_type,
         bool &$has_regular_setter,

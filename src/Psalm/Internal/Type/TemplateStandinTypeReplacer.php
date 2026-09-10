@@ -8,6 +8,7 @@ use InvalidArgumentException;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Codebase\Methods;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Internal\Type\Comparator\CallableTypeComparator;
 use Psalm\Internal\Type\Comparator\KeyedArrayComparator;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
@@ -218,8 +219,10 @@ final class TemplateStandinTypeReplacer
         if ($atomic_type instanceof TTemplateParam
             && isset($template_result->template_types[$atomic_type->param_name][$atomic_type->defining_class])
         ) {
+            $template_param_atomic = Dynamic::any($atomic_type);
+
             return self::handleTemplateParamStandin(
-                $atomic_type,
+                $template_param_atomic,
                 $key,
                 $input_type,
                 $input_arg_offset,
@@ -396,7 +399,6 @@ final class TemplateStandinTypeReplacer
                 return [$atomic_type];
             }
 
-            /** @psalm-suppress ReferenceConstraintViolation Psalm bug, $atomic_type is not a reference */
             $atomic_type = new TPropertiesOf(
                 $classlike_type,
                 $atomic_type->visibility_filter,
@@ -417,7 +419,6 @@ final class TemplateStandinTypeReplacer
         }
 
         if (!$matching_atomic_types) {
-            /** @psalm-suppress ReferenceConstraintViolation Psalm bug, $atomic_type is not a reference */
             $atomic_type = $atomic_type->replaceTemplateTypesWithStandins(
                 $template_result,
                 $codebase,
@@ -636,9 +637,11 @@ final class TemplateStandinTypeReplacer
 
     /**
      * @return list<Atomic>
+     * @param TTemplateParam $atomic_type
+     * @param-out TTemplateParam $atomic_type
      */
     private static function handleTemplateParamStandin(
-        TTemplateParam &$atomic_type,
+        mixed &$atomic_type,
         string $key,
         ?Union $input_type,
         ?int $input_arg_offset,
@@ -798,13 +801,13 @@ final class TemplateStandinTypeReplacer
 
             $matching_input_keys = [];
 
-            $as = TypeExpander::expandUnion(
+            $as = Dynamic::any(TypeExpander::expandUnion(
                 $codebase,
                 $atomic_type->as,
                 $calling_class,
                 $calling_class,
                 null,
-            );
+            ));
 
             $as = self::replace(
                 $as,
@@ -919,7 +922,7 @@ final class TemplateStandinTypeReplacer
                     continue;
                 }
 
-                $candidate_union = new Union([$candidate_atomic_type]);
+                $candidate_union = Dynamic::any(new Union([$candidate_atomic_type]));
                 $candidate_resolver = new TypeVariableResolver($codebase);
                 $candidate_resolver->traverse($candidate_union);
 

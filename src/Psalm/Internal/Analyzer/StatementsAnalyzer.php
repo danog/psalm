@@ -47,6 +47,7 @@ use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\ReferenceConstraint;
 use Psalm\Internal\Scanner\ParsedDocblock;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TypeParser;
 use Psalm\Internal\Type\TypeTokenizer;
@@ -994,10 +995,10 @@ final class StatementsAnalyzer extends SourceAnalyzer
                 }
 
                 if ($is_foreach_var) {
-                    $issue = new UnusedForeachValue(
+                    $issue = Dynamic::any(new UnusedForeachValue(
                         $var_id . ' is never referenced or the value is not used',
                         $original_location,
-                    );
+                    ));
                 } else {
                     $issue = new UnusedVariable(
                         $var_id . ' is never referenced or the value is not used',

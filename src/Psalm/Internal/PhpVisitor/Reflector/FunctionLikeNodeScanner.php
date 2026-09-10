@@ -555,8 +555,9 @@ final class FunctionLikeNodeScanner
 
                 $param_storage = null;
 
-                foreach ($storage->params as $param_storage) {
-                    if ($param_storage->name === $param->var->name) {
+                foreach ($storage->params as $candidate_param_storage) {
+                    if ($candidate_param_storage->name === $param->var->name) {
+                        $param_storage = $candidate_param_storage;
                         break;
                     }
                 }

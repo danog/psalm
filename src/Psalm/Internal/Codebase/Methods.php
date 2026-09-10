@@ -20,6 +20,7 @@ use Psalm\Internal\Provider\MethodExistenceProvider;
 use Psalm\Internal\Provider\MethodParamsProvider;
 use Psalm\Internal\Provider\MethodReturnTypeProvider;
 use Psalm\Internal\Provider\MethodVisibilityProvider;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
@@ -171,7 +172,7 @@ final class Methods
                 && $class_storage->user_defined
                 && isset($class_storage->potential_declaring_method_ids[$method_name])
             ) {
-                foreach ($class_storage->potential_declaring_method_ids[$method_name] as $potential_id => $_) {
+                foreach ($class_storage->potential_declaring_method_ids[$method_name] as $potential_id => $_potential) {
                     if ($calling_method_id) {
                         $this->file_reference_provider->addMethodReferenceToClassMember(
                             $calling_method_id,
@@ -484,7 +485,6 @@ final class Methods
 
         throw new UnexpectedValueException('Cannot get method params for ' . $method_id);
     }
-
     public static function localizeType(
         Codebase $codebase,
         Union $type,
@@ -498,12 +498,14 @@ final class Methods
             return $type;
         }
 
+        $localized_type = Dynamic::any($type);
+
         (new TypeLocalizer(
             $extends,
             $base_fq_class_name,
-        ))->traverse($type);
+        ))->traverse($localized_type);
 
-        return $type;
+        return $localized_type;
     }
 
     /**

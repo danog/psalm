@@ -20,6 +20,7 @@ use Psalm\Internal\Provider\FileStorageCacheProvider;
 use Psalm\Internal\Provider\ProjectCacheProvider;
 use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\Scanner\ParsedDocblock;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\IssueBuffer;
 use Psalm\Progress\DebugProgress;
 use Psalm\Progress\DefaultProgress;
@@ -67,14 +68,6 @@ use const FILTER_VALIDATE_BOOLEAN;
 use const PATHINFO_EXTENSION;
 use const PHP_EOL;
 use const STDERR;
-
-// phpcs:disable PSR1.Files.SideEffects
-
-require_once __DIR__ . '/../ErrorHandler.php';
-require_once __DIR__ . '/../CliUtils.php';
-require_once __DIR__ . '/../Composer.php';
-require_once __DIR__ . '/../IncludeCollector.php';
-require_once __DIR__ . '/../../IssueBuffer.php';
 
 /**
  * @internal
@@ -295,7 +288,7 @@ final class Psalter
 
         $debug = array_key_exists('debug', $options) || array_key_exists('debug-by-line', $options);
         if ($debug) {
-            $progress = new DebugProgress();
+            $progress = Dynamic::any(new DebugProgress());
         } elseif (isset($options['no-progress'])) {
             $progress = new VoidProgress();
         } else {

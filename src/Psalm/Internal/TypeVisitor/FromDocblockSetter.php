@@ -26,9 +26,11 @@ final class FromDocblockSetter extends MutableTypeVisitor
     }
     /**
      * @return self::STOP_TRAVERSAL|self::DONT_TRAVERSE_CHILDREN|null
+     * @param TypeNode $type
+     * @param-out TypeNode $type
      */
     #[Override]
-    protected function enterNode(TypeNode &$type): ?int
+    protected function enterNode(mixed &$type): ?int
     {
         if (!$type instanceof Atomic && !$type instanceof Union && !$type instanceof MutableUnion) {
             return null;

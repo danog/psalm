@@ -17,6 +17,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\Fetch\ArrayFetchAnalyzer;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Issue\InvalidArrayAssignment;
@@ -215,9 +216,9 @@ final class ArrayAssignmentAnalyzer
             $new_child_type = $root_type;
         }
 
-        $new_child_type = $new_child_type->getBuilder();
-        $new_child_type->removeType('null');
-        $new_child_type = $new_child_type->freeze();
+        $new_child_type_builder = $new_child_type->getBuilder();
+        $new_child_type_builder->removeType('null');
+        $new_child_type = $new_child_type_builder->freeze();
 
         if (!$root_type->hasObjectType()) {
             $root_type = $new_child_type;
@@ -377,11 +378,13 @@ final class ArrayAssignmentAnalyzer
 
     /**
      * @param list<TLiteralInt|TLiteralString> $key_values $key_values
+     * @param Union $stmt_type
+     * @param-out Union $stmt_type
      */
     private static function taintArrayAssignment(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\ArrayDimFetch $expr,
-        Union &$stmt_type,
+        mixed &$stmt_type,
         Union $child_stmt_type,
         ?string $var_var_id,
         array $key_values,
@@ -416,20 +419,20 @@ final class ArrayAssignmentAnalyzer
                 }
             }
 
-            foreach ($stmt_type->parent_nodes as $parent_node) {
+            foreach ($stmt_type->parent_nodes as $stmt_parent_node) {
                 foreach ($child_stmt_type->parent_nodes as $child_parent_node) {
                     if ($key_values) {
                         foreach ($key_values as $key_value) {
                             $graph->addPath(
                                 $child_parent_node,
-                                $parent_node,
+                                $stmt_parent_node,
                                 'arrayvalue-assignment-\'' . $key_value->value . '\'',
                             );
                         }
                     } else {
                         $graph->addPath(
                             $child_parent_node,
-                            $parent_node,
+                            $stmt_parent_node,
                             'arrayvalue-assignment',
                         );
                     }
@@ -720,6 +723,10 @@ final class ArrayAssignmentAnalyzer
     /**
      * @param  non-empty-list<PhpParser\Node\Expr\ArrayDimFetch>  $child_stmts
      * @param-out PhpParser\Node\Expr $child_stmt
+     * @param Union $root_type
+     * @param-out Union $root_type
+     * @param Union $current_type
+     * @param-out Union $current_type
      */
     private static function analyzeNestedArrayAssignment(
         StatementsAnalyzer $statements_analyzer,
@@ -730,8 +737,8 @@ final class ArrayAssignmentAnalyzer
         array $child_stmts,
         ?string $root_var_id,
         ?string &$parent_var_id,
-        Union &$root_type,
-        Union &$current_type,
+        mixed &$root_type,
+        mixed &$current_type,
         ?PhpParser\Node\Expr &$current_dim,
         bool &$offset_already_existed,
     ): void {
@@ -945,10 +952,10 @@ final class ArrayAssignmentAnalyzer
                 );
             }
             if ($new_child_type->hasNull() || $new_child_type->possibly_undefined) {
-                $new_child_type = $new_child_type->getBuilder();
-                $new_child_type->removeType('null');
-                $new_child_type->possibly_undefined = false;
-                $new_child_type = $new_child_type->freeze();
+                $new_child_type_builder = $new_child_type->getBuilder();
+                $new_child_type_builder->removeType('null');
+                $new_child_type_builder->possibly_undefined = false;
+                $new_child_type = $new_child_type_builder->freeze();
             }
             if (!$child_stmt_type->hasObjectType()) {
                 $child_stmt_type = $new_child_type;
@@ -1052,7 +1059,7 @@ final class ArrayAssignmentAnalyzer
                 && $child_stmt_dim_type->isSingleStringLiteral())
         ) {
             if ($child_stmt->dim instanceof PhpParser\Node\Scalar\String_) {
-                $offset_type = Type::getAtomicStringFromLiteral($child_stmt->dim->value);
+                $offset_type = Dynamic::any(Type::getAtomicStringFromLiteral($child_stmt->dim->value));
                 if (!$offset_type instanceof TLiteralString) {
                     return [null, '[string]', false];
                 }

@@ -6,6 +6,7 @@ namespace Psalm\Internal\Type;
 
 use InvalidArgumentException;
 use Psalm\Codebase;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Type;
 use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\Scalar;
@@ -1514,10 +1515,10 @@ final class TypeCombiner
             } else {
                 $key_type = $combination->objectlike_key_type ?? Type::getArrayKey();
                 $value_type = $combination->objectlike_value_type ?? Type::getMixed();
-                if ($combination->array_always_filled) {
-                    $array_type = new TNonEmptyArray([$key_type, $value_type]);
-                } else {
+                if (!$combination->array_always_filled) {
                     $array_type = new TArray([$key_type, $value_type]);
+                } else {
+                    $array_type = new TNonEmptyArray([$key_type, $value_type]);
                 }
 
                 $new_types[] = $array_type->setFromDocblock($from_docblock);
@@ -1608,7 +1609,7 @@ final class TypeCombiner
         }
 
         if ($combination->all_arrays_callable) {
-            $array_type = TKeyedArray::makeCallable($generic_type_params);
+            $array_type = Dynamic::any(TKeyedArray::makeCallable($generic_type_params));
         } elseif ($combination->array_always_filled
             || ($combination->array_sometimes_filled && $overwrite_empty_array)
             || ($combination->objectlike_entries

@@ -61,7 +61,6 @@ class TLiteralString extends TString
     }
 
     /**
-     * @psalm-suppress PossiblyUnusedMethod
      * @return static
      */
     public function setValue(string $value): self

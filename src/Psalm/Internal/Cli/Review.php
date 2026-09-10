@@ -41,14 +41,6 @@ use const PHP_OS;
 use const PHP_OS_FAMILY;
 use const STDERR;
 
-// phpcs:disable PSR1.Files.SideEffects
-
-require_once __DIR__ . '/../ErrorHandler.php';
-require_once __DIR__ . '/../CliUtils.php';
-require_once __DIR__ . '/../Composer.php';
-require_once __DIR__ . '/../IncludeCollector.php';
-require_once __DIR__ . '/../../IssueBuffer.php';
-
 /**
  * @internal
  */

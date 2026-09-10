@@ -20,6 +20,7 @@ use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Internal\Type\TemplateBound;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
@@ -243,7 +244,7 @@ final class NewAnalyzer extends CallAnalyzer
 
             if ($stmt->class instanceof PhpParser\Node\Stmt\Class_) {
                 $extends = $stmt->class->extends ? (string) $stmt->class->extends : null;
-                $result_atomic_type = new TAnonymousClassInstance($fq_class_name, false, $extends);
+                $result_atomic_type = Dynamic::any(new TAnonymousClassInstance($fq_class_name, false, $extends));
             } else {
                 //if the class is a Name, it can't represent a child
                 $definite_class = $stmt->class instanceof PhpParser\Node\Name;

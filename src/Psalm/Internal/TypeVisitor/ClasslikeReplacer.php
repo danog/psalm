@@ -31,8 +31,13 @@ final class ClasslikeReplacer extends MutableTypeVisitor
         $this->old = strtolower($old);
     }
 
+    /**
+     * @param TypeNode $type
+     * @param-out TypeNode $type
+     * @return self::STOP_TRAVERSAL|self::DONT_TRAVERSE_CHILDREN|null
+     */
     #[Override]
-    protected function enterNode(TypeNode &$type): ?int
+    protected function enterNode(mixed &$type): ?int
     {
         if ($type instanceof TClassConstant) {
             if (strtolower($type->fq_classlike_name) === $this->old) {

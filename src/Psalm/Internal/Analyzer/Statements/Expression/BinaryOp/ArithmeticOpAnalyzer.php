@@ -16,6 +16,7 @@ use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\Type\TemplateBound;
 use Psalm\Internal\Type\TypeCombiner;
+use Psalm\Internal\TypePhp\Dynamic;
 use Psalm\Issue\FalseOperand;
 use Psalm\Issue\InvalidOperand;
 use Psalm\Issue\MixedOperand;
@@ -863,7 +864,7 @@ final class ArithmeticOpAnalyzer
                         $sum = $parent instanceof VirtualPlus ? 1 : -1;
                         if ($context && $context->inside_loop && $left_type_part instanceof TLiteralInt) {
                             if ($parent instanceof VirtualPlus) {
-                                $new_type = new TIntRange($left_type_part->value + $sum, null);
+                                $new_type = Dynamic::any(new TIntRange($left_type_part->value + $sum, null));
                             } else {
                                 $new_type = new TIntRange(null, $left_type_part->value + $sum);
                             }
