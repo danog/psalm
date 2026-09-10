@@ -142,6 +142,12 @@ final class CliUtils
             if ($autoloader instanceof ClassLoader
             ) {
                 $autoloaders []= $autoloader;
+                if (dirname($file, 2) !== $psalm_dir && !str_starts_with($file, $psalm_dir . DIRECTORY_SEPARATOR)) {
+                    // the analyzed project's classes are never executed by the transpiler tool: keep the loader
+                    // for its PSR-4 prefixes only, so a project defining the same classes (the Psalm port in
+                    // ../psalm-port) cannot shadow this tool's own classes
+                    $autoloader->unregister();
+                }
             }
         }
 
