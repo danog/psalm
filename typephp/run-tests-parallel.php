@@ -78,7 +78,8 @@ foreach ($buckets as $n => $bucket) {
     }
     $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n"
         . '<phpunit bootstrap="' . $root . '/tests/autoload.php" backupGlobals="false" beStrictAboutOutputDuringTests="true"'
-        . ' beStrictAboutTodoAnnotatedTests="true" colors="false" executionOrder="random">' . "\n"
+        . ' beStrictAboutTestsThatDoNotTestAnything="false" beStrictAboutTodoAnnotatedTests="true" colors="false"'
+        . ' executionOrder="random">' . "\n"
         . '  <testsuites><testsuite name="shard-' . $n . '">' . "\n";
     foreach ($bucket as $file) {
         $xml .= '    <file>' . htmlspecialchars($file) . '</file>' . "\n";
