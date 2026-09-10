@@ -3,14 +3,22 @@
 declare(strict_types=1);
 
 use Psalm\Internal\CodeLoader;
+use Psalm\Internal\Cli\LanguageServer;
+use Psalm\Internal\Cli\Plugin;
 use Psalm\Internal\Cli\Psalm;
+use Psalm\Internal\Cli\Psalter;
+use Psalm\Internal\Cli\Refactor;
 
 /**
  * Binary entry point for the TypePHP build: TypePHP requires a global main().
  *
- * `psalm-native --typephp-run <script.php> [args...]` runs an interpreted PHP
- * script on top of the compiled runtime instead of the Psalm CLI. The test
- * suite is run this way (see run-tests.php).
+ * - `psalm-native [psalm options]` runs Psalm.
+ * - `psalm-native /path/to/psalter [options]`: the first argument may be one
+ *   of Psalm's launcher scripts, so the binary works as a drop-in for
+ *   `php /path/to/psalter` (PHP_BINARY is the binary itself).
+ * - `psalm-native --typephp-run <script.php> [args...]` runs an interpreted
+ *   PHP script on top of the compiled runtime; the test suite is run this way
+ *   (see run-tests.php).
  *
  * @param list<string> $argv
  */
@@ -21,6 +29,31 @@ function main(int $argc, array $argv): void
     if ($argc > 2 && $argv[1] === '--typephp-run') {
         CodeLoader::requireFile($argv[2]);
         return;
+    }
+    if ($argc > 1 && is_file($argv[1])) {
+        $launcher = basename($argv[1]);
+        if ($launcher === 'psalter') {
+            array_splice($argv, 1, 1);
+            Psalter::run($argv);
+            return;
+        }
+        if ($launcher === 'psalm-language-server') {
+            array_splice($argv, 1, 1);
+            LanguageServer::run($argv);
+            return;
+        }
+        if ($launcher === 'psalm-refactor') {
+            array_splice($argv, 1, 1);
+            Refactor::run($argv);
+            return;
+        }
+        if ($launcher === 'psalm-plugin') {
+            Plugin::run();
+            return;
+        }
+        if ($launcher === 'psalm') {
+            array_splice($argv, 1, 1);
+        }
     }
     Psalm::run($argv);
 }
