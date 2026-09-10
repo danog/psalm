@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Cli;
 
-use Composer\Autoload\ClassLoader;
 use Fidry\CpuCoreCounter\CpuCoreCounter;
 use Psalm\Config;
 use Psalm\Config\Creator;
@@ -12,6 +11,7 @@ use Psalm\ErrorBaseline;
 use Psalm\Exception\ConfigCreationException;
 use Psalm\Exception\ConfigException;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
+use Psalm\Internal\Autoload\ComposerClassLocator;
 use Psalm\Internal\CliUtils;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\Codebase\ReferenceMapGenerator;
@@ -235,12 +235,11 @@ final class Psalm
         IssueBuffer::captureServer($_SERVER);
 
         $include_collector = new IncludeCollector();
-        $autoloaders = $include_collector->runAndCollect(
-            // we ignore the FQN because of a hack in scoper.inc that needs full path
-            // phpcs:ignore SlevomatCodingStandard.Namespaces.ReferenceUsedNamesOnly.ReferenceViaFullyQualifiedName
-            /** @return list<ClassLoader> */
-            static fn(): array =>
-                CliUtils::requireAutoloaders($current_dir, isset($options['r']), $vendor_dir),
+        $autoloaders = CliUtils::requireAutoloaders(
+            $current_dir,
+            isset($options['r']),
+            $vendor_dir,
+            $include_collector,
         );
 
         $run_taint_analysis = self::shouldRunTaintAnalysis($options);
@@ -614,7 +613,7 @@ final class Psalm
         }
     }
 
-    /** @param list<ClassLoader> $autoloaders */
+    /** @param list<ComposerClassLocator> $autoloaders */
     private static function loadConfig(
         ?string $path_to_config,
         string $current_dir,
@@ -1118,7 +1117,7 @@ final class Psalm
 
     /**
      * @param array<int, string> $args
-     * @param list<ClassLoader> $autoloaders
+     * @param list<ComposerClassLocator> $autoloaders
      * @return array{Config,?string}
      */
     private static function initConfig(

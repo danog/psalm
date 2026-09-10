@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal;
 
-use Composer\Autoload\ClassLoader;
 use JsonException;
 use Phar;
 use Psalm\Config;
@@ -12,6 +11,7 @@ use Psalm\Config\Creator;
 use Psalm\Exception\ConfigException;
 use Psalm\Exception\ConfigNotFoundException;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
+use Psalm\Internal\Autoload\ComposerClassLocator;
 use Psalm\Report;
 use RuntimeException;
 use UnexpectedValueException;
@@ -63,11 +63,17 @@ use const STDIN;
  */
 final class CliUtils
 {
-    /** @return list<ClassLoader> */
+    /**
+     * Locates the Composer autoloaders of the analysed project (and of Psalm itself)
+     * and registers them without executing vendor/autoload.php.
+     *
+     * @return list<ComposerClassLocator>
+     */
     public static function requireAutoloaders(
         string $current_dir,
         bool $has_explicit_root,
         string $vendor_dir,
+        ?IncludeCollector $include_collector = null,
     ): array {
         $autoload_roots = [$current_dir];
 
@@ -76,11 +82,12 @@ final class CliUtils
         $in_phar = Phar::running() || strpos(__NAMESPACE__, 'HumbugBox');
 
         if ($in_phar) {
-            require_once __DIR__ . '/../../../vendor/autoload.php';
+            CodeLoader::requireFileOnce(__DIR__ . '/../../../vendor/autoload.php');
 
             // hack required for JsonMapper
-            require_once __DIR__ . '/../../../vendor/netresearch/jsonmapper/src/JsonMapper.php';
-            require_once __DIR__ . '/../../../vendor/netresearch/jsonmapper/src/JsonMapper/Exception.php';
+            $jsonmapper_dir = __DIR__ . '/../../../vendor/netresearch/jsonmapper/src';
+            CodeLoader::requireFileOnce($jsonmapper_dir . '/JsonMapper.php');
+            CodeLoader::requireFileOnce($jsonmapper_dir . '/JsonMapper/Exception.php');
         }
 
         if (!$in_phar && realpath($psalm_dir) !== realpath($current_dir)) {
@@ -129,15 +136,12 @@ final class CliUtils
 
         $autoloaders = [];
         foreach ($autoload_files as $file) {
-            /**
-             * @psalm-suppress UnresolvableInclude
-             * @var mixed
-             */
-            $autoloader = ErrorHandler::runWithExceptionsSuppressed(static fn(): mixed => require_once $file);
+            $autoloader = ComposerClassLocator::fromAutoloadFile($file);
 
-            if ($autoloader instanceof ClassLoader
-            ) {
-                $autoloaders []= $autoloader;
+            if ($autoloader) {
+                $autoloader->register();
+                $include_collector?->addIncludedFiles($autoloader->getAutoloadFiles());
+                $autoloaders[] = $autoloader;
             }
         }
 
@@ -341,7 +345,7 @@ final class CliUtils
     }
 
 
-    /** @param list<ClassLoader> $autoloaders */
+    /** @param list<ComposerClassLocator> $autoloaders */
     public static function initializeConfig(
         ?string $path_to_config,
         string $current_dir,

@@ -6,7 +6,6 @@ namespace Psalm;
 
 use Amp\Serialization\NativeSerializer;
 use Amp\Serialization\Serializer;
-use Composer\Autoload\ClassLoader;
 use Composer\Semver\Constraint\Constraint;
 use Composer\Semver\VersionParser;
 use DOMAttr;
@@ -25,7 +24,10 @@ use Psalm\Exception\ConfigNotFoundException;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\FileAnalyzer;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
+use Psalm\Internal\Autoload\ComposerAutoloadFileEvaluator;
+use Psalm\Internal\Autoload\ComposerClassLocator;
 use Psalm\Internal\CliUtils;
+use Psalm\Internal\CodeLoader;
 use Psalm\Internal\Composer;
 use Psalm\Internal\EventDispatcher;
 use Psalm\Internal\Fork\IgbinarySerializer;
@@ -452,7 +454,7 @@ final class Config
     /** @var array<callable-string, bool> */
     private array $predefined_functions = [];
 
-    /** @var list<ClassLoader> $autoloaders */
+    /** @var list<ComposerClassLocator> $autoloaders */
     private array $autoloaders = [];
 
     public string $hash = '';
@@ -1493,7 +1495,7 @@ final class Config
     }
 
     /**
-     * @param list<ClassLoader> $autoloaders
+     * @param list<ComposerClassLocator> $autoloaders
      * @psalm-external-mutation-free
      */
     public function setComposerClassLoader(array $autoloaders): void
@@ -1742,8 +1744,7 @@ final class Config
      */
     private static function requirePath(string $path): void
     {
-        /** @psalm-suppress UnresolvableInclude */
-        require_once($path);
+        CodeLoader::requireFileOnce($path);
     }
 
     /**
@@ -2594,14 +2595,14 @@ final class Config
                 . DIRECTORY_SEPARATOR . 'composer' . DIRECTORY_SEPARATOR . 'autoload_files.php';
 
         if (file_exists($vendor_autoload_files_path)) {
-            $this->include_collector->runAndCollect(
-                static fn(): array =>
-                    /**
-                     * @psalm-suppress UnresolvableInclude
-                     * @var string[]
-                     */
-                    require $vendor_autoload_files_path,
-            );
+            $autoload_files = [];
+            /** @psalm-suppress MixedAssignment */
+            foreach (ComposerAutoloadFileEvaluator::evaluate($vendor_autoload_files_path) as $autoload_file) {
+                if (is_string($autoload_file)) {
+                    $autoload_files[] = $autoload_file;
+                }
+            }
+            $this->include_collector->addIncludedFiles($autoload_files);
         }
 
         $codebase = $project_analyzer->getCodebase();
@@ -2613,7 +2614,14 @@ final class Config
             // as they might be autoloadable once we require the autoloader below
             $codebase->classlikes->forgetMissingClassLikes();
 
-            $this->include_collector->runAndCollect($this->requireAutoloader(...));
+            if (CodeLoader::canLoadCode()) {
+                $this->include_collector->runAndCollect($this->requireAutoloader(...));
+            } else {
+                $progress->debug(
+                    'Cannot execute the autoloader ' . $this->autoloader . ' at runtime, only scanning it' . "\n",
+                );
+                $this->include_collector->addIncludedFiles([$this->autoloader]);
+            }
         }
 
         $this->collectPredefinedConstants();
@@ -2910,7 +2918,10 @@ final class Config
      */
     public function requireAutoloader(): void
     {
-        /** @psalm-suppress UnresolvableInclude */
-        require $this->autoloader;
+        if ($this->autoloader === null) {
+            throw new LogicException('No autoloader configured');
+        }
+
+        CodeLoader::requireFile($this->autoloader);
     }
 }

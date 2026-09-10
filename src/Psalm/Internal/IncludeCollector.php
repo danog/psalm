@@ -44,6 +44,15 @@ final class IncludeCollector
         return $ret;
     }
 
+    /**
+     * @param list<string> $files
+     * @psalm-external-mutation-free
+     */
+    public function addIncludedFiles(array $files): void
+    {
+        $this->included_files = array_values(array_unique([...$this->included_files, ...$files]));
+    }
+
     /** @return list<string> */
     public function getIncludedFiles(): array
     {

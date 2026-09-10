@@ -5,8 +5,11 @@ namespace Psalm;
 
 use Psalm\Internal\Cli\Plugin;
 
-require_once __DIR__ . '/src/Psalm/Internal/Cli/Plugin.php';
-require_once __DIR__ . '/src/Psalm/Internal/CliUtils.php';
-require_once __DIR__ . '/src/Psalm/Internal/ErrorHandler.php';
-require_once __DIR__ . '/src/Psalm/Internal/Composer.php';
+// Psalm's own Composer autoloader: in a checkout, or the project's when installed as a dependency
+foreach ([__DIR__ . '/vendor/autoload.php', \dirname(__DIR__, 2) . '/autoload.php'] as $autoload_file) {
+    if (\file_exists($autoload_file)) {
+        require_once $autoload_file;
+        break;
+    }
+}
 Plugin::run();

@@ -183,12 +183,11 @@ final class Refactor
         IssueBuffer::captureServer($_SERVER);
 
         $include_collector = new IncludeCollector();
-        $autoloaders = $include_collector->runAndCollect(
-            // we ignore the FQN because of a hack in scoper.inc that needs full path
-            // phpcs:ignore SlevomatCodingStandard.Namespaces.ReferenceUsedNamesOnly.ReferenceViaFullyQualifiedName
-            /** @return list<ClassLoader> */
-            static fn(): array =>
-                CliUtils::requireAutoloaders($current_dir, isset($options['r']), $vendor_dir),
+        $autoloaders = CliUtils::requireAutoloaders(
+            $current_dir,
+            isset($options['r']),
+            $vendor_dir,
+            $include_collector,
         );
 
         // If Xdebug is enabled, restart without it

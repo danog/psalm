@@ -82,11 +82,8 @@ final class VersionUtils
             return null;
         }
 
-        /**
-         * @psalm-suppress UnresolvableInclude
-         * @var _VersionData
-         */
-        return require($phar_filename . '/phar-versions.php');
+        /** @var _VersionData */
+        return CodeLoader::requireFile($phar_filename . '/phar-versions.php');
     }
 
     /** @return _VersionData|null */

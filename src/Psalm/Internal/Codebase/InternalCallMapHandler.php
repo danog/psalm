@@ -21,7 +21,6 @@ use UnexpectedValueException;
 use function array_shift;
 use function assert;
 use function count;
-use function dirname;
 use function max;
 use function min;
 use function str_ends_with;
@@ -332,7 +331,6 @@ final class InternalCallMapHandler
      * @return non-empty-array<string, array<int|string, string>>
      * @psalm-assert !null self::$taint_sink_map
      * @psalm-assert !null self::$call_map
-     * @psalm-suppress UnresolvableInclude
      * @psalm-external-mutation-free
      */
     public static function getCallMap(): array
@@ -356,8 +354,7 @@ final class InternalCallMapHandler
             ),
         );
 
-        /** @var non-empty-array<lowercase-string, array<int|string, string>> */
-        $call_map = require(dirname(__DIR__, 4) . "/dictionaries/CallMap_$analyzer_version_int.php");
+        $call_map = Dictionaries::callMap($analyzer_version_int);
 
         self::$call_map = $call_map;
 
@@ -366,10 +363,7 @@ final class InternalCallMapHandler
         self::$loaded_php_major_version = $analyzer_major_version;
         self::$loaded_php_minor_version = $analyzer_minor_version;
 
-        /**
-         * @var non-empty-array<string, non-empty-list<int>>
-         */
-        $taint_map_data = require(dirname(__DIR__, 4) . '/dictionaries/InternalTaintSinkMap.php');
+        $taint_map_data = Dictionaries::taintSinkMap();
 
         $taint_map = [];
         foreach ($taint_map_data as $key => $value) {

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Codebase;
 
-use function dirname;
 use function strtolower;
 
 /**
@@ -31,7 +30,7 @@ final class PropertyMap
         }
 
         /** @var array<lowercase-string, array<string, string>> */
-        $property_map = require(dirname(__DIR__, 4) . '/dictionaries/PropertyMap.php');
+        $property_map = Dictionaries::propertyMap();
 
         self::$property_map = $property_map;
 

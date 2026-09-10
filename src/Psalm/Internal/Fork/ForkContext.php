@@ -6,7 +6,6 @@ namespace Psalm\Internal\Fork;
 
 use Amp\ByteStream\StreamChannel;
 use Amp\Cancellation;
-use Amp\Future;
 use Amp\Parallel\Context\ContextException;
 use Amp\Parallel\Context\Internal\AbstractContext;
 use Amp\Parallel\Context\Internal\ContextChannel;
@@ -16,22 +15,16 @@ use Amp\Parallel\Ipc\IpcHub;
 use Amp\Serialization\NativeSerializer;
 use Amp\Serialization\SerializationException;
 use Amp\TimeoutCancellation;
-use Error;
 use Override;
-use ParseError;
 use Revolt\EventLoop;
 use RuntimeException;
 use Throwable;
-use TypeError;
 
 use function Amp\Parallel\Ipc\connect;
-use function count;
 use function define;
 use function extension_loaded;
 use function fprintf;
 use function fwrite;
-use function is_file;
-use function is_string;
 use function pcntl_fork;
 use function pcntl_waitpid;
 use function pcntl_wexitstatus;
@@ -43,7 +36,6 @@ use function pcntl_wtermsig;
 use function posix_get_last_error;
 use function posix_kill;
 use function posix_strerror;
-use function sprintf;
 use function trigger_error;
 
 use const E_USER_ERROR;
@@ -105,9 +97,6 @@ final class ForkContext extends AbstractContext
 
         // Child
         define("AMP_CONTEXT", "parallel");
-        if (is_string($argv)) {
-            $argv = [$argv];
-        }
 
         $connectCancellation = new TimeoutCancellation((float) $childConnectTimeout);
         $uri = $ipcHub->getUri();
@@ -123,36 +112,8 @@ final class ForkContext extends AbstractContext
         }
 
         try {
-            if (!isset($argv[0])) {
-                throw new Error("No script path given");
-            }
-
-            if (!is_file($argv[0])) {
-                throw new Error(sprintf(
-                    "No script found at '%s' (be sure to provide the full path to the script)",
-                    $argv[0],
-                ));
-            }
-
-            try {
-                $argc = count($argv);
-                $callable = require $argv[0];
-            } catch (TypeError $exception) {
-                throw new Error(sprintf(
-                    "Script '%s' did not return a callable function: %s",
-                    $argv[0],
-                    $exception->getMessage(),
-                ), 0, $exception);
-            } catch (ParseError $exception) {
-                throw new Error(sprintf(
-                    "Script '%s' contains a parse error: %s",
-                    $argv[0],
-                    $exception->getMessage(),
-                ), 0, $exception);
-            }
-
-            $returnValue = $callable(new ContextChannel($ipcChannel));
-            $result = new ExitSuccess($returnValue instanceof Future ? $returnValue->await() : $returnValue);
+            /** @psalm-suppress InternalClass, InternalMethod */
+            $result = new ExitSuccess(TaskRunner::run(new ContextChannel($ipcChannel)));
         } catch (Throwable $exception) {
             $result = new ExitFailure($exception);
         }

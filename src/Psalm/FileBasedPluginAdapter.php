@@ -6,6 +6,7 @@ namespace Psalm;
 
 use Override;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
+use Psalm\Internal\CodeLoader;
 use Psalm\Internal\Scanner\FileScanner;
 use Psalm\Plugin\PluginEntryPointInterface;
 use Psalm\Plugin\RegistrationInterface;
@@ -45,8 +46,7 @@ final class FileBasedPluginAdapter implements PluginEntryPointInterface
     {
         $fq_class_name = $this->getPluginClassForPath($this->path);
 
-        /** @psalm-suppress UnresolvableInclude */
-        require_once($this->path);
+        CodeLoader::requireFileOnce($this->path);
 
         assert(class_exists($fq_class_name));
 

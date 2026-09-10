@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Codebase;
 
-use function dirname;
 use function strtolower;
 
 /**
@@ -26,8 +25,7 @@ final class ImpureFunctionsList
             return;
         }
 
-        /** @var array<string, true> */
-        self::$impure_functions_list = require(dirname(__DIR__, 4) . '/dictionaries/ImpureFunctionsList.php');
+        self::$impure_functions_list = Dictionaries::impureFunctions();
     }
 
     /**

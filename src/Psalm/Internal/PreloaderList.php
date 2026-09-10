@@ -248,7 +248,6 @@ final class PreloaderList {
         \Amp\Sync\SyncException::class,
         \Amp\TimeoutCancellation::class,
         \Amp\TimeoutException::class,
-        \Composer\Autoload\ClassLoader::class,
         \Composer\InstalledVersions::class,
         \Composer\Semver\Constraint\Constraint::class,
         \Composer\Semver\VersionParser::class,
