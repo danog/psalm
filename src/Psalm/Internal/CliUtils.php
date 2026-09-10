@@ -42,6 +42,7 @@ use function preg_replace;
 use function preg_split;
 use function realpath;
 use function str_starts_with;
+use function usort;
 use function stream_get_meta_data;
 use function stream_set_blocking;
 use function strlen;
@@ -132,7 +133,31 @@ final class CliUtils
         }
 
         $autoloaders = [];
+        // this tool's own autoloader first: it defines the ClassLoader class the project loaders are built with
+        usort($autoload_files, static fn(string $a, string $b): int =>
+            (int) !str_starts_with($a, $psalm_dir . DIRECTORY_SEPARATOR) <=> (int) !str_starts_with($b, $psalm_dir . DIRECTORY_SEPARATOR));
         foreach ($autoload_files as $file) {
+            if (!$in_phar && !str_starts_with($file, $psalm_dir . DIRECTORY_SEPARATOR)) {
+                // the analyzed project's code is never executed by the transpiler tool (a project defining the
+                // same classes, the Psalm port in ../psalm-port, must not shadow this tool's own classes): its
+                // composer loader is rebuilt from the generated tables for PSR-4 prefix and classmap lookups only
+                $composer_dir = dirname($file) . DIRECTORY_SEPARATOR . 'composer';
+                if (is_file($composer_dir . DIRECTORY_SEPARATOR . 'autoload_psr4.php')) {
+                    $loader = new ClassLoader(dirname($file));
+                    /** @var array<string, list<string>> $psr4 */
+                    $psr4 = require $composer_dir . DIRECTORY_SEPARATOR . 'autoload_psr4.php';
+                    foreach ($psr4 as $prefix => $paths) {
+                        $loader->setPsr4($prefix, $paths);
+                    }
+                    if (is_file($composer_dir . DIRECTORY_SEPARATOR . 'autoload_classmap.php')) {
+                        /** @var array<string, string> $classmap */
+                        $classmap = require $composer_dir . DIRECTORY_SEPARATOR . 'autoload_classmap.php';
+                        $loader->addClassMap($classmap);
+                    }
+                    $autoloaders[] = $loader;
+                }
+                continue;
+            }
             /**
              * @psalm-suppress UnresolvableInclude
              * @var mixed
@@ -142,12 +167,6 @@ final class CliUtils
             if ($autoloader instanceof ClassLoader
             ) {
                 $autoloaders []= $autoloader;
-                if (dirname($file, 2) !== $psalm_dir && !str_starts_with($file, $psalm_dir . DIRECTORY_SEPARATOR)) {
-                    // the analyzed project's classes are never executed by the transpiler tool: keep the loader
-                    // for its PSR-4 prefixes only, so a project defining the same classes (the Psalm port in
-                    // ../psalm-port) cannot shadow this tool's own classes
-                    $autoloader->unregister();
-                }
             }
         }
 
