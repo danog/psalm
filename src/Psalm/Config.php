@@ -2582,6 +2582,17 @@ final class Config
     /**
      * @psalm-external-mutation-free
      */
+    /**
+     * @psalm-mutation-free
+     */
+    public function getIncludeCollector(): ?IncludeCollector
+    {
+        return $this->include_collector;
+    }
+
+    /**
+     * @psalm-external-mutation-free
+     */
     public function setIncludeCollector(IncludeCollector $include_collector): void
     {
         $this->include_collector = $include_collector;

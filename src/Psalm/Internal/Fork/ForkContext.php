@@ -133,6 +133,14 @@ final class ForkContext extends AbstractContext
             );
         }
 
+        if (EventLoop::getDriver()->isRunning()) {
+            // Forked from inside an event loop callback (the worker pool creates
+            // workers asynchronously): the inherited loop is still running in
+            // this process, so it cannot be started again; the result has been
+            // sent, nothing else is pending.
+            exit(0);
+        }
+
         EventLoop::run();
 
         fwrite(STDERR, "ERROR IN WORKER: Unreachable!".PHP_EOL);

@@ -153,7 +153,11 @@ final class IncludeAnalyzer
             $path_to_file = self::normalizeFilePath($path_to_file);
 
             // if the file is already included, we can't check much more
-            if (in_array(realpath($path_to_file), get_included_files(), true)) {
+            // (files the autoloaders loaded count as included, whether they
+            // were executed or only registered, as in the native build)
+            if (in_array(realpath($path_to_file), get_included_files(), true)
+                || $config->getIncludeCollector()?->hasIncludedFile($path_to_file)
+            ) {
                 return true;
             }
 

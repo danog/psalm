@@ -71,7 +71,12 @@ final class NativeRuntime
         }
 
         $file = $locator->findFile($class);
+        if (!is_string($file)) {
+            return null;
+        }
 
-        return is_string($file) ? $file : null;
+        $real_path = realpath($file);
+
+        return $real_path === false ? $file : $real_path;
     }
 }

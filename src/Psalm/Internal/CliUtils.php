@@ -140,7 +140,7 @@ final class CliUtils
 
             if ($autoloader) {
                 $autoloader->register();
-                $include_collector?->addIncludedFiles($autoloader->getAutoloadFiles());
+                $include_collector?->addIncludedFiles([...$autoloader->getBootstrapFiles(), ...$autoloader->getAutoloadFiles()]);
                 $autoloaders[] = $autoloader;
             }
         }

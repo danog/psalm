@@ -60,6 +60,22 @@ final class IncludeCollector
     }
 
     /**
+     * Whether a file was loaded (or registered as loaded) by the autoloaders.
+     */
+    public function hasIncludedFile(string $file): bool
+    {
+        $real = realpath($file);
+
+        foreach ($this->included_files as $included_file) {
+            if ($included_file === $file || ($real !== false && realpath($included_file) === $real)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * @return list<string>
      * @psalm-mutation-free
      */

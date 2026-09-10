@@ -35,6 +35,7 @@ final class ComposerClassLocator
      * @param array<string, list<string>> $psr0_prefixes
      * @param array<string, string> $classmap
      * @param list<string> $autoload_files
+     * @param list<string> $bootstrap_files
      * @psalm-mutation-free
      */
     private function __construct(
@@ -42,7 +43,22 @@ final class ComposerClassLocator
         private readonly array $psr0_prefixes,
         private readonly array $classmap,
         private readonly array $autoload_files,
+        private readonly array $bootstrap_files,
     ) {
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function existingFiles(string ...$files): array
+    {
+        $existing = [];
+        foreach ($files as $file) {
+            if (file_exists($file)) {
+                $existing[] = $file;
+            }
+        }
+        return $existing;
     }
 
     /**
@@ -61,6 +77,13 @@ final class ComposerClassLocator
             self::readPrefixMap($composer_dir . DIRECTORY_SEPARATOR . 'autoload_namespaces.php'),
             self::readStringMap($composer_dir . DIRECTORY_SEPARATOR . 'autoload_classmap.php'),
             array_values(self::readStringMap($composer_dir . DIRECTORY_SEPARATOR . 'autoload_files.php')),
+            self::existingFiles(
+                $autoload_file,
+                $composer_dir . DIRECTORY_SEPARATOR . 'autoload_real.php',
+                $composer_dir . DIRECTORY_SEPARATOR . 'platform_check.php',
+                $composer_dir . DIRECTORY_SEPARATOR . 'ClassLoader.php',
+                $composer_dir . DIRECTORY_SEPARATOR . 'autoload_static.php',
+            ),
         );
     }
 
@@ -129,6 +152,19 @@ final class ComposerClassLocator
     public function getAutoloadFiles(): array
     {
         return $this->autoload_files;
+    }
+
+    /**
+     * The files that `require vendor/autoload.php` itself loads (the
+     * generated Composer bootstrap), which the analysed code must not be
+     * followed into as if they were project code.
+     *
+     * @return list<string>
+     * @psalm-mutation-free
+     */
+    public function getBootstrapFiles(): array
+    {
+        return $this->bootstrap_files;
     }
 
     /**
