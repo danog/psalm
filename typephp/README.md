@@ -10,8 +10,8 @@ fixes listed at the end of this file.
 
 ## Closed world
 
-The native binary loads no PHP code at runtime: there is no `include`/`require`
-anywhere in the compiled sources. Everything Psalm needs is compiled in:
+Psalm and all of its dependencies are compiled into the binary; no part of
+Psalm itself is loaded at runtime:
 
 - The dictionaries (`dictionaries/*.php`) are embedded as generated classes in
   `src/Psalm/Internal/Dictionaries/` and read through
@@ -68,7 +68,7 @@ anywhere in the compiled sources. Everything Psalm needs is compiled in:
 
    - indexes every file of the runtime vendor packages
      (`typephp/runtime-packages.txt`) and keeps only the files reachable by
-     name from `src/`, `typephp/main.php` and `typephp/overrides/`;
+     name from `src/`, `typephp/main.php` and `typephp/vendor-extra/`;
    - rewrites vendor files with file-scope code (`typephp/vendor-overrides/`,
      generated): constant conditions such as `if (PHP_VERSION_ID >= ...)` or
      `if (!function_exists(...))` are evaluated, `require`, `class_alias()` and
