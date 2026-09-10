@@ -211,7 +211,8 @@ final class CliUtils
      */
     public static function getRawCliArguments(): array
     {
-        global $argv;
+        /** @var list<string> $argv */
+        $argv = $_SERVER['argv'] ?? [];
 
         if (!$argv) {
             return [];
