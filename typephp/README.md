@@ -90,8 +90,15 @@ Psalm itself is loaded at runtime:
 
 ## Status
 
-The closed-world source set (all of `src/` plus 1,122 reachable vendor files)
-passes the TypePHP front end with no errors.
+The native binary (all of `src/` plus 1,122 reachable vendor files, 2,300
+translation units) analyses projects with the same results as plain PHP:
+
+- a sample project (taint analysis included): identical 9 issues, 1.4 s;
+- worker forks (`--threads=4`) work;
+- plugins are loaded at runtime (psalm/plugin-phpunit, plugin-mockery);
+- a subset of Psalm's own sources: identical issues.
+
+Full self-analysis of Psalm is being compared next.
 
 ## Compiler fixes carried by the forks
 
@@ -122,3 +129,16 @@ danog/typephp:
 - `__serialize(): never` is accepted; keyword-named user methods
   (`toDecimal()`) are ordinary calls; by-reference values can be assigned to
   typed properties.
+- A local that receives a value of a wider/unknown class, a `null`/dynamic
+  value into fixed storage, or that is passed by reference, degrades to
+  dynamic storage instead of a silent conversion or a runtime cast.
+- Calls whose callee is unknown at compile time pass dynamic locals and
+  writable properties by reference (copy-in/copy-out), so by-reference
+  parameters resolved at runtime work.
+- Class constants of interfaces, `Iterator`/`IteratorAggregate` registration
+  order, abstract static methods, methods inherited from internal classes,
+  SPL `get_method` forwarding, surplus call arguments and PHP's null-offset
+  semantics are handled as in PHP.
+- Runtime (danog/phpx): `hash()` on PHP 8.5, `Reference` assignment/comparison
+  operators, method-cache invalidation for forwarded methods, quiet list
+  destructuring.
