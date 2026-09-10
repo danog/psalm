@@ -19,6 +19,10 @@ $argv = $_SERVER['argv'];
 array_splice($argv, 0, 3, ['phpunit']);
 $_SERVER['argv'] = $argv;
 $_SERVER['argc'] = count($argv);
+if (function_exists('typephp_set_server_argv')) {
+    // compiled code (Config, CliUtils::getPathsToCheck()) reads the engine's copy of $_SERVER['argv']
+    typephp_set_server_argv($argv);
+}
 
 // Composer "files" autoload entries whose functions are compiled into the
 // binary must not be loaded again.
