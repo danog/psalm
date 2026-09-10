@@ -32,6 +32,15 @@ function main(int $argc, array $argv): void
     }
     if ($argc > 1 && is_file($argv[1])) {
         $launcher = basename($argv[1]);
+        if (in_array($launcher, ['psalm', 'psalter', 'psalm-language-server', 'psalm-refactor'], true)
+            && function_exists('typephp_set_server_argv')
+        ) {
+            // getopt() reads $_SERVER['argv']: drop the launcher path there too
+            $server_argv = $argv;
+            array_splice($server_argv, 1, 1);
+            $set_server_argv = 'typephp_set_server_argv';
+            $set_server_argv($server_argv);
+        }
         if ($launcher === 'psalter') {
             array_splice($argv, 1, 1);
             Psalter::run($argv);

@@ -620,7 +620,7 @@ abstract class AbstractUnicodeString extends AbstractString
                 continue;
             }
 
-            self::$tableZero ??= require __DIR__.'/Resources/data/wcswidth_table_zero.php';
+            self::$tableZero ??= require \dirname(__DIR__, 4).'/vendor/symfony/string/Resources/data/wcswidth_table_zero.php';
 
             if ($codePoint >= self::$tableZero[0][0] && $codePoint <= self::$tableZero[$ubound = \count(self::$tableZero) - 1][1]) {
                 $lbound = 0;
@@ -637,7 +637,7 @@ abstract class AbstractUnicodeString extends AbstractString
                 }
             }
 
-            self::$tableWide ??= require __DIR__.'/Resources/data/wcswidth_table_wide.php';
+            self::$tableWide ??= require \dirname(__DIR__, 4).'/vendor/symfony/string/Resources/data/wcswidth_table_wide.php';
 
             if ($codePoint >= self::$tableWide[0][0] && $codePoint <= self::$tableWide[$ubound = \count(self::$tableWide) - 1][1]) {
                 $lbound = 0;
