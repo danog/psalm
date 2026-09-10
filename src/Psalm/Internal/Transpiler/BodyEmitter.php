@@ -204,9 +204,25 @@ final class BodyEmitter
      *
      * @param list<Stmt> $stmts
      */
+    /** @var array<string, true> locals declared with `global $x` (reference variables backed by the runtime's globals) */
+    public array $globals = [];
+
+    public function isSuperglobal(string $name): bool
+    {
+        return isset(self::SUPERGLOBALS[$name]);
+    }
+
     private function scanReferences(array $stmts): void
     {
         $finder = new \PhpParser\NodeFinder();
+        foreach ($finder->findInstanceOf($stmts, Stmt\Global_::class) as $global) {
+            foreach ($global->vars as $var) {
+                if ($var instanceof Expr\Variable && is_string($var->name)) {
+                    $this->refvars[$var->name] = true;
+                    $this->globals[$var->name] = true;
+                }
+            }
+        }
         foreach ($finder->findInstanceOf($stmts, Expr\AssignRef::class) as $assign) {
             if ($assign->var instanceof Expr\Variable && is_string($assign->var->name)) {
                 $this->refvars[$assign->var->name] = true;
@@ -250,6 +266,11 @@ final class BodyEmitter
             }
             if (!empty($this->cells[$name])) {
                 $this->w->line('let ' . $rn . ': PhpCell<' . $type->toRust() . '> = new_cell();');
+                continue;
+            }
+            if (!empty($this->globals[$name])) {
+                $lit = Names::rustStringLiteral($name);
+                $this->w->line('let mut ' . $rn . ': PhpRef<' . $type->toRust() . '> = PhpRef::new(move || ' . $this->casts->convert('php_rt::global_get(' . $lit . ')', RustType::mixed(), $type) . ', move |__v: ' . $type->toRust() . '| php_rt::global_set(' . $lit . ', ' . $this->casts->convert('__v', $type, RustType::mixed()) . '));');
                 continue;
             }
             if (!empty($this->refvars[$name])) {
@@ -452,6 +473,9 @@ final class BodyEmitter
         }
         if (isset(self::SUPERGLOBALS[$name])) {
             return RustType::map(RustType::str(), RustType::mixed());
+        }
+        if (!isset($this->vars[$name]) && !empty($this->globals[$name])) {
+            $this->vars[$name] = RustType::mixed();
         }
         if (!isset($this->vars[$name])) {
             // never assigned anywhere: reads yield null (see readVar)

@@ -31,6 +31,14 @@ trait LValueTrait
         if ($e instanceof Expr\Variable && is_string($e->name)) {
             $name = $e->name;
             $t = $this->varType($name);
+            if ($this->isSuperglobal($name)) {
+                // stored by the runtime; modified through a copy that is written back
+                return new Place(
+                    $t,
+                    fn() => 'php_rt::superglobal(' . Names::rustStringLiteral($name) . ')',
+                    fn(string $v) => 'php_rt::superglobal_set(' . Names::rustStringLiteral($name) . ', ' . $v . ');',
+                );
+            }
             if (!empty($this->refvars[$name])) {
                 // reference variable: in-place mutation runs inside the target's `with_mut`
                 $rn = Names::var($name);
@@ -425,11 +433,9 @@ trait LValueTrait
             return $this->narrow(new Val($base->code . '.idx(&' . $k . ')', $bt->params[1]), $e);
         }
         if ($bt->kind === RustType::UNION) {
-            // array access on a union of array types: pick the map form
-            $mt = RustType::map(RustType::arrayKey(), RustType::mixed());
-            $this->warn('array read on union ' . $bt->toRust(), $e);
-            $conv = $this->casts->convert($base->code, $bt, $mt);
-            return $this->narrowOptional(new Val($conv . '.get(&' . $this->keyExpr($dim, RustType::arrayKey()) . ').cloned()', RustType::option(RustType::mixed())), $e);
+            // array access on a union (array forms, ArrayAccess objects): resolved dynamically
+            $code = 'mixed_get(&' . $this->casts->convert($base->code, $bt, RustType::mixed()) . ', &' . $this->keyExpr($dim, RustType::arrayKey()) . ')';
+            return $this->narrowOptional(new Val($code, RustType::option(RustType::mixed())), $e);
         }
         $this->warn('array read on ' . $bt->toRust(), $e);
         return $this->dead('array read on ' . $bt->toRust() . '', $this->inferredOrMixed($e));
@@ -600,8 +606,10 @@ trait LValueTrait
         if ($name === 'class') {
             return new Val('class_name_of(&' . $this->casts->convert($base->code, $base->type, RustType::mixed()) . ')', RustType::str());
         }
-        $this->warn('constant on expression', $e);
-        return $this->dead('constant on expression', $this->inferredOrMixed($e));
+        // `$class::CONST` / `$object::CONST`: looked up by name in the runtime registry
+        $res = $this->inferredOrMixed($e);
+        $code = 'php_rt::registry::class_constant(&' . $this->casts->convert($base->code, $base->type, RustType::mixed()) . ', ' . Names::rustStringLiteral($name) . ')';
+        return $this->narrow(new Val($this->casts->convert($code, RustType::mixed(), $res), $res), $e);
     }
 
     public function findConstant(ClassModel $cls, string $name): ?ConstModel

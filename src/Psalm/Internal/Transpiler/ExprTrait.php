@@ -19,7 +19,11 @@ use Psalm\Type\Atomic\TLiteralString;
 use function array_map;
 use function array_chunk;
 use function count;
+use function dirname;
+use function str_starts_with;
+use function strtoupper;
 use function implode;
+use function max;
 use function in_array;
 use function is_string;
 use function sprintf;
@@ -196,8 +200,23 @@ trait ExprTrait
             return new Val($v->code . '.php_clone()', $v->type);
         }
         if ($e instanceof Expr\Include_) {
-            // data files (`return [...]`) are evaluated by the runtime's constant-expression evaluator
-            return $this->narrow(new Val('php_include(&' . $this->exprTo($e->expr, RustType::str()) . ')?', RustType::mixed()), $e);
+            // closed world: every includable file is compiled; a path known at compile time binds to the
+            // compiled file directly, any other path is looked up in the runtime's file registry
+            $static = $this->staticPath($e->expr);
+            if ($static !== null) {
+                if (!str_starts_with($static, '/')) {
+                    $static = dirname($this->record->file_path) . '/' . $static;
+                }
+                $file = $this->program->fileForPath($static);
+                if ($file !== null) {
+                    if ($file->isData()) {
+                        return $this->narrow(new Val($file->path() . '()?', RustType::mixed()), $e);
+                    }
+                    return $this->narrow(new Val('Mixed::Int(1)', RustType::mixed()), $e);
+                }
+                $this->warn('include of a file that is not compiled: ' . $static, $e);
+            }
+            return $this->narrow(new Val('php_rt::registry::include_file(&' . $this->exprTo($e->expr, RustType::str()) . ')?', RustType::mixed()), $e);
         }
         if ($e instanceof Expr\Eval_) {
             // only constant expressions (`return "\t";`) are supported by the runtime evaluator
@@ -299,6 +318,64 @@ trait ExprTrait
             return new Val(Names::strLit($pos === false ? '' : substr($fq, 0, $pos)), RustType::str());
         }
         return new Val(Names::strLit(''), RustType::str());
+    }
+
+    /** The value of a path expression built from literals, `__DIR__`/`__FILE__`, constants and dirname(); null if dynamic. */
+    private function staticPath(Expr $e): ?string
+    {
+        if ($e instanceof Scalar\String_) {
+            return $e->value;
+        }
+        if ($e instanceof Scalar\MagicConst\Dir) {
+            return dirname($this->record->file_path);
+        }
+        if ($e instanceof Scalar\MagicConst\File) {
+            return $this->record->file_path;
+        }
+        if ($e instanceof Expr\BinaryOp\Concat) {
+            $l = $this->staticPath($e->left);
+            $r = $this->staticPath($e->right);
+            return $l !== null && $r !== null ? $l . $r : null;
+        }
+        if ($e instanceof Scalar\InterpolatedString) {
+            $out = '';
+            foreach ($e->parts as $part) {
+                if ($part instanceof \PhpParser\Node\InterpolatedStringPart) {
+                    $out .= $part->value;
+                } else {
+                    $p = $this->staticPath($part);
+                    if ($p === null) {
+                        return null;
+                    }
+                    $out .= $p;
+                }
+            }
+            return $out;
+        }
+        if ($e instanceof Expr\ConstFetch) {
+            $name = strtoupper($e->name->toString());
+            return match ($name) {
+                'DIRECTORY_SEPARATOR' => '/',
+                'PATH_SEPARATOR' => ':',
+                default => null,
+            };
+        }
+        if ($e instanceof Expr\FuncCall && $e->name instanceof Name && strtolower($e->name->toString()) === 'dirname') {
+            $args = $e->getArgs();
+            $base = isset($args[0]) ? $this->staticPath($args[0]->value) : null;
+            if ($base === null) {
+                return null;
+            }
+            $levels = 1;
+            if (isset($args[1])) {
+                if (!$args[1]->value instanceof Scalar\Int_) {
+                    return null;
+                }
+                $levels = $args[1]->value->value;
+            }
+            return dirname($base, $levels);
+        }
+        return null;
     }
 
     private function relativeFile(): string
@@ -437,10 +514,15 @@ trait ExprTrait
         if ($target->kind === RustType::SHAPE && !$has_spread) {
             $fields = [];
             $seen = [];
+            $next_int = 0;
             foreach ($e->items as $i => $item) {
-                $key = $item->key !== null ? $this->literalKey($item->key) : (string) $i;
+                // items without a key get the next integer key (0 for the first one, whatever precedes it)
+                $key = $item->key !== null ? $this->literalKey($item->key) : (string) $next_int;
                 if ($key === null) {
                     return $this->arrayLiteral($e, RustType::map(RustType::arrayKey(), $this->shapeValueType($target)));
+                }
+                if ((string) (int) $key === $key) {
+                    $next_int = max($next_int, (int) $key + 1);
                 }
                 if (!isset($target->fields[$key])) {
                     return $this->arrayLiteral($e, RustType::map(
@@ -1119,6 +1201,15 @@ trait ExprTrait
             return null;
         }
         if ($e instanceof Expr\StaticPropertyFetch) {
+            if ($e->name instanceof Node\VarLikeIdentifier && $e->class instanceof Name) {
+                // `isset(self::$instance)` on a static without initializer: unset until assigned
+                $fqcn = $this->resolveClassName($e->class);
+                $cls = $fqcn !== null ? $this->program->getClass($fqcn) : null;
+                $field = $this->findStaticField($cls, $e->name->name);
+                if ($field !== null && $field->type->kind !== RustType::OPTION) {
+                    return new Val($field->declaring->path() . '::st_' . $field->rustName() . '_opt()', RustType::option($field->type));
+                }
+            }
             $v = $this->expr($e);
             if ($v->type->kind === RustType::OPTION) {
                 return $v;

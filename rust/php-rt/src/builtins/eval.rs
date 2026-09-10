@@ -21,17 +21,6 @@ fn err(msg: &str) -> RtError {
 }
 
 /// `include` / `require` of a PHP file that only returns data (`<?php return [...];`).
-pub fn php_include(path: &Str) -> Result<Mixed, RtError> {
-    let p = std::path::PathBuf::from(path.to_string_lossy().into_owned());
-    let bytes = std::fs::read(&p).map_err(|e| RtError::error(crate::sfmt!("include({}): {}", path, e)))?;
-    let mut src = bytes.as_slice();
-    if src.starts_with(&[0xEF, 0xBB, 0xBF]) {
-        src = &src[3..];
-    }
-    let body = if src.starts_with(b"<?php") { &src[5..] } else { src };
-    php_eval(&Str::from_bytes(body)).map_err(|e| RtError::error(crate::sfmt!("include({}): {}", path, e.message)))
-}
-
 pub fn php_eval(code: &Str) -> Result<Mixed, RtError> {
     let mut src = Vec::with_capacity(code.as_bytes().len() + 6);
     src.extend_from_slice(b"<?php ");

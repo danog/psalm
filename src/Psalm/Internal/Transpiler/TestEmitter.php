@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Transpiler;
 
+use function array_keys;
 use function array_slice;
 use function basename;
 use function count;
@@ -224,16 +225,12 @@ final class TestEmitter
         $params = array_slice($m->storage->params, 0, max(0, $n_params));
         $args = [];
         if ($vt->kind === RustType::SHAPE) {
-            $by_name = true;
-            foreach ($vt->fields as $k => $_) {
-                if ((string) (int) $k === (string) $k) {
-                    $by_name = false;
-                }
-            }
+            // PHPUnit passes `array_values($row)`: the i-th field goes to the i-th parameter
+            $keys = array_keys($vt->fields);
             foreach ($params as $i => $p) {
-                $key = $by_name ? $p->name : (string) $i;
+                $key = $keys[$i] ?? null;
                 $pt = $m->param_types[$i] ?? RustType::mixed();
-                if (isset($vt->fields[$key])) {
+                if ($key !== null && isset($vt->fields[$key])) {
                     [$ft, $opt] = $vt->fields[$key];
                     $src = '__row.' . Names::field($key) . '.clone()';
                     if ($opt && $pt->kind === RustType::OPTION) {

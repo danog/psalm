@@ -398,6 +398,7 @@ class SimpleXMLElement implements Stringable, Countable, ArrayAccess, Iterator
  * @property ?DOMNode $firstChild
  * @property DOMNodeList $childNodes
  * @property ?DOMDocument $ownerDocument
+ * @property ?DOMNamedNodeMap $attributes
  */
 class DOMNode
 {
@@ -444,13 +445,27 @@ class DOMNode
                 return new DOMNodeList($nodes);
             case 'ownerDocument':
                 return $this->doc;
+            case 'attributes':
+                if ($this->xml->is_text) {
+                    return null;
+                }
+                $attrs = [];
+                foreach ($this->xml->attrs as $attr_name => $attr_value) {
+                    $attrs[] = new DOMAttr($this, (string) $attr_name, $attr_value);
+                }
+                return new DOMNamedNodeMap($attrs);
         }
         return null;
     }
 
     public function __isset(string $name): bool
     {
-        return in_array($name, ['nodeName', 'nodeValue', 'textContent', 'parentNode', 'firstChild', 'childNodes', 'ownerDocument'], true);
+        return in_array($name, ['nodeName', 'nodeValue', 'textContent', 'parentNode', 'firstChild', 'childNodes', 'ownerDocument', 'attributes'], true);
+    }
+
+    public function getLineNo(): int
+    {
+        return 0;
     }
 
     public function appendChild(DOMNode $node): DOMNode
@@ -474,6 +489,64 @@ class DOMNode
 
 class DOMText extends DOMNode
 {
+}
+
+class DOMAttr extends DOMNode
+{
+    public string $name;
+    public string $value;
+    public ?DOMNode $ownerElement;
+
+    /** @internal */
+    public function __construct(DOMNode $owner, string $name, string $value)
+    {
+        parent::__construct($owner->xml, $owner->doc);
+        $this->ownerElement = $owner;
+        $this->name = $name;
+        $this->value = $value;
+    }
+}
+
+/**
+ * @implements IteratorAggregate<int, DOMAttr>
+ */
+class DOMNamedNodeMap implements IteratorAggregate, Countable
+{
+    public int $length;
+
+    /** @param list<DOMAttr> $attrs */
+    public function __construct(private array $attrs = [])
+    {
+        $this->length = count($attrs);
+    }
+
+    public function item(int $index): ?DOMAttr
+    {
+        return $this->attrs[$index] ?? null;
+    }
+
+    public function getNamedItem(string $qualifiedName): ?DOMAttr
+    {
+        foreach ($this->attrs as $attr) {
+            if ($attr->name === $qualifiedName) {
+                return $attr;
+            }
+        }
+        return null;
+    }
+
+    public function count(): int
+    {
+        return count($this->attrs);
+    }
+
+    /** @return Iterator<int, DOMAttr> */
+    public function getIterator(): Iterator
+    {
+        foreach ($this->attrs as $i => $attr) {
+            yield $i => $attr;
+        }
+    }
 }
 
 class DOMElement extends DOMNode
@@ -568,9 +641,32 @@ class DOMDocument extends DOMNode
         return $this->loadXML($contents, $options);
     }
 
+    /** Replaces `<xi:include href="..."/>` elements with the root element of the referenced file (relative to the cwd). */
     public function xinclude(int $options = 0): int
     {
-        return 0;
+        $count = 0;
+        foreach ($this->xml->descendantsNamed('xi:include') as $inc) {
+            $href = $inc->attrs['href'] ?? '';
+            $parent = $inc->parent;
+            if ($href === '' || $parent === null) {
+                continue;
+            }
+            $contents = file_get_contents($href);
+            $root = $contents === false ? null : XmlNode::parse($contents);
+            if ($root === null) {
+                continue;
+            }
+            foreach ($parent->children as $i => $child) {
+                if ($child === $inc) {
+                    $root->parent = $parent;
+                    $parent->children[$i] = $root;
+                    $inc->parent = null;
+                    break;
+                }
+            }
+            $count++;
+        }
+        return $count;
     }
 
     public function schemaValidate(string $filename, int $flags = 0): bool

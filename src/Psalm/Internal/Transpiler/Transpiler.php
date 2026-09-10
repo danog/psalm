@@ -75,8 +75,11 @@ final class Transpiler
      */
     public array $splits = [];
 
-    /** @param list<string> $splits `DIR:PREFIX` specs for additional crates */
-    public static function enable(string $out_dir, Config $config, string $root_dir, array $splits = []): void
+    /**
+     * @param list<string> $splits `DIR:PREFIX` specs for additional crates
+     * @param list<string> $data_globs globs of data files to compile
+     */
+    public static function enable(string $out_dir, Config $config, string $root_dir, array $splits = [], array $data_globs = []): void
     {
         if (!is_dir($out_dir) && !mkdir($out_dir, 0777, true)) {
             throw new RuntimeException("Could not create transpiler output directory $out_dir");
@@ -94,7 +97,23 @@ final class Transpiler
             }
             $t->splits[] = ['dir' => $dir, 'prefix' => $prefix];
         }
+        $t->data_globs = $data_globs;
         self::$instance = $t;
+    }
+
+    /** @var list<string> globs (relative to the root directory) of data files compiled as includable values */
+    public array $data_globs = [];
+
+    /** @var array<string, list<Stmt>> top-level (non-declaration) statements of analyzed project files */
+    public array $file_stmts = [];
+
+    /** Records the leftover top-level statements of an analyzed file (the value an `include` of it yields). */
+    public function recordFile(string $file_path, array $leftover_stmts): void
+    {
+        if (!$this->config->isInProjectDirs($file_path)) {
+            return;
+        }
+        $this->file_stmts[$file_path] = $leftover_stmts;
     }
 
     /** Index of the crate a file is emitted into (0 = the main crate). */

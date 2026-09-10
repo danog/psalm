@@ -13,6 +13,7 @@ use function array_map;
 use function count;
 use function substr;
 use function implode;
+use function max;
 use function strtolower;
 
 /**
@@ -218,10 +219,14 @@ final class ConstExprEmitter
         if ($t->kind === RustType::SHAPE) {
             $fields = [];
             $seen = [];
+            $next_int = 0;
             foreach ($e->items as $i => $item) {
-                $key = $item->key !== null ? $this->body->literalKey($item->key) : (string) $i;
+                $key = $item->key !== null ? $this->body->literalKey($item->key) : (string) $next_int;
                 if ($key === null || !isset($t->fields[$key])) {
                     return $this->array($e, RustType::map(RustType::arrayKey(), RustType::mixed()));
+                }
+                if ((string) (int) $key === $key) {
+                    $next_int = max($next_int, (int) $key + 1);
                 }
                 [$ft, $opt] = $t->fields[$key];
                 $code = $this->emit($item->value, $ft);

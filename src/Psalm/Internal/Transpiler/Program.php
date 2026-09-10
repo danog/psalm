@@ -15,6 +15,16 @@ use Psalm\Storage\MethodStorage;
 use function array_keys;
 use function explode;
 use function max;
+use function array_key_exists;
+use function array_pop;
+use function file_get_contents;
+use function glob;
+use function implode;
+use function is_file;
+use function rtrim;
+use function str_starts_with;
+use function strlen;
+use function substr;
 use function strtolower;
 use function usort;
 use function fwrite;
@@ -132,12 +142,63 @@ final class Program
             $this->resolveSignature($fn->record->storage, $fn->param_types, $fn->return_type, $fn->record->node);
         }
         $this->types->current_crate = 0;
+        $this->propagateLateStaticBinding();
         fwrite(STDERR, "[program] cross-crate inheritance\n");
         foreach ($this->uniqueClasses() as $model) {
             if ($model->is_project && $model->crateRoot() === $model) {
                 $this->importUpstreamMethods($model);
             }
         }
+    }
+
+    /**
+     * `static` is forwarded through `self::m()`, `static::m()` and `parent::m()` calls: a static method
+     * calling one that uses late static binding needs per-class copies too.
+     */
+    private function propagateLateStaticBinding(): void
+    {
+        $finder = new \PhpParser\NodeFinder();
+        $calls = [];
+        foreach ($this->uniqueClasses() as $model) {
+            foreach ($model->methods as $m) {
+                if (!$m->isStatic() || $m->node === null || $m->node->stmts === null || $m->declaring !== $model || $m->uses_lsb) {
+                    continue;
+                }
+                $targets = [];
+                foreach ($finder->findInstanceOf($m->node->stmts, \PhpParser\Node\Expr\StaticCall::class) as $call) {
+                    if (!$call->class instanceof \PhpParser\Node\Name || !$call->name instanceof \PhpParser\Node\Identifier) {
+                        continue;
+                    }
+                    $kind = strtolower($call->class->toString());
+                    $target = $kind === 'parent' ? $model->parent : (($kind === 'self' || $kind === 'static') ? $model : null);
+                    if ($target === null) {
+                        continue;
+                    }
+                    $tm = $this->findMethod($target, strtolower($call->name->name));
+                    if ($tm !== null && $tm->isStatic()) {
+                        $targets[] = $tm;
+                    }
+                }
+                if ($targets !== []) {
+                    $calls[] = [$m, $targets];
+                }
+            }
+        }
+        do {
+            $changed = false;
+            foreach ($calls as [$m, $targets]) {
+                if ($m->uses_lsb) {
+                    continue;
+                }
+                foreach ($targets as $tm) {
+                    if ($tm->uses_lsb) {
+                        $m->uses_lsb = true;
+                        $changed = true;
+                        break;
+                    }
+                }
+            }
+        } while ($changed);
     }
 
     /**
@@ -215,6 +276,125 @@ final class Program
             $crate = max($crate, $this->typeCrate($t->ret));
         }
         return $crate;
+    }
+
+    /** @var array<string, FileModel|null> includable files by root-relative path (null: known not to be compilable) */
+    public array $files = [];
+
+    /** Root-relative form of an absolute path (paths outside the root stay absolute). */
+    public function relativePath(string $abs): string
+    {
+        $root = rtrim($this->transpiler->root_dir, '/') . '/';
+        return str_starts_with($abs, $root) ? substr($abs, strlen($root)) : $abs;
+    }
+
+    /** Resolve `.`/`..` segments of a path. */
+    public static function normalizePath(string $path): string
+    {
+        $absolute = str_starts_with($path, '/');
+        $parts = [];
+        foreach (explode('/', $path) as $seg) {
+            if ($seg === '' || $seg === '.') {
+                continue;
+            }
+            if ($seg === '..') {
+                array_pop($parts);
+                continue;
+            }
+            $parts[] = $seg;
+        }
+        return ($absolute ? '/' : '') . implode('/', $parts);
+    }
+
+    /** Compile the data files listed on the command line and register every project source file as a unit. */
+    public function collectFiles(): void
+    {
+        $root = rtrim($this->transpiler->root_dir, '/');
+        foreach ($this->transpiler->data_globs as $glob) {
+            foreach (glob(str_starts_with($glob, '/') ? $glob : $root . '/' . $glob) ?: [] as $path) {
+                $this->fileForPath($path);
+            }
+        }
+        foreach ($this->transpiler->classes as $record) {
+            $this->fileForPath($record->file_path);
+        }
+        foreach ($this->transpiler->functions as $record) {
+            $this->fileForPath($record->file_path);
+        }
+    }
+
+    /**
+     * The includable file at an absolute path: a data file (compiled `return` value) or a unit of
+     * declarations; null when the file does not exist or has top-level code that cannot be compiled.
+     */
+    public function fileForPath(string $abs_path): ?FileModel
+    {
+        $abs_path = self::normalizePath($abs_path);
+        $rel = $this->relativePath($abs_path);
+        if (array_key_exists($rel, $this->files)) {
+            return $this->files[$rel];
+        }
+        $this->files[$rel] = null;
+        if (!is_file($abs_path)) {
+            return null;
+        }
+        $stmts = $this->transpiler->file_stmts[$abs_path] ?? null;
+        if ($stmts === null) {
+            $code = file_get_contents($abs_path);
+            if ($code === false) {
+                return null;
+            }
+            try {
+                $parsed = (new \PhpParser\ParserFactory())->createForNewestSupportedVersion()->parse($code) ?? [];
+            } catch (\PhpParser\Error $e) {
+                return null;
+            }
+            $stmts = self::leftoverStatements($parsed);
+        }
+        $data = null;
+        foreach ($stmts as $stmt) {
+            if ($stmt instanceof \PhpParser\Node\Stmt\Return_) {
+                if ($data !== null || $stmt->expr === null) {
+                    return null;
+                }
+                $data = $stmt->expr;
+            } elseif ($stmt instanceof \PhpParser\Node\Stmt\Nop || $stmt instanceof \PhpParser\Node\Stmt\Declare_
+                || $stmt instanceof \PhpParser\Node\Stmt\Use_ || $stmt instanceof \PhpParser\Node\Stmt\GroupUse
+                || $stmt instanceof \PhpParser\Node\Stmt\InlineHTML
+            ) {
+                continue;
+            } else {
+                // top-level code: not compiled
+                return null;
+            }
+        }
+        $model = new FileModel($rel, $abs_path, $this->transpiler->crateOfFile($abs_path), $data);
+        $this->files[$rel] = $model;
+        return $model;
+    }
+
+    /**
+     * Statements of a parsed file that are not declarations (namespaces are flattened).
+     *
+     * @param list<\PhpParser\Node\Stmt> $stmts
+     * @return list<\PhpParser\Node\Stmt>
+     */
+    private static function leftoverStatements(array $stmts): array
+    {
+        $out = [];
+        foreach ($stmts as $stmt) {
+            if ($stmt instanceof \PhpParser\Node\Stmt\Namespace_) {
+                foreach (self::leftoverStatements($stmt->stmts ?? []) as $inner) {
+                    $out[] = $inner;
+                }
+                continue;
+            }
+            if ($stmt instanceof \PhpParser\Node\Stmt\ClassLike || $stmt instanceof \PhpParser\Node\Stmt\Function_) {
+                continue;
+            }
+            $out[] = $stmt;
+        }
+        return $out;
     }
 
     /** Index of the crate a function or constant is emitted into. */
@@ -384,13 +564,20 @@ final class Program
             $has_default = $prop_storage->has_default;
             $node_class = $declaring->is_project ? $declaring : $model;
             if ($node_class->node !== null) {
+                $declared = (bool) $prop_storage->is_promoted;
                 foreach ($node_class->node->getProperties() as $pnode) {
                     foreach ($pnode->props as $item) {
                         if ($item->name->name === $name) {
+                            $declared = true;
                             $default = $item->default;
                             $has_default = $has_default || $item->default !== null;
                         }
                     }
+                }
+                if (!$declared && $declaring === $model && !$storage->is_trait) {
+                    // declared only by another definition of the class (Psalm's own stub of a builtin class
+                    // that a runtime stub replaces): not part of the generated struct
+                    continue;
                 }
             }
             if (isset($model->fields[$name]) && !$prop_storage->is_static) {
