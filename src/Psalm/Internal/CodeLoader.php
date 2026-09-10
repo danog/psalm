@@ -8,8 +8,8 @@ namespace Psalm\Internal;
  * The only place where Psalm loads PHP code at runtime (plugins, project
  * autoloaders, phar metadata).
  *
- * The closed-world native build replaces this class with one that cannot load
- * code, see typephp/overrides/CodeLoader.php.
+ * Everything Psalm itself needs is compiled into the native build; plugins and
+ * stubs of the analysed project are loaded at runtime here, in both builds.
  *
  * @internal
  */

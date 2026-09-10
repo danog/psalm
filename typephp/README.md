@@ -25,12 +25,11 @@ anywhere in the compiled sources. Everything Psalm needs is compiled in:
   registers an autoloader for plugin classes.
 - Forked workers run `Psalm\Internal\Fork\TaskRunner` instead of requiring
   amphp's `task-runner.php`.
-- Runtime code loading that cannot work in a closed world (plugins loaded
-  from files, the `autoloader` config attribute, phar version metadata) goes
-  through `Psalm\Internal\CodeLoader`, the only class containing `require`.
-  The native build replaces it with `typephp/overrides/CodeLoader.php`, which
-  reports that runtime code loading is unavailable; a configured `autoloader`
-  file is still scanned.
+- Code of the analysed project that Psalm executes (plugins, the `autoloader`
+  config attribute, stubs pulled in through the project's autoloader) is
+  loaded through `Psalm\Internal\CodeLoader`, the only class containing
+  `require`; the native binary compiles it as a runtime include, exactly like
+  plain PHP. Nothing of Psalm's own code or dependencies is loaded that way.
 - The plain-PHP launchers (`psalm`, `psalter`, ...) load Psalm's own Composer
   autoloader before calling the CLI class.
 

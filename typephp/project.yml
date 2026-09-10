@@ -4,7 +4,6 @@ build-mode: bin
 cxx-std: c++17
 sources:
   - ./main.php
-  - ./overrides
   - ./vendor-extra
   - ../src
   - ../vendor/amphp/amp/src/Cancellation.php
@@ -1129,5 +1128,4 @@ sources:
   - ../vendor/webmozart/assert/src/Assert.php
   - ../vendor/webmozart/assert/src/InvalidArgumentException.php
   - ../vendor/webmozart/assert/src/Mixin.php
-ignore:
-  - ../src/Psalm/Internal/CodeLoader.php
+ignore: []
