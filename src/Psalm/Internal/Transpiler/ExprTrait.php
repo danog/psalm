@@ -494,6 +494,11 @@ trait ExprTrait
         if ($from->kind === RustType::MAP && $to->kind === RustType::MAP && $from->params[0]->toRust() === $to->params[0]->toRust()) {
             return $this->isWidening($from->params[1], $to->params[1]);
         }
+        // a map is never read as a list: renumbering it would change the keys a later `$a[$k]` reads
+        // (Psalm keeps calling an array a list after `unset()`s inside a loop)
+        if ($from->kind === RustType::MAP && $to->kind === RustType::LIST) {
+            return true;
+        }
         if (($from->kind === RustType::LIST && $to->kind === RustType::LIST) || ($from->kind === RustType::OPTION && $to->kind === RustType::OPTION)) {
             return $this->isWidening($from->inner(), $to->inner());
         }
