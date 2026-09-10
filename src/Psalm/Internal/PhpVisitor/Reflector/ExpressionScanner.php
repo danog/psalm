@@ -352,6 +352,11 @@ final class ExpressionScanner
                 return;
             }
 
+            if ($codebase->config->mustBeIgnored($path_to_file)) {
+                // closed world: an ignored file is not part of the program, so its inclusion is not followed
+                return;
+            }
+
             if ($codebase->fileExists($path_to_file)) {
                 if ($scan_deep) {
                     $codebase->scanner->addFileToDeepScan($path_to_file);

@@ -133,6 +133,7 @@ final class CliUtils
         }
 
         $autoloaders = [];
+        $project_autoloaders = [];
         // this tool's own autoloader first: it defines the ClassLoader class the project loaders are built with
         usort($autoload_files, static fn(string $a, string $b): int =>
             (int) !str_starts_with($a, $psalm_dir . DIRECTORY_SEPARATOR) <=> (int) !str_starts_with($b, $psalm_dir . DIRECTORY_SEPARATOR));
@@ -154,7 +155,7 @@ final class CliUtils
                         $classmap = require $composer_dir . DIRECTORY_SEPARATOR . 'autoload_classmap.php';
                         $loader->addClassMap($classmap);
                     }
-                    $autoloaders[] = $loader;
+                    $project_autoloaders[] = $loader;
                 }
                 continue;
             }
@@ -190,7 +191,9 @@ final class CliUtils
         define('PSALM_VERSION', VersionUtils::getPsalmVersion());
         define('PHP_PARSER_VERSION', VersionUtils::getPhpParserVersion());
 
-        return $autoloaders;
+        // Class lookups for the analyzed project go through the project's own loaders only: this tool's loader
+        // would resolve php-parser, Psalm and other shared dependencies to the tool's copies.
+        return $project_autoloaders ?: $autoloaders;
     }
 
     /**
