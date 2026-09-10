@@ -16,9 +16,9 @@ configuration and the helper used to satisfy vendor dependencies.
   declared `mixed &$param` with `@param`/`@param-out` docblocks.
 - Every `switch` case ends in `break`/`return`/`continue`/`throw`; intentional
   fallthrough is written out explicitly.
-- No `$GLOBALS`, no `list()` in loop conditions or `foreach` targets, no `~` on
-  strings (`BitwiseNotAnalyzer::bitwiseNotString()`), no `|=` on typed
-  properties.
+- No `$GLOBALS` or `global`, no `list()` in loop conditions or `foreach`
+  targets, no `~` on strings (`BitwiseNotAnalyzer::bitwiseNotString()`), no
+  `|=` on typed properties.
 
 ## Building
 
@@ -40,10 +40,17 @@ configuration and the helper used to satisfy vendor dependencies.
 ## Status and known compiler issues (TypePHP v0.8.1)
 
 All of `src/` passes TypePHP's front end, and the full build compiles and links
-a native `psalm` binary (1,356 translation units on macOS/arm64). Running it
-is blocked on the vendor dependencies: the skeletons declare the classes but
-their methods throw, so the real vendor code (php-parser, amphp, symfony
-console, ...) has to be made compilable next.
+a native `psalm` binary (1,356 translation units on macOS/arm64). The binary
+runs Psalm's own code: `psalm --version` and `psalm --help` work. Analysing a
+project stops at the first vendor class used (`Composer\XdebugHandler`): the
+skeletons only declare the classes and their methods throw, so the real vendor
+code (php-parser, amphp, symfony console, ...) has to be made compilable next.
+
+Source-level rules learned the hard way:
+
+- No `$GLOBALS` (not compiled) and no `global $argv`: binding argv with
+  `global` turns the argv entry into a reference, after which `getopt()`
+  returns `false` inside the compiled binary. Read `$_SERVER['argv']` instead.
 
 Compiler-side issues found while developing this, worked around locally:
 
