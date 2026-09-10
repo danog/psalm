@@ -93,6 +93,16 @@ class ReflectionClass
         throw new ReflectionException('Instantiation by class name is not supported in a compiled program');
     }
 
+    /**
+     * Interfaces of builtin classes are not modelled by the compiled program.
+     *
+     * @return array<string, ReflectionClass>
+     */
+    public function getInterfaces(): array
+    {
+        return [];
+    }
+
     public function isInstantiable(): bool
     {
         return class_exists($this->name);
