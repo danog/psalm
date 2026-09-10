@@ -281,7 +281,7 @@ final class TestEmitter
                             : $this->casts->convert($src, $ft, $pt);
                     }
                 } else {
-                    $args[] = $this->casts->defaultOf($pt);
+                    $args[] = $this->paramDefault($m, $i, $pt);
                 }
             }
             return $args;
@@ -289,7 +289,7 @@ final class TestEmitter
         if ($vt->kind === RustType::TUPLE) {
             foreach ($params as $i => $p) {
                 $pt = $m->param_types[$i] ?? RustType::mixed();
-                $args[] = isset($vt->params[$i]) ? $this->casts->convert('__row.' . $i . '.clone()', $vt->params[$i], $pt) : $this->casts->defaultOf($pt);
+                $args[] = isset($vt->params[$i]) ? $this->casts->convert('__row.' . $i . '.clone()', $vt->params[$i], $pt) : $this->paramDefault($m, $i, $pt);
             }
             return $args;
         }
@@ -301,9 +301,22 @@ final class TestEmitter
         $list = $vt->kind === RustType::LIST ? '__row' : $this->casts->convert('__row.clone()', $vt, RustType::list($elem));
         foreach ($params as $i => $p) {
             $pt = $m->param_types[$i] ?? RustType::mixed();
-            $args[] = '(match ' . $list . '.get(' . $i . ').cloned() { Some(__a) => ' . $this->casts->convert('__a', $elem, $pt) . ', None => ' . $this->casts->defaultOf($pt) . ' })';
+            $args[] = '(match ' . $list . '.get(' . $i . ').cloned() { Some(__a) => ' . $this->casts->convert('__a', $elem, $pt) . ', None => ' . $this->paramDefault($m, $i, $pt) . ' })';
         }
         return $args;
+    }
+
+    /** The declared default of parameter `$i` (`string $php_version = '7.4'`), or the type's default value. */
+    private function paramDefault(MethodModel $m, int $i, RustType $pt): string
+    {
+        $param = $m->node->params[$i] ?? null;
+        if ($param !== null && $param->default !== null) {
+            $record = new FunctionRecord(new \PhpParser\Node\Stmt\ClassMethod('__dummy'), new \Psalm\Storage\MethodStorage(), new \Psalm\Internal\Provider\NodeDataProvider(), $m->record?->file_path ?? '', $m->declaring->fqcn, null);
+            $b = new BodyEmitter($this->program, $record, $m->declaring, $this->casts, $this->builtins, $this->diag, null);
+            $b->this_type = null;
+            return $b->constExpr($param->default, $pt);
+        }
+        return $this->casts->defaultOf($pt);
     }
 
     /** @param list<string> $args */

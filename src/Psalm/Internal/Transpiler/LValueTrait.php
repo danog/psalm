@@ -739,7 +739,16 @@ trait LValueTrait
             return new Val('{ let ' . $tmp . ' = ' . $v->code . '; ' . $this->destructure($target, new Val($tmp . '.clone()', $v->type)) . ' ' . $tmp . ' }', $v->type);
         }
         $place = $this->place($target);
-        $value = $this->exprTo($e->expr, $place->type);
+        $rhs = $this->expr($e->expr);
+        if ($rhs->type->kind === RustType::OPTION && $place->type->kind !== RustType::OPTION && $place->type->kind !== RustType::MIXED
+            && $rhs->type->inner()->toRust() === $place->type->toRust()
+        ) {
+            // `if ($x = maybe())`: the target (never null by Psalm's typing) is only set when there is a
+            // value; the expression keeps the optional value for the enclosing condition
+            $tmp = $this->tmp();
+            return new Val('{ match ' . $rhs->code . ' { Some(' . $tmp . ') => { ' . $place->write($tmp . '.clone()') . ' Some(' . $tmp . ') } None => None } }', $rhs->type);
+        }
+        $value = $this->casts->convert($rhs->code, $rhs->type, $place->type);
         $tmp = $this->tmp();
         return new Val('{ let ' . $tmp . ' = ' . $value . '; ' . $place->write($tmp . '.clone()') . ' ' . $tmp . ' }', $place->type);
     }

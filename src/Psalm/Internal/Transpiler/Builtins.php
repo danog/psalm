@@ -2186,7 +2186,8 @@ final class Builtins
                 return $b->narrow(new Val($recv->code . '.idx(&' . $b->exprTo($args[0]->value, $params[0]) . ')', $params[1]), $site);
             case 'SplObjectStorage::offsetset':
                 $k = $b->exprTo($args[0]->value, $params[0]);
-                $v = $b->exprTo($args[1]->value, $params[1]);
+                // attach($object) without data stores null
+                $v = isset($args[1]) ? $b->exprTo($args[1]->value, $params[1]) : $b->casts->defaultOf($params[1]);
                 return new Val('{ ' . $recv->code . '.attach(' . $k . ', ' . $v . '); }', RustType::unit());
             case 'SplObjectStorage::count':
             case 'ArrayObject::count':

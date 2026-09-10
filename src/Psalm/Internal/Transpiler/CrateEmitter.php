@@ -544,7 +544,11 @@ final class CrateEmitter
             $lib .= "use php_rt::prelude::*;\nuse crate::generated::*;\n" . $any->get();
         } else {
             $base = $this->transpiler->crateName(0);
-            $lib .= "pub use ::$base::{Throw, AnyObject, php_clone_mixed};\nuse php_rt::prelude::*;\nuse crate::generated::*;\n";
+            $lib .= "pub use ::$base::{Throw, AnyObject, php_clone_mixed};\nuse php_rt::prelude::*;\n";
+            foreach ($upstream as $up) {
+                $lib .= "use ::$up::generated::*;\n";
+            }
+            $lib .= "use crate::generated::*;\n";
             $init = new Writer();
             $this->emitInit($init, $crate);
             $lib .= $init->get();
