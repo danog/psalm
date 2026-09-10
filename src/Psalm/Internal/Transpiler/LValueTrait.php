@@ -486,6 +486,17 @@ trait LValueTrait
                 if ($ov !== null) {
                     return $this->narrowOptional($ov, $e);
                 }
+                // `$x?->prop` on a nullable class: null short-circuits
+                $inner = $bt->inner();
+                $cls = $inner->kind === RustType::CLASS_ ? $this->program->classOf($inner) : null;
+                $field = $cls?->fields[$name] ?? null;
+                if ($field !== null) {
+                    $ft = $field->type;
+                    if ($ft->kind === RustType::OPTION) {
+                        return $this->narrow(new Val('(match ' . $base->code . ' { Some(__b) => __b.' . $field->acc() . '_get(), None => None })', $ft), $e);
+                    }
+                    return $this->narrow(new Val('(match ' . $base->code . ' { Some(__b) => Some(__b.' . $field->acc() . '_get()), None => None })', RustType::option($ft)), $e);
+                }
             }
             $base = new Val($base->code . '.unwrap()', $bt->inner());
             $bt = $bt->inner();

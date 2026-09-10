@@ -32,30 +32,40 @@ final class TestEmitter
     ) {
     }
 
+    /**
+     * The harness is a `libtest-mimic` binary: every test method contributes one trial per data set (data
+     * providers run once at start-up to name the sets), so the counts match PHPUnit's.
+     */
     public function emit(Writer $w, int $crate): int
     {
         $base = $this->program->getClass('PHPUnit\Framework\TestCase');
-        if ($base === null) {
-            return 0;
-        }
-        $n = 0;
-        foreach ($this->program->uniqueClasses() as $cls) {
-            if (!$cls->is_project || !$cls->isConcrete() || !$cls->isSubclassOf($base) || $cls === $base || $cls->crate !== $crate) {
-                continue;
-            }
-            foreach ($cls->methods as $m) {
-                if ($m->isStatic() || $m->node === null || !$this->isTestMethod($m)) {
+        $collectors = [];
+        if ($base !== null) {
+            foreach ($this->program->uniqueClasses() as $cls) {
+                if (!$cls->is_project || !$cls->isConcrete() || !$cls->isSubclassOf($base) || $cls === $base || $cls->crate !== $crate) {
                     continue;
                 }
-                try {
-                    $this->emitTest($cls, $m, $w);
-                    $n++;
-                } catch (\Throwable $e) {
-                    $this->diag->warn('test harness error: ' . $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine(), $m->node, $cls->fqcn);
+                foreach ($cls->methods as $m) {
+                    if ($m->isStatic() || $m->node === null || !$this->isTestMethod($m)) {
+                        continue;
+                    }
+                    try {
+                        $collectors[] = $this->emitTest($cls, $m, $w);
+                    } catch (\Throwable $e) {
+                        $this->diag->warn('test harness error: ' . $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine(), $m->node, $cls->fqcn);
+                    }
                 }
             }
         }
-        return $n;
+        $w->open('fn main() {');
+        $w->line('let args = libtest_mimic::Arguments::from_args();');
+        $w->line('let mut trials: Vec<libtest_mimic::Trial> = Vec::new();');
+        foreach ($collectors as $c) {
+            $w->line($c . '(&mut trials);');
+        }
+        $w->line('libtest_mimic::run(&args, trials).exit();');
+        $w->close();
+        return count($collectors);
     }
 
     private function isTestMethod(MethodModel $m): bool
@@ -139,37 +149,41 @@ final class TestEmitter
         return $out;
     }
 
-    private function emitTest(ClassModel $cls, MethodModel $m, Writer $w): void
+    /** Emits the collector of a test method's trials and returns its name. */
+    private function emitTest(ClassModel $cls, MethodModel $m, Writer $w): string
     {
         $path = $cls->path();
-        $fn_name = Names::ident(str_replace('\\', '_', $cls->fqcn) . '__' . $m->name);
+        $fn_name = 'collect__' . Names::ident(str_replace('\\', '_', $cls->fqcn) . '__' . $m->name);
         $provider_name = $this->dataProvider($m);
         $provider = $provider_name !== null ? $this->program->findMethod($cls, strtolower($provider_name)) : null;
-        $root = $this->program->transpiler->root_dir;
+        $root = Names::rustStringLiteral($this->program->transpiler->root_dir);
+        $name = Names::rustStringLiteral($cls->fqcn . '::' . $m->name);
         $ctor = $this->program->findMethod($cls, '__construct');
         $new = $path . '::new(' . ($ctor !== null && count($ctor->storage->params) > 0 ? 'Str::from_static(' . Names::rustStringLiteral($m->name) . ')' : '') . ')?';
         $has_setup_class = $this->program->findMethod($cls, 'setupbeforeclass') !== null;
         $has_teardown_class = $this->program->findMethod($cls, 'teardownafterclass') !== null;
 
-        $w->line('#[test]');
-        $w->open('fn ' . $fn_name . '() {');
-        $w->open('php_rt::testing::run(' . Names::rustStringLiteral($cls->fqcn . '::' . $m->name) . ', ' . Names::rustStringLiteral($root) . ', || -> Result<(), Throw> {');
-        $w->line('crate::init();');
+        $w->open('fn ' . $fn_name . '(trials: &mut Vec<libtest_mimic::Trial>) {');
         $unsupported = $this->unsupportedMechanism($m);
         if ($unsupported !== null) {
             // mocks and closure rebinding need runtime code generation: the test is reported as skipped
-            $skip = $this->program->getClass('PHPUnit\\Framework\\SkippedTestError');
-            if ($skip !== null && $skip->is_project) {
-                $w->line('return Err(' . $this->casts->convert($skip->path() . '::new(Str::from_static(' . Names::rustStringLiteral($unsupported) . '), 0i64, None)?', RustType::class($skip->fqcn), RustType::class('Throwable')) . ');');
-                $w->close('});');
-                $w->close();
-                return;
-            }
+            $w->line('trials.push(libtest_mimic::Trial::test(' . $name . '.to_string(), move || { eprintln!("[skipped] {}: {}", ' . $name . ', ' . Names::rustStringLiteral($unsupported) . '); Ok(()) }));');
+            $w->close();
+            return $fn_name;
         }
+        $rows = null;
+        if ($provider !== null) {
+            $rows_expr = $provider->isStatic()
+                ? $path . '::' . $provider->rustName() . '()?'
+                : '{ let __p = ' . $new . '; __p.' . $provider->rustName() . '()? }';
+            $rows = $this->rowsIterator($rows_expr, $provider->return_type);
+        }
+        // the body of one trial: the whole test method, or the data set at position `__i`
+        $body = new Writer();
+        $body->line('crate::init();');
         if ($has_setup_class) {
-            $w->line($path . '::' . Names::method('setUpBeforeClass') . '()?;');
+            $body->line($path . '::' . Names::method('setUpBeforeClass') . '()?;');
         }
-        // values produced by depended-on tests
         $dep_args = [];
         $params = $m->storage->params;
         $deps = $this->depends($m);
@@ -185,30 +199,44 @@ final class TestEmitter
                 $dep_args[] = $this->casts->defaultOf($pt);
                 continue;
             }
-            $w->line('let __dep' . $i . ' = { let __d = ' . $new . '; __d.' . Names::method('runSetUp') . '()?; let __r = __d.' . $dep->rustName() . '()?; __d.' . Names::method('runTearDown') . '()?; __r };');
+            $body->line('let __dep' . $i . ' = { let __d = ' . $new . '; __d.' . Names::method('runSetUp') . '()?; let __r = __d.' . $dep->rustName() . '()?; __d.' . Names::method('runTearDown') . '()?; __r };');
             $dep_args[] = $this->casts->convert('__dep' . $i . '.clone()', $dep->return_type, $pt);
         }
-        if ($provider === null) {
-            $w->line('let __t = ' . $new . ';');
-            $this->emitInvocation($cls, $m, $w, $dep_args, 'Str::from_static("")');
+        if ($rows === null) {
+            $body->line('let __t = ' . $new . ';');
+            $this->emitInvocation($cls, $m, $body, $dep_args, 'Str::from_static("")');
         } else {
-            $rows = $provider->isStatic()
-                ? $path . '::' . $provider->rustName() . '()?'
-                : '{ let __p = ' . $new . '; __p.' . $provider->rustName() . '()? }';
-            $rt = $provider->return_type;
-            [$iter, $kt, $vt] = $this->rowsIterator($rows, $rt);
-            $w->open('for (__key, __row) in ' . $iter . ' {');
-            $w->line('let __t = ' . $new . ';');
+            [$iter, $kt, $vt] = $rows;
+            $body->line('let (__key, __row) = match ' . $iter . '.nth(__i) { Some(__p) => __p, None => return Err(Throw::error(Str::from_static("data set vanished"))) };');
+            $body->line('let __t = ' . $new . ';');
             $args = [...$this->rowArgs($m, $vt, $first_dep_param), ...$dep_args];
-            $this->emitInvocation($cls, $m, $w, $args, 'to_str(&__key)');
-            $w->close();
+            $this->emitInvocation($cls, $m, $body, $args, 'to_str(&__key)');
         }
         if ($has_teardown_class) {
-            $w->line($path . '::' . Names::method('tearDownAfterClass') . '()?;');
+            $body->line($path . '::' . Names::method('tearDownAfterClass') . '()?;');
         }
-        $w->line('Ok(())');
-        $w->close('});');
+        $body->line('Ok(())');
+
+        if ($rows === null) {
+            $w->line('let __i: usize = 0;');
+            $w->open('trials.push(libtest_mimic::Trial::test(' . $name . '.to_string(), move || php_rt::testing::run_trial(' . $name . ', ' . $root . ', move || -> Result<(), Throw> {');
+            $w->raw($body->get());
+            $w->close('}).map_err(libtest_mimic::Failed::from)));');
+        } else {
+            [$iter] = $rows;
+            // the data sets are named by running the provider once
+            $w->line('let __keys: Result<Vec<String>, String> = php_rt::testing::in_thread(' . $root . ', || -> Result<Vec<String>, Throw> { crate::init(); Ok(' . $iter . '.map(|(__k, _)| to_str(&__k).to_string()).collect()) });');
+            $w->open('match __keys {');
+            $w->line('Err(__msg) => trials.push(libtest_mimic::Trial::test(' . $name . '.to_string(), move || Err(libtest_mimic::Failed::from(format!("data provider failed: {}", __msg))))),');
+            $w->open('Ok(__keys) => for (__i, __key) in __keys.into_iter().enumerate() {');
+            $w->open('trials.push(libtest_mimic::Trial::test(format!("{} [{}]", ' . $name . ', __key), move || php_rt::testing::run_trial(' . $name . ', ' . $root . ', move || -> Result<(), Throw> {');
+            $w->raw($body->get());
+            $w->close('}).map_err(libtest_mimic::Failed::from)));');
+            $w->close('},');
+            $w->close();
+        }
         $w->close();
+        return $fn_name;
     }
 
     /**
