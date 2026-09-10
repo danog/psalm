@@ -59,10 +59,12 @@ final class TestEmitter
         }
         $w->open('fn main() {');
         $w->line('let args = libtest_mimic::Arguments::from_args();');
-        $w->line('let mut trials: Vec<libtest_mimic::Trial> = Vec::new();');
+        $w->line('let mut groups: Vec<Vec<libtest_mimic::Trial>> = Vec::new();');
         foreach ($collectors as $c) {
-            $w->line($c . '(&mut trials);');
+            $w->line('{ let mut trials = Vec::new(); ' . $c . '(&mut trials); groups.push(trials); }');
         }
+        // consecutive trials belong to different methods, so a thread pool runs methods in parallel
+        $w->line('let trials = php_rt::testing::interleave(groups, 8);');
         $w->line('libtest_mimic::run(&args, trials).exit();');
         $w->close();
         return count($collectors);
