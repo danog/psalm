@@ -143,7 +143,7 @@ sources:
   - ../vendor/amphp/parallel/src/Worker/WorkerPool.php
   - ../vendor/amphp/parallel/src/Worker/functions.php
   - ../vendor/amphp/parser/src/InvalidDelimiterError.php
-  - ../vendor/amphp/parser/src/Parser.php
+  - ./vendor-manual/amphp/parser/src/Parser.php
   - ../vendor/amphp/pipeline/src/ConcurrentIterator.php
   - ../vendor/amphp/pipeline/src/DisposedException.php
   - ../vendor/amphp/pipeline/src/Internal/ConcurrentArrayIterator.php

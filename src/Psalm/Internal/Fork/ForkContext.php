@@ -37,9 +37,7 @@ use function pcntl_wtermsig;
 use function posix_get_last_error;
 use function posix_kill;
 use function posix_strerror;
-use function trigger_error;
 
-use const E_USER_ERROR;
 use const PHP_EOL;
 use const STDERR;
 use const WNOHANG;
@@ -109,7 +107,8 @@ final class ForkContext extends AbstractContext
             $socket = connect($uri, $key, $connectCancellation);
             $resultChannel = new StreamChannel($socket, $socket, $serializer);
         } catch (Throwable $exception) {
-            trigger_error($exception->getMessage(), E_USER_ERROR);
+            fwrite(STDERR, 'Could not connect the worker to the parent: ' . $exception->getMessage() . PHP_EOL);
+            exit(1);
         }
 
         try {
