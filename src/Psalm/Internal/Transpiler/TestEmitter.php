@@ -64,7 +64,7 @@ final class TestEmitter
             $w->line('{ let mut trials = Vec::new(); ' . $c . '(&mut trials); groups.push(trials); }');
         }
         // consecutive trials belong to different methods, so a thread pool runs methods in parallel
-        $w->line('let trials = php_rt::testing::interleave(groups, 8);');
+        $w->line('let trials = php_rt::testing::interleave(groups, 4);');
         $w->line('libtest_mimic::run(&args, trials).exit();');
         $w->close();
         return count($collectors);
@@ -231,7 +231,7 @@ final class TestEmitter
             $w->open('match __keys {');
             $w->line('Err(__msg) => trials.push(libtest_mimic::Trial::test(' . $name . '.to_string(), move || Err(libtest_mimic::Failed::from(format!("data provider failed: {}", __msg))))),');
             $w->open('Ok(__keys) => {');
-            $w->line('let __worker: php_rt::testing::RowWorker = Default::default();');
+            $w->line('let __worker = php_rt::testing::new_row_worker();');
             $w->open('for (__i, __key) in __keys.into_iter().enumerate() {');
             $w->line('let __worker = __worker.clone();');
             $w->open('trials.push(libtest_mimic::Trial::test(format!("{} [{}]", ' . $name . ', __key), move || php_rt::testing::run_on_worker(&__worker, ' . $root . ', __i, move |__requests| {');
