@@ -39,8 +39,13 @@ configuration and the helper used to satisfy vendor dependencies.
 
 ## Status and known compiler issues (TypePHP v0.8.1)
 
-All of `src/` passes TypePHP's front end. The remaining blockers are on the
-compiler side and were worked around locally while developing this:
+All of `src/` passes TypePHP's front end, and the full build compiles and links
+a native `psalm` binary (1,356 translation units on macOS/arm64). Running it
+is blocked on the vendor dependencies: the skeletons declare the classes but
+their methods throw, so the real vendor code (php-parser, amphp, symfony
+console, ...) has to be made compilable next.
+
+Compiler-side issues found while developing this, worked around locally:
 
 - `phpx.h` uses `std::abort`/`std::fill` without including `<cstdlib>` and
   `<algorithm>`, which fails with recent libc++.

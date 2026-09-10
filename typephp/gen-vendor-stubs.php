@@ -58,7 +58,13 @@ while ($queue) {
     $code .= "$kind " . $r->getShortName();
     if ($r->getParentClass()) $code .= ' extends \\' . $r->getParentClass()->getName();
     $ifaces = $r->isInterface() ? $r->getInterfaceNames() : array_diff($r->getInterfaceNames(), $r->getParentClass() ? $r->getParentClass()->getInterfaceNames() : []);
-    // keep only directly declared interfaces (reflection lists inherited ones too); harmless to redeclare
+    // keep only the directly declared interfaces: PHP rejects re-extending an interface inherited through another one
+    $ifaces = array_values(array_filter($ifaces, static function (string $i) use ($ifaces): bool {
+        foreach ($ifaces as $j) {
+            if ($j !== $i && in_array($i, (new ReflectionClass($j))->getInterfaceNames(), true)) return false;
+        }
+        return true;
+    }));
     if ($ifaces) $code .= ($r->isInterface() ? ' extends ' : ' implements ') . implode(', ', array_map(fn($i) => '\\' . $i, $ifaces));
     $code .= "\n{\n";
     foreach ($r->getTraitNames() as $t) $code .= "    use \\$t;\n";
