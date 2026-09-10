@@ -28,6 +28,8 @@ pub fn run<E: PhpObject + Display>(name: &str, root: &str, f: impl FnOnce() -> R
         .stack_size(STACK_SIZE)
         .spawn(move || -> Result<(), (bool, String)> {
             crate::support::set_src_root(&root);
+            // tests resolve fixtures and stubs relative to the repository root
+            let _ = std::env::set_current_dir(&root);
             match f() {
                 Ok(()) => Ok(()),
                 Err(e) => Err((is_skip(&e), e.to_string())),

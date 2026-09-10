@@ -327,13 +327,23 @@ final class CrateEmitter
             }
             unset($node);
         }
-        $lib = $prelude . "pub mod generated;\npub mod consts;\npub use generated::*;\n#[cfg(test)]\nmod tests;\n" . $this->writeTree($tree, $src, $use, '') . "\n";
+        $lib = $prelude . "pub mod generated;\npub mod consts;\npub use generated::*;\n" . $this->writeTree($tree, $src, $use, '') . "\n";
         $lib .= "use php_rt::prelude::*;\nuse crate::generated::*;\n" . $any->get();
         file_put_contents($src . '/lib.rs', $lib);
         file_put_contents($src . '/generated.rs', $prelude . "use php_rt::prelude::*;\nuse crate::*;\n" . $types->get() . $casts->get());
         file_put_contents($src . '/consts.rs', $prelude . $use . $this->constsModule());
-        file_put_contents($src . '/tests.rs', $prelude . $use . $tests->get());
+        // the PHPUnit harness is an integration test crate: it links against the library instead of being
+        // compiled into it (a single crate with all tests exhausts memory on large projects)
         $name = basename($out);
+        $crate = str_replace('-', '_', $name);
+        if (!is_dir($out . '/tests')) {
+            mkdir($out . '/tests', 0777, true);
+        }
+        $harness = $prelude . str_replace('crate::', $crate . '::', $use) . str_replace('crate::', $crate . '::', $tests->get());
+        file_put_contents($out . '/tests/harness.rs', $harness);
+        if (file_exists($src . '/tests.rs')) {
+            unlink($src . '/tests.rs');
+        }
         file_put_contents($out . '/Cargo.toml', "[package]\nname = \"" . str_replace('-', '_', $name) . "\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[lib]\npath = \"src/lib.rs\"\n\n[dependencies]\nphp-rt = { path = \"../../php-rt\" }\n");
         fwrite(STDERR, 'wrote ' . count($this->modules) . " modules to $out\n");
     }

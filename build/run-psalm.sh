@@ -11,6 +11,6 @@ grep -n "^error" -A12 build-psalm.log | grep -E "^[0-9]+-\s+-->" | head -8
 if ! grep -q "^error" build-psalm.log; then
   timeout 1800 cargo test -p psalm > test_psalm.log 2>&1
   grep "test result" test_psalm.log
-  awk '/^---- tests::/{name=$2; got=0} /^\[failed\]/{ if(!got){got=1; sub(/^\[failed\] data set "[^"]*": /,""); print name " :: " substr($0,1,170)} } /panicked at/{ if(!got){got=1; getline msg; print name " :: " substr(msg,1,170)} }' test_psalm.log > fail_map_psalm.txt
+  awk '/^---- .* stdout ----$/{name=$2; got=0} /^\[failed\]/{ if(!got){got=1; sub(/^\[failed\] data set "[^"]*": /,""); print name " :: " substr($0,1,170)} } /panicked at/{ if(!got){got=1; getline msg; print name " :: " substr(msg,1,170)} }' test_psalm.log > fail_map_psalm.txt
   cut -d: -f4- fail_map_psalm.txt | sed -E 's/[0-9]+/N/g' | sort | uniq -c | sort -rn | head -45
 fi
