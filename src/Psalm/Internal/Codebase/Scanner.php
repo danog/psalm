@@ -23,6 +23,7 @@ use Psalm\Storage\FileStorage;
 use Psalm\Storage\FunctionStorage;
 use Psalm\Type;
 use Psalm\Type\Union;
+use Psalm\Internal\TypePhp\NativeRuntime;
 use ReflectionClass;
 use Throwable;
 use UnexpectedValueException;
@@ -646,6 +647,11 @@ final class Scanner
         }
 
         $file_path = (string)$reflected_class->getFileName();
+
+        if ($file_path === '' && NativeRuntime::isCompiledIn($reflected_class)) {
+            // compiled into the native binary: locate its source like an autoloader would
+            $file_path = (string) NativeRuntime::sourceFileOf($reflected_class->getName());
+        }
 
         // if the file was autoloaded but exists in evaled code only, return false
         if (!file_exists($file_path)) {

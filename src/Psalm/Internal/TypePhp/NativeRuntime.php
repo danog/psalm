@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\TypePhp;
 
+use Psalm\Internal\Autoload\ComposerClassLocator;
 use ReflectionClass;
 use ReflectionFunctionAbstract;
 
@@ -44,5 +45,33 @@ final class NativeRuntime
         $extension_name = self::extensionName();
 
         return $extension_name !== '' && $reflection->getExtensionName() === $extension_name;
+    }
+
+    /**
+     * The source file of a compiled-in class: reflection reports no file for
+     * it, so Psalm's own Composer maps (src/ and vendor/) are consulted, as
+     * PHP's autoloader would under plain PHP.
+     *
+     * @param class-string $class
+     */
+    public static function sourceFileOf(string $class): ?string
+    {
+        static $locator = null;
+        static $searched = false;
+
+        if (!$searched) {
+            $searched = true;
+            $locator = ComposerClassLocator::fromAutoloadFile(
+                dirname(__DIR__, 4) . DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR . 'autoload.php',
+            );
+        }
+
+        if ($locator === null) {
+            return null;
+        }
+
+        $file = $locator->findFile($class);
+
+        return is_string($file) ? $file : null;
     }
 }
