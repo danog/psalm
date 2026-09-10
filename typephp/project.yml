@@ -1,0 +1,12 @@
+# TypePHP (https://github.com/swoole/typephp) project configuration for Psalm.
+#
+# Run the vendor skeleton generator first, then:
+#   php /path/to/typephp/bin/tpc.php typephp/project.yml --dry   # C++ generation only
+#   php /path/to/typephp/bin/tpc.php typephp/project.yml -o psalm-native -j 8
+name: psalm
+build-mode: bin
+cxx-std: c++17
+sources:
+  - ./main.php
+  - ./vendor-stubs
+  - ../src
