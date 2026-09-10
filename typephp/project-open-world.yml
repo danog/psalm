@@ -2,6 +2,7 @@
 name: psalm
 build-mode: bin
 cxx-std: c++17
+optimize: 2
 open-world: true
 sources:
   - ./main.php

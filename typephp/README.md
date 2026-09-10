@@ -117,15 +117,14 @@ translation units) analyses projects with the same results as plain PHP:
 The PHPUnit suite is run inside the open-world build (see above) and compared
 with plain PHP per test. Known differences:
 
-- TypePHP generators run in fibers, so a `Fiber::suspend()` issued from
-  inside a generator body (Revolt's suspension inside amphp's
-  `Future::iterate()`) suspends the generator instead of the enclosing fiber;
-  the two `LanguageServer\DiagnosticTest` tests hit this.
 - Tests with `@runInSeparateProcess` expect `PHP_BINARY` to behave like the
   PHP CLI (stdin script, `-d` options); the binary only runs Psalm's
   launchers.
-- Environment: the embed PHP has no curl extension and `short_open_tag=1`
+- Environment: the embed PHP has no curl/PDO extension and `short_open_tag=1`
   (no php.ini), which changes a handful of test expectations.
+- Under plain PHP, `get_included_files()` lists Composer's bootstrap files;
+  natively they are never loaded, so `ComposerClassLocator` registers them
+  with the `IncludeCollector` and the include analyzer consults it.
 
 ## Compiler fixes carried by the forks
 
@@ -153,6 +152,12 @@ danog/typephp:
 - Runtime: the compiled module registers with permanent interned strings
   (OPcache), uninitialized property slots follow PHP semantics,
   `typephp_set_server_argv()`, warnings are attributed to the right function.
+- Generators are transparent to fibers: `Fiber::getCurrent()` and
+  `Fiber::suspend()` inside a generator body address the fiber that consumes
+  the generator (Revolt suspensions inside amphp's `Future::iterate()`), as
+  in PHP where generators are not fibers.
+- The argument array of a variadic native parameter is rebuilt on every call
+  (it accumulated across loop iterations).
 - Error collection mode (`TYPEPHP_COLLECT_ERRORS`), also during trait
   composition.
 - Function generation is retried with a dynamic local when a local receives
