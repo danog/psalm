@@ -422,8 +422,15 @@ trait CallTrait
                 $v = new Val($recv->code . '.' . $call->rustName() . '(' . Names::strLit($name) . ', ' . $this->casts->convert($list, RustType::list(RustType::mixed()), $call->param_types[1] ?? RustType::list(RustType::mixed())) . ')?', $call->return_type);
                 return $this->narrow($v, $e);
             }
-            $this->warn('unknown method ' . $name . ' on ' . $rt->toRust(), $e);
-            return $this->dead('unknown method ' . $name . '', $this->inferredOrMixed($e));
+            // not declared on the static type (e.g. `hasAttribute` on a `DOMNode`): dispatched by name at runtime
+            $this->warn('unknown method ' . $name . ' on ' . $rt->toRust() . ' (dynamic call)', $e);
+            $argc = [];
+            foreach ($args as $a) {
+                $argc[] = $this->exprTo($a->value, RustType::mixed());
+            }
+            $res = $this->inferredOrMixed($e);
+            $call = 'php_rt::other_obj(&' . $this->casts->convert($recv->code, $rt, RustType::mixed()) . ').call_method(' . Names::rustStringLiteral($lc) . ', vec![' . implode(', ', $argc) . '])?';
+            return $this->narrow(new Val($this->casts->convert($call, RustType::mixed(), $res), $res), $e);
         }
         if ($rt->kind === RustType::UNION) {
             $res = $this->inferredOrMixed($e);
@@ -558,6 +565,14 @@ trait CallTrait
         }
         $decl = $m->declaring;
         $this_t = $this->this_type;
+        if ($this->class !== null && $decl->is_project && $decl->crate < $this->class->crate && !$m->isAbstract()) {
+            // the body lives in another crate whose dispatch enum cannot hold `$this`: call a copy of it
+            // emitted on this crate's topmost class
+            $root = $this->class->crateRoot();
+            $copy = $this->program->requestSuperCopy($root, $m);
+            $recv = $this->casts->convert($this->this_expr . '.clone()', $this_t, RustType::class($root->fqcn));
+            return new Val($this->finishCall($recv . '.' . $copy . '(' . implode(', ', $argc) . ')?'), $m->return_type);
+        }
         $recv = $this->casts->convert($this->this_expr . '.clone()', $this_t, RustType::class($decl->fqcn));
         $impl = $decl->isLeaf() ? $m->rustName() : $m->rustName() . '__impl';
         if ($m->isAbstract()) {

@@ -14,6 +14,7 @@ use Psalm\Storage\MethodStorage;
 
 use function array_keys;
 use function explode;
+use function max;
 use function strtolower;
 use function usort;
 use function fwrite;
@@ -72,6 +73,7 @@ final class Program
         // 1. project classes
         foreach ($this->transpiler->classes as $lc => $record) {
             $this->classes[$lc] = new ClassModel($record->storage->name, $record->storage, $record->node, true);
+            $this->classes[$lc]->crate = $this->transpiler->crateOfFile($record->file_path);
         }
 
         fwrite(STDERR, "[program] hierarchy\n");
@@ -83,7 +85,9 @@ final class Program
 
         foreach ($this->uniqueClasses() as $model) {
             foreach ($model->ancestors as $ancestor) {
-                if ($model->isConcrete() && $model->is_project) {
+                // dispatch enums only enumerate classes of their own crate (and upstream ones);
+                // instances of subclasses from downstream crates travel through the `Other__` variant
+                if ($model->isConcrete() && $model->is_project && $model->crate <= $ancestor->crate) {
                     $ancestor->concrete[] = $model;
                 }
             }
@@ -112,17 +116,111 @@ final class Program
         // 4. members
         foreach ($this->uniqueClasses() as $model) {
             $this->types->current_class = $model->fqcn;
+            $this->types->current_crate = $model->crate;
             $this->buildFields($model);
             $this->buildConstants($model);
         }
         $this->types->current_class = null;
+        $this->types->current_crate = 0;
         fwrite(STDERR, "[program] methods\n");
         foreach ($this->uniqueClasses() as $model) {
+            $this->types->current_crate = $model->crate;
             $this->buildMethods($model);
         }
         foreach ($this->functions as $fn) {
+            $this->types->current_crate = $this->crateOfRecord($fn->record);
             $this->resolveSignature($fn->record->storage, $fn->param_types, $fn->return_type, $fn->record->node);
         }
+        $this->types->current_crate = 0;
+        fwrite(STDERR, "[program] cross-crate inheritance\n");
+        foreach ($this->uniqueClasses() as $model) {
+            if ($model->is_project && $model->crateRoot() === $model) {
+                $this->importUpstreamMethods($model);
+            }
+        }
+    }
+
+    /**
+     * A class extending a class of another (upstream) crate re-declares the inherited instance methods:
+     * their bodies are emitted again with `$this` bound to this class, since the upstream dispatch enum
+     * has no variant for it.
+     */
+    private function importUpstreamMethods(ClassModel $root): void
+    {
+        $imports = [];
+        foreach ($root->methods as $lc => $m) {
+            if ($m->isStatic() || $m->isAbstract() || $m->declaring->crate >= $root->crate || !$m->declaring->is_project) {
+                continue;
+            }
+            $imports[$lc] = $m->importedInto($root);
+        }
+        // private methods of upstream ancestors are called by the imported bodies but are not inherited
+        for ($anc = $root->parent; $anc !== null && $anc->is_project && $anc->crate < $root->crate; $anc = $anc->parent) {
+            foreach ($anc->methods as $lc => $m) {
+                if (isset($root->methods[$lc]) || isset($imports[$lc]) || $m->declaring !== $anc || !$m->isPrivate() || $m->isStatic() || $m->isAbstract()) {
+                    continue;
+                }
+                $imports[$lc] = $m->importedInto($root);
+                $root->methods[$lc] = $imports[$lc];
+            }
+        }
+        if ($imports === []) {
+            return;
+        }
+        $apply = function (ClassModel $c) use (&$apply, $imports, $root): void {
+            foreach ($imports as $lc => $imp) {
+                if (isset($c->methods[$lc]) && $c->methods[$lc] === $imp->import_of) {
+                    $c->methods[$lc] = $imp;
+                }
+            }
+            foreach ($c->children as $child) {
+                if ($child->crate === $root->crate && $child->parent === $c) {
+                    $apply($child);
+                }
+            }
+        };
+        $apply($root);
+    }
+
+    /** @var array<string, array{ClassModel, MethodModel}> bodies of upstream methods needed for `parent::m()` calls, by copy name */
+    public array $super_copies = [];
+
+    /**
+     * Name of the copy of upstream method `$m` emitted on `$root`'s handle type (requested by a `parent::m()`
+     * call whose target lives in another crate).
+     */
+    public function requestSuperCopy(ClassModel $root, MethodModel $m): string
+    {
+        $origin = $m->origin();
+        $name = $m->rustName() . '__super_' . Names::classMangle($origin->declaring->fqcn);
+        $this->super_copies[$root->lc() . '::' . $name] = [$root, $origin];
+        return $name;
+    }
+
+    /** Index of the crate a generated type (union, shape, ...) is emitted into: the highest crate of any class it mentions. */
+    public function typeCrate(RustType $t): int
+    {
+        $crate = 0;
+        if ($t->kind === RustType::CLASS_) {
+            $c = $this->classOf($t);
+            return $c !== null ? $c->crate : 0;
+        }
+        foreach ($t->params as $p) {
+            $crate = max($crate, $this->typeCrate($p));
+        }
+        foreach ($t->fields as [$ft, $_]) {
+            $crate = max($crate, $this->typeCrate($ft));
+        }
+        if ($t->ret !== null) {
+            $crate = max($crate, $this->typeCrate($t->ret));
+        }
+        return $crate;
+    }
+
+    /** Index of the crate a function or constant is emitted into. */
+    public function crateOfRecord(FunctionRecord $record): int
+    {
+        return $this->transpiler->crateOfFile($record->file_path);
     }
 
     /** @param list<ClassModel> $models */
@@ -257,8 +355,22 @@ final class Program
                 $model->fields[$name] = $field;
             }
         }
+        // types are mapped in the class' own crate context (this may run for a parent from a subclass' build)
+        $this->types->current_class = $model->fqcn;
+        $this->types->current_crate = $model->crate;
         $storage = $model->storage;
-        foreach ($storage->properties as $name => $prop_storage) {
+        $properties = $storage->properties;
+        // properties brought in by used traits are not copied into the class' own property storage
+        foreach ($storage->declaring_property_ids as $name => $declaring_id) {
+            if (isset($properties[$name]) || isset($model->fields[$name])) {
+                continue;
+            }
+            $trait = $this->getClass($declaring_id);
+            if ($trait !== null && $trait->isTrait() && isset($trait->storage->properties[$name])) {
+                $properties[$name] = $trait->storage->properties[$name];
+            }
+        }
+        foreach ($properties as $name => $prop_storage) {
             $declaring_id = $storage->declaring_property_ids[$name] ?? $model->fqcn;
             $declaring = $this->getClass($declaring_id) ?? $model;
             if ($declaring !== $model && !$storage->is_trait) {
@@ -467,9 +579,12 @@ final class Program
         }
         $this->method_cache[$key] = $method;
         $saved = $this->types->current_class;
+        $saved_crate = $this->types->current_crate;
         $this->types->current_class = $body_owner->fqcn;
+        $this->types->current_crate = $body_owner->crate;
         $this->resolveSignature($storage, $method->param_types, $method->return_type, $method->node);
         $this->types->current_class = $saved;
+        $this->types->current_crate = $saved_crate;
         // by-reference parameters must keep the type of the root declaration so dispatch signatures agree
         foreach ($storage->params as $i => $p) {
             if (!$p->by_ref) {
@@ -534,27 +649,63 @@ final class Program
      */
     private function extendShapeWithReturnedKeys(RustType $t, \PhpParser\Node\FunctionLike $node): RustType
     {
-        $shape = $t->kind === RustType::OPTION ? $t->inner() : $t;
-        if ($shape->kind !== RustType::SHAPE) {
-            return $t;
-        }
         $stmts = $node->getStmts();
         if ($stmts === null) {
             return $t;
         }
-        $extra = [];
+        $literals = [];
         foreach ((new \PhpParser\NodeFinder())->findInstanceOf($stmts, \PhpParser\Node\Stmt\Return_::class) as $ret) {
-            if (!$ret->expr instanceof \PhpParser\Node\Expr\Array_) {
-                continue;
+            if ($ret->expr instanceof \PhpParser\Node\Expr\Array_) {
+                $literals[] = $ret->expr;
             }
-            foreach ($ret->expr->items as $item) {
+        }
+        return $this->extendShapeWithLiterals($t, $literals);
+    }
+
+    /**
+     * Extend the shape(s) in `$t` with the keys of the array literals `$literals` (data-provider style
+     * `array<string, array{...}>` returns are extended one level down, from the nested literals).
+     *
+     * @param list<\PhpParser\Node\Expr\Array_> $literals
+     */
+    private function extendShapeWithLiterals(RustType $t, array $literals): RustType
+    {
+        if ($literals === []) {
+            return $t;
+        }
+        if ($t->kind === RustType::OPTION) {
+            $inner = $this->extendShapeWithLiterals($t->inner(), $literals);
+            return $inner === $t->inner() ? $t : RustType::option($inner);
+        }
+        if ($t->kind === RustType::LIST || $t->kind === RustType::MAP) {
+            $vt = $t->kind === RustType::LIST ? $t->inner() : $t->params[1];
+            $nested = [];
+            foreach ($literals as $lit) {
+                foreach ($lit->items as $item) {
+                    if ($item->value instanceof \PhpParser\Node\Expr\Array_) {
+                        $nested[] = $item->value;
+                    }
+                }
+            }
+            $new = $this->extendShapeWithLiterals($vt, $nested);
+            if ($new === $vt) {
+                return $t;
+            }
+            return $t->kind === RustType::LIST ? RustType::list($new) : RustType::map($t->params[0], $new);
+        }
+        if ($t->kind !== RustType::SHAPE) {
+            return $t;
+        }
+        $extra = [];
+        foreach ($literals as $lit) {
+            foreach ($lit->items as $item) {
                 $key = null;
                 if ($item->key instanceof \PhpParser\Node\Scalar\String_) {
                     $key = $item->key->value;
                 } elseif ($item->key instanceof \PhpParser\Node\Scalar\Int_) {
                     $key = (string) $item->key->value;
                 }
-                if ($key === null || isset($shape->fields[$key]) || isset($extra[$key])) {
+                if ($key === null || isset($t->fields[$key]) || isset($extra[$key])) {
                     continue;
                 }
                 $extra[$key] = [RustType::mixed(), true];
@@ -563,9 +714,9 @@ final class Program
         if ($extra === []) {
             return $t;
         }
-        $shape = RustType::shape($shape->fields + $extra);
+        $shape = RustType::shape($t->fields + $extra);
         $this->types->shapes[$shape->mangle()] = $shape;
-        return $t->kind === RustType::OPTION ? RustType::option($shape) : $shape;
+        return $shape;
     }
 
     /**

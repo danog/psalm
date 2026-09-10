@@ -288,13 +288,13 @@ trait ExprTrait
             return new Val('src_file(' . Names::strLit($this->relativeFile()) . ')', RustType::str());
         }
         if ($e instanceof Scalar\MagicConst\Class_) {
-            return new Val(Names::strLit($this->class?->fqcn ?? ''), RustType::str());
+            return new Val(Names::strLit(($this->self_class ?? $this->class)?->fqcn ?? ''), RustType::str());
         }
         if ($e instanceof Scalar\MagicConst\Function_ || $e instanceof Scalar\MagicConst\Method) {
             return new Val(Names::strLit((string) $this->record->method_name), RustType::str());
         }
         if ($e instanceof Scalar\MagicConst\Namespace_) {
-            $fq = $this->class?->fqcn ?? '';
+            $fq = ($this->self_class ?? $this->class)?->fqcn ?? '';
             $pos = strrpos($fq, '\\');
             return new Val(Names::strLit($pos === false ? '' : substr($fq, 0, $pos)), RustType::str());
         }
@@ -1373,11 +1373,14 @@ trait ExprTrait
         if ($lc === 'static' && $this->static_class !== null) {
             return $this->static_class->fqcn;
         }
-        if ($lc === 'self' || $lc === 'static') {
+        if ($lc === 'self') {
+            return ($this->self_class ?? $this->class)?->fqcn;
+        }
+        if ($lc === 'static') {
             return $this->class?->fqcn;
         }
         if ($lc === 'parent') {
-            return $this->class?->parent?->fqcn;
+            return ($this->self_class ?? $this->class)?->parent?->fqcn;
         }
         $resolved = $name->getAttribute('resolvedName') ?? $s;
         return $this->program->canonicalClassName((string) $resolved);

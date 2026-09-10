@@ -9,7 +9,9 @@ use PhpParser\Node\Expr\BinaryOp;
 use PhpParser\Node\Name;
 use PhpParser\Node\Scalar;
 
+use function array_map;
 use function count;
+use function substr;
 use function implode;
 use function strtolower;
 
@@ -194,6 +196,18 @@ final class ConstExprEmitter
     private function array(Expr\Array_ $e, RustType $t): Val
     {
         $casts = $this->body->casts;
+        $has_spread = false;
+        foreach ($e->items as $item) {
+            if ($item->unpack) {
+                $has_spread = true;
+            }
+        }
+        if ($has_spread && ($t->kind === RustType::TUPLE || $t->kind === RustType::SHAPE)) {
+            // `[...self::A, 'b']`: built as a list/map and converted
+            return $this->array($e, $t->kind === RustType::TUPLE
+                ? RustType::list($this->body->types()->combine($t->params))
+                : RustType::map(RustType::arrayKey(), RustType::mixed()));
+        }
         if ($t->kind === RustType::TUPLE && count($t->params) === count($e->items)) {
             $parts = [];
             foreach ($e->items as $i => $item) {
@@ -227,9 +241,17 @@ final class ConstExprEmitter
                 if ($item->key !== null) {
                     return $this->array($e, RustType::map(RustType::arrayKey(), $t->inner()));
                 }
-                $parts[] = $this->emit($item->value, $t->inner());
+                if ($item->unpack) {
+                    $sv = $this->natural($item->value, $t);
+                    $parts[] = '__l.extend(' . $casts->convert($sv->code, $sv->type, $t) . '.into_iter());';
+                } else {
+                    $parts[] = '__l.push(' . $this->emit($item->value, $t->inner()) . ');';
+                }
             }
-            return new Val($parts === [] ? 'List::<' . $t->inner()->toRust() . '>::new()' : 'list![' . implode(', ', $parts) . ']', $t);
+            if (!$has_spread) {
+                return new Val($parts === [] ? 'List::<' . $t->inner()->toRust() . '>::new()' : 'list![' . implode(', ', array_map(static fn(string $p) => substr($p, 9, -2), $parts)) . ']', $t);
+            }
+            return new Val('{ let mut __l: ' . $t->toRust() . ' = List::new(); ' . implode(' ', $parts) . ' __l }', $t);
         }
         if ($t->kind !== RustType::MAP) {
             $t = RustType::map(RustType::arrayKey(), RustType::mixed());
@@ -240,6 +262,11 @@ final class ConstExprEmitter
         }
         $parts = [];
         foreach ($e->items as $item) {
+            if ($item->unpack) {
+                $sv = $this->natural($item->value, $t);
+                $parts[] = 'for (__k, __v) in ' . $casts->convert($sv->code, $sv->type, $t) . '.into_iter() { if __k.int_value().is_some() { __m.push(__v); } else { __m.insert(__k, __v); } }';
+                continue;
+            }
             $val = $this->emit($item->value, $vt);
             if ($item->key === null) {
                 $parts[] = '__m.push(' . $val . ');';

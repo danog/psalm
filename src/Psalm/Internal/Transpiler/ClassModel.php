@@ -38,6 +38,9 @@ final class ClassModel
 
     public bool $linked = false;
 
+    /** Index of the crate this class is emitted into (0 = main crate; see Transpiler::crateOfFile). */
+    public int $crate = 0;
+
     /** @var list<ClassModel> all ancestors (parents, transitively) and implemented interfaces */
     public array $ancestors = [];
 
@@ -117,6 +120,16 @@ final class ClassModel
     public function objPath(): string
     {
         return 'crate::' . Names::modulePath($this->fqcn) . '::' . $this->objStruct();
+    }
+
+    /** The topmost ancestor (following `extends`) emitted into the same crate as this class. */
+    public function crateRoot(): ClassModel
+    {
+        $c = $this;
+        while ($c->parent !== null && $c->parent->crate === $this->crate && $c->parent->is_project) {
+            $c = $c->parent;
+        }
+        return $c;
     }
 
     public function isSubclassOf(ClassModel $other): bool

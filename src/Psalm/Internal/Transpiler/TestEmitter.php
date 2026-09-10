@@ -30,7 +30,7 @@ final class TestEmitter
     ) {
     }
 
-    public function emit(Writer $w): int
+    public function emit(Writer $w, int $crate): int
     {
         $base = $this->program->getClass('PHPUnit\Framework\TestCase');
         if ($base === null) {
@@ -38,7 +38,7 @@ final class TestEmitter
         }
         $n = 0;
         foreach ($this->program->uniqueClasses() as $cls) {
-            if (!$cls->is_project || !$cls->isConcrete() || !$cls->isSubclassOf($base) || $cls === $base) {
+            if (!$cls->is_project || !$cls->isConcrete() || !$cls->isSubclassOf($base) || $cls === $base || $cls->crate !== $crate) {
                 continue;
             }
             foreach ($cls->methods as $m) {
@@ -144,7 +144,10 @@ final class TestEmitter
             $dep = $this->program->findMethod($cls, strtolower($dep_name));
             $pi = $first_dep_param + $i;
             $pt = $m->param_types[$pi] ?? RustType::mixed();
-            if ($dep === null || $pi < 0) {
+            if ($pi < 0 || $pi >= count($params)) {
+                continue; // the test does not take the depended-on value
+            }
+            if ($dep === null) {
                 $dep_args[] = $this->casts->defaultOf($pt);
                 continue;
             }
@@ -233,9 +236,13 @@ final class TestEmitter
                 if (isset($vt->fields[$key])) {
                     [$ft, $opt] = $vt->fields[$key];
                     $src = '__row.' . Names::field($key) . '.clone()';
-                    $args[] = $opt
-                        ? $this->casts->convert($src, RustType::shapeField($ft, true), RustType::option($pt)) . '.unwrap_or_default()'
-                        : $this->casts->convert($src, $ft, $pt);
+                    if ($opt && $pt->kind === RustType::OPTION) {
+                        $args[] = $this->casts->convert($src, RustType::shapeField($ft, true), $pt);
+                    } else {
+                        $args[] = $opt
+                            ? $this->casts->convert($src, RustType::shapeField($ft, true), RustType::option($pt)) . '.unwrap_or_default()'
+                            : $this->casts->convert($src, $ft, $pt);
+                    }
                 } else {
                     $args[] = $this->casts->defaultOf($pt);
                 }
