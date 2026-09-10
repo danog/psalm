@@ -63,8 +63,7 @@ final class TestEmitter
         foreach ($collectors as $c) {
             $w->line('{ let mut trials = Vec::new(); ' . $c . '(&mut trials); groups.push(trials); }');
         }
-        // consecutive trials belong to different methods, so a thread pool runs methods in parallel
-        $w->line('let trials = php_rt::testing::interleave(groups, 4);');
+        $w->line('let trials: Vec<libtest_mimic::Trial> = groups.into_iter().flatten().collect();');
         $w->line('libtest_mimic::run(&args, trials).exit();');
         $w->close();
         return count($collectors);
@@ -209,7 +208,6 @@ final class TestEmitter
             $this->emitInvocation($cls, $m, $body, $dep_args, 'Str::from_static("")');
         } else {
             [$iter, $kt, $vt] = $rows;
-            $body->line('let (__key, __row) = __rows[__i].clone();');
             $body->line('let __t = ' . $new . ';');
             $args = [...$this->rowArgs($m, $vt, $first_dep_param), ...$dep_args];
             $this->emitInvocation($cls, $m, $body, $args, 'to_str(&__key)');
@@ -220,31 +218,22 @@ final class TestEmitter
         $body->line('Ok(())');
 
         if ($rows === null) {
-            $w->open('trials.push(libtest_mimic::Trial::test(' . $name . '.to_string(), move || php_rt::testing::run_trial(' . $name . ', ' . $root . ', move || -> Result<(), Throw> {');
+            $w->open('trials.push(libtest_mimic::Trial::test(' . $name . '.to_string(), move || php_rt::testing::run_on_pool(' . $root . ', Box::new(move || php_rt::testing::run_row(' . $name . ', || -> Result<(), Throw> {');
             $w->raw($body->get());
-            $w->close('}).map_err(libtest_mimic::Failed::from)));');
+            $w->close('}))).map_err(libtest_mimic::Failed::from)));');
         } else {
             [$iter] = $rows;
-            // the data sets are named by running the provider once; the trials then share one worker thread
-            // (started on first use) that evaluates the provider again and runs the requested rows
+            // the data sets are named by running the provider once; every trial then runs on the warm worker
+            // pool, where each worker evaluates the provider once and keeps its rows
             $w->line('let __keys: Result<Vec<String>, String> = php_rt::testing::in_thread(' . $root . ', || -> Result<Vec<String>, Throw> { crate::init(); Ok((' . $iter . ').into_iter().map(|(__k, _)| to_str(&__k).to_string()).collect()) });');
             $w->open('match __keys {');
             $w->line('Err(__msg) => trials.push(libtest_mimic::Trial::test(' . $name . '.to_string(), move || Err(libtest_mimic::Failed::from(format!("data provider failed: {}", __msg))))),');
-            $w->open('Ok(__keys) => {');
-            $w->line('let __worker = php_rt::testing::new_row_worker();');
-            $w->open('for (__i, __key) in __keys.into_iter().enumerate() {');
-            $w->line('let __worker = __worker.clone();');
-            $w->open('trials.push(libtest_mimic::Trial::test(format!("{} [{}]", ' . $name . ', __key), move || php_rt::testing::run_on_worker(&__worker, ' . $root . ', __i, move |__requests| {');
+            $w->open('Ok(__keys) => for (__i, __key) in __keys.into_iter().enumerate() {');
+            $w->open('trials.push(libtest_mimic::Trial::test(format!("{} [{}]", ' . $name . ', __key), move || php_rt::testing::run_on_pool(' . $root . ', Box::new(move || php_rt::testing::run_row(' . $name . ', || -> Result<(), Throw> {');
             $w->line('crate::init();');
-            $w->line('let __rows = match (|| -> Result<Vec<_>, Throw> { Ok((' . $iter . ').into_iter().collect()) })() { Ok(__r) => __r, Err(__e) => { for (_, __reply) in __requests { let _ = __reply.send(Err(format!("data provider failed: {}", __e))); } return; } };');
-            $w->open('for (__i, __reply) in __requests {');
-            $w->open('let __outcome = php_rt::testing::run_row(' . $name . ', || -> Result<(), Throw> {');
+            $w->line('let (__key, __row) = php_rt::testing::cached_rows(' . $name . ', || -> Result<Vec<_>, Throw> { Ok((' . $iter . ').into_iter().collect()) }, |__rows| __rows[__i].clone())?;');
             $w->raw($body->get());
-            $w->close('});');
-            $w->line('let _ = __reply.send(__outcome);');
-            $w->close();
-            $w->close('}).map_err(libtest_mimic::Failed::from)));');
-            $w->close();
+            $w->close('}))).map_err(libtest_mimic::Failed::from)));');
             $w->close('},');
             $w->close();
         }
