@@ -384,6 +384,10 @@ final class Reflection
      */
     public function registerFunction(string $function_id): ?bool
     {
+        if (\defined('PSALM_COMPILED')) {
+            // no reflection of internal functions in a compiled program: only the call map is known
+            return false;
+        }
         try {
             $reflection_function = new ReflectionFunction($function_id);
 

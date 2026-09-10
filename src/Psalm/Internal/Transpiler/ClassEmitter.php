@@ -645,13 +645,8 @@ final class ClassEmitter
             if ($m->isPrivate() && $m->declaring !== $cls) {
                 continue;
             }
-            if ($m->storage->visibility !== \Psalm\Internal\Analyzer\ClassLikeAnalyzer::VISIBILITY_PUBLIC) {
-                // dynamic calls come from outside the class: only public methods are reachable
-                continue;
-            }
-            if ($m->isPrivate() && $m->declaring !== $cls) {
-                continue;
-            }
+            // non-public methods stay reachable: untyped receivers inside the class (`$self->reduce()`
+            // in php-parser's semantic actions) are dispatched by name too
             if ($static_only && $m->declaring !== $cls) {
                 // inherited statics are dispatched by the declaring class (see the `_` arm)
                 continue;

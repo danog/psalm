@@ -176,6 +176,33 @@ abstract class Assert
         $constraint->evaluate($value, $message);
     }
 
+    /** Short human-readable form of a value for failure messages. */
+    public static function describeValue(mixed $value): string
+    {
+        return (new \SebastianBergmann\Exporter\Exporter())->shortenedExport($value);
+    }
+
+    public static function equalTo(mixed $value): \PHPUnit\Framework\Constraint\IsEqual
+    {
+        return new \PHPUnit\Framework\Constraint\IsEqual($value);
+    }
+
+    public static function assertXmlStringEqualsXmlString(string $expectedXml, string $actualXml, string $message = ''): void
+    {
+        $normalize = static function (string $xml): string {
+            $xml = (string) preg_replace('/>\s+</', '><', trim($xml));
+            return (string) preg_replace('/\s+/', ' ', $xml);
+        };
+        self::assertSame($normalize($expectedXml), $normalize($actualXml), $message);
+    }
+
+    public static function assertDirectoryIsReadable(string $directory, string $message = ''): void
+    {
+        if (!is_dir($directory) || !is_readable($directory)) {
+            throw new AssertionFailedError(($message !== '' ? $message . "\n" : '') . 'Failed asserting that directory "' . $directory . '" is readable.');
+        }
+    }
+
     public static function stringContains(string $needle, bool $ignoreCase = false): \PHPUnit\Framework\Constraint\StringContains
     {
         return new \PHPUnit\Framework\Constraint\StringContains($needle, $ignoreCase);
@@ -287,7 +314,7 @@ abstract class Assert
     }
 
     /** PHPUnit's comparator: arrays element-wise, objects by class and properties, scalars loosely. */
-    private static function looselyEqual(mixed $expected, mixed $actual): bool
+    public static function looselyEqual(mixed $expected, mixed $actual): bool
     {
         if (is_array($expected) && is_array($actual)) {
             if (count($expected) !== count($actual)) {
@@ -610,6 +637,23 @@ abstract class Constraint implements \Countable
     protected function exporter(): \SebastianBergmann\Exporter\Exporter
     {
         return new \SebastianBergmann\Exporter\Exporter();
+    }
+}
+
+final class IsEqual extends Constraint
+{
+    public function __construct(private mixed $value)
+    {
+    }
+
+    protected function matches(mixed $other): bool
+    {
+        return \PHPUnit\Framework\Assert::looselyEqual($this->value, $other);
+    }
+
+    public function toString(): string
+    {
+        return 'is equal to ' . \PHPUnit\Framework\Assert::describeValue($this->value);
     }
 }
 

@@ -1,0 +1,14 @@
+[package]
+name = "psalm_debug"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "psalm_debug"
+path = "src/main.rs"
+
+[dependencies]
+php-rt = { path = "../php-rt" }
+psalm_base = { path = "../generated/psalm_base" }
+psalm_src = { path = "../generated/psalm_src" }
+psalm_tests = { path = "../generated/psalm_tests" }

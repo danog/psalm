@@ -14,10 +14,10 @@
 >
     <projectFiles>
         <directory name="src/Psalm/Internal/Transpiler/runtime-stubs"/>
-        <directory name="build/php-parser/lib"/>
-        <directory name="build/php-parser/test/PhpParser"/>
-        <file name="build/php-parser/test/bootstrap.php"/>
-        <file name="build/php-parser/test/fixtures/Suit.php"/>
+        <directory name="../php-parser/lib"/>
+        <directory name="../php-parser/test/PhpParser"/>
+        <file name="../php-parser/test/bootstrap.php"/>
+        <file name="../php-parser/test/fixtures/Suit.php"/>
         <ignoreFiles>
             <directory name="vendor"/>
         </ignoreFiles>

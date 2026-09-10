@@ -1162,6 +1162,14 @@ trait ExprTrait
                     return $this->flattenOption($code, $m->return_type);
                 }
             }
+            if ($bt->kind === RustType::UNIT || $bt->kind === RustType::NEVER) {
+                return new Val('{ let _ = ' . $base->code . '; None::<Mixed> }', RustType::option(RustType::mixed()));
+            }
+            if ($bt->kind === RustType::UNION || $bt->kind === RustType::ANY_OBJECT || $bt->kind === RustType::CLASS_ || $bt->kind === RustType::MAP || $bt->kind === RustType::LIST) {
+                // resolved dynamically (array forms and ArrayAccess objects alike)
+                $k = $this->expr($dim);
+                return new Val('{ let __k = ' . $this->keyFrom($k, RustType::arrayKey()) . '; ' . $base->code . '.and_then(|__b| mixed_get(&' . $this->casts->convert('__b', $bt, RustType::mixed()) . ', &__k)) }', RustType::option(RustType::mixed()));
+            }
             $this->warn('isset on unsupported base type ' . $bt->toRust(), $e);
             return new Val('{ let _ = ' . $base->code . '; None::<Mixed> }', RustType::option(RustType::mixed()));
         }
@@ -1294,7 +1302,8 @@ trait ExprTrait
             $op = $is_inc ? 'wrapping_add(1)' : 'wrapping_sub(1)';
             return new Val('{ let ' . $tmp . ' = ' . $place->read() . '.unwrap_or(0); ' . $place->write('Some(' . $tmp . '.' . $op . ')') . ' ' . ($is_pre ? $tmp . '.' . $op : $tmp) . ' }', RustType::int());
         }
-        if ($t->kind === RustType::MIXED || $t->kind === RustType::UNION || $t->kind === RustType::ARRAY_KEY) {
+        if ($t->kind !== RustType::NEVER && $t->kind !== RustType::UNIT) {
+            // anything else (optional unions, ...): PHP's increment semantics on the Mixed form
             $fn = $is_inc ? 'mixed_inc' : 'mixed_dec';
             return new Val('{ let ' . $tmp . ' = ' . $this->casts->convert($place->read(), $t, RustType::mixed()) . '; let __n = ' . $fn . '(&' . $tmp . '); ' . $place->write($this->casts->convert('__n.clone()', RustType::mixed(), $t)) . ' ' . ($is_pre ? '__n' : $tmp) . ' }', RustType::mixed());
         }
@@ -1428,6 +1437,11 @@ trait ExprTrait
             $tc = $this->program->getClass($fqcn);
             $t = $v->type;
             if ($tc !== null && !$tc->is_project) {
+                return new Val('instance_of_name(&' . $this->casts->convert($v->code, $t, RustType::mixed()) . ', &Str::from_static(' . Names::rustStringLiteral($fqcn) . '))', RustType::bool());
+            }
+            $dyn_kinds = [RustType::RT_GENERIC, RustType::DYN_CALLABLE, RustType::CLOSURE, RustType::RESOURCE];
+            if (in_array($t->kind, $dyn_kinds, true) || ($t->kind === RustType::OPTION && in_array($t->inner()->kind, $dyn_kinds, true))) {
+                // runtime containers (generators, callables): checked by class name on the Mixed form
                 return new Val('instance_of_name(&' . $this->casts->convert($v->code, $t, RustType::mixed()) . ', &Str::from_static(' . Names::rustStringLiteral($fqcn) . '))', RustType::bool());
             }
             if ($t->kind === RustType::OPTION) {

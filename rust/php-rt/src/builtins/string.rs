@@ -1074,6 +1074,19 @@ pub fn php_basename(path: &Str, suffix: Option<&Str>) -> Str {
     }
     Str::from_bytes(name)
 }
+/// `pathinfo($path, PATHINFO_*)`: one component (dirname 1, basename 2, extension 4, filename 8).
+pub fn pathinfo_flag(path: &Str, flags: i64) -> Str {
+    let m = pathinfo(path);
+    let key = match flags {
+        1 => "dirname",
+        2 => "basename",
+        4 => "extension",
+        8 => "filename",
+        _ => return Str::from_static(""),
+    };
+    m.get(&Str::from_static(key)).cloned().unwrap_or_default()
+}
+
 pub fn pathinfo(path: &Str) -> Map<Str, Str> {
     let mut m = Map::new();
     let dir = php_dirname(path, 1);

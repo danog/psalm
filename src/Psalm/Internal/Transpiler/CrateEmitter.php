@@ -28,6 +28,7 @@ use function file_get_contents;
 use function file_put_contents;
 use function fwrite;
 use function implode;
+use function in_array;
 use function is_dir;
 use function ksort;
 use function mkdir;
@@ -367,20 +368,32 @@ final class CrateEmitter
         $w->line('thread_local! { static __INIT: std::cell::Cell<bool> = std::cell::Cell::new(false); }');
         $w->open('pub fn init() {');
         $w->line('if __INIT.with(|c| c.replace(true)) { return; }');
+        if ($crate === 0) {
+            // lets the sources know they run as a compiled program (no runtime code loading)
+            $w->line('php_rt::registry::define_constant(&Str::from_static("PSALM_COMPILED"), Mixed::Bool(true));');
+        }
         for ($i = 0; $i < $crate; $i++) {
             $w->line('::' . $this->transpiler->crateName($i) . '::init();');
         }
         foreach ($this->program->uniqueClasses() as $cls) {
-            if (!$cls->is_project || $cls->isTrait() || $cls->crate !== $crate) {
+            if (!$cls->is_project || $cls->crate !== $crate) {
                 continue;
             }
             $names = [strtolower($cls->fqcn)];
             foreach ($cls->ancestors as $a) {
                 $names[] = strtolower($a->fqcn);
             }
-            $w->line('php_rt::registry::register_class(' . Names::rustStringLiteral($cls->fqcn) . ', &[' . implode(', ', array_map(fn($n) => Names::rustStringLiteral($n), $names)) . '], ' . ($cls->isInterface() ? 'true' : 'false') . ');');
+            $file = $this->transpiler->classes[$cls->lc()]->file_path ?? '';
+            $w->line('php_rt::registry::register_class(' . Names::rustStringLiteral($cls->fqcn) . ', &[' . implode(', ', array_map(fn($n) => Names::rustStringLiteral($n), $names)) . '], ' . ($cls->isInterface() ? 'true' : 'false') . ', ' . ($cls->isTrait() ? 'true' : 'false') . ', ' . Names::rustStringLiteral($file) . ');');
+            if ($cls->isTrait()) {
+                continue;
+            }
             if ($cls->isConcrete() && !$cls->isEnum()) {
                 $w->line('php_rt::registry::register_factory(' . Names::rustStringLiteral($cls->fqcn) . ', Box::new(|| ' . $this->casts->convert($cls->ownPath() . '::new_uninit()', RustType::class($cls->fqcn), RustType::mixed()) . '));');
+                $ctor_args = $this->dynamicCtorArgs($cls);
+                if ($ctor_args !== null) {
+                    $w->line('php_rt::registry::register_ctor(' . Names::rustStringLiteral($cls->fqcn) . ', Box::new(|__a| Ok(' . $this->casts->convert($cls->ownPath() . '::new(' . $ctor_args . ').map_err(|e| DynError::Obj(cast::<Mixed>(e)))?', RustType::class($cls->fqcn), RustType::mixed()) . ')));');
+                }
             }
             if (!$cls->isInterface() && !$cls->isEnum()) {
                 $w->line('php_rt::registry::register_static(' . Names::rustStringLiteral($cls->fqcn) . ', Box::new(|__m, __a| ' . $cls->path() . '::call_static(__m, __a)));');
@@ -420,6 +433,36 @@ final class CrateEmitter
             }
         }
         $w->close();
+    }
+
+    /** Constructor arguments taken from a dynamic argument list (`new $class(...)`), or null when not expressible. */
+    private function dynamicCtorArgs(ClassModel $cls): ?string
+    {
+        $ctor = $this->program->findMethod($cls, '__construct');
+        if ($ctor === null) {
+            return '';
+        }
+        $parts = [];
+        foreach ($ctor->storage->params as $i => $p) {
+            if ($p->by_ref || $p->is_variadic) {
+                return null;
+            }
+            $pt = $ctor->param_types[$i] ?? RustType::mixed();
+            if (Casts::isLocal($pt)) {
+                $this->casts->needMixedTo($pt);
+            }
+            $inner = $pt->kind === RustType::OPTION ? $pt->inner() : $pt;
+            if ($pt->kind === RustType::MIXED) {
+                $parts[] = 'dyn_arg_req::<Mixed>(&__a, ' . $i . ')';
+            } elseif (in_array($inner->kind, [RustType::CLOSURE, RustType::TUPLE, RustType::DYN_CALLABLE, RustType::RT_GENERIC, RustType::RESOURCE], true)) {
+                $parts[] = $this->casts->convert('dyn_arg_req::<Mixed>(&__a, ' . $i . ')', RustType::mixed(), $pt);
+            } elseif ($pt->hasDefault() && $pt->kind !== RustType::CLASS_) {
+                $parts[] = 'dyn_arg::<' . $pt->toRust() . '>(&__a, ' . $i . ')';
+            } else {
+                $parts[] = 'dyn_arg_req::<' . $pt->toRust() . '>(&__a, ' . $i . ')';
+            }
+        }
+        return implode(', ', $parts);
     }
 
     /** Constructors for runtime-raised errors, and conversion from php_rt::RtError. */

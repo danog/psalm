@@ -45,8 +45,10 @@ final class FileBasedPluginAdapter implements PluginEntryPointInterface
     {
         $fq_class_name = $this->getPluginClassForPath($this->path);
 
-        /** @psalm-suppress UnresolvableInclude */
-        require_once($this->path);
+        if (!\defined('PSALM_COMPILED')) {
+            /** @psalm-suppress UnresolvableInclude */
+            require_once($this->path);
+        }
 
         assert(class_exists($fq_class_name));
 

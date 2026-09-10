@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["php-rt", "generated/*"]
+members = ["php-rt", "generated/*", "debug"]
 
 # Iteration builds: no optimization, no LTO, many codegen units, line tables only for backtraces.
 [profile.dev]

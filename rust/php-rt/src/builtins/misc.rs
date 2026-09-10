@@ -178,10 +178,10 @@ pub fn get_loaded_extensions() -> List<Str> {
     crate::list![Str::from_static("Core"), Str::from_static("json"), Str::from_static("tokenizer"), Str::from_static("mbstring"), Str::from_static("ctype"), Str::from_static("pcre"), Str::from_static("SPL")]
 }
 pub fn get_declared_classes() -> List<Str> {
-    List::new()
+    crate::registry::declared_classlikes(false)
 }
 pub fn get_declared_interfaces() -> List<Str> {
-    List::new()
+    crate::registry::declared_classlikes(true)
 }
 pub fn get_defined_constants(_cat: bool) -> Map<ArrayKey, Mixed> {
     Map::new()
@@ -308,8 +308,232 @@ pub fn filter_var(v: &Mixed, filter: i64, _options: Mixed) -> Mixed {
 pub fn getopt(_short: &Str, _long: List<Mixed>) -> Map<ArrayKey, Mixed> {
     Map::new()
 }
-pub fn pack(_format: &Str, _args: &Mixed) -> Str {
+/// `hrtime()`: (seconds, nanoseconds) of a monotonic clock.
+pub fn hrtime_parts() -> (i64, i64) {
+    thread_local! { static START: std::time::Instant = std::time::Instant::now(); }
+    let d = START.with(|s| s.elapsed());
+    (d.as_secs() as i64, d.subsec_nanos() as i64)
+}
+
+pub fn rt_function_is_builtin(name: &Str) -> bool {
+    let lc = name.as_bytes().to_ascii_lowercase();
+    let lc = if lc.first() == Some(&b'\\') { lc[1..].to_vec() } else { lc };
+    builtin_function_exists(&lc) || BUILTIN_FUNCTION_NAMES.iter().any(|n| n.as_bytes() == lc.as_slice())
+}
+pub fn rt_class_file(name: &Str) -> Option<Str> {
+    crate::registry::class_file(name.as_bytes())
+}
+pub fn rt_class_is_trait(name: &Str) -> bool {
+    crate::registry::class_is_trait(name.as_bytes())
+}
+pub fn rt_class_constants(name: &Str) -> Map<ArrayKey, Mixed> {
+    crate::registry::class_constants(name.as_bytes())
+}
+
+// ---------------------------------------------------------------- incremental hashing
+
+/// `hash_init()` context: the algorithm and the data fed so far.
+pub struct HashContext {
+    pub algo: Str,
+    pub data: std::cell::RefCell<Vec<u8>>,
+}
+impl crate::mixed::PhpObject for HashContext {
+    fn class_name(&self) -> &'static str {
+        "HashContext"
+    }
+    fn class_ancestors(&self) -> &'static [&'static str] {
+        &["hashcontext"]
+    }
+    fn obj_id(&self) -> usize {
+        self as *const _ as usize
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+pub fn hash_init(algo: &Str) -> Mixed {
+    Mixed::Obj(std::rc::Rc::new(HashContext { algo: algo.clone(), data: std::cell::RefCell::new(Vec::new()) }))
+}
+pub fn hash_update(ctx: &Mixed, data: &Str) -> bool {
+    if let Mixed::Obj(o) = ctx {
+        if let Some(h) = o.as_any().downcast_ref::<HashContext>() {
+            h.data.borrow_mut().extend_from_slice(data.as_bytes());
+            return true;
+        }
+    }
+    false
+}
+pub fn hash_final(ctx: &Mixed, _binary: bool) -> Str {
+    if let Mixed::Obj(o) = ctx {
+        if let Some(h) = o.as_any().downcast_ref::<HashContext>() {
+            let data = Str::from_vec(h.data.borrow().clone());
+            return crate::builtins::string::hash(&h.algo, &data).unwrap_or_default();
+        }
+    }
     Str::empty()
+}
+
+// ---------------------------------------------------------------- pack / unpack
+
+/// One `pack()`/`unpack()` format code with its repeat count (None: `*`) and, for unpack, its key name.
+fn parse_format(format: &[u8]) -> Vec<(u8, Option<usize>, Vec<u8>)> {
+    let mut out = Vec::new();
+    for part in format.split(|b| *b == b'/') {
+        if part.is_empty() {
+            continue;
+        }
+        let code = part[0];
+        let mut i = 1;
+        let mut count: Option<usize> = Some(1);
+        if i < part.len() && part[i] == b'*' {
+            count = None;
+            i += 1;
+        } else {
+            let start = i;
+            while i < part.len() && part[i].is_ascii_digit() {
+                i += 1;
+            }
+            if i > start {
+                count = Some(String::from_utf8_lossy(&part[start..i]).parse().unwrap_or(1));
+            }
+        }
+        out.push((code, count, part[i..].to_vec()));
+    }
+    out
+}
+
+fn int_width(code: u8) -> Option<(usize, bool, bool)> {
+    // (bytes, big endian, signed)
+    match code {
+        b'C' => Some((1, false, false)),
+        b'c' => Some((1, false, true)),
+        b'n' => Some((2, true, false)),
+        b'v' | b'S' => Some((2, false, false)),
+        b's' => Some((2, false, true)),
+        b'N' => Some((4, true, false)),
+        b'V' | b'L' => Some((4, false, false)),
+        b'l' => Some((4, false, true)),
+        b'J' => Some((8, true, false)),
+        b'P' | b'Q' => Some((8, false, false)),
+        b'q' => Some((8, false, true)),
+        _ => None,
+    }
+}
+
+pub fn pack(format: &Str, args: &Mixed) -> Str {
+    let values: Vec<Mixed> = match args {
+        Mixed::Arr(a) => a.iter().map(|(_, v)| v.clone()).collect(),
+        other => vec![other.clone()],
+    };
+    let mut vi = 0;
+    let mut out = Vec::new();
+    for (code, count, _) in parse_format(format.as_bytes()) {
+        match code {
+            b'a' | b'A' | b'Z' => {
+                let s = values.get(vi).map(|v| crate::traits::ToStr::to_php_str(v)).unwrap_or_default();
+                vi += 1;
+                let bytes = s.as_bytes();
+                match count {
+                    None => {
+                        out.extend_from_slice(bytes);
+                        if code == b'Z' {
+                            out.push(0);
+                        }
+                    }
+                    Some(n) => {
+                        let take = bytes.len().min(n);
+                        out.extend_from_slice(&bytes[..take]);
+                        let pad = if code == b'A' { b' ' } else { 0 };
+                        for _ in take..n {
+                            out.push(pad);
+                        }
+                    }
+                }
+            }
+            _ => {
+                if let Some((width, big, _)) = int_width(code) {
+                    let n = count.unwrap_or(values.len().saturating_sub(vi));
+                    for _ in 0..n {
+                        let v = values.get(vi).map(|v| crate::traits::ToInt::to_php_int(v)).unwrap_or(0) as u64;
+                        vi += 1;
+                        let bytes = if big { v.to_be_bytes() } else { v.to_le_bytes() };
+                        if big {
+                            out.extend_from_slice(&bytes[8 - width..]);
+                        } else {
+                            out.extend_from_slice(&bytes[..width]);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Str::from_vec(out)
+}
+
+pub fn unpack(format: &Str, data: &Str, offset: i64) -> Map<ArrayKey, Mixed> {
+    let bytes = data.as_bytes();
+    let mut pos = offset.max(0) as usize;
+    let mut out: Map<ArrayKey, Mixed> = Map::new();
+    for (code, count, name) in parse_format(format.as_bytes()) {
+        let key = |i: usize, single: bool| -> ArrayKey {
+            if name.is_empty() {
+                ArrayKey::Int(i as i64 + 1)
+            } else if single {
+                ArrayKey::from_str_val(Str::from_bytes(&name))
+            } else {
+                let mut k = name.clone();
+                k.extend_from_slice((i + 1).to_string().as_bytes());
+                ArrayKey::from_str_val(Str::from_bytes(&k))
+            }
+        };
+        match code {
+            b'a' | b'A' | b'Z' => {
+                let n = count.unwrap_or(bytes.len().saturating_sub(pos));
+                let end = (pos + n).min(bytes.len());
+                let mut s = bytes[pos.min(end)..end].to_vec();
+                if code == b'A' {
+                    while s.last().map_or(false, |b| *b == b' ' || *b == 0) {
+                        s.pop();
+                    }
+                }
+                if code == b'Z' {
+                    if let Some(p) = s.iter().position(|b| *b == 0) {
+                        s.truncate(p);
+                    }
+                }
+                out.insert(key(0, true), Mixed::Str(Str::from_vec(s)));
+                pos = end;
+            }
+            _ => {
+                if let Some((width, big, signed)) = int_width(code) {
+                    let n = count.unwrap_or(bytes.len().saturating_sub(pos) / width.max(1));
+                    for i in 0..n {
+                        if pos + width > bytes.len() {
+                            break;
+                        }
+                        let chunk = &bytes[pos..pos + width];
+                        let mut buf = [0u8; 8];
+                        let v: u64 = if big {
+                            buf[8 - width..].copy_from_slice(chunk);
+                            u64::from_be_bytes(buf)
+                        } else {
+                            buf[..width].copy_from_slice(chunk);
+                            u64::from_le_bytes(buf)
+                        };
+                        let v = if signed && width < 8 {
+                            let shift = 64 - width * 8;
+                            ((v << shift) as i64) >> shift
+                        } else {
+                            v as i64
+                        };
+                        out.insert(key(i, n == 1 && count == Some(1)), Mixed::Int(v));
+                        pos += width;
+                    }
+                }
+            }
+        }
+    }
+    out
 }
 pub fn serialize(m: &Mixed) -> Str {
     fn ser(m: &Mixed, out: &mut Vec<u8>) {
