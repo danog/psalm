@@ -7,6 +7,7 @@ namespace Psalm\Internal\Analyzer\Statements\Expression;
 use AssertionError;
 use PhpParser;
 use Psalm\CodeLocation;
+use Psalm\Internal\Transpiler\Transpiler;
 use Psalm\Config;
 use Psalm\Context;
 use Psalm\Exception\FileIncludeException;
@@ -185,6 +186,11 @@ final class IncludeAnalyzer
                     return true;
                 }
                 if ($config->mustBeIgnored($path_to_file)) {
+                    return true;
+                }
+
+                if (Transpiler::isEnabled() && Transpiler::get()->isDataFile($path_to_file)) {
+                    // a dictionary compiled mechanically by the transpiler: its type is the site's docblock
                     return true;
                 }
 

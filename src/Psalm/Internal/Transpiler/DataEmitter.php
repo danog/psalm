@@ -12,6 +12,8 @@ use RuntimeException;
 
 use function constant;
 use function defined;
+use function get_debug_type;
+use function is_array;
 use function implode;
 use function is_bool;
 use function is_float;
@@ -32,6 +34,39 @@ final class DataEmitter
     public function __construct(
         private readonly Codebase $codebase,
     ) {
+    }
+
+    /**
+     * The value returned by a dictionary file, obtained by running it (a `return [...]` of literals): the
+     * file is never parsed or analyzed, its literals are dumped mechanically.
+     *
+     * @throws RuntimeException when the file returns something that is not plain data
+     */
+    public function emitFile(string $abs_path): string
+    {
+        /** @var mixed $value */
+        $value = (static function (string $__path): mixed {
+            /** @psalm-suppress UnresolvableInclude */
+            return require $__path;
+        })($abs_path);
+        return $this->fromRuntime($value);
+    }
+
+    private function fromRuntime(mixed $v): string
+    {
+        if (is_array($v)) {
+            $items = [];
+            /** @var mixed $item */
+            foreach ($v as $k => $item) {
+                $key = is_int($k) ? 'DataKey::Int(' . $k . 'i64)' : 'DataKey::Str(' . Names::rustStringLiteral($k) . ')';
+                $items[] = '(' . $key . ', ' . $this->fromRuntime($item) . ')';
+            }
+            return 'Data::Arr(&[' . implode(', ', $items) . '])';
+        }
+        if ($v === null || is_bool($v) || is_int($v) || is_float($v) || is_string($v)) {
+            return $this->fromValue($v);
+        }
+        throw new RuntimeException('a dictionary may only contain arrays and scalars, found ' . get_debug_type($v));
     }
 
     /** @throws RuntimeException for expressions that are not constant data */

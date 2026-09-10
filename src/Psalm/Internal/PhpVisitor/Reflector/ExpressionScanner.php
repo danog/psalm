@@ -7,6 +7,7 @@ namespace Psalm\Internal\PhpVisitor\Reflector;
 use PhpParser;
 use Psalm\Aliases;
 use Psalm\Codebase;
+use Psalm\Internal\Transpiler\Transpiler;
 use Psalm\Config;
 use Psalm\Exception\DocblockParseException;
 use Psalm\Exception\FileIncludeException;
@@ -343,6 +344,11 @@ final class ExpressionScanner
             $path_to_file = IncludeAnalyzer::normalizeFilePath($path_to_file);
 
             if ($file_storage->file_path === $path_to_file) {
+                return;
+            }
+
+            if (Transpiler::isEnabled() && Transpiler::get()->isDataFile($path_to_file)) {
+                // a dictionary compiled mechanically by the transpiler: never parsed by Psalm
                 return;
             }
 
