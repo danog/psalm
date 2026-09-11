@@ -28,7 +28,7 @@ final class MethodReturnTypeProvider
     /**
      * @var array<
      *   lowercase-string,
-     *   array<Closure(MethodReturnTypeProviderEvent): ?Union>
+     *   list<Closure(MethodReturnTypeProviderEvent): ?Union>
      * >
      */
     private static array $handlers = [];

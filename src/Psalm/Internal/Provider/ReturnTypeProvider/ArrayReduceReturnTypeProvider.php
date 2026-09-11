@@ -36,7 +36,7 @@ use function substr;
 final class ArrayReduceReturnTypeProvider implements FunctionReturnTypeProviderInterface
 {
     /**
-     * @return array<lowercase-string>
+     * @return list<lowercase-string>
      * @psalm-pure
      */
     #[Override]

@@ -459,7 +459,7 @@ final class TemplateStandinTypeReplacer
      * that match the base type (normally the param type of the method). These matches are used to infer
      * more template types
      *
-     * Example: when passing `array<string|int>` to a function that expects `array<T>`, a rule in this method
+     * Example: when passing `list<string|int>` to a function that expects `list<T>`, a rule in this method
      * identifies the matching atomic types for `T` as `string|int`
      *
      * @return list<Atomic>

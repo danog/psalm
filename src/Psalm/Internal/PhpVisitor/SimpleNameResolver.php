@@ -48,6 +48,8 @@ final class SimpleNameResolver extends NodeVisitorAbstract
     }
 
     #[Override]
+    /** @param list<\PhpParser\Node> $nodes */
+    /** @return list<\PhpParser\Node> */
     public function beforeTraverse(array $nodes): ?array
     {
         $this->nameContext->startNamespace();

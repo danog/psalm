@@ -454,6 +454,7 @@ final class CliUtils
         file_put_contents($config_file, $amended_config_file_contents);
     }
 
+    /** @param array<string, bool|string|list<string|false>> $options */
     public static function getPathToConfig(array $options): ?string
     {
         $path_to_config = isset($options['c']) && is_string($options['c']) ? realpath($options['c']) : null;
@@ -489,6 +490,7 @@ final class CliUtils
         }
     }
 
+    /** @param array<string, bool|string|list<string|false>> $options */
     public static function initPhpVersion(array $options, Config $config, ProjectAnalyzer $project_analyzer): void
     {
         $source = null;

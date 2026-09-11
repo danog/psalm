@@ -22,7 +22,7 @@ use function count;
 final class PowReturnTypeProvider implements FunctionReturnTypeProviderInterface
 {
     /**
-     * @return array<lowercase-string>
+     * @return list<lowercase-string>
      * @psalm-pure
      */
     #[Override]

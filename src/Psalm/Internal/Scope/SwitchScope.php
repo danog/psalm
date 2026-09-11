@@ -34,7 +34,7 @@ final class SwitchScope
     public ?array $possibly_redefined_vars = null;
 
     /**
-     * @var array<PhpParser\Node\Stmt>
+     * @var list<PhpParser\Node\Stmt>
      */
     public array $leftover_statements = [];
 

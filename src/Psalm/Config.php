@@ -165,7 +165,7 @@ final class Config
     final public const REPORT_SUPPRESS = 'suppress';
 
     /**
-     * @var array<string>
+     * @var list<string>
      */
     public static array $ERROR_LEVELS = [
         self::REPORT_INFO,
@@ -449,7 +449,7 @@ final class Config
     public float $long_scan_warning = 10.0;
 
     /**
-     * @var string[]
+     * @var list<string>
      */
     public array $plugin_paths = [];
 
@@ -511,7 +511,7 @@ final class Config
     public string $trigger_error_exits = 'default';
 
     /**
-     * @var string[]
+     * @var list<string>
      */
     public array $internal_stubs = [];
 
@@ -1524,6 +1524,7 @@ final class Config
         return $this->issue_handlers;
     }
 
+    /** @param array<string, mixed> $config */
     public function setAdvancedErrorLevel(string $issue_key, array $config, ?string $default_error_level = null): void
     {
         $this->issue_handlers[$issue_key] = new IssueHandler();
@@ -2195,7 +2196,7 @@ final class Config
     }
 
     /**
-     * @return array<string>
+     * @return list<string>
      * @psalm-mutation-free
      */
     public function getProjectDirectories(): array
@@ -2208,7 +2209,7 @@ final class Config
     }
 
     /**
-     * @return array<string>
+     * @return list<string>
      * @psalm-mutation-free
      */
     public function getProjectFiles(): array
@@ -2221,7 +2222,7 @@ final class Config
     }
 
     /**
-     * @return array<string>
+     * @return list<string>
      * @psalm-mutation-free
      */
     public function getExtraDirectories(): array
@@ -2571,7 +2572,7 @@ final class Config
                 static fn(): array =>
                     /**
                      * @psalm-suppress UnresolvableInclude
-                     * @var string[]
+                     * @var list<string>
                      */
                     require $vendor_autoload_files_path,
             );

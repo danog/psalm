@@ -35,7 +35,7 @@ final class ClassLikeDocblockComment
     public array $psalm_internal = [];
 
     /**
-     * @var string[]
+     * @var list<string>
      */
     public array $mixins = [];
 

@@ -9,7 +9,7 @@ use Psalm\Plugin\EventHandler\Event\MethodVisibilityProviderEvent;
 interface MethodVisibilityProviderInterface
 {
     /**
-     * @return array<string>
+     * @return list<string>
      */
     public static function getClassLikeNames(): array;
 

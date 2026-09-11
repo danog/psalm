@@ -81,7 +81,7 @@ final class FileStorage
 
     public ?Aliases $aliases = null;
 
-    /** @var Aliases[] */
+    /** @var array<int, Aliases> keyed by the namespace statement's start position */
     public array $namespace_aliases = [];
 
     /**

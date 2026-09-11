@@ -102,7 +102,7 @@ final class TextDocument
      * The document change notification is sent from the client to the server to signal changes to a text document.
      *
      * @param VersionedTextDocumentIdentifier $textDocument the document that was changed
-     * @param TextDocumentContentChangeEvent[] $contentChanges
+     * @param list<TextDocumentContentChangeEvent> $contentChanges
      */
     public function didChange(VersionedTextDocumentIdentifier $textDocument, array $contentChanges): void
     {

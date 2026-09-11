@@ -253,7 +253,7 @@ final class Context
     /**
      * A list of classes or interfaces that may have been thrown
      *
-     * @var array<string, array<array-key, CodeLocation>>
+     * @var array<string, array<string, CodeLocation>>
      */
     public array $possibly_thrown_exceptions = [];
 
@@ -572,7 +572,7 @@ final class Context
     }
 
     /**
-     * @param Clause[]             $clauses
+     * @param list<Clause>             $clauses
      * @param array<string, bool>  $changed_var_ids
      * @return array{list<Clause>, list<Clause>}
      * @psalm-pure
@@ -602,7 +602,7 @@ final class Context
     }
 
     /**
-     * @param  Clause[]               $clauses
+     * @param  list<Clause>               $clauses
      * @return list<Clause>
      */
     public static function filterClauses(

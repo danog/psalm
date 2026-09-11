@@ -62,7 +62,7 @@ final class FunctionReturnTypeProvider
     /**
      * @var array<
      *   lowercase-string,
-     *   array<Closure(FunctionReturnTypeProviderEvent): ?Union>
+     *   list<Closure(FunctionReturnTypeProviderEvent): ?Union>
      * >
      */
     private static array $handlers = [];

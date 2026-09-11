@@ -23,7 +23,7 @@ final class AtomicMethodCallAnalysisResult
     public bool $has_mixed_method_call = false;
 
     /**
-     * @var array<string>
+     * @var list<string>
      */
     public array $invalid_method_call_types = [];
 
@@ -33,17 +33,17 @@ final class AtomicMethodCallAnalysisResult
     public array $existent_method_ids = [];
 
     /**
-     * @var array<string>
+     * @var list<string>
      */
     public array $non_existent_class_method_ids = [];
 
     /**
-     * @var array<string>
+     * @var list<string>
      */
     public array $non_existent_interface_method_ids = [];
 
     /**
-     * @var array<string>
+     * @var list<string>
      */
     public array $non_existent_magic_method_ids = [];
 

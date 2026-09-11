@@ -123,6 +123,7 @@ final class Shepherd implements AfterAnalysisInterface
         ];
     }
 
+    /** @param array<string, mixed> $rawPayload */
     private static function sendPayload(string $endpoint, array $rawPayload): void
     {
         $payload = json_encode($rawPayload, JSON_THROW_ON_ERROR);

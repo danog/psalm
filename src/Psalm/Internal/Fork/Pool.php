@@ -81,7 +81,7 @@ final class Pool
 
     /**
      * @template TResult
-     * @param array<string> $process_task_data_iterator
+     * @param array<string, string> $process_task_data_iterator
      * An array of task data items to be divided up among the
      * workers. The size of this is the number of forked processes.
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint

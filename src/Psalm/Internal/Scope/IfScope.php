@@ -79,12 +79,12 @@ final class IfScope
     public array $reasonable_clauses = [];
 
     /**
-     * @var string[]
+     * @var list<string>
      */
     public array $if_actions = [];
 
     /**
-     * @var string[]
+     * @var list<string>
      */
     public array $final_actions = [];
 

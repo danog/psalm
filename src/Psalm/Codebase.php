@@ -417,7 +417,7 @@ final class Codebase
     }
 
     /**
-     * @param array<string> $candidate_files
+     * @param list<string> $candidate_files
      */
     public function reloadFiles(ProjectAnalyzer $project_analyzer, array $candidate_files, bool $force = false): void
     {
@@ -661,7 +661,7 @@ final class Codebase
     }
 
     /**
-     * @return CodeLocation[]
+     * @return list<CodeLocation>
      * @psalm-return array<int, CodeLocation>
      * @psalm-external-mutation-free
      */

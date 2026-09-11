@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Storage;
 
 /**
- * @psalm-type _MetadataEntry scalar|scalar[]|scalar[][]|scalar[][][]|scalar[][][][]|scalar[][][][][]
+ * @psalm-type _MetadataEntry scalar|list<scalar>|scalar[][]|scalar[][][]|scalar[][][][]|scalar[][][][][]
  */
 trait CustomMetadataTrait
 {

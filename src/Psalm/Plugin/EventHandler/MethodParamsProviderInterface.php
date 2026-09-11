@@ -10,7 +10,7 @@ use Psalm\Storage\FunctionLikeParameter;
 interface MethodParamsProviderInterface
 {
     /**
-     * @return array<string>
+     * @return list<string>
      */
     public static function getClassLikeNames(): array;
 

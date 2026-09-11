@@ -163,7 +163,7 @@ final class Reflection
             $storage->properties[$property_name]->type = $type;
         }
 
-        /** @var array<string, scalar|null|array<array-key, scalar|null|array<array-key, scalar|null|array>>> */
+        /** @var array<string, scalar|null|list<scalar|null|list<scalar|null|array>|array<string, scalar|null|array>>|array<string, scalar|null|list<scalar|null|array>|array<string, scalar|null|array>>> */
         $class_constants = $reflected_class->getConstants();
 
         foreach ($class_constants as $name => $value) {

@@ -45,7 +45,7 @@ abstract class MutableTypeVisitor
     }
 
     /**
-     * @template T as array<TypeNode>
+     * @template T as array<array-key, TypeNode>
      * @param T $nodes
      * @param-out T $nodes
      */

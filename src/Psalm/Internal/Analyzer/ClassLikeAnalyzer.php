@@ -204,7 +204,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
     }
 
     /**
-     * @param  array<string>    $suppressed_issues
+     * @param  array<int, string>    $suppressed_issues
      */
     public static function checkFullyQualifiedClassLikeName(
         StatementsSource $statements_source,
@@ -495,7 +495,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
     /**
      * Gets the Psalm type from a particular value
      *
-     * @param scalar|null|array<array-key, scalar|null|array<array-key, scalar|null|array>> $value
+     * @param scalar|null|list<scalar|null|list<scalar|null|array>|array<string, scalar|null|array>>|array<string, scalar|null|list<scalar|null|array>|array<string, scalar|null|array>> $value
      */
     public static function getTypeFromValue(mixed $value): Union
     {
@@ -528,7 +528,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
     }
 
     /**
-     * @param  string[]         $suppressed_issues
+     * @param  array<int, string>         $suppressed_issues
      */
     public static function checkPropertyVisibility(
         string $property_id,

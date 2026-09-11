@@ -37,6 +37,7 @@ final class Lz4Serializer implements Serializer
     }
 
     #[Override]
+    /** @return array<string, mixed> */
     public function unserialize(string $data): array|object|string
     {
         /** @var string|false $data */

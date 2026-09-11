@@ -21,7 +21,7 @@ final class PropertyVisibilityProvider
     /**
      * @var array<
      *   lowercase-string,
-     *   array<Closure(PropertyVisibilityProviderEvent): ?bool>
+     *   list<Closure(PropertyVisibilityProviderEvent): ?bool>
      * >
      */
     private static array $handlers = [];

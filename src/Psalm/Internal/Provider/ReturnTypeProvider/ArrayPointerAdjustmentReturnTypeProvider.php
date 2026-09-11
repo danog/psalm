@@ -37,7 +37,7 @@ final class ArrayPointerAdjustmentReturnTypeProvider implements FunctionReturnTy
     ];
 
     /**
-     * @return array<lowercase-string>
+     * @return list<lowercase-string>
      * @psalm-pure
      */
     #[Override]

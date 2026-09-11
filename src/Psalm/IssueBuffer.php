@@ -124,7 +124,7 @@ final class IssueBuffer
     /**
      * This will add an issue to be emitted if it's not suppressed and return if it has been added
      *
-     * @param string[]  $suppressed_issues
+     * @param array<int, string>  $suppressed_issues
      */
     public static function accepts(CodeIssue $e, array $suppressed_issues = [], bool $is_fixable = false): bool
     {
@@ -146,7 +146,7 @@ final class IssueBuffer
     /**
      * This will add an issue to be emitted if it's not suppressed
      *
-     * @param string[]  $suppressed_issues
+     * @param array<int, string>  $suppressed_issues
      */
     public static function maybeAdd(CodeIssue $e, array $suppressed_issues = [], bool $is_fixable = false): void
     {
@@ -181,7 +181,7 @@ final class IssueBuffer
      * - We're in a recording state
      * - The issue is included in the list of issues to be suppressed in param
      *
-     * @param string[] $suppressed_issues
+     * @param array<int, string> $suppressed_issues
      */
     public static function isSuppressed(CodeIssue $e, array $suppressed_issues = []): bool
     {
@@ -1136,7 +1136,7 @@ final class IssueBuffer
 
     /**
      * @internal
-     * @param array<string, string|int|float|list<string>> $server
+     * @param array<string, mixed> $server
      * @psalm-external-mutation-free
      */
     final public static function captureServer(array $server): void

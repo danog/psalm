@@ -16,7 +16,7 @@ use function substr;
  */
 final class TIntMask extends TInt
 {
-    /** @param non-empty-array<TLiteralInt|TClassConstant> $values */
+    /** @param non-empty-list<TLiteralInt|TClassConstant> $values */
     public function __construct(public array $values, bool $from_docblock = false)
     {
         parent::__construct($from_docblock);

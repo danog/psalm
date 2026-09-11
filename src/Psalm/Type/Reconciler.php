@@ -658,7 +658,7 @@ class Reconciler
      * Gets the type for a given (non-existent key) based on the passed keys
      *
      * @param array<string, Union>  $existing_keys
-     * @param array<string, array<array-key, array<int, Assertion>>> $new_assertions
+     * @param array<string, list<list<Assertion>>> $new_assertions
      */
     private static function getValueForKey(
         Codebase $codebase,
@@ -993,7 +993,7 @@ class Reconciler
     }
 
     /**
-     * @param  string[]     $suppressed_issues
+     * @param  array<int, string>     $suppressed_issues
      */
     protected static function triggerIssueForImpossible(
         Union|MutableUnion $existing_var_type,
@@ -1117,7 +1117,7 @@ class Reconciler
     }
 
     /**
-     * @param  string[]                  $key_parts
+     * @param  list<string>                  $key_parts
      * @param  array<string, Union>  $existing_types
      * @param  array<string, bool>       $changed_var_ids
      */

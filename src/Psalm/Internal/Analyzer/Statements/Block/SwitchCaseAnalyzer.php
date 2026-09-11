@@ -694,8 +694,8 @@ final class SwitchCaseAnalyzer
     }
 
     /**
-     * @param array<PhpParser\Node\ArrayItem> $in_array_values
-     * @return ?array<PhpParser\Node\ArrayItem>
+     * @param list<PhpParser\Node\ArrayItem> $in_array_values
+     * @return ?list<PhpParser\Node\ArrayItem>
      */
     private static function getOptionsFromNestedOr(
         PhpParser\Node\Expr $case_equality_expr,

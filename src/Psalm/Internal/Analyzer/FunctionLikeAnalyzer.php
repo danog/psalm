@@ -109,7 +109,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
     protected Codebase $codebase;
 
     /**
-     * @var array<string>
+     * @var array<int, string>
      */
     protected array $suppressed_issues;
 
@@ -1437,7 +1437,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
     }
 
     /**
-     * @param FunctionLikeParameter[] $params
+     * @param list<FunctionLikeParameter> $params
      */
     private function alterParams(
         Codebase $codebase,
@@ -1562,7 +1562,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
     }
 
     /**
-     * @param array<PhpParser\Node\Stmt> $function_stmts
+     * @param list<PhpParser\Node\Stmt> $function_stmts
      */
     public function verifyReturnType(
         array $function_stmts,
@@ -1857,7 +1857,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
     /**
      * Get a list of suppressed issues
      *
-     * @return array<string>
+     * @return array<int, string>
      */
     #[Override]
     public function getSuppressedIssues(): array

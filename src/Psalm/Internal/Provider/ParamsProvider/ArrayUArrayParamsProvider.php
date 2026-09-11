@@ -24,7 +24,7 @@ final class ArrayUArrayParamsProvider implements FunctionParamsProviderInterface
 {
 
     /**
-     * @return array<lowercase-string>
+     * @return list<lowercase-string>
      * @psalm-pure
      */
     #[Override]

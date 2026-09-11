@@ -36,6 +36,7 @@ final class GzipSerializer implements Serializer
     }
 
     #[Override]
+    /** @return array<string, mixed> */
     public function unserialize(string $data): array|object|string
     {
         $data = gzinflate($data);

@@ -80,7 +80,7 @@ final class CodeClimateReport extends Report
      * - check_name
      * - description*
      * - content
-     * - categories[]
+     * - list<categories>
      * - severity
      * - fingerprint*
      * - location.path*

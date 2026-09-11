@@ -24,8 +24,8 @@ final class CloningVisitor extends NodeVisitorAbstract
 
         if (($cs = $node->getComments()) !== []) {
             $comments = [];
-            foreach ($cs as $i => $comment) {
-                $comments[$i] = clone $comment;
+            foreach ($cs as $comment) {
+                $comments[] = clone $comment;
             }
 
             $node->attrs()->comments = $comments;

@@ -180,7 +180,7 @@ final class MutableUnion implements TypeNode
 
     /**
      * @psalm-external-mutation-free
-     * @param non-empty-array<Atomic>  $types
+     * @param non-empty-list<Atomic>|non-empty-array<string, Atomic>  $types
      */
     public function setTypes(array $types): self
     {

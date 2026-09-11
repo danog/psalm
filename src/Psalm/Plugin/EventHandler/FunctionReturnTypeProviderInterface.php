@@ -10,7 +10,7 @@ use Psalm\Type\Union;
 interface FunctionReturnTypeProviderInterface
 {
     /**
-     * @return array<lowercase-string>
+     * @return list<lowercase-string>
      */
     public static function getFunctionIds(): array;
 

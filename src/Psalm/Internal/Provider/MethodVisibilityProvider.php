@@ -21,7 +21,7 @@ final class MethodVisibilityProvider
     /**
      * @var array<
      *   lowercase-string,
-     *   array<Closure(MethodVisibilityProviderEvent): ?bool>
+     *   list<Closure(MethodVisibilityProviderEvent): ?bool>
      * >
      */
     private static array $handlers = [];

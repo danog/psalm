@@ -43,7 +43,7 @@ final class Workspace
      * file system events using the registration mechanism. In former implementations clients
      * pushed file events without the server actively asking for it.
      *
-     * @param FileEvent[] $changes
+     * @param list<FileEvent> $changes
      * @psalm-suppress PossiblyUnusedMethod
      */
     public function didChangeWatchedFiles(array $changes): void

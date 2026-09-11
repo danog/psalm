@@ -56,7 +56,7 @@ interface EmitterInterface
      * The list is returned as an array, and the list of events are sorted by
      * their priority.
      *
-     * @return callable[]
+     * @return list<callable>
      */
     public function listeners(string $eventName): array;
 

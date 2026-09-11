@@ -83,7 +83,7 @@ final class AssertionReconciler extends Reconciler
      *  - notEmpty(Object|null) => Object,
      *  - notEmpty(Object|false) => Object
      *
-     * @param   string[]            $suppressed_issues
+     * @param   array<int, string>            $suppressed_issues
      * @param   array<string, array<string, Union>> $template_type_map
      * @param-out Reconciler::RECONCILIATION_* $failed_reconciliation
      */
@@ -309,7 +309,7 @@ final class AssertionReconciler extends Reconciler
      * and also a new type created from the assertion string.
      *
      * @param Reconciler::RECONCILIATION_* $failed_reconciliation
-     * @param   string[]    $suppressed_issues
+     * @param   array<int, string>    $suppressed_issues
      * @param-out Reconciler::RECONCILIATION_* $failed_reconciliation
      */
     private static function refine(
@@ -563,7 +563,7 @@ final class AssertionReconciler extends Reconciler
 
     /**
      * This method receives two types. The goal is to use data in the new type to reduce the existing_type to a more
-     * precise version. For example: new is `array<int>` old is `list<mixed>` so the result is `list<int>`
+     * precise version. For example: new is `list<int>` old is `list<mixed>` so the result is `list<int>`
      */
     private static function filterTypeWithAnother(
         Codebase $codebase,
@@ -914,7 +914,7 @@ final class AssertionReconciler extends Reconciler
 
     /**
      * @param  TLiteralInt|TLiteralFloat|TLiteralString|TEnumCase $assertion_type
-     * @param  string[]          $suppressed_issues
+     * @param  array<int, string>          $suppressed_issues
      */
     private static function handleLiteralEquality(
         StatementsAnalyzer $statements_analyzer,
@@ -1052,7 +1052,7 @@ final class AssertionReconciler extends Reconciler
 
     /**
      * @param array<string, Atomic> $existing_var_atomic_types
-     * @param string[]     $suppressed_issues
+     * @param array<int, string>     $suppressed_issues
      */
     private static function handleLiteralEqualityWithInt(
         StatementsAnalyzer $statements_analyzer,
@@ -1193,7 +1193,7 @@ final class AssertionReconciler extends Reconciler
 
     /**
      * @param array<string, Atomic> $existing_var_atomic_types
-     * @param string[]     $suppressed_issues
+     * @param array<int, string>     $suppressed_issues
      */
     private static function handleLiteralEqualityWithString(
         StatementsAnalyzer $statements_analyzer,
@@ -1336,7 +1336,7 @@ final class AssertionReconciler extends Reconciler
 
     /**
      * @param array<string, Atomic> $existing_var_atomic_types
-     * @param string[]     $suppressed_issues
+     * @param array<int, string>     $suppressed_issues
      */
     private static function handleLiteralEqualityWithFloat(
         StatementsAnalyzer $statements_analyzer,
@@ -1562,7 +1562,7 @@ final class AssertionReconciler extends Reconciler
     }
 
     /**
-     * @param array<string>           $suppressed_issues
+     * @param array<int, string>           $suppressed_issues
      * @return non-empty-list<Atomic>
      */
     private static function handleIsA(

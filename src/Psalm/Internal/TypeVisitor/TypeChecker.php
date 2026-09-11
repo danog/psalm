@@ -55,7 +55,7 @@ final class TypeChecker extends TypeVisitor
     private bool $has_errors = false;
 
     /**
-     * @param array<string>    $suppressed_issues
+     * @param array<int, string>    $suppressed_issues
      * @param array<string, bool> $phantom_classes
      * @param lowercase-string|null $calling_method_id
      * @psalm-mutation-free

@@ -60,7 +60,7 @@ final class Cache
 
     private readonly bool $arrayCache;
 
-    /** @param list<string|int> $dependencies */
+    /** @param list<string|int|false> $dependencies */
     public function __construct(
         Config $config,
         string $subdir,

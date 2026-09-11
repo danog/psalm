@@ -39,6 +39,7 @@ final class DomDocumentPropertyTypeProvider implements PropertyTypeProviderInter
 
     /**
      * @psalm-pure
+     * @return list<string>
      */
     #[Override]
     public static function getClassLikeNames(): array

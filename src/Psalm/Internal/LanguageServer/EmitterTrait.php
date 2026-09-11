@@ -32,7 +32,7 @@ trait EmitterTrait
     /**
      * The list of listeners
      *
-     * @var array<string, array{0: bool, 1: int[], 2: callable[]}>
+     * @var array<string, array{0: bool, 1: list<int>, 2: list<callable>}>
      */
     protected array $listeners = [];
 
@@ -121,7 +121,7 @@ trait EmitterTrait
      * The list is returned as an array, and the list of events are sorted by
      * their priority.
      *
-     * @return callable[]
+     * @return list<callable>
      * @psalm-external-mutation-free
      */
     #[Override]

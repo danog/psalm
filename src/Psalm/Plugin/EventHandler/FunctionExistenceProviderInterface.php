@@ -9,7 +9,7 @@ use Psalm\Plugin\EventHandler\Event\FunctionExistenceProviderEvent;
 interface FunctionExistenceProviderInterface
 {
     /**
-     * @return array<lowercase-string>
+     * @return list<lowercase-string>
      */
     public static function getFunctionIds(): array;
 

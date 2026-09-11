@@ -22,7 +22,7 @@ final class PropertyTypeProvider
     /**
      * @var array<
      *   lowercase-string,
-     *   array<Closure(PropertyTypeProviderEvent): ?Union>
+     *   list<Closure(PropertyTypeProviderEvent): ?Union>
      * >
      */
     private static array $handlers = [];

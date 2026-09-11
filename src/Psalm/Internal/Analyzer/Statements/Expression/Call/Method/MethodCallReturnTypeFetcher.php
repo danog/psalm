@@ -277,7 +277,7 @@ final class MethodCallReturnTypeFetcher
     }
 
     /**
-     * @param  array<PhpParser\Node\Arg>   $args
+     * @param  list<PhpParser\Node\Arg>   $args
      */
     public static function taintMethodCallResult(
         StatementsAnalyzer $statements_analyzer,

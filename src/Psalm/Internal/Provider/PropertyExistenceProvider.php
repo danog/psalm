@@ -21,7 +21,7 @@ final class PropertyExistenceProvider
     /**
      * @var array<
      *   lowercase-string,
-     *   array<Closure(PropertyExistenceProviderEvent): ?bool>
+     *   list<Closure(PropertyExistenceProviderEvent): ?bool>
      * >
      */
     private static array $handlers = [];

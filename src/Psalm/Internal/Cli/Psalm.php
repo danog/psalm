@@ -435,6 +435,7 @@ final class Psalm
     }
 
     /** @return int<1, max> */
+    /** @param array<string, bool|string|list<string|false>> $options */
     public static function getThreads(array $options, Config $config, bool $in_ci, bool $for_scan): int
     {
         if (defined('PHP_WINDOWS_VERSION_MAJOR')) {
@@ -471,6 +472,7 @@ final class Psalm
 
     /**
      * @psalm-pure
+     * @param array<string, bool|string|list<string|false>> $options
      */
     private static function initOutputFormat(array $options): string
     {
@@ -499,6 +501,7 @@ final class Psalm
 
     /**
      * @psalm-pure
+     * @param array<string, bool|string|list<string|false>> $options
      */
     private static function initShowInfo(array $options): bool
     {
@@ -507,6 +510,7 @@ final class Psalm
             : false;
     }
 
+    /** @param array<string, bool|string|list<string|false>> $options */
     /*private static function initIsDiff(array $options): bool
     {
         return !isset($options['no-diff'])
@@ -655,6 +659,7 @@ final class Psalm
         return $config;
     }
 
+    /** @param array<string, bool|string|list<string|false>> $options */
     private static function initProgress(array $options, Config $config, bool $in_ci): Progress
     {
         $debug = array_key_exists('debug', $options) || array_key_exists('debug-by-line', $options);
@@ -682,6 +687,7 @@ final class Psalm
         return $progress;
     }
 
+    /** @param array<string, bool|string|list<string|false>> $options */
     private static function initProviders(array $options, Config $config, string $current_dir): Providers
     {
         if ($config->cache_directory === null || isset($options['i'])) {
@@ -757,6 +763,7 @@ final class Psalm
 
     /**
      * @return array<string,array<string,array{o:int, s: list<string>}>>
+     * @param array<string, bool|string|list<string|false>> $options
      */
     private static function updateBaseline(array $options, Config $config): array
     {
@@ -931,6 +938,7 @@ final class Psalm
         exit;
     }
 
+    /** @param array<string, bool|string|list<string|false>> $options */
     private static function getCurrentDir(array $options): string
     {
         $cwd = getcwd();
@@ -1070,6 +1078,7 @@ final class Psalm
     }
 
     /** @param array<int, string> $argv */
+    /** @param array<string, bool|string|list<string|false>> $options */
     private static function forwardCliCall(array $options, array $argv): void
     {
         if (isset($options['alter'])) {
@@ -1236,6 +1245,7 @@ final class Psalm
         return $issue_baseline;
     }
 
+    /** @param array<string, bool|string|list<string|false>> $options */
     private static function storeFlowGraph(array $options, ProjectAnalyzer $project_analyzer): void
     {
         /** @var string|null $dump_taint_graph */
@@ -1255,6 +1265,7 @@ final class Psalm
     /**
      * @return false|'always'|'auto'
      * @psalm-mutation-free
+     * @param array<string, bool|string|list<string|false>> $options
      */
     private static function shouldFindUnusedCode(array $options, Config $config): bool|string
     {
@@ -1278,6 +1289,7 @@ final class Psalm
 
     /**
      * @psalm-pure
+     * @param array<string, bool|string|list<string|false>> $options
      */
     private static function shouldRunTaintAnalysis(array $options): bool
     {
@@ -1338,6 +1350,7 @@ final class Psalm
         }
     }
 
+    /** @param array<string, bool|string|list<string|false>> $options */
     private static function configureShepherd(Config $config, array $options, array &$plugins): void
     {
         $is_shepherd_enabled = isset($options['shepherd']) || getenv('PSALM_SHEPHERD');

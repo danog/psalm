@@ -22,7 +22,7 @@ use function strpos;
 use function substr;
 
 /**
- * @template TTypeParams as array<Union>
+ * @template TTypeParams as list<Union>
  * @psalm-immutable
  */
 trait GenericTrait

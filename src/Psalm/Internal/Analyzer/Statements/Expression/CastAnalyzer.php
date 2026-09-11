@@ -61,7 +61,7 @@ use function strtolower;
  */
 final class CastAnalyzer
 {
-    /** @var string[] */
+    /** @var list<string> */
     private const PSEUDO_CASTABLE_CLASSES = [
         'SimpleXMLElement',
         'DOMNode',

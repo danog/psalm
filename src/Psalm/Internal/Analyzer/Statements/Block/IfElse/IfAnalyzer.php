@@ -79,8 +79,8 @@ final class IfAnalyzer
             $omit_keys = array_reduce(
                 $outer_context->clauses,
                 /**
-                 * @param array<string> $carry
-                 * @return array<string>
+                 * @param list<string> $carry
+                 * @return list<string>
                  */
                 static fn(array $carry, Clause $clause): array
                     => array_merge($carry, array_keys($clause->possibilities)),

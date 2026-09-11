@@ -20,7 +20,7 @@ use Psalm\Type\Union;
 final class ArrayFillReturnTypeProvider implements FunctionReturnTypeProviderInterface
 {
     /**
-     * @return array<lowercase-string>
+     * @return list<lowercase-string>
      * @psalm-pure
      */
     #[Override]

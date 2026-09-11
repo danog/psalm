@@ -27,7 +27,7 @@ use const FILTER_VALIDATE_REGEXP;
 final class FilterVarReturnTypeProvider implements FunctionReturnTypeProviderInterface
 {
     /**
-     * @return array<lowercase-string>
+     * @return list<lowercase-string>
      * @psalm-pure
      */
     #[Override]

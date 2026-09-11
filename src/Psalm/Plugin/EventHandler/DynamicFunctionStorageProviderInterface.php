@@ -10,7 +10,7 @@ use Psalm\Plugin\EventHandler\Event\DynamicFunctionStorageProviderEvent;
 interface DynamicFunctionStorageProviderInterface
 {
     /**
-     * @return array<lowercase-string>
+     * @return list<lowercase-string>
      */
     public static function getFunctionIds(): array;
 

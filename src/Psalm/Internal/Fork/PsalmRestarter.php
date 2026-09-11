@@ -61,7 +61,7 @@ final class PsalmRestarter extends XdebugHandler
     private bool $required = false;
 
     /**
-     * @var string[]
+     * @var list<string>
      */
     private array $disabled_extensions = [];
 

@@ -280,7 +280,7 @@ final class ErrorBaseline
         $xml = preg_replace_callback(
             '/<files (psalm-version="[^"]+") php-version="(.+)"(\/?>)\n/',
             /**
-             * @param string[] $matches
+             * @param array<array-key, string> $matches
              */
             static fn(array $matches): string => sprintf(
                 "<files\n  %s\n  php-version=\"\n    %s\n  \"\n%s\n",

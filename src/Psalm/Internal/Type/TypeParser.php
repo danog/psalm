@@ -945,7 +945,7 @@ final class TypeParser
 
                 if ($atomic_type instanceof TNamedObject) {
                     if (defined($atomic_type->value)) {
-                        /** @var scalar|null|array<array-key, scalar|null> */
+                        /** @var scalar|null|list<scalar|null>|array<string, scalar|null> */
                         $constant_value = constant($atomic_type->value);
 
                         if (!is_int($constant_value)) {
@@ -1619,7 +1619,7 @@ final class TypeParser
     }
 
     /**
-     * @param non-empty-array<Atomic> $intersection_types
+     * @param non-empty-array<int, Atomic> $intersection_types
      * @return non-empty-array<string,TIterable|TNamedObject|TCallableObject|TTemplateParam|TObjectWithProperties|TKeyedArray>
      */
     private static function extractKeyedIntersectionTypes(
@@ -1703,8 +1703,8 @@ final class TypeParser
     }
 
     /**
-     * @param array<Atomic> $intersection_types
-     * @return array<Atomic>
+     * @param array<string, Atomic>|list<Atomic> $intersection_types
+     * @return array<string, Atomic>|list<Atomic>
      */
     private static function resolveTypeAliases(Codebase $codebase, array $intersection_types): array
     {
@@ -1750,7 +1750,7 @@ final class TypeParser
      * Merges the keyed arrays of an intersection (an unsealed `array` at either end is dropped, other
      * members are ignored: the caller has checked that only keyed arrays remain).
      *
-     * @param non-empty-array<Atomic> $intersection_types
+     * @param non-empty-array<int, Atomic> $intersection_types
      */
     private static function getTypeFromKeyedArrays(
         Codebase $codebase,

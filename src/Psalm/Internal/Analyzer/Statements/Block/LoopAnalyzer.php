@@ -43,7 +43,7 @@ final class LoopAnalyzer
      *
      * @param  list<PhpParser\Node\Stmt>    $stmts
      * @param  list<PhpParser\Node\Expr>    $pre_conditions
-     * @param  PhpParser\Node\Expr[]        $post_expressions
+     * @param  list<PhpParser\Node\Expr>        $post_expressions
      * @return false|null
      */
     public static function analyze(
@@ -526,7 +526,7 @@ final class LoopAnalyzer
      * @param array<string, Union> $init_var_types
      * @param array<string, int> $assigned_var_ids
      * @param list<PhpParser\Node\Expr> $pre_conditions
-     * @param PhpParser\Node\Expr[] $post_expressions
+     * @param list<PhpParser\Node\Expr> $post_expressions
      * @return false|null
      */
     public static function analyzeForOrWhile(

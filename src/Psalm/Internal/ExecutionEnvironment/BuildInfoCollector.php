@@ -47,6 +47,7 @@ final class BuildInfoCollector
 
     /**
      * Collect environment variables.
+     * @return array<string, mixed>
      */
     public function collect(): array
     {

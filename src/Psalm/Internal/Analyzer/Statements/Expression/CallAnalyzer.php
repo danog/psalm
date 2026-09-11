@@ -630,7 +630,7 @@ abstract class CallAnalyzer
 
     /**
      * @param Identifier|Name $expr
-     * @param  Possibilities[] $var_assertions
+     * @param  array<int, Possibilities> $var_assertions
      * @param  list<PhpParser\Node\Arg> $args
      */
     public static function applyAssertionsToContext(

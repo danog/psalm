@@ -101,6 +101,7 @@ final class Populator
         FileStorageProvider::populated();
     }
 
+    /** @param array<string, bool> $dependent_classlikes */
     private function populateClassLikeStorage(ClassLikeStorage $storage, array $dependent_classlikes = []): void
     {
         if ($storage->populated) {

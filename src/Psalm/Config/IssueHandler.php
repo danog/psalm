@@ -56,6 +56,7 @@ final class IssueHandler
         return $this->custom_levels;
     }
 
+    /** @param array<string, mixed> $customLevels */
     public function setCustomLevels(array $customLevels, string $base_dir): void
     {
         /** @var array $customLevel */

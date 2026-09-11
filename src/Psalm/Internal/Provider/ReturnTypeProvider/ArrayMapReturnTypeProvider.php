@@ -54,7 +54,7 @@ use function substr;
 final class ArrayMapReturnTypeProvider implements FunctionReturnTypeProviderInterface
 {
     /**
-     * @return array<lowercase-string>
+     * @return list<lowercase-string>
      * @psalm-pure
      */
     #[Override]
@@ -118,7 +118,7 @@ final class ArrayMapReturnTypeProvider implements FunctionReturnTypeProviderInte
             $null = Type::getNull();
             $array_arg_types = array_map(null, ...$array_arg_types);
             $array_arg_types = array_map(
-                /** @param non-empty-array<?Union> $sub */
+                /** @param non-empty-list<?Union> $sub */
                 static function (array $sub) use ($null) {
                     $sub = array_map(
                         static fn(?Union $t) => $t ?? $null,

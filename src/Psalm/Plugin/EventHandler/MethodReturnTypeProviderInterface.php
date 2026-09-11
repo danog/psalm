@@ -10,7 +10,7 @@ use Psalm\Type\Union;
 interface MethodReturnTypeProviderInterface
 {
     /**
-     * @return array<string>
+     * @return list<string>
      */
     public static function getClassLikeNames(): array;
 

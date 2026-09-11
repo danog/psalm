@@ -78,11 +78,11 @@ final class TypeCombiner
     /**
      * Combines types together
      *  - so `int + string = int|string`
-     *  - so `array<int> + array<string> = array<int|string>`
-     *  - and `array<int> + string = array<int>|string`
-     *  - and `array<never> + array<never> = array<never>`
-     *  - and `array<string> + array<never> = array<string>`
-     *  - and `array + array<string> = array<mixed>`
+     *  - so `list<int> + list<string> = list<int|string>`
+     *  - and `list<int> + string = list<int>|string`
+     *  - and `list<never> + list<never> = list<never>`
+     *  - and `list<string> + list<never> = list<string>`
+     *  - and `array + list<string> = list<mixed>`
      *
      * @psalm-external-mutation-free
      * @psalm-suppress ImpurePropertyAssignment We're not actually mutating any external instance

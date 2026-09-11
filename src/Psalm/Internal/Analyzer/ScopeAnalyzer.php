@@ -31,7 +31,7 @@ final class ScopeAnalyzer
     public const ACTION_RETURN = 'RETURN';
 
     /**
-     * @param array<PhpParser\Node> $stmts
+     * @param list<PhpParser\Node> $stmts
      * @param list<'loop'|'switch'> $break_types
      * @param bool $return_is_exit Exit and Throw statements are treated differently from return if this is false
      * @return list<self::ACTION_*>
@@ -389,7 +389,7 @@ final class ScopeAnalyzer
     }
 
     /**
-     * @param   array<PhpParser\Node> $stmts
+     * @param   list<PhpParser\Node> $stmts
      */
     public static function onlyThrowsOrExits(NodeTypeProvider $type_provider, array $stmts): bool
     {
@@ -420,7 +420,7 @@ final class ScopeAnalyzer
     }
 
     /**
-     * @param array<PhpParser\Node> $stmts
+     * @param list<PhpParser\Node> $stmts
      * @psalm-mutation-free
      */
     public static function onlyThrows(array $stmts): bool

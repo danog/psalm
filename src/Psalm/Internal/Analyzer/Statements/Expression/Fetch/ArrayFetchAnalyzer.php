@@ -2039,7 +2039,7 @@ final class ArrayFetchAnalyzer
     }
 
     /**
-     * @param Atomic[] $offset_types
+     * @param array<string, Atomic> $offset_types
      */
     private static function checkArrayOffsetType(
         MutableUnion $offset_type,

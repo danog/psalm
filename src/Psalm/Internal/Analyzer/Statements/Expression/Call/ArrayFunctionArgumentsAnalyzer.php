@@ -727,7 +727,7 @@ final class ArrayFunctionArgumentsAnalyzer
     }
 
     /**
-     * @param  (TArray|null)[] $array_arg_types
+     * @param  list<TArray|null> $array_arg_types
      */
     private static function checkClosureType(
         StatementsAnalyzer $statements_analyzer,
@@ -891,7 +891,7 @@ final class ArrayFunctionArgumentsAnalyzer
 
     /**
      * @param  TClosure|TCallable $closure_type
-     * @param  (TArray|null)[] $array_arg_types
+     * @param  list<TArray|null> $array_arg_types
      */
     private static function checkClosureTypeArgs(
         StatementsAnalyzer $statements_analyzer,

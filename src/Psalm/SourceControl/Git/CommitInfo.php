@@ -49,6 +49,7 @@ final class CommitInfo
 
     /**
      * @psalm-mutation-free
+     * @return array<string, mixed>
      */
     public function toArray(): array
     {

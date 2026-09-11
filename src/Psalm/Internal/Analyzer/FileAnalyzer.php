@@ -62,7 +62,7 @@ class FileAnalyzer extends SourceAnalyzer
     private array $parent_file_paths = [];
 
     /**
-     * @var array<string>
+     * @var array<int, string>
      */
     private array $suppressed_issues = [];
 
@@ -602,7 +602,7 @@ class FileAnalyzer extends SourceAnalyzer
 
     /**
      * @psalm-mutation-free
-     * @return array<string>
+     * @return array<int, string>
      */
     #[Override]
     public function getSuppressedIssues(): array

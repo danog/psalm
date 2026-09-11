@@ -197,6 +197,7 @@ final class Union implements TypeNode
      * Suppresses memory usage when unserializing objects.
      *
      * @see \Psalm\Storage\UnserializeMemoryUsageSuppressionTrait
+     * @param array<string, mixed> $properties
      */
     public function __unserialize(array $properties): void
     {
@@ -378,7 +379,7 @@ final class Union implements TypeNode
 
     /**
      * @psalm-mutation-free
-     * @param non-empty-array<Atomic>  $types
+     * @param non-empty-list<Atomic>|non-empty-array<string, Atomic>  $types
      */
     public function setTypes(array $types): self
     {

@@ -49,9 +49,9 @@ final class AttributesAnalyzer
     ];
 
     /**
-     * @param array<array-key, AttributeGroup> $attribute_groups
+     * @param list<AttributeGroup> $attribute_groups
      * @param key-of<self::TARGET_DESCRIPTIONS> $target
-     * @param array<array-key, string> $suppressed_issues
+     * @param array<int, string> $suppressed_issues
      */
     public static function analyze(
         SourceAnalyzer $source,
@@ -123,7 +123,7 @@ final class AttributesAnalyzer
     }
 
     /**
-     * @param array<array-key, string> $suppressed_issues
+     * @param array<int, string> $suppressed_issues
      */
     private static function analyzeAttributeConstruction(
         SourceAnalyzer $source,
@@ -232,7 +232,7 @@ final class AttributesAnalyzer
     }
 
     /**
-     * @param array<array-key, string> $suppressed_issues
+     * @param array<int, string> $suppressed_issues
      */
     private static function getAttributeClassFlags(
         SourceAnalyzer $source,

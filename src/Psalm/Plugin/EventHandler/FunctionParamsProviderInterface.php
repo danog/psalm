@@ -10,7 +10,7 @@ use Psalm\Storage\FunctionLikeParameter;
 interface FunctionParamsProviderInterface
 {
     /**
-     * @return array<lowercase-string>
+     * @return list<lowercase-string>
      */
     public static function getFunctionIds(): array;
 

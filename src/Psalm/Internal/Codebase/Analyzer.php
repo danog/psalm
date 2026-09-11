@@ -81,7 +81,7 @@ use const PHP_INT_MAX;
  *      mixed_counts: array<string, array{0: int, 1: int}>,
  *      mixed_member_names: array<string, array<string, bool>>,
  *      function_timings: array<string, float>,
- *      file_manipulations: array<string, FileManipulation[]>,
+ *      file_manipulations: array<string, list<FileManipulation>>,
  *      method_references_to_class_members: array<string, array<string,bool>>,
  *      method_dependencies: array<string, array<string,bool>>,
  *      method_references_to_method_returns: array<string, array<string,bool>>,
@@ -151,7 +151,7 @@ final class Analyzer
     /**
      * We may update fewer files than we analyse (i.e. for dead code detection)
      *
-     * @var array<string>|null
+     * @var list<string>|null
      */
     private ?array $files_to_update = null;
 
@@ -221,7 +221,7 @@ final class Analyzer
     }
 
     /**
-     * @param array<string> $files_to_update
+     * @param list<string> $files_to_update
      * @psalm-external-mutation-free
      */
     public function setFilesToUpdate(array $files_to_update): void

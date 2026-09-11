@@ -304,7 +304,7 @@ final class DocblockParser
     }
 
     /**
-     * @psalm-assert-if-true array<array-key, non-empty-string> $arr
+     * @psalm-assert-if-true list<non-empty-string> $arr
      * @psalm-pure
      */
     private static function assertArrayOfNonEmptyString(array $arr): bool

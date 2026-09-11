@@ -22,7 +22,7 @@ use const PHP_ROUND_HALF_UP;
 final class RoundReturnTypeProvider implements FunctionReturnTypeProviderInterface
 {
     /**
-     * @return array<lowercase-string>
+     * @return list<lowercase-string>
      * @psalm-pure
      */
     #[Override]

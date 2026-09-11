@@ -23,7 +23,7 @@ use function json_last_error_msg;
 final class ComposerLock
 {
     /**
-     * @param string[] $file_names
+     * @param array<int, string> $file_names
      * @psalm-mutation-free
      */
     public function __construct(

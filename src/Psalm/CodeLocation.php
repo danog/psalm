@@ -133,6 +133,7 @@ class CodeLocation
      *
      * @see \Psalm\Storage\UnserializeMemoryUsageSuppressionTrait
      * @psalm-external-mutation-free
+     * @param array<string, mixed> $properties
      */
     public function __unserialize(array $properties): void
     {

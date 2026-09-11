@@ -48,47 +48,47 @@ use const GLOB_ONLYDIR;
 class FileFilter
 {
     /**
-     * @var array<string>
+     * @var list<string>
      */
     protected array $directories = [];
 
     /**
-     * @var array<string>
+     * @var list<string>
      */
     protected array $files = [];
 
     /**
-     * @var array<string>
+     * @var list<string>
      */
     protected array $fq_classlike_names = [];
 
     /**
-     * @var array<non-empty-string>
+     * @var list<non-empty-string>
      */
     protected array $fq_classlike_patterns = [];
 
     /**
-     * @var array<non-empty-string>
+     * @var list<non-empty-string>
      */
     protected array $method_ids = [];
 
     /**
-     * @var array<string>
+     * @var list<string>
      */
     protected array $property_ids = [];
 
     /**
-     * @var array<string>
+     * @var list<string>
      */
     protected array $class_constant_ids = [];
 
     /**
-     * @var array<string>
+     * @var list<string>
      */
     protected array $var_names = [];
 
     /**
-     * @var array<string>
+     * @var list<string>
      */
     protected array $files_lowercase = [];
 
@@ -480,7 +480,7 @@ class FileFilter
     /**
      * @mutation-free
      * @param non-empty-list<non-empty-string> $parts
-     * @return array<string|false>
+     * @return array<int, string|false>
      */
     private static function recursiveGlob(array $parts, bool $only_dir): array
     {
@@ -649,7 +649,7 @@ class FileFilter
     }
 
     /**
-     * @return array<string>
+     * @return list<string>
      */
     public function getDirectories(): array
     {
@@ -657,7 +657,7 @@ class FileFilter
     }
 
     /**
-     * @return array<string>
+     * @return list<string>
      */
     public function getFiles(): array
     {

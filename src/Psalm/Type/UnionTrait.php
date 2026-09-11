@@ -100,7 +100,7 @@ trait UnionTrait
     /**
      * Constructs a Union instance
      *
-     * @param non-empty-array<Atomic>     $types
+     * @param non-empty-list<Atomic>|non-empty-array<string, Atomic>     $types
      * @param TProperties $properties
      * @psalm-mutation-free
      */
@@ -1436,7 +1436,7 @@ trait UnionTrait
     }
 
     /**
-     * @param  array<string>    $suppressed_issues
+     * @param  array<int, string>    $suppressed_issues
      * @param  array<string, bool> $phantom_classes
      * @param  ?lowercase-string $calling_method_id
      */

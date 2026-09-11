@@ -115,7 +115,7 @@ final class Creator
     }
 
     /**
-     * @param array<IssueData>  $issues
+     * @param list<IssueData>  $issues
      * @psalm-mutation-free
      */
     public static function getLevel(array $issues, int $counted_types): int
@@ -293,7 +293,7 @@ final class Creator
     {
         $nodes = [];
 
-        /** @var string[] */
+        /** @var list<string> */
         $php_files = [
             ...glob($current_dir . DIRECTORY_SEPARATOR . '*.php', GLOB_NOSORT) ?: [],
             ...glob($current_dir . DIRECTORY_SEPARATOR . '**/*.php', GLOB_NOSORT) ?: [],

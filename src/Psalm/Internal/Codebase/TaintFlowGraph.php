@@ -435,7 +435,7 @@ final class TaintFlowGraph extends DataFlowGraph
     }
 
     /**
-     * @param array<DataFlowNode> $sinks
+     * @param array<string, DataFlowNode> $sinks
      * @param array<string, DataFlowNode> $new_sources
      * @param-out array<string, DataFlowNode> $new_sources
      */

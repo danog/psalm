@@ -220,7 +220,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
     /**
      * Checks an array of statements for validity
      *
-     * @param  array<PhpParser\Node\Stmt>   $stmts
+     * @param  list<PhpParser\Node\Stmt>   $stmts
      * @return null|false
      */
     public function analyze(
@@ -281,7 +281,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
     }
 
     /**
-     * @param  array<PhpParser\Node\Stmt>   $stmts
+     * @param  list<PhpParser\Node\Stmt>   $stmts
      */
     private function hoistFunctions(array $stmts, Context $context): void
     {
@@ -328,7 +328,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
     }
 
     /**
-     * @param  array<PhpParser\Node\Stmt>   $stmts
+     * @param  list<PhpParser\Node\Stmt>   $stmts
      */
     private static function hoistConstants(
         StatementsAnalyzer $statements_analyzer,
@@ -894,7 +894,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
     }
 
     /**
-     * @param  array<PhpParser\Node\Stmt>   $stmts
+     * @param  list<PhpParser\Node\Stmt>   $stmts
      */
     public function checkUnreferencedVars(array $stmts, Context $context): void
     {
@@ -1162,7 +1162,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
     }
 
     /**
-     * @return array<string, array<array-key, CodeLocation>>
+     * @return array<string, array<string, CodeLocation>>
      * @psalm-mutation-free
      */
     public function getUncaughtThrows(Context $context): array

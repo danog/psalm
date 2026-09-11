@@ -94,7 +94,7 @@ final class FakeFileProvider extends FileProvider
     }
 
     /**
-     * @param array<string> $file_extensions
+     * @param array<int, string> $file_extensions
      * @param null|callable(string):bool $filter
      * @return list<string>
      */

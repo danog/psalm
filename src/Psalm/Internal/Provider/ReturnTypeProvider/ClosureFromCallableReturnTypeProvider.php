@@ -21,6 +21,7 @@ final class ClosureFromCallableReturnTypeProvider implements MethodReturnTypePro
 {
     /**
      * @psalm-pure
+     * @return list<string>
      */
     #[Override]
     public static function getClassLikeNames(): array

@@ -266,7 +266,7 @@ final class FileDiffer
     /**
      * Coalesce equal-length sequences of remove+add into a replace operation.
      *
-     * @param DiffElem[] $diff
+     * @param list<DiffElem> $diff
      * @return list<DiffElem>
      * @psalm-pure
      */

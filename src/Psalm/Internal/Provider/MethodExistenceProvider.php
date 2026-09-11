@@ -20,7 +20,7 @@ final class MethodExistenceProvider
     /**
      * @var array<
      *   lowercase-string,
-     *   array<Closure(MethodExistenceProviderEvent): ?bool>
+     *   list<Closure(MethodExistenceProviderEvent): ?bool>
      * >
      */
     private static array $handlers = [];

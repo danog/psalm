@@ -19,7 +19,7 @@ final class FunctionExistenceProvider
     /**
      * @var array<
      *   lowercase-string,
-     *   array<Closure(FunctionExistenceProviderEvent): ?bool>
+     *   list<Closure(FunctionExistenceProviderEvent): ?bool>
      * >
      */
     private static array $handlers = [];

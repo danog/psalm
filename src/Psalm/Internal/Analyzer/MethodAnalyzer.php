@@ -97,7 +97,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
     /**
      * Determines whether a given method is static or not
      *
-     * @param  array<string>   $suppressed_issues
+     * @param  array<int, string>   $suppressed_issues
      */
     public static function checkStatic(
         MethodIdentifier $method_id,
@@ -165,7 +165,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
     }
 
     /**
-     * @param  string[]     $suppressed_issues
+     * @param  array<int, string>     $suppressed_issues
      * @param  lowercase-string|null  $calling_method_id
      */
     public static function checkMethodExists(

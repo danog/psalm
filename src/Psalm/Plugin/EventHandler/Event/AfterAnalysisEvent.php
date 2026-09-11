@@ -41,6 +41,7 @@ final class AfterAnalysisEvent
         return $this->issues;
     }
 
+    /** @return array<string, mixed> */
     public function getBuildInfo(): array
     {
         return $this->build_info;

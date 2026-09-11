@@ -61,12 +61,12 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
     private readonly bool $scan_deep;
 
     /**
-     * @var array<FunctionLikeNodeScanner>
+     * @var list<FunctionLikeNodeScanner>
      */
     private array $functionlike_node_scanners = [];
 
     /**
-     * @var array<ClassLikeNodeScanner>
+     * @var list<ClassLikeNodeScanner>
      */
     private array $classlike_node_scanners = [];
 
@@ -678,6 +678,7 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
 
     /**
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ReturnTypeHint.MissingAnyTypeHint
+     * @param list<\PhpParser\Node> $nodes
      */
     #[Override]
     public function afterTraverse(array $nodes)

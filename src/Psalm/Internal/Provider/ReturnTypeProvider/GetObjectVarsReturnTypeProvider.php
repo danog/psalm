@@ -34,6 +34,7 @@ final class GetObjectVarsReturnTypeProvider implements FunctionReturnTypeProvide
 {
     /**
      * @psalm-pure
+     * @return list<lowercase-string>
      */
     #[Override]
     public static function getFunctionIds(): array

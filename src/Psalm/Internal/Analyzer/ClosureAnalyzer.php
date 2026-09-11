@@ -53,6 +53,7 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
 
     /** @psalm-mutation-free */
     #[Override]
+    /** @return array<string, array<string, \Psalm\Type\Union>> */
     public function getTemplateTypeMap(): ?array
     {
         return $this->source->getTemplateTypeMap();

@@ -18,7 +18,7 @@ final class AfterFileAnalysisEvent
     /**
      * Called after a file has been checked
      *
-     * @param array<Stmt> $stmts
+     * @param list<Stmt> $stmts
      * @internal
      * @psalm-mutation-free
      */
@@ -52,7 +52,7 @@ final class AfterFileAnalysisEvent
     }
 
     /**
-     * @return Stmt[]
+     * @return list<Stmt>
      */
     public function getStmts(): array
     {

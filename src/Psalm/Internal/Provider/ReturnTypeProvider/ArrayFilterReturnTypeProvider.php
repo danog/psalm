@@ -42,7 +42,7 @@ use function spl_object_id;
 final class ArrayFilterReturnTypeProvider implements FunctionReturnTypeProviderInterface
 {
     /**
-     * @return array<lowercase-string>
+     * @return list<lowercase-string>
      * @psalm-pure
      */
     #[Override]
