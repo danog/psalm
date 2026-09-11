@@ -25,5 +25,9 @@ lto = "off"
 inherits = "dev"
 opt-level = 2
 
+# psalm_src at opt-level 2 needs more memory than this machine has next to the session (rustc OOM-killed at 3.8 GB RSS)
+[profile.fast.package.psalm_src]
+opt-level = 1
+
 [profile.fast.package.php-rt]
 opt-level = 3
