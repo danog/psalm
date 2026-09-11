@@ -45,6 +45,14 @@ final class CastEmitter
         // escape hatch for values that don't match any declared member (docblocks lying, invalid-input tests)
         $w->line('Other__(Mixed),');
         $w->close();
+        // in-place access to an array member (`$u[] = v` on a union-typed place): a value that is not that
+        // array becomes an empty one, as PHP autovivifies null
+        foreach ($u->params as $m) {
+            if ($m->kind === RustType::LIST || $m->kind === RustType::MAP) {
+                $v = $m->variantName();
+                $w->line('impl ' . $name . ' { pub fn ' . $v . '_or_insert(&mut self) -> &mut ' . $m->toRust() . ' { if !matches!(self, ' . $name . '::' . $v . '(_)) { *self = ' . $name . '::' . $v . '(Default::default()); } match self { ' . $name . '::' . $v . '(__a) => __a, _ => unreachable!() } } }');
+            }
+        }
         // Truthy
         $arms = [];
         foreach ($u->params as $m) {
@@ -165,6 +173,15 @@ final class CastEmitter
                         $extra .= $name . '::' . $o->variantName() . '(v) => ' . $this->conv($this->conv('v', $o, RustType::mixed()), RustType::mixed(), $m) . ', ';
                     } elseif (!$oc->isLeaf()) {
                         // a non-leaf member may hold the target in its own escape variant
+                        $extra .= $name . '::' . $o->variantName() . '(v) => ' . $this->conv('v', $o, $m) . ', ';
+                    }
+                }
+            }
+            if ($m->kind === RustType::CLOSURE) {
+                // other closure members (a closure literal's inferred signature joined with a declared one):
+                // adapted by wrapping
+                foreach ($u->params as $o) {
+                    if ($o !== $m && $o->kind === RustType::CLOSURE && count($o->params) === count($m->params)) {
                         $extra .= $name . '::' . $o->variantName() . '(v) => ' . $this->conv('v', $o, $m) . ', ';
                     }
                 }

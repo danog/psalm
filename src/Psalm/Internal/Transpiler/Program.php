@@ -256,6 +256,9 @@ final class Program
         return $name;
     }
 
+    /** @var array<string, true> recursive unions being measured by typeCrate() */
+    private array $type_crate_visiting = [];
+
     /** Index of the crate a generated type (union, shape, ...) is emitted into: the highest crate of any class it mentions. */
     public function typeCrate(RustType $t): int
     {
@@ -263,6 +266,21 @@ final class Program
         if ($t->kind === RustType::CLASS_) {
             $c = $this->classOf($t);
             return $c !== null ? $c->crate : 0;
+        }
+        if ($t->isRecursive()) {
+            // the enum mentions itself through its list member
+            if (isset($this->type_crate_visiting[$t->mangle()])) {
+                return 0;
+            }
+            $this->type_crate_visiting[$t->mangle()] = true;
+            try {
+                foreach ($t->params as $p) {
+                    $crate = max($crate, $this->typeCrate($p));
+                }
+            } finally {
+                unset($this->type_crate_visiting[$t->mangle()]);
+            }
+            return $crate;
         }
         foreach ($t->params as $p) {
             $crate = max($crate, $this->typeCrate($p));

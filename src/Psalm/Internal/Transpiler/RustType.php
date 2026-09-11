@@ -11,6 +11,7 @@ use function implode;
 use function md5;
 use function strlen;
 use function substr;
+use function usort;
 
 /**
  * Immutable description of a Rust type used by the generated code.
@@ -153,6 +154,39 @@ final class RustType
     {
         return self::intern(new self(self::UNION, $members));
     }
+    /**
+     * `L | list<L | list<L | ...>>` as one recursive enum whose list member holds the enum itself
+     * (finite-depth self-similar aliases such as the parser's `SemValue` otherwise yield a different
+     * union per nesting level, converted element-wise at every stack operation).
+     *
+     * @param list<RustType> $leaves the non-list members, sorted by mangle
+     */
+    public static function recursiveUnion(array $leaves, bool $nullable_elem): RustType
+    {
+        $name = self::shorten('U_' . implode('_or_', array_map(static fn(RustType $p) => $p->mangle(), $leaves)) . '_or_List_Self');
+        if (isset(self::$cache[$name])) {
+            return self::$cache[$name];
+        }
+        // the enum refers to itself through its list member: built without the constructor so that the
+        // (readonly) parameters can be initialized after the element type exists
+        /** @var RustType $u */
+        $u = (new \ReflectionClass(self::class))->newInstanceWithoutConstructor();
+        $u->kind = self::UNION;
+        $u->name = $name;
+        $u->fields = [];
+        $u->ret = null;
+        $elem = $nullable_elem ? self::option($u) : $u;
+        $members = [...$leaves, self::list($elem)];
+        usort($members, static fn(RustType $a, RustType $b) => $a->mangle() <=> $b->mangle());
+        $u->params = $members;
+        self::$cache[$name] = $u;
+        return $u;
+    }
+    /** Whether this is a recursive union (see `recursiveUnion`). */
+    public function isRecursive(): bool
+    {
+        return $this->kind === self::UNION && $this->name !== '';
+    }
     /** @param class-string|string $fqcn */
     public static function class(string $fqcn): RustType
     {
@@ -279,7 +313,7 @@ final class RustType
                 array_keys($this->fields),
                 $this->fields,
             ))),
-            self::UNION => self::shorten('U_' . implode('_or_', array_map(static fn(RustType $p) => $p->mangle(), $this->params))),
+            self::UNION => $this->name !== '' ? $this->name : self::shorten('U_' . implode('_or_', array_map(static fn(RustType $p) => $p->mangle(), $this->params))),
             self::CLASS_ => Names::classMangle($this->name),
             self::CLOSURE => self::shorten('Fn' . count($this->params) . '_' . implode('_', array_map(static fn(RustType $p) => $p->mangle(), $this->params)) . '_to_' . $this->ret->mangle()),
             self::RT_GENERIC => $this->name . '_' . implode('_', array_map(static fn(RustType $p) => $p->mangle(), $this->params)),
