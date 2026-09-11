@@ -658,9 +658,10 @@ final class ClassEmitter
                 continue;
             }
             $params = [];
+            $pre = '';
             $ok = true;
             foreach ($m->storage->params as $i => $p) {
-                if ($p->by_ref || $p->is_variadic) {
+                if ($p->is_variadic) {
                     $ok = false;
                     break;
                 }
@@ -669,6 +670,22 @@ final class ClassEmitter
                     $this->casts->needMixedTo($pt);
                 }
                 $inner = $pt->kind === RustType::OPTION ? $pt->inner() : $pt;
+                if ($p->by_ref) {
+                    // a by-reference parameter of a dynamically called method (`enterNode(Node $node, bool
+                    // &$traverseChildren = true)` in Psalm's visitors): a local cell seeded from the argument or
+                    // the parameter's default; the caller does not see writes to it
+                    if (!$pt->hasDefault()) {
+                        $ok = false;
+                        break;
+                    }
+                    $seed = $pt->kind === RustType::MIXED ? 'dyn_arg_req::<Mixed>(&args, ' . $i . ')' : 'dyn_arg::<' . $pt->toRust() . '>(&args, ' . $i . ')';
+                    if ($p->default_type !== null || $pt->kind === RustType::OPTION) {
+                        $seed = 'match args.get(' . $i . ') { Some(_) => ' . $seed . ', None => ' . $this->casts->defaultOf($pt) . ' }';
+                    }
+                    $pre .= 'let mut __ref' . $i . ': ' . $pt->toRust() . ' = ' . $seed . '; ';
+                    $params[] = '&mut __ref' . $i;
+                    continue;
+                }
                 if ($pt->kind === RustType::MIXED) {
                     $params[] = 'dyn_arg_req::<Mixed>(&args, ' . $i . ')';
                 } elseif (in_array($inner->kind, [RustType::CLOSURE, RustType::TUPLE, RustType::DYN_CALLABLE, RustType::RT_GENERIC, RustType::RESOURCE], true)) {
@@ -683,7 +700,7 @@ final class ClassEmitter
                 continue;
             }
             $call = ($m->isStatic() ? $m->declaring->path() . '::' : 'self.') . $m->rustName() . '(' . implode(', ', $params) . ')';
-            $arms .= Names::rustStringLiteral($m->lc()) . ' => { let __r = ' . $call . '.map_err(|e| DynError::Obj(' . $this->casts->convert('e', RustType::class('Throwable'), RustType::mixed()) . '))?; Ok(' . $this->casts->convert('__r', $m->return_type, RustType::mixed()) . ') }, ';
+            $arms .= Names::rustStringLiteral($m->lc()) . ' => { ' . $pre . 'let __r = ' . $call . '.map_err(|e| DynError::Obj(' . $this->casts->convert('e', RustType::class('Throwable'), RustType::mixed()) . '))?; Ok(' . $this->casts->convert('__r', $m->return_type, RustType::mixed()) . ') }, ';
         }
         return $arms;
     }
