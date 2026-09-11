@@ -962,10 +962,13 @@ final class TypeParser
                     }
                 }
 
-                if (!$atomic_type instanceof TLiteralInt
-                    && !($atomic_type instanceof TClassConstant
-                        && !str_contains($atomic_type->const_name, '*'))
-                ) {
+                if ($atomic_type instanceof TClassConstant && str_contains($atomic_type->const_name, '*')) {
+                    throw new TypeParseTreeException(
+                        'int-mask types must all be integer values or scalar class constants',
+                    );
+                }
+
+                if (!$atomic_type instanceof TLiteralInt && !$atomic_type instanceof TClassConstant) {
                     throw new TypeParseTreeException(
                         'int-mask types must all be integer values or scalar class constants',
                     );
