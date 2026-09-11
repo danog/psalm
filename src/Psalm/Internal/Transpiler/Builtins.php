@@ -1113,26 +1113,30 @@ final class Builtins
                 $place->hasMut() ? fn(string $stmt) => $place->wrap($stmt) : null,
             );
         }
-        if ($pt->kind !== RustType::UNION) {
-            return $place;
-        }
-        $member = null;
-        foreach ($pt->params as $m) {
-            if ($m->kind === RustType::LIST || $m->kind === RustType::MAP) {
-                if ($member !== null) {
-                    return $place;
-                }
-                $member = $m;
-            }
-        }
-        if ($member === null) {
+        if ($pt->kind === RustType::LIST || $pt->kind === RustType::MAP || $pt->kind === RustType::MIXED) {
             return $place;
         }
         $casts = $b->casts;
+        if ($pt->kind === RustType::UNION) {
+            $member = null;
+            foreach ($pt->params as $m) {
+                if ($m->kind === RustType::LIST || $m->kind === RustType::MAP) {
+                    $member = $member === null ? $m : false;
+                }
+            }
+            if ($member instanceof RustType) {
+                return new Place(
+                    $member,
+                    fn() => $casts->convert($place->read(), $pt, $member),
+                    fn(string $v) => $place->write($casts->convert($v, $member, $pt)),
+                );
+            }
+        }
+        // any other place (a nullable union, an object, ...): the array functions work on the PHP value
         return new Place(
-            $member,
-            fn() => $casts->convert($place->read(), $pt, $member),
-            fn(string $v) => $place->write($casts->convert($v, $member, $pt)),
+            RustType::mixed(),
+            fn() => $casts->convert($place->read(), $pt, RustType::mixed()),
+            fn(string $v) => $place->write($casts->convert($v, RustType::mixed(), $pt)),
         );
     }
 
