@@ -220,6 +220,30 @@ trait LValueTrait
             );
             $pt = $inner;
         }
+        if ($pt->kind === RustType::UNION) {
+            // a union with a single array member (the parser's semantic values, `T|list<T>` ...): the
+            // element is written through that member instead of a Mixed round trip
+            $member = null;
+            foreach ($pt->params as $m) {
+                if ($m->kind === RustType::LIST || $m->kind === RustType::MAP) {
+                    $member = $member === null ? $m : false;
+                }
+            }
+            if ($member instanceof RustType) {
+                $u = $pt;
+                $p = $parent;
+                $vn = $member->variantName();
+                $un = $u->toRust();
+                $parent = new Place(
+                    $member,
+                    fn() => '(match ' . $p->read() . ' { ' . $un . '::' . $vn . '(__a) => __a, _ => Default::default() })',
+                    fn(string $v) => $p->write($un . '::' . $vn . '(' . $v . ')'),
+                    $p->hasMut() ? fn() => '(*' . $p->mut() . '.' . $vn . '_or_insert())' : null,
+                    fn(string $s) => $p->wrap($s),
+                );
+                $pt = $member;
+            }
+        }
         $dim = $e->dim;
 
         $has_mut = $parent->hasMut();

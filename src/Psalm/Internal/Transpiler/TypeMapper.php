@@ -51,6 +51,8 @@ use function array_values;
 use function count;
 use function is_int;
 use function ksort;
+use function sort;
+use function implode;
 use function strtolower;
 use function substr;
 use function usort;
@@ -238,9 +240,80 @@ final class TypeMapper
         $members = array_values($flat);
         usort($members, static fn(RustType $a, RustType $b) => $a->mangle() <=> $b->mangle());
 
-        $union = RustType::union($members);
+        $union = $this->recursive($members) ?? RustType::union($members);
         $this->unions[$union->mangle()] = $union;
         return $union;
+    }
+
+    /**
+     * `L | list<V>` where `V` is itself `L | list<...>` with the same leaves: one recursive enum.
+     *
+     * @param list<RustType> $members sorted union members
+     */
+    private function recursive(array $members): ?RustType
+    {
+        $lists = [];
+        $leaves = [];
+        foreach ($members as $m) {
+            if ($m->kind === RustType::LIST) {
+                $lists[] = $m;
+            } else {
+                $leaves[] = $m;
+            }
+        }
+        if (count($lists) !== 1 || count($leaves) === 0) {
+            return null;
+        }
+        $elem = $lists[0]->inner();
+        $nullable = $elem->kind === RustType::OPTION;
+        $ev = $nullable ? $elem->inner() : $elem;
+        // only for real nesting: the element union must contain a list itself
+        if ($ev->kind !== RustType::UNION || !self::selfSimilar($ev, self::keys($leaves), $nullable, true)) {
+            return null;
+        }
+        return RustType::recursiveUnion($leaves, $nullable);
+    }
+
+    /** @param list<RustType> $ts */
+    private static function keys(array $ts): string
+    {
+        $k = array_map(static fn(RustType $t) => $t->toRust(), $ts);
+        sort($k);
+        return implode('|', $k);
+    }
+
+    private static function selfSimilar(RustType $u, string $leaf_keys, bool $nullable, bool $need_list): bool
+    {
+        if ($u->isRecursive()) {
+            $own = [];
+            foreach ($u->params as $m) {
+                if ($m->kind !== RustType::LIST) {
+                    $own[] = $m;
+                }
+            }
+            return self::keys($own) === $leaf_keys;
+        }
+        $lists = [];
+        $own = [];
+        foreach ($u->params as $m) {
+            if ($m->kind === RustType::LIST) {
+                $lists[] = $m;
+            } else {
+                $own[] = $m;
+            }
+        }
+        if (count($lists) > 1 || self::keys($own) !== $leaf_keys) {
+            return false;
+        }
+        if (count($lists) === 0) {
+            return !$need_list;
+        }
+        $elem = $lists[0]->inner();
+        if (($elem->kind === RustType::OPTION) !== $nullable) {
+            return false;
+        }
+        $ev = $nullable ? $elem->inner() : $elem;
+        return $ev->kind === RustType::UNION && self::selfSimilar($ev, $leaf_keys, $nullable, false);
     }
 
     /**
