@@ -412,17 +412,19 @@ trait StmtTrait
             return;
         }
         // the container's declared type decides element types (the subject may be narrowed)
+        $keys_src = $subject->code;
         if ($place->type->kind === RustType::LIST || $place->type->kind === RustType::MAP) {
             $st = $place->type;
+            $keys_src = $place->read();
         }
         $is_list = $st->kind === RustType::LIST;
         $kt = $is_list ? RustType::int() : $st->params[0];
         $vt = $is_list ? $st->inner() : $st->params[1];
         $keys = $this->tmp('__keys');
         if ($is_list) {
-            $w->line('let ' . $keys . ': Vec<i64> = (0..' . $subject->code . '.len() as i64).collect();');
+            $w->line('let ' . $keys . ': Vec<i64> = (0..' . $keys_src . '.len() as i64).collect();');
         } else {
-            $w->line('let ' . $keys . ': Vec<' . $kt->toRust() . '> = ' . $subject->code . '.keys().cloned().collect();');
+            $w->line('let ' . $keys . ': Vec<' . $kt->toRust() . '> = ' . $keys_src . '.keys().cloned().collect();');
         }
         // the value variable is a plain local; each iteration copies in and writes back
         $val_place = $this->place($s->valueVar);
