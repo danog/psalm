@@ -349,6 +349,17 @@ trait LValueTrait
                 fn(string $v) => $this->hoisted([$key(), $v], fn(string $k, string $v) => $parent->modify(fn(string $p) => '{ let mut __mm = ' . $to_mixed($p . '.clone()') . '; mixed_set(&mut __mm, ' . $k . ', ' . $v . '); ' . $p . ' = ' . $this->casts->convert('__mm', RustType::mixed(), $pt) . '; }')),
             );
         }
+        if ($pt->kind === RustType::RT_GENERIC && in_array($pt->name, ['ArrayObject', 'ArrayIterator', 'SplObjectStorage', 'WeakMap'], true) && $dim !== null) {
+            // runtime containers with interior mutability: the parent is read (a shared handle), not modified
+            [$kt, $vt] = $pt->params;
+            $setter = $pt->name === 'SplObjectStorage' || $pt->name === 'WeakMap' ? 'attach' : 'set';
+            $key = fn() => $this->exprTo($dim, $kt);
+            return new Place(
+                $vt,
+                fn() => $parent->read() . '.idx(&' . $key() . ')',
+                fn(string $v) => $this->hoisted([$key(), $v], fn(string $k, string $v) => $parent->read() . '.' . $setter . '(' . $k . ', ' . $v . ');'),
+            );
+        }
         $this->warn('array write on ' . $pt->toRust(), $e);
         return $this->deadPlace($this->inferredOrMixed($e));
     }
