@@ -13,6 +13,7 @@ use Psalm\Storage\FunctionLikeStorage;
 use Psalm\Storage\MethodStorage;
 
 use function array_keys;
+use function count;
 use function explode;
 use function max;
 use function array_key_exists;
@@ -1015,6 +1016,19 @@ final class Program
     }
 
     /** The class model for a Rust class type. */
+    /** @var array<string, int> program-wide class numbers (PhpObject::class_id), assigned on first use */
+    private array $class_ids = [];
+
+    /** Program-wide number of a class: casts and instanceof compare these instead of TypeIds or names. */
+    public function classId(ClassModel $c): int
+    {
+        $lc = strtolower($c->fqcn);
+        if (!isset($this->class_ids[$lc])) {
+            $this->class_ids[$lc] = count($this->class_ids) + 1;
+        }
+        return $this->class_ids[$lc];
+    }
+
     public function classOf(RustType $t): ?ClassModel
     {
         if ($t->kind !== RustType::CLASS_) {

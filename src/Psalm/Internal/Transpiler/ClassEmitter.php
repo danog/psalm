@@ -104,6 +104,15 @@ final class ClassEmitter
         $w->close();
     }
 
+    private function ancestorIdsLiteral(ClassModel $cls): string
+    {
+        $ids = [$this->program->classId($cls)];
+        foreach ($cls->ancestors as $a) {
+            $ids[] = $this->program->classId($a);
+        }
+        return '&[' . implode(', ', $ids) . ']';
+    }
+
     private function ancestorsLiteral(ClassModel $cls): string
     {
         $names = [strtolower($cls->fqcn)];
@@ -579,6 +588,8 @@ final class ClassEmitter
         $w->open('impl php_rt::PhpObject for ' . $own . ' {');
         $w->line('fn class_name(&self) -> &\'static str { ' . Names::rustStringLiteral($cls->fqcn) . ' }');
         $w->line('fn class_ancestors(&self) -> &\'static [&\'static str] { ' . $this->ancestorsLiteral($cls) . ' }');
+        $w->line('fn class_id(&self) -> u32 { ' . $this->program->classId($cls) . ' }');
+        $w->line('fn class_ancestor_ids(&self) -> &\'static [u32] { ' . $this->ancestorIdsLiteral($cls) . ' }');
         $w->line('fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }');
         $w->line('fn as_any(&self) -> &dyn std::any::Any { self }');
         $props = [];
@@ -684,6 +695,8 @@ final class ClassEmitter
         $w->open('impl php_rt::PhpObject for ' . $h . ' {');
         $w->line('fn class_name(&self) -> &\'static str { match self { ' . $arms('class_name()') . ' } }');
         $w->line('fn class_ancestors(&self) -> &\'static [&\'static str] { match self { ' . $arms('class_ancestors()') . ' } }');
+        $w->line('fn class_id(&self) -> u32 { match self { ' . $arms('class_id()') . ' } }');
+        $w->line('fn class_ancestor_ids(&self) -> &\'static [u32] { match self { ' . $arms('class_ancestor_ids()') . ' } }');
         $w->line('fn obj_id(&self) -> usize { match self { ' . $arms('obj_id()') . ' } }');
         $w->line('fn as_any(&self) -> &dyn std::any::Any { self }');
         $w->line('fn props(&self) -> Vec<(Str, Mixed)> { match self { ' . $arms('props()') . ' } }');

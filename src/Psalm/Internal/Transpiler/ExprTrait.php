@@ -269,7 +269,7 @@ trait ExprTrait
         if ($v->type->kind === RustType::NEVER) {
             return '{ ' . $v->code . '; false }';
         }
-        return 'truthy(&' . $v->code . ')';
+        return 'truthy(' . Names::refOf($v->code) . ')';
     }
 
     /** Truthiness of an expression that may be undefined (empty()). */
@@ -279,7 +279,7 @@ trait ExprTrait
         if ($v === null) {
             return $this->truthy($e);
         }
-        return 'truthy(&' . $v->code . ')';
+        return 'truthy(' . Names::refOf($v->code) . ')';
     }
 
     private function interpolated(array $parts): Val
@@ -519,7 +519,7 @@ trait ExprTrait
     private function arrayLiteral(Expr\Array_ $e, ?RustType $expected): Val
     {
         $v = $this->arrayLiteralValue($e, $expected);
-        if (($v->type->kind === RustType::LIST || $v->type->kind === RustType::MAP) && count($e->items) >= 4 && count($e->items) <= 24 && self::isConstArray($e)) {
+        if (($v->type->kind === RustType::LIST || $v->type->kind === RustType::MAP) && count($e->items) >= 2 && count($e->items) <= 24 && self::isConstArray($e)) {
             // a constant table: built once per thread and shared (containers are copy-on-write)
             $name = '__CONST_ARR' . $this->tmp('');
             return new Val('{ thread_local! { static ' . $name . ': ' . $v->type->toRust() . ' = ' . $v->code . '; } ' . $name . '.with(|__c| __c.clone()) }', $v->type);
@@ -1116,11 +1116,21 @@ trait ExprTrait
                 }
             }
         }
+        // `substr($s, $i, $n) === 'lit'` without materializing the substring
+        foreach ([[$left, $right], [$right, $left]] as [$a, $b]) {
+            if ($b instanceof Node\Scalar\String_ && $a instanceof Expr\FuncCall && $a->name instanceof Node\Name
+                && strtolower($a->name->toString()) === 'substr' && !$a->isFirstClassCallable() && count($a->getArgs()) === 3
+            ) {
+                $sa = $a->getArgs();
+                return 'substr_eq(' . Names::refOf($this->exprTo($sa[0]->value, RustType::str())) . ', ' . $this->exprTo($sa[1]->value, RustType::int())
+                    . ', Some(' . $this->exprTo($sa[2]->value, RustType::int()) . '), ' . Names::rustStringLiteral($b->value) . ')';
+            }
+        }
         [$l, $r, $t] = $this->commonOperands($left, $right, false);
         if ($t->isCopy() && $t->kind !== RustType::OPTION) {
             return '(' . $l . ' == ' . $r . ')';
         }
-        return 'identical(&' . $l . ', &' . $r . ')';
+        return 'identical(' . Names::refOf($l) . ', ' . Names::refOf($r) . ')';
     }
 
     private function unionHasBool(RustType $u): bool

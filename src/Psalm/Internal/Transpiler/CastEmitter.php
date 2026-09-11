@@ -335,22 +335,25 @@ final class CastEmitter
         // from Mixed: downcast to any concrete descendant
         $arms = [];
         $some_arms = [];
+        // one match on the program-wide class number (a linear chain of TypeId downcasts over every
+        // concrete class dominated the profile of dynamic dispatch)
         foreach ($cls->concrete as $c) {
-            $arms[] = 'if let Some(v) = o.as_any().downcast_ref::<' . $c->ownPath() . '>() { return ' . $this->wrapConcrete($cls, $c, 'v.clone()') . '; }';
-            $some_arms[] = 'if let Some(v) = o.as_any().downcast_ref::<' . $c->ownPath() . '>() { return Some(' . $this->wrapConcrete($cls, $c, 'v.clone()') . '); }';
+            $get = 'o.as_any().downcast_ref::<' . $c->ownPath() . '>().unwrap().clone()';
+            $arms[] = $this->program->classId($c) . ' => return ' . $this->wrapConcrete($cls, $c, $get) . ',';
+            $some_arms[] = $this->program->classId($c) . ' => return Some(' . $this->wrapConcrete($cls, $c, $get) . '),';
         }
         $fallback = $cls->isLeaf() ? 'panic!(' . Names::rustStringLiteral('Mixed value is not a ' . $cls->fqcn) . ')' : $h . '::Other__(self)';
-        $w->line('impl php_rt::CastTo<' . $h . '> for Mixed { fn cast_to(self) -> ' . $h . ' { if let Mixed::Obj(o) = &self { ' . implode(' ', $arms) . ' } ' . $fallback . ' } }');
-        $w->line('impl php_rt::TryDowncast for ' . $h . ' { fn try_downcast(o: &AnyObj) -> Option<Self> { ' . implode(' ', $some_arms) . ' None } }');
+        $w->line('impl php_rt::CastTo<' . $h . '> for Mixed { fn cast_to(self) -> ' . $h . ' { if let Mixed::Obj(o) = &self { match o.class_id() { ' . implode(' ', $arms) . ' _ => {} } } ' . $fallback . ' } }');
+        $w->line('impl php_rt::TryDowncast for ' . $h . ' { fn try_downcast(o: &AnyObj) -> Option<Self> { match o.class_id() { ' . implode(' ', $some_arms) . ' _ => {} } None } }');
         // AnyObject
         $w->line('impl php_rt::CastTo<AnyObject> for ' . $h . ' { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }');
         $w->line('impl php_rt::CastTo<' . $h . '> for AnyObject { fn cast_to(self) -> ' . $h . ' { cast::<' . $h . '>(cast::<Mixed>(self)) } }');
-        $w->line('impl php_rt::InstanceOf<' . $h . '> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_name(' . Names::rustStringLiteral(strtolower($cls->fqcn)) . ') } }');
-        $w->line('impl php_rt::InstanceOf<' . $h . '> for Mixed { fn is_instance(&self) -> bool { self.instance_of(' . Names::rustStringLiteral(strtolower($cls->fqcn)) . ') } }');
+        $w->line('impl php_rt::InstanceOf<' . $h . '> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_id(' . $this->program->classId($cls) . ') } }');
+        $w->line('impl php_rt::InstanceOf<' . $h . '> for Mixed { fn is_instance(&self) -> bool { self.instance_of_id(' . $this->program->classId($cls) . ') } }');
         if ($cls->isLeaf()) {
             $w->line('impl php_rt::InstanceOf<' . $h . '> for ' . $h . ' { fn is_instance(&self) -> bool { true } }');
         } else {
-            $w->line('impl php_rt::InstanceOf<' . $h . '> for ' . $h . ' { fn is_instance(&self) -> bool { match self { ' . $h . '::Other__(__m) => __m.instance_of(' . Names::rustStringLiteral(strtolower($cls->fqcn)) . '), _ => true } } }');
+            $w->line('impl php_rt::InstanceOf<' . $h . '> for ' . $h . ' { fn is_instance(&self) -> bool { match self { ' . $h . '::Other__(__m) => __m.instance_of_id(' . $this->program->classId($cls) . '), _ => true } } }');
             // narrowing to any leaf class (of this crate or a downstream one) in a single generic impl
             // instead of one impl with an arm per descendant for each target class
             $w->line('impl<T: crate::Leaf__ + Clone + \'static> php_rt::CastTo<T> for ' . $h . ' where Mixed: php_rt::CastTo<T> { fn cast_to(self) -> T { if let Some(v) = self.inner_any().downcast_ref::<T>() { return v.clone(); } cast::<T>(cast::<Mixed>(self)) } }');
@@ -739,7 +742,7 @@ final class CastEmitter
                     $yes[] = $subject->toRust() . '::' . $c->variant() . '(_)';
                 }
             }
-            $other = $subject->toRust() . '::Other__(__m) => __m.instance_of(' . Names::rustStringLiteral(strtolower($tc->fqcn)) . ')';
+            $other = $subject->toRust() . '::Other__(__m) => __m.instance_of_id(' . $this->program->classId($tc) . ')';
             $body = 'match self { ' . ($yes === [] ? '' : implode(' | ', $yes) . ' => true, ') . $other . ', _ => false }';
             $w->line('impl php_rt::InstanceOf<' . $th . '> for ' . $subject->toRust() . ' { fn is_instance(&self) -> bool { ' . $body . ' } }');
             return;

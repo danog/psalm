@@ -331,6 +331,8 @@ final class CrateEmitter
         $w->open('impl php_rt::PhpObject for AnyObject {');
         $w->line('fn class_name(&self) -> &\'static str { match self { ' . $arms('class_name()') . ' } }');
         $w->line('fn class_ancestors(&self) -> &\'static [&\'static str] { match self { ' . $arms('class_ancestors()') . ' } }');
+        $w->line('fn class_id(&self) -> u32 { match self { ' . $arms('class_id()') . ' } }');
+        $w->line('fn class_ancestor_ids(&self) -> &\'static [u32] { match self { ' . $arms('class_ancestor_ids()') . ' } }');
         $w->line('fn obj_id(&self) -> usize { match self { ' . $arms('obj_id()') . ' } }');
         $w->line('fn as_any(&self) -> &dyn std::any::Any { self }');
         $w->line('fn props(&self) -> Vec<(Str, Mixed)> { match self { ' . $arms('props()') . ' } }');
@@ -343,9 +345,9 @@ final class CrateEmitter
         $w->open('impl AnyObject {');
         $downs = [];
         foreach ($concrete as $c) {
-            $downs[] = 'if let Some(v) = o.as_any().downcast_ref::<' . $c->ownPath() . '>() { return AnyObject::' . $c->variant() . '(v.clone()); }';
+            $downs[] = $this->program->classId($c) . ' => return AnyObject::' . $c->variant() . '(o.as_any().downcast_ref::<' . $c->ownPath() . '>().unwrap().clone()),';
         }
-        $w->line('pub fn from_mixed(m: Mixed) -> AnyObject { if let Mixed::Obj(o) = &m { ' . implode(' ', $downs) . ' return AnyObject::Other(o.clone()); } panic!("not an object: {:?}", m) }');
+        $w->line('pub fn from_mixed(m: Mixed) -> AnyObject { if let Mixed::Obj(o) = &m { match o.class_id() { ' . implode(' ', $downs) . ' _ => {} } return AnyObject::Other(o.clone()); } panic!("not an object: {:?}", m) }');
         $w->line('pub fn to_php_string(&self) -> Result<Str, Throw> { self.php_to_string().ok_or_else(|| Throw::error(Str::from_static("Object could not be converted to string"))) }');
         $w->close();
         $w->line('impl php_rt::CastTo<Mixed> for AnyObject { fn cast_to(self) -> Mixed { match self { ' . implode(', ', array_map(fn(ClassModel $c) => 'AnyObject::' . $c->variant() . '(h) => Mixed::Obj(Rc::new(h))', $concrete)) . ($concrete ? ', ' : '') . 'AnyObject::Other(o) => Mixed::Obj(o) } } }');

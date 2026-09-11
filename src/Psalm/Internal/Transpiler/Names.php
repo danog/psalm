@@ -210,6 +210,21 @@ final class Names
         return 'Str::from_static(' . $lit . ')';
     }
 
+    /**
+     * `&expr` for a value expression: a plain variable read (`x.clone()`) is borrowed instead of cloned
+     * (the clone of a container or string handle is a refcount round trip on every comparison/test).
+     */
+    public static function refOf(string $code): string
+    {
+        if (preg_match('/^([A-Za-z_][A-Za-z0-9_]*)\.clone\(\)$/', $code, $m)) {
+            return '&' . $m[1];
+        }
+        if (preg_match('/^\(\*([A-Za-z_][A-Za-z0-9_]*)\)\.clone\(\)$/', $code, $m)) {
+            return '&*' . $m[1];
+        }
+        return '&' . $code;
+    }
+
     public static function rustStringLiteral(string|int $s): string
     {
         $s = (string) $s;
