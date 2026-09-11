@@ -28,12 +28,12 @@ final class SharedStubClassLikeStorageCacheProvider extends ClassLikeStorageCach
     #[Override]
     public function writeToCache(ClassLikeStorage $storage, string $file_path, string $file_contents): void
     {
-        $this->cache->saveItem($file_path . "\0" . strtolower($storage->name), $storage, $this->php_version_id . ':' . hash('xxh128', $file_contents));
+        $this->cache->saveItem(strtolower($file_path) . "\0" . strtolower($storage->name), $storage, $this->php_version_id . ':' . hash('xxh128', $file_contents));
     }
 
     #[Override]
     public function getLatestFromCache(string $fq_classlike_name_lc, ?string $file_path, string $file_contents): ClassLikeStorage
     {
-        return $this->cache->getItem($file_path . "\0" . $fq_classlike_name_lc, $this->php_version_id . ':' . hash('xxh128', $file_contents));
+        return $this->cache->getItem(strtolower((string) $file_path) . "\0" . $fq_classlike_name_lc, $this->php_version_id . ':' . hash('xxh128', $file_contents));
     }
 }

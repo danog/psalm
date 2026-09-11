@@ -105,8 +105,8 @@ class TestCase extends BaseTestCase
         $providers = new Providers(
             $this->file_provider,
             new FakeParserCacheProvider(),
-            self::$shared_file_storage_cache,
-            self::$shared_classlike_storage_cache,
+            getenv('PSALM_NO_SHARED_STUBS') ? null : self::$shared_file_storage_cache,
+            getenv('PSALM_NO_SHARED_STUBS') ? null : self::$shared_classlike_storage_cache,
         );
 
         $this->project_analyzer = new ProjectAnalyzer(

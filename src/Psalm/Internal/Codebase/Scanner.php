@@ -6,6 +6,8 @@ namespace Psalm\Internal\Codebase;
 
 use Closure;
 use Psalm\Codebase;
+use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
+use Psalm\Internal\MethodIdentifier;
 use Psalm\Config;
 use Psalm\Internal\Analyzer\IssueData;
 use Psalm\Internal\ErrorHandler;
@@ -449,6 +451,40 @@ final class Scanner
     }
 
     /**
+     * Members a reflected definition of an internal class has and its stub lacks are kept when the stub
+     * overrides the reflected storage in place; a cached stub storage gets them the same way.
+     */
+    private function mergeReflectedMembers(ClassLikeStorage $stub, ClassLikeStorage $reflected): void
+    {
+        foreach ($reflected->methods as $method_name_lc => $method_storage) {
+            if (isset($stub->methods[$method_name_lc])) {
+                continue;
+            }
+            $stub->methods[$method_name_lc] = $method_storage;
+            $method_id = new MethodIdentifier($stub->name, $method_name_lc);
+            $stub->declaring_method_ids[$method_name_lc] ??= $method_id;
+            $stub->appearing_method_ids[$method_name_lc] ??= $method_id;
+            if ($method_storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PRIVATE) {
+                $stub->inheritable_method_ids[$method_name_lc] ??= $method_id;
+            }
+        }
+        foreach ($reflected->properties as $property_name => $property_storage) {
+            if (isset($stub->properties[$property_name])) {
+                continue;
+            }
+            $stub->properties[$property_name] = $property_storage;
+            $stub->declaring_property_ids[$property_name] ??= $stub->name;
+            $stub->appearing_property_ids[$property_name] ??= $stub->name;
+            if ($property_storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PRIVATE) {
+                $stub->inheritable_property_ids[$property_name] ??= $stub->name;
+            }
+        }
+        foreach ($reflected->constants as $const_name => $const_storage) {
+            $stub->constants[$const_name] ??= $const_storage;
+        }
+    }
+
+    /**
      * @param  array<string, Closure(string, string, bool): FileScanner>  $filetype_scanners
      */
     private function scanFile(
@@ -506,12 +542,27 @@ final class Scanner
             }
 
             foreach ($file_storage->classlikes_in_file as $fq_classlike_name) {
-                if ($this->codebase->register_stub_files
-                    && $this->codebase->classlike_storage_provider->has($fq_classlike_name)
-                ) {
-                    // a stub replaces whatever was registered before it (as its traversal does), typically
-                    // an internal class reflected while scanning the analyzed files
-                    $this->codebase->classlike_storage_provider->remove($fq_classlike_name);
+                $provider = $this->codebase->classlike_storage_provider;
+                if ($this->codebase->register_stub_files && $provider->has($fq_classlike_name)) {
+                    // a stub replaces whatever was registered before it, typically an internal class reflected
+                    // while scanning the analyzed files; as the stub's traversal would, whatever was populated
+                    // from the replaced definition is populated again
+                    $replaced = $provider->get($fq_classlike_name);
+                    $provider->remove($fq_classlike_name);
+                    $this->codebase->exhumeClassLikeStorage($fq_classlike_name, $file_path);
+                    $stub_storage = $provider->get($fq_classlike_name);
+                    if ($stub_storage !== $replaced) {
+                        // the traversal of a stub reuses the replaced storage, keeping whatever reflection knew
+                        // beyond the stub (e.g. ArrayObject::__serialize): merge those members into the stub's
+                        $this->mergeReflectedMembers($stub_storage, $replaced);
+                    }
+                    foreach ($replaced->dependent_classlikes as $dependent_name_lc => $_) {
+                        if ($provider->has($dependent_name_lc)) {
+                            $provider->get($dependent_name_lc)->populated = false;
+                            $provider->makeNew($dependent_name_lc);
+                        }
+                    }
+                    continue;
                 }
                 $this->codebase->exhumeClassLikeStorage($fq_classlike_name, $file_path);
             }

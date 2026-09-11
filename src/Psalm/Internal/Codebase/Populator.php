@@ -104,11 +104,14 @@ final class Populator
     /** @param array<string, bool> $dependent_classlikes */
     private function populateClassLikeStorage(ClassLikeStorage $storage, array $dependent_classlikes = []): void
     {
+        $fq_classlike_name_lc = strtolower($storage->name);
+
         if ($storage->populated) {
+            // an already populated storage (a stub shared by several codebases) may still be the missing
+            // dependency of classes populated before it appeared
+            $this->populateInvalidDependents($fq_classlike_name_lc, $dependent_classlikes);
             return;
         }
-
-        $fq_classlike_name_lc = strtolower($storage->name);
 
         if (isset($dependent_classlikes[$fq_classlike_name_lc])) {
             if ($storage->location) {
@@ -234,8 +237,22 @@ final class Populator
 
         $storage->populated = true;
 
+        $this->populateInvalidDependents($fq_classlike_name_lc, $dependent_classlikes);
+    }
+
+    /**
+     * Classes populated while `$fq_classlike_name_lc` was missing are populated again now that it exists.
+     *
+     * @param array<string, bool> $dependent_classlikes
+     */
+    private function populateInvalidDependents(string $fq_classlike_name_lc, array $dependent_classlikes): void
+    {
+        $storage_provider = $this->classlike_storage_provider;
         if (isset($this->invalid_class_storages[$fq_classlike_name_lc])) {
-            foreach ($this->invalid_class_storages[$fq_classlike_name_lc] as $dependency) {
+            // taken before populating: populating a dependency populates this class's storage again
+            $invalid_dependencies = $this->invalid_class_storages[$fq_classlike_name_lc];
+            unset($this->invalid_class_storages[$fq_classlike_name_lc]);
+            foreach ($invalid_dependencies as $dependency) {
                 // Dependencies may not be fully set yet, so we have to loop through dependencies of dependencies
                 $dependencies = [strtolower($dependency->name) => true];
                 do {
@@ -261,8 +278,6 @@ final class Populator
                 unset($dependency->invalid_dependencies[$fq_classlike_name_lc]);
                 $this->populateClassLikeStorage($dependency, $dependent_classlikes);
             }
-
-            unset($this->invalid_class_storages[$fq_classlike_name_lc]);
         }
     }
 
