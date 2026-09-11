@@ -7,6 +7,7 @@ namespace Psalm\Internal\Transpiler;
 use PhpParser\Node;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\ArrowFunction;
+use PhpParser\NodeFinder;
 use PhpParser\Node\Expr\Closure;
 use PhpParser\Node\Stmt;
 use PhpParser\Node\Stmt\ClassMethod;
@@ -161,7 +162,21 @@ final class BodyEmitter
         foreach ($params as $name => $type) {
             $this->vars[$name] = $type;
         }
-        foreach ($this->record->var_types as $var_id => $types) {
+        // Assignments inside conditions (`while (($x = end($a)) && ...)`) never appear in a statement snapshot
+        // with the value's own type (the body only sees the narrowed variable): widen the local by the
+        // assigned expression's type so the assignment itself needs no runtime cast.
+        $var_types = $this->record->var_types;
+        $finder = new NodeFinder();
+        $stmts = $this->record->node instanceof ArrowFunction ? [] : ($this->record->node->getStmts() ?? []);
+        foreach ($finder->findInstanceOf($stmts, Expr\Assign::class) as $assign) {
+            if ($assign->var instanceof Expr\Variable && is_string($assign->var->name) && isset($var_types['$' . $assign->var->name])) {
+                $assigned = $this->psalmType($assign->expr);
+                if ($assigned !== null && !$assigned->hasMixed()) {
+                    $var_types['$' . $assign->var->name][] = $assigned;
+                }
+            }
+        }
+        foreach ($var_types as $var_id => $types) {
             $name = substr($var_id, 1);
             if ($name === 'this' || isset($this->predeclared[$name])) {
                 continue;

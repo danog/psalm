@@ -39,9 +39,22 @@ abstract class TestCase extends Assert
 
     private string $name = '';
 
+    private string $dataName = '';
+
     public function __construct(string $name = '')
     {
         $this->name = $name;
+    }
+
+    /** The data set of this invocation (a provider key), part of getName() as in PHPUnit. */
+    public function setDataName(string $dataName): void
+    {
+        $this->dataName = $dataName;
+    }
+
+    public function dataName(): string
+    {
+        return $this->dataName;
     }
 
     public static function setUpBeforeClass(): void
@@ -71,8 +84,12 @@ abstract class TestCase extends Assert
         $this->tearDown();
     }
 
-    public function getName(): string
+    public function getName(bool $withDataSet = true): string
     {
+        if ($withDataSet && $this->dataName !== '') {
+            $set = is_numeric($this->dataName) ? '#' . $this->dataName : '"' . $this->dataName . '"';
+            return $this->name . ' with data set ' . $set;
+        }
         return $this->name;
     }
 
