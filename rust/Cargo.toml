@@ -19,3 +19,11 @@ opt-level = 2
 debug = 1
 codegen-units = 32
 lto = "off"
+
+# Running the test suite: light optimization, still no LTO and many codegen units so builds stay feasible.
+[profile.fast]
+inherits = "dev"
+opt-level = 1
+
+[profile.fast.package.php-rt]
+opt-level = 3

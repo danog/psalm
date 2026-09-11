@@ -177,8 +177,23 @@ pub fn get_included_files() -> List<Str> {
 pub fn get_loaded_extensions() -> List<Str> {
     crate::list![Str::from_static("Core"), Str::from_static("json"), Str::from_static("tokenizer"), Str::from_static("mbstring"), Str::from_static("ctype"), Str::from_static("pcre"), Str::from_static("SPL")]
 }
-pub fn get_defined_constants(_cat: bool) -> Map<ArrayKey, Mixed> {
-    Map::new()
+pub fn get_defined_constants(categorize: bool) -> Map<ArrayKey, Mixed> {
+    // the compiled program's constants: PHP's builtin table plus the runtime's own (PHP_EOL, PSALM_COMPILED, ...)
+    let mut all: Map<ArrayKey, Mixed> = Map::new();
+    for (name, value) in crate::php_constants::PHP_CONSTANTS {
+        all.insert(ArrayKey::Str(Str::from(*name)), value());
+    }
+    for name in ["PHP_EOL", "PHP_VERSION", "PHP_VERSION_ID", "PHP_INT_MAX", "PHP_INT_MIN", "PHP_INT_SIZE", "PHP_OS", "PHP_OS_FAMILY", "DIRECTORY_SEPARATOR", "E_ALL", "E_STRICT", "PSALM_COMPILED", "PSALM_VERSION", "PHP_PARSER_VERSION"] {
+        if let Some(v) = crate::consts::builtin_value(name.as_bytes()) {
+            all.insert(ArrayKey::Str(Str::from(name.as_bytes())), v);
+        }
+    }
+    if categorize {
+        let mut out: Map<ArrayKey, Mixed> = Map::new();
+        out.insert(ArrayKey::Str(Str::from_static("Core")), Mixed::Arr(all));
+        return out;
+    }
+    all
 }
 /// Names of the functions the runtime implements natively (see `builtin_callable` and the eval call table).
 pub const BUILTIN_FUNCTION_NAMES: &[&str] = &[
