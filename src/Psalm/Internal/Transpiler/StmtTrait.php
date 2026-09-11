@@ -631,6 +631,11 @@ trait StmtTrait
                     return;
                 }
             }
+            if ($pt->kind === RustType::RT_GENERIC && in_array($pt->name, ['ArrayObject', 'ArrayIterator', 'SplObjectStorage', 'WeakMap'], true)) {
+                $remover = $pt->name === 'SplObjectStorage' || $pt->name === 'WeakMap' ? 'detach' : 'remove';
+                $w->line($parent->read() . '.' . $remover . '(&' . $this->exprTo($e->dim, $pt->params[0]) . ');');
+                return;
+            }
             $this->warn('unset on ' . $pt->toRust(), $e);
             return;
         }

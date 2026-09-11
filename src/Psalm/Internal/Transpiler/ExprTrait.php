@@ -1197,6 +1197,11 @@ trait ExprTrait
             if ($bt->kind === RustType::STR) {
                 return new Val('{ let __k = ' . $this->exprTo($dim, RustType::int()) . '; ' . $base->code . '.and_then(|__b| str_index_opt(&__b, __k)) }', RustType::option(RustType::str()));
             }
+            if ($bt->kind === RustType::RT_GENERIC && in_array($bt->name, ['ArrayObject', 'ArrayIterator', 'SplObjectStorage', 'WeakMap'], true)) {
+                [$kt, $vt] = $bt->params;
+                $code = '{ let __k = ' . $this->exprTo($dim, $kt) . '; ' . $base->code . '.and_then(|__b| __b.get(&__k)) }';
+                return $this->flattenOption($code, $vt);
+            }
             if ($bt->kind === RustType::CLASS_) {
                 // ArrayAccess object
                 $k = $this->expr($dim);
