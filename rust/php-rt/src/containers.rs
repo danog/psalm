@@ -491,6 +491,16 @@ impl<T: Clone + crate::cast::CastTo<Mixed> + 'static> crate::cast::CastTo<Mixed>
         Mixed::Obj(Rc::new(self))
     }
 }
+impl<T: Clone + crate::cast::CastTo<Mixed> + 'static> crate::cast::CastTo<WeakReference<T>> for Mixed {
+    fn cast_to(self) -> WeakReference<T> {
+        if let Mixed::Obj(o) = &self {
+            if let Some(w) = o.as_any().downcast_ref::<WeakReference<T>>() {
+                return w.clone();
+            }
+        }
+        panic!("Mixed value is not a WeakReference")
+    }
+}
 
 // ---------------------------------------------------------------- stdClass
 
