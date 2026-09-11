@@ -455,7 +455,7 @@ pub fn range_c(a: u8, b: u8) -> List<Str> {
 pub fn array_is_list_m<K: MapKey, V>(m: &Map<K, V>) -> bool {
     m.is_list()
 }
-pub fn array_key_exists_m<K: MapKey, V, Q: ?Sized + std::hash::Hash + Eq>(k: &Q, m: &Map<K, V>) -> bool
+pub fn array_key_exists_m<K: MapKey, V, Q: ?Sized + std::hash::Hash + Eq + crate::key::KeyQuery>(k: &Q, m: &Map<K, V>) -> bool
 where
     K: std::borrow::Borrow<Q>,
 {

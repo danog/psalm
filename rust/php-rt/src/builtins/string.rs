@@ -356,6 +356,9 @@ pub fn str_split(s: &Str, len: i64) -> List<Str> {
     if s.is_empty() {
         return List::from_vec(vec![Str::empty()]);
     }
+    if n == 1 {
+        return s.as_bytes().iter().map(|&c| crate::ops::single_byte_str(c)).collect();
+    }
     s.as_bytes().chunks(n).map(Str::from_bytes).collect()
 }
 pub fn str_pad(s: &Str, len: i64, pad: &Str, pad_type: i64) -> Str {

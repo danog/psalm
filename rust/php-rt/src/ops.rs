@@ -106,13 +106,27 @@ macro_rules! cat {
 }
 
 /// `$s[$i]` on strings.
+/// Every single-byte string, so that `$s[$i]` never allocates.
+static BYTE_TABLE: [u8; 256] = {
+    let mut t = [0u8; 256];
+    let mut i = 0;
+    while i < 256 {
+        t[i] = i as u8;
+        i += 1;
+    }
+    t
+};
+#[inline]
+pub fn single_byte_str(c: u8) -> Str {
+    Str::from_static_bytes(&BYTE_TABLE[c as usize..c as usize + 1])
+}
 pub fn str_index(s: &Str, i: i64) -> Str {
     let b = s.as_bytes();
     let idx = if i < 0 { b.len() as i64 + i } else { i };
     if idx < 0 || idx as usize >= b.len() {
         return Str::empty();
     }
-    Str::from_bytes(&b[idx as usize..idx as usize + 1])
+    single_byte_str(b[idx as usize])
 }
 pub fn str_index_byte(s: &[u8], i: i64) -> Option<u8> {
     let idx = if i < 0 { s.len() as i64 + i } else { i };

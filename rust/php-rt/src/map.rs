@@ -1,6 +1,6 @@
 //! Copy-on-write insertion-ordered hash map (PHP `array<K, V>`).
 
-use crate::key::{ArrayKey, MapKey};
+use crate::key::{ArrayKey, KeyQuery, MapKey};
 use crate::list::List;
 use hashbrown::HashTable;
 use std::borrow::Borrow;
@@ -25,33 +25,64 @@ pub struct OrderedMap<K, V> {
     /// PHP references between elements (`$a[$x] = &$a[$y]`): alias key => key of the entry that holds the
     /// shared value. Aliases are resolved by every keyed access and listed after the entries when iterating.
     aliases: Option<Box<Vec<(K, K)>>>,
+    /// PHP's packed arrays: no tombstones and entry `i` has the int key `base + i`, so lookups index the
+    /// entries directly and no hash table is built (parser stacks, lists read through `array<int, T>`).
+    packed: bool,
+    base: i64,
 }
 
 impl<K: Clone, V: Clone> Clone for OrderedMap<K, V> {
     fn clone(&self) -> Self {
-        OrderedMap { entries: self.entries.clone(), table: self.table.clone(), len: self.len, next_index: self.next_index, pos: self.pos, aliases: self.aliases.clone() }
+        OrderedMap { entries: self.entries.clone(), table: self.table.clone(), len: self.len, next_index: self.next_index, pos: self.pos, aliases: self.aliases.clone(), packed: self.packed, base: self.base }
     }
 }
 
+/// Maps with at most this many entry slots are searched linearly: no hash table is built for them
+/// (most PHP arrays are tiny, and hashing plus a table allocation per array dominated the profile).
+const SMALL: usize = 8;
+
 impl<K: MapKey, V> OrderedMap<K, V> {
     fn new() -> Self {
-        OrderedMap { entries: Vec::new(), table: HashTable::new(), len: 0, next_index: 0, pos: 0, aliases: None }
+        OrderedMap { entries: Vec::new(), table: HashTable::new(), len: 0, next_index: 0, pos: 0, aliases: None, packed: true, base: 0 }
     }
     fn with_capacity(n: usize) -> Self {
-        OrderedMap { entries: Vec::with_capacity(n), table: HashTable::with_capacity(n), len: 0, next_index: 0, pos: 0, aliases: None }
+        let table = if n > SMALL { HashTable::with_capacity(n) } else { HashTable::new() };
+        OrderedMap { entries: Vec::with_capacity(n), table, len: 0, next_index: 0, pos: 0, aliases: None, packed: true, base: 0 }
+    }
+    /// Whether the hash table is in use (it indexes every live entry once there are more than `SMALL` slots).
+    #[inline]
+    fn hashed(&self) -> bool {
+        !self.packed && self.entries.len() > SMALL
+    }
+    fn build_table(&mut self) {
+        self.table.clear();
+        let entries = &self.entries;
+        for (idx, e) in entries.iter().enumerate() {
+            if let Some((k, _)) = e {
+                let h = hash_of(k);
+                self.table.insert_unique(h, idx, |&i| hash_of(&entries[i].as_ref().unwrap().0));
+            }
+        }
     }
     /// The entry key an alias resolves to, if `q` is an alias.
-    fn alias_target<Q: ?Sized + Hash + Eq>(&self, q: &Q) -> Option<&K>
+    fn alias_target<Q: ?Sized + Hash + Eq + KeyQuery>(&self, q: &Q) -> Option<&K>
     where
         K: Borrow<Q>,
     {
         let aliases = self.aliases.as_ref()?;
         aliases.iter().find(|(a, _)| a.borrow() == q).map(|(_, c)| c)
     }
-    fn find_direct<Q: ?Sized + Hash + Eq>(&self, q: &Q) -> Option<usize>
+    fn find_direct<Q: ?Sized + Hash + Eq + KeyQuery>(&self, q: &Q) -> Option<usize>
     where
         K: Borrow<Q>,
     {
+        if self.packed {
+            let i = q.packed_index()?.wrapping_sub(self.base);
+            return if i >= 0 && (i as usize) < self.entries.len() { Some(i as usize) } else { None };
+        }
+        if !self.hashed() {
+            return self.entries.iter().position(|e| matches!(e, Some((k, _)) if k.borrow() == q));
+        }
         let h = hash_of(q);
         self.table.find(h, |&idx| self.key_at(idx).borrow() == q).copied()
     }
@@ -62,7 +93,7 @@ impl<K: MapKey, V> OrderedMap<K, V> {
             None => unreachable!(),
         }
     }
-    fn find<Q: ?Sized + Hash + Eq>(&self, q: &Q) -> Option<usize>
+    fn find<Q: ?Sized + Hash + Eq + KeyQuery>(&self, q: &Q) -> Option<usize>
     where
         K: Borrow<Q>,
     {
@@ -70,8 +101,8 @@ impl<K: MapKey, V> OrderedMap<K, V> {
             return Some(idx);
         }
         if let Some(target) = self.alias_target(q) {
-            let h = hash_of(target);
-            return self.table.find(h, |&idx| self.key_at(idx) == target).copied();
+            let target = target.clone();
+            return self.find_direct::<K>(&target);
         }
         None
     }
@@ -82,22 +113,51 @@ impl<K: MapKey, V> OrderedMap<K, V> {
             }
         }
         let idx = self.entries.len();
-        let h = hash_of(&key);
+        let was_packed = self.packed;
+        if self.packed {
+            match key.packed_index() {
+                Some(i) if idx == 0 => self.base = i,
+                Some(i) if i == self.base.wrapping_add(idx as i64) => {}
+                _ => self.packed = false,
+            }
+        }
         self.entries.push(Some((key, value)));
         self.len += 1;
-        let entries = &self.entries;
-        self.table.insert_unique(h, idx, |&i| match &entries[i] {
-            Some((k, _)) => hash_of(k),
-            None => unreachable!(),
-        });
+        if self.hashed() {
+            if was_packed || idx == SMALL {
+                // just left the packed mode or crossed the size threshold: index every entry
+                self.build_table();
+            } else {
+                let entries = &self.entries;
+                let h = hash_of(&entries[idx].as_ref().unwrap().0);
+                self.table.insert_unique(h, idx, |&i| match &entries[i] {
+                    Some((k, _)) => hash_of(k),
+                    None => unreachable!(),
+                });
+            }
+        }
         idx
     }
     fn remove_at(&mut self, idx: usize) -> (K, V) {
+        if self.packed && idx + 1 == self.entries.len() {
+            // popping the last entry keeps the array packed
+            let (k, v) = self.entries.pop().unwrap().unwrap();
+            self.len -= 1;
+            return (k, v);
+        }
+        let was_packed = self.packed;
+        self.packed = false;
         let (k, v) = self.entries[idx].take().unwrap();
         self.len -= 1;
-        let h = hash_of(&k);
-        if let Ok(e) = self.table.find_entry(h, |&i| i == idx) {
-            e.remove();
+        if was_packed {
+            if self.hashed() {
+                self.build_table();
+            }
+        } else if self.hashed() {
+            let h = hash_of(&k);
+            if let Ok(e) = self.table.find_entry(h, |&i| i == idx) {
+                e.remove();
+            }
         }
         if self.entries.len() > 16 && self.len * 2 < self.entries.len() {
             self.compact();
@@ -109,10 +169,16 @@ impl<K: MapKey, V> OrderedMap<K, V> {
         self.pos = old.iter().take(self.pos).filter(|e| e.is_some()).count();
         self.entries = old.into_iter().flatten().map(Some).collect();
         self.table.clear();
-        let entries = &self.entries;
-        for (idx, e) in entries.iter().enumerate() {
-            let h = hash_of(&e.as_ref().unwrap().0);
-            self.table.insert_unique(h, idx, |&i| hash_of(&entries[i].as_ref().unwrap().0));
+        self.packed = self.entries.first().map_or(true, |e| e.as_ref().unwrap().0.packed_index().is_some());
+        if self.packed {
+            if let Some(e) = self.entries.first() {
+                self.base = e.as_ref().unwrap().0.packed_index().unwrap();
+                let base = self.base;
+                self.packed = self.entries.iter().enumerate().all(|(i, e)| e.as_ref().unwrap().0.packed_index() == Some(base.wrapping_add(i as i64)));
+            }
+        }
+        if self.hashed() {
+            self.build_table();
         }
     }
 }
@@ -217,7 +283,7 @@ impl<K: MapKey, V> Map<K, V> {
         self.0.next_index
     }
     #[inline]
-    pub fn get<Q: ?Sized + Hash + Eq>(&self, q: &Q) -> Option<&V>
+    pub fn get<Q: ?Sized + Hash + Eq + KeyQuery>(&self, q: &Q) -> Option<&V>
     where
         K: Borrow<Q>,
     {
@@ -226,7 +292,7 @@ impl<K: MapKey, V> Map<K, V> {
     }
     /// Lookup that panics with a PHP-like message on a missing key.
     #[inline]
-    pub fn idx<Q: ?Sized + Hash + Eq + fmt::Debug>(&self, q: &Q) -> &V
+    pub fn idx<Q: ?Sized + Hash + Eq + KeyQuery + fmt::Debug>(&self, q: &Q) -> &V
     where
         K: Borrow<Q>,
     {
@@ -236,7 +302,7 @@ impl<K: MapKey, V> Map<K, V> {
         }
     }
     #[inline]
-    pub fn contains_key<Q: ?Sized + Hash + Eq>(&self, q: &Q) -> bool
+    pub fn contains_key<Q: ?Sized + Hash + Eq + KeyQuery>(&self, q: &Q) -> bool
     where
         K: Borrow<Q>,
     {
@@ -284,7 +350,7 @@ impl<K: MapKey, V> Map<K, V> {
     pub fn last_key(&self) -> Option<&K> {
         self.last().map(|(k, _)| k)
     }
-    pub fn position_of<Q: ?Sized + Hash + Eq>(&self, q: &Q) -> Option<usize>
+    pub fn position_of<Q: ?Sized + Hash + Eq + KeyQuery>(&self, q: &Q) -> Option<usize>
     where
         K: Borrow<Q>,
     {
@@ -368,7 +434,7 @@ impl<K: MapKey, V: Clone> Map<K, V> {
         let k = K::from_index(d.next_index);
         d.insert_new(k, value);
     }
-    pub fn remove<Q: ?Sized + Hash + Eq>(&mut self, q: &Q) -> Option<V>
+    pub fn remove<Q: ?Sized + Hash + Eq + KeyQuery>(&mut self, q: &Q) -> Option<V>
     where
         K: Borrow<Q>,
     {
@@ -401,21 +467,21 @@ impl<K: MapKey, V: Clone> Map<K, V> {
         }
         Some(value)
     }
-    pub fn unset<Q: ?Sized + Hash + Eq>(&mut self, q: &Q)
+    pub fn unset<Q: ?Sized + Hash + Eq + KeyQuery>(&mut self, q: &Q)
     where
         K: Borrow<Q>,
     {
         self.remove(q);
     }
     #[inline]
-    pub fn get_mut<Q: ?Sized + Hash + Eq>(&mut self, q: &Q) -> Option<&mut V>
+    pub fn get_mut<Q: ?Sized + Hash + Eq + KeyQuery>(&mut self, q: &Q) -> Option<&mut V>
     where
         K: Borrow<Q>,
     {
         let idx = self.0.find(q)?;
         self.data().entries[idx].as_mut().map(|(_, v)| v)
     }
-    pub fn idx_mut<Q: ?Sized + Hash + Eq + fmt::Debug>(&mut self, q: &Q) -> &mut V
+    pub fn idx_mut<Q: ?Sized + Hash + Eq + KeyQuery + fmt::Debug>(&mut self, q: &Q) -> &mut V
     where
         K: Borrow<Q>,
     {
@@ -638,4 +704,76 @@ impl<K: MapKey, V: PartialEq> PartialEq for Map<K, V> {
 macro_rules! map {
     () => { $crate::Map::new() };
     ($($k:expr => $v:expr),+ $(,)?) => { $crate::Map::from_pairs([$(($k, $v)),+]) };
+}
+
+#[cfg(test)]
+mod small_map_tests {
+    use super::Map;
+    use crate::key::ArrayKey;
+
+    #[test]
+    fn small_and_hashed_modes_agree() {
+        let mut m: Map<ArrayKey, i64> = Map::new();
+        for i in 0..40 {
+            m.insert(ArrayKey::Int(i), i * 10);
+            assert_eq!(m.get(&ArrayKey::Int(i)), Some(&(i * 10)));
+            assert_eq!(m.len(), (i + 1) as usize);
+        }
+        // remove most entries: compaction drops back into the linear mode
+        for i in 0..36 {
+            assert_eq!(m.remove(&ArrayKey::Int(i)), Some(i * 10));
+            assert_eq!(m.get(&ArrayKey::Int(i)), None);
+        }
+        assert_eq!(m.len(), 4);
+        assert_eq!(m.keys().map(|k| k.clone()).collect::<Vec<_>>(), (36..40).map(ArrayKey::Int).collect::<Vec<_>>());
+        for i in 36..40 {
+            assert_eq!(m.get(&ArrayKey::Int(i)), Some(&(i * 10)));
+        }
+        // grow again across the threshold with string keys
+        for i in 0..20 {
+            m.insert(ArrayKey::Str(crate::string::Str::from_string(format!("k{i}"))), i);
+        }
+        assert_eq!(m.get(&ArrayKey::Str(crate::string::Str::from_static("k7"))), Some(&7));
+        assert_eq!(m.get(&ArrayKey::Int(38)), Some(&380));
+        assert!(!m.contains_key(&ArrayKey::Int(3)));
+        // overwrite keeps position and count
+        m.insert(ArrayKey::Int(38), 1);
+        assert_eq!(m.len(), 24);
+        assert_eq!(m.get(&ArrayKey::Int(38)), Some(&1));
+        // packed 1-based stack: writes at len+1 stay packed, popping the last keeps it packed
+        let mut st: Map<i64, i64> = Map::new();
+        for i in 1..=30 { st.insert(i, i * 2); }
+        assert!(st.0.packed && st.0.base == 1);
+        assert_eq!(st.get(&30), Some(&60));
+        assert_eq!(st.get(&0), None);
+        assert_eq!(st.remove(&30), Some(60));
+        assert!(st.0.packed);
+        assert_eq!(st.get(&30), None);
+        st.insert(30, 7);
+        assert!(st.0.packed);
+        assert_eq!(st.get(&30), Some(&7));
+        // removing a middle entry leaves the packed mode; lookups stay correct in both modes
+        assert_eq!(st.remove(&5), Some(10));
+        assert!(!st.0.packed);
+        assert_eq!(st.get(&4), Some(&8));
+        assert_eq!(st.get(&6), Some(&12));
+        assert_eq!(st.get(&5), None);
+        st.insert(5, 99);
+        assert_eq!(st.get(&5), Some(&99));
+        assert_eq!(st.keys().last(), Some(&5));
+        assert_eq!(st.len(), 30);
+        // a small non-sequential int map
+        let mut sp: Map<i64, i64> = Map::new();
+        sp.insert(10, 1); sp.insert(3, 2); sp.insert(11, 3);
+        assert!(!sp.0.packed);
+        assert_eq!(sp.get(&3), Some(&2));
+        assert_eq!(sp.get(&11), Some(&3));
+        assert_eq!(sp.keys().cloned().collect::<Vec<_>>(), vec![10, 3, 11]);
+        // push after removals appends with the next index
+        let mut p: Map<ArrayKey, i64> = Map::new();
+        for i in 0..3 { p.push(i); }
+        p.remove(&ArrayKey::Int(1));
+        p.push(9);
+        assert_eq!(p.keys().map(|k| k.clone()).collect::<Vec<_>>(), vec![ArrayKey::Int(0), ArrayKey::Int(2), ArrayKey::Int(3)]);
+    }
 }

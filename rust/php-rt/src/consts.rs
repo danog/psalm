@@ -228,6 +228,9 @@ pub fn builtin_defined(name: &[u8]) -> bool {
 }
 
 pub fn builtin_value(name: &[u8]) -> Option<Mixed> {
+    if let Ok(i) = crate::php_constants::PHP_CONSTANTS.binary_search_by(|(k, _)| (*k).cmp(name)) {
+        return Some((crate::php_constants::PHP_CONSTANTS[i].1)());
+    }
     let n = std::str::from_utf8(name).ok()?;
     for (tname, v) in TOKEN_NAMES {
         if *tname == n {

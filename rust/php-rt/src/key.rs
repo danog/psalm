@@ -137,7 +137,40 @@ impl Default for ArrayKey {
 }
 
 /// Types usable as map keys: conversions from PHP scalars.
-pub trait MapKey: Clone + Eq + Hash + fmt::Debug {
+/// Key lookups that may hit a packed array directly (see `OrderedMap::packed`).
+pub trait KeyQuery {
+    /// The int this key denotes, if it is an int key.
+    fn packed_index(&self) -> Option<i64>;
+}
+impl KeyQuery for i64 {
+    #[inline]
+    fn packed_index(&self) -> Option<i64> {
+        Some(*self)
+    }
+}
+impl KeyQuery for ArrayKey {
+    #[inline]
+    fn packed_index(&self) -> Option<i64> {
+        match self {
+            ArrayKey::Int(i) => Some(*i),
+            ArrayKey::Str(_) => None,
+        }
+    }
+}
+impl KeyQuery for Str {
+    #[inline]
+    fn packed_index(&self) -> Option<i64> {
+        None
+    }
+}
+impl KeyQuery for [u8] {
+    #[inline]
+    fn packed_index(&self) -> Option<i64> {
+        None
+    }
+}
+
+pub trait MapKey: KeyQuery + Clone + Eq + Hash + fmt::Debug {
     fn to_array_key(&self) -> ArrayKey;
     fn from_array_key(k: ArrayKey) -> Self;
     /// Next auto-index after this key (only meaningful for int-like keys).

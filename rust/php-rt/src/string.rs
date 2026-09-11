@@ -205,6 +205,9 @@ impl Str {
         let b = self.as_bytes();
         let end = end.min(b.len());
         let start = start.min(end);
+        if end - start == 1 {
+            return crate::ops::single_byte_str(b[start]);
+        }
         match self {
             Str::Static(s) => Str::Static(&s[start..end]),
             _ => Str::from_bytes(&b[start..end]),

@@ -19,6 +19,7 @@ pub mod support;
 pub mod containers;
 pub mod names;
 pub mod consts;
+pub mod php_constants;
 pub mod tokenizer;
 pub mod xml;
 pub mod builtins;

@@ -23,7 +23,7 @@ lto = "off"
 # Running the test suite: light optimization, still no LTO and many codegen units so builds stay feasible.
 [profile.fast]
 inherits = "dev"
-opt-level = 1
+opt-level = 2
 
 [profile.fast.package.php-rt]
 opt-level = 3

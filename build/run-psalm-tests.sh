@@ -12,8 +12,5 @@ grep -n "^error" -A12 build-psalm.log | grep -E "^[0-9]+-\s+-->" | head -8
 if ! grep -q "^error" build-psalm.log; then
   cargo build -j1 --profile fast -p psalm_tests --tests > build-psalm-fast.log 2>&1
   echo "fast build errors: $(grep -c '^error' build-psalm-fast.log)"
-  timeout 7200 cargo test -j1 --profile fast -p psalm_tests -- --test-threads=4 > test_psalm.log 2>&1
-  grep "test result" test_psalm.log
-  awk '/^---- .* ----$/{name=$0; sub(/^---- /,"",name); sub(/ (stdout )?----$/,"",name); got=0; next} name!="" && !got && NF>0 { got=1; msg=$0; sub(/^\[failed\] data set "[^"]*": /,"",msg); print name " :: " substr(msg,1,170) }' test_psalm.log > fail_map_psalm.txt
-  sed 's/^[^ ]* :: //' fail_map_psalm.txt | sed -E 's/[0-9]+/N/g' | sort | uniq -c | sort -rn | head -45
+  ../build/run-harness-by-class.sh fast test_psalm.log
 fi

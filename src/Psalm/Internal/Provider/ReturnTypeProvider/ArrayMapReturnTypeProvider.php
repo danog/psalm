@@ -294,7 +294,7 @@ final class ArrayMapReturnTypeProvider implements FunctionReturnTypeProviderInte
     }
 
     /**
-     * @param array<string, array<array<int, Assertion>>>|null $assertions
+     * @param array<string, list<list<Assertion>>>|null $assertions
      */
     private static function executeFakeCall(
         StatementsAnalyzer $statements_analyzer,
@@ -377,7 +377,7 @@ final class ArrayMapReturnTypeProvider implements FunctionReturnTypeProviderInte
      * @param list<PhpParser\Node\Arg> $array_args
      * @param int|null $fake_var_discriminator Set the fake variable id to a known value with the discriminator
      *                                         as a substring, and don't clear it from the context.
-     * @param array<string, array<array<int, Assertion>>>|null $assertions
+     * @param array<string, list<list<Assertion>>>|null $assertions
      */
     public static function getReturnTypeFromMappingIds(
         StatementsAnalyzer $statements_source,
