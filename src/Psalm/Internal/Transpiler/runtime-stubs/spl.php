@@ -538,3 +538,108 @@ class RegexIterator implements Iterator
         return $this->position < count($this->items);
     }
 }
+
+/**
+ * @template TValue
+ * @implements IteratorAggregate<int, TValue>
+ * @implements ArrayAccess<int, TValue>
+ */
+class SplFixedArray implements IteratorAggregate, ArrayAccess, Countable, JsonSerializable
+{
+    /** @var list<TValue|null> */
+    private array $data = [];
+
+    public function __construct(int $size = 0)
+    {
+        $this->setSize($size);
+    }
+
+    public function getSize(): int
+    {
+        return count($this->data);
+    }
+
+    public function setSize(int $size): bool
+    {
+        $data = [];
+        for ($i = 0; $i < $size; $i++) {
+            $data[] = $this->data[$i] ?? null;
+        }
+        $this->data = $data;
+        return true;
+    }
+
+    /** @return list<TValue|null> */
+    public function toArray(): array
+    {
+        return $this->data;
+    }
+
+    /**
+     * @param array<int, TValue> $array
+     * @return SplFixedArray<TValue>
+     */
+    public static function fromArray(array $array, bool $preserveKeys = true): SplFixedArray
+    {
+        $max = -1;
+        foreach ($array as $k => $_) {
+            if ($preserveKeys && $k > $max) {
+                $max = $k;
+            }
+        }
+        $fixed = new SplFixedArray($preserveKeys ? $max + 1 : count($array));
+        $i = 0;
+        foreach ($array as $k => $v) {
+            $fixed->data[$preserveKeys ? $k : $i] = $v;
+            $i++;
+        }
+        return $fixed;
+    }
+
+    public function offsetExists(mixed $offset): bool
+    {
+        return is_int($offset) && $offset >= 0 && $offset < count($this->data);
+    }
+
+    /** @return TValue|null */
+    public function offsetGet(mixed $offset): mixed
+    {
+        if (!$this->offsetExists($offset)) {
+            throw new RuntimeException('Index invalid or out of range');
+        }
+        return $this->data[(int) $offset];
+    }
+
+    /** @param TValue $value */
+    public function offsetSet(mixed $offset, mixed $value): void
+    {
+        if (!$this->offsetExists($offset)) {
+            throw new RuntimeException('Index invalid or out of range');
+        }
+        $this->data[(int) $offset] = $value;
+    }
+
+    public function offsetUnset(mixed $offset): void
+    {
+        if ($this->offsetExists($offset)) {
+            $this->data[(int) $offset] = null;
+        }
+    }
+
+    public function count(): int
+    {
+        return count($this->data);
+    }
+
+    /** @return ArrayIterator<int, TValue|null> */
+    public function getIterator(): Iterator
+    {
+        return new ArrayIterator($this->data);
+    }
+
+    /** @return list<TValue|null> */
+    public function jsonSerialize(): array
+    {
+        return $this->data;
+    }
+}
