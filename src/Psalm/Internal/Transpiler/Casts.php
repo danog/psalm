@@ -430,6 +430,19 @@ final class Casts
                 $this->need($from, $to);
                 return 'cast::<bool>(' . $code . ')';
             }
+            if (($tk === RustType::LIST || $tk === RustType::MAP || $tk === RustType::OPTION) && $this->program->typeCrate($to) > $this->program->typeCrate($from)) {
+                // the target is a runtime container naming a class of a later crate: no crate may write the
+                // impl (orphan rules), so the narrowing is inlined through the matching container member
+                $arms = [];
+                foreach ($from->params as $m) {
+                    if ($m->kind === RustType::LIST || $m->kind === RustType::MAP || $m->kind === RustType::OPTION || $m->kind === RustType::MIXED) {
+                        $arms[] = $from->mangle() . '::' . $m->variantName() . '(__v) => ' . $this->convert('__v', $m, $to);
+                    }
+                }
+                $arms[] = $from->mangle() . '::Other__(__v) => ' . $this->convert('__v', RustType::mixed(), $to);
+                $arms[] = '_ => panic!(' . Names::rustStringLiteral('cannot narrow ' . $from->mangle() . ' into ' . $to->toRust()) . ')';
+                return '(match ' . $code . ' { ' . implode(', ', $arms) . ' })';
+            }
             $this->need($from, $to);
             return 'cast::<' . $to->toRust() . '>(' . $code . ')';
         }
