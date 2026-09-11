@@ -173,7 +173,10 @@ danog/typephp:
   called through an abstract-class receiver is a direct call when no subclass
   redeclares it (PhpParser `$node->getAttribute()`), and an object argument
   whose declared class is a supertype of the parameter class is checked at
-  runtime instead of rejected.
+  runtime instead of rejected. Constructor property promotion compiles as
+  `$this->prop = $prop` assignments (slot writes; the handler write allocated
+  the name and hashed it per construction), handler property writes carry a
+  cache slot, and `self` in property types is late-bound.
 - Error collection mode (`TYPEPHP_COLLECT_ERRORS`), also during trait
   composition.
 - Function generation is retried with a dynamic local when a local receives
