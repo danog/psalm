@@ -163,7 +163,7 @@ final class Cache
         return Providers::safeFileGetContents($path);
     }
 
-    /** @return T */
+    /** @return T|null */
     public function getItem(string $key, ?string $hash = ''): array|object|string|null
     {
         if (isset($this->cache[$key])) {
