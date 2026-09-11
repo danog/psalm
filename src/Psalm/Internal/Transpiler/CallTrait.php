@@ -396,7 +396,8 @@ trait CallTrait
         }
         $name = $e->name->name;
         $lc = strtolower($name);
-        $recv = $this->receiver($e->var);
+        // the receiver of `?->` is read with its declared type: Psalm narrows it to non-null for the call itself
+        $recv = $nullsafe ? $this->rawValue($e->var) : $this->receiver($e->var);
         $rt = $recv->type;
         if ($rt->kind === RustType::OPTION) {
             if ($nullsafe) {
