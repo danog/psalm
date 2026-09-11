@@ -79,7 +79,9 @@ Psalm itself is loaded at runtime:
      for optional dependencies that are not installed;
    - writes `typephp/project.yml`.
 
-3. Generate C++ only (`--dry`) or build the binary, using every core:
+3. Generate C++ only (`--dry`) or build the binary, using every core. The
+   generated project file sets `optimize: 2`; the compiler's default is `-O0`
+   (four times slower at runtime):
 
        php /path/to/typephp/bin/tpc.php typephp/project.yml --dry --build-dir /tmp/psalm-typephp
        php /path/to/typephp/bin/tpc.php typephp/project.yml -o psalm-native --build-dir /tmp/psalm-typephp \
@@ -158,6 +160,20 @@ danog/typephp:
   in PHP where generators are not fibers.
 - The argument array of a variadic native parameter is rebuilt on every call
   (it accumulated across loop iterations).
+- `$array[$key] = &$source` rebinds an element that already holds a reference
+  (`Variant::itemSlot()`); it used to rebind a temporary copy.
+- Performance (danog/phpx + danog/typephp): the method-call inline cache is
+  polymorphic (a call site that saw a second class fell back to
+  `zend_is_callable()` for every call); `Variant` destructor/assignment/
+  `toBool()` are inline fast paths; `instanceof` does not copy the object;
+  literal strings and persistent class/function/property lookups are inline
+  in the generated header; the compiled module's type names get class-entry
+  caches although the module is registered after startup (typed-property
+  writes resolved the class by name); in closed-world mode a concrete method
+  called through an abstract-class receiver is a direct call when no subclass
+  redeclares it (PhpParser `$node->getAttribute()`), and an object argument
+  whose declared class is a supertype of the parameter class is checked at
+  runtime instead of rejected.
 - Error collection mode (`TYPEPHP_COLLECT_ERRORS`), also during trait
   composition.
 - Function generation is retried with a dynamic local when a local receives
