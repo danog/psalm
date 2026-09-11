@@ -229,6 +229,8 @@ final class CastEmitter
             RustType::CLASS_, RustType::ANY_OBJECT => 'if let Mixed::Obj(o) = &self { if let Some(v) = try_downcast::<' . $m->toRust() . '>(o) { return ' . $name . '::' . $vn . '(v); } }',
             RustType::CLOSURE, RustType::DYN_CALLABLE => 'if let Mixed::Closure(_) = &self { return ' . $name . '::' . $vn . '(' . $this->conv('self', RustType::mixed(), $m) . '); }',
             RustType::MIXED => 'return ' . $name . '::' . $vn . '(self);',
+            // resources travel through Mixed as their integer id: never a panic to catch
+            RustType::RESOURCE => 'if let Mixed::Int(__id) = self { if let Some(v) = php_rt::containers::resource_by_id(__id as usize) { return ' . $name . '::' . $vn . '(v); } }',
             default => 'if let Some(v) = try_cast_mixed::<' . $m->toRust() . '>(&self) { return ' . $name . '::' . $vn . '(v); }',
         };
     }
