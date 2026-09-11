@@ -21,10 +21,10 @@ use const DIRECTORY_SEPARATOR;
 /**
  * @internal
  */
-final class ClassLikeStorageCacheProvider
+class ClassLikeStorageCacheProvider
 {
     /** @var Cache<ClassLikeStorage> */
-    private readonly Cache $cache;
+    protected readonly Cache $cache;
 
     public function __construct(Config $config, string $composerLock, bool $persistent = true)
     {
@@ -43,7 +43,8 @@ final class ClassLikeStorageCacheProvider
         
         $dependencies = [$composerLock];
 
-        foreach ($dependent_files as $dependent_file_path) {
+        // an in-memory cache is not invalidated by source changes: skip the dependency inventory
+        foreach ($persistent ? $dependent_files : [] as $dependent_file_path) {
             if (!file_exists($dependent_file_path)) {
                 throw new UnexpectedValueException($dependent_file_path . ' must exist');
             }

@@ -471,7 +471,9 @@ final class Scanner
 
         $file_contents = $this->file_provider->getContents($file_path);
 
-        $from_cache = $this->file_storage_provider->has($file_path, $file_contents);
+        // PhpStorm meta files register their information while being traversed: never from cache
+        $from_cache = !str_ends_with($file_path, '.phpstorm.meta.php')
+            && $this->file_storage_provider->has($file_path, $file_contents);
 
         if (!$from_cache) {
             $this->file_storage_provider->create($file_path);
@@ -504,7 +506,26 @@ final class Scanner
             }
 
             foreach ($file_storage->classlikes_in_file as $fq_classlike_name) {
+                if ($this->codebase->register_stub_files
+                    && $this->codebase->classlike_storage_provider->has($fq_classlike_name)
+                ) {
+                    // a stub replaces whatever was registered before it (as its traversal does), typically
+                    // an internal class reflected while scanning the analyzed files
+                    $this->codebase->classlike_storage_provider->remove($fq_classlike_name);
+                }
                 $this->codebase->exhumeClassLikeStorage($fq_classlike_name, $file_path);
+            }
+
+            if ($this->codebase->register_stub_files) {
+                // what the reflector registers globally while traversing a stub file
+                foreach ($file_storage->functions as $function_id => $function_storage) {
+                    $this->codebase->functions->addGlobalFunction((string) $function_id, $function_storage);
+                }
+                foreach ($file_storage->constants as $const_name => $const_type) {
+                    if (!defined($const_name) || !$const_type->isMixed()) {
+                        $this->codebase->addGlobalConstantType($const_name, $const_type);
+                    }
+                }
             }
 
             foreach ($file_storage->required_classes as $fq_classlike_name) {

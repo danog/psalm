@@ -38,9 +38,10 @@ class FileScanner implements FileSource
             $progress = new VoidProgress();
         }
 
+        // a cached storage needs no traversal (stub files included: the scanner re-registers their
+        // functions and constants from the storage)
         if ((!$this->will_analyze || $file_storage->deep_scan)
             && $storage_from_cache
-            && !$codebase->register_stub_files
         ) {
             return;
         }

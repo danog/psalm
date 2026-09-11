@@ -21,9 +21,9 @@ use const DIRECTORY_SEPARATOR;
 /**
  * @internal
  */
-final class FileStorageCacheProvider
+class FileStorageCacheProvider
 {
-    private readonly Cache $cache;
+    protected readonly Cache $cache;
 
     private const FILE_STORAGE_CACHE_DIRECTORY = 'file_cache';
 
@@ -44,7 +44,8 @@ final class FileStorageCacheProvider
         }
 
         $dependencies = [$composerLock];
-        foreach ($dependent_files as $dependent_file_path) {
+        // an in-memory cache is not invalidated by source changes: skip the dependency inventory
+        foreach ($persistent ? $dependent_files : [] as $dependent_file_path) {
             if (!file_exists($dependent_file_path)) {
                 throw new UnexpectedValueException($dependent_file_path . ' must exist');
             }

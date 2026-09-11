@@ -18,6 +18,8 @@ use Psalm\Internal\Type\TypeTokenizer;
 use Psalm\Internal\VersionUtils;
 use Psalm\IssueBuffer;
 use Psalm\Tests\Internal\Provider\FakeParserCacheProvider;
+use Psalm\Tests\Internal\Provider\SharedStubClassLikeStorageCacheProvider;
+use Psalm\Tests\Internal\Provider\SharedStubFileStorageCacheProvider;
 use Psalm\Type\Union;
 use Throwable;
 
@@ -52,6 +54,10 @@ class TestCase extends BaseTestCase
      * @psalm-suppress PropertyNotSetInConstructor
      */
     protected FakeFileProvider $file_provider;
+
+    private static ?SharedStubFileStorageCacheProvider $shared_file_storage_cache = null;
+
+    private static ?SharedStubClassLikeStorageCacheProvider $shared_classlike_storage_cache = null;
 
     /**
      * @psalm-suppress PropertyNotSetInConstructor
@@ -91,9 +97,16 @@ class TestCase extends BaseTestCase
 
         $this->testConfig = $this->makeConfig();
 
+        // stub files are scanned once per process and their storages shared by every test (PHP re-scans them
+        // for each test; the compiled suite would spend nearly all of its time doing that)
+        self::$shared_file_storage_cache ??= new SharedStubFileStorageCacheProvider($this->testConfig);
+        self::$shared_classlike_storage_cache ??= new SharedStubClassLikeStorageCacheProvider($this->testConfig);
+
         $providers = new Providers(
             $this->file_provider,
             new FakeParserCacheProvider(),
+            self::$shared_file_storage_cache,
+            self::$shared_classlike_storage_cache,
         );
 
         $this->project_analyzer = new ProjectAnalyzer(
@@ -131,6 +144,10 @@ class TestCase extends BaseTestCase
         $this->project_analyzer->initExtraFiles();
         $this->project_analyzer->initProjectFiles();
         $codebase = $this->project_analyzer->getCodebase();
+
+        // the shared stub storages depend on the analyzed PHP version (version-specific stubs extend classes)
+        self::$shared_file_storage_cache->php_version_id = $codebase->analysis_php_version_id;
+        self::$shared_classlike_storage_cache->php_version_id = $codebase->analysis_php_version_id;
 
         if ($taint_flow_tracking) {
             $this->project_analyzer->trackTaintedInputs();
