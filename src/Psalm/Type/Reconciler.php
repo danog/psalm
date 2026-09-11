@@ -94,8 +94,8 @@ class Reconciler
      * Takes two arrays and consolidates them, removing null values from existing types where applicable.
      * Returns a tuple of [new_types, new_references].
      *
-     * @param  array<string, list<list<Assertion>>> $new_types
-     * @param  array<string, list<list<Assertion>>> $active_new_types - types we can complain about
+     * @param  array<string, array<int, list<Assertion>>> $new_types
+     * @param  array<string, array<int, list<Assertion>>> $active_new_types - types we can complain about
      * @param  array<string, Union> $existing_types
      * @param  array<string, string> $existing_references Maps keys of $existing_types that are references to other
      *                                                    keys of $existing_types that they are references to.
@@ -433,9 +433,9 @@ class Reconciler
      * '$a[0]->foo->bar' => 'isset' // original assertion
      * ]
      *
-     * @param array<string, list<list<Assertion>>> $new_types
+     * @param array<string, array<int, list<Assertion>>> $new_types
      * @param array<string, Union> $existing_types
-     * @return array<string, list<list<Assertion>>>
+     * @return array<string, array<int, list<Assertion>>>
      * @psalm-external-mutation-free
      */
     private static function addNestedAssertions(array $new_types, array $existing_types): array
@@ -658,7 +658,7 @@ class Reconciler
      * Gets the type for a given (non-existent key) based on the passed keys
      *
      * @param array<string, Union>  $existing_keys
-     * @param array<string, list<list<Assertion>>> $new_assertions
+     * @param array<string, array<int, list<Assertion>>> $new_assertions
      */
     private static function getValueForKey(
         Codebase $codebase,

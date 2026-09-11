@@ -331,7 +331,7 @@ final class Algebra
      * @psalm-suppress MoreSpecificReturnType
      * @param  list<Clause>  $clauses
      * @param  array<string, bool> $cond_referenced_var_ids
-     * @param  array<string, array<int, array<int, Assertion>>> $active_truths
+     * @param  array<string, array<int, list<Assertion>>> $active_truths
      * @return array<string, list<list<Assertion>>>
      */
     public static function getTruthsFromFormula(
