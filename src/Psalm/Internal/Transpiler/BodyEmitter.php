@@ -94,6 +94,7 @@ final class BodyEmitter
         public readonly ?ClassModel $static_class = null,
     ) {
         $this->w = new Writer();
+        $this->type_context = $record->file_path . ' ' . ($record->fq_class_name !== null ? $record->fq_class_name . '::' : '') . ($record->method_name ?? $record->storage->cased_name ?? '{closure}') . '() body';
         $this->ret_type = RustType::unit();
         $this->gen_key = RustType::int();
         $this->gen_val = RustType::mixed();
@@ -108,8 +109,12 @@ final class BodyEmitter
 
     public function types(): TypeMapper
     {
+        $this->program->types->context = $this->type_context;
         return $this->program->types;
     }
+
+    /** `File.php:function` naming this body in the map inventories. */
+    private string $type_context;
 
     public function tmp(string $prefix = '__t'): string
     {

@@ -186,6 +186,20 @@ final class CrateEmitter
         foreach ($this->program->types->unsupported as $atomic => $n) {
             fwrite(STDERR, "  [types] unsupported atomic $atomic: $n\n");
         }
+        // map inventories (user directive: arrays are lists, shapes or string-keyed maps; int keys rarely, array-key never)
+        foreach (['arraykey' => $this->program->types->array_key_sites, 'intkey' => $this->program->types->int_key_sites, 'shapemap' => $this->program->types->shape_map_sites] as $tag => $sites) {
+            ksort($sites);
+            $n = 0;
+            foreach ($sites as $types) {
+                $n += count($types);
+            }
+            fwrite(STDERR, "[transpiler] $tag maps: $n distinct sites in " . count($sites) . " contexts\n");
+            foreach ($sites as $ctx => $types) {
+                foreach ($types as $t => $count) {
+                    fwrite(STDERR, "  [$tag] $ctx: $t ($count)\n");
+                }
+            }
+        }
     }
 
     /** Is `$t` a type whose definition is generated in crate `$crate` (so that impls for it may live there)? */
