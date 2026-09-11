@@ -88,10 +88,69 @@ final class TestEmitter
     }
 
     /** Why the test cannot run in the compiled suite (PHPUnit mocks, closure rebinding), or null. */
+    /** Reflection classes the compiled program does not provide (only ReflectionClass name tables exist). */
+    private const RUNTIME_REFLECTION = ['reflectionfunction', 'reflectionmethod', 'reflectionnamedtype', 'reflectionparameter', 'reflectionproperty', 'reflectionobject', 'reflectionuniontype', 'reflectionintersectiontype', 'reflectionenum', 'reflectionfunctionabstract'];
+
+    /** @var array<string, array<string, true>> per class: lowercase names of methods that (transitively) use runtime reflection */
+    private array $reflection_users = [];
+
+    /** @return array<string, true> */
+    private function reflectionUsers(ClassModel $cls): array
+    {
+        if (isset($this->reflection_users[$cls->fqcn])) {
+            return $this->reflection_users[$cls->fqcn];
+        }
+        $finder = new \PhpParser\NodeFinder();
+        $direct = [];
+        $calls = [];
+        foreach ($cls->methods as $method) {
+            if ($method->node === null || $method->node->stmts === null) {
+                continue;
+            }
+            $lc = strtolower($method->name);
+            foreach ($finder->findInstanceOf($method->node->stmts, \PhpParser\Node\Expr\New_::class) as $new) {
+                if ($new->class instanceof \PhpParser\Node\Name && in_array(strtolower($new->class->getLast()), self::RUNTIME_REFLECTION, true)) {
+                    $direct[$lc] = true;
+                }
+            }
+            foreach ($finder->findInstanceOf($method->node->stmts, \PhpParser\Node\Expr\StaticCall::class) as $call) {
+                if ($call->class instanceof \PhpParser\Node\Name && in_array(strtolower($call->class->getLast()), self::RUNTIME_REFLECTION, true)) {
+                    $direct[$lc] = true;
+                }
+            }
+            foreach ($finder->findInstanceOf($method->node->stmts, \PhpParser\Node\Expr\MethodCall::class) as $call) {
+                if ($call->var instanceof \PhpParser\Node\Expr\Variable && $call->var->name === 'this' && $call->name instanceof \PhpParser\Node\Identifier) {
+                    $calls[$lc][] = strtolower($call->name->name);
+                }
+            }
+        }
+        // transitive closure over `$this->helper()` calls inside the class
+        $users = $direct;
+        do {
+            $changed = false;
+            foreach ($calls as $caller => $callees) {
+                if (isset($users[$caller])) {
+                    continue;
+                }
+                foreach ($callees as $callee) {
+                    if (isset($users[$callee])) {
+                        $users[$caller] = true;
+                        $changed = true;
+                        break;
+                    }
+                }
+            }
+        } while ($changed);
+        return $this->reflection_users[$cls->fqcn] = $users;
+    }
+
     private function unsupportedMechanism(MethodModel $m): ?string
     {
         if ($m->node->stmts === null) {
             return null;
+        }
+        if (isset($this->reflectionUsers($m->declaring)[strtolower($m->name)])) {
+            return 'PHP reflection is not available in the compiled test suite';
         }
         $finder = new \PhpParser\NodeFinder();
         foreach ($finder->findInstanceOf($m->node->stmts, \PhpParser\Node\Expr\MethodCall::class) as $call) {
