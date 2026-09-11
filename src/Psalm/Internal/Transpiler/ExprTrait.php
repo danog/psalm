@@ -518,6 +518,48 @@ trait ExprTrait
 
     private function arrayLiteral(Expr\Array_ $e, ?RustType $expected): Val
     {
+        $v = $this->arrayLiteralValue($e, $expected);
+        if (($v->type->kind === RustType::LIST || $v->type->kind === RustType::MAP) && count($e->items) >= 4 && count($e->items) <= 24 && self::isConstArray($e)) {
+            // a constant table: built once per thread and shared (containers are copy-on-write)
+            $name = '__CONST_ARR' . $this->tmp('');
+            return new Val('{ thread_local! { static ' . $name . ': ' . $v->type->toRust() . ' = ' . $v->code . '; } ' . $name . '.with(|__c| __c.clone()) }', $v->type);
+        }
+        return $v;
+    }
+
+    /** Whether an array literal consists only of scalar literals (and nested such arrays). */
+    private static function isConstArray(Expr\Array_ $e): bool
+    {
+        foreach ($e->items as $item) {
+            if ($item->unpack || $item->byRef) {
+                return false;
+            }
+            if ($item->key !== null && !self::isConstScalar($item->key)) {
+                return false;
+            }
+            if ($item->value instanceof Expr\Array_ ? !self::isConstArray($item->value) : !self::isConstScalar($item->value)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static function isConstScalar(Expr $e): bool
+    {
+        if ($e instanceof Node\Scalar\String_ || $e instanceof Node\Scalar\Int_ || $e instanceof Node\Scalar\Float_) {
+            return true;
+        }
+        if ($e instanceof Expr\UnaryMinus || $e instanceof Expr\UnaryPlus) {
+            return $e->expr instanceof Node\Scalar\Int_ || $e->expr instanceof Node\Scalar\Float_;
+        }
+        if ($e instanceof Expr\ConstFetch) {
+            return in_array(strtolower($e->name->toString()), ['true', 'false', 'null'], true);
+        }
+        return false;
+    }
+
+    private function arrayLiteralValue(Expr\Array_ $e, ?RustType $expected): Val
+    {
         $target = $expected;
         $inf = $this->inferred($e);
         if ($target === null || !in_array($target->kind, [RustType::LIST, RustType::MAP, RustType::TUPLE, RustType::SHAPE], true)) {
