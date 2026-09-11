@@ -807,9 +807,11 @@ trait LValueTrait
                 [$kt, $vtt] = $vt->params;
                 $kcode = $item->key !== null ? $this->keyExpr($item->key, $kt) : $this->keyFrom(new Val($key . 'i64', RustType::int()), $kt);
                 $elem = new Val($tmp . '.idx(&' . $kcode . ').clone()', $vtt);
-            } elseif ($vt->kind === RustType::MIXED) {
+            } elseif ($vt->kind === RustType::MIXED || $vt->kind === RustType::UNION) {
+                // a union that may hold an array (e.g. the parser's semantic values): read through Mixed
                 $kcode = $item->key !== null ? $this->keyExpr($item->key, RustType::arrayKey()) : 'ArrayKey::Int(' . (int) $key . ')';
-                $elem = new Val('mixed_get(&' . $tmp . ', &' . $kcode . ').unwrap_or_default()', RustType::mixed());
+                $base = $vt->kind === RustType::MIXED ? $tmp : $this->casts->convert($tmp . '.clone()', $vt, RustType::mixed());
+                $elem = new Val('mixed_get(&' . $base . ', &' . $kcode . ').unwrap_or_default()', RustType::mixed());
             }
             if ($elem === null) {
                 $this->warn('destructuring of ' . $vt->toRust(), $target);
