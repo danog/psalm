@@ -12,9 +12,11 @@ use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
 
+use function assert;
 use function count;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeVisitor;
+use Psalm\Type\TypeNode;
 
 /**
  * Denotes a simple array of the form `array<TKey, TValue>`. It expects an array with two elements, both union types.
@@ -183,12 +185,17 @@ class TArray extends Atomic
     }
 
     /**
+     * @param TypeNode $node
+     * @param-out TypeNode $node
+     *
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        $values = $node->type_params;
+        $self = $node;
+        assert($self instanceof self);
+        $values = $self->type_params;
         $changed = false;
         $result = true;
         foreach ($values as &$child) {
@@ -199,14 +206,16 @@ class TArray extends Atomic
         unset($child);
         if ($changed) {
             if (!$cloned) {
-                $node = clone $node;
+                $self = clone $self;
                 $cloned = true;
             }
-            $node->type_params = $values;
+            $self->type_params = $values;
         }
         if ($result === false) {
+            $node = $self;
             return false;
         }
+        $node = $self;
         return true;
     }
 }

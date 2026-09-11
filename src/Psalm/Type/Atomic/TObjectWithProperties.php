@@ -13,12 +13,14 @@ use Psalm\Internal\Type\TemplateStandinTypeReplacer;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
 
+use function assert;
 use function array_keys;
 use function array_map;
 use function count;
 use function implode;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeVisitor;
+use Psalm\Type\TypeNode;
 
 /**
  * Denotes an object with specified member variables e.g. `object{foo:int, bar:string}`.
@@ -323,12 +325,17 @@ final class TObjectWithProperties extends TObject
     }
 
     /**
+     * @param TypeNode $node
+     * @param-out TypeNode $node
+     *
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        $values = $node->properties;
+        $self = $node;
+        assert($self instanceof self);
+        $values = $self->properties;
         $changed = false;
         $result = true;
         foreach ($values as &$child) {
@@ -339,15 +346,16 @@ final class TObjectWithProperties extends TObject
         unset($child);
         if ($changed) {
             if (!$cloned) {
-                $node = clone $node;
+                $self = clone $self;
                 $cloned = true;
             }
-            $node->properties = $values;
+            $self->properties = $values;
         }
         if ($result === false) {
+            $node = $self;
             return false;
         }
-        $values = $node->extra_types;
+        $values = $self->extra_types;
         $changed = false;
         $result = true;
         foreach ($values as &$child) {
@@ -358,7 +366,7 @@ final class TObjectWithProperties extends TObject
         unset($child);
         if ($changed) {
             if (!$cloned) {
-                $node = clone $node;
+                $self = clone $self;
                 $cloned = true;
             }
             $rekeyed = [];
@@ -366,11 +374,13 @@ final class TObjectWithProperties extends TObject
                 $rekeyed[$child->getKey()] = $child;
             }
             $values = $rekeyed;
-            $node->extra_types = $values;
+            $self->extra_types = $values;
         }
         if ($result === false) {
+            $node = $self;
             return false;
         }
+        $node = $self;
         return true;
     }
 

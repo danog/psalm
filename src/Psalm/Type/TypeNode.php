@@ -10,8 +10,8 @@ interface TypeNode
     public function visit(TypeVisitor $visitor): bool;
 
     /**
-     * @param static $node
-     * @param-out static $node
+     * @param TypeNode $node
+     * @param-out TypeNode $node
      * @internal Should only be used by the MutableTypeVisitor
      */
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool;

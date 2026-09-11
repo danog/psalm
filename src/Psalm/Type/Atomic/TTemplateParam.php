@@ -11,10 +11,12 @@ use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
 
+use function assert;
 use function array_map;
 use function implode;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeVisitor;
+use Psalm\Type\TypeNode;
 
 /**
  * denotes a template parameter that has been previously specified in a `@template` tag.
@@ -146,24 +148,30 @@ final class TTemplateParam extends Atomic
     }
 
     /**
+     * @param TypeNode $node
+     * @param-out TypeNode $node
+     *
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        $value = $node->as;
+        $self = $node;
+        assert($self instanceof self);
+        $value = $self->as;
         $result = $visitor->traverse($value);
-        if ($value !== $node->as) {
+        if ($value !== $self->as) {
             if (!$cloned) {
-                $node = clone $node;
+                $self = clone $self;
                 $cloned = true;
             }
-            $node->as = $value;
+            $self->as = $value;
         }
         if ($result === false) {
+            $node = $self;
             return false;
         }
-        $values = $node->extra_types;
+        $values = $self->extra_types;
         $changed = false;
         $result = true;
         foreach ($values as &$child) {
@@ -174,7 +182,7 @@ final class TTemplateParam extends Atomic
         unset($child);
         if ($changed) {
             if (!$cloned) {
-                $node = clone $node;
+                $self = clone $self;
                 $cloned = true;
             }
             $rekeyed = [];
@@ -182,11 +190,13 @@ final class TTemplateParam extends Atomic
                 $rekeyed[$child->getKey()] = $child;
             }
             $values = $rekeyed;
-            $node->extra_types = $values;
+            $self->extra_types = $values;
         }
         if ($result === false) {
+            $node = $self;
             return false;
         }
+        $node = $self;
         return true;
     }
 

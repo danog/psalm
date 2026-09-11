@@ -664,6 +664,8 @@ abstract class Atomic implements TypeNode, Stringable
     }
 
     /**
+     * @param TypeNode $node
+     * @param-out TypeNode $node
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]

@@ -9,6 +9,9 @@ use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type\Atomic;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeVisitor;
+use Psalm\Type\TypeNode;
+
+use function assert;
 
 /**
  * Type that resolves to a keyed-array with properties of a class as keys and
@@ -90,23 +93,30 @@ final class TPropertiesOf extends Atomic
     }
 
     /**
+     * @param TypeNode $node
+     * @param-out TypeNode $node
+     *
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        $value = $node->classlike_type;
+        $self = $node;
+        assert($self instanceof self);
+        $value = $self->classlike_type;
         $result = $visitor->traverse($value);
-        if ($value !== $node->classlike_type) {
+        if ($value !== $self->classlike_type) {
             if (!$cloned) {
-                $node = clone $node;
+                $self = clone $self;
                 $cloned = true;
             }
-            $node->classlike_type = $value;
+            $self->classlike_type = $value;
         }
         if ($result === false) {
+            $node = $self;
             return false;
         }
+        $node = $self;
         return true;
     }
 

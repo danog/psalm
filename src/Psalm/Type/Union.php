@@ -13,6 +13,7 @@ use Psalm\Type\Atomic\TLiteralFloat;
 use Psalm\Type\Atomic\TLiteralInt;
 use Psalm\Type\Atomic\TLiteralString;
 
+use function assert;
 use function array_key_exists;
 use function get_object_vars;
 
@@ -408,14 +409,19 @@ final class Union implements TypeNode
     }
 
     /**
+     * @param TypeNode $node
+     * @param-out TypeNode $node
+     *
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
+        $self = $node;
+        assert($self instanceof self);
         $result = true;
         $changed = false;
-        $types = $node->types;
+        $types = $self->types;
         foreach ($types as &$type) {
             $type_orig = $type;
             $result = $visitor->traverse($type);
@@ -427,8 +433,10 @@ final class Union implements TypeNode
         unset($type);
 
         if ($changed) {
-            $node = $node->setTypes($types);
+            $self = $self->setTypes($types);
         }
+
+        $node = $self;
 
         return $result;
     }

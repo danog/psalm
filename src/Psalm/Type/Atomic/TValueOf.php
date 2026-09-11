@@ -16,6 +16,7 @@ use function array_values;
 use function assert;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeVisitor;
+use Psalm\Type\TypeNode;
 
 /**
  * Represents a value of an array or enum.
@@ -67,23 +68,30 @@ final class TValueOf extends Atomic
     }
 
     /**
+     * @param TypeNode $node
+     * @param-out TypeNode $node
+     *
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        $value = $node->type;
+        $self = $node;
+        assert($self instanceof self);
+        $value = $self->type;
         $result = $visitor->traverse($value);
-        if ($value !== $node->type) {
+        if ($value !== $self->type) {
             if (!$cloned) {
-                $node = clone $node;
+                $self = clone $self;
                 $cloned = true;
             }
-            $node->type = $value;
+            $self->type = $value;
         }
         if ($result === false) {
+            $node = $self;
             return false;
         }
+        $node = $self;
         return true;
     }
 

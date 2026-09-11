@@ -30,6 +30,7 @@ use function sort;
 use function str_replace;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeVisitor;
+use Psalm\Type\TypeNode;
 
 /**
  * Represents an 'object-like array' - an array with known keys.
@@ -746,12 +747,17 @@ final class TKeyedArray extends Atomic
     }
 
     /**
+     * @param TypeNode $node
+     * @param-out TypeNode $node
+     *
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        $values = $node->properties;
+        $self = $node;
+        assert($self instanceof self);
+        $values = $self->properties;
         $changed = false;
         $result = true;
         foreach ($values as &$child) {
@@ -762,16 +768,17 @@ final class TKeyedArray extends Atomic
         unset($child);
         if ($changed) {
             if (!$cloned) {
-                $node = clone $node;
+                $self = clone $self;
                 $cloned = true;
             }
-            $node->properties = $values;
+            $self->properties = $values;
         }
         if ($result === false) {
+            $node = $self;
             return false;
         }
-        if ($node->fallback_params !== null) {
-            $values = $node->fallback_params;
+        if ($self->fallback_params !== null) {
+            $values = $self->fallback_params;
             $changed = false;
             $result = true;
             foreach ($values as &$child) {
@@ -782,15 +789,17 @@ final class TKeyedArray extends Atomic
             unset($child);
             if ($changed) {
                 if (!$cloned) {
-                    $node = clone $node;
+                    $self = clone $self;
                     $cloned = true;
                 }
-                $node->fallback_params = $values;
+                $self->fallback_params = $values;
             }
             if ($result === false) {
+                $node = $self;
                 return false;
             }
         }
+        $node = $self;
         return true;
     }
 

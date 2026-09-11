@@ -13,11 +13,13 @@ use Psalm\Type;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
 
+use function assert;
 use function count;
 use function implode;
 use function substr;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeVisitor;
+use Psalm\Type\TypeNode;
 
 /**
  * denotes the `iterable` type(which can also result from an `is_iterable` check).
@@ -151,12 +153,17 @@ final class TIterable extends Atomic
     }
 
     /**
+     * @param TypeNode $node
+     * @param-out TypeNode $node
+     *
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        $values = $node->type_params;
+        $self = $node;
+        assert($self instanceof self);
+        $values = $self->type_params;
         $changed = false;
         $result = true;
         foreach ($values as &$child) {
@@ -167,15 +174,16 @@ final class TIterable extends Atomic
         unset($child);
         if ($changed) {
             if (!$cloned) {
-                $node = clone $node;
+                $self = clone $self;
                 $cloned = true;
             }
-            $node->type_params = $values;
+            $self->type_params = $values;
         }
         if ($result === false) {
+            $node = $self;
             return false;
         }
-        $values = $node->extra_types;
+        $values = $self->extra_types;
         $changed = false;
         $result = true;
         foreach ($values as &$child) {
@@ -186,7 +194,7 @@ final class TIterable extends Atomic
         unset($child);
         if ($changed) {
             if (!$cloned) {
-                $node = clone $node;
+                $self = clone $self;
                 $cloned = true;
             }
             $rekeyed = [];
@@ -194,11 +202,13 @@ final class TIterable extends Atomic
                 $rekeyed[$child->getKey()] = $child;
             }
             $values = $rekeyed;
-            $node->extra_types = $values;
+            $self->extra_types = $values;
         }
         if ($result === false) {
+            $node = $self;
             return false;
         }
+        $node = $self;
         return true;
     }
 

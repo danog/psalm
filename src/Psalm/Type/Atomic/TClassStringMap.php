@@ -16,6 +16,9 @@ use Psalm\Type\Atomic;
 use Psalm\Type\Union;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeVisitor;
+use Psalm\Type\TypeNode;
+
+use function assert;
 
 /**
  * Represents an array where the type of each value
@@ -214,23 +217,30 @@ final class TClassStringMap extends Atomic
     }
 
     /**
+     * @param TypeNode $node
+     * @param-out TypeNode $node
+     *
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        $value = $node->value_param;
+        $self = $node;
+        assert($self instanceof self);
+        $value = $self->value_param;
         $result = $visitor->traverse($value);
-        if ($value !== $node->value_param) {
+        if ($value !== $self->value_param) {
             if (!$cloned) {
-                $node = clone $node;
+                $self = clone $self;
                 $cloned = true;
             }
-            $node->value_param = $value;
+            $self->value_param = $value;
         }
         if ($result === false) {
+            $node = $self;
             return false;
         }
+        $node = $self;
         return true;
     }
 

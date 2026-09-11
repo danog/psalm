@@ -7,6 +7,9 @@ namespace Psalm\Type\Atomic;
 use Override;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeVisitor;
+use Psalm\Type\TypeNode;
+
+use function assert;
 
 /**
  * Represents the type that is the result of a bitmask combination of its parameters.
@@ -57,23 +60,30 @@ final class TIntMaskOf extends TInt
     }
 
     /**
+     * @param TypeNode $node
+     * @param-out TypeNode $node
+     *
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        $value = $node->value;
+        $self = $node;
+        assert($self instanceof self);
+        $value = $self->value;
         $result = $visitor->traverse($value);
-        if ($value !== $node->value) {
+        if ($value !== $self->value) {
             if (!$cloned) {
-                $node = clone $node;
+                $self = clone $self;
                 $cloned = true;
             }
-            $node->value = $value;
+            $self->value = $value;
         }
         if ($result === false) {
+            $node = $self;
             return false;
         }
+        $node = $self;
         return true;
     }
 

@@ -12,6 +12,7 @@ use Psalm\Internal\Type\TemplateStandinTypeReplacer;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
 
+use function assert;
 use function array_values;
 use function count;
 use function preg_quote;
@@ -21,6 +22,7 @@ use function stripos;
 use function strtolower;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeVisitor;
+use Psalm\Type\TypeNode;
 
 /**
  * Denotes the `class-string` type, used to describe a string representing a valid PHP class.
@@ -156,25 +158,32 @@ class TClassString extends TString
     }
 
     /**
+     * @param TypeNode $node
+     * @param-out TypeNode $node
+     *
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        if ($node->as_type !== null) {
-            $value = $node->as_type;
+        $self = $node;
+        assert($self instanceof self);
+        if ($self->as_type !== null) {
+            $value = $self->as_type;
             $result = $visitor->traverse($value);
-            if ($value !== $node->as_type) {
+            if ($value !== $self->as_type) {
                 if (!$cloned) {
-                    $node = clone $node;
+                    $self = clone $self;
                     $cloned = true;
                 }
-                $node->as_type = $value;
+                $self->as_type = $value;
             }
             if ($result === false) {
+                $node = $self;
                 return false;
             }
         }
+        $node = $self;
         return true;
     }
 

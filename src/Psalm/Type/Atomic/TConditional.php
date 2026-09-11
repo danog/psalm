@@ -13,6 +13,9 @@ use Psalm\Type\Atomic;
 use Psalm\Type\Union;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeVisitor;
+use Psalm\Type\TypeNode;
+
+use function assert;
 
 /**
  * Internal representation of a conditional return type in phpdoc. For example ($param1 is int ? int : string)
@@ -131,47 +134,56 @@ final class TConditional extends Atomic
     }
 
     /**
+     * @param TypeNode $node
+     * @param-out TypeNode $node
+     *
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        $value = $node->conditional_type;
+        $self = $node;
+        assert($self instanceof self);
+        $value = $self->conditional_type;
         $result = $visitor->traverse($value);
-        if ($value !== $node->conditional_type) {
+        if ($value !== $self->conditional_type) {
             if (!$cloned) {
-                $node = clone $node;
+                $self = clone $self;
                 $cloned = true;
             }
-            $node->conditional_type = $value;
+            $self->conditional_type = $value;
         }
         if ($result === false) {
+            $node = $self;
             return false;
         }
-        $value = $node->if_type;
+        $value = $self->if_type;
         $result = $visitor->traverse($value);
-        if ($value !== $node->if_type) {
+        if ($value !== $self->if_type) {
             if (!$cloned) {
-                $node = clone $node;
+                $self = clone $self;
                 $cloned = true;
             }
-            $node->if_type = $value;
+            $self->if_type = $value;
         }
         if ($result === false) {
+            $node = $self;
             return false;
         }
-        $value = $node->else_type;
+        $value = $self->else_type;
         $result = $visitor->traverse($value);
-        if ($value !== $node->else_type) {
+        if ($value !== $self->else_type) {
             if (!$cloned) {
-                $node = clone $node;
+                $self = clone $self;
                 $cloned = true;
             }
-            $node->else_type = $value;
+            $self->else_type = $value;
         }
         if ($result === false) {
+            $node = $self;
             return false;
         }
+        $node = $self;
         return true;
     }
 

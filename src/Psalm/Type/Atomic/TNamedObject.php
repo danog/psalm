@@ -12,12 +12,14 @@ use Psalm\Storage\Mutations;
 use Psalm\Type;
 use Psalm\Type\Atomic;
 
+use function assert;
 use function array_map;
 use function implode;
 use function strrpos;
 use function substr;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeVisitor;
+use Psalm\Type\TypeNode;
 
 /**
  * Denotes an object type where the type of the object is known e.g. `Exception`, `Throwable`, `Foo\Bar`
@@ -259,12 +261,17 @@ class TNamedObject extends Atomic
     }
 
     /**
+     * @param TypeNode $node
+     * @param-out TypeNode $node
+     *
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        $values = $node->extra_types;
+        $self = $node;
+        assert($self instanceof self);
+        $values = $self->extra_types;
         $changed = false;
         $result = true;
         foreach ($values as &$child) {
@@ -275,7 +282,7 @@ class TNamedObject extends Atomic
         unset($child);
         if ($changed) {
             if (!$cloned) {
-                $node = clone $node;
+                $self = clone $self;
                 $cloned = true;
             }
             $rekeyed = [];
@@ -283,11 +290,13 @@ class TNamedObject extends Atomic
                 $rekeyed[$child->getKey()] = $child;
             }
             $values = $rekeyed;
-            $node->extra_types = $values;
+            $self->extra_types = $values;
         }
         if ($result === false) {
+            $node = $self;
             return false;
         }
+        $node = $self;
         return true;
     }
 

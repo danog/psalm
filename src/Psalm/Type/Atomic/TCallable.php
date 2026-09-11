@@ -15,6 +15,9 @@ use Psalm\Type\Atomic;
 use Psalm\Type\Union;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeVisitor;
+use Psalm\Type\TypeNode;
+
+use function assert;
 
 /**
  * Denotes the `callable` type. Can result from an `is_callable` check.
@@ -137,13 +140,18 @@ final class TCallable extends Atomic
     }
 
     /**
+     * @param TypeNode $node
+     * @param-out TypeNode $node
+     *
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        if ($node->params !== null) {
-            $values = $node->params;
+        $self = $node;
+        assert($self instanceof self);
+        if ($self->params !== null) {
+            $values = $self->params;
             $changed = false;
             $result = true;
             foreach ($values as &$child) {
@@ -154,29 +162,32 @@ final class TCallable extends Atomic
             unset($child);
             if ($changed) {
                 if (!$cloned) {
-                    $node = clone $node;
+                    $self = clone $self;
                     $cloned = true;
                 }
-                $node->params = $values;
+                $self->params = $values;
             }
             if ($result === false) {
+                $node = $self;
                 return false;
             }
         }
-        if ($node->return_type !== null) {
-            $value = $node->return_type;
+        if ($self->return_type !== null) {
+            $value = $self->return_type;
             $result = $visitor->traverse($value);
-            if ($value !== $node->return_type) {
+            if ($value !== $self->return_type) {
                 if (!$cloned) {
-                    $node = clone $node;
+                    $self = clone $self;
                     $cloned = true;
                 }
-                $node->return_type = $value;
+                $self->return_type = $value;
             }
             if ($result === false) {
+                $node = $self;
                 return false;
             }
         }
+        $node = $self;
         return true;
     }
 
