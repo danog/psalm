@@ -478,7 +478,8 @@ trait LValueTrait
             return $this->narrowOptional(new Val($code, RustType::option(RustType::mixed())), $e);
         }
         $name = $e->name->name;
-        $base = $this->receiver($e->var);
+        // the receiver of `?->` is read with its declared type: Psalm narrows it to non-null for the fetch itself
+        $base = $nullsafe ? $this->rawValue($e->var) : $this->receiver($e->var);
         $bt = $base->type;
         if ($bt->kind === RustType::OPTION) {
             if ($nullsafe) {
