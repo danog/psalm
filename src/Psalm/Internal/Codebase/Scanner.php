@@ -544,10 +544,17 @@ final class Scanner
             foreach ($file_storage->classlikes_in_file as $fq_classlike_name) {
                 $provider = $this->codebase->classlike_storage_provider;
                 if ($this->codebase->register_stub_files && $provider->has($fq_classlike_name)) {
-                    // a stub replaces whatever was registered before it, typically an internal class reflected
-                    // while scanning the analyzed files; as the stub's traversal would, whatever was populated
-                    // from the replaced definition is populated again
                     $replaced = $provider->get($fq_classlike_name);
+                    if (!$replaced->stubbed
+                        && $replaced->stmt_location
+                        && $this->config->isInProjectDirs($replaced->stmt_location->file_path)
+                    ) {
+                        // a class of the analyzed code is not overridden by a stub (as in the stub's traversal)
+                        continue;
+                    }
+                    // a stub replaces whatever else was registered before it, typically an internal class
+                    // reflected while scanning the analyzed files; as the stub's traversal would, whatever was
+                    // populated from the replaced definition is populated again
                     $provider->remove($fq_classlike_name);
                     $this->codebase->exhumeClassLikeStorage($fq_classlike_name, $file_path);
                     $stub_storage = $provider->get($fq_classlike_name);

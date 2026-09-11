@@ -99,8 +99,8 @@ class TestCase extends BaseTestCase
 
         // stub files are scanned once per process and their storages shared by every test (PHP re-scans them
         // for each test; the compiled suite would spend nearly all of its time doing that)
-        self::$shared_file_storage_cache ??= new SharedStubFileStorageCacheProvider($this->testConfig);
         self::$shared_classlike_storage_cache ??= new SharedStubClassLikeStorageCacheProvider($this->testConfig);
+        self::$shared_file_storage_cache ??= new SharedStubFileStorageCacheProvider($this->testConfig, self::$shared_classlike_storage_cache);
 
         $providers = new Providers(
             $this->file_provider,
@@ -148,6 +148,7 @@ class TestCase extends BaseTestCase
         // the shared stub storages depend on the analyzed PHP version (version-specific stubs extend classes)
         self::$shared_file_storage_cache->php_version_id = $codebase->analysis_php_version_id;
         self::$shared_classlike_storage_cache->php_version_id = $codebase->analysis_php_version_id;
+        self::$shared_file_storage_cache->enabled = $codebase->classlike_storage_provider->cache === self::$shared_classlike_storage_cache;
 
         if ($taint_flow_tracking) {
             $this->project_analyzer->trackTaintedInputs();

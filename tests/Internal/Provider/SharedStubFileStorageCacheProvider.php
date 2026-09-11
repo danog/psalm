@@ -24,7 +24,10 @@ final class SharedStubFileStorageCacheProvider extends FileStorageCacheProvider
 {
     public int $php_version_id = 0;
 
-    public function __construct(Config $config)
+    /** Off while a test uses a class storage cache other than the shared one (the two must match). */
+    public bool $enabled = true;
+
+    public function __construct(Config $config, private readonly SharedStubClassLikeStorageCacheProvider $classlike_cache)
     {
         parent::__construct($config, '', false);
     }
@@ -32,7 +35,14 @@ final class SharedStubFileStorageCacheProvider extends FileStorageCacheProvider
     #[Override]
     public function writeToCache(FileStorage $storage, string $file_contents): void
     {
-        if (str_ends_with($storage->file_path, '.phpstub')) {
+        if ($this->enabled && str_ends_with($storage->file_path, '.phpstub')) {
+            // a cached file storage is only usable when every class of the file is in the shared class cache
+            // (a test may have swapped the codebase's class storage cache while the file was scanned)
+            foreach ($storage->classlikes_in_file as $fq_classlike_name_lc => $_) {
+                if (!$this->classlike_cache->hasStorage($storage->file_path, (string) $fq_classlike_name_lc, $file_contents)) {
+                    return;
+                }
+            }
             $this->cache->saveItem(strtolower($storage->file_path), $storage, $this->php_version_id . ':' . hash('xxh128', $file_contents));
         }
     }
@@ -40,7 +50,7 @@ final class SharedStubFileStorageCacheProvider extends FileStorageCacheProvider
     #[Override]
     public function getLatestFromCache(string $file_path, string $file_contents): ?FileStorage
     {
-        if (!str_ends_with($file_path, '.phpstub')) {
+        if (!$this->enabled || !str_ends_with($file_path, '.phpstub')) {
             return null;
         }
         return $this->cache->getItem(strtolower($file_path), $this->php_version_id . ':' . hash('xxh128', $file_contents));
