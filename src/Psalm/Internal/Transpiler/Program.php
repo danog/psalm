@@ -602,6 +602,7 @@ final class Program
                 );
                 continue;
             }
+            $this->types->context = $model->fqcn . '::$' . $name;
             $field = new FieldModel(
                 $name,
                 $this->types->map($prop_storage->type),
@@ -683,6 +684,7 @@ final class Program
                 continue;
             }
             $type = $cstorage->type ?? $cstorage->inferred_type;
+            $this->types->context = $model->fqcn . '::' . $name;
             $model->constants[$name] = new ConstModel(
                 $name,
                 $this->types->map($type),
@@ -920,7 +922,9 @@ final class Program
     private function resolveSignature(FunctionLikeStorage $storage, array &$param_types, RustType &$return_type, ?\PhpParser\Node $node = null): void
     {
         $param_types = [];
+        $fn = ($storage instanceof \Psalm\Storage\MethodStorage && $storage->defining_fqcln !== null ? $storage->defining_fqcln . '::' : '') . ($storage->cased_name ?? '{closure}');
         foreach ($storage->params as $param) {
+            $this->types->context = $fn . '() param $' . $param->name;
             $t = $this->types->map($param->type);
             if ($param->is_variadic) {
                 $t = RustType::list($t);
@@ -930,6 +934,7 @@ final class Program
             }
             $param_types[] = $t;
         }
+        $this->types->context = $fn . '() return';
         $return_type = $this->types->map($storage->return_type);
         if ($node instanceof \PhpParser\Node\FunctionLike) {
             $return_type = $this->extendShapeWithReturnedKeys($return_type, $node);

@@ -52,6 +52,7 @@ use function count;
 use function is_int;
 use function ksort;
 use function strtolower;
+use function substr;
 use function usort;
 
 /**
@@ -75,6 +76,18 @@ final class TypeMapper
 
     /** Class that `static`/`self` types refer to while mapping. */
     public ?string $current_class = null;
+
+    /** Where the type being mapped comes from (a member or a function body), for the map inventories. */
+    public ?string $context = null;
+
+    /** @var array<string, array<string, int>> context => Psalm type => count of arrays mapped to `Map<ArrayKey, _>` */
+    public array $array_key_sites = [];
+
+    /** @var array<string, array<string, int>> context => Psalm type => count of arrays mapped to `Map<i64, _>` */
+    public array $int_key_sites = [];
+
+    /** @var array<string, array<string, int>> context => shape id => count of shapes too wide for a struct (mapped to Map) */
+    public array $shape_map_sites = [];
 
     /** crate whose code is being emitted: types may only name classes of this crate and upstream ones */
     public int $current_crate = 0;
@@ -429,7 +442,25 @@ final class TypeMapper
 
     private function mapArray(Union $key, Union $value): RustType
     {
-        return RustType::map($this->mapKey($key), $this->mapValue($value));
+        $map = RustType::map($this->mapKey($key), $this->mapValue($value));
+        $this->recordMap($map, 'array<' . $key->getId() . ', ' . $value->getId() . '>');
+        return $map;
+    }
+
+    /**
+     * Inventory of the hash maps the program uses: PHP arrays should be lists, shapes or string-keyed maps
+     * (int-keyed maps rarely, array-key-keyed ones never).
+     */
+    private function recordMap(RustType $map, string $psalm): void
+    {
+        if ($this->context === null) {
+            return;
+        }
+        if ($map->params[0]->kind === RustType::ARRAY_KEY) {
+            $this->array_key_sites[$this->context][$psalm] = ($this->array_key_sites[$this->context][$psalm] ?? 0) + 1;
+        } elseif ($map->params[0]->kind === RustType::INT) {
+            $this->int_key_sites[$this->context][$psalm] = ($this->int_key_sites[$this->context][$psalm] ?? 0) + 1;
+        }
     }
 
     private function mapKey(Union $key): RustType
@@ -485,7 +516,12 @@ final class TypeMapper
         // optional key): one generic type, computed by Psalm from the combined keys and values
         if (count($props) > 32) {
             $generic = $t->getGenericArrayType();
-            return RustType::map($this->mapKey($generic->type_params[0]), $this->mapValue($generic->type_params[1]));
+            $map = RustType::map($this->mapKey($generic->type_params[0]), $this->mapValue($generic->type_params[1]));
+            if ($this->context !== null) {
+                $id = 'shape with ' . count($props) . ' keys: ' . substr($t->getId(), 0, 160);
+                $this->shape_map_sites[$this->context][$id] = ($this->shape_map_sites[$this->context][$id] ?? 0) + 1;
+            }
+            return $map;
         }
 
         if ($t->fallback_params !== null) {
@@ -501,7 +537,9 @@ final class TypeMapper
             if ($key->kind !== RustType::INT && $key->kind !== RustType::STR) {
                 $key = RustType::arrayKey();
             }
-            return RustType::map($key, $this->combine($value_types));
+            $map = RustType::map($key, $this->combine($value_types));
+            $this->recordMap($map, $t->getId());
+            return $map;
         }
 
         $fields = [];
