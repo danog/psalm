@@ -668,6 +668,10 @@ final class CastEmitter
         if ($to->kind === RustType::UNION) {
             return $this->casts->pickMember($to, $from) !== null;
         }
+        if ($from->kind === RustType::ANY_OBJECT && $to->kind === RustType::CLASS_) {
+            // any object narrows to a class through Mixed (a class of a later crate travels as AnyObject::Other)
+            return true;
+        }
         if ($from->kind === RustType::CLASS_ && $to->kind === RustType::ANY_OBJECT) {
             return true;
         }
