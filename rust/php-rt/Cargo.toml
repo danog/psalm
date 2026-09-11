@@ -7,6 +7,8 @@ edition = "2024"
 name = "php_rt"
 
 [dependencies]
+memchr = "2"
+mimalloc = { version = "0.1", default-features = false }
 hashbrown = "0.15"
 pcre2 = "0.2"
 foldhash = "0.1"

@@ -534,6 +534,18 @@ impl PhpCmp for Str {
     fn php_cmp(&self, o: &Self) -> Ordering {
         cmp_str(self.as_bytes(), o.as_bytes())
     }
+    fn loose_eq(&self, o: &Self) -> bool {
+        let (a, b) = (self.as_bytes(), o.as_bytes());
+        if a == b {
+            return true;
+        }
+        // PHP 8: two strings compare numerically only when both are numeric strings
+        let numeric_start = |s: &[u8]| s.first().is_some_and(|c| c.is_ascii_digit() || matches!(c, b' ' | b'\t' | b'\n' | b'\r' | b'+' | b'-' | b'.'));
+        if !numeric_start(a) || !numeric_start(b) {
+            return false;
+        }
+        cmp_str(a, b) == Ordering::Equal
+    }
 }
 impl PhpCmp for () {
     fn php_cmp(&self, _: &Self) -> Ordering {

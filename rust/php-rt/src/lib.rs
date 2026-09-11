@@ -43,6 +43,10 @@ pub use conv::Num;
 pub use output::*;
 pub use builtins::*;
 
+/// PHP programs allocate small objects constantly; mimalloc is markedly faster than the system allocator for that.
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 pub mod prelude {
     pub use crate::{Str, ArrayKey, List, Map, Late, Mixed, AnyObj, PhpObject, RtError, Flow, R, Never, never, dead, Num};
     pub use crate::refs::{PhpRef, Cell as PhpCell, new_cell, cell_of};

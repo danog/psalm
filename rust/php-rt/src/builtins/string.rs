@@ -76,6 +76,13 @@ pub fn substr(s: &Str, offset: i64, length: Option<i64>) -> Str {
         None => Str::empty(),
     }
 }
+/// `substr($s, $offset, $length) === $lit` without materializing the substring.
+pub fn substr_eq(s: &Str, offset: i64, length: Option<i64>, lit: &str) -> bool {
+    match resolve_range(s.len(), offset, length) {
+        Some((a, b)) => &s.as_bytes()[a..b] == lit.as_bytes(),
+        None => lit.is_empty(),
+    }
+}
 pub fn substr_count(hay: &Str, needle: &Str) -> i64 {
     if needle.is_empty() {
         return 0;

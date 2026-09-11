@@ -15,6 +15,17 @@ pub trait PhpObject: Any {
     fn class_ancestors(&self) -> &'static [&'static str];
     fn obj_id(&self) -> usize;
     fn as_any(&self) -> &dyn Any;
+    /// Program-wide class number assigned by the transpiler (0: not a generated class).
+    fn class_id(&self) -> u32 {
+        0
+    }
+    /// Class numbers of the class and of all its ancestors and interfaces.
+    fn class_ancestor_ids(&self) -> &'static [u32] {
+        &[]
+    }
+    fn instance_of_id(&self, id: u32) -> bool {
+        self.class_ancestor_ids().contains(&id)
+    }
     fn props(&self) -> Vec<(Str, Mixed)> {
         Vec::new()
     }
@@ -162,6 +173,14 @@ impl Mixed {
         match self {
             Mixed::Obj(o) => o.instance_of_name(lname),
             Mixed::Closure(_) => lname == "closure",
+            _ => false,
+        }
+    }
+    /// `instanceof` a generated class, by its program-wide number.
+    #[inline]
+    pub fn instance_of_id(&self, id: u32) -> bool {
+        match self {
+            Mixed::Obj(o) => o.instance_of_id(id),
             _ => false,
         }
     }

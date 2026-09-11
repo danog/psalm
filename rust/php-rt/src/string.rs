@@ -232,15 +232,7 @@ pub fn find_bytes(hay: &[u8], needle: &[u8], from: usize) -> Option<usize> {
     if needle.len() == 1 {
         return hay[from..].iter().position(|&c| c == needle[0]).map(|p| p + from);
     }
-    let last = hay.len().checked_sub(needle.len())?;
-    let mut i = from;
-    while i <= last {
-        if hay[i] == needle[0] && &hay[i..i + needle.len()] == needle {
-            return Some(i);
-        }
-        i += 1;
-    }
-    None
+    memchr::memmem::find(&hay[from..], needle).map(|p| p + from)
 }
 
 pub fn rfind_bytes(hay: &[u8], needle: &[u8], end: usize) -> Option<usize> {

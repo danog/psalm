@@ -81,10 +81,21 @@ pub fn fmod(a: f64, b: f64) -> f64 {
 /// `$a . $b`
 #[inline]
 pub fn concat<A: ToStr, B: ToStr>(a: A, b: B) -> Str {
-    let mut s = a.to_php_str();
+    let l = a.to_php_str();
     let r = b.to_php_str();
-    s.push_bytes(r.as_bytes());
-    s
+    // one exact-size allocation: the left operand is usually a shared handle (a variable's clone), so
+    // pushing into it would first copy it and then grow it
+    let (lb, rb) = (l.as_bytes(), r.as_bytes());
+    if rb.is_empty() {
+        return l;
+    }
+    if lb.is_empty() {
+        return r;
+    }
+    let mut out = Vec::with_capacity(lb.len() + rb.len());
+    out.extend_from_slice(lb);
+    out.extend_from_slice(rb);
+    Str::from_vec(out)
 }
 /// `$a .= $b`
 #[inline]
