@@ -680,13 +680,9 @@ final class CastEmitter
             $this->casts->needMixedTo($to);
             return;
         }
-        if (count($fc->concrete) > 8) {
-            // large enums (Node, CodeIssue, ...): narrowing through Mixed (one downcast attempt per concrete
-            // class of the target) instead of an arm per concrete class of the source
-            $this->casts->needMixedTo($to);
-            $w->line('impl php_rt::CastTo<' . $th . '> for ' . $fh . ' { fn cast_to(self) -> ' . $th . ' { ' . $this->conv($this->conv('self', $from, RustType::mixed()), RustType::mixed(), $to) . ' } }');
-            return;
-        }
+        // one arm per concrete class of the source, however large the enum: a conversion through Mixed
+        // (an Rc allocation plus a linear downcast chain over every concrete class of the target) on every
+        // node upcast/downcast dominated the profile of the parser traversal
         foreach ($fc->concrete as $c) {
             if ($c->isSubclassOf($tc)) {
                 $arms[] = $fh . '::' . $c->variant() . '(v) => ' . $this->wrapConcrete($tc, $c, 'v');
