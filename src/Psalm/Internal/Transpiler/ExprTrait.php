@@ -462,6 +462,13 @@ trait ExprTrait
         if ($this->isWidening($v->type, $inf)) {
             return $v;
         }
+        // a container read keeps its stored element types: a refinement Psalm made (`array<int, int>` for a
+        // stored `array<array-key, int>`, `list<TLiteralInt>` for a stored `list<Atomic>`) would otherwise be
+        // an element-wise conversion of the whole container on every read; elements narrow when they are read
+        $containers = [RustType::LIST, RustType::MAP];
+        if (in_array($v->type->kind, $containers, true) && in_array($inf->kind, $containers, true)) {
+            return $v;
+        }
         return new Val($this->casts->convert($v->code, $v->type, $inf), $inf);
     }
 

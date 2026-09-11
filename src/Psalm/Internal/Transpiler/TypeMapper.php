@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Psalm\Internal\Transpiler;
 
 use Psalm\Codebase;
+use Psalm\Internal\Type\TypeAlias\ClassTypeAlias;
+use Psalm\Type\Atomic\TTypeAlias;
 use Psalm\Type;
 use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\Scalar;
@@ -102,7 +104,7 @@ final class TypeMapper
             return RustType::mixed();
         }
 
-        $atomics = array_values($type->getAtomicTypes());
+        $atomics = $this->expandAliases(array_values($type->getAtomicTypes()));
         $nullable = false;
         $members = [];
         $has_true = false;
@@ -228,8 +230,42 @@ final class TypeMapper
         return $union;
     }
 
+    /**
+     * Type aliases (`@psalm-type` / `@psalm-import-type`) are stored unexpanded in method and property
+     * storages: replace them by their definitions.
+     *
+     * @param list<Atomic> $atomics
+     * @return list<Atomic>
+     */
+    private function expandAliases(array $atomics, int $depth = 0): array
+    {
+        $out = [];
+        foreach ($atomics as $atomic) {
+            if ($atomic instanceof TTypeAlias && $depth < 8) {
+                $declaring = $atomic->declaring_fq_classlike_name;
+                if ($this->codebase->classlikes->doesClassLikeExist(strtolower($declaring))) {
+                    $alias = $this->codebase->classlike_storage_provider->get($declaring)->type_aliases[$atomic->alias_name] ?? null;
+                    if ($alias instanceof ClassTypeAlias) {
+                        foreach ($this->expandAliases($alias->replacement_atomic_types, $depth + 1) as $replacement) {
+                            $out[] = $replacement;
+                        }
+                        continue;
+                    }
+                }
+            }
+            $out[] = $atomic;
+        }
+        return $out;
+    }
+
     public function mapAtomic(Atomic $atomic): RustType
     {
+        if ($atomic instanceof TTypeAlias) {
+            $expanded = $this->expandAliases([$atomic]);
+            if (count($expanded) !== 1 || $expanded[0] !== $atomic) {
+                return $this->map(new Union($expanded));
+            }
+        }
         if ($atomic instanceof TInt) {
             return RustType::int();
         }
