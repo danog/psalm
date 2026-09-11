@@ -145,10 +145,13 @@ class TestCase extends BaseTestCase
         $this->project_analyzer->initProjectFiles();
         $codebase = $this->project_analyzer->getCodebase();
 
-        // the shared stub storages depend on the analyzed PHP version (version-specific stubs extend classes)
-        self::$shared_file_storage_cache->php_version_id = $codebase->analysis_php_version_id;
-        self::$shared_classlike_storage_cache->php_version_id = $codebase->analysis_php_version_id;
-        self::$shared_file_storage_cache->enabled = $codebase->classlike_storage_provider->cache === self::$shared_classlike_storage_cache;
+        // the shared stub storages depend on the analyzed PHP version (version-specific stubs extend classes);
+        // a test class with its own setUp() (own providers) has none
+        if (self::$shared_file_storage_cache !== null && self::$shared_classlike_storage_cache !== null) {
+            self::$shared_file_storage_cache->php_version_id = $codebase->analysis_php_version_id;
+            self::$shared_classlike_storage_cache->php_version_id = $codebase->analysis_php_version_id;
+            self::$shared_file_storage_cache->enabled = $codebase->classlike_storage_provider->cache === self::$shared_classlike_storage_cache;
+        }
 
         if ($taint_flow_tracking) {
             $this->project_analyzer->trackTaintedInputs();
