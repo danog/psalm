@@ -708,7 +708,7 @@ trait ExprTrait
             if ($ft->kind === RustType::INT && preg_match('/^-?[0-9]+i64$/', $v->code)) {
                 return 'ArrayKey::Int(' . $v->code . ')';
             }
-            if ($ft->kind === RustType::STR && preg_match('/^Str::from_static\("((?:[^"\\]|\\.)*)"\)$/', $v->code, $m)
+            if ($ft->kind === RustType::STR && preg_match('/^Str::from_static\("((?:[^"\\\\]|\\\\.)*)"\)$/', $v->code, $m)
                 && !preg_match('/^(0|-?[1-9][0-9]{0,18})$/', stripcslashes($m[1]))
             ) {
                 return 'ArrayKey::from_static("' . $m[1] . '")';
