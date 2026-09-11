@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Psalm\Internal\Transpiler;
 
 use PhpParser\Node\Arg;
+use PhpParser\Node;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Scalar;
 
 use function array_map;
+use function is_numeric;
 use function count;
 use function implode;
 use function in_array;
@@ -782,8 +784,36 @@ final class Builtins
 
     private function f_in_array(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
-        $hay = $this->container($b, $args[1]->value);
         $strict = isset($args[2]) && $args[2]->value instanceof Expr\ConstFetch && strtolower($args[2]->value->name->toString()) === 'true';
+        // a short literal list of strings/ints: a chain of comparisons instead of a list
+        if ($args[1]->value instanceof Expr\Array_ && count($args[1]->value->items) > 0 && count($args[1]->value->items) <= 8) {
+            $lits = [];
+            $kind = null;
+            foreach ($args[1]->value->items as $item) {
+                if ($item->unpack || $item->key !== null) {
+                    $lits = null;
+                    break;
+                }
+                if ($item->value instanceof Node\Scalar\String_ && ($strict || !is_numeric($item->value->value)) && $kind !== 'int') {
+                    $kind = 'str';
+                    $lits[] = Names::rustStringLiteral($item->value->value);
+                } elseif ($item->value instanceof Node\Scalar\Int_ && $kind !== 'str') {
+                    $kind = 'int';
+                    $lits[] = $item->value->value . 'i64';
+                } else {
+                    $lits = null;
+                    break;
+                }
+            }
+            $needle = $lits !== null ? $b->expr($args[0]->value) : null;
+            if ($needle !== null && $kind === 'str' && $needle->type->kind === RustType::STR) {
+                return new Val('{ let __n: &Str = ' . Names::refOf($needle->code) . '; ' . implode(' || ', array_map(static fn(string $l) => '__n.as_bytes() == ' . $l . '.as_bytes()', $lits)) . ' }', RustType::bool());
+            }
+            if ($needle !== null && $kind === 'int' && $needle->type->kind === RustType::INT) {
+                return new Val('{ let __n: i64 = ' . $needle->code . '; ' . implode(' || ', array_map(static fn(string $l) => '__n == ' . $l, $lits)) . ' }', RustType::bool());
+            }
+        }
+        $hay = $this->container($b, $args[1]->value);
         $ht = $hay->type;
         $elem = $ht->kind === RustType::LIST ? $ht->inner() : $ht->params[1];
         $needle = $b->expr($args[0]->value);
