@@ -209,6 +209,7 @@ final class TestEmitter
         } else {
             [$iter, $kt, $vt] = $rows;
             $body->line('let __t = ' . $new . ';');
+            $body->line('__t.' . Names::method('setDataName') . '(to_str(&__key))?;');
             $args = [...$this->rowArgs($m, $vt, $first_dep_param), ...$dep_args];
             $this->emitInvocation($cls, $m, $body, $args, 'to_str(&__key)');
         }
