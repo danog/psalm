@@ -454,12 +454,14 @@ final class Scanner
      * Members a reflected definition of an internal class has and its stub lacks are kept when the stub
      * overrides the reflected storage in place; a cached stub storage gets them the same way.
      */
-    private function mergeReflectedMembers(ClassLikeStorage $stub, ClassLikeStorage $reflected): void
+    private function mergeReflectedMembers(ClassLikeStorage $stub, ClassLikeStorage $reflected): bool
     {
+        $changed = false;
         foreach ($reflected->methods as $method_name_lc => $method_storage) {
             if (isset($stub->methods[$method_name_lc])) {
                 continue;
             }
+            $changed = true;
             $stub->methods[$method_name_lc] = $method_storage;
             $method_id = new MethodIdentifier($stub->name, $method_name_lc);
             $stub->declaring_method_ids[$method_name_lc] ??= $method_id;
@@ -472,6 +474,7 @@ final class Scanner
             if (isset($stub->properties[$property_name])) {
                 continue;
             }
+            $changed = true;
             $stub->properties[$property_name] = $property_storage;
             $stub->declaring_property_ids[$property_name] ??= $stub->name;
             $stub->appearing_property_ids[$property_name] ??= $stub->name;
@@ -480,7 +483,32 @@ final class Scanner
             }
         }
         foreach ($reflected->constants as $const_name => $const_storage) {
-            $stub->constants[$const_name] ??= $const_storage;
+            if (!isset($stub->constants[$const_name])) {
+                $changed = true;
+                $stub->constants[$const_name] = $const_storage;
+            }
+        }
+        return $changed;
+    }
+
+    /**
+     * Marks a storage and, transitively, the classes populated from it for population again.
+     *
+     * @param array<string, true> $seen
+     */
+    private function unpopulate(ClassLikeStorage $storage, array $seen): void
+    {
+        $lc = strtolower($storage->name);
+        if (isset($seen[$lc])) {
+            return;
+        }
+        $seen[$lc] = true;
+        $storage->populated = false;
+        $this->codebase->classlike_storage_provider->makeNew($lc);
+        foreach ($storage->dependent_classlikes as $dependent_lc => $_) {
+            if ($this->codebase->classlike_storage_provider->has($dependent_lc)) {
+                $this->unpopulate($this->codebase->classlike_storage_provider->get($dependent_lc), $seen);
+            }
         }
     }
 
@@ -558,10 +586,9 @@ final class Scanner
                     $provider->remove($fq_classlike_name);
                     $this->codebase->exhumeClassLikeStorage($fq_classlike_name, $file_path);
                     $stub_storage = $provider->get($fq_classlike_name);
-                    if ($stub_storage !== $replaced) {
-                        // the traversal of a stub reuses the replaced storage, keeping whatever reflection knew
-                        // beyond the stub (e.g. ArrayObject::__serialize): merge those members into the stub's
-                        $this->mergeReflectedMembers($stub_storage, $replaced);
+                    if ($stub_storage !== $replaced && $this->mergeReflectedMembers($stub_storage, $replaced)) {
+                        // the stub storage and everything populated from it inherit the new members
+                        $this->unpopulate($stub_storage, []);
                     }
                     foreach ($replaced->dependent_classlikes as $dependent_name_lc => $_) {
                         if ($provider->has($dependent_name_lc)) {
