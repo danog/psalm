@@ -29,5 +29,11 @@ opt-level = 2
 [profile.fast.package.psalm_src]
 opt-level = 1
 
+# psalm_tests is test scaffolding (fixtures, data providers, the harness); it just calls into the analysis
+# code in psalm_src/psalm_base. Optimizing its 232 giant data-provider functions cost >10 min of opt-2
+# codegen for no runtime benefit, so build it unoptimized. Runtime speed comes from psalm_src/base.
+[profile.fast.package.psalm_tests]
+opt-level = 0
+
 [profile.fast.package.php-rt]
 opt-level = 3

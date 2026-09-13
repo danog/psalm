@@ -20,6 +20,14 @@
         <directory name="../php-parser/lib"/>
         <directory name="src"/>
         <directory name="tests"/>
+        <directory name="vendor/phpunit/phpunit/src"/>
+        <directory name="vendor/sebastian/comparator/src"/>
+        <directory name="vendor/sebastian/diff/src"/>
+        <directory name="vendor/sebastian/exporter/src"/>
+        <directory name="vendor/sebastian/object-reflector/src"/>
+        <directory name="vendor/sebastian/object-enumerator/src"/>
+        <directory name="vendor/sebastian/recursion-context/src"/>
+        <directory name="vendor/sebastian/type/src"/>
         <ignoreFiles>
             <directory name="tests/fixtures"/>
             <directory name="tests/EndToEnd"/>
@@ -36,7 +44,26 @@
             <directory name="vendor/symfony"/>
             <directory name="vendor/composer"/>
             <directory name="vendor/nikic"/>
-            <directory name="vendor/phpunit"/>
+            <directory name="vendor/phpunit/phpunit/src/Framework/MockObject"/>
+            <directory name="vendor/phpunit/phpunit/src/TextUI"/>
+            <directory name="vendor/phpunit/phpunit/src/Runner"/>
+            <directory name="vendor/phpunit/phpunit/src/Util/Log"/>
+            <directory name="vendor/phpunit/phpunit/src/Util/TestDox"/>
+            <directory name="vendor/phpunit/phpunit/src/Util/PHP"/>
+            <directory name="vendor/phpunit/phpunit/src/Util/Xml"/>
+            <directory name="vendor/phpunit/phpunit/src/Util/Annotation"/>
+            <file name="vendor/phpunit/phpunit/src/Util/Xml.php"/>
+            <file name="vendor/phpunit/phpunit/src/Util/Test.php"/>
+            <file name="vendor/phpunit/phpunit/src/Util/Blacklist.php"/>
+            <file name="vendor/phpunit/phpunit/src/Util/ExcludeList.php"/>
+            <file name="vendor/phpunit/phpunit/src/Util/GlobalState.php"/>
+            <file name="vendor/phpunit/phpunit/src/Framework/TestResult.php"/>
+            <file name="vendor/phpunit/phpunit/src/Framework/TestSuite.php"/>
+            <file name="vendor/phpunit/phpunit/src/Framework/DataProviderTestSuite.php"/>
+            <file name="vendor/phpunit/phpunit/src/Framework/TestSuiteIterator.php"/>
+            <file name="vendor/phpunit/phpunit/src/Framework/TestBuilder.php"/>
+            <file name="vendor/phpunit/phpunit/src/Framework/TestListener.php"/>
+            <file name="vendor/phpunit/phpunit/src/Framework/TestListenerDefaultImplementation.php"/>
         </ignoreFiles>
     </projectFiles>
 </psalm>
