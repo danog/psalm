@@ -8,10 +8,22 @@ use std::fmt;
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::rc::Rc;
 
+const HASH_SEED: u64 = 0x5eed_1234_abcd_9876;
+
+/// Hash of raw key bytes (string keys). Shared by `Str`, `&[u8]` and `ArrayKey::Str` so a query and a
+/// stored key of the same bytes always agree, and cached in the `Str`'s allocation (see `Str::hash_cached`).
 #[inline]
-fn hash_of<Q: Hash + ?Sized>(q: &Q) -> u64 {
-    let mut h = foldhash::fast::FixedState::with_seed(0x5eed_1234_abcd_9876).build_hasher();
-    q.hash(&mut h);
+pub(crate) fn hash_bytes(b: &[u8]) -> u64 {
+    let mut h = foldhash::fast::FixedState::with_seed(HASH_SEED).build_hasher();
+    h.write(b);
+    h.finish()
+}
+
+/// Hash of an integer key.
+#[inline]
+pub(crate) fn hash_i64(i: i64) -> u64 {
+    let mut h = foldhash::fast::FixedState::with_seed(HASH_SEED).build_hasher();
+    h.write_i64(i);
     h.finish()
 }
 
@@ -59,8 +71,8 @@ impl<K: MapKey, V> OrderedMap<K, V> {
         let entries = &self.entries;
         for (idx, e) in entries.iter().enumerate() {
             if let Some((k, _)) = e {
-                let h = hash_of(k);
-                self.table.insert_unique(h, idx, |&i| hash_of(&entries[i].as_ref().unwrap().0));
+                let h = k.map_hash();
+                self.table.insert_unique(h, idx, |&i| entries[i].as_ref().unwrap().0.map_hash());
             }
         }
     }
@@ -83,7 +95,7 @@ impl<K: MapKey, V> OrderedMap<K, V> {
         if !self.hashed() {
             return self.entries.iter().position(|e| matches!(e, Some((k, _)) if k.borrow() == q));
         }
-        let h = hash_of(q);
+        let h = q.map_hash();
         self.table.find(h, |&idx| self.key_at(idx).borrow() == q).copied()
     }
     #[inline]
@@ -129,9 +141,9 @@ impl<K: MapKey, V> OrderedMap<K, V> {
                 self.build_table();
             } else {
                 let entries = &self.entries;
-                let h = hash_of(&entries[idx].as_ref().unwrap().0);
+                let h = entries[idx].as_ref().unwrap().0.map_hash();
                 self.table.insert_unique(h, idx, |&i| match &entries[i] {
-                    Some((k, _)) => hash_of(k),
+                    Some((k, _)) => k.map_hash(),
                     None => unreachable!(),
                 });
             }
@@ -154,7 +166,7 @@ impl<K: MapKey, V> OrderedMap<K, V> {
                 self.build_table();
             }
         } else if self.hashed() {
-            let h = hash_of(&k);
+            let h = k.map_hash();
             if let Ok(e) = self.table.find_entry(h, |&i| i == idx) {
                 e.remove();
             }
@@ -183,8 +195,10 @@ impl<K: MapKey, V> OrderedMap<K, V> {
     }
 }
 
-/// Reference-counted, copy-on-write ordered map.
-pub struct Map<K, V>(Rc<OrderedMap<K, V>>);
+/// Reference-counted, copy-on-write ordered map. An empty map holds `None` (no allocation) — PHP
+/// constructs empty arrays constantly (every object collection field), so this keeps `Map::new()`
+/// allocation-free; the `Rc<OrderedMap>` is materialized only on the first write.
+pub struct Map<K, V>(Option<Rc<OrderedMap<K, V>>>);
 
 impl<K, V> Clone for Map<K, V> {
     #[inline]
@@ -194,20 +208,22 @@ impl<K, V> Clone for Map<K, V> {
 }
 
 impl<K: MapKey, V> Default for Map<K, V> {
+    #[inline]
     fn default() -> Self {
-        Map(Rc::new(OrderedMap::new()))
+        Map(None)
     }
 }
 
 pub struct MapIter<'a, K, V> {
-    map: &'a OrderedMap<K, V>,
+    map: Option<&'a OrderedMap<K, V>>,
     idx: usize,
     alias_idx: usize,
 }
 impl<'a, K: MapKey, V> Iterator for MapIter<'a, K, V> {
     type Item = (&'a K, &'a V);
     fn next(&mut self) -> Option<Self::Item> {
-        let entries = &self.map.entries;
+        let map = self.map?;
+        let entries = &map.entries;
         while self.idx < entries.len() {
             let i = self.idx;
             self.idx += 1;
@@ -216,11 +232,11 @@ impl<'a, K: MapKey, V> Iterator for MapIter<'a, K, V> {
             }
         }
         // aliased keys share the value of the entry they reference
-        if let Some(aliases) = &self.map.aliases {
+        if let Some(aliases) = &map.aliases {
             while self.alias_idx < aliases.len() {
                 let (a, c) = &aliases[self.alias_idx];
                 self.alias_idx += 1;
-                if let Some(idx) = self.map.find_direct(c) {
+                if let Some(idx) = map.find_direct(c) {
                     if let Some((_, v)) = &entries[idx] {
                         return Some((a, v));
                     }
@@ -234,14 +250,23 @@ impl<'a, K: MapKey, V> Iterator for MapIter<'a, K, V> {
 impl<K: MapKey, V> Map<K, V> {
     #[inline]
     pub fn new() -> Self {
-        Map(Rc::new(OrderedMap::new()))
+        Map(None)
     }
     pub fn with_capacity(n: usize) -> Self {
-        Map(Rc::new(OrderedMap::with_capacity(n)))
+        Map(Some(Rc::new(OrderedMap::with_capacity(n))))
+    }
+    /// Read view of the backing map; `None` for an unallocated (empty) map.
+    #[inline]
+    fn om(&self) -> Option<&OrderedMap<K, V>> {
+        self.0.as_deref()
+    }
+    #[inline]
+    fn cur_pos(&self) -> usize {
+        self.om().map_or(0, |m| m.pos)
     }
     #[inline]
     pub fn len(&self) -> usize {
-        self.0.len + self.0.aliases.as_ref().map_or(0, |a| a.len())
+        self.om().map_or(0, |m| m.len + m.aliases.as_ref().map_or(0, |a| a.len()))
     }
     #[inline]
     pub fn count(&self) -> i64 {
@@ -277,18 +302,23 @@ impl<K: MapKey, V> Map<K, V> {
     }
     #[inline]
     pub fn ptr_eq(&self, other: &Self) -> bool {
-        Rc::ptr_eq(&self.0, &other.0)
+        match (&self.0, &other.0) {
+            (Some(a), Some(b)) => Rc::ptr_eq(a, b),
+            (None, None) => true,
+            _ => false,
+        }
     }
     pub fn next_index(&self) -> i64 {
-        self.0.next_index
+        self.om().map_or(0, |m| m.next_index)
     }
     #[inline]
     pub fn get<Q: ?Sized + Hash + Eq + KeyQuery>(&self, q: &Q) -> Option<&V>
     where
         K: Borrow<Q>,
     {
-        let idx = self.0.find(q)?;
-        self.0.entries[idx].as_ref().map(|(_, v)| v)
+        let m = self.om()?;
+        let idx = m.find(q)?;
+        m.entries[idx].as_ref().map(|(_, v)| v)
     }
     /// Lookup that panics with a PHP-like message on a missing key.
     #[inline]
@@ -306,10 +336,10 @@ impl<K: MapKey, V> Map<K, V> {
     where
         K: Borrow<Q>,
     {
-        self.0.find(q).is_some()
+        self.om().and_then(|m| m.find(q)).is_some()
     }
     pub fn iter(&self) -> MapIter<'_, K, V> {
-        MapIter { map: &self.0, idx: 0, alias_idx: 0 }
+        MapIter { map: self.om(), idx: 0, alias_idx: 0 }
     }
     pub fn keys(&self) -> impl Iterator<Item = &K> {
         self.iter().map(|(k, _)| k)
@@ -319,8 +349,9 @@ impl<K: MapKey, V> Map<K, V> {
     }
     /// index of the first live entry at or after `i`
     fn live_from(&self, mut i: usize) -> Option<usize> {
-        while i < self.0.entries.len() {
-            if self.0.entries[i].is_some() {
+        let m = self.om()?;
+        while i < m.entries.len() {
+            if m.entries[i].is_some() {
                 return Some(i);
             }
             i += 1;
@@ -328,21 +359,22 @@ impl<K: MapKey, V> Map<K, V> {
         None
     }
     fn entry_at(&self, i: Option<usize>) -> Option<(&K, &V)> {
-        i.and_then(|i| self.0.entries[i].as_ref()).map(|(k, v)| (k, v))
+        let i = i?;
+        self.om()?.entries[i].as_ref().map(|(k, v)| (k, v))
     }
     /// `current()`: value at the internal pointer.
     pub fn ptr_current(&self) -> Option<&V> {
-        self.entry_at(self.live_from(self.0.pos)).map(|(_, v)| v)
+        self.entry_at(self.live_from(self.cur_pos())).map(|(_, v)| v)
     }
     /// `key()`: key at the internal pointer.
     pub fn ptr_key(&self) -> Option<&K> {
-        self.entry_at(self.live_from(self.0.pos)).map(|(k, _)| k)
+        self.entry_at(self.live_from(self.cur_pos())).map(|(k, _)| k)
     }
     pub fn first(&self) -> Option<(&K, &V)> {
         self.iter().next()
     }
     pub fn last(&self) -> Option<(&K, &V)> {
-        self.0.entries.iter().rev().flatten().next().map(|(k, v)| (k, v))
+        self.om()?.entries.iter().rev().flatten().next().map(|(k, v)| (k, v))
     }
     pub fn first_key(&self) -> Option<&K> {
         self.first().map(|(k, _)| k)
@@ -354,8 +386,9 @@ impl<K: MapKey, V> Map<K, V> {
     where
         K: Borrow<Q>,
     {
-        let idx = self.0.find(q)?;
-        Some(self.0.entries[..idx].iter().filter(|e| e.is_some()).count())
+        let m = self.om()?;
+        let idx = m.find(q)?;
+        Some(m.entries[..idx].iter().filter(|e| e.is_some()).count())
     }
     /// True when keys are exactly 0..n-1 in order.
     pub fn is_list(&self) -> bool {
@@ -373,14 +406,14 @@ impl<K: MapKey, V> Map<K, V> {
 impl<K: MapKey, V: Clone> Map<K, V> {
     #[inline]
     fn data(&mut self) -> &mut OrderedMap<K, V> {
-        Rc::make_mut(&mut self.0)
+        Rc::make_mut(self.0.get_or_insert_with(|| Rc::new(OrderedMap::new())))
     }
     pub fn make_mut(&mut self) -> &mut OrderedMap<K, V> {
         self.data()
     }
     /// `next()`: advance the internal pointer and return the value there.
     pub fn ptr_next(&mut self) -> Option<&V> {
-        let cur = self.live_from(self.0.pos);
+        let cur = self.live_from(self.cur_pos());
         let next = match cur {
             Some(i) => self.live_from(i + 1),
             None => None,
@@ -390,14 +423,14 @@ impl<K: MapKey, V: Clone> Map<K, V> {
     }
     /// `prev()`
     pub fn ptr_prev(&mut self) -> Option<&V> {
-        let mut i = self.live_from(self.0.pos).unwrap_or(0);
+        let mut i = self.live_from(self.cur_pos()).unwrap_or(0);
         loop {
             if i == 0 {
                 self.data().pos = usize::MAX;
                 return None;
             }
             i -= 1;
-            if self.0.entries[i].is_some() {
+            if self.om().map_or(false, |m| m.entries[i].is_some()) {
                 self.data().pos = i;
                 return self.ptr_current();
             }
@@ -410,7 +443,7 @@ impl<K: MapKey, V: Clone> Map<K, V> {
     }
     /// `end()`
     pub fn ptr_end(&mut self) -> Option<&V> {
-        let last = self.0.entries.iter().rposition(|e| e.is_some()).unwrap_or(usize::MAX);
+        let last = self.om().and_then(|m| m.entries.iter().rposition(|e| e.is_some())).unwrap_or(usize::MAX);
         self.data().pos = last;
         self.ptr_current()
     }
@@ -438,7 +471,7 @@ impl<K: MapKey, V: Clone> Map<K, V> {
     where
         K: Borrow<Q>,
     {
-        if self.0.find(q).is_none() {
+        if self.om().and_then(|m| m.find(q)).is_none() {
             return None;
         }
         let d = self.data();
@@ -478,14 +511,14 @@ impl<K: MapKey, V: Clone> Map<K, V> {
     where
         K: Borrow<Q>,
     {
-        let idx = self.0.find(q)?;
+        let idx = self.om()?.find(q)?;
         self.data().entries[idx].as_mut().map(|(_, v)| v)
     }
     pub fn idx_mut<Q: ?Sized + Hash + Eq + KeyQuery + fmt::Debug>(&mut self, q: &Q) -> &mut V
     where
         K: Borrow<Q>,
     {
-        match self.0.find(q) {
+        match self.om().and_then(|m| m.find(q)) {
             Some(idx) => self.data().entries[idx].as_mut().map(|(_, v)| v).unwrap(),
             None => panic!("Undefined array key {:?}", q),
         }
@@ -505,7 +538,7 @@ impl<K: MapKey, V: Clone> Map<K, V> {
         self.entry_or_insert_with(key, V::default)
     }
     pub fn pop(&mut self) -> Option<V> {
-        if self.0.len == 0 {
+        if self.om().map_or(0, |m| m.len) == 0 {
             return None;
         }
         let d = self.data();
@@ -538,7 +571,7 @@ impl<K: MapKey, V: Clone> Map<K, V> {
         *self = out;
     }
     pub fn shift(&mut self) -> Option<V> {
-        if self.0.len == 0 {
+        if self.om().map_or(0, |m| m.len) == 0 {
             return None;
         }
         let old = std::mem::take(self);
@@ -573,10 +606,15 @@ impl<K: MapKey, V: Clone> Map<K, V> {
         }
     }
     pub fn into_iter(self) -> std::vec::IntoIter<(K, V)> {
-        if self.0.aliases.is_some() {
-            return self.to_pairs().into_iter();
+        let rc = match self.0 {
+            None => return Vec::new().into_iter(),
+            Some(rc) => rc,
+        };
+        if rc.aliases.is_some() {
+            // honor aliases by materializing pairs through a temporary Map
+            return Map(Some(rc)).to_pairs().into_iter();
         }
-        match Rc::try_unwrap(self.0) {
+        match Rc::try_unwrap(rc) {
             Ok(d) => d.entries.into_iter().flatten().collect::<Vec<_>>().into_iter(),
             Err(rc) => rc.entries.iter().flatten().cloned().collect::<Vec<_>>().into_iter(),
         }
@@ -690,7 +728,7 @@ impl<K: MapKey + fmt::Debug, V: fmt::Debug> fmt::Debug for Map<K, V> {
 }
 impl<K: MapKey, V: PartialEq> PartialEq for Map<K, V> {
     fn eq(&self, other: &Self) -> bool {
-        if Rc::ptr_eq(&self.0, &other.0) {
+        if self.ptr_eq(other) {
             return true;
         }
         if self.len() != other.len() {
@@ -743,18 +781,18 @@ mod small_map_tests {
         // packed 1-based stack: writes at len+1 stay packed, popping the last keeps it packed
         let mut st: Map<i64, i64> = Map::new();
         for i in 1..=30 { st.insert(i, i * 2); }
-        assert!(st.0.packed && st.0.base == 1);
+        assert!(st.0.as_ref().unwrap().packed && st.0.as_ref().unwrap().base == 1);
         assert_eq!(st.get(&30), Some(&60));
         assert_eq!(st.get(&0), None);
         assert_eq!(st.remove(&30), Some(60));
-        assert!(st.0.packed);
+        assert!(st.0.as_ref().unwrap().packed);
         assert_eq!(st.get(&30), None);
         st.insert(30, 7);
-        assert!(st.0.packed);
+        assert!(st.0.as_ref().unwrap().packed);
         assert_eq!(st.get(&30), Some(&7));
         // removing a middle entry leaves the packed mode; lookups stay correct in both modes
         assert_eq!(st.remove(&5), Some(10));
-        assert!(!st.0.packed);
+        assert!(!st.0.as_ref().unwrap().packed);
         assert_eq!(st.get(&4), Some(&8));
         assert_eq!(st.get(&6), Some(&12));
         assert_eq!(st.get(&5), None);
@@ -765,7 +803,7 @@ mod small_map_tests {
         // a small non-sequential int map
         let mut sp: Map<i64, i64> = Map::new();
         sp.insert(10, 1); sp.insert(3, 2); sp.insert(11, 3);
-        assert!(!sp.0.packed);
+        assert!(!sp.0.as_ref().unwrap().packed);
         assert_eq!(sp.get(&3), Some(&2));
         assert_eq!(sp.get(&11), Some(&3));
         assert_eq!(sp.keys().cloned().collect::<Vec<_>>(), vec![10, 3, 11]);
@@ -775,5 +813,30 @@ mod small_map_tests {
         p.remove(&ArrayKey::Int(1));
         p.push(9);
         assert_eq!(p.keys().map(|k| k.clone()).collect::<Vec<_>>(), vec![ArrayKey::Int(0), ArrayKey::Int(2), ArrayKey::Int(3)]);
+    }
+
+    #[test]
+    fn string_keys_cross_query_types_agree_in_hashed_mode() {
+        use crate::string::Str;
+        // A string-keyed map grown past the hashed threshold must be findable by Str and by &[u8]
+        // (the cached-hash path and the raw-bytes path must produce identical hashes).
+        let mut m: Map<Str, i64> = Map::new();
+        for i in 0..50 {
+            m.insert(Str::from_string(format!("key_{i}")), i);
+        }
+        assert!(m.0.as_ref().unwrap().hashed());
+        for i in 0..50 {
+            let owned = Str::from_string(format!("key_{i}"));
+            assert_eq!(m.get(&owned), Some(&i), "Str query");
+            let bytes = format!("key_{i}").into_bytes();
+            assert_eq!(m.get(bytes.as_slice()), Some(&i), "&[u8] query");
+        }
+        assert_eq!(m.get(b"missing".as_slice()), None);
+        // a heap key whose hash was cached before insertion still matches
+        let k = Str::from_string("cached".to_string());
+        let _ = crate::key::KeyQuery::map_hash(&k); // force-cache the hash
+        m.insert(k.clone(), 999);
+        assert_eq!(m.get(&k), Some(&999));
+        assert_eq!(m.get(b"cached".as_slice()), Some(&999));
     }
 }

@@ -141,11 +141,18 @@ impl Default for ArrayKey {
 pub trait KeyQuery {
     /// The int this key denotes, if it is an int key.
     fn packed_index(&self) -> Option<i64>;
+    /// Hash used by the map's hash table. A query and a stored key of the same logical key must return
+    /// the same value; string keys reuse the hash cached in their allocation (see `Str::hash_cached`).
+    fn map_hash(&self) -> u64;
 }
 impl KeyQuery for i64 {
     #[inline]
     fn packed_index(&self) -> Option<i64> {
         Some(*self)
+    }
+    #[inline]
+    fn map_hash(&self) -> u64 {
+        crate::map::hash_i64(*self)
     }
 }
 impl KeyQuery for ArrayKey {
@@ -156,17 +163,32 @@ impl KeyQuery for ArrayKey {
             ArrayKey::Str(_) => None,
         }
     }
+    #[inline]
+    fn map_hash(&self) -> u64 {
+        match self {
+            ArrayKey::Int(i) => crate::map::hash_i64(*i),
+            ArrayKey::Str(s) => s.hash_cached(crate::map::hash_bytes),
+        }
+    }
 }
 impl KeyQuery for Str {
     #[inline]
     fn packed_index(&self) -> Option<i64> {
         None
     }
+    #[inline]
+    fn map_hash(&self) -> u64 {
+        self.hash_cached(crate::map::hash_bytes)
+    }
 }
 impl KeyQuery for [u8] {
     #[inline]
     fn packed_index(&self) -> Option<i64> {
         None
+    }
+    #[inline]
+    fn map_hash(&self) -> u64 {
+        crate::map::hash_bytes(self)
     }
 }
 

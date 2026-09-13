@@ -154,12 +154,7 @@ pub fn str_set_index(s: &mut Str, i: i64, c: &[u8]) {
     if idx < 0 {
         return;
     }
-    let v = s.make_mut();
-    let idx = idx as usize;
-    while v.len() <= idx {
-        v.push(b' ');
-    }
-    v[idx] = c.first().copied().unwrap_or(b' ');
+    s.set_index(idx as usize, c.first().copied().unwrap_or(b' '));
 }
 
 /// PHP string increment (`$s++`): "a" -> "b", "Az" -> "Ba", "zz" -> "aaa".
