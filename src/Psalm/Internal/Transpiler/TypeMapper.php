@@ -102,9 +102,14 @@ final class TypeMapper
         'generator' => 'Generator',
         'weakreference' => 'WeakReference',
         'weakmap' => 'WeakMap',
-        'iterator' => 'PhpIterator',
-        'iteratoraggregate' => 'IteratorAggregate',
-        'traversable' => 'Traversable',
+        // php-rt aliases the whole iterator family to one type:
+        //   `pub type {PhpIterator,Traversable,IteratorAggregate}<K,V> = Generator<K,V>`.
+        // They must therefore map to the SAME Rust name here, or a union that mixes them (e.g.
+        // Iterator|Traversable) emits two `CastTo<Generator>` impls for one Rust type (E0119). Unions
+        // dedupe members by rendered type, so a shared name collapses them to a single member.
+        'iterator' => 'Generator',
+        'iteratoraggregate' => 'Generator',
+        'traversable' => 'Generator',
     ];
 
     public function __construct(

@@ -346,7 +346,10 @@ final class CastEmitter
         }
         $fallback = $cls->isLeaf() ? 'panic!(' . Names::rustStringLiteral('Mixed value is not a ' . $cls->fqcn) . ')' : $h . '::Other__(self)';
         $w->line('impl php_rt::CastTo<' . $h . '> for Mixed { fn cast_to(self) -> ' . $h . ' { if let Mixed::Obj(o) = &self { match o.class_id() { ' . implode(' ', $arms) . ' _ => {} } } ' . $fallback . ' } }');
-        $w->line('impl php_rt::TryDowncast for ' . $h . ' { fn try_downcast(o: &AnyObj) -> Option<Self> { match o.class_id() { ' . implode(' ', $some_arms) . ' _ => {} } None } }');
+        // a subclass declared in a downstream crate (Psalm's Virtual* nodes extend php-parser nodes)
+        // is still an instance of this class: it lands in the escape variant instead of failing
+        $none = $cls->isLeaf() ? 'None' : 'if o.instance_of_id(' . $this->program->classId($cls) . ') { Some(' . $h . '::Other__(Mixed::Obj(o.clone()))) } else { None }';
+        $w->line('impl php_rt::TryDowncast for ' . $h . ' { fn try_downcast(o: &AnyObj) -> Option<Self> { match o.class_id() { ' . implode(' ', $some_arms) . ' _ => {} } ' . $none . ' } }');
         // AnyObject
         $w->line('impl php_rt::CastTo<AnyObject> for ' . $h . ' { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }');
         $w->line('impl php_rt::CastTo<' . $h . '> for AnyObject { fn cast_to(self) -> ' . $h . ' { cast::<' . $h . '>(cast::<Mixed>(self)) } }');
@@ -481,6 +484,13 @@ final class CastEmitter
             return; // emitted with the union enum
         }
         if ($fk === RustType::UNION) {
+            // If `to` is exactly a member of the union, emitUnion() already emitted this
+            // `CastTo<to> for union` impl; re-emitting it here is a duplicate (E0119).
+            foreach ($from->params as $um) {
+                if (!$this->isUnit($um) && $um->toRust() === $to->toRust()) {
+                    return;
+                }
+            }
             // narrowing to a non-member type: try each member that can convert
             $arms = [];
             foreach ($from->params as $m) {
@@ -507,6 +517,11 @@ final class CastEmitter
         if ($tk === RustType::UNION) {
             $member = $this->casts->pickMember($to, $from);
             if ($member !== null) {
+                // If `from` is exactly this member, emitUnion() already emitted the
+                // `CastTo<union> for from` impl; skip to avoid a duplicate (E0119).
+                if ($member->toRust() === $from->toRust()) {
+                    return;
+                }
                 $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ' . $from->toRust() . ' { fn cast_to(self) -> ' . $to->toRust() . ' { ' . $to->mangle() . '::' . $member->variantName() . '(' . $this->conv('self', $from, $member) . ') } }');
                 return;
             }

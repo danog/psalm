@@ -151,7 +151,20 @@ final class Names
     /** Fully qualified Rust path of a class handle type. */
     public static function classPath(string $fqcn): string
     {
-        return 'crate::' . self::modulePath($fqcn) . '::' . self::classShort($fqcn);
+        return 'crate::' . self::classModule($fqcn) . '::' . self::classShort($fqcn);
+    }
+
+    /**
+     * Module path (without crate prefix) for a class' OWN module. Each class is emitted into its own
+     * submodule (one file per class, mirroring the PHP source layout) so that no generated module becomes
+     * a giant compilation unit (a single 200k-line module made rustc's codegen exhaust memory). This is
+     * `<namespace>::<class_segment>`.
+     */
+    public static function classModule(string $fqcn): string
+    {
+        $parts = explode('\\', ltrim($fqcn, '\\'));
+        $short = array_pop($parts);
+        return self::modulePath($fqcn) . '::' . self::moduleSegment((string) $short);
     }
 
     /** Module path (without crate prefix) for a class' namespace. */

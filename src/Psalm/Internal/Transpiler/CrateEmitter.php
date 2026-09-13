@@ -83,7 +83,7 @@ final class CrateEmitter
             }
         }
         foreach ($project_classes as $cls) {
-            $w = $this->module($cls->crate, Names::modulePath($cls->fqcn));
+            $w = $this->classModule($cls);
             try {
                 $class_emitter->emit($cls, $w);
             } catch (\Throwable $e) {
@@ -91,7 +91,7 @@ final class CrateEmitter
             }
         }
         foreach ($project_classes as $cls) {
-            $w = $this->module($cls->crate, Names::modulePath($cls->fqcn));
+            $w = $this->classModule($cls);
             $cast_emitter->emitClassImpls($cls, $w);
         }
 
@@ -125,7 +125,7 @@ final class CrateEmitter
                 $done_copies[$k] = true;
                 $new = true;
                 $name = substr($k, strrpos($k, '::') + 2);
-                $class_emitter->emitSuperCopy($root, $m, $name, $this->module($root->crate, Names::modulePath($root->fqcn)));
+                $class_emitter->emitSuperCopy($root, $m, $name, $this->classModule($root));
             }
         } while ($new);
 
@@ -259,6 +259,18 @@ final class CrateEmitter
     private function module(int $crate, string $path): Writer
     {
         return $this->modules[$crate][$path] ??= new Writer();
+    }
+
+    /**
+     * The module a class's Rust items are written to. Each class gets its OWN submodule (one file per
+     * class, mirroring the PHP source layout) so no single generated module becomes a giant compilation
+     * unit — one 200k-line tests module made rustc's codegen exhaust memory. Class item PATHS
+     * (Names::classPath / ClassModel::ownPath / objPath) resolve to this same module, so references need
+     * no re-export.
+     */
+    private function classModule(ClassModel $cls): Writer
+    {
+        return $this->module($cls->crate, Names::classModule($cls->fqcn));
     }
 
     /** @var array<string, true> data files already emitted (by root-relative path) */

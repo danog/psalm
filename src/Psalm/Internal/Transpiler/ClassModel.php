@@ -114,12 +114,12 @@ final class ClassModel
 
     public function ownPath(): string
     {
-        return 'crate::' . Names::modulePath($this->fqcn) . '::' . $this->ownHandle();
+        return 'crate::' . Names::classModule($this->fqcn) . '::' . $this->ownHandle();
     }
 
     public function objPath(): string
     {
-        return 'crate::' . Names::modulePath($this->fqcn) . '::' . $this->objStruct();
+        return 'crate::' . Names::classModule($this->fqcn) . '::' . $this->objStruct();
     }
 
     /** The topmost ancestor (following `extends`) emitted into the same crate as this class. */
