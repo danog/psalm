@@ -19,6 +19,7 @@ use function assert;
  *
  * @psalm-type TokenName = 'properties-of'|'public-properties-of'|'protected-properties-of'|'private-properties-of'
  * @psalm-immutable
+ * @api
  */
 final class TPropertiesOf extends Atomic
 {

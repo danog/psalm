@@ -29,6 +29,7 @@ use Psalm\Type\TypeNode;
  * The parent type from which the classes descend may or may not be specified in the constructor.
  *
  * @psalm-immutable
+ * @api
  */
 class TClassString extends TString
 {

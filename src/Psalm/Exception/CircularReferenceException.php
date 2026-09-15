@@ -6,6 +6,9 @@ namespace Psalm\Exception;
 
 use Exception;
 
-final class CircularReferenceException extends Exception implements Resultable
+/**
+ * @api
+ */
+final class CircularReferenceException extends Exception
 {
 }

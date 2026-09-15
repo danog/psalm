@@ -37,6 +37,7 @@ use Psalm\Type\TypeNode;
  *
  * @psalm-api
  * @psalm-immutable
+ * @api
  */
 final class TKeyedArray extends Atomic
 {

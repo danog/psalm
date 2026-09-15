@@ -170,6 +170,9 @@ final class StatementsAnalyzer extends SourceAnalyzer
      */
     public readonly bool $owns_type_variable_tracker;
 
+    /**
+     * @psalm-mutation-free
+     */
     public function __construct(
         protected SourceAnalyzer $source,
         public NodeDataProvider $node_data,
@@ -190,10 +193,17 @@ final class StatementsAnalyzer extends SourceAnalyzer
             $this->owns_type_variable_tracker = true;
         }
 
-        if ($this->codebase->taint_flow_graph) {
-            $this->data_flow_graph = new TaintFlowGraph();
-        } elseif ($this->codebase->find_unused_variables) {
-            $this->data_flow_graph = new VariableUseGraph();
+        if ($this->codebase->taint_flow_graph
+            && $root_scope
+            && $this->codebase->config->trackTaintsInPath($this->getFilePath())
+        ) {
+            $this->data_flow_graph = $this->taint_flow_graph = $this->codebase->taint_flow_graph;
+        }
+        if ($this->codebase->find_unused_variables) {
+            $this->data_flow_graph = $this->variable_use_graph = new VariableUseGraph();
+        }
+        if ($this->taint_flow_graph && $this->variable_use_graph) {
+            $this->data_flow_graph = new CombinedFlowGraph($this->variable_use_graph, $this->taint_flow_graph);
         }
     }
 
@@ -473,6 +483,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
                                 $statements_analyzer->getFilePath(),
                                 $offset,
                                 $issue_type,
+                                $codebase->taint_flow_graph !== null,
                             );
                         }
                     }

@@ -6,6 +6,9 @@ namespace Psalm\Exception;
 
 use Exception;
 
-final class ScopeAnalysisException extends Exception implements Resultable
+/**
+ * @api
+ */
+final class ScopeAnalysisException extends Exception
 {
 }

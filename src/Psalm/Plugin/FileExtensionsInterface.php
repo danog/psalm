@@ -9,6 +9,9 @@ use Psalm\Internal\Analyzer\FileAnalyzer;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\Scanner\FileScanner;
 
+/**
+ * @api
+ */
 interface FileExtensionsInterface
 {
     /**

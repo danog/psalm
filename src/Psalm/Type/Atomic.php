@@ -82,6 +82,7 @@ use function strtolower;
 
 /**
  * @psalm-immutable
+ * @api
  */
 abstract class Atomic implements TypeNode, Stringable
 {

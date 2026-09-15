@@ -7,35 +7,28 @@ namespace Psalm\Internal\Provider;
 use Psalm\Config;
 use Psalm\Internal\Cache;
 use Psalm\Internal\Codebase\Analyzer;
+use Psalm\Internal\Codebase\MutationLevelResolver;
 
 /**
  * Used to determine which files reference other files, necessary for using the --diff
  * option from the command line.
  *
  * @psalm-import-type FileMapType from Analyzer
+ * @psalm-import-type MutationInfo from MutationLevelResolver
  * @internal
  */
 final class FileReferenceCacheProvider
 {
     private const REFERENCE_CACHE_NAME = 'references';
     private const CLASSLIKE_FILE_CACHE_NAME = 'classlike_files';
-    private const NONMETHOD_CLASS_REFERENCE_CACHE_NAME = 'file_class_references';
-    private const METHOD_CLASS_REFERENCE_CACHE_NAME = 'method_class_references';
     private const ANALYZED_METHODS_CACHE_NAME = 'analyzed_methods';
-    private const CLASS_METHOD_CACHE_NAME = 'class_method_references';
     private const METHOD_DEPENDENCIES_CACHE_NAME = 'class_method_dependencies';
-    private const CLASS_PROPERTY_CACHE_NAME = 'class_property_references';
-    private const CLASS_METHOD_RETURN_CACHE_NAME = 'class_method_return_references';
-    private const FILE_METHOD_RETURN_CACHE_NAME = 'file_method_return_references';
-    private const FILE_CLASS_MEMBER_CACHE_NAME = 'file_class_member_references';
-    private const FILE_CLASS_PROPERTY_CACHE_NAME = 'file_class_property_references';
     private const ISSUES_CACHE_NAME = 'issues';
     private const FILE_MAPS_CACHE_NAME = 'file_maps';
     private const TYPE_COVERAGE_CACHE_NAME = 'type_coverage';
-    private const METHOD_MISSING_MEMBER_CACHE_NAME = 'method_missing_member';
-    private const FILE_MISSING_MEMBER_CACHE_NAME = 'file_missing_member';
     private const UNKNOWN_MEMBER_CACHE_NAME = 'unknown_member_references';
     private const METHOD_PARAM_USE_CACHE_NAME = 'method_param_uses';
+    private const CODE_USE_GRAPH_CACHE_NAME = 'code_use_graph';
     /** @var Cache<array> */
     private readonly Cache $cache;
 
@@ -77,54 +70,6 @@ final class FileReferenceCacheProvider
     public function getCachedMethodMemberReferences(): ?array
     {
         return $this->cache->getItem(self::CLASS_METHOD_CACHE_NAME);
-    }
-
-    /** @return array<string, array<string, bool>>|null */
-    public function getCachedMethodDependencies(): ?array
-    {
-        return $this->cache->getItem(self::METHOD_DEPENDENCIES_CACHE_NAME);
-    }
-
-    /** @return array<string, array<string, bool>>|null */
-    public function getCachedMethodPropertyReferences(): ?array
-    {
-        return $this->cache->getItem(self::CLASS_PROPERTY_CACHE_NAME);
-    }
-
-    /** @return array<string, array<string, bool>>|null */
-    public function getCachedMethodMethodReturnReferences(): ?array
-    {
-        return $this->cache->getItem(self::CLASS_METHOD_RETURN_CACHE_NAME);
-    }
-
-    /** @return array<string, array<string, bool>>|null */
-    public function getCachedMethodMissingMemberReferences(): ?array
-    {
-        return $this->cache->getItem(self::METHOD_MISSING_MEMBER_CACHE_NAME);
-    }
-
-    /** @return array<string, array<string, bool>>|null */
-    public function getCachedFileMemberReferences(): ?array
-    {
-        return $this->cache->getItem(self::FILE_CLASS_MEMBER_CACHE_NAME);
-    }
-
-    /** @return array<string, array<string, bool>>|null */
-    public function getCachedFilePropertyReferences(): ?array
-    {
-        return $this->cache->getItem(self::FILE_CLASS_PROPERTY_CACHE_NAME);
-    }
-
-    /** @return array<string, array<string, bool>>|null */
-    public function getCachedFileMethodReturnReferences(): ?array
-    {
-        return $this->cache->getItem(self::FILE_METHOD_RETURN_CACHE_NAME);
-    }
-
-    /** @return array<string, array<string, bool>>|null */
-    public function getCachedFileMissingMemberReferences(): ?array
-    {
-        return $this->cache->getItem(self::FILE_MISSING_MEMBER_CACHE_NAME);
     }
 
     /** @return array<string, array<string, bool>>|null */
@@ -176,54 +121,6 @@ final class FileReferenceCacheProvider
     }
 
     /** @param array<string, array<string, bool>> $member_references */
-    public function setCachedMethodDependencies(array $member_references): void
-    {
-        $this->cache->saveItem(self::METHOD_DEPENDENCIES_CACHE_NAME, $member_references);
-    }
-
-    /** @param array<string, array<string, bool>> $property_references */
-    public function setCachedMethodPropertyReferences(array $property_references): void
-    {
-        $this->cache->saveItem(self::CLASS_PROPERTY_CACHE_NAME, $property_references);
-    }
-
-    /** @param array<string, array<string, bool>> $method_return_references */
-    public function setCachedMethodMethodReturnReferences(array $method_return_references): void
-    {
-        $this->cache->saveItem(self::CLASS_METHOD_RETURN_CACHE_NAME, $method_return_references);
-    }
-
-    /** @param array<string, array<string, bool>> $member_references */
-    public function setCachedMethodMissingMemberReferences(array $member_references): void
-    {
-        $this->cache->saveItem(self::METHOD_MISSING_MEMBER_CACHE_NAME, $member_references);
-    }
-
-    /** @param array<string, array<string, bool>> $member_references */
-    public function setCachedFileMemberReferences(array $member_references): void
-    {
-        $this->cache->saveItem(self::FILE_CLASS_MEMBER_CACHE_NAME, $member_references);
-    }
-
-    /** @param array<string, array<string, bool>> $property_references */
-    public function setCachedFilePropertyReferences(array $property_references): void
-    {
-        $this->cache->saveItem(self::FILE_CLASS_PROPERTY_CACHE_NAME, $property_references);
-    }
-
-    /** @param array<string, array<string, bool>> $method_return_references */
-    public function setCachedFileMethodReturnReferences(array $method_return_references): void
-    {
-        $this->cache->saveItem(self::FILE_METHOD_RETURN_CACHE_NAME, $method_return_references);
-    }
-
-    /** @param array<string, array<string, bool>> $member_references */
-    public function setCachedFileMissingMemberReferences(array $member_references): void
-    {
-        $this->cache->saveItem(self::FILE_MISSING_MEMBER_CACHE_NAME, $member_references);
-    }
-
-    /** @param array<string, array<string, bool>> $references */
     public function setCachedMixedMemberNameReferences(array $references): void
     {
         $this->cache->saveItem(self::UNKNOWN_MEMBER_CACHE_NAME, $references);
@@ -239,6 +136,18 @@ final class FileReferenceCacheProvider
     public function setCachedIssues(array $issues): void
     {
         $this->cache->saveItem(self::ISSUES_CACHE_NAME, $issues);
+    }
+
+    /**
+     * @param array{
+     *     edges: array<string, array<string, string>>,
+     *     node_files: array<string, string>,
+     *     mutation_info: array<string, MutationInfo>
+     * } $data
+     */
+    public function setCachedCodeUseGraph(array $data): void
+    {
+        $this->cache->saveItem(self::CODE_USE_GRAPH_CACHE_NAME, $data);
     }
 
     /**

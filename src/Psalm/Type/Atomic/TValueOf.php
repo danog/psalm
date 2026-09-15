@@ -22,6 +22,7 @@ use Psalm\Type\TypeNode;
  * Represents a value of an array or enum.
  *
  * @psalm-immutable
+ * @api
  */
 final class TValueOf extends Atomic
 {

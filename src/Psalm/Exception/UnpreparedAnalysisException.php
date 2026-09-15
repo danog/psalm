@@ -6,6 +6,9 @@ namespace Psalm\Exception;
 
 use Exception;
 
-final class UnpreparedAnalysisException extends Exception implements Resultable
+/**
+ * @api
+ */
+final class UnpreparedAnalysisException extends Exception
 {
 }

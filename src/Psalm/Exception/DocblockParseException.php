@@ -6,6 +6,9 @@ namespace Psalm\Exception;
 
 use Exception;
 
-class DocblockParseException extends Exception implements Resultable
+/**
+ * @api
+ */
+class DocblockParseException extends Exception
 {
 }

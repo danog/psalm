@@ -43,6 +43,7 @@ use function get_object_vars;
  *      different?: bool,
  *      parent_nodes?: array<string, DataFlowNode>
  * }
+ * @api
  */
 final class Union implements TypeNode
 {

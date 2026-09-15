@@ -22,6 +22,7 @@ use function assert;
  * Represents a closure where we know the return type and params
  *
  * @psalm-immutable
+ * @api
  */
 final class TClosure extends TNamedObject
 {
@@ -41,6 +42,10 @@ final class TClosure extends TNamedObject
      * @param array<string, bool> $byref_uses
      * @param Mutations::LEVEL_* $allowed_mutations
      * @param array<string, TNamedObject|TTemplateParam|TIterable|TObjectWithProperties|TCallableObject> $extra_types
+     * @param ?non-empty-lowercase-string $callable_id The id of the underlying function/method, when
+     *                                        known (e.g. for a first-class callable `foo(...)`). Metadata
+     *                                        only - it does not affect the structural type - and is
+     *                                        used to re-dispatch taint sinks/sources on invocation.
      */
     public function __construct(
         ?array $params = null,
@@ -49,6 +54,7 @@ final class TClosure extends TNamedObject
         public array $byref_uses = [],
         array $extra_types = [],
         bool $from_docblock = false,
+        public ?string $callable_id = null,
     ) {
         $this->params = $params;
         $this->return_type = $return_type;
@@ -90,6 +96,8 @@ final class TClosure extends TNamedObject
             $this->allowed_mutations,
             $this->byref_uses,
             $intersection ?? $this->extra_types,
+            $this->from_docblock,
+            $this->callable_id,
         );
     }
 
@@ -142,6 +150,8 @@ final class TClosure extends TNamedObject
             $this->allowed_mutations,
             $this->byref_uses,
             $intersection ?? $this->extra_types,
+            $this->from_docblock,
+            $this->callable_id,
         );
     }
 

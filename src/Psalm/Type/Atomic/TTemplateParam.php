@@ -22,6 +22,7 @@ use Psalm\Type\TypeNode;
  * denotes a template parameter that has been previously specified in a `@template` tag.
  *
  * @psalm-immutable
+ * @api
  */
 final class TTemplateParam extends Atomic
 {
