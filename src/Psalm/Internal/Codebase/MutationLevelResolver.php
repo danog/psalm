@@ -36,18 +36,6 @@ use function max;
  * call graph, so that call chains in any order and recursive cycles (direct,
  * mutual, or through closures) all converge.
  *
- * @psalm-type MutationInfo = array{
- *     intrinsic: Mutations::LEVEL_*,
- *     allowed: Mutations::LEVEL_*,
- *     callees: array<string, bool>,
- *     location: CodeLocation,
- *     cased_name: string,
- *     suppressed_issues: array<int, string>,
- *     class: ?string,
- *     start: int,
- *     fresh: bool,
- *     report: bool
- * }
  * @internal
  */
 final class MutationLevelResolver
@@ -68,9 +56,9 @@ final class MutationLevelResolver
         $callers = [];
 
         foreach ($infos as $node_id => $info) {
-            $levels[$node_id] = $info['intrinsic'];
+            $levels[$node_id] = $info->intrinsic;
 
-            foreach ($info['callees'] as $callee_id => $_) {
+            foreach ($info->callees as $callee_id => $_) {
                 $callers[$callee_id][$node_id] = true;
             }
         }
@@ -81,7 +69,7 @@ final class MutationLevelResolver
             $node_id = array_pop($queue);
             $level = $levels[$node_id];
 
-            foreach ($infos[$node_id]['callees'] as $callee_id => $internal_mutations_ok) {
+            foreach ($infos[$node_id]->callees as $callee_id => $internal_mutations_ok) {
                 // a callee that was never analysed (e.g. skipped) could do anything
                 $callee_level = $levels[$callee_id] ?? Mutations::LEVEL_ALL;
 
@@ -129,35 +117,35 @@ final class MutationLevelResolver
         foreach ($infos as $node_id => $info) {
             $level = $levels[$node_id];
 
-            if ($info['class'] !== null) {
-                $codebase->analyzer->addMutableClass($info['class'], $level);
+            if ($info->class !== null) {
+                $codebase->analyzer->addMutableClass($info->class, $level);
             }
 
-            if (!$info['fresh']) {
+            if (!$info->fresh) {
                 // analysed in a previous run: its issues come from the cache
                 continue;
             }
 
             $graph->markMutationInfoStale($node_id);
 
-            if (!$info['report'] || $level >= $info['allowed']) {
+            if (!$info->report || $level >= $info->allowed) {
                 continue;
             }
 
             IssueBuffer::maybeAdd(
                 new MissingPureAnnotation(
-                    $info['cased_name'] . ' must be marked @' . Mutations::TO_ATTRIBUTE_FUNCTIONLIKE[$level]
+                    $info->cased_name . ' must be marked @' . Mutations::TO_ATTRIBUTE_FUNCTIONLIKE[$level]
                     . ' to aid security analysis'
                     . ', run with --alter --issues=MissingPureAnnotation to fix this',
-                    $info['location'],
+                    $info->location,
                 ),
-                $info['suppressed_issues'],
+                $info->suppressed_issues,
             );
 
             if ($fix) {
-                $file_path = $info['location']->file_path;
+                $file_path = $info->location->file_path;
 
-                $stmt = self::findFunctionLike($codebase, $file_path, $info['start']);
+                $stmt = self::findFunctionLike($codebase, $file_path, $info->start);
 
                 if ($stmt !== null) {
                     FunctionDocblockManipulator::getForFunction(

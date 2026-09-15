@@ -22,6 +22,7 @@ use Psalm\Internal\Analyzer\FunctionLike\ReturnTypeCollector;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\FunctionCallReturnTypeFetcher;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Codebase\CodeUseGraph;
+use Psalm\Internal\Codebase\MutationInfo;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\FileManipulation\FunctionDocblockManipulator;
@@ -613,20 +614,20 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             } elseif ($storage->location && ($node_id = $this->getMutationNodeId()) !== null) {
                 // the final level depends on the callees' levels: resolved after analysis,
                 // which reports MissingPureAnnotation and queues the fix (see MutationLevelResolver)
-                $codebase->code_use_graph->addMutationInfo($node_id, [
-                    'intrinsic' => $this->intrinsic_mutations,
-                    'allowed' => $storage->allowed_mutations,
-                    'callees' => $this->deferred_callees,
-                    'location' => $storage->location,
-                    'cased_name' => $storage->cased_name ?? '{closure}',
-                    'suppressed_issues' => $storage->suppressed_issues,
-                    'class' => $storage instanceof MethodStorage ? $storage->defining_fqcln : null,
-                    'start' => (int) $this->function->getAttribute('startFilePos'),
-                    'fresh' => true,
+                $codebase->code_use_graph->addMutationInfo($node_id, new MutationInfo(
+                    $this->intrinsic_mutations,
+                    $storage->allowed_mutations,
+                    $this->deferred_callees,
+                    $storage->location,
+                    $storage->cased_name ?? '{closure}',
+                    $storage->suppressed_issues,
+                    $storage instanceof MethodStorage ? $storage->defining_fqcln : null,
+                    $this->function->getStartFilePos(),
+                    true,
                     // inline callbacks are not worth annotating, closures assigned to a variable are
-                    'report' => !$this->function instanceof Closure
+                    !$this->function instanceof Closure
                         || $this->function->getAttribute('assigned_var_id') !== null,
-                ]);
+                ));
             }
         }
 

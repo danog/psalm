@@ -8,13 +8,13 @@ use Psalm\Config;
 use Psalm\Internal\Cache;
 use Psalm\Internal\Codebase\Analyzer;
 use Psalm\Internal\Codebase\MutationLevelResolver;
+use Psalm\Internal\Codebase\MutationInfo;
 
 /**
  * Used to determine which files reference other files, necessary for using the --diff
  * option from the command line.
  *
  * @psalm-import-type FileMapType from Analyzer
- * @psalm-import-type MutationInfo from MutationLevelResolver
  * @internal
  */
 final class FileReferenceCacheProvider
