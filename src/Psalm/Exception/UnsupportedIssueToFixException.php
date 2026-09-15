@@ -6,7 +6,7 @@ namespace Psalm\Exception;
 
 use Exception;
 
-final class UnsupportedIssueToFixException extends Exception
+final class UnsupportedIssueToFixException extends Exception implements Resultable
 {
 
 }

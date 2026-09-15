@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<psalm
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns="https://getpsalm.org/schema/config"
+    name="Transpile php-parser (lib only, no phpunit-dependent tests)"
+    errorLevel="8"
+    throwExceptionOnError="0"
+    findUnusedCode="false"
+    xsi:schemaLocation="https://getpsalm.org/schema/config config.xsd"
+    allFunctionsGlobal="true"
+    allConstantsGlobal="true"
+    usePhpDocMethodsWithoutMagicCall="true"
+    cacheDirectory="build/psalm-cache-phpparser-lib"
+>
+    <projectFiles>
+        <directory name="../psalm-transpiler/src/Psalm/Internal/Transpiler/runtime-stubs"/>
+        <directory name="../php-parser/lib"/>
+        <ignoreFiles>
+            <directory name="vendor"/>
+        </ignoreFiles>
+    </projectFiles>
+</psalm>

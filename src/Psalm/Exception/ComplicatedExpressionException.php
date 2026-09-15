@@ -6,6 +6,6 @@ namespace Psalm\Exception;
 
 use Exception;
 
-final class ComplicatedExpressionException extends Exception
+final class ComplicatedExpressionException extends Exception implements Resultable
 {
 }

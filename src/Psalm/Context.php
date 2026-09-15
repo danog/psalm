@@ -707,11 +707,16 @@ final class Context
 
             $builder = null;
             foreach ($type->getAtomicTypes() as $atomic_type) {
-                if ($atomic_type instanceof DependentType
-                    && $atomic_type->getVarId() === $remove_var_id
-                ) {
+                if (!$atomic_type instanceof DependentType) {
+                    continue;
+                }
+                // SSA: bind the narrowed atomic to a single-typed local so the transpiler resolves its
+                // DependentType-only methods statically instead of via the dynamic protocol (Psalm records the
+                // narrowed type on this fresh variable's nodes, unlike the reused foreach variable).
+                $dependent_type = $atomic_type;
+                if ($dependent_type->getVarId() === $remove_var_id) {
                     $builder ??= $type->getBuilder();
-                    $builder->addType($atomic_type->getReplacement());
+                    $builder->addType($dependent_type->getReplacement());
                 }
             }
             if ($builder) {

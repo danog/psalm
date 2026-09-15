@@ -3,6 +3,8 @@
 #![allow(non_snake_case, non_camel_case_types, dead_code, unused_imports, ambiguous_glob_reexports, hidden_glob_reexports)]
 
 pub mod string;
+pub mod sym;
+pub mod token_kind;
 pub mod key;
 pub mod list;
 pub mod map;
@@ -27,12 +29,14 @@ pub mod data;
 pub mod testing;
 
 pub use string::Str;
+pub use sym::Sym;
+pub use token_kind::TokenKind;
 pub use key::ArrayKey;
 pub use list::List;
 pub use map::Map;
 pub use late::Late;
 pub use refs::{PhpRef, Cell as PhpCell, new_cell, cell_of};
-pub use mixed::{Mixed, AnyObj, PhpObject};
+pub use mixed::{Mixed, AnyObj, PhpObject, erase_dyn, unerase_dyn};
 pub use error::{RtError, Flow, R, Never, never, dead};
 pub use traits::*;
 pub use ops::*;
@@ -48,7 +52,7 @@ pub use builtins::*;
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 pub mod prelude {
-    pub use crate::{Str, ArrayKey, List, Map, Late, Mixed, AnyObj, PhpObject, RtError, Flow, R, Never, never, dead, Num};
+    pub use crate::{Str, Sym, ArrayKey, List, Map, Late, Mixed, AnyObj, PhpObject, RtError, Flow, R, Never, never, dead, Num};
     pub use crate::refs::{PhpRef, Cell as PhpCell, new_cell, cell_of};
     pub use crate::key::MapKey;
     pub use crate::{list, map, cat, sfmt, sprintf, impl_enum_handle};

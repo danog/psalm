@@ -55,6 +55,33 @@ pub trait PhpObject: Any {
             name
         ))))
     }
+
+    /// Cross-hierarchy ("sideways") cast for the closed world, registry-free. A concrete class
+    /// overrides this to return, for each ancestor-hierarchy dispatch trait `H__Dyn` it implements
+    /// (identified by the transpiler's `hid` = the hierarchy's class id), `self` viewed as
+    /// `Rc<dyn H__Dyn>`, type-erased via [`erase_dyn`]. The caller — which statically knows the target
+    /// hierarchy — reconstructs it with [`unerase_dyn`]. `None` means the object is not of that
+    /// hierarchy. No global registry: the vtable travels with the object. `self: Rc<Self>` so the
+    /// returned trait object shares the object's refcount.
+    fn query(self: Rc<Self>, _hid: u32) -> Option<*mut ()> {
+        None
+    }
+}
+
+/// Type-erase an `Rc<dyn Trait>` (a fat pointer) to a thin pointer, soundly on stable Rust by boxing
+/// it. Pairs with [`unerase_dyn`]. Used by generated `PhpObject::query` implementations.
+#[inline]
+pub fn erase_dyn<T: ?Sized>(rc: Rc<T>) -> *mut () {
+    Box::into_raw(Box::new(rc)) as *mut ()
+}
+
+/// Reconstruct an `Rc<dyn Trait>` erased by [`erase_dyn`].
+///
+/// # Safety
+/// `e` must be a pointer returned by [`erase_dyn`]/`query` for the *same* trait `T`, consumed once.
+#[inline]
+pub unsafe fn unerase_dyn<T: ?Sized>(e: *mut ()) -> Rc<T> {
+    *Box::from_raw(e as *mut Rc<T>)
 }
 
 pub type AnyObj = Rc<dyn PhpObject>;

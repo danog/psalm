@@ -328,6 +328,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "psalm_mono"
+version = "0.1.0"
+dependencies = [
+ "libtest-mimic",
+ "php-rt",
+]
+
+[[package]]
 name = "psalm_src"
 version = "0.1.0"
 dependencies = [

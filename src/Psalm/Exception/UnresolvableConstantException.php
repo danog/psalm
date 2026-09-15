@@ -6,7 +6,7 @@ namespace Psalm\Exception;
 
 use Exception;
 
-final class UnresolvableConstantException extends Exception
+final class UnresolvableConstantException extends Exception implements Resultable
 {
     /**
      * @psalm-mutation-free

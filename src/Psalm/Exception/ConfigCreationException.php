@@ -6,6 +6,6 @@ namespace Psalm\Exception;
 
 use Exception;
 
-final class ConfigCreationException extends Exception
+final class ConfigCreationException extends Exception implements Resultable
 {
 }
