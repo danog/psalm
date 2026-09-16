@@ -59,13 +59,15 @@ final class Transpiler
     public array $classes = [];
 
     /** @var array<int, FunctionRecord> statement analyzer id => currently recorded function */
-    private array $active = [];
+    /** @var \WeakMap<StatementsAnalyzer, PendingRecord> per-statement snapshots of a body being analyzed, keyed by the live analyzer object (object ids are reused once an analyzer is freed) */
+    private \WeakMap $active;
 
     private function __construct(
         public string $out_dir,
         public Config $config,
         public string $root_dir,
     ) {
+        $this->active = new \WeakMap();
     }
 
     /**
@@ -257,36 +259,37 @@ final class Transpiler
         $record->addVarTypes($context->vars_in_scope);
 
         // statements were recorded while the body was being analyzed, keyed by analyzer
-        $key = spl_object_id($statements_analyzer);
-        if (isset($this->active[$key])) {
-            $pending = $this->active[$key];
+        if (isset($this->active[$statements_analyzer])) {
+            $pending = $this->active[$statements_analyzer];
             $record->stmt_vars = $pending->stmt_vars;
             foreach ($pending->var_types as $var_id => $types) {
                 foreach ($types as $type) {
                     $record->var_types[$var_id][] = $type;
                 }
             }
-            unset($this->active[$key]);
+            unset($this->active[$statements_analyzer]);
         }
 
+        if (getenv('DBG_REC') && $node instanceof ClassMethod && $node->name->name === getenv('DBG_REC')) {
+            $t = $record->var_types['$directory'] ?? [];
+            fwrite(STDERR, "[rec] {$record->fq_class_name}::{$node->name->name} self={$context->self} key=" . spl_object_id($statements_analyzer) . " pending=" . (isset($pending) ? 'yes' : 'no') . " directory=" . implode('|', array_map(static fn($u) => $u->getId(), $t)) . " exit=" . (isset($context->vars_in_scope['$directory']) ? $context->vars_in_scope['$directory']->getId() : '-') . "\n");
+        }
         $this->functions[spl_object_id($node) . '@' . strtolower((string) $record->fq_class_name)] = $record;
     }
 
     public function recordStatement(StatementsAnalyzer $statements_analyzer, Stmt $stmt, Context $context): void
     {
-        $key = spl_object_id($statements_analyzer);
-
-        if (!isset($this->active[$key])) {
+        if (!isset($this->active[$statements_analyzer])) {
             $file_path = $statements_analyzer->getFilePath();
             if (!$this->config->isInProjectDirs($file_path)) {
                 return;
             }
             // a placeholder record; the real one is created when the function-like finishes
-            $this->active[$key] = new PendingRecord();
+            $this->active[$statements_analyzer] = new PendingRecord();
         }
 
-        $this->active[$key]->stmt_vars[$stmt] = $context->vars_in_scope;
-        $this->active[$key]->addVarTypes($context->vars_in_scope);
+        $this->active[$statements_analyzer]->stmt_vars[$stmt] = $context->vars_in_scope;
+        $this->active[$statements_analyzer]->addVarTypes($context->vars_in_scope);
     }
 
     public function recordClassLike(ClassLikeAnalyzer $analyzer, ClassLike $node, ClassLikeStorage $storage): void
@@ -328,6 +331,9 @@ final class Transpiler
             if ($storage->return_type === null) {
                 $storage->return_type = $type;
                 $n++;
+                if (getenv('DBG_REC')) {
+                    fwrite(STDERR, "[inferred-return] " . ($storage->cased_name ?? '?') . ' => ' . $type->getId() . "\n");
+                }
             }
         }
         $this->inferred_return_types = [];
@@ -339,7 +345,7 @@ final class Transpiler
     {
         $this->functions = [];
         $this->classes = [];
-        $this->active = [];
+        $this->active = new \WeakMap();
     }
 
     public function emit(Codebase $codebase): void

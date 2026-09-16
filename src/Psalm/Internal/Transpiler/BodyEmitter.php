@@ -282,6 +282,14 @@ final class BodyEmitter
                     $psalm_names[(string) $__t] = true;
                 }
                 \fwrite(\STDERR, '[mixed-var] $' . $name . ' :: ' . $rust->toRust() . ' <= ' . implode(' , ', array_keys($psalm_names)) . ' @ ' . $this->type_context . "\n");
+                if (getenv('DBG_REC') && $name === getenv('DBG_REC')) {
+                    foreach ($this->record->stmt_vars as $__st) {
+                        $__vars = $this->record->stmt_vars[$__st];
+                        if (isset($__vars['$' . $name])) {
+                            \fwrite(\STDERR, "    stmt L" . $__st->getStartLine() . ' ' . $__st::class . ' => ' . $__vars['$' . $name]->getId() . "\n");
+                        }
+                    }
+                }
             }
             if (($rust->kind === RustType::MIXED || ($rust->kind === RustType::UNION && $real_members >= 2)) && count($types) >= 2) {
                 $psalm_names = [];

@@ -155,6 +155,8 @@ final class XmlNode
 /**
  * @implements ArrayAccess<array-key, SimpleXMLElement|string|null>
  * @implements Iterator<string, SimpleXMLElement>
+ * @psalm-no-seal-properties
+ * @psalm-no-seal-methods
  */
 class SimpleXMLElement implements Stringable, Countable, ArrayAccess, Iterator
 {
@@ -400,6 +402,7 @@ class SimpleXMLElement implements Stringable, Countable, ArrayAccess, Iterator
  * @property ?DOMDocument $ownerDocument
  * @property ?DOMNamedNodeMap $attributes
  * @property string $tagName
+ * @psalm-no-seal-properties
  */
 class DOMNode
 {
@@ -592,6 +595,7 @@ class DOMElement extends DOMNode
 
 /**
  * @property ?DOMElement $documentElement
+ * @psalm-no-seal-properties
  */
 class DOMDocument extends DOMNode
 {
