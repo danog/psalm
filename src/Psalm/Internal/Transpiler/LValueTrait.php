@@ -140,27 +140,14 @@ trait LValueTrait
                 }
                 if ($arms_get !== []) {
                     $bc = $base->code;
-                    // A union member may be an immutable Rc<T> whose set_ is `&mut self` (make_mut) — the set match must
-                    // then bind `__o` mutably. When the base is a writable local, match on `&mut` the raw binding
-                    // (&mut also works for RefCell members' &self set_ via autoref); handle Late/Option like the
-                    // immutable-local class write-path. Otherwise fall back to matching the owned value.
-                    $set_subject = $bc;
-                    if ($e->var instanceof Expr\Variable && is_string($e->var->name) && $e->var->name !== 'this'
-                        && $this->isWritableLocal($e->var->name)
-                    ) {
-                        $vn = $e->var->name;
-                        $mb = Names::var($vn);
-                        if (!empty($this->late[$vn])) {
-                            $mb .= '.get_mut()';
-                        } elseif ($this->varType($vn)->kind === RustType::OPTION) {
-                            $mb .= '.as_mut().unwrap()';
-                        }
-                        $set_subject = '&mut ' . $mb;
-                    }
+                    // NB: an immutable Rc<T> union member's set_ is `&mut self` and can't be dispatched on the owned
+                    // `$bc` match here (would need &mut of the narrowed value, but the raw binding has the wider storage
+                    // union type — matching `&mut binding` with narrowed arms fails E0308). Rare (Atomic TCallable/
+                    // TClosure union writes under HIER_CONCRETE); left as-is (RefCell members' &self set_ works).
                     return new Place(
                         $inf,
                         fn() => '(match ' . $bc . ' { ' . implode(', ', $arms_get) . ', _ => unreachable!() })',
-                        fn(string $v) => '{ let __v = ' . $v . '; match ' . $set_subject . ' { ' . implode(', ', $arms_set) . ', _ => unreachable!() } }',
+                        fn(string $v) => '{ let __v = ' . $v . '; match ' . $bc . ' { ' . implode(', ', $arms_set) . ', _ => unreachable!() } }',
                     );
                 }
             }
