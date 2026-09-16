@@ -159,18 +159,6 @@ final class FileReferenceCacheProvider
         $this->cache->saveItem(self::METHOD_DEPENDENCIES_CACHE_NAME, $dependencies);
     }
 
-    /**
-     * @param array{
-     *     edges: array<string, array<string, string>>,
-     *     node_files: array<string, string>,
-     *     mutation_info: array<string, \Psalm\Internal\Codebase\MutationInfo>
-     * } $data
-     */
-    public function setCachedCodeUseGraph(array $data): void
-    {
-        $this->cache->saveItem(self::CODE_USE_GRAPH_CACHE_NAME, $data);
-    }
-
     /** @param array<string, array<int, \Psalm\Internal\Analyzer\IssueData>> $issues */
     public function setCachedIssues(array $issues): void
     {
