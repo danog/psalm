@@ -194,11 +194,11 @@ final class Program
         // SourceControlInfo-1; validated by a paired ConstantTest = 131/7/8 identical converted-vs-baseline, and
         // smoke identical). AUTO_IMMUTABLE_HIER can still override the cap (0 disables) for experiments.
         $cap = getenv('AUTO_IMMUTABLE_HIER') !== false ? (int) getenv('AUTO_IMMUTABLE_HIER') : 64;
-        // EXPERIMENT (env HIER_CONCRETE=N): also convert hierarchies with a CONCRETE base and/or concrete-non-leaf
-        // members (e.g. CodeLocation; the Atomic TString/TInt/TArray shape) up to N members. A concrete-non-leaf must
-        // itself be Rc<T> for its own Own struct while ALSO being a variant of its handle enum. Off by default (the
-        // deployed default handles only abstract-root all-leaf hierarchies, which are validated green).
-        $concrete_cap = getenv('HIER_CONCRETE') !== false ? (int) getenv('HIER_CONCRETE') : 0;
+        // Convert hierarchies with a CONCRETE base and/or concrete-non-leaf members (CodeLocation; the hot Type\Atomic
+        // TString/TInt/TArray shape) up to N members — a concrete-non-leaf is emitted Rc<T> for its Own struct while
+        // ALSO a variant of its handle enum. DEPLOYED 2026-09-16 (default cap 256): the whole Atomic hierarchy (70
+        // members) + CodeLocation convert; build green + smoke identical (55/7,81/26,122/25). HIER_CONCRETE=0 disables.
+        $concrete_cap = getenv('HIER_CONCRETE') !== false ? (int) getenv('HIER_CONCRETE') : 256;
         if ($concrete_cap > 0) {
             $this->computeHierarchyImmutableConcrete($concrete_cap);
         }
