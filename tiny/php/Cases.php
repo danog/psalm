@@ -241,6 +241,49 @@ function case_private_method_borrow(): string
     return (string) $c->total(new A(5));
 }
 
+// ---- feature: &T borrowed param on a leaf class's own public method -------
+
+final class LeafSvc
+{
+    public function describe(A $a): int
+    {
+        return $a->a * 2;
+    }
+}
+
+function case_leaf_public_borrow(): string
+{
+    $s = new LeafSvc();
+    $x = new A(6);
+    return (string) ($s->describe($x) + $s->describe($x));
+}
+
+// ---- safety: a dispatched (interface) method param must stay OWNED ---------
+
+interface Handler
+{
+    public function handle(A $a): int;
+}
+
+final class HandlerImpl implements Handler
+{
+    public function handle(A $a): int
+    {
+        return $a->a;
+    }
+}
+
+function useHandler(Handler $h, A $a): int
+{
+    return $h->handle($a);
+}
+
+function case_interface_method_owned(): string
+{
+    $h = new HandlerImpl();
+    return (string) useHandler($h, new A(9));
+}
+
 // ---- feature: &self call on a Late-local receiver borrows (no clone) ------
 
 final class Counter
@@ -292,6 +335,8 @@ function run_all(): string
         . check('receiver_move', case_receiver_move(), '11')
         . check('borrow_param', case_borrow_param(), '42425')
         . check('private_method_borrow', case_private_method_borrow(), '210')
+        . check('leaf_public_borrow', case_leaf_public_borrow(), '24')
+        . check('interface_method_owned', case_interface_method_owned(), '9')
         . check('late_receiver_borrow', case_late_receiver_borrow(), '00')
         . check('closure_capture', case_closure_capture(), '8');
 }

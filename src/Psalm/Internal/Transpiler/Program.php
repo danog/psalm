@@ -1614,7 +1614,37 @@ final class Program
      */
     private function computeMethodBorrowParams(MethodModel $method): void
     {
-        if (!$method->isPrivate() || $method->node === null) {
+        if ($method->node === null) {
+            return;
+        }
+        // Borrow-eligible only where the method has a single implementation reachable through one signature:
+        //   (a) private methods -- never overridden, never dispatched; or
+        //   (b) a leaf class's own concrete instance method that overrides/implements nothing -- it is reachable
+        //       only via a direct call on the concrete type (a dispatch enum only routes an interface/base method
+        //       NAME to overriders, which this isn't), so its `&T` signature can't diverge from a sibling's.
+        // Public/protected methods that participate in dispatch are excluded: their signature must stay uniform
+        // across the whole override set, which needs a cross-implementation agreement pass (not yet done).
+        // Constructors (incl. the dispatched magic__construct) are reached through `new`/super-copy paths that
+        // pass owned values and whose signatures aren't borrow-aware; never borrow them.
+        $lc = $method->lc();
+        if ($lc === '__construct' || $lc === 'magic__construct'
+            || isset($method->declaring->constructionMethods()[$lc])
+        ) {
+            return;
+        }
+        $eligible = $method->isPrivate();
+        if (!$eligible
+            && !$method->isStatic()
+            && !$method->isAbstract()
+            && $method->declaring->isLeaf()
+            && $method->declaring === $method->origin()->declaring
+            // overridden_method_ids on the CLASS storage covers both parent overrides and interface
+            // implementations -- a method sharing a name with a base/interface contract is dispatched.
+            && ($method->declaring->storage->overridden_method_ids[$lc] ?? []) === []
+        ) {
+            $eligible = true;
+        }
+        if (!$eligible) {
             return;
         }
         $method->borrow_params = $this->borrowSafeParams($method->node->stmts ?? [], $method->node->params, $method->param_types);
