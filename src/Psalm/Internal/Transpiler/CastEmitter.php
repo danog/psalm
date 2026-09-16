@@ -149,7 +149,12 @@ final class CastEmitter
                 $cn[] = $this->memberPat($name, $m, 'v') . ' => ' . ($obj ? 'php_rt::PhpObject::class_name(v)' : 'panic!("get_class(): Argument #1 ($object) must be of type object")');
                 $oi[] = $this->memberPat($name, $m, 'v') . ' => ' . ($obj ? 'php_rt::PhpObject::obj_id(v)' : 'panic!("spl_object_id(): Argument #1 ($object) must be of type object")');
             }
-            $w->line('impl ' . $name . ' { pub fn class_name(&self) -> &\'static str { match self { ' . implode(', ', $cn) . ' } } pub fn obj_id(&self) -> usize { match self { ' . implode(', ', $oi) . ' } } }');
+            $ts = [];
+            foreach ($u->params as $m) {
+                $obj = $m->kind === RustType::CLASS_ || $m->kind === RustType::ANY_OBJECT;
+                $ts[] = $this->memberPat($name, $m, 'v') . ' => ' . ($obj ? 'php_rt::PhpObject::php_to_string(v)' : ($m->kind === RustType::STR ? 'Some(v.clone())' : 'None'));
+            }
+            $w->line('impl ' . $name . ' { pub fn class_name(&self) -> &\'static str { match self { ' . implode(', ', $cn) . ' } } pub fn obj_id(&self) -> usize { match self { ' . implode(', ', $oi) . ' } } pub fn php_to_string(&self) -> Option<Str> { match self { ' . implode(', ', $ts) . ' } } }');
         }
         // member accessors / predicates
         foreach ($u->params as $m) {
@@ -366,6 +371,39 @@ final class CastEmitter
             return $pat . 'Less';
         }
         return $pat . 'Greater';
+    }
+
+    /**
+     * `$code` (a value of the class type `$m`, a hierarchy member of a source union) wrapped into the target
+     * union `$to` through the target members that are subclasses of `$m`: a typed downcast chain, or null.
+     */
+    private function downcastArm(string $code, RustType $m, RustType $to): ?string
+    {
+        if ($m->kind !== RustType::CLASS_) {
+            return null;
+        }
+        $mc = $this->program->classOf($m);
+        if ($mc === null) {
+            return null;
+        }
+        $subs = [];
+        foreach ($to->params as $t) {
+            if ($t->kind === RustType::CLASS_ && ($tc = $this->program->classOf($t)) !== null && $tc->isSubclassOf($mc)) {
+                $subs[] = $t;
+            }
+        }
+        if ($subs === []) {
+            return null;
+        }
+        if (count($subs) === 1) {
+            return $to->mangle() . '::' . $subs[0]->variantName() . '(' . $this->conv($code, $m, $subs[0]) . ')';
+        }
+        $chain = [];
+        foreach ($subs as $t) {
+            $this->casts->needInstanceOf($m, $t);
+            $chain[] = 'if is_instance::<' . $t->toRust() . '>(&' . $code . ') { ' . $to->mangle() . '::' . $t->variantName() . '(' . $this->conv($code, $m, $t) . ') }';
+        }
+        return implode(' else ', $chain) . ' else { panic!(' . Names::rustStringLiteral('cannot narrow ' . $m->toRust() . ' into ' . $to->toRust()) . ') }';
     }
 
     private function unionCmpArms(RustType $u, string $name): string
@@ -724,6 +762,8 @@ final class CastEmitter
                     $arms[] = $from->mangle() . '::' . $m->variantName() . '(v) => ' . $this->conv('v', $m, $to);
                 } elseif ($m->kind === RustType::BOOL && ($this->casts->hasUnit($to, 'True') || $this->casts->hasUnit($to, 'False'))) {
                     $arms[] = $from->mangle() . '::' . $m->variantName() . '(v) => ' . $this->conv('v', RustType::bool(), $to);
+                } elseif (($down = $this->downcastArm('v', $m, $to)) !== null) {
+                    $arms[] = $from->mangle() . '::' . $m->variantName() . '(v) => ' . $down;
                 } else {
                     $arms[] = $from->mangle() . '::' . $m->variantName() . '(v) => ' . $this->conv($this->conv('v', $m, RustType::mixed()), RustType::mixed(), $to);
                 }
@@ -756,6 +796,11 @@ final class CastEmitter
                 if ($m->toRust() === $to->toRust()) {
                     $arms[] = $from->mangle() . '::' . $m->variantName() . '(v) => v';
                 } elseif ($this->convertible($m, $to)) {
+                    $arms[] = $from->mangle() . '::' . $m->variantName() . '(v) => ' . $this->conv('v', $m, $to);
+                } elseif ($tk === RustType::CLASS_ && $m->kind === RustType::CLASS_ && ($mc = $this->program->classOf($m)) !== null
+                    && ($tc = $this->program->classOf($to)) !== null && $tc->isSubclassOf($mc)
+                ) {
+                    // a hierarchy member narrowed to one of its subclasses (typed downcast)
                     $arms[] = $from->mangle() . '::' . $m->variantName() . '(v) => ' . $this->conv('v', $m, $to);
                 } else {
                     $arms[] = $from->mangle() . '::' . $m->variantName() . '(_) => panic!("cannot narrow ' . $from->mangle() . '::' . $m->variantName() . ' into ' . $to->toRust() . '")';

@@ -138,6 +138,25 @@ trait LValueTrait
             }
             if ($bt->kind === RustType::UNION) {
                 $inf = $this->inferredOrMixed($e);
+                if ($inf->kind === RustType::MIXED) {
+                    // a write target has no inferred type: the place is typed by the members' field types
+                    $ftypes = [];
+                    foreach ($bt->params as $m) {
+                        $mc = $m->kind === RustType::CLASS_ ? $this->program->classOf($m) : null;
+                        if ($mc === null) {
+                            continue;
+                        }
+                        $mf = $mc->fields[$name] ?? null;
+                        if ($mf !== null) {
+                            $ftypes[] = $mf->type;
+                        } elseif (($vf = $this->program->variantField($mc, $name)) !== null) {
+                            $ftypes[] = $vf[1];
+                        }
+                    }
+                    if ($ftypes !== []) {
+                        $inf = $this->program->unionOfRust($ftypes) ?? $inf;
+                    }
+                }
                 $arms_get = [];
                 $arms_set = [];
                 foreach ($bt->params as $m) {
@@ -535,12 +554,50 @@ trait LValueTrait
             return $this->narrow(new Val($base->code . '.idx(&' . $k . ')', $bt->params[1]), $e);
         }
         if ($bt->kind === RustType::UNION) {
-            // array access on a union (array forms, ArrayAccess objects): resolved dynamically
+            $ui = $this->unionIndex($base->code, $bt, $this->keyExpr($dim, RustType::arrayKey()));
+            if ($ui !== null) {
+                return $this->narrowOptional(new Val($ui[0], RustType::option($ui[1])), $e);
+            }
+            // array access on a union without array members (ArrayAccess objects): resolved dynamically
             $code = 'mixed_get(&' . $this->casts->convert($base->code, $bt, RustType::mixed()) . ', &' . $this->keyExpr($dim, RustType::arrayKey()) . ')';
             return $this->narrowOptional(new Val($code, RustType::option(RustType::mixed())), $e);
         }
         $this->warn('array read on ' . $bt->toRust(), $e);
         return $this->dead('array read on ' . $bt->toRust() . '', $this->inferredOrMixed($e));
+    }
+
+    /**
+     * `$u[$k]` on a union with array members: a match over the list/map members (`None` for the others),
+     * as `[code, element type]`; null when the union has no array member or their element types cannot join.
+     *
+     * @return array{string, RustType}|null
+     */
+    public function unionIndex(string $base, RustType $u, string $key): ?array
+    {
+        $elems = [];
+        foreach ($u->params as $m) {
+            if ($m->kind === RustType::LIST) {
+                $elems[] = $m->inner();
+            } elseif ($m->kind === RustType::MAP) {
+                $elems[] = $m->params[1];
+            }
+        }
+        if ($elems === []) {
+            return null;
+        }
+        $et = $this->program->unionOfRust($elems);
+        if ($et === null) {
+            return null;
+        }
+        $arms = [];
+        foreach ($u->params as $m) {
+            if ($m->kind === RustType::LIST) {
+                $arms[] = $u->mangle() . '::' . $m->variantName() . '(__l) => __l.get(php_rt::ToInt::to_php_int(&__k)).cloned().map(|__v| ' . $this->casts->convert('__v', $m->inner(), $et) . ')';
+            } elseif ($m->kind === RustType::MAP) {
+                $arms[] = $u->mangle() . '::' . $m->variantName() . '(__m) => __m.get(&' . $this->casts->convert('__k.clone()', RustType::arrayKey(), $m->params[0]) . ').cloned().map(|__v| ' . $this->casts->convert('__v', $m->params[1], $et) . ')';
+            }
+        }
+        return ['{ let __k = ' . $key . '; match ' . $base . ' { ' . implode(', ', $arms) . ', _ => None } }', $et];
     }
 
     /** Narrow an Option-typed read to what Psalm inferred (unwrapping when Psalm says it is defined). */
@@ -601,8 +658,9 @@ trait LValueTrait
             if ($cls !== null && ($vf = $this->program->variantField($cls, $name)) !== null) {
                 return $this->narrow(new Val($base->code . '.' . $vf[0]->acc() . '_get()', $vf[1]), $e);
             }
-            if ($cls !== null && ($name === 'name' || $name === 'value') && ($cls->isEnum() || ($cls->concrete !== [] && !array_filter($cls->concrete, static fn(ClassModel $c) => !$c->isEnum())))) {
-                $backing = $cls->isEnum() ? (string) $cls->storage->enum_type : (string) $cls->concrete[0]->storage->enum_type;
+            $enum_iface = in_array(strtolower($cls->fqcn ?? ''), ['unitenum', 'backedenum'], true);
+            if ($cls !== null && ($name === 'name' || $name === 'value') && ($cls->isEnum() || $enum_iface || ($cls->concrete !== [] && !array_filter($cls->concrete, static fn(ClassModel $c) => !$c->isEnum())))) {
+                $backing = $cls->isEnum() ? (string) $cls->storage->enum_type : (string) ($cls->concrete[0]->storage->enum_type ?? ($enum_iface && strtolower($cls->fqcn) === 'backedenum' ? 'string' : ''));
                 if ($name === 'name' || $backing !== '') {
                     $t = $name === 'name' ? RustType::str() : ($backing === 'int' ? RustType::int() : RustType::str());
                     return new Val($base->code . '.' . $name . '()', $t);

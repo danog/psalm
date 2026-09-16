@@ -938,8 +938,13 @@ final class Builtins
         $all_list = true;
         foreach ($args as $a) {
             if ($a->unpack) {
-                $b->warn('array_merge with unpacking', $call);
                 $c = $this->container($b, $a->value);
+                if ($c->type->kind === RustType::LIST && $c->type->inner()->kind === RustType::LIST) {
+                    // array_merge(...$lists): the lists concatenated, typed
+                    $vals[] = new Val('array_merge_l(&' . $c->code . '.iter().collect::<Vec<_>>())', $c->type->inner());
+                    continue;
+                }
+                $b->warn('array_merge with unpacking', $call);
                 $mm = RustType::map(RustType::arrayKey(), RustType::map(RustType::arrayKey(), RustType::mixed()));
                 $vals[] = new Val('array_merge_m(&' . $b->casts->convert($c->code, $c->type, $mm) . '.values().map(|__x| __x.clone()).collect::<Vec<_>>().iter().collect::<Vec<_>>())', RustType::map(RustType::arrayKey(), RustType::mixed()));
                 continue;
@@ -2211,6 +2216,20 @@ final class Builtins
             $ret = 'false';
         }
         return new Val('php_rt::debug_export(&' . $v->code . ', ' . $ret . ')', RustType::str());
+    }
+
+    private function f_set_error_handler(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        // the runtime raises PHP errors as exceptions itself: the handler is evaluated and dropped
+        $v = isset($args[0]) ? $b->expr($args[0]->value) : new Val('()', RustType::unit());
+        return new Val('{ let _ = ' . $v->code . '; Mixed::Null }', RustType::mixed());
+    }
+
+    private function f_set_exception_handler(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        // the runtime has no exception-handler hook (uncaught exceptions end the process): evaluate and drop
+        $v = isset($args[0]) ? $b->expr($args[0]->value) : new Val('()', RustType::unit());
+        return new Val('{ let _ = ' . $v->code . '; }', RustType::unit());
     }
 
     private function f_gettype(BodyEmitter $b, Expr\FuncCall $call, array $args): Val

@@ -1138,6 +1138,47 @@ trait ExprTrait
         if ($b->kind === RustType::UNIT && $a->kind !== RustType::MIXED) {
             return RustType::option($a);
         }
+        // Option-stripped views: a member of the other side's union (or a class of its hierarchy) compares in that type
+        $sa = $a->kind === RustType::OPTION ? $a->inner() : $a;
+        $sb = $b->kind === RustType::OPTION ? $b->inner() : $b;
+        $opt = $a->kind === RustType::OPTION || $b->kind === RustType::OPTION;
+        $wrap = static fn(RustType $t) => $opt ? RustType::option($t) : $t;
+        if ($sa->kind === RustType::UNION && $sb->kind !== RustType::UNION && $this->casts->pickMember($sa, $sb) !== null) {
+            return $wrap($sa);
+        }
+        if ($sb->kind === RustType::UNION && $sa->kind !== RustType::UNION && $this->casts->pickMember($sb, $sa) !== null) {
+            return $wrap($sb);
+        }
+        if ($sa->kind === RustType::UNION && $sb->kind === RustType::CLASS_ && $this->unionFitsClass($sa, $sb)) {
+            return $wrap($sb);
+        }
+        if ($sb->kind === RustType::UNION && $sa->kind === RustType::CLASS_ && $this->unionFitsClass($sb, $sa)) {
+            return $wrap($sa);
+        }
+        if ($sa->kind === RustType::CLASS_ && $sb->kind === RustType::CLASS_) {
+            $ca = $this->program->classOf($sa);
+            $cb = $this->program->classOf($sb);
+            if ($ca !== null && $cb !== null) {
+                if ($ca->isSubclassOf($cb)) {
+                    return $wrap($sb);
+                }
+                if ($cb->isSubclassOf($ca)) {
+                    return $wrap($sa);
+                }
+            }
+        }
+        if ($sa->kind === RustType::MAP && $sb->kind === RustType::MAP && $sa->params[1]->toRust() === $sb->params[1]->toRust()
+            && in_array($sa->params[0]->kind, [RustType::STR, RustType::INT, RustType::ARRAY_KEY], true)
+            && in_array($sb->params[0]->kind, [RustType::STR, RustType::INT, RustType::ARRAY_KEY], true)
+        ) {
+            return $wrap(RustType::map(RustType::arrayKey(), $sa->params[1]));
+        }
+        if ($sa->kind === RustType::TUPLE && $sb->kind === RustType::LIST && $this->tupleFitsList($sa, $sb)) {
+            return $wrap($sb);
+        }
+        if ($sb->kind === RustType::TUPLE && $sa->kind === RustType::LIST && $this->tupleFitsList($sb, $sa)) {
+            return $wrap($sa);
+        }
         if ($a->kind === RustType::UNION && $this->casts->pickMember($a, $b) !== null) {
             return $a;
         }
@@ -1299,6 +1340,35 @@ trait ExprTrait
         return 'identical(' . Names::refOf($l) . ', ' . Names::refOf($r) . ')';
     }
 
+    /** Every member of `$u` is `$cls` or a subclass of it. */
+    private function unionFitsClass(RustType $u, RustType $cls): bool
+    {
+        $c = $this->program->classOf($cls);
+        if ($c === null) {
+            return false;
+        }
+        foreach ($u->params as $m) {
+            if ($m->kind !== RustType::CLASS_) {
+                return false;
+            }
+            $mc = $this->program->classOf($m);
+            if ($mc === null || !($mc === $c || $mc->isSubclassOf($c))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private function tupleFitsList(RustType $tuple, RustType $list): bool
+    {
+        foreach ($tuple->params as $p) {
+            if ($p->toRust() !== $list->inner()->toRust()) {
+                return false;
+            }
+        }
+        return $tuple->params !== [];
+    }
+
     private function unionHasBool(RustType $u): bool
     {
         foreach ($u->params as $m) {
@@ -1314,6 +1384,19 @@ trait ExprTrait
         if ($this->isNullLiteral($right) || $this->isNullLiteral($left)) {
             $other = $this->isNullLiteral($right) ? $left : $right;
             return '(!' . $this->truthy($other) . ')';
+        }
+        $lt = $this->inferredOrMixed($left);
+        $rt = $this->inferredOrMixed($right);
+        foreach ([[$left, $lt, $right, $rt], [$right, $rt, $left, $lt]] as [$oe, $ot, $se, $st]) {
+            $oi = $ot->kind === RustType::OPTION ? $ot->inner() : $ot;
+            if ($st->kind === RustType::STR && ($oi->kind === RustType::CLASS_ || ($oi->kind === RustType::UNION && Casts::unionHasObject($oi)))) {
+                // object == string: the object's string form (Stringable) compared, false otherwise
+                $ov = $this->rawValue($oe);
+                $sv = $this->exprTo($se, RustType::str());
+                $to_s = $oi->kind === RustType::CLASS_ ? 'php_rt::PhpObject::php_to_string(__o)' : '__o.php_to_string()';
+                $subject = $ov->type->kind === RustType::OPTION ? $ov->code . '.as_ref().and_then(|__o| ' . $to_s . ')' : '{ let __o = &' . $ov->code . '; ' . $to_s . ' }';
+                return '(match ' . $subject . ' { Some(__s) => loose_eq(&__s, &' . $sv . '), None => false })';
+            }
         }
         [$l, $r, $t] = $this->commonOperands($left, $right, true);
         if ($t->kind === RustType::INT || $t->kind === RustType::FLOAT || $t->kind === RustType::BOOL) {
@@ -1411,6 +1494,9 @@ trait ExprTrait
             if ($bt->kind === RustType::MIXED) {
                 $k = $this->expr($dim);
                 return new Val('{ let __k = ' . $this->keyFrom($k, RustType::arrayKey()) . '; ' . $base->code . '.and_then(|__b| mixed_get(&__b, &__k)) }', RustType::option(RustType::mixed()));
+            }
+            if ($bt->kind === RustType::UNION && ($ui = $this->unionIndex('__b', $bt, $this->keyExpr($dim, RustType::arrayKey()))) !== null) {
+                return $this->flattenOption($base->code . '.and_then(|__b| ' . $ui[0] . ')', $ui[1]);
             }
             if ($bt->kind === RustType::STR) {
                 return new Val('{ let __k = ' . $this->exprTo($dim, RustType::int()) . '; ' . $base->code . '.and_then(|__b| str_index_opt(&__b, __k)) }', RustType::option(RustType::str()));

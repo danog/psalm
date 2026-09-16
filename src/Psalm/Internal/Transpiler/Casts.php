@@ -810,8 +810,14 @@ final class Casts
      */
     public array $erasures = [];
 
+    /** False while emitting code that is generated but unreachable (no erasure is recorded). */
+    public bool $record_erasures = true;
+
     public function noteErasure(RustType $from): void
     {
+        if (!$this->record_erasures) {
+            return;
+        }
         $k = $from->toRust();
         if (!isset($this->erasures[$k])) {
             $this->erasures[$k] = [$from, $this->program->types->context];

@@ -252,6 +252,18 @@ final class ClassEmitter
     private function emitEnumAccessors(ClassModel $cls, FieldModel $f, Writer $w): void
     {
         $this->program->types->context = '<enum accessors> ' . $cls->fqcn . '::$' . $f->name;
+        // the dynamic (escape-variant) arms below are built unconditionally but only emitted for open
+        // hierarchies: their conversions must not count as erasures otherwise
+        $this->casts->record_erasures = $cls->has_downstream;
+        try {
+            $this->emitEnumAccessorsInner($cls, $f, $w);
+        } finally {
+            $this->casts->record_erasures = true;
+        }
+    }
+
+    private function emitEnumAccessorsInner(ClassModel $cls, FieldModel $f, Writer $w): void
+    {
         $rn = $f->acc();
         $t = $f->type->toRust();
         $h = $cls->handle();
@@ -1063,15 +1075,19 @@ final class ClassEmitter
         $this->program->types->context = '<handle impls> ' . $cls->fqcn;
         $h = $cls->handle();
         $arms = $this->enumArms($cls);
-        if ($cls->concrete !== [] && !array_filter($cls->concrete, static fn(ClassModel $c) => !$c->isEnum())) {
+        $enum_iface = in_array(strtolower($cls->fqcn), ['unitenum', 'backedenum'], true);
+        if ($enum_iface || ($cls->concrete !== [] && !array_filter($cls->concrete, static fn(ClassModel $c) => !$c->isEnum()))) {
             // an interface implemented only by PHP enums (UnitEnum/BackedEnum): `->name` / `->value` dispatch
-            $name_arms = implode(', ', array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => __h.name()', $cls->concrete));
-            $w->line('impl ' . $h . ' { pub fn name(&self) -> Str { match self { ' . $name_arms . ', _ => unreachable!() } } }');
-            $backing = array_unique(array_map(static fn(ClassModel $c) => (string) $c->storage->enum_type, $cls->concrete));
+            $name_arms = array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => __h.name()', $cls->concrete);
+            $w->line('impl ' . $h . ' { pub fn name(&self) -> Str { match self { ' . implode('', array_map(static fn($a) => $a . ', ', $name_arms)) . '_ => unreachable!() } } }');
+            $backing = array_values(array_unique(array_map(static fn(ClassModel $c) => (string) $c->storage->enum_type, $cls->concrete)));
+            if ($backing === [] && strtolower($cls->fqcn) === 'backedenum') {
+                $backing = ['string'];
+            }
             if (count($backing) === 1 && $backing[0] !== '') {
                 $vt = $backing[0] === 'int' ? 'i64' : 'Str';
-                $value_arms = implode(', ', array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => __h.value()', $cls->concrete));
-                $w->line('impl ' . $h . ' { pub fn value(&self) -> ' . $vt . ' { match self { ' . $value_arms . ', _ => unreachable!() } } }');
+                $value_arms = array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => __h.value()', $cls->concrete);
+                $w->line('impl ' . $h . ' { pub fn value(&self) -> ' . $vt . ' { match self { ' . implode('', array_map(static fn($a) => $a . ', ', $value_arms)) . '_ => unreachable!() } } }');
             }
         }
         $to_string_arms = implode(', ', array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => __h.to_php_string()', $cls->concrete)) . ($cls->concrete ? ', ' : '') . ($cls->has_downstream ? $h . '::Other__(__m) => to_str(__m), ' : '') . '_ => unreachable!()';
