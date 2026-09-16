@@ -324,6 +324,24 @@ function case_dispatch_disagree_owned(): string
     return dispatchHandle(new HandlerSafe(), new A(3)) . '' . dispatchHandle(new HandlerEscapes(), new A(4));
 }
 
+// ---- safety: a borrow-param fn used as a first-class callable still works --
+
+function readOnlyCb(A $a): int
+{
+    return $a->a + 1;
+}
+
+function applyIt(callable $f, A $a): int
+{
+    return $f($a);
+}
+
+function case_callable_borrow(): string
+{
+    $cb = readOnlyCb(...); // first-class callable of a &T-param function
+    return (string) applyIt($cb, new A(10));
+}
+
 // ---- feature: &self call on a Late-local receiver borrows (no clone) ------
 
 final class Counter
@@ -378,6 +396,7 @@ function run_all(): string
         . check('leaf_public_borrow', case_leaf_public_borrow(), '24')
         . check('dispatch_agree_borrow', case_dispatch_agree_borrow(), '26')
         . check('dispatch_disagree_owned', case_dispatch_disagree_owned(), '34')
+        . check('callable_borrow', case_callable_borrow(), '11')
         . check('late_receiver_borrow', case_late_receiver_borrow(), '00')
         . check('closure_capture', case_closure_capture(), '8');
 }
