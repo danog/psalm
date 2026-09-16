@@ -607,7 +607,22 @@ trait ExprTrait
     private function arrayLiteralValue(Expr\Array_ $e, ?RustType $expected): Val
     {
         $target = $expected;
-        $inf = $this->inferred($e);
+        if ($target !== null && $target->kind === RustType::OPTION) {
+            $target = $target->inner();
+        }
+        if ($target !== null && $target->kind === RustType::UNION) {
+            // `$x = []` into a `list<T>|Foo` union: build the literal as the union's collection member (the
+            // caller wraps it into the variant) instead of an untyped Map<ArrayKey, Mixed>
+            $pick = null;
+            foreach ($target->params as $member) {
+                if (in_array($member->kind, [RustType::LIST, RustType::MAP, RustType::TUPLE, RustType::SHAPE], true)) {
+                    $pick = $member;
+                    break;
+                }
+            }
+            $target = $pick;
+        }
+        $inf = $target === null || !in_array($target->kind, [RustType::LIST, RustType::MAP, RustType::TUPLE, RustType::SHAPE], true) ? $this->inferred($e) : null;
         if ($target === null || !in_array($target->kind, [RustType::LIST, RustType::MAP, RustType::TUPLE, RustType::SHAPE], true)) {
             $target = $inf;
         }

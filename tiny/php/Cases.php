@@ -539,6 +539,51 @@ function check(string $name, string $actual, string $expected): string
         . ' got=' . $actual . ' want=' . $expected . "\n";
 }
 
+// ---- feature: empty array literals typed from context (no Mixed) ----
+
+/** @return list<string> */
+function empty_accum(int $n): array
+{
+    $out = [];
+    for ($i = 0; $i < $n; $i++) {
+        $out[] = "s$i";
+    }
+    return $out;
+}
+
+/** @return array{code: string, ignored: list<string>, assertions: array<string, string>} */
+function empty_shape(): array
+{
+    return ['code' => 'c', 'ignored' => [], 'assertions' => []];
+}
+
+abstract class ProvBase
+{
+    /** @return iterable<string, array{code: string, ignored?: list<string>}> */
+    abstract public function provider(): iterable;
+}
+
+final class Prov extends ProvBase
+{
+    public function provider(): iterable
+    {
+        yield 'a' => ['code' => 'x', 'ignored' => []];
+        yield 'b' => ['code' => 'y'];
+    }
+}
+
+function case_empty_arrays(): string
+{
+    $r = implode(',', empty_accum(2));
+    $s = empty_shape();
+    $p = new Prov();
+    $n = 0;
+    foreach ($p->provider() as $row) {
+        $n += strlen($row['code']) + count($row['ignored'] ?? []);
+    }
+    return $r . '|' . count($s['ignored']) . '|' . $n;
+}
+
 function run_all(): string
 {
     return check('nullable_union', case_nullable_union(), 'nullA7')
@@ -562,3 +607,4 @@ function run_all(): string
         . check('late_receiver_borrow', case_late_receiver_borrow(), '00')
         . check('closure_capture', case_closure_capture(), '8');
 }
+    check('empty_arrays', case_empty_arrays(), 's0,s1|0|2');

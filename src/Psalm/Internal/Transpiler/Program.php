@@ -11,6 +11,7 @@ use Psalm\Internal\MethodIdentifier;
 use Psalm\Storage\ClassLikeStorage;
 use Psalm\Storage\FunctionLikeStorage;
 use Psalm\Storage\MethodStorage;
+use Psalm\Type\Union;
 
 use function array_keys;
 use function count;
@@ -1853,13 +1854,53 @@ final class Program
         return $borrow;
     }
 
+    /** Whether a declared type carries no docblock information beyond the native signature type. */
+    private static function isNativeOnly(?Union $type, ?Union $signature_type): bool
+    {
+        if ($type === null) {
+            return true;
+        }
+        if ($signature_type === null) {
+            return false; // docblock-only type
+        }
+        return $type->getId() === $signature_type->getId();
+    }
+
     private function resolveSignature(FunctionLikeStorage $storage, array &$param_types, RustType &$return_type, ?\PhpParser\Node $node = null): void
     {
         $param_types = [];
         $fn = ($storage instanceof \Psalm\Storage\MethodStorage && $storage->defining_fqcln !== null ? $storage->defining_fqcln . '::' : '') . ($storage->cased_name ?? '{closure}');
+        // Overriding methods without their own docblock inherit the overridden method's docblock types (the
+        // types Psalm itself uses at call sites), e.g. a test's `provider(): iterable` under a trait's
+        // `@return iterable<string, array{...}>` — otherwise the native `iterable`/`array` maps to Mixed.
+        $inherited = [];
+        if ($storage instanceof \Psalm\Storage\MethodStorage && $storage->defining_fqcln !== null && $storage->cased_name !== null) {
+            $lc_own = strtolower($storage->cased_name);
+            try {
+                $cls_storage = $this->codebase->classlike_storage_provider->get($storage->defining_fqcln);
+                foreach ($cls_storage->overridden_method_ids[$lc_own] ?? [] as $mid) {
+                    try {
+                        $inherited[] = $this->codebase->methods->getStorage($mid);
+                    } catch (\Throwable) {
+                    }
+                }
+            } catch (\Throwable) {
+            }
+        }
         foreach ($storage->params as $param) {
             $this->types->context = $fn . '() param $' . $param->name;
-            $t = $this->types->map($param->type);
+            $ptype = $param->type;
+            if (self::isNativeOnly($ptype, $param->signature_type)) {
+                foreach ($inherited as $inh) {
+                    foreach ($inh->params as $ip) {
+                        if ($ip->name === $param->name && $ip->type !== null && !self::isNativeOnly($ip->type, $ip->signature_type)) {
+                            $ptype = $ip->type;
+                            break 2;
+                        }
+                    }
+                }
+            }
+            $t = $this->types->map($ptype);
             if ($param->is_variadic) {
                 $t = RustType::list($t);
             }
@@ -1872,24 +1913,35 @@ final class Program
         // magic methods with no return value are void, not `mixed` (PHP language rule); their absent
         // declared return would otherwise map to Mixed
         $lc_name = strtolower($storage->cased_name ?? '');
-        if ($storage->return_type === null
+        $ret_union = $storage->return_type;
+        if (self::isNativeOnly($ret_union, $storage->signature_return_type)) {
+            foreach ($inherited as $inh) {
+                if ($inh->return_type !== null && !self::isNativeOnly($inh->return_type, $inh->signature_return_type)
+                    && !($ret_union !== null && ($ret_union->isVoid() || $ret_union->isNever()))
+                ) {
+                    $ret_union = $inh->return_type;
+                    break;
+                }
+            }
+        }
+        if ($ret_union === null
             && in_array($lc_name, ['__construct', '__destruct', '__clone', '__wakeup', '__unset', '__set'], true)
         ) {
             $return_type = RustType::unit();
         } else {
-            $return_type = $this->types->map($storage->return_type);
+            $return_type = $this->types->map($ret_union);
         }
         if ($node instanceof \PhpParser\Node\FunctionLike) {
             $return_type = $this->extendShapeWithReturnedKeys($return_type, $node);
         }
-        if ($storage->return_type !== null && $storage->return_type->isVoid()) {
+        if ($ret_union !== null && $ret_union->isVoid()) {
             $return_type = RustType::unit();
         }
-        if ($storage->return_type !== null && $storage->return_type->isNever()) {
+        if ($ret_union !== null && $ret_union->isNever()) {
             $return_type = RustType::never();
         }
         if ($storage->has_yield) {
-            $ret = $storage->return_type;
+            $ret = $ret_union;
             $key = RustType::mixed();
             $val = RustType::mixed();
             if ($ret !== null) {

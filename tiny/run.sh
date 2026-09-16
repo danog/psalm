@@ -10,7 +10,8 @@ OUT="$(pwd)/rust/generated/tiny_repro"
 echo "=== TRANSPILE ==="
 php -d memory_limit=4000M ../psalm -c psalm-tiny.xml --no-cache --no-progress \
   --threads=1 --transpile-rust="$OUT" 2>&1 \
-  | grep -E "wrote |Transpiler crashed|Fatal error|Uncaught" || true
+  | grep -E "wrote |Transpiler crashed|Fatal error|Uncaught|\[mixed|Mixed roots" || true
+echo "Mixed in generated: $(grep -rho "\bMixed\b" "$OUT/src" | wc -l)"
 
 # Keep php-rt pointed at the vendored copy (transpiler re-emits its path each run).
 sed -i 's#^php-rt = .*#php-rt = { path = "../../php-rt" }#' "$OUT/Cargo.toml"

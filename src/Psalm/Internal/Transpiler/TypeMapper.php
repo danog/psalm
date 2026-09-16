@@ -359,10 +359,16 @@ final class TypeMapper
     {
         $out = [];
         foreach ($atomics as $atomic) {
-            if ($atomic instanceof TTypeAlias && $depth < 8) {
-                $declaring = $atomic->declaring_fq_classlike_name;
+            // `\Foo::Alias` written in a docblock without @psalm-import-type parses as a class CONSTANT type; when
+            // Foo declares a @psalm-type of that name it is the alias (php-parser's NodeAttributes::AttributeArray).
+            $alias_class = $atomic instanceof TTypeAlias ? $atomic->declaring_fq_classlike_name
+                : ($atomic instanceof TClassConstant ? $atomic->fq_classlike_name : null);
+            $alias_name = $atomic instanceof TTypeAlias ? $atomic->alias_name
+                : ($atomic instanceof TClassConstant ? $atomic->const_name : null);
+            if ($alias_class !== null && $alias_name !== null && $depth < 8) {
+                $declaring = $alias_class;
                 if ($this->codebase->classlikes->doesClassLikeExist(strtolower($declaring))) {
-                    $alias = $this->codebase->classlike_storage_provider->get($declaring)->type_aliases[$atomic->alias_name] ?? null;
+                    $alias = $this->codebase->classlike_storage_provider->get($declaring)->type_aliases[$alias_name] ?? null;
                     if ($alias instanceof ClassTypeAlias) {
                         foreach ($this->expandAliases($alias->replacement_atomic_types, $depth + 1) as $replacement) {
                             $out[] = $replacement;
@@ -378,7 +384,7 @@ final class TypeMapper
 
     public function mapAtomic(Atomic $atomic): RustType
     {
-        if ($atomic instanceof TTypeAlias) {
+        if ($atomic instanceof TTypeAlias || $atomic instanceof TClassConstant) {
             $expanded = $this->expandAliases([$atomic]);
             if (count($expanded) !== 1 || $expanded[0] !== $atomic) {
                 return $this->map(new Union($expanded));
