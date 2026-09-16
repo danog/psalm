@@ -9,7 +9,6 @@ use Psalm\Exception\CodeException;
 use Psalm\Internal\Analyzer\FileAnalyzer;
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
 use Psalm\Storage\ClassLikeStorage;
-use ReflectionProperty;
 
 use function getcwd;
 use function preg_quote;
@@ -1003,11 +1002,8 @@ final class IncludeTest extends TestCase
         $overwritten->is_interface = false;
         $overwritten->populated = true;
 
-        $ref = new ReflectionProperty(ClassLikeStorageProvider::class, 'storage');
-        /** @var array<string, ClassLikeStorage> $all */
-        $all = $ref->getValue();
-        $all['foo\\bar'] = $overwritten;
-        $ref->setValue(null, $all);
+        $codebase->classlike_storage_provider->remove('foo\\bar');
+        $codebase->classlike_storage_provider->addMore(['foo\\bar' => $overwritten]);
 
         $file_analyzer = new FileAnalyzer(
             $this->project_analyzer,

@@ -19,6 +19,7 @@
         <directory name="../psalm-transpiler/src/Psalm/Internal/Transpiler/runtime-stubs"/>
         <directory name="../php-parser/lib"/>
         <ignoreFiles>
+            <file name="../php-parser/lib/PhpParser/JsonDecoder.php"/>
             <directory name="vendor"/>
         </ignoreFiles>
     </projectFiles>

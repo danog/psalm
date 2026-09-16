@@ -666,6 +666,9 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         }
     }
 
+    /**
+     * @param list<PhpParser\Node\Stmt> $stmts
+     */
     public static function addContextProperties(
         StatementsSource $statements_source,
         ClassLikeStorage $storage,

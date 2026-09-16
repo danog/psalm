@@ -24,6 +24,7 @@
         <directory name="../phpunit-port/typed/src"/>
         <directory name="vendor/felixfbecker/language-server-protocol/src"/>
         <ignoreFiles>
+            <file name="../php-parser/lib/PhpParser/JsonDecoder.php"/>
             <directory name="tests/fixtures"/>
             <directory name="tests/EndToEnd"/>
             <directory name="tests/LanguageServer"/>
