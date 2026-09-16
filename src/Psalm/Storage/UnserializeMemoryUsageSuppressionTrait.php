@@ -19,7 +19,7 @@ trait UnserializeMemoryUsageSuppressionTrait
 {
     /**
      * @psalm-external-mutation-free
-     * @param array<string, mixed> $properties
+     * @param array<never, never> $properties no object is ever unserialized in the compiled program
      */
     public function __unserialize(array $properties): void
     {
