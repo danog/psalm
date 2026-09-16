@@ -373,6 +373,49 @@ function case_dispatch_disagree_owned(): string
     return dispatchHandle(new HandlerSafe(), new A(3)) . '' . dispatchHandle(new HandlerEscapes(), new A(4));
 }
 
+// ---- machinery: union-member narrowing + concrete-base downcast (Reconciler shape) --
+// Faithful reduction of Psalm's Type\Atomic hierarchy (Atomic -> concrete-base Arr2 -> NonEmptyArr2; KeyedArr2)
+// and the Reconciler's instanceof-narrow-then-downcast. Guards that the transpiler's narrowing/is_instance/
+// downcast are sound for concrete-base-with-subclasses (the mechanism behind the TNonEmptyArray->TKeyedArray
+// question -- which is a Psalm-analysis optimism, not a transpiler bug: this reproduction does NOT panic).
+
+abstract class Atomic2 {}
+class Arr2 extends Atomic2
+{
+    public int $k = 1;
+}
+final class NonEmptyArr2 extends Arr2
+{
+    public int $n = 2;
+}
+final class KeyedArr2 extends Atomic2
+{
+    public int $p = 3;
+}
+
+/** @return list<Atomic2> */
+function atomics(): array
+{
+    return [new NonEmptyArr2(), new Arr2(), new KeyedArr2()];
+}
+
+function case_narrow_downcast(): string
+{
+    $out = '';
+    foreach (atomics() as $a) {
+        if ($a instanceof KeyedArr2 || $a instanceof Arr2) {
+            if ($a instanceof Arr2) {
+                $out .= 'arr' . $a->k;
+            } else {
+                $out .= 'keyed' . $a->p;
+            }
+        } else {
+            $out .= 'other';
+        }
+    }
+    return $out;
+}
+
 // ---- safety: a param whose method is unmodeled (dynamic dispatch) stays OWNED
 
 // DOMDocument::getElementsByTagNameNS is not in the stub -> dynamic call_method path casts the receiver to
@@ -449,6 +492,7 @@ function run_all(): string
         . check('single_use_move', case_single_use_move(), '766')
         . check('foreach_collection_move', case_foreach_collection_move(), '60')
         . check('alias_mutation', case_alias_mutation(), '7')
+        . check('narrow_downcast', case_narrow_downcast(), 'arr1arr1keyed3')
         . check('loops', case_loops(), '63')
         . check('receiver_move', case_receiver_move(), '11')
         . check('borrow_param', case_borrow_param(), '42425')
