@@ -855,8 +855,9 @@ final class CastEmitter
             case RustType::ANY_OBJECT:
                 return true;
             case RustType::OPTION:
+                // Option<T>: PhpCmp needs T: PhpCmp + Truthy; identity-compared kinds go through Option<T: Identical>
                 $inner = $t->inner();
-                return in_array($inner->kind, [RustType::INT, RustType::FLOAT, RustType::BOOL, RustType::STR, RustType::SYM, RustType::LIST, RustType::MAP, RustType::CLASS_, RustType::UNION, RustType::SHAPE, RustType::ARRAY_KEY, RustType::MIXED], true)
+                return in_array($inner->kind, [RustType::INT, RustType::FLOAT, RustType::BOOL, RustType::STR, RustType::SYM, RustType::LIST, RustType::MAP, RustType::CLASS_, RustType::UNION, RustType::SHAPE, RustType::ARRAY_KEY, RustType::MIXED, RustType::CLOSURE, RustType::DYN_CALLABLE, RustType::RT_GENERIC, RustType::GENERIC], true)
                     && $this->cmpableType($inner);
             case RustType::LIST:
                 return $this->cmpableType($t->inner());
