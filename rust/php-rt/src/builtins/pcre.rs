@@ -9,7 +9,7 @@ use crate::string::Str;
 use pcre2::bytes::{Regex, RegexBuilder};
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::sync::Arc as Rc;
 
 thread_local! {
     static CACHE: RefCell<HashMap<Vec<u8>, Rc<Compiled>>> = RefCell::new(HashMap::new());

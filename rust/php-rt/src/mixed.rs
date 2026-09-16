@@ -6,7 +6,7 @@ use crate::map::Map;
 use crate::string::Str;
 use std::any::Any;
 use std::fmt;
-use std::rc::Rc;
+use std::sync::Arc as Rc;
 
 /// Implemented (by generated code) for every class handle type.
 pub trait PhpObject: Any {

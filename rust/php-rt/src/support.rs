@@ -9,7 +9,7 @@ use crate::mixed::{AnyObj, Mixed, PhpObject};
 use crate::string::Str;
 use crate::traits::*;
 use std::cell::RefCell;
-use std::rc::Rc;
+use std::sync::Arc as Rc;
 
 // ---------------------------------------------------------------- instanceof / downcasts
 
@@ -159,7 +159,7 @@ macro_rules! impl_enum_handle {
         }
         impl $crate::CastTo<$crate::Mixed> for $name {
             fn cast_to(self) -> $crate::Mixed {
-                $crate::Mixed::Obj(std::rc::Rc::new(self))
+                $crate::Mixed::Obj(std::sync::Arc::new(self))
             }
         }
         impl $crate::CastTo<$name> for $crate::Mixed {

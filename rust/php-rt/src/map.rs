@@ -6,7 +6,7 @@ use hashbrown::HashTable;
 use std::borrow::Borrow;
 use std::fmt;
 use std::hash::{BuildHasher, Hash, Hasher};
-use std::rc::Rc;
+use std::sync::Arc as Rc;
 
 #[inline]
 fn hash_of<Q: Hash + ?Sized>(q: &Q) -> u64 {

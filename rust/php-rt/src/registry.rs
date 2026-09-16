@@ -235,11 +235,11 @@ pub fn function_by_name(name: &Str) -> Option<DynCallable> {
 }
 
 thread_local! {
-    static FILES: RefCell<HashMap<Vec<u8>, std::rc::Rc<dyn Fn() -> Result<crate::mixed::Mixed, crate::containers::DynError>>>> = RefCell::new(HashMap::new());
+    static FILES: RefCell<HashMap<Vec<u8>, std::sync::Arc<dyn Fn() -> Result<crate::mixed::Mixed, crate::containers::DynError>>>> = RefCell::new(HashMap::new());
 }
 
 /// Registers a compiled file (path relative to the source root) for `include`/`require` by path.
-pub fn register_file(rel_path: &str, f: std::rc::Rc<dyn Fn() -> Result<crate::mixed::Mixed, crate::containers::DynError>>) {
+pub fn register_file(rel_path: &str, f: std::sync::Arc<dyn Fn() -> Result<crate::mixed::Mixed, crate::containers::DynError>>) {
     FILES.with(|c| {
         c.borrow_mut().insert(normalize_path(rel_path.as_bytes()), f);
     });

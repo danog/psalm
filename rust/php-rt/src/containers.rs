@@ -8,7 +8,7 @@ use crate::mixed::{AnyObj, Mixed, PhpObject};
 use crate::string::Str;
 use crate::traits::*;
 use std::cell::{Cell, RefCell};
-use std::rc::{Rc, Weak};
+use std::sync::{Arc as Rc, Weak};
 
 // ---------------------------------------------------------------- Generator (eagerly evaluated)
 

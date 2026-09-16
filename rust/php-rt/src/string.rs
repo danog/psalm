@@ -3,7 +3,7 @@
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
-use std::rc::Rc;
+use std::sync::Arc as Rc;
 
 #[derive(Clone)]
 pub enum Str {

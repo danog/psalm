@@ -56,6 +56,6 @@ pub mod prelude {
     pub use crate::builtins::*;
     pub use crate::consts;
     pub use crate::registry;
-    pub use std::rc::Rc;
+    pub use std::sync::Arc as Rc;
     pub use std::cell::{Ref, RefCell, RefMut};
 }

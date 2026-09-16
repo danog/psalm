@@ -408,7 +408,7 @@ impl<'a> Parser<'a> {
             Mixed::Arr(m)
         } else {
             let sm: Map<Str, Mixed> = m.into_iter().map(|(k, v)| (k.to_str(), v)).collect();
-            Mixed::Obj(std::rc::Rc::new(crate::containers::StdClass::from_map(sm)))
+            Mixed::Obj(std::sync::Arc::new(crate::containers::StdClass::from_map(sm)))
         }
     }
 }
