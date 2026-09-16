@@ -58,7 +58,7 @@ use const GLOB_ONLYDIR;
  *     referencedProperty?: list<FileFilterNamed>,
  *     referencedVariable?: list<FileFilterNamed>,
  *     referencedConstant?: list<FileFilterNamed>,
- *     type?: string,
+ *     type?: string
  * }
  */
 class FileFilter
