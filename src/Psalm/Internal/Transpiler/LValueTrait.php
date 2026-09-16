@@ -604,7 +604,8 @@ trait LValueTrait
     private function narrowOptional(Val $v, Expr $e): Val
     {
         $inf = $this->inferred($e);
-        if ($inf === null) {
+        if ($inf === null || ($inf->kind === RustType::MIXED && $v->type->inner()->kind !== RustType::MIXED)) {
+            // Psalm lost the type (a deep alias read): the statically typed read stands
             return $v;
         }
         if ($this->possiblyUndefined($e)) {
