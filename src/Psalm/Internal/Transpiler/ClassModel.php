@@ -331,13 +331,24 @@ final class ClassModel
             while ($root->parent !== null) {
                 $root = $root->parent;
             }
+            // Union over the WHOLE hierarchy: root + all concrete leaves + every abstract intermediate base (walk each
+            // leaf's parent chain). A field written through an ABSTRACT-base-typed handle (e.g. `$type->checked` where
+            // $type: Type\Atomic) is recorded on that abstract base, which is not in ->concrete — include it here or the
+            // field stays plain and the write (dispatched on a clone) is lost / needs &mut.
+            $members = [$root->fqcn => $root];
             foreach ($root->concrete as $c) {
-                foreach ($c->postConstructionWrittenFields() as $fld => $_) {
+                $members[$c->fqcn] = $c;
+                for ($a = $c->parent; $a !== null; $a = $a->parent) {
+                    $members[$a->fqcn] = $a;
+                }
+            }
+            foreach ($members as $m) {
+                foreach ($m->postConstructionWrittenFields() as $fld => $_) {
                     if (isset($this->fields[$fld])) {
                         $set[$fld] = true;
                     }
                 }
-                foreach ($c->ext_written_fields as $fld => $_) {
+                foreach ($m->ext_written_fields as $fld => $_) {
                     if (isset($this->fields[$fld])) {
                         $set[$fld] = true;
                     }
