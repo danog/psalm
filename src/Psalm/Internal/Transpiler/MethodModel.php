@@ -21,6 +21,15 @@ final class MethodModel
     public bool $uses_lsb = false;
 
     /**
+     * Axis-8 (Result-only-where-throws): whether this method's emitted signature returns
+     * `Result<T, Throw>` (true) or bare `T` (false). Default true = current behavior. Set false only by
+     * Program::computeThrows() for provably non-throwing methods. When false, the signature, the return
+     * emission (returnCode/implicitReturn), AND every static call site (which drops the trailing `?`) must
+     * all agree — they all read this flag. See Program::computeThrows() for the (conservative) predicate.
+     */
+    public bool $throws = false;
+
+    /**
      * For a method inherited from a class in another crate: the inherited method. Its body is emitted
      * again for `$declaring` (the topmost class of this crate) with `$this` bound to that class.
      */

@@ -128,6 +128,13 @@ final class Casts
             if ($fk === RustType::OPTION && in_array($from->inner()->kind, [RustType::CLOSURE, RustType::TUPLE, RustType::DYN_CALLABLE], true)) {
                 return '(match ' . $code . ' { Some(__o) => ' . $this->convert('__o', $from->inner(), $to) . ', None => Mixed::Null })';
             }
+            // A raw closure (`Rc<dyn Fn ...>`) has no `CastTo<Mixed>` impl (orphan rules), so the blanket
+            // container→Mixed cast fails for a Map/List of closures: melt the elements to Mixed first
+            // (element-wise conversion emits `Mixed::Closure(..)` inline), then cast the plain container.
+            if (($fk === RustType::MAP || $fk === RustType::LIST) && $this->containsClosure($from)) {
+                $melted = $fk === RustType::MAP ? RustType::map($from->params[0], RustType::mixed()) : RustType::list(RustType::mixed());
+                return $this->convert($this->convert($code, $from, $melted), $melted, RustType::mixed());
+            }
             $this->needMixedFrom($from);
             return 'cast::<Mixed>(' . $code . ')';
         }
@@ -165,8 +172,12 @@ final class Casts
             $inner = $from->inner();
             if ($tk === RustType::CLASS_) {
                 $tc = $this->program->classOf($to);
-                if ($tc !== null && !$tc->isLeaf()) {
+                if ($tc !== null && !$tc->isLeaf() && $tc->has_downstream) {
                     return '(match ' . $code . ' { Some(__o) => ' . $this->convert('__o', $inner, $to) . ', None => ' . $to->toRust() . '::Other__(Mixed::Null) })';
+                }
+                if ($tc !== null && !$tc->isLeaf()) {
+                    // closed handle: no null-carrying escape variant, so a null narrowed to it is a docblock lie
+                    return '(match ' . $code . ' { Some(__o) => ' . $this->convert('__o', $inner, $to) . ', None => panic!(' . Names::rustStringLiteral('null where ' . $tc->fqcn . ' expected') . ') })';
                 }
             }
             if ($to->hasDefault() && $tk !== RustType::CLASS_) {
@@ -381,6 +392,25 @@ final class Casts
             return '{ let ' . $t . ' = ' . $code . '; ' . $to->mangle() . ' { ' . implode(', ', $parts) . ' } }';
         }
 
+        // Sym (interned identifier) converts like Str: direct to Str/Mixed (php-rt CastTo impls), else via Str
+        if ($fk === RustType::SYM) {
+            if ($tk === RustType::STR) {
+                return 'cast::<Str>(' . $code . ')';
+            }
+            if ($tk === RustType::MIXED) {
+                return 'cast::<Mixed>(' . $code . ')';
+            }
+            return $this->convert('cast::<Str>(' . $code . ')', RustType::str(), $to);
+        }
+        if ($tk === RustType::SYM) {
+            if ($fk === RustType::STR) {
+                return 'cast::<Sym>(' . $code . ')';
+            }
+            if ($fk === RustType::MIXED) {
+                return 'cast::<Sym>(' . $code . ')';
+            }
+            return 'cast::<Sym>(' . $this->convert($code, $from, RustType::str()) . ')';
+        }
         // scalars
         if ($fk === RustType::INT && $tk === RustType::FLOAT) {
             return '(' . $code . ' as f64)';
@@ -471,8 +501,8 @@ final class Casts
             foreach ($from->params as $i => $p) {
                 $args[] = $this->convert('__a[' . $i . '].clone()', RustType::mixed(), $p);
             }
-            return '{ let ' . $t . ' = ' . $code . '; DynCallable::new(' . $n . ', move |__a: Vec<Mixed>| -> Result<Mixed, DynError> { (|| -> Result<Mixed, Throw> { Ok('
-                . $this->convert($t . '(' . implode(', ', $args) . ')?', $from->ret, RustType::mixed()) . ') })().map_err(|__e| DynError::Obj(cast::<Mixed>(__e))) }) }';
+            return '{ let ' . $t . ' = ' . $code . '; DynCallable::new(' . $n . ', move |__a: Vec<Mixed>| -> Mixed { '
+                . $this->convert($t . '(' . implode(', ', $args) . ')', $from->ret, RustType::mixed()) . ' }) }';
         }
         if ($fk === RustType::DYN_CALLABLE && $tk === RustType::CLOSURE) {
             $t = $this->tmp();
@@ -482,8 +512,8 @@ final class Casts
                 $params[] = '__p' . $i . ': ' . $p->toRust();
                 $args[] = $this->convert('__p' . $i, $p, RustType::mixed());
             }
-            return '{ let ' . $t . ' = ' . $code . '; Rc::new(move |' . implode(', ', $params) . '| -> Result<' . $to->ret->toRust() . ', Throw> { Ok('
-                . $this->convert($t . '.call(vec![' . implode(', ', $args) . '])?', RustType::mixed(), $to->ret) . ') }) as ' . $to->toRust() . ' }';
+            return '{ let ' . $t . ' = ' . $code . '; Rc::new(move |' . implode(', ', $params) . '| -> ' . $to->ret->toRust() . ' { '
+                . $this->convert($t . '.call(vec![' . implode(', ', $args) . '])', RustType::mixed(), $to->ret) . ' }) as ' . $to->toRust() . ' }';
         }
         if ($fk === RustType::RT_GENERIC && $from->name === 'Generator' && ($tk === RustType::MAP || $tk === RustType::LIST)) {
             [$gk, $gv] = $from->params;
@@ -523,7 +553,7 @@ final class Casts
         for ($i = count($to->params); $i < count($from->params); $i++) {
             $args[] = $this->defaultOf($from->params[$i]);
         }
-        $call = $t . '(' . implode(', ', $args) . ')?';
+        $call = $t . '(' . implode(', ', $args) . ')';
         // a mixed return flowing into a scalar-returning callable is coerced, as PHP does for callbacks
         $body = match (true) {
             $from->ret->kind === RustType::MIXED && $to->ret->kind === RustType::STR => 'to_str(&' . $call . ')',
@@ -532,7 +562,7 @@ final class Casts
             $from->ret->kind === RustType::MIXED && $to->ret->kind === RustType::BOOL => 'truthy(&' . $call . ')',
             default => $this->convert($call, $from->ret, $to->ret),
         };
-        return '{ let ' . $t . ' = ' . $code . '; Rc::new(move |' . implode(', ', $params) . '| -> Result<' . $to->ret->toRust() . ', Throw> { Ok(' . $body . ') }) as ' . $to->toRust() . ' }';
+        return '{ let ' . $t . ' = ' . $code . '; Rc::new(move |' . implode(', ', $params) . '| -> ' . $to->ret->toRust() . ' { ' . $body . ' }) as ' . $to->toRust() . ' }';
     }
 
     public function hasUnit(RustType $union, string $name): bool
@@ -621,7 +651,7 @@ final class Casts
         $get = $this->program->findMethod($cls, 'getiterator');
         if ($get !== null) {
             $inner = $get->return_type;
-            $sub = $code . '.' . $get->rustName() . '()?';
+            $sub = $code . '.' . $get->rustName() . '()';
             if ($inner->kind === RustType::RT_GENERIC) {
                 return [$sub . '.into_pairs().into_iter()', $inner->params[0] ?? RustType::mixed(), $inner->params[1] ?? RustType::mixed()];
             }
@@ -644,7 +674,7 @@ final class Casts
         $valid = $this->program->findMethod($cls, 'valid');
         $next = $this->program->findMethod($cls, 'next');
         if ($current !== null && $key !== null && $rewind !== null && $valid !== null && $next !== null) {
-            $it = '{ let __it = ' . $code . '; iterate_php_iterator(|| __it.' . $rewind->rustName() . '().map(|_| ()), || __it.' . $valid->rustName() . '(), || __it.' . $next->rustName() . '().map(|_| ()), || __it.' . $key->rustName() . '(), || __it.' . $current->rustName() . '())? }';
+            $it = '{ let __it = ' . $code . '; iterate_php_iterator(|| { __it.' . $rewind->rustName() . '(); }, || __it.' . $valid->rustName() . '(), || { __it.' . $next->rustName() . '(); }, || __it.' . $key->rustName() . '(), || __it.' . $current->rustName() . '()) }';
             return [$it, $key->return_type, $current->return_type];
         }
         return null;
@@ -677,6 +707,45 @@ final class Casts
             RustType::STR => '&' . Names::strLit($name),
             default => '&ArrayKey::from(' . Names::strLit($name) . ')',
         };
+    }
+
+    /**
+     * Whether the type is or contains a raw closure (`Rc<dyn Fn ...>`), which has no `CastTo<Mixed>` impl.
+     * `$seen` guards against recursive unions (a union whose list member points back to itself).
+     */
+    private function containsClosure(RustType $t, array &$seen = []): bool
+    {
+        $k = $t->toRust();
+        if (isset($seen[$k])) {
+            return false;
+        }
+        $seen[$k] = true;
+        switch ($t->kind) {
+            case RustType::CLOSURE:
+                return true;
+            case RustType::LIST:
+            case RustType::OPTION:
+                return $this->containsClosure($t->inner(), $seen);
+            case RustType::MAP:
+                return $this->containsClosure($t->params[1], $seen);
+            case RustType::TUPLE:
+            case RustType::UNION:
+                foreach ($t->params as $p) {
+                    if ($this->containsClosure($p, $seen)) {
+                        return true;
+                    }
+                }
+                return false;
+            case RustType::SHAPE:
+                foreach ($t->fields as [$ft]) {
+                    if ($this->containsClosure($ft, $seen)) {
+                        return true;
+                    }
+                }
+                return false;
+            default:
+                return false;
+        }
     }
 
     private function needMixedFrom(RustType $from): void

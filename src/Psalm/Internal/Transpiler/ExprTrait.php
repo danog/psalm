@@ -177,17 +177,17 @@ trait ExprTrait
             return $this->matchExpr($e);
         }
         if ($e instanceof Expr\Throw_) {
-            return new Val('return Err(' . $this->throwValue($e->expr) . ')', RustType::never());
+            return new Val($this->throwCode($e->expr), RustType::never());
         }
         if ($e instanceof Expr\Exit_) {
             $code = $e->expr !== null ? $this->expr($e->expr) : null;
             if ($code === null) {
-                return new Val('return Err(Throw::exit(0))', RustType::never());
+                return new Val('php_rt::do_throw(cast::<Mixed>(Throw::exit(0)))', RustType::never());
             }
             if ($code->type->kind === RustType::INT) {
-                return new Val('return Err(Throw::exit(' . $code->code . '))', RustType::never());
+                return new Val('php_rt::do_throw(cast::<Mixed>(Throw::exit(' . $code->code . ')))', RustType::never());
             }
-            return new Val('{ echo(to_str(' . $code->code . ').as_bytes()); return Err(Throw::exit(0)) }', RustType::never());
+            return new Val('{ echo(to_str(' . $code->code . ').as_bytes()); php_rt::do_throw(cast::<Mixed>(Throw::exit(0))) }', RustType::never());
         }
         if ($e instanceof Expr\Print_) {
             return new Val('{ echo(' . $this->exprTo($e->expr, RustType::str()) . '.as_bytes()); 1i64 }', RustType::int());
@@ -215,7 +215,7 @@ trait ExprTrait
                     // the value of a data file has ONE type: the type declared at the include site (the
                     // conversion from Mixed happens there), never the literal's own shape
                     if ($file->isData()) {
-                        return new Val($file->path() . '()?', RustType::mixed());
+                        return new Val($file->path() . '()', RustType::mixed());
                     }
                     return new Val('Mixed::Int(1)', RustType::mixed());
                 }
@@ -227,7 +227,7 @@ trait ExprTrait
         }
         if ($e instanceof Expr\Eval_) {
             // only constant expressions (`return "\t";`) are supported by the runtime evaluator
-            return $this->narrow(new Val('php_eval(&' . $this->exprTo($e->expr, RustType::str()) . ')?', RustType::mixed()), $e);
+            return $this->narrow(new Val('php_eval(&' . $this->exprTo($e->expr, RustType::str()) . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::mixed()), $e);
         }
         if ($e instanceof Expr\Yield_) {
             return $this->yieldExpr($e);
@@ -415,6 +415,15 @@ trait ExprTrait
         $resolved = $e->name->getAttribute('resolvedName') ?? $e->name->toString();
         $short = $e->name->getLast();
         $t = $this->inferred($e);
+        // Tokenizer constants (T_*) MUST resolve to php-rt's `consts::` values, NOT Psalm's host PHP
+        // values: php-rt's tokenizer emits its own scheme and the parser's createTokenMap is keyed by
+        // it, but the host PHP 8.4 T_* values differ (e.g. T_BAD_CHARACTER host 409 == php-rt
+        // T_AMPERSAND_FOLLOWED 409). Inlining the host literal (below) made every `$token->id === \T_*`
+        // comparison mismatch the tokenizer -> the parser produced empty ASTs. Route to consts:: (before
+        // the host-literal inline) so the whole parser agrees on php-rt's token scheme.
+        if (str_starts_with($short, 'T_')) {
+            return new Val('consts::' . $short, RustType::int());
+        }
         // literal constants known to Psalm can be inlined
         $pt = $this->psalmType($e);
         if ($pt !== null && $pt->isSingle()) {
@@ -444,8 +453,45 @@ trait ExprTrait
             $this->warn('variable variable', $e);
             return $this->dead('variable variable', RustType::mixed());
         }
-        $v = $this->readVar($e->name);
-        return $this->narrow($v, $e);
+        $v = $this->narrow($this->readVar($e->name), $e);
+        // apply an active `instanceof` narrowing (from `$v instanceof X && ...`) as a downcast, so subclass-only
+        // members resolve statically instead of via the dynamic protocol. Only a strict class->subclass narrowing.
+        if (isset($this->narrowings[$e->name])) {
+            $nt = $this->narrowings[$e->name];
+            if ($nt->kind === RustType::CLASS_ && $v->type->kind === RustType::CLASS_ && $nt->toRust() !== $v->type->toRust()) {
+                $sub = $this->program->classOf($nt);
+                $cur = $this->program->classOf($v->type);
+                if ($sub !== null && $cur !== null && $sub->isSubclassOf($cur)) {
+                    return new Val($this->casts->convert($v->code, $v->type, $nt), $nt);
+                }
+            }
+        }
+        return $v;
+    }
+
+    /**
+     * Register `instanceof` narrowings found in a boolean sub-expression (recursing through `&&`) into
+     * `$this->narrowings`, so a later read of the variable in a guarded position downcasts to the tested class.
+     * Only project classes (which become closed enums/leaves) are narrowed; external classes stay dynamic.
+     */
+    private function collectInstanceofNarrowings(Expr $e): void
+    {
+        if ($e instanceof BinaryOp\BooleanAnd || $e instanceof BinaryOp\LogicalAnd) {
+            $this->collectInstanceofNarrowings($e->left);
+            $this->collectInstanceofNarrowings($e->right);
+            return;
+        }
+        if ($e instanceof Expr\Instanceof_ && $e->expr instanceof Expr\Variable && is_string($e->expr->name)
+            && $e->class instanceof Name
+        ) {
+            $fqcn = $this->resolveClassName($e->class);
+            if ($fqcn !== null) {
+                $tc = $this->program->getClass($fqcn);
+                if ($tc !== null && $tc->is_project) {
+                    $this->narrowings[$e->expr->name] = RustType::class($fqcn);
+                }
+            }
+        }
     }
 
     /** Convert a read value to the type Psalm inferred for the expression. */
@@ -696,9 +742,22 @@ trait ExprTrait
         }
         $out = '';
         foreach (array_chunk($stmts, 24) as $chunk) {
-            $out .= '(|' . $tmp . ': &mut ' . $t->toRust() . '| -> Result<(), Throw> { ' . implode('', $chunk) . ' Ok(()) })(&mut ' . $tmp . ')?; ';
+            $body = implode('', $chunk);
+            // panic-based error model: no emitted `?`; the chunk closure is always infallible.
+            $out .= '(|' . $tmp . ': &mut ' . $t->toRust() . '| { ' . $body . ' })(&mut ' . $tmp . '); ';
         }
         return $out;
+    }
+
+    /**
+     * Does the emitted code contain a Rust `?` (try) operator? Double-quoted string literals are blanked first so a
+     * literal `?` inside data (e.g. an embedded PHP snippet) is not mistaken for the operator. Char literals `'?'`
+     * are left as-is (rare) and would conservatively read as an operator — safe (only over-reports fallibility).
+     */
+    private function hasTryOp(string $code): bool
+    {
+        $stripped = preg_replace('/"(?:\\\\.|[^"\\\\])*"/', '""', $code);
+        return strpos($stripped ?? $code, '?') !== false;
     }
 
     private function shapeValueType(RustType $shape): RustType
@@ -795,7 +854,14 @@ trait ExprTrait
             return new Val('concat(' . $l . ', ' . $r . ')', RustType::str());
         }
         if ($e instanceof BinaryOp\BooleanAnd || $e instanceof BinaryOp\LogicalAnd) {
-            return new Val('(' . $this->truthy($e->left) . ' && ' . $this->truthy($e->right) . ')', RustType::bool());
+            // `$v instanceof X && $v->method()`: narrow $v to X while emitting the RHS so the call resolves
+            // statically (Psalm narrows here but doesn't record it on the receiver node -> would go dynamic).
+            $left = $this->truthy($e->left);
+            $saved = $this->narrowings;
+            $this->collectInstanceofNarrowings($e->left);
+            $right = $this->truthy($e->right);
+            $this->narrowings = $saved;
+            return new Val('(' . $left . ' && ' . $right . ')', RustType::bool());
         }
         if ($e instanceof BinaryOp\BooleanOr || $e instanceof BinaryOp\LogicalOr) {
             return new Val('(' . $this->truthy($e->left) . ' || ' . $this->truthy($e->right) . ')', RustType::bool());
@@ -888,19 +954,21 @@ trait ExprTrait
 
         $int_ok = fn(RustType $t) => $t->kind === RustType::INT || $t->kind === RustType::BOOL;
         if ($sig === '/') {
+            // div ops panic on division-by-zero (php-rt ops.rs) rather than returning Result — DivisionByZeroError
+            // is never caught, so no `?`.
             if ($res->kind === RustType::INT && $int_ok($lt) && $int_ok($rt)) {
-                return new Val('div_i(' . $this->exprTo($e->left, RustType::int()) . ', ' . $this->exprTo($e->right, RustType::int()) . ')?', RustType::int());
+                return new Val('div_i(' . $this->exprTo($e->left, RustType::int()) . ', ' . $this->exprTo($e->right, RustType::int()) . ')', RustType::int());
             }
             if ($res->kind === RustType::FLOAT) {
-                return new Val('div_f(' . $this->exprTo($e->left, RustType::float()) . ', ' . $this->exprTo($e->right, RustType::float()) . ')?', RustType::float());
+                return new Val('div_f(' . $this->exprTo($e->left, RustType::float()) . ', ' . $this->exprTo($e->right, RustType::float()) . ')', RustType::float());
             }
             $l = $this->numOperand($e->left);
             $r = $this->numOperand($e->right);
-            $num = 'div(' . $l . ', ' . $r . ')?';
+            $num = 'div(' . $l . ', ' . $r . ')';
             return $this->numResult($num, $res);
         }
         if ($sig === '%') {
-            return new Val('imod(' . $this->exprTo($e->left, RustType::int()) . ', ' . $this->exprTo($e->right, RustType::int()) . ')?', RustType::int());
+            return new Val('imod(' . $this->exprTo($e->left, RustType::int()) . ', ' . $this->exprTo($e->right, RustType::int()) . ')', RustType::int());
         }
         if ($sig === '**') {
             if ($res->kind === RustType::INT && $int_ok($lt) && $int_ok($rt)) {
@@ -1065,7 +1133,9 @@ trait ExprTrait
                     return null;
                 }
                 $c = $this->program->classOf($t);
-                return $c !== null && !$c->isLeaf() ? $t->toRust() : null;
+                // only an OPEN hierarchy can carry a null through its `Other__(Mixed::Null)` escape; a
+                // closed handle has no such variant, so null-checks use `Option`/`false` semantics instead
+                return $c !== null && !$c->isLeaf() && $c->has_downstream ? $t->toRust() : null;
             };
             if ($ov !== null) {
                 $h = $escaped($ov->type->inner());
@@ -1182,7 +1252,7 @@ trait ExprTrait
             $target = $inner;
         }
         if ($e->right instanceof Expr\Throw_) {
-            return new Val('(match ' . $left->code . ' { Some(__v) => ' . $this->casts->convert('__v', $inner, $target) . ', None => return Err(' . $this->throwValue($e->right->expr) . ') })', $target);
+            return new Val('(match ' . $left->code . ' { Some(__v) => ' . $this->casts->convert('__v', $inner, $target) . ', None => ' . $this->throwCode($e->right->expr) . ' })', $target);
         }
         $right = $this->exprTo($e->right, $target);
         return new Val('(match ' . $left->code . ' { Some(__v) => ' . $this->casts->convert('__v', $inner, $target) . ', None => ' . $right . ' })', $target);
@@ -1260,7 +1330,7 @@ trait ExprTrait
                 $cls = $this->program->classOf($bt);
                 $m = $cls !== null ? $this->program->findMethod($cls, 'offsetget') : null;
                 if ($m !== null) {
-                    $code = '(match ' . $base->code . ' { Some(__b) => { if __b.offsetExists(' . $this->casts->convert($k->code, $k->type, $this->program->findMethod($cls, 'offsetexists')->param_types[0] ?? RustType::mixed()) . ')? { Some(__b.offsetGet(' . $this->casts->convert($k->code, $k->type, $m->param_types[0] ?? RustType::mixed()) . ')?) } else { None } } None => None })';
+                    $code = '(match ' . $base->code . ' { Some(__b) => { if __b.offsetExists(' . $this->casts->convert($k->code, $k->type, $this->program->findMethod($cls, 'offsetexists')->param_types[0] ?? RustType::mixed()) . ') { Some(__b.offsetGet(' . $this->casts->convert($k->code, $k->type, $m->param_types[0] ?? RustType::mixed()) . ')) } else { None } } None => None })';
                     return $this->flattenOption($code, $m->return_type);
                 }
             }
@@ -1296,14 +1366,14 @@ trait ExprTrait
                 if ($magic_get !== null && $magic_get->node !== null) {
                     $lit = Names::strLit($name);
                     $present = $magic_isset !== null && $magic_isset->node !== null
-                        ? 'match __b.' . $magic_isset->rustName() . '(' . $lit . ') { Ok(true) => true, _ => false }'
+                        ? '__b.' . $magic_isset->rustName() . '(' . $lit . ')'
                         : 'true';
-                    $code = $base->code . '.and_then(|__b| if ' . $present . ' { __b.' . $magic_get->rustName() . '(' . $lit . ').ok() } else { None })';
+                    $code = $base->code . '.and_then(|__b| if ' . $present . ' { Some(__b.' . $magic_get->rustName() . '(' . $lit . ')) } else { None })';
                     return $this->flattenOption($code, $magic_get->return_type);
                 }
             }
             if ($bt->kind === RustType::MIXED) {
-                return new Val($base->code . '.and_then(|__b| mixed_prop(&__b, &' . Names::strLit($name) . '))', RustType::option(RustType::mixed()));
+                return new Val($base->code . '.and_then(|__b| mixed_prop(&__b, &' . $this->dynPropName($name) . '))', RustType::option(RustType::mixed()));
             }
             if ($bt->kind === RustType::RT_GENERIC && $bt->name === 'StdClass') {
                 return new Val($base->code . '.and_then(|__b| __b.get(' . Names::strLit($name) . '))', RustType::option(RustType::mixed()));
@@ -1440,7 +1510,7 @@ trait ExprTrait
                 return $v;
             }
             if ($t->kind === RustType::CLASS_ || $t->kind === RustType::UNION || $t->kind === RustType::ANY_OBJECT) {
-                return new Val($v->code . '.to_php_string()?', RustType::str());
+                return new Val($v->code . '.to_php_string()', RustType::str());
             }
             return new Val('to_str(&' . $v->code . ')', RustType::str());
         }
@@ -1522,7 +1592,7 @@ trait ExprTrait
         if ($default !== null) {
             $code .= ($first ? '{ ' : 'else { ') . $this->exprTo($default->body, $res) . ' } ';
         } else {
-            $code .= ($first ? '{ ' : 'else { ') . 'return Err(Throw::unhandled_match(&' . $this->casts->convert($tmp . '.clone()', $subj->type, RustType::mixed()) . ')) } ';
+            $code .= ($first ? '{ ' : 'else { ') . 'php_rt::do_throw(cast::<Mixed>(Throw::unhandled_match(&' . $this->casts->convert($tmp . '.clone()', $subj->type, RustType::mixed()) . '))) } ';
         }
         return new Val($code . '}', $res);
     }
@@ -1731,7 +1801,7 @@ trait ExprTrait
         }
         $type = RustType::closure(array_values($param_types), $ret);
         $this->types()->closures[$type->mangle()] = $type;
-        $code = '{ ' . implode(' ', $captures) . ' Rc::new(move |' . implode(', ', $param_decls) . '| -> Result<' . $ret->toRust() . ', Throw> { ' . $decl . "\n" . $body . '}) as ' . $type->toRust() . ' }';
+        $code = '{ ' . implode(' ', $captures) . ' Rc::new(move |' . implode(', ', $param_decls) . '| -> ' . $ret->toRust() . ' { ' . $decl . "\n" . $body . '}) as ' . $type->toRust() . ' }';
         return new Val($code, $type);
     }
 }

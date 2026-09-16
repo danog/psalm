@@ -16,8 +16,10 @@ use Psalm\Type\Atomic\TBool;
 use Psalm\Type\Atomic\TCallable;
 use Psalm\Type\Atomic\TCallableObject;
 use Psalm\Type\Atomic\TClassConstant;
+use Psalm\Type\Atomic\TCallableString;
 use Psalm\Type\Atomic\TClassString;
 use Psalm\Type\Atomic\TClassStringMap;
+use Psalm\Type\Atomic\TTraitString;
 use Psalm\Type\Atomic\TClosedResource;
 use Psalm\Type\Atomic\TClosure;
 use Psalm\Type\Atomic\TConditional;
@@ -76,8 +78,17 @@ final class TypeMapper
     /** @var array<string, int> unsupported atomic types seen (for diagnostics) */
     public array $unsupported = [];
 
+    /** @var array<string, int> reason => count of `Mixed` types generated (drive-to-zero diagnostics) */
+    public array $mixed_roots = [];
+
+    /** @var array<string, array<string, int>> reason => context => count (which PHP members yield Mixed) */
+    public array $mixed_sites = [];
+
     /** Class that `static`/`self` types refer to while mapping. */
     public ?string $current_class = null;
+
+    /** @var array<string, true> class-constants currently being resolved (recursion guard). */
+    private array $resolving_class_const = [];
 
     /** Where the type being mapped comes from (a member or a function body), for the map inventories. */
     public ?string $context = null;
@@ -118,10 +129,20 @@ final class TypeMapper
     ) {
     }
 
+    /** Count a `Mixed` type at its root cause (drive-to-zero diagnostics), returning `Mixed`. */
+    private function mixedRoot(string $why): RustType
+    {
+        $this->mixed_roots[$why] = ($this->mixed_roots[$why] ?? 0) + 1;
+        if ($this->context !== null) {
+            $this->mixed_sites[$why][$this->context] = ($this->mixed_sites[$why][$this->context] ?? 0) + 1;
+        }
+        return RustType::mixed();
+    }
+
     public function map(?Union $type): RustType
     {
         if ($type === null) {
-            return RustType::mixed();
+            return $this->mixedRoot('null-type (untyped PHP)');
         }
 
         $atomics = $this->expandAliases(array_values($type->getAtomicTypes()));
@@ -144,7 +165,7 @@ final class TypeMapper
                 continue;
             }
             if ($atomic instanceof TMixed) {
-                return RustType::mixed();
+                return $this->mixedRoot('TMixed (declared mixed)');
             }
             if ($atomic instanceof TTrue) {
                 $has_true = true;
@@ -166,6 +187,11 @@ final class TypeMapper
         } elseif ($has_true) {
             $members[] = count($members) === 0 && !$nullable ? RustType::bool() : $this->unitVariant('True');
         } elseif ($has_false) {
+            // NB: `T|false` stays a union (False unit), NOT Option<T>. Tried mapping it to Option<T> (None==false):
+            // it compiled + cleared ~182 SSA candidates + ~130 Mixed, BUT regressed analysis correctness badly
+            // (ArgTest 55->28, ArrayAccess 81->47) — `false`-as-`None` diverges from PHP `false` in real flows
+            // (coalesce, storing/passing X|false, comparisons beyond `=== false`). Needs a DISTINCT false-option
+            // type (not the null Option) with false-aware comparison/coalesce/cast emission. Reverted.
             $members[] = count($members) === 0 && !$nullable ? RustType::bool() : $this->unitVariant('False');
         }
 
@@ -214,7 +240,7 @@ final class TypeMapper
         }
         foreach ($members as $m) {
             if ($m->kind === RustType::MIXED) {
-                return RustType::mixed();
+                return $this->mixedRoot('union-with-mixed');
             }
         }
         // int|ArrayKey, string|ArrayKey => ArrayKey
@@ -366,9 +392,23 @@ final class TypeMapper
         if ($atomic instanceof TBool) {
             return RustType::bool();
         }
-        if ($atomic instanceof TString || $atomic instanceof TClassString || $atomic instanceof TLiteralClassString
-            || $atomic instanceof TTemplateParamClass
+        // StrId axis (pzoom models names as interned StrId): class-strings -> interned `Sym`. ENABLED 2026-09-15
+        // under the user's "panics OK instead of dynamic-protocol/perf-loss" license: the prior wall was that
+        // `class-string|object` unions become `Sym|AnyObject` and `CastTo<Str>` panics on the AnyObject arm when
+        // analyzer code uses the object side as a string. That panic is now acceptable (type-mismatch panic beats
+        // keeping names as un-interned Str). TClassString covers TTemplateParamClass; TLiteralClassString extends
+        // TLiteralString so it needs its own arm. Plain TString stays Str.
+        if ($atomic instanceof TClassString || $atomic instanceof TLiteralClassString
+            || $atomic instanceof TTraitString || $atomic instanceof TCallableString
         ) {
+            // All name-typed strings intern as Sym: class-string (+ literal/unknown/template variants),
+            // trait-string, callable-string (function/method names). TUnknownClassString extends TClassString
+            // so it is already covered. Data strings stay Str. NOTE: lowercase-string is NOT a clean name type
+            // (Psalm types lowercased FILE PATHS as lowercase-string in config, e.g. ProjectFileFilter) — routing
+            // it to Sym broke loadFromArray transpilation and aborted all tests; kept as Str.
+            return RustType::sym();
+        }
+        if ($atomic instanceof TString) {
             return RustType::str();
         }
         if ($atomic instanceof TArrayKey) {
@@ -381,7 +421,7 @@ final class TypeMapper
             return RustType::never();
         }
         if ($atomic instanceof TMixed) {
-            return RustType::mixed();
+            return $this->mixedRoot('TMixed (declared mixed)');
         }
         if ($atomic instanceof TScalar) {
             return $this->combine([RustType::bool(), RustType::float(), RustType::int(), RustType::str()]);
@@ -436,14 +476,46 @@ final class TypeMapper
             return $this->combine([$this->map($atomic->if_type), $this->map($atomic->else_type)]);
         }
         if ($atomic instanceof TClassConstant) {
-            return RustType::mixed();
+            // Resolve `Foo::BAR` to the constant's declared/inferred type rather than falling back to Mixed.
+            // Resolve self/static/$this/parent against the class currently being mapped so those don't fall to Mixed.
+            $const_class = $atomic->fq_classlike_name;
+            $const_class_lc = strtolower($const_class);
+            if (($const_class_lc === 'self' || $const_class_lc === 'static' || $const_class_lc === '$this')
+                && $this->current_class !== null
+            ) {
+                $const_class = $this->current_class;
+            } elseif ($const_class_lc === 'parent' && $this->current_class !== null) {
+                $cur = $this->program->getClass($this->program->canonicalClassName($this->current_class));
+                if ($cur !== null && $cur->parent !== null) {
+                    $const_class = $cur->parent->fqcn;
+                }
+            }
+            $key = strtolower($const_class) . '::' . $atomic->const_name;
+            if (!isset($this->resolving_class_const[$key]) && strpos($atomic->const_name, '*') === false) {
+                $this->resolving_class_const[$key] = true;
+                try {
+                    $resolved = $this->codebase->classlikes->getClassConstantType(
+                        $const_class,
+                        $atomic->const_name,
+                        \ReflectionProperty::IS_PRIVATE,
+                    );
+                } catch (\Throwable) {
+                    $resolved = null;
+                } finally {
+                    unset($this->resolving_class_const[$key]);
+                }
+                if ($resolved !== null) {
+                    return $this->map($resolved);
+                }
+            }
+            return $this->mixedRoot('TClassConstant');
         }
         if ($atomic instanceof TClassStringMap) {
             return RustType::map(RustType::str(), $this->map($atomic->value_param));
         }
 
         $this->unsupported[$atomic::class] = ($this->unsupported[$atomic::class] ?? 0) + 1;
-        return RustType::mixed();
+        return $this->mixedRoot('unsupported-atomic');
     }
 
     /**
@@ -461,11 +533,11 @@ final class TypeMapper
             case 'IteratorAggregate':
             case 'Traversable':
             case 'Generator':
-                $out[] = isset($params[0]) ? $this->map($params[0]) : RustType::mixed();
-                $out[] = isset($params[1]) ? $this->map($params[1]) : RustType::mixed();
+                $out[] = isset($params[0]) ? $this->map($params[0]) : $this->mixedRoot('generic-param-absent');
+                $out[] = isset($params[1]) ? $this->map($params[1]) : $this->mixedRoot('generic-param-absent');
                 foreach ($out as $i => $p) {
                     if ($p->kind === RustType::UNIT || $p->kind === RustType::NEVER) {
-                        $out[$i] = RustType::mixed();
+                        $out[$i] = $this->mixedRoot('generic-param-empty');
                     }
                 }
                 if ($name === 'SplObjectStorage' && ($out[0]->kind === RustType::MIXED)) {
@@ -477,7 +549,7 @@ final class TypeMapper
                 break;
             case 'WeakMap':
                 $out[] = isset($params[0]) ? $this->map($params[0]) : RustType::anyObject();
-                $out[] = isset($params[1]) ? $this->map($params[1]) : RustType::mixed();
+                $out[] = isset($params[1]) ? $this->map($params[1]) : $this->mixedRoot('generic-param-absent');
                 break;
         }
         return $out;
@@ -555,10 +627,10 @@ final class TypeMapper
     {
         $v = $this->map($value);
         if ($v->kind === RustType::NEVER) {
-            return RustType::mixed();
+            return $this->mixedRoot('array-value-never (empty array)');
         }
         if ($v->kind === RustType::UNIT && $value->isNever()) {
-            return RustType::mixed();
+            return $this->mixedRoot('array-value-never (empty array)');
         }
         return $v;
     }
@@ -638,7 +710,7 @@ final class TypeMapper
         foreach ($t->params as $p) {
             $params[] = $this->map($p->type);
         }
-        $ret = $t->return_type ? $this->map($t->return_type) : RustType::mixed();
+        $ret = $t->return_type ? $this->map($t->return_type) : $this->mixedRoot('callable-no-return');
         $c = RustType::closure($params, $ret);
         $this->closures[$c->mangle()] = $c;
         return $c;

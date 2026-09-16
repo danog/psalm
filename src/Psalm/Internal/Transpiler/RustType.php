@@ -24,6 +24,7 @@ final class RustType
     public const FLOAT = 'float';
     public const BOOL = 'bool';
     public const STR = 'str';
+    public const SYM = 'sym';
     public const UNIT = 'unit';
     public const NEVER = 'never';
     public const MIXED = 'mixed';
@@ -77,6 +78,11 @@ final class RustType
     public static function str(): RustType
     {
         return self::intern(new self(self::STR));
+    }
+    /** Interned identifier symbol (php-rt `Sym`): for name-typed strings (class/type/member names). */
+    public static function sym(): RustType
+    {
+        return self::intern(new self(self::SYM));
     }
     public static function unit(): RustType
     {
@@ -231,7 +237,7 @@ final class RustType
     public function hasDefault(): bool
     {
         return match ($this->kind) {
-            self::INT, self::FLOAT, self::BOOL, self::UNIT, self::STR, self::MIXED, self::ARRAY_KEY,
+            self::INT, self::FLOAT, self::BOOL, self::UNIT, self::STR, self::SYM, self::MIXED, self::ARRAY_KEY,
             self::OPTION, self::LIST, self::MAP => true,
             self::TUPLE => (static function (array $ps): bool {
                 foreach ($ps as $p) {
@@ -269,6 +275,7 @@ final class RustType
             self::FLOAT => 'f64',
             self::BOOL => 'bool',
             self::STR => 'Str',
+            self::SYM => 'Sym',
             self::UNIT => '()',
             self::NEVER => 'Never',
             self::MIXED => 'Mixed',
@@ -284,7 +291,7 @@ final class RustType
             self::SHAPE, self::UNION => $this->mangle(),
             self::CLASS_ => Names::classPath($this->name),
             self::CLOSURE => 'Rc<dyn Fn(' . implode(', ', array_map(static fn(RustType $p) => $p->toRust(), $this->params))
-                . ') -> Result<' . $this->ret->toRust() . ', Throw>>',
+                . ') -> ' . $this->ret->toRust() . '>',
             self::RT_GENERIC => $this->name . '<' . implode(', ', array_map(static fn(RustType $p) => $p->toRust(), $this->params)) . '>',
         };
     }
@@ -297,6 +304,7 @@ final class RustType
             self::FLOAT => 'Float',
             self::BOOL => 'Bool',
             self::STR => 'Str',
+            self::SYM => 'Sym',
             self::UNIT => 'Null',
             self::NEVER => 'Never',
             self::MIXED => 'Mixed',

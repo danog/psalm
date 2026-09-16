@@ -26,6 +26,7 @@ use function rtrim;
 use function str_starts_with;
 use function strlen;
 use function substr;
+use function in_array;
 use function strtolower;
 use function usort;
 use function fwrite;
@@ -52,6 +53,15 @@ final class Program
 
     /** @var array<lowercase-string, GlobalConstModel> global constants by lowercase name */
     public array $constants = [];
+
+    /**
+     * Axis-8 (panic-based errors): the set of exception types (lowercase FQCN) that are "Resultable" — i.e.
+     * appear in some `catch` clause, or implement Psalm\Exception\Resultable. A `throw` of such a type (or a
+     * subtype) is emitted as `Result::Err` (recoverable, catchable); any other `throw` becomes a panic. Populated
+     * by computeResultable().
+     * @var array<lowercase-string, true>
+     */
+    public array $resultable = [];
 
 
     public function __construct(
@@ -98,10 +108,23 @@ final class Program
                 // instances of subclasses from downstream crates travel through the `Other__` variant
                 if ($model->isConcrete() && $model->is_project && $model->crate <= $ancestor->crate) {
                     $ancestor->concrete[] = $model;
+                } elseif ($model->isConcrete() && $model->is_project) {
+                    // a concrete subclass in a downstream crate: the ancestor's enum can't name it, so the
+                    // hierarchy needs the `Other__` escape (see ClassModel::$has_downstream)
+                    $ancestor->has_downstream = true;
                 }
             }
             if ($model->isConcrete() && $model->is_project) {
                 $model->concrete[] = $model;
+            }
+        }
+        if (getenv('FORCE_DOWNSTREAM')) {
+            // A/B diagnostic: keep the `Other__` dynamic-dispatch fallback on every hierarchy (the pre-gating
+            // behavior), to isolate whether closed-enum dispatch is behind a correctness regression.
+            foreach ($this->uniqueClasses() as $model) {
+                if ($model->is_project) {
+                    $model->has_downstream = true;
+                }
             }
         }
         foreach ($this->uniqueClasses() as $model) {
@@ -147,6 +170,619 @@ final class Program
             if ($model->is_project && $model->crateRoot() === $model) {
                 $this->importUpstreamMethods($model);
             }
+        }
+        $this->reportInheritanceComponents();
+        $this->computeResultable();
+        $this->computeThrows();
+        $this->computeExternalWrites();
+        $this->computeHierarchyImmutable();
+    }
+
+    /**
+     * Whole-hierarchy Rc<T>-immutable (axis 4, hot path). A class hierarchy can only convert to Rc<T> ALL-OR-NOTHING:
+     * the abstract base's dispatch-enum field accessors must return a uniform type across variants, so every concrete
+     * leaf under the same root class must be Rc<T> together. For each such hierarchy where EVERY concrete leaf is
+     * immutable-safe (ClassModel::isImmutableSafeMember — mutation-free, write-free own+external, no init-helper
+     * writes; withers handled by the LValueTrait make_mut-in-place write-path), mark every leaf hier_immutable.
+     * Env-gated (AUTO_IMMUTABLE_HIER=N): only hierarchies with <= N leaves convert (N=0/unset disables), so the
+     * mechanism can be validated on small hierarchies first before the big Atomic/Union ones. Diagnostic lists every
+     * qualifying hierarchy and its size regardless of the cap.
+     */
+    private function computeHierarchyImmutable(): void
+    {
+        // DEPLOYED 2026-09-16: default cap converts all currently-qualifying hierarchies (UnresolvedConstant-18,
+        // SourceControlInfo-1; validated by a paired ConstantTest = 131/7/8 identical converted-vs-baseline, and
+        // smoke identical). AUTO_IMMUTABLE_HIER can still override the cap (0 disables) for experiments.
+        $cap = getenv('AUTO_IMMUTABLE_HIER') !== false ? (int) getenv('AUTO_IMMUTABLE_HIER') : 64;
+        // EXPERIMENT (env HIER_CONCRETE=N): also convert hierarchies with a CONCRETE base and/or concrete-non-leaf
+        // members (e.g. CodeLocation; the Atomic TString/TInt/TArray shape) up to N members. A concrete-non-leaf must
+        // itself be Rc<T> for its own Own struct while ALSO being a variant of its handle enum. Off by default (the
+        // deployed default handles only abstract-root all-leaf hierarchies, which are validated green).
+        $concrete_cap = getenv('HIER_CONCRETE') !== false ? (int) getenv('HIER_CONCRETE') : 0;
+        if ($concrete_cap > 0) {
+            $this->computeHierarchyImmutableConcrete($concrete_cap);
+        }
+        $seen_roots = [];
+        foreach ($this->uniqueClasses() as $model) {
+            if (!$model->is_project || !$model->isLeaf() || $model->parent === null) {
+                continue; // standalone leaves are handled by immutable()'s auto-widen; non-leaves are enums
+            }
+            $root = $model;
+            while ($root->parent !== null) {
+                $root = $root->parent;
+            }
+            if (isset($seen_roots[$root->fqcn])) {
+                continue;
+            }
+            $seen_roots[$root->fqcn] = true;
+            // Only ABSTRACT / interface roots convert cleanly: a CONCRETE base (e.g. Psalm\CodeLocation, which is both
+            // instantiated AND subclassed) is a non-leaf, so immutable()'s isLeaf() guard keeps it Rc<RefCell> while
+            // its leaves would become Rc<T> -> MIXED representation -> E0308/E0596 in the base enum accessors. Require
+            // every concrete member to be a leaf (no concrete non-leaf anywhere in the hierarchy).
+            if ($root->isConcrete()) {
+                continue;
+            }
+            $leaves = [];
+            $has_concrete_nonleaf = false;
+            foreach ($root->concrete as $c) {
+                if ($c->isLeaf()) {
+                    $leaves[] = $c;
+                } else {
+                    $has_concrete_nonleaf = true;
+                }
+            }
+            if ($leaves === [] || $has_concrete_nonleaf) {
+                continue;
+            }
+            $all_ok = true;
+            foreach ($leaves as $leaf) {
+                if (!$leaf->isImmutableSafeMember()) {
+                    $all_ok = false;
+                    break;
+                }
+            }
+            if (!$all_ok) {
+                continue;
+            }
+            // Hierarchies whose abstract base declares __construct (constructor inheritance) are handled by the
+            // immutable inherited-ctor forwarding in ClassEmitter::emitMethodOnOwn + the self::/parent:: super-copy
+            // in CallTrait: the inherited ctor chain runs as super-copies ON THE LEAF against `self` in place
+            // (&mut self, make_mut, refcount 1) instead of `self.clone()` -> COW / missing enum __impl.
+            fwrite(STDERR, "[hier-immutable-candidate] " . $root->fqcn . " (" . ($root->isInterface() ? "iface" : "abstract")
+                . ") leaves=" . count($leaves) . ($cap > 0 && count($leaves) <= $cap ? " CONVERTING" : "") . "\n");
+            if ($cap > 0 && count($leaves) <= $cap) {
+                foreach ($leaves as $leaf) {
+                    $leaf->hier_immutable = true;
+                }
+            }
+        }
+    }
+
+    /**
+     * EXPERIMENT: whole-hierarchy Rc<T> including CONCRETE bases and concrete-non-leaf members (the hot Atomic shape:
+     * TString/TInt/TArray are concrete AND subclassed). Marks EVERY concrete member of a class hierarchy (root walked
+     * via class parents) when all are isImmutableSafeMember. immutable() lets hier_immutable bypass its isLeaf guard,
+     * so a concrete-non-leaf gets an Rc<T> Own struct while still being a variant of its handle enum. Gated by
+     * HIER_CONCRETE=N (max members) so it can be validated on a small hierarchy (CodeLocation=4) before Atomic.
+     */
+    private function computeHierarchyImmutableConcrete(int $cap): void
+    {
+        $seen = [];
+        foreach ($this->uniqueClasses() as $model) {
+            if (!$model->is_project || !$model->isConcrete() || $model->parent === null) {
+                continue;
+            }
+            $root = $model;
+            while ($root->parent !== null) {
+                $root = $root->parent;
+            }
+            if (isset($seen[$root->fqcn])) {
+                continue;
+            }
+            $seen[$root->fqcn] = true;
+            $members = $root->concrete; // every concrete class in the hierarchy (leaves + concrete non-leaves)
+            if ($members === [] || count($members) > $cap) {
+                continue;
+            }
+            $all_ok = true;
+            $has_nonleaf = false;
+            foreach ($members as $c) {
+                if (!$c->isImmutableSafeMember(true, true)) { // allow memoization + external writes -> per-field Cell
+                    $reason = !$c->isConcrete() ? 'not-concrete'
+                        : ($c->storage->allowed_mutations > \Psalm\Storage\Mutations::LEVEL_INTERNAL_READ ? 'allowed_mutations=' . $c->storage->allowed_mutations
+                        : 'helper-ctor-writes');
+                    if (count($members) <= $cap) {
+                        fwrite(STDERR, "[hier-concrete-skip] " . $root->fqcn . " member " . $c->fqcn . " fails: " . $reason . "\n");
+                    }
+                    $all_ok = false;
+                    break;
+                }
+                if (!$c->isLeaf()) {
+                    $has_nonleaf = true;
+                }
+            }
+            if (!$all_ok || !$has_nonleaf) {
+                continue; // pure-leaf hierarchies are handled by the default path
+            }
+            fwrite(STDERR, "[hier-immutable-concrete] " . $root->fqcn . " members=" . count($members) . " CONVERTING\n");
+            foreach ($members as $c) {
+                $c->hier_immutable = true;
+            }
+        }
+    }
+
+    /**
+     * Rc<T>-immutable safety (axis 4): mark every class whose property is written post-construction by SOME
+     * OTHER method (`$obj->prop = ...`, `$obj->prop op= ...` where `$obj` is not `$this`). Resolves `$obj`'s
+     * Psalm-inferred type at the write site and flags each named class it can be. Feeds ClassModel::immutable()
+     * auto-widen: an @psalm-immutable class that is externally written cannot be Rc<T> (the write would be lost
+     * to Rc::make_mut COW on a shared handle). Own-`$this->` writes are handled separately (postConstructionWrittenFields).
+     */
+    private function computeExternalWrites(): void
+    {
+        fwrite(STDERR, "[program] external-write analysis\n");
+        $finder = new \PhpParser\NodeFinder();
+        // any `$base->prop = ...` / `$base->prop op= ...` (through array dims) where base is not `$this`, and any
+        // by-reference alias of such a property (`&$base->prop`), plus writes via clone-then-mutate to a local are
+        // covered separately (hasCloneMutateWither). We over-approximate: an aliased/foreach-by-ref property counts.
+        $is_ext_write = static function (\PhpParser\Node $n): ?\PhpParser\Node\Expr\PropertyFetch {
+            if ($n instanceof \PhpParser\Node\Expr\Assign || $n instanceof \PhpParser\Node\Expr\AssignOp
+                || $n instanceof \PhpParser\Node\Expr\AssignRef
+            ) {
+                $t = $n->var;
+            } elseif ($n instanceof \PhpParser\Node\Expr\PreInc || $n instanceof \PhpParser\Node\Expr\PreDec
+                || $n instanceof \PhpParser\Node\Expr\PostInc || $n instanceof \PhpParser\Node\Expr\PostDec
+            ) {
+                $t = $n->var;
+            } else {
+                return null;
+            }
+            while ($t instanceof \PhpParser\Node\Expr\ArrayDimFetch) {
+                $t = $t->var;
+            }
+            if ($t instanceof \PhpParser\Node\Expr\PropertyFetch
+                && $t->name instanceof \PhpParser\Node\Identifier
+                && !($t->var instanceof \PhpParser\Node\Expr\Variable && $t->var->name === 'this')
+            ) {
+                return $t;
+            }
+            return null;
+        };
+        // Wither false-positive relaxation: a write to a `$c = clone $x` clone-local is the class building a modified
+        // copy of itself (handled by the make_mut-in-place write-path), NOT external mutation — so it must not flag the
+        // class externally_written. Now DEFAULT (was gated behind HIER_CONCRETE): the place() bug it exposed — _mut on
+        // an Option-narrowed clone-local — is fixed (varType-based unwrap in LValueTrait::place). Env var can still
+        // force-disable for A/B: WITHER_FIX=0.
+        $skip_withers = getenv('WITHER_FIX') !== '0';
+        $scan = function (?array $stmts, $node_data) use ($finder, $is_ext_write, $skip_withers): void {
+            if ($stmts === null || $node_data === null) {
+                return;
+            }
+            // locals assigned `clone ...` in this method are WITHER copies: a write to `$c->prop` where `$c = clone $x`
+            // is the class constructing a modified copy of itself (handled by the LValueTrait make_mut-in-place
+            // write-path), NOT external mutation of a live instance. Don't let them flag the class externally_written
+            // (that false positive was excluding wither-heavy immutable classes like CodeLocation / Type\Atomic\*).
+            $clone_locals = [];
+            if ($skip_withers) {
+                foreach ($finder->find($stmts, static fn(\PhpParser\Node $n): bool =>
+                    $n instanceof \PhpParser\Node\Expr\Assign
+                    && $n->expr instanceof \PhpParser\Node\Expr\Clone_
+                    && $n->var instanceof \PhpParser\Node\Expr\Variable
+                    && is_string($n->var->name)) as $a
+                ) {
+                    /** @var \PhpParser\Node\Expr\Assign $a */
+                    /** @var \PhpParser\Node\Expr\Variable $v */
+                    $v = $a->var;
+                    $clone_locals[$v->name] = true;
+                }
+            }
+            foreach ($finder->find($stmts, static fn(\PhpParser\Node $n): bool => $is_ext_write($n) !== null) as $n) {
+                $target = $is_ext_write($n);
+                if ($target->var instanceof \PhpParser\Node\Expr\Variable && is_string($target->var->name)
+                    && isset($clone_locals[$target->var->name])
+                ) {
+                    continue; // wither clone-local write, not external mutation
+                }
+                $base_type = $node_data->getType($target->var);
+                if ($base_type === null) {
+                    continue;
+                }
+                foreach ($base_type->getAtomicTypes() as $atomic) {
+                    if ($atomic instanceof \Psalm\Type\Atomic\TNamedObject) {
+                        $lc = strtolower($atomic->value);
+                        if (isset($this->classes[$lc])) {
+                            $this->classes[$lc]->externally_written = true;
+                            $this->classes[$lc]->ext_written_fields[$target->name->name] = true;
+                        }
+                    }
+                }
+            }
+        };
+        foreach ($this->uniqueClasses() as $model) {
+            foreach ($model->methods as $m) {
+                if ($m->node === null || $m->record === null) {
+                    continue;
+                }
+                $scan($m->node->stmts ?? [], $m->record->node_data);
+            }
+        }
+        foreach ($this->functions as $fn) {
+            if ($fn->record->node !== null) {
+                $scan($fn->record->node->stmts ?? [], $fn->record->node_data);
+            }
+        }
+        // diagnostics: total externally-written classes, and how many NEW classes auto-widen would add
+        $ext = 0;
+        $auto = 0;
+        foreach ($this->uniqueClasses() as $model) {
+            if ($model->externally_written) {
+                $ext++;
+            }
+            if ($model->is_project && $model->parent === null && !$model->externally_written
+                && $model->isLeaf()
+                && $model->storage->allowed_mutations <= \Psalm\Storage\Mutations::LEVEL_INTERNAL_READ
+            ) {
+                $auto++;
+                fwrite(STDERR, "[auto-immutable-candidate] " . $model->fqcn . "\n");
+            }
+        }
+        fwrite(STDERR, "[external-writes] " . $ext . " classes externally written; " . $auto . " standalone-leaf @psalm-immutable auto-immutable candidates\n");
+    }
+
+    /**
+     * Axis-8: populate $this->resultable with every exception type that is caught in a `catch` clause anywhere, or
+     * that implements Psalm\Exception\Resultable. These are the "intentional / recoverable" exceptions; a throw of
+     * any of them is emitted as Result::Err, while a throw of anything else becomes a panic (php_rt::uncaught).
+     * The caught-clause scan makes built-in exceptions (InvalidArgumentException, …) — which cannot implement the
+     * marker interface — Resultable too, so no currently-caught throw regresses to a panic.
+     */
+    private function computeResultable(): void
+    {
+        $finder = new \PhpParser\NodeFinder();
+        $add_catches = function (?array $stmts) use ($finder): void {
+            if ($stmts === null) {
+                return;
+            }
+            foreach ($finder->findInstanceOf($stmts, \PhpParser\Node\Stmt\TryCatch::class) as $try) {
+                foreach ($try->catches as $catch) {
+                    foreach ($catch->types as $type) {
+                        $fqcn = (string) ($type->getAttribute('resolvedName') ?? $type->toString());
+                        $this->resultable[strtolower(ltrim($fqcn, '\\'))] = true;
+                    }
+                }
+            }
+        };
+        foreach ($this->uniqueClasses() as $model) {
+            foreach ($model->methods as $m) {
+                if ($m->declaring === $model && $m->node !== null) {
+                    $add_catches($m->node->stmts);
+                }
+            }
+        }
+        foreach ($this->functions as $fn) {
+            if ($fn->record->node !== null) {
+                $add_catches($fn->record->node->stmts);
+            }
+        }
+        // Classes explicitly implementing the marker interface.
+        foreach ($this->uniqueClasses() as $model) {
+            $lc = strtolower($model->fqcn);
+            if (isset($this->resultable[$lc])) {
+                continue;
+            }
+            foreach ($model->ancestors as $anc) {
+                if (strtolower($anc->fqcn) === 'psalm\\exception\\resultable') {
+                    $this->resultable[$lc] = true;
+                    break;
+                }
+            }
+        }
+        fwrite(STDERR, "[program] computeResultable: " . count($this->resultable) . " resultable/caught exception types\n");
+    }
+
+    /**
+     * Whether a `throw` of the given (already-mapped) type must be Result::Err (recoverable) rather than a panic:
+     * true if the type — or any of its ancestors — is a Resultable/caught exception. `Throwable`/`Exception` bases
+     * are commonly caught, so most declared-exception throws resolve to true; genuine invariant exceptions that are
+     * never caught resolve to false and panic.
+     */
+    public function isResultable(RustType $type): bool
+    {
+        if ($type->kind !== RustType::CLASS_ && $type->kind !== RustType::ANY_OBJECT && $type->kind !== RustType::MIXED) {
+            return false;
+        }
+        if ($type->kind !== RustType::CLASS_) {
+            // A throw whose static type is not a single concrete class (mixed/any-object): be safe and keep it
+            // recoverable (Err) so we never turn a catchable throw into a panic by imprecision.
+            return true;
+        }
+        $cls = $this->classOf($type);
+        if ($cls === null) {
+            return true;
+        }
+        if (isset($this->resultable[strtolower($cls->fqcn)])) {
+            return true;
+        }
+        foreach ($cls->ancestors as $anc) {
+            if (isset($this->resultable[strtolower($anc->fqcn)])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Pure, `?`-free builtins allowed inside a non-throwing method body (axis-8). The is_* type predicates emit
+     * `.is_str()`/match expressions with no `?`. Kept conservative: excludes count() (dispatches ->count()? on a
+     * Countable), casts (intval/…), and anything whose emission can propagate a Throw. A wrongly-listed one that
+     * emits `?` fails to compile (self-validating) — remove it then.
+     * @var array<string, true>
+     */
+    private const PURE_BUILTINS = [
+        'is_string' => true, 'is_int' => true, 'is_integer' => true, 'is_float' => true, 'is_double' => true,
+        'is_bool' => true, 'is_array' => true, 'is_object' => true, 'is_null' => true, 'is_scalar' => true,
+    ];
+
+    /**
+     * Axis-8 (Result-only-where-throws): mark methods that provably cannot throw so their emitted signature
+     * is `-> T` instead of `-> Result<T, Throw>` (and their call sites drop the trailing `?`).
+     *
+     * SOUND FIRST CUT: only PRIVATE, concrete, non-generator methods whose body contains none of a
+     * conservative denylist of "may emit `?`" node types. Private is required so there is no interface/override
+     * signature-consistency problem — a private method is class-local, its `__Dyn` trait declaration and its impl
+     * both read `$m->throws` (so they always agree), and no other class references its signature. The denylist
+     * includes every call form (a callee may throw), object construction, throw/try, division/modulo/pow,
+     * casts, array-offset access, foreach/match, yield, clone, include, exit, and string
+     * concat/interpolation (`__toString` may throw). Anything else keeps `throws = true` (the safe default),
+     * so a missed throwing node can only ever leave a method as Result (never a `?`-in-non-Result compile error
+     * for a wrongly-flipped one — and if the denylist is still incomplete, the build fails loudly, never silently).
+     */
+    private function computeThrows(): void
+    {
+        // Panic-based error model: NO method returns Result — every method returns bare `T`; a PHP `throw` unwinds
+        // via php_rt::do_throw and a `try` catch_unwinds it. So mark every method non-throwing. (The name-based
+        // fixed-point below is retained but unreachable; kept for history / a possible future Result-where-throws mode.)
+        foreach ($this->uniqueClasses() as $model) {
+            foreach ($model->methods as $m) {
+                $m->throws = false;
+            }
+        }
+        fwrite(STDERR, "[program] computeThrows: panic-mode, all methods non-Result\n");
+        return;
+        // @phpstan-ignore-next-line (dead code below, retained intentionally)
+        $finder = new \PhpParser\NodeFinder();
+        // "Base" throwing constructs: emit `?` with no resolvable callee. New_ stays here (a constructor call
+        // `X::new(..)?` always propagates — __construct is never flipped). Calls are handled separately below via
+        // the call graph.
+        $base_deny = [
+            \PhpParser\Node\Expr\New_::class,
+            // A throw of a Resultable/caught type emits `return Err(..)` (needs Result); a throw of any other type
+            // emits php_rt::uncaught(..) (a panic, `!`). computeThrows stays conservative here (any throw -> not
+            // flipped) — the panic-vs-Err decision is per-site in throwCode(); Result-elimination for methods whose
+            // throws are all non-Resultable is a later refinement keyed on the caught-exceptions set.
+            \PhpParser\Node\Expr\Throw_::class,
+            \PhpParser\Node\Stmt\Throw_::class,
+            \PhpParser\Node\Stmt\TryCatch::class,
+            \PhpParser\Node\Expr\Yield_::class,
+            \PhpParser\Node\Expr\YieldFrom::class,
+            // Only (string) casts can emit `?` (`$obj.to_php_string()?` when the operand is an object). (int)/(float)/
+            // (bool)/(array) casts are infallible. Deny only String_ (conservative: also covers scalar (string) which
+            // is actually infallible, but the operand type isn't known in this AST pre-pass).
+            \PhpParser\Node\Expr\Cast\String_::class,
+            // Div/Mod/Pow no longer force Result: php-rt div/imod/intdiv panic on division-by-zero (DivisionByZeroError
+            // is never caught) rather than returning Result; pow never was fallible.
+            \PhpParser\Node\Expr\BinaryOp\Concat::class,
+            \PhpParser\Node\Expr\AssignOp\Concat::class,
+            \PhpParser\Node\Expr\ArrayDimFetch::class,
+            // Array_ literal IIFE is now emitted non-Result when its chunk has no `?` (ExprTrait::chunked/hasTryOp),
+            // and any fallible element call is captured as a name-dep, so Array_ no longer needs a blanket deny.
+            \PhpParser\Node\Scalar\InterpolatedString::class,
+            \PhpParser\Node\Scalar\Encapsed::class,
+            \PhpParser\Node\Stmt\Foreach_::class,
+            \PhpParser\Node\Expr\Match_::class,
+            \PhpParser\Node\Expr\Clone_::class,
+            \PhpParser\Node\Expr\Include_::class,
+            \PhpParser\Node\Expr\Exit_::class,
+            \PhpParser\Node\Expr\ShellExec::class,
+        ];
+        // Candidates and the set of lowercase method NAMES each one calls (name-based deps: PHP methods are
+        // case-insensitive, and name-consistency forces all methods of a given lc name to share `throws`, so a
+        // call's `?` — gated on the resolved callee — always matches the name's throws). A candidate is
+        // non-Result iff none of the names it calls is Result.
+        /** @var array<int, MethodModel> */
+        $candidates = [];
+        /** @var array<int, array<string, true>> */
+        $name_dep_map = [];
+        /** @var array<int, string> */
+        $cand_name = [];
+        foreach ($this->uniqueClasses() as $model) {
+            foreach ($model->methods as $m) {
+                // Eligibility: instance + concrete + declared-here + leaf + NO downstream subclass + non-generator
+                // + non-enum + not dyn-dispatchable + non-magic. leaf (ClassEmitter line 607) means calls emit
+                // rustName() directly (no __impl variant); no-downstream rules out cross-crate override.
+                if ($m->declaring !== $model || $m->isStatic() || $m->isAbstract()
+                    || !$model->isLeaf() || $model->has_downstream || $model->isEnum()
+                    || $m->node === null || $m->node->stmts === null || $m->storage->has_yield
+                    || isset(ClassEmitter::DYN_DISPATCH_METHODS[$m->lc()])
+                    || str_starts_with($m->lc(), '__')
+                ) {
+                    continue;
+                }
+                // Non-private methods must be NON-POLYMORPHIC: not declared in any ancestor/interface (else the
+                // shared __Dyn trait / interface signature would mismatch this flipped impl).
+                if (!$m->isPrivate()) {
+                    $polymorphic = false;
+                    foreach ($model->ancestors as $anc) {
+                        if ($this->findMethod($anc, $m->lc()) !== null) {
+                            $polymorphic = true;
+                            break;
+                        }
+                    }
+                    if ($polymorphic) {
+                        continue;
+                    }
+                }
+                foreach ($base_deny as $node_class) {
+                    if ($finder->findFirstInstanceOf($m->node->stmts, $node_class) !== null) {
+                        continue 2;
+                    }
+                }
+                // Collect the lc NAME of every method call. A dynamic name ($o->$v()) is unresolvable. FuncCalls
+                // must be infallible builtins (PURE is_* predicates, or SIMPLE-table entries whose return code is
+                // not 'S'=Result); any other FuncCall may emit `?` -> unresolvable.
+                $name_deps = [];
+                $unresolvable = false;
+                foreach ($finder->findInstanceOf($m->node->stmts, \PhpParser\Node\Expr\FuncCall::class) as $call) {
+                    if (!$call->name instanceof \PhpParser\Node\Name) {
+                        $unresolvable = true;
+                        break;
+                    }
+                    $fn_lc = strtolower($call->name->toString());
+                    if (!isset(self::PURE_BUILTINS[$fn_lc]) && !Builtins::isInfallibleBuiltin($fn_lc)) {
+                        $unresolvable = true;
+                        break;
+                    }
+                }
+                if (!$unresolvable) {
+                    foreach ([
+                        \PhpParser\Node\Expr\MethodCall::class,
+                        \PhpParser\Node\Expr\NullsafeMethodCall::class,
+                        \PhpParser\Node\Expr\StaticCall::class,
+                    ] as $call_class) {
+                        foreach ($finder->findInstanceOf($m->node->stmts, $call_class) as $call) {
+                            if (!$call->name instanceof \PhpParser\Node\Identifier) {
+                                $unresolvable = true;
+                                break 2;
+                            }
+                            $name_deps[strtolower($call->name->name)] = true;
+                        }
+                    }
+                }
+                if ($unresolvable) {
+                    continue;
+                }
+                $id = spl_object_id($m);
+                $candidates[$id] = $m;
+                $name_dep_map[$id] = $name_deps;
+                $cand_name[$id] = $m->lc();
+            }
+        }
+        // All lc method names declared by any project method. A call to a name NOT here targets an external/
+        // dynamically-dispatched method (emitted as mixed_call/call_method, which always `?`s) -> Result-forcing.
+        $all_names = [];
+        foreach ($this->uniqueClasses() as $model) {
+            foreach ($model->methods as $mm) {
+                $all_names[$mm->lc()] = true;
+            }
+        }
+        // Start every candidate non-Result; seed throwing_names with the lc name of every NON-candidate method
+        // (they keep the default throws=true). Then a monotonic fixed point: a candidate becomes Result if its own
+        // name is throwing (name-consistency), or it calls a name that is throwing / external / dynamically-
+        // dispatched (a name in DYN_DISPATCH_METHODS may emit as mixed_call `?` on a mixed receiver). Converges
+        // (only false->true).
+        foreach ($candidates as $m) {
+            $m->throws = false;
+        }
+        $throwing_names = [];
+        foreach ($this->uniqueClasses() as $model) {
+            foreach ($model->methods as $mm) {
+                if ($mm->throws) {
+                    $throwing_names[$mm->lc()] = true;
+                }
+            }
+        }
+        do {
+            $changed = false;
+            foreach ($candidates as $id => $m) {
+                if ($m->throws) {
+                    continue;
+                }
+                $result = isset($throwing_names[$cand_name[$id]]);
+                if (!$result) {
+                    foreach ($name_dep_map[$id] as $d => $_) {
+                        if (!isset($all_names[$d]) || isset($throwing_names[$d])
+                            || isset(ClassEmitter::DYN_DISPATCH_METHODS[$d])
+                        ) {
+                            $result = true;
+                            break;
+                        }
+                    }
+                }
+                if ($result) {
+                    $m->throws = true;
+                    $throwing_names[$m->lc()] = true;
+                    $changed = true;
+                }
+            }
+        } while ($changed);
+        $flipped = 0;
+        foreach ($candidates as $m) {
+            if (!$m->throws) {
+                $flipped++;
+            }
+        }
+        fwrite(STDERR, "[program] computeThrows: {$flipped} non-throwing methods (name-based fixed-point)\n");
+    }
+
+    /**
+     * DIAGNOSTIC for the Path-B partition: connected components of the inheritance graph (extends +
+     * implements, project classes only). No dispatch enum may span a crate boundary, so each component
+     * must live in one crate; this prints component sizes and which current crates they span (>1 = an
+     * OPEN hierarchy under today's split) to judge whether a component-based partition stays RAM-feasible.
+     */
+    private function reportInheritanceComponents(): void
+    {
+        $parent = [];
+        $find = static function (string $x) use (&$parent, &$find): string {
+            while (($parent[$x] ?? $x) !== $x) {
+                $parent[$x] = $parent[$parent[$x]] ?? $parent[$x];
+                $x = $parent[$x];
+            }
+            return $x;
+        };
+        foreach ($this->uniqueClasses() as $m) {
+            if (!$m->is_project) {
+                continue;
+            }
+            $parent[$m->fqcn] ??= $m->fqcn;
+            foreach ($m->ancestors as $a) {
+                if (!$a->is_project) {
+                    continue; // external ancestors are not generated enums, so impose no closure
+                }
+                $parent[$a->fqcn] ??= $a->fqcn;
+                $ra = $find($m->fqcn);
+                $rb = $find($a->fqcn);
+                if ($ra !== $rb) {
+                    $parent[$ra] = $rb;
+                }
+            }
+        }
+        $comp = [];
+        foreach ($this->uniqueClasses() as $m) {
+            if (!$m->is_project || !isset($parent[$m->fqcn])) {
+                continue;
+            }
+            $r = $find($m->fqcn);
+            $comp[$r]['classes'] = ($comp[$r]['classes'] ?? 0) + 1;
+            $comp[$r]['methods'] = ($comp[$r]['methods'] ?? 0) + count($m->methods);
+            $comp[$r]['crates'][$m->crate] = true;
+        }
+        uasort($comp, static fn(array $a, array $b): int => $b['methods'] <=> $a['methods']);
+        $open = array_filter($comp, static fn(array $c): bool => count($c['crates']) > 1);
+        fwrite(STDERR, sprintf("[components] total=%d, open(span>1 crate)=%d\n", count($comp), count($open)));
+        $i = 0;
+        foreach ($comp as $root => $c) {
+            if (count($c['crates']) > 1 || $i < 15) {
+                fwrite(STDERR, sprintf(
+                    "[components] %-55s classes=%4d methods=%5d crates={%s}%s\n",
+                    $root,
+                    $c['classes'],
+                    $c['methods'],
+                    implode(',', array_keys($c['crates'])),
+                    count($c['crates']) > 1 ? '  <-OPEN' : '',
+                ));
+            }
+            $i++;
         }
     }
 
@@ -255,6 +891,20 @@ final class Program
         $name = $m->rustName() . '__super_' . Names::classMangle($origin->declaring->fqcn);
         $this->super_copies[$root->lc() . '::' . $name] = [$root, $origin];
         return $name;
+    }
+
+    /**
+     * @var array<string, array{ClassModel, FieldModel}> field accessors to emit on a dispatch enum (interface / class
+     *   base) for a CONCRETE-VARIANT-SPECIFIC field written/read through it — keyed by enumLc::fieldName. Needed for
+     *   the MutableTypeVisitor pattern: `$self = $node; assert($self instanceof TNamedObject); $self->extra_types = v`
+     *   where $self's storage type is the TypeNode interface but the field lives on the concrete variant.
+     */
+    public array $enum_field_accessors = [];
+
+    /** Request set_/get_/mut dispatch for `$field` on the dispatch enum `$enum` (a variant-specific field). */
+    public function requestEnumFieldAccessor(ClassModel $enum, FieldModel $field): void
+    {
+        $this->enum_field_accessors[$enum->lc() . '::' . $field->name] = [$enum, $field];
     }
 
     /** @var array<string, true> recursive unions being measured by typeCrate() */
@@ -954,7 +1604,16 @@ final class Program
             $param_types[] = $t;
         }
         $this->types->context = $fn . '() return';
-        $return_type = $this->types->map($storage->return_type);
+        // magic methods with no return value are void, not `mixed` (PHP language rule); their absent
+        // declared return would otherwise map to Mixed
+        $lc_name = strtolower($storage->cased_name ?? '');
+        if ($storage->return_type === null
+            && in_array($lc_name, ['__construct', '__destruct', '__clone', '__wakeup', '__unset', '__set'], true)
+        ) {
+            $return_type = RustType::unit();
+        } else {
+            $return_type = $this->types->map($storage->return_type);
+        }
         if ($node instanceof \PhpParser\Node\FunctionLike) {
             $return_type = $this->extendShapeWithReturnedKeys($return_type, $node);
         }

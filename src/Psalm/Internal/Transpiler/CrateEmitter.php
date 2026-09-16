@@ -8,6 +8,8 @@ use Psalm\Codebase;
 
 use function array_fill;
 use function array_keys;
+use function array_sum;
+use function arsort;
 use function array_shift;
 use function array_slice;
 use function basename;
@@ -127,6 +129,16 @@ final class CrateEmitter
                 $name = substr($k, strrpos($k, '::') + 2);
                 $class_emitter->emitSuperCopy($root, $m, $name, $this->classModule($root));
             }
+            // dispatch accessors for variant-specific fields written/read through a base/interface enum
+            // (MutableTypeVisitor pattern) — requested during body emission, may accrue as more bodies emit.
+            foreach ($this->program->enum_field_accessors as $k => [$enum, $field]) {
+                if (isset($done_copies['efa:' . $k])) {
+                    continue;
+                }
+                $done_copies['efa:' . $k] = true;
+                $new = true;
+                $class_emitter->emitEnumFieldAccessor($enum, $field, $this->classModule($enum));
+            }
         } while ($new);
 
         // AnyObject enum over all concrete classes of the main crate, init(), Throw
@@ -185,6 +197,22 @@ final class CrateEmitter
         }
         foreach ($this->program->types->unsupported as $atomic => $n) {
             fwrite(STDERR, "  [types] unsupported atomic $atomic: $n\n");
+        }
+        $mixed_roots = $this->program->types->mixed_roots;
+        arsort($mixed_roots);
+        $mixed_total = array_sum($mixed_roots);
+        fwrite(STDERR, "[transpiler] Mixed roots: $mixed_total total type-mappings to Mixed\n");
+        foreach ($mixed_roots as $why => $n) {
+            fwrite(STDERR, "  [mixed] $why: $n\n");
+        }
+        // top contexts per root (which PHP members to type), for the actionable roots
+        foreach ($this->program->types->mixed_sites as $why => $sites) {
+            arsort($sites);
+            $top = array_slice($sites, 0, 25, true);
+            fwrite(STDERR, "[transpiler] Mixed root '$why' top contexts (" . count($sites) . " total):\n");
+            foreach ($top as $ctx => $n) {
+                fwrite(STDERR, "  [mixed:$why] $ctx ($n)\n");
+            }
         }
         // map inventories (user directive: arrays are lists, shapes or string-keyed maps; int keys rarely, array-key never)
         foreach (['arraykey' => $this->program->types->array_key_sites, 'intkey' => $this->program->types->int_key_sites, 'shapemap' => $this->program->types->shape_map_sites] as $tag => $sites) {
@@ -290,10 +318,10 @@ final class CrateEmitter
             $w = $this->module($file->crate, 'files');
             try {
                 $table = $file->data !== null ? $data_emitter->emit($file->data) : $data_emitter->emitFile($file->abs_path);
-                $w->line('pub fn ' . $file->rustName() . '() -> Result<Mixed, Throw> { static D: Data = ' . $table . '; Ok(D.to_mixed()) }');
+                $w->line('pub fn ' . $file->rustName() . '() -> Mixed { static D: Data = ' . $table . '; D.to_mixed() }');
             } catch (\RuntimeException $e) {
                 fwrite(STDERR, '  [transpiler] data file ' . $rel . ' not compiled: ' . $e->getMessage() . "\n");
-                $w->line('pub fn ' . $file->rustName() . '() -> Result<Mixed, Throw> { Err(Throw::error(Str::from_static(' . Names::rustStringLiteral('include(' . $rel . '): file could not be compiled: ' . $e->getMessage()) . '))) }');
+                $w->line('pub fn ' . $file->rustName() . '() -> Mixed { panic!(' . Names::rustStringLiteral('include(' . $rel . '): file could not be compiled: ' . $e->getMessage()) . ') }');
             }
         }
     }
@@ -319,7 +347,7 @@ final class CrateEmitter
             $this->diag->warn('transpiler error: ' . $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine(), $record->node, $record->file_path);
             $body = "    unreachable!(\"transpiler error\")\n";
         }
-        $w->line('pub fn ' . $fn->rustName() . '(' . implode(', ', $decls) . ') -> Result<' . $fn->return_type->toRust() . ', Throw> {');
+        $w->line('pub fn ' . $fn->rustName() . '(' . implode(', ', $decls) . ') -> ' . $fn->return_type->toRust() . ' {');
         $w->raw($body);
         $w->line('}');
     }
@@ -351,7 +379,7 @@ final class CrateEmitter
         $w->line('fn set_prop(&self, name: &str, value: Mixed) -> bool { match self { ' . $arms('set_prop(name, value)') . ' } }');
         $w->line('fn get_prop(&self, name: &str) -> Option<Mixed> { match self { ' . $arms('get_prop(name)') . ' } }');
         $w->line('fn php_to_string(&self) -> Option<Str> { match self { ' . $arms('php_to_string()') . ' } }');
-        $w->line('fn call_method(&self, name: &str, args: Vec<Mixed>) -> Result<Mixed, DynError> { match self { ' . $arms('call_method(name, args)') . ' } }');
+        $w->line('fn call_method(&self, name: &str, args: Vec<Mixed>) -> Mixed { match self { ' . $arms('call_method(name, args)') . ' } }');
         $w->line('fn public_props(&self) -> Vec<(Str, Mixed)> { match self { ' . $arms('public_props()') . ' } }');
         $w->close();
         $w->open('impl AnyObject {');
@@ -360,7 +388,7 @@ final class CrateEmitter
             $downs[] = $this->program->classId($c) . ' => return AnyObject::' . $c->variant() . '(o.as_any().downcast_ref::<' . $c->ownPath() . '>().unwrap().clone()),';
         }
         $w->line('pub fn from_mixed(m: Mixed) -> AnyObject { if let Mixed::Obj(o) = &m { match o.class_id() { ' . implode(' ', $downs) . ' _ => {} } return AnyObject::Other(o.clone()); } panic!("not an object: {:?}", m) }');
-        $w->line('pub fn to_php_string(&self) -> Result<Str, Throw> { self.php_to_string().ok_or_else(|| Throw::error(Str::from_static("Object could not be converted to string"))) }');
+        $w->line('pub fn to_php_string(&self) -> Str { self.php_to_string().unwrap_or_else(|| panic!("Uncaught exception: Object could not be converted to string")) }');
         $w->close();
         $w->line('impl php_rt::CastTo<Mixed> for AnyObject { fn cast_to(self) -> Mixed { match self { ' . implode(', ', array_map(fn(ClassModel $c) => 'AnyObject::' . $c->variant() . '(h) => Mixed::Obj(Rc::new(h))', $concrete)) . ($concrete ? ', ' : '') . 'AnyObject::Other(o) => Mixed::Obj(o) } } }');
         $w->line('impl php_rt::CastTo<AnyObject> for Mixed { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(self) } }');
@@ -382,6 +410,8 @@ final class CrateEmitter
             $this->emitThrowSupport($throwable, $w);
         } else {
             $w->line('pub type Throw = php_rt::FallbackThrow;');
+            $w->line('#[inline] pub fn __throw_rt(e: RtError) -> ! { php_rt::uncaught(e) }');
+            $w->line('#[inline] pub fn __unwrap<T>(r: R<T>) -> T { r.unwrap_or_else(|e| php_rt::uncaught(e)) }');
         }
     }
 
@@ -391,6 +421,8 @@ final class CrateEmitter
         $w->line('thread_local! { static __INIT: std::cell::Cell<bool> = std::cell::Cell::new(false); }');
         $w->open('pub fn init() {');
         $w->line('if __INIT.with(|c| c.replace(true)) { return; }');
+        // silence Rust panic-hook backtraces for in-flight PHP exceptions (PhpThrow), which are normal control flow
+        $w->line('php_rt::install_throw_panic_hook();');
         for ($i = 0; $i < $crate; $i++) {
             $w->line('::' . $this->transpiler->crateName($i) . '::init();');
         }
@@ -470,7 +502,7 @@ final class CrateEmitter
         }
         $w->line('pub fn constant_value(name: &Str) -> Option<Mixed> { if let Some(pos) = name.as_bytes().windows(2).position(|w| w == b"::") { let cls = php_rt::names::norm(&Str::from_bytes(&name.as_bytes()[..pos])); return class_constants_lc(&cls).get(&ArrayKey::from(Str::from_bytes(&name.as_bytes()[pos + 2..]))).cloned(); } match name.as_bytes() { ' . implode(', ', $arms) . ($arms ? ', ' : '') . '_ => ' . ($up !== null ? $up . 'constant_value(name)' : 'php_rt::consts::builtin_value(name.as_bytes())') . ' } }');
         $w->line('pub fn constant_defined(name: &Str) -> bool { constant_value(name).is_some() }');
-        $w->line('pub fn constant(name: &Str) -> Result<Mixed, Throw> { constant_value(name).ok_or_else(|| Throw::error(cat!(Str::from_static("Undefined constant \""), name.clone(), Str::from_static("\"")))) }');
+        $w->line('pub fn constant(name: &Str) -> Mixed { constant_value(name).unwrap_or_else(|| panic!("Uncaught exception: Undefined constant {}", name)) }');
         $carms = [];
         foreach ($classes as $lc => $cls) {
             if ($cls->isTrait()) {
@@ -506,7 +538,7 @@ final class CrateEmitter
             if ($c === null || !$c->is_project) {
                 return 'panic!("missing runtime stub class ' . $cls . '")';
             }
-            return $this->casts->convert($c->path() . '::new(' . $msg_code . ', 0i64, None).unwrap()', RustType::class($c->fqcn), $tt);
+            return $this->casts->convert($c->path() . '::new(' . $msg_code . ', 0i64, None)', RustType::class($c->fqcn), $tt);
         };
         $w->open('impl ' . $throwable->path() . ' {');
         $w->line('pub fn error(msg: Str) -> Self { ' . $mk('Error', 'msg') . ' }');
@@ -516,7 +548,7 @@ final class CrateEmitter
         $w->line('pub fn unhandled_match(v: &Mixed) -> Self { ' . $mk('UnhandledMatchError', 'cat!(Str::from_static("Unhandled match case "), json_encode_simple(v))') . ' }');
         $exit = $this->program->getClass('PhpExitException');
         if ($exit !== null && $exit->is_project) {
-            $w->line('pub fn exit(status: i64) -> Self { ' . $this->casts->convert($exit->path() . '::new(status).unwrap()', RustType::class($exit->fqcn), $tt) . ' }');
+            $w->line('pub fn exit(status: i64) -> Self { ' . $this->casts->convert($exit->path() . '::new(status)', RustType::class($exit->fqcn), $tt) . ' }');
             $w->line('pub fn exit_status(&self) -> Option<i64> { if is_instance::<' . $exit->path() . '>(self) { Some(cast::<' . $exit->path() . '>(self.clone()).p_status_get()) } else { None } }');
             $this->casts->needInstanceOf($tt, RustType::class($exit->fqcn));
             $this->casts->need($tt, RustType::class($exit->fqcn));
@@ -524,19 +556,24 @@ final class CrateEmitter
             $w->line('pub fn exit(status: i64) -> Self { Self::error(cat!(Str::from_static("exit "), to_str(&status))) }');
             $w->line('pub fn exit_status(&self) -> Option<i64> { None }');
         }
-        $w->line('pub fn message(&self) -> Str { self.getMessage().unwrap_or_default() }');
+        $w->line('pub fn message(&self) -> Str { self.getMessage() }');
         $w->close();
         $classes = ['Error', 'TypeError', 'ValueError', 'ArgumentCountError', 'ArithmeticError', 'DivisionByZeroError', 'AssertionError', 'UnhandledMatchError', 'JsonException', 'RuntimeException', 'LogicException', 'InvalidArgumentException', 'UnexpectedValueException', 'OutOfBoundsException'];
         $arms = [];
         foreach ($classes as $cls) {
             $c = $this->program->getClass($cls);
             if ($c !== null && $c->is_project) {
-                $arms[] = Names::rustStringLiteral($cls) . ' => ' . $this->casts->convert($c->path() . '::new(e.message, 0i64, None).unwrap()', RustType::class($c->fqcn), $tt);
+                $arms[] = Names::rustStringLiteral($cls) . ' => ' . $this->casts->convert($c->path() . '::new(e.message, 0i64, None)', RustType::class($c->fqcn), $tt);
             }
         }
         $w->line('impl From<RtError> for ' . $throwable->path() . ' { fn from(e: RtError) -> Self { match e.class { ' . implode(', ', $arms) . ($arms ? ', ' : '') . '_ => Self::error(e.message) } } }');
         $w->line('impl From<DynError> for ' . $throwable->path() . ' { fn from(e: DynError) -> Self { match e { DynError::Rt(r) => Self::from(r), DynError::Obj(m) => cast::<Self>(m) } } }');
         $w->line('impl std::fmt::Display for ' . $throwable->path() . ' { fn fmt(&self, f: &mut std::fmt::Formatter<\'_>) -> std::fmt::Result { write!(f, "{}: {}", self.class_name(), self.message()) } }');
+        // Convert a runtime error (RRtError) into a PHP exception object and throw it via the panic-based
+        // error model, so a surrounding PHP try/catch can catch runtime failures (division by zero, etc.).
+        $w->line('#[inline] pub fn __throw_rt(e: RtError) -> ! { php_rt::do_throw(' . $this->casts->convert($throwable->path() . '::from(e)', $tt, RustType::mixed()) . ') }');
+        // Unwrap a fallible runtime call (php-rt `R<T>`) in a non-Result context: on error, throw it.
+        $w->line('#[inline] pub fn __unwrap<T>(r: R<T>) -> T { match r { Ok(v) => v, Err(e) => __throw_rt(e) } }');
     }
 
     private function writeCrate(int $crate, Writer $types, Writer $casts, ?Writer $any, Writer $tests): void
@@ -556,7 +593,7 @@ final class CrateEmitter
         foreach ($upstream as $up) {
             $use .= "use ::$up::generated::*;\n";
         }
-        $use .= "use crate::generated::*;\nuse crate::Throw;\nuse crate::AnyObject;\n";
+        $use .= "use crate::generated::*;\nuse crate::Throw;\nuse crate::AnyObject;\nuse crate::{__throw_rt, __unwrap};\n";
 
         // module tree
         $tree = [];

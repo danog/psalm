@@ -62,6 +62,7 @@ trait LValueTrait
             $name = $e->name->name;
             $base = $this->receiver($e->var);
             $bt = $base->type;
+            $base_was_option = $bt->kind === RustType::OPTION;
             if ($bt->kind === RustType::OPTION) {
                 $base = new Val($base->code . '.unwrap()', $bt->inner());
                 $bt = $bt->inner();
@@ -72,6 +73,38 @@ trait LValueTrait
                 if ($field !== null) {
                     $rn = $field->acc();
                     $bc = $base->code;
+                    // Immutable Rc<T> classes have no RefCell: set_/mut do Rc::make_mut copy-on-write, which needs
+                    // the ACTUAL binding (`c`), not a throwaway `c.clone()` — a write through the clone COWs the
+                    // copy and is silently lost. When the base is a plain local (`$c` of a wither
+                    // `$c = clone $this; $c->prop = x`), write/mut through the raw `let mut` binding so make_mut COWs
+                    // `c` in place (exactly PHP clone-then-mutate). Reads still go through the owned `c.clone()`.
+                    // Inert for current immutables (all write-free); unblocks withered immutable hierarchies.
+                    if ($cls !== null && $cls->immutable()
+                        && $e->var instanceof Expr\Variable && is_string($e->var->name) && $e->var->name !== 'this'
+                        && $this->isWritableLocal($e->var->name)
+                    ) {
+                        // The raw binding has the local's STORAGE type, which may be Option<Clause> even when Psalm has
+                        // narrowed the read to non-null Clause. set_/mut need `&mut T`, so build a `&mut` into the stored
+                        // value: `.get_mut()` for a Late<T> local (e.g. a `$c = clone $this` wither clone-local), or
+                        // `.as_mut().unwrap()` for an Option<T> local. Read keeps the already-narrowed base code.
+                        $vn = $e->var->name;
+                        $bind = Names::var($vn);
+                        if (!empty($this->late[$vn])) {
+                            $bind .= '.get_mut()';
+                        } elseif ($this->varType($vn)->kind === RustType::OPTION) {
+                            $bind .= '.as_mut().unwrap()';
+                        }
+                        // NB: writing a concrete-variant-specific field through an enum/interface-typed local (the
+                        // MutableTypeVisitor pattern, `$self:TypeNode` narrowed to TNamedObject) is NOT handled here —
+                        // a typed enum dispatch accessor fails because such fields are heterogeneously typed across
+                        // variants (E0308). That pattern needs the visitor retyped; the class then stays non-immutable.
+                        return new Place(
+                            $field->type,
+                            fn() => $bc . '.' . $rn . '_get()',
+                            fn(string $v) => $bind . '.set_' . $rn . '(' . $v . ');',
+                            fn() => '(*' . $bind . '.' . $rn . '_mut())',
+                        );
+                    }
                     return new Place(
                         $field->type,
                         fn() => $bc . '.' . $rn . '_get()',
@@ -107,10 +140,27 @@ trait LValueTrait
                 }
                 if ($arms_get !== []) {
                     $bc = $base->code;
+                    // A union member may be an immutable Rc<T> whose set_ is `&mut self` (make_mut) — the set match must
+                    // then bind `__o` mutably. When the base is a writable local, match on `&mut` the raw binding
+                    // (&mut also works for RefCell members' &self set_ via autoref); handle Late/Option like the
+                    // immutable-local class write-path. Otherwise fall back to matching the owned value.
+                    $set_subject = $bc;
+                    if ($e->var instanceof Expr\Variable && is_string($e->var->name) && $e->var->name !== 'this'
+                        && $this->isWritableLocal($e->var->name)
+                    ) {
+                        $vn = $e->var->name;
+                        $mb = Names::var($vn);
+                        if (!empty($this->late[$vn])) {
+                            $mb .= '.get_mut()';
+                        } elseif ($this->varType($vn)->kind === RustType::OPTION) {
+                            $mb .= '.as_mut().unwrap()';
+                        }
+                        $set_subject = '&mut ' . $mb;
+                    }
                     return new Place(
                         $inf,
                         fn() => '(match ' . $bc . ' { ' . implode(', ', $arms_get) . ', _ => unreachable!() })',
-                        fn(string $v) => '{ let __v = ' . $v . '; match ' . $bc . ' { ' . implode(', ', $arms_set) . ', _ => unreachable!() } }',
+                        fn(string $v) => '{ let __v = ' . $v . '; match ' . $set_subject . ' { ' . implode(', ', $arms_set) . ', _ => unreachable!() } }',
                     );
                 }
             }
@@ -119,8 +169,8 @@ trait LValueTrait
                 $inf = $this->inferredOrMixed($e);
                 return new Place(
                     $inf,
-                    fn() => $this->casts->convert('mixed_prop(&' . $bc . ', &' . Names::strLit($name) . ').unwrap_or_default()', RustType::mixed(), $inf),
-                    fn(string $v) => 'mixed_set_prop(&' . $bc . ', &' . Names::strLit($name) . ', ' . $this->casts->convert($v, $inf, RustType::mixed()) . ');',
+                    fn() => $this->casts->convert('mixed_prop(&' . $bc . ', &' . $this->dynPropName($name) . ').unwrap_or_default()', RustType::mixed(), $inf),
+                    fn(string $v) => 'mixed_set_prop(&' . $bc . ', &' . $this->dynPropName($name) . ', ' . $this->casts->convert($v, $inf, RustType::mixed()) . ');',
                 );
             }
             $this->warn('property access on ' . $bt->toRust(), $e);
@@ -143,7 +193,7 @@ trait LValueTrait
                     fn() => $path . '::st_' . $rn . '()',
                     fn(string $v) => $path . '::st_' . $rn . '_set(' . $v . ');',
                     fn() => '(*__sp)',
-                    fn(string $stmt) => $path . '::st_' . $rn . '_with(|__sp| -> Result<(), Throw> { ' . $stmt . ' Ok(()) })?;',
+                    fn(string $stmt) => $path . '::st_' . $rn . '_with(|__sp| { ' . $stmt . ' });',
                 );
             }
             $this->warn('unknown static property', $e);
@@ -347,8 +397,8 @@ trait LValueTrait
                 $key = fn() => $dim === null ? 'None' : $this->exprTo($dim, $kt);
                 return new Place(
                     $get->return_type,
-                    fn() => $parent->read() . '.' . $get->rustName() . '(' . $this->exprTo($dim, $get->param_types[0] ?? RustType::mixed()) . ')?',
-                    fn(string $v) => $parent->read() . '.' . $set->rustName() . '(' . $key() . ', ' . $this->casts->convert($v, $get->return_type, $vt) . ')?;',
+                    fn() => $parent->read() . '.' . $get->rustName() . '(' . $this->exprTo($dim, $get->param_types[0] ?? RustType::mixed()) . ')',
+                    fn(string $v) => $parent->read() . '.' . $set->rustName() . '(' . $key() . ', ' . $this->casts->convert($v, $get->return_type, $vt) . ');',
                 );
             }
         }
@@ -469,7 +519,7 @@ trait LValueTrait
             $cls = $this->program->classOf($bt);
             $get = $cls !== null ? $this->program->findMethod($cls, 'offsetget') : null;
             if ($get !== null) {
-                return $this->narrow(new Val($base->code . '.' . $get->rustName() . '(' . $this->exprTo($dim, $get->param_types[0] ?? RustType::mixed()) . ')?', $get->return_type), $e);
+                return $this->narrow(new Val($base->code . '.' . $get->rustName() . '(' . $this->exprTo($dim, $get->param_types[0] ?? RustType::mixed()) . ')', $get->return_type), $e);
             }
         }
         if ($bt->kind === RustType::RT_GENERIC && in_array($bt->name, ['ArrayObject', 'ArrayIterator', 'SplObjectStorage', 'WeakMap'], true)) {
@@ -550,10 +600,10 @@ trait LValueTrait
             $getter = $cls !== null ? $this->program->findMethod($cls, '__get') : null;
             if ($getter !== null && $getter->node !== null) {
                 // magic property: `__get($name)`
-                return $this->narrow(new Val($base->code . '.' . $getter->rustName() . '(' . Names::strLit($name) . ')?', $getter->return_type), $e);
+                return $this->narrow(new Val($base->code . '.' . $getter->rustName() . '(' . Names::strLit($name) . ')', $getter->return_type), $e);
             }
             // interface-typed receiver or undeclared property: dynamic lookup
-            $code = 'mixed_prop(&' . $this->casts->convert($base->code, $bt, RustType::mixed()) . ', &' . Names::strLit($name) . ')';
+            $code = 'mixed_prop(&' . $this->casts->convert($base->code, $bt, RustType::mixed()) . ', &' . $this->dynPropName($name) . ')';
             return $this->narrowOptional(new Val($code, RustType::option(RustType::mixed())), $e);
         }
         if ($bt->kind === RustType::UNION) {
@@ -579,7 +629,7 @@ trait LValueTrait
             return $this->narrowOptional(new Val($base->code . '.get(' . Names::strLit($name) . ')', RustType::option(RustType::mixed())), $e);
         }
         if ($bt->kind === RustType::MIXED || $bt->kind === RustType::ANY_OBJECT || $bt->kind === RustType::UNION) {
-            $code = 'mixed_prop(&' . $this->casts->convert($base->code, $bt, RustType::mixed()) . ', &' . Names::strLit($name) . ')';
+            $code = 'mixed_prop(&' . $this->casts->convert($base->code, $bt, RustType::mixed()) . ', &' . $this->dynPropName($name) . ')';
             return $this->narrowOptional(new Val($code, RustType::option(RustType::mixed())), $e);
         }
         if ($bt->kind === RustType::RT_GENERIC) {
@@ -931,11 +981,11 @@ trait LValueTrait
         }
         if ($e instanceof Expr\AssignOp\Div) {
             $rhs = $this->exprTo($e->expr, RustType::float());
-            return '{ let ' . $tmp . ' = div_f(' . $this->casts->convert($place->read(), $t, RustType::float()) . ', ' . $rhs . ')?; ' . $place->write($this->casts->convert($tmp, RustType::float(), $t)) . ' }';
+            return '{ let ' . $tmp . ' = div_f(' . $this->casts->convert($place->read(), $t, RustType::float()) . ', ' . $rhs . '); ' . $place->write($this->casts->convert($tmp, RustType::float(), $t)) . ' }';
         }
         if ($e instanceof Expr\AssignOp\Mod) {
             $rhs = $this->exprTo($e->expr, RustType::int());
-            return '{ let ' . $tmp . ' = imod(' . $this->casts->convert($place->read(), $t, RustType::int()) . ', ' . $rhs . ')?; ' . $place->write($this->casts->convert($tmp, RustType::int(), $t)) . ' }';
+            return '{ let ' . $tmp . ' = imod(' . $this->casts->convert($place->read(), $t, RustType::int()) . ', ' . $rhs . '); ' . $place->write($this->casts->convert($tmp, RustType::int(), $t)) . ' }';
         }
         if ($e instanceof Expr\AssignOp\Pow) {
             $rhs = $this->exprTo($e->expr, RustType::float());

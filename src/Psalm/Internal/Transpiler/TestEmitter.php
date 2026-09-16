@@ -219,7 +219,7 @@ final class TestEmitter
         $root = Names::rustStringLiteral($this->program->transpiler->root_dir);
         $name = Names::rustStringLiteral($cls->fqcn . '::' . $m->name);
         $ctor = $this->program->findMethod($cls, '__construct');
-        $new = $path . '::new(' . ($ctor !== null && count($ctor->storage->params) > 0 ? 'Str::from_static(' . Names::rustStringLiteral($m->name) . ')' : '') . ')?';
+        $new = $path . '::new(' . ($ctor !== null && count($ctor->storage->params) > 0 ? 'Str::from_static(' . Names::rustStringLiteral($m->name) . ')' : '') . ')';
         $has_setup_class = $this->program->findMethod($cls, 'setupbeforeclass') !== null;
         $has_teardown_class = $this->program->findMethod($cls, 'teardownafterclass') !== null;
 
@@ -233,16 +233,18 @@ final class TestEmitter
         }
         $rows = null;
         if ($provider !== null) {
+            // axis-8: a non-throwing provider returns its rows directly (no `?`).
+            $pq = $provider->throws ? '?' : '';
             $rows_expr = $provider->isStatic()
-                ? $path . '::' . $provider->rustName() . '()?'
-                : '{ let __p = ' . $new . '; __p.' . $provider->rustName() . '()? }';
+                ? $path . '::' . $provider->rustName() . '()' . $pq
+                : '{ let __p = ' . $new . '; __p.' . $provider->rustName() . '()' . $pq . ' }';
             $rows = $this->rowsIterator($rows_expr, $provider->return_type);
         }
         // the body of one trial: the whole test method, or the data set at position `__i`
         $body = new Writer();
         $body->line('crate::init();');
         if ($has_setup_class) {
-            $body->line($path . '::' . Names::method('setUpBeforeClass') . '()?;');
+            $body->line($path . '::' . Names::method('setUpBeforeClass') . '();');
         }
         $dep_args = [];
         $params = $m->storage->params;
@@ -259,7 +261,7 @@ final class TestEmitter
                 $dep_args[] = $this->casts->defaultOf($pt);
                 continue;
             }
-            $body->line('let __dep' . $i . ' = { let __d = ' . $new . '; __d.' . Names::method('runSetUp') . '()?; let __r = __d.' . $dep->rustName() . '()?; __d.' . Names::method('runTearDown') . '()?; __r };');
+            $body->line('let __dep' . $i . ' = { let __d = ' . $new . '; __d.' . Names::method('runSetUp') . '(); let __r = __d.' . $dep->rustName() . '(); __d.' . Names::method('runTearDown') . '(); __r };');
             $dep_args[] = $this->casts->convert('__dep' . $i . '.clone()', $dep->return_type, $pt);
         }
         if ($rows === null) {
@@ -268,30 +270,29 @@ final class TestEmitter
         } else {
             [$iter, $kt, $vt] = $rows;
             $body->line('let __t = ' . $new . ';');
-            $body->line('__t.' . Names::method('setDataName') . '(to_str(&__key))?;');
+            $body->line('__t.' . Names::method('setDataName') . '(to_str(&__key));');
             $args = [...$this->rowArgs($m, $vt, $first_dep_param), ...$dep_args];
             $this->emitInvocation($cls, $m, $body, $args, 'to_str(&__key)');
         }
         if ($has_teardown_class) {
-            $body->line($path . '::' . Names::method('tearDownAfterClass') . '()?;');
+            $body->line($path . '::' . Names::method('tearDownAfterClass') . '();');
         }
-        $body->line('Ok(())');
 
         if ($rows === null) {
-            $w->open('trials.push(libtest_mimic::Trial::test(' . $name . '.to_string(), move || php_rt::testing::run_on_pool(' . $root . ', Box::new(move || php_rt::testing::run_row(' . $name . ', || -> Result<(), Throw> {');
+            $w->open('trials.push(libtest_mimic::Trial::test(' . $name . '.to_string(), move || php_rt::testing::run_on_pool(' . $root . ', Box::new(move || php_rt::testing::run_row(' . $name . ', || {');
             $w->raw($body->get());
             $w->close('}))).map_err(libtest_mimic::Failed::from)));');
         } else {
             [$iter] = $rows;
             // the data sets are named by running the provider once; every trial then runs on the warm worker
             // pool, where each worker evaluates the provider once and keeps its rows
-            $w->line('let __keys: Result<Vec<String>, String> = php_rt::testing::in_thread(' . $root . ', || -> Result<Vec<String>, Throw> { crate::init(); Ok((' . $iter . ').into_iter().map(|(__k, _)| to_str(&__k).to_string()).collect()) });');
+            $w->line('let __keys: Result<Vec<String>, String> = php_rt::testing::in_thread(' . $root . ', || { crate::init(); (' . $iter . ').into_iter().map(|(__k, _)| to_str(&__k).to_string()).collect::<Vec<String>>() });');
             $w->open('match __keys {');
             $w->line('Err(__msg) => trials.push(libtest_mimic::Trial::test(' . $name . '.to_string(), move || Err(libtest_mimic::Failed::from(format!("data provider failed: {}", __msg))))),');
             $w->open('Ok(__keys) => for (__i, __key) in __keys.into_iter().enumerate() {');
-            $w->open('trials.push(libtest_mimic::Trial::test(format!("{} [{}]", ' . $name . ', __key), move || php_rt::testing::run_on_pool(' . $root . ', Box::new(move || php_rt::testing::run_row(' . $name . ', || -> Result<(), Throw> {');
+            $w->open('trials.push(libtest_mimic::Trial::test(format!("{} [{}]", ' . $name . ', __key), move || php_rt::testing::run_on_pool(' . $root . ', Box::new(move || php_rt::testing::run_row(' . $name . ', || {');
             $w->line('crate::init();');
-            $w->line('let (__key, __row) = php_rt::testing::cached_rows(' . $name . ', || -> Result<Vec<_>, Throw> { Ok((' . $iter . ').into_iter().collect()) }, |__rows| __rows[__i].clone())?;');
+            $w->line('let (__key, __row) = php_rt::testing::cached_rows(' . $name . ', || { (' . $iter . ').into_iter().collect::<Vec<_>>() }, |__rows| __rows[__i].clone());');
             $w->raw($body->get());
             $w->close('}))).map_err(libtest_mimic::Failed::from)));');
             $w->close('},');
@@ -412,17 +413,18 @@ final class TestEmitter
     /** @param list<string> $args */
     private function emitInvocation(ClassModel $cls, MethodModel $m, Writer $w, array $args, string $dataset): void
     {
-        $w->open('php_rt::testing::case(' . $dataset . ', || -> Result<(), Throw> {');
+        // panic-based error model: the test method panics on a thrown PHP exception; catch it here to run
+        // teardown, honour expectsException(), and let skips/failures propagate to run_row for reporting.
+        $w->open('php_rt::testing::case(' . $dataset . ', || {');
         $mm = fn(string $n) => Names::method($n);
-        $w->line('__t.' . $mm('runSetUp') . '()?;');
-        $w->line('let __outcome = __t.' . $m->rustName() . '(' . implode(', ', $args) . ');');
-        $w->line('let __td = __t.' . $mm('runTearDown') . '();');
+        $w->line('__t.' . $mm('runSetUp') . '();');
+        $w->line('let __outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| __t.' . $m->rustName() . '(' . implode(', ', $args) . ')));');
+        $w->line('let __td = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| __t.' . $mm('runTearDown') . '()));');
         $w->open('match __outcome {');
-        $w->line('Ok(_) => { if __t.' . $mm('expectsException') . '()? { return Err(Throw::assertion(cat!(Str::from_static("Failed asserting that exception of type \\""), __t.' . $mm('expectedExceptionDescription') . '()?, Str::from_static("\\" is thrown")))); } }');
-        $w->line('Err(__e) => { if __t.' . $mm('expectsException') . '()? && !php_rt::testing::is_skip(&__e) { __t.' . $mm('verifyExpectedException') . '(__e)?; } else { return Err(__e); } }');
+        $w->line('Ok(_) => { if __t.' . $mm('expectsException') . '() { php_rt::do_throw(cast::<Mixed>(Throw::assertion(cat!(Str::from_static("Failed asserting that exception of type \\""), __t.' . $mm('expectedExceptionDescription') . '(), Str::from_static("\\" is thrown"))))); } }');
+        $w->line('Err(__p) => { let __e: Mixed = php_rt::take_thrown(__p); if __t.' . $mm('expectsException') . '() && !php_rt::testing::is_skip_mixed(&__e) { __t.' . $mm('verifyExpectedException') . '(cast::<Throw>(__e)); } else { php_rt::do_throw(__e); } }');
         $w->close();
-        $w->line('__td?;');
-        $w->line('Ok(())');
-        $w->close('})?;');
+        $w->line('if let Err(__p) = __td { std::panic::resume_unwind(__p); }');
+        $w->close('});');
     }
 }

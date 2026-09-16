@@ -34,6 +34,19 @@ final class BodyEmitter
     use LValueTrait;
     use StmtTrait;
 
+    /**
+     * Property name for a dynamic get_prop/set_prop access (object/Mixed receiver, literal name). Warns if the
+     * name is not in ClassEmitter::DYN_ACCESS_PROPS — meaning its get_prop/set_prop arm was elided and this
+     * access would wrongly resolve to None/false. Returns the Rust string literal for the name.
+     */
+    private function dynPropName(string $name): string
+    {
+        if (!isset(ClassEmitter::DYN_ACCESS_PROPS[$name])) {
+            \fwrite(\STDERR, "[dyn-prop-MISS] $name — add to ClassEmitter::DYN_ACCESS_PROPS or its get_prop/set_prop arm is elided\n");
+        }
+        return Names::strLit($name);
+    }
+
     public Writer $w;
 
     /** @var array<string, RustType> declared Rust type of each local */
@@ -51,6 +64,15 @@ final class BodyEmitter
     /** @var array<string, bool> locals bound by reference (`$x = &...`): stored as PhpRef<T> */
     public array $refvars = [];
 
+    /**
+     * Active `instanceof` narrowings for the current sub-expression: `$var name => narrowed class type`.
+     * Set while emitting the RHS of `$v instanceof X && ...` (and the true branch of `$v instanceof X ? ... : ...`)
+     * so a method/property call on `$v` in that sub-expression resolves statically on the subclass instead of
+     * falling to the dynamic protocol — Psalm narrows `$v` there but does not record it on the receiver node.
+     * @var array<string, RustType>
+     */
+    public array $narrowings = [];
+
     /** @var array<string, RustType> parameters the body re-assigns with a wider type: re-declared with the joined type */
     public array $rebound = [];
 
@@ -67,6 +89,11 @@ final class BodyEmitter
     private int $tmp_counter = 0;
 
     public RustType $ret_type;
+
+    /** Axis-8: whether the function being emitted returns Result<T, Throw> (true) or bare T. Set by the caller
+     * (ClassEmitter::body / CrateEmitter) from the model's $throws before emitBody(). Controls returnCode() and
+     * implicitReturn(). Default true = current (always-Result) behavior. */
+    public bool $throws = true;
 
     public bool $is_generator = false;
 
@@ -209,6 +236,30 @@ final class BodyEmitter
             $rust = $this->types()->map($joined);
             $this->vars[$name] = $rust;
             $this->late[$name] = !$rust->hasDefault();
+            // SSA axis diagnostic: a local whose value takes >=2 types across the function forces a union/Mixed
+            // local; splitting it into one name per type in the PHP source removes the union (pzoom "one type per
+            // var" idiom). Purely informational — uses the already-computed $rust and Psalm type STRINGS (no extra
+            // types()->map() calls, whose need()/registration side effects would perturb emission).
+            // Count REAL (non-unit) union members: a `T|false` / `T|bool` union has 1 real member + True/False
+            // units and is a legit closed union from the SOURCE type, NOT a "same var, different types" reuse — the
+            // true SSA violations are >=2 disjoint real members (Str+List, ClassA+ClassB, ...) or genuine Mixed.
+            $real_members = 0;
+            if ($rust->kind === RustType::UNION) {
+                foreach ($rust->params as $__m) {
+                    if (!($__m->kind === RustType::RT_GENERIC && str_starts_with($__m->name, '__unit_'))) {
+                        $real_members++;
+                    }
+                }
+            }
+            if (($rust->kind === RustType::MIXED || ($rust->kind === RustType::UNION && $real_members >= 2)) && count($types) >= 2) {
+                $psalm_names = [];
+                foreach ($types as $__t) {
+                    $psalm_names[(string) $__t] = true;
+                }
+                if (count($psalm_names) >= 2) {
+                    \fwrite(\STDERR, '[ssa-candidate] $' . $name . ' :: ' . $rust->toRust() . ' <= ' . implode(' , ', array_keys($psalm_names)) . ' @ ' . $this->type_context . "\n");
+                }
+            }
         }
     }
 
@@ -216,6 +267,29 @@ final class BodyEmitter
     public function hasMutPlace(string $name): bool
     {
         return empty($this->refvars[$name]);
+    }
+
+    /**
+     * Whether `$name` is a plain `let mut c: T` local (or rebound param, same shape) — NOT wrapped in a PhpCell,
+     * PhpRef, global accessor, by-ref, or Late<T>. Only such a binding can be the receiver of an immutable class's
+     * `Rc::make_mut` set_/mut accessor directly (`c.set_x(v)`); wrapped locals need their own access path. Used by
+     * the immutable-Rc<T> in-place write in LValueTrait::place().
+     */
+    public function isPlainLocal(string $name): bool
+    {
+        return empty($this->cells[$name]) && empty($this->refvars[$name]) && empty($this->globals[$name])
+            && empty($this->byref[$name]) && empty($this->late[$name]);
+    }
+
+    /**
+     * Like isPlainLocal but ALSO allows a Late<T> local (accessed via `.get_mut()` for a `&mut T`). A local that is
+     * not a PhpCell/PhpRef/global/by-ref binding — i.e. a plain `let mut c: T` or `let mut c: Late<T>`. Used by the
+     * immutable-Rc<T> in-place write-path, which handles the Late case (wither clone-locals) via get_mut().
+     */
+    public function isWritableLocal(string $name): bool
+    {
+        return empty($this->cells[$name]) && empty($this->refvars[$name]) && empty($this->globals[$name])
+            && empty($this->byref[$name]);
     }
 
     /**
@@ -309,6 +383,20 @@ final class BodyEmitter
     public function receiver(Expr $e): Val
     {
         if ($e instanceof Expr\Variable && $e->name === 'this' && $this->this_type !== null) {
+            // Honor Psalm's narrowing of `$this` to a subclass (`if ($this instanceof Sub) { $this->subMethod(); }`):
+            // downcast so a method/property that lives only on the subclass resolves statically (match dispatch)
+            // instead of falling back to the dynamic protocol. The narrowing guarantees the runtime class, so the
+            // downcast is safe (and panics loudly if a docblock lied, per the no-dynamic-protocol policy).
+            $inf = $this->inferred($e);
+            if ($inf !== null && $inf->kind === RustType::CLASS_ && $this->this_type->kind === RustType::CLASS_
+                && $inf->toRust() !== $this->this_type->toRust()
+            ) {
+                $sub = $this->program->classOf($inf);
+                $cur = $this->program->classOf($this->this_type);
+                if ($sub !== null && $cur !== null && $sub->isSubclassOf($cur)) {
+                    return new Val($this->casts->convert($this->this_expr . '.clone()', $this->this_type, $inf), $inf);
+                }
+            }
             return new Val($this->this_expr, $this->this_type);
         }
         return $this->expr($e);
@@ -552,7 +640,7 @@ final class BodyEmitter
         $loop = $this->loops[$idx];
         $wb = $this->writebacks($n);
         if ($loop['try_depth'] < $this->try_depth) {
-            return '{ ' . $wb . 'return Ok(Flow::' . ($is_break ? 'Break' : 'Continue') . '(' . $n . ')) }';
+            return '{ ' . $wb . 'return Flow::' . ($is_break ? 'Break' : 'Continue') . '(' . $n . ') }';
         }
         if ($is_break) {
             return '{ ' . $wb . 'break ' . $loop['break'] . ' }';
@@ -567,9 +655,11 @@ final class BodyEmitter
     public function returnCode(string $value_code): string
     {
         if ($this->try_depth > 0) {
-            return 'return Ok(Flow::Return(' . $value_code . '))';
+            // Inside a try/catch body closure (which returns Flow<T>): a PHP `return` becomes Flow::Return so the
+            // enclosing dispatch performs the actual method return. No Result wrapper (panic-based error model).
+            return 'return Flow::Return(' . $value_code . ')';
         }
-        return 'return Ok(' . $value_code . ')';
+        return 'return ' . $value_code;
     }
 
     public function enterTry(): void
@@ -654,7 +744,7 @@ final class BodyEmitter
             || ($last instanceof Stmt\Expression && $last->expr instanceof Expr\Throw_)
             || ($last instanceof Stmt\Expression && $last->expr instanceof Expr\Exit_);
         if ($this->is_generator) {
-            $this->w->line('#[allow(unreachable_code)] Ok(Generator::from_pairs(__gen))');
+            $this->w->line('#[allow(unreachable_code)] Generator::from_pairs(__gen)');
         } elseif (!$ends_with_return) {
             $this->w->line('#[allow(unreachable_code)] ' . $this->implicitReturn());
         }
@@ -664,18 +754,19 @@ final class BodyEmitter
     private function implicitReturn(): string
     {
         $t = $this->ret_type;
-        if ($t->kind === RustType::UNIT) {
-            return 'Ok(())';
-        }
-        if ($t->kind === RustType::OPTION) {
-            return 'Ok(None)';
-        }
-        if ($t->kind === RustType::MIXED) {
-            return 'Ok(Mixed::Null)';
-        }
         if ($t->kind === RustType::NEVER) {
             return 'unreachable!()';
         }
-        return 'unreachable!("missing return")';
+        $value = match ($t->kind) {
+            RustType::UNIT => '()',
+            RustType::OPTION => 'None',
+            RustType::MIXED => 'Mixed::Null',
+            default => null,
+        };
+        if ($value === null) {
+            return 'unreachable!("missing return")';
+        }
+        // Panic-based model: methods return bare `T` (no Result).
+        return $value;
     }
 }

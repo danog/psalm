@@ -275,7 +275,7 @@ trait CallTrait
         $fn = $this->program->getFunction($resolved) ?? $this->program->getFunction($short);
         if ($fn !== null) {
             $argc = $this->args($args, $fn->record->storage, $fn->param_types, null, $fn->fq_name);
-            return new Val($this->finishCall($fn->path() . '(' . implode(', ', $argc) . ')?'), $fn->return_type);
+            return new Val($this->finishCall($fn->path() . '(' . implode(', ', $argc) . ')' . ($fn->throws ? '?' : '')), $fn->return_type);
         }
 
         $result = $this->builtins->emit($this, $e, strtolower($short), $args);
@@ -310,7 +310,7 @@ trait CallTrait
                     $argc[] = $this->casts->defaultOf($pt);
                 }
             }
-            return new Val('(' . $callee->code . ')(' . implode(', ', $argc) . ')?', $t->ret);
+            return new Val('(' . $callee->code . ')(' . implode(', ', $argc) . ')', $t->ret);
         }
         if ($t->kind === RustType::DYN_CALLABLE || $t->kind === RustType::MIXED || $t->kind === RustType::STR) {
             if ($t->kind === RustType::STR) {
@@ -321,14 +321,14 @@ trait CallTrait
                 $argc[] = $this->exprTo($a->value, RustType::mixed());
             }
             $conv = $t->kind === RustType::DYN_CALLABLE ? $callee->code : 'to_callable(&' . $this->casts->convert($callee->code, $t, RustType::mixed()) . ')';
-            return $this->narrow(new Val($conv . '.call(vec![' . implode(', ', $argc) . '])?', RustType::mixed()), $site);
+            return $this->narrow(new Val($conv . '.call(vec![' . implode(', ', $argc) . '])', RustType::mixed()), $site);
         }
         if ($t->kind === RustType::CLASS_) {
             $cls = $this->program->classOf($t);
             $m = $cls !== null ? $this->program->findMethod($cls, '__invoke') : null;
             if ($m !== null) {
                 $argc = $this->args($args, $m->storage, $m->param_types, $m->declaring, $m->name);
-                return new Val($this->finishCall($callee->code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')?'), $m->return_type);
+                return new Val($this->finishCall($callee->code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')' . ($m->throws ? '?' : '')), $m->return_type);
             }
         }
         $this->warn('call of ' . $t->toRust(), $site);
@@ -378,7 +378,7 @@ trait CallTrait
         foreach ($inf->params as $i => $p) {
             $decls[] = 'let __fcc' . $i . ' = __p' . $i . ';';
         }
-        $code = '{ ' . $capt . 'Rc::new(move |' . implode(', ', $params) . '| -> Result<' . $inf->ret->toRust() . ', Throw> { ' . implode(' ', $decls) . ' Ok(' . str_replace('self.', 'this.', $v->code) . ') }) as ' . $inf->toRust() . ' }';
+        $code = '{ ' . $capt . 'Rc::new(move |' . implode(', ', $params) . '| -> ' . $inf->ret->toRust() . ' { ' . implode(' ', $decls) . ' ' . str_replace('self.', 'this.', $v->code) . ' }) as ' . $inf->toRust() . ' }';
         return new Val($code, $inf);
     }
 
@@ -426,11 +426,11 @@ trait CallTrait
                 if ($m->isStatic()) {
                     if (!$cls->isLeaf() && !$m->isPrivate() && !$m->declaring->isEnum()) {
                         // a static method called on an instance: the runtime class' implementation
-                        return new Val($this->finishCall($recv->code . '.' . $m->rustName() . '__static(' . implode(', ', $argc) . ')?'), $m->return_type);
+                        return new Val($this->finishCall($recv->code . '.' . $m->rustName() . '__static(' . implode(', ', $argc) . ')'), $m->return_type);
                     }
-                    return new Val('{ let _ = ' . $recv->code . '; ' . $this->finishCall($m->declaring->path() . '::' . $m->rustName() . '(' . implode(', ', $argc) . ')?') . ' }', $m->return_type);
+                    return new Val('{ let _ = ' . $recv->code . '; ' . $this->finishCall($m->declaring->path() . '::' . $m->rustName() . '(' . implode(', ', $argc) . ')') . ' }', $m->return_type);
                 }
-                return new Val($this->finishCall($recv->code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')?'), $m->return_type);
+                return new Val($this->finishCall($recv->code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')' . ($m->throws ? '?' : '')), $m->return_type);
             }
             if ($cls !== null && $cls->isEnum()) {
                 return $this->enumStaticCall($cls, $lc, $args, $e, $recv);
@@ -443,17 +443,20 @@ trait CallTrait
                     $argc[] = $this->exprTo($a->value, RustType::mixed());
                 }
                 $list = $argc === [] ? 'List::new()' : 'list![' . implode(', ', $argc) . ']';
-                $v = new Val($recv->code . '.' . $call->rustName() . '(' . Names::strLit($name) . ', ' . $this->casts->convert($list, RustType::list(RustType::mixed()), $call->param_types[1] ?? RustType::list(RustType::mixed())) . ')?', $call->return_type);
+                $v = new Val($recv->code . '.' . $call->rustName() . '(' . Names::strLit($name) . ', ' . $this->casts->convert($list, RustType::list(RustType::mixed()), $call->param_types[1] ?? RustType::list(RustType::mixed())) . ')', $call->return_type);
                 return $this->narrow($v, $e);
             }
             // not declared on the static type (e.g. `hasAttribute` on a `DOMNode`): dispatched by name at runtime
             $this->warn('unknown method ' . $name . ' on ' . $rt->toRust() . ' (dynamic call)', $e);
+            if (!isset(ClassEmitter::DYN_DISPATCH_METHODS[$lc])) {
+                \fwrite(\STDERR, "[dyn-allowlist-MISS] $lc (call_method) — add to ClassEmitter::DYN_DISPATCH_METHODS or its arm is elided\n");
+            }
             $argc = [];
             foreach ($args as $a) {
                 $argc[] = $this->exprTo($a->value, RustType::mixed());
             }
             $res = $this->inferredOrMixed($e);
-            $call = 'php_rt::other_obj(&' . $this->casts->convert($recv->code, $rt, RustType::mixed()) . ').call_method(' . Names::rustStringLiteral($lc) . ', vec![' . implode(', ', $argc) . '])?';
+            $call = 'php_rt::other_obj(&' . $this->casts->convert($recv->code, $rt, RustType::mixed()) . ').call_method(' . Names::rustStringLiteral($lc) . ', vec![' . implode(', ', $argc) . '])';
             return $this->narrow(new Val($this->casts->convert($call, RustType::mixed(), $res), $res), $e);
         }
         if ($rt->kind === RustType::UNION) {
@@ -470,7 +473,7 @@ trait CallTrait
                     continue;
                 }
                 $argc = $this->args($args, $m->storage, $m->param_types, $m->declaring, $m->name);
-                $call = $this->finishCall('__o.' . $m->rustName() . '(' . implode(', ', $argc) . ')?');
+                $call = $this->finishCall('__o.' . $m->rustName() . '(' . implode(', ', $argc) . ')' . ($m->throws ? '?' : ''));
                 $arms[] = $rt->mangle() . '::' . $member->variantName() . '(__o) => ' . $this->casts->convert($call, $m->return_type, $res);
             }
             if ($arms !== []) {
@@ -488,7 +491,10 @@ trait CallTrait
             foreach ($args as $a) {
                 $argc[] = $this->exprTo($a->value, RustType::mixed());
             }
-            $v = new Val('mixed_call(&' . $this->casts->convert($recv->code, $rt, RustType::mixed()) . ', &' . Names::strLit($name) . ', vec![' . implode(', ', $argc) . '])?', RustType::mixed());
+            if (!isset(ClassEmitter::DYN_DISPATCH_METHODS[strtolower($name)])) {
+                \fwrite(\STDERR, "[dyn-allowlist-MISS] " . strtolower($name) . " (mixed_call) — add to ClassEmitter::DYN_DISPATCH_METHODS or its arm is elided\n");
+            }
+            $v = new Val('mixed_call(&' . $this->casts->convert($recv->code, $rt, RustType::mixed()) . ', &' . Names::strLit($name) . ', vec![' . implode(', ', $argc) . '])', RustType::mixed());
             return $this->narrow($v, $e);
         }
         $this->warn('method call on ' . $rt->toRust(), $e);
@@ -560,7 +566,7 @@ trait CallTrait
             if ($m->uses_lsb && !$m->isPrivate()) {
                 $bound = $this->static_class ?? $this->class;
                 if ($kind === 'static' && $this->static_class === null && $this->this_type !== null && $this->class !== null && !$this->class->isLeaf()) {
-                    return new Val($this->finishCall($this->this_expr . '.' . $m->rustName() . '__static(' . implode(', ', $argc) . ')?'), $m->return_type);
+                    return new Val($this->finishCall($this->this_expr . '.' . $m->rustName() . '__static(' . implode(', ', $argc) . ')'), $m->return_type);
                 }
                 if (in_array($kind, ['static', 'self', 'parent'], true) && $bound !== null) {
                     // forwarded late static binding: `static` stays bound to the calling class
@@ -569,14 +575,14 @@ trait CallTrait
                         // `self::`/`parent::` name a specific body that the bound class overrides: a copy of that
                         // body with `static` bound to the calling class
                         $copy = $this->program->requestSuperCopy($bound, $m);
-                        return new Val($this->finishCall($bound->path() . '::' . $copy . '(' . implode(', ', $argc) . ')?'), $m->return_type);
+                        return new Val($this->finishCall($bound->path() . '::' . $copy . '(' . implode(', ', $argc) . ')'), $m->return_type);
                     }
                     $target = $bound;
                 } elseif ($kind !== 'self' && $kind !== 'parent') {
                     $target = $cls; // explicitly named class
                 }
             }
-            return new Val($this->finishCall($target->path() . '::' . $m->rustName() . '(' . implode(', ', $argc) . ')?'), $m->return_type);
+            return new Val($this->finishCall($target->path() . '::' . $m->rustName() . '(' . implode(', ', $argc) . ')'), $m->return_type);
         }
         // instance method called with self::/parent::/static:: => non-virtual call on $this
         if ($this->this_type === null) {
@@ -585,7 +591,17 @@ trait CallTrait
             return $this->dead('instance method called statically', $m->return_type);
         }
         if ($kind === 'static') {
-            return new Val($this->finishCall($this->this_expr . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')?'), $m->return_type);
+            return new Val($this->finishCall($this->this_expr . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')' . ($m->throws ? '?' : '')), $m->return_type);
+        }
+        // Immutable Rc<T>: a self::/parent:: call to a construction method (writes $this) must mutate THIS object in
+        // place. The generic path casts `self.clone()` to the declaring class and calls `__impl`, but for Rc<T> the
+        // clone bumps the refcount so make_mut copies and the writes are lost (and the enum omits __impl for immutable
+        // hierarchies). Emit a super-copy of the body on the current (leaf) class and call it on `self` directly
+        // (&mut self) — during construction refcount is 1 so make_mut mutates in place. Pairs with emitMethodOnOwn's
+        // inherited-ctor forwarding to run the whole inherited ctor chain in place.
+        if ($this->class !== null && !$m->isAbstract() && $this->class->isImmutableCtorMethod($m->lc())) {
+            $copy = $this->program->requestSuperCopy($this->class, $m);
+            return new Val($this->finishCall($this->this_expr . '.' . $copy . '(' . implode(', ', $argc) . ')' . ($m->throws ? '?' : '')), $m->return_type);
         }
         $decl = $m->declaring;
         $this_t = $this->this_type;
@@ -595,14 +611,14 @@ trait CallTrait
             $root = $this->class->crateRoot();
             $copy = $this->program->requestSuperCopy($root, $m);
             $recv = $this->casts->convert($this->this_expr . '.clone()', $this_t, RustType::class($root->fqcn));
-            return new Val($this->finishCall($recv . '.' . $copy . '(' . implode(', ', $argc) . ')?'), $m->return_type);
+            return new Val($this->finishCall($recv . '.' . $copy . '(' . implode(', ', $argc) . ')' . ($m->throws ? '?' : '')), $m->return_type);
         }
         $recv = $this->casts->convert($this->this_expr . '.clone()', $this_t, RustType::class($decl->fqcn));
         $impl = $decl->isLeaf() ? $m->rustName() : $m->rustName() . '__impl';
         if ($m->isAbstract()) {
             $impl = $m->rustName();
         }
-        return new Val($this->finishCall($recv . '.' . $impl . '(' . implode(', ', $argc) . ')?'), $m->return_type);
+        return new Val($this->finishCall($recv . '.' . $impl . '(' . implode(', ', $argc) . ')' . ($m->throws ? '?' : '')), $m->return_type);
     }
 
     private function enumStaticCall(ClassModel $cls, string $lc, array $args, Expr $e, ?Val $recv): Val
@@ -614,7 +630,7 @@ trait CallTrait
             case 'cases':
                 return new Val($path . '::cases()', RustType::list($t));
             case 'from':
-                return new Val($path . '::from_value(' . $this->exprTo($args[0]->value, $backing) . ')?', $t);
+                return new Val($path . '::from_value(' . $this->exprTo($args[0]->value, $backing) . ')', $t);
             case 'tryfrom':
                 return new Val($path . '::try_from_value(' . $this->exprTo($args[0]->value, $backing) . ')', RustType::option($t));
         }
@@ -622,9 +638,9 @@ trait CallTrait
         if ($m !== null) {
             $argc = $this->args($args, $m->storage, $m->param_types, $m->declaring, $m->name);
             if ($m->isStatic() || $recv === null) {
-                return new Val($this->finishCall($path . '::' . $m->rustName() . '(' . implode(', ', $argc) . ')?'), $m->return_type);
+                return new Val($this->finishCall($path . '::' . $m->rustName() . '(' . implode(', ', $argc) . ')'), $m->return_type);
             }
-            return new Val($this->finishCall($recv->code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')?'), $m->return_type);
+            return new Val($this->finishCall($recv->code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')'), $m->return_type);
         }
         $this->warn('unknown enum method ' . $lc, $e);
         return $this->dead('unknown enum method', $this->inferredOrMixed($e));
@@ -667,7 +683,7 @@ trait CallTrait
             }
             if (strtolower($e->class->toString()) === 'static' && $this->class !== null && !$this->class->isLeaf() && $this->this_type !== null) {
                 $argc = $this->constructorArgs($cls, $args);
-                return new Val($this->this_expr . '.new_same_class(' . implode(', ', $argc) . ')?', RustType::class($cls->fqcn));
+                return new Val($this->this_expr . '.new_same_class(' . implode(', ', $argc) . ')', RustType::class($cls->fqcn));
             }
             return $this->construct($cls, $args, $e);
         }
@@ -680,7 +696,7 @@ trait CallTrait
             $cls = $this->program->classOf($cv->type);
             if ($cls !== null) {
                 $argc = $this->constructorArgs($cls, $args);
-                return new Val($cv->code . '.new_same_class(' . implode(', ', $argc) . ')?', RustType::class($cls->fqcn));
+                return new Val($cv->code . '.new_same_class(' . implode(', ', $argc) . ')', RustType::class($cls->fqcn));
             }
         }
         // `new $class(...)` with a class name: classes are never instantiated by name (closed world)
@@ -725,6 +741,6 @@ trait CallTrait
         }
         $argc = $this->constructorArgs($cls, $args);
         $t = RustType::class($cls->fqcn);
-        return new Val($this->finishCall($cls->path() . '::new(' . implode(', ', $argc) . ')?'), $t);
+        return new Val($this->finishCall($cls->path() . '::new(' . implode(', ', $argc) . ')'), $t);
     }
 }

@@ -14,6 +14,9 @@ final class FunctionModel
 
     public RustType $return_type;
 
+    /** Panic-based model: no function returns Result (default false). See MethodModel::$throws. */
+    public bool $throws = false;
+
     public function __construct(
         public readonly string $fq_name,
         public readonly FunctionRecord $record,

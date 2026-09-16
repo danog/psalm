@@ -91,7 +91,7 @@ trait StmtTrait
             return;
         }
         if ($s instanceof Stmt\Throw_) {
-            $w->line('return Err(' . $this->throwValue($s->expr) . ');');
+            $w->line($this->throwCode($s->expr) . ';');
             return;
         }
         if ($s instanceof Stmt\Unset_) {
@@ -165,7 +165,7 @@ trait StmtTrait
             return;
         }
         if ($e instanceof Expr\Throw_) {
-            $w->line('return Err(' . $this->throwValue($e->expr) . ');');
+            $w->line($this->throwCode($e->expr) . ';');
             return;
         }
         if ($e instanceof Expr\Exit_) {
@@ -312,7 +312,7 @@ trait StmtTrait
                 break;
             case RustType::MIXED:
                 $key_t = RustType::arrayKey();
-                $iter = 'mixed_iter(' . $subject->code . ')?';
+                $iter = 'mixed_iter(' . $subject->code . ').unwrap_or_else(|__e| __throw_rt(__e))';
                 break;
             case RustType::RT_GENERIC:
                 if (in_array($st->name, ['Generator', 'ArrayObject', 'ArrayIterator', 'SplObjectStorage', 'PhpIterator', 'IteratorAggregate', 'Traversable', 'WeakMap'], true)) {
@@ -508,38 +508,62 @@ trait StmtTrait
         $w->close();
     }
 
+    /**
+     * Axis-8 / panic-based errors: a `throw` of a Resultable (or anywhere-caught) exception emits `return Err(..)`
+     * so it propagates to its catch (the intentional, recoverable error path). A `throw` of any other exception —
+     * an invariant violation never meant to be recovered from — emits `php_rt::uncaught(..)`, a panic that does not
+     * need Result. Both branches are `!`-typed, so this fits statement and expression positions alike. See
+     * Program::isResultable / computeResultable.
+     */
+    private function throwCode(Expr $e): string
+    {
+        // Panic-based errors: every `throw` unwinds via php_rt::do_throw (stashes the exception object as Mixed and
+        // panics with a PhpThrow marker); a `try` boundary catch_unwinds and matches it. Returns `!`.
+        $v = $this->expr($e);
+        return 'php_rt::do_throw(' . $this->casts->convert($v->code, $v->type, RustType::mixed()) . ')';
+    }
+
     private function tryStmt(Stmt\TryCatch $s): void
     {
+        // Panic-based try/catch: the try body runs inside catch_unwind and returns Flow<T> (return/break/continue
+        // inside a try become Flow, since the body is a closure). A PHP `throw` unwinds as a panic; the boundary
+        // recovers the exception via php_rt::take_thrown (a genuine Rust panic resumes unwinding). Unmatched catches
+        // re-throw. AssertUnwindSafe: the body mutates captured scope locals; their pre-throw values persist (PHP
+        // keeps side effects up to the throw).
         $w = $this->w;
         $flow_t = 'Flow<' . $this->ret_type->toRust() . '>';
+        $mixed = RustType::mixed();
+        $throwable = RustType::class('Throwable');
         $r = $this->tmp('__r');
-        $w->line('let ' . $r . ': Result<' . $flow_t . ', Throw> = (|| -> Result<' . $flow_t . ', Throw> {');
+        $w->line('let ' . $r . ': ' . $flow_t . ' = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| -> ' . $flow_t . ' {');
         $w->indent();
         $this->enterTry();
         $this->block($s->stmts);
         $this->leaveTry();
-        $w->line('#[allow(unreachable_code)] Ok(Flow::Normal)');
+        $w->line('#[allow(unreachable_code)] Flow::Normal');
         $w->dedent();
-        $w->line('})();');
+        $w->line('})) {');
+        $w->indent();
+        $w->line('Ok(__flow) => __flow,');
+        $w->line('Err(__payload) => {');
+        $w->indent();
+        $w->line('let __e = ' . $this->casts->convert('php_rt::take_thrown(__payload)', $mixed, $throwable) . ';');
+        $rethrow = 'php_rt::do_throw(' . $this->casts->convert('__e', $throwable, $mixed) . ')';
         if ($s->catches !== []) {
-            $w->line('let ' . $r . ' = match ' . $r . ' {');
-            $w->indent();
-            $w->line('Err(__e) => (|| -> Result<' . $flow_t . ', Throw> {');
+            $w->line('(|| -> ' . $flow_t . ' {');
             $w->indent();
             $this->enterTry();
             $first = true;
             foreach ($s->catches as $catch) {
                 $checks = [];
-                $target = null;
                 foreach ($catch->types as $type) {
                     $fqcn = $this->resolveClassName($type);
                     if ($fqcn === null) {
                         continue;
                     }
                     $tt = RustType::class($fqcn);
-                    $this->casts->needInstanceOf(RustType::class('Throwable'), $tt);
+                    $this->casts->needInstanceOf($throwable, $tt);
                     $checks[] = 'is_instance::<' . $tt->toRust() . '>(&__e)';
-                    $target = $target === null ? $tt : $this->types()->combine([$target, $tt]);
                 }
                 if ($checks === []) {
                     continue;
@@ -548,38 +572,39 @@ trait StmtTrait
                 $first = false;
                 if ($catch->var !== null && is_string($catch->var->name)) {
                     $vt = $this->varType($catch->var->name);
-                    $w->line($this->storeVar($catch->var->name, $this->casts->convert('__e.clone()', RustType::class('Throwable'), $vt)));
+                    $w->line($this->storeVar($catch->var->name, $this->casts->convert('__e.clone()', $throwable, $vt)));
                 }
                 $this->block($catch->stmts);
-                $w->line('#[allow(unreachable_code)] Ok(Flow::Normal)');
+                $w->line('#[allow(unreachable_code)] Flow::Normal');
                 $w->close();
             }
-            $w->line(($first ? '' : 'else ') . '{ Err(__e) }');
             $this->leaveTry();
+            $w->line(($first ? '' : 'else ') . '{ ' . $rethrow . ' }');
             $w->dedent();
-            $w->line('})(),');
-            $w->line('__ok => __ok,');
-            $w->dedent();
-            $w->line('};');
+            $w->line('})()');
+        } else {
+            // try/finally with no catch: run finally (below) then re-throw.
+            $w->line($rethrow);
         }
+        $w->dedent();
+        $w->line('}');
+        $w->dedent();
+        $w->line('};');
         if ($s->finally !== null) {
             $this->block($s->finally->stmts);
         }
         // dispatch non-local control flow
         $w->open('match ' . $r . ' {');
-        $w->line('Ok(Flow::Normal) => {}');
-        $w->line('Ok(Flow::Return(__v)) => ' . $this->returnCode('__v') . ',');
+        $w->line('Flow::Normal => {}');
+        $w->line('Flow::Return(__v) => ' . $this->returnCode('__v') . ',');
         $loops = $this->loopDepth();
         if ($loops > 0) {
             for ($n = 1; $n <= $loops; $n++) {
-                $w->line('Ok(Flow::Break(' . $n . ')) => ' . $this->jump(true, $n) . ',');
-                $w->line('Ok(Flow::Continue(' . $n . ')) => ' . $this->jump(false, $n) . ',');
+                $w->line('Flow::Break(' . $n . ') => ' . $this->jump(true, $n) . ',');
+                $w->line('Flow::Continue(' . $n . ') => ' . $this->jump(false, $n) . ',');
             }
-            $w->line('Ok(Flow::Break(_)) | Ok(Flow::Continue(_)) => unreachable!(),');
-        } else {
-            $w->line('Ok(Flow::Break(_)) | Ok(Flow::Continue(_)) => unreachable!(),');
         }
-        $w->line('Err(__e) => return Err(__e),');
+        $w->line('#[allow(unreachable_patterns)] Flow::Break(_) | Flow::Continue(_) => unreachable!(),');
         $w->close();
     }
 
@@ -627,7 +652,7 @@ trait StmtTrait
                 $cls = $this->program->classOf($pt);
                 $m = $cls !== null ? $this->program->findMethod($cls, 'offsetunset') : null;
                 if ($m !== null) {
-                    $w->line($parent->read() . '.' . $m->rustName() . '(' . $this->exprTo($e->dim, $m->param_types[0] ?? RustType::mixed()) . ')?;');
+                    $w->line($parent->read() . '.' . $m->rustName() . '(' . $this->exprTo($e->dim, $m->param_types[0] ?? RustType::mixed()) . ');');
                     return;
                 }
             }

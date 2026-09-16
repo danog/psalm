@@ -81,7 +81,7 @@ final class CastEmitter
         }
         $arms[] = $name . '::Other__(v) => v.to_php_str()';
         $w->line('impl php_rt::ToStr for ' . $name . ' { fn to_php_str(&self) -> Str { match self { ' . implode(', ', $arms) . ' } } }');
-        $w->line('impl ' . $name . ' { pub fn to_php_string(&self) -> Result<Str, Throw> { Ok(self.to_php_str()) } }');
+        $w->line('impl ' . $name . ' { pub fn to_php_string(&self) -> Str { self.to_php_str() } }');
         // Identical
         $arms = [];
         foreach ($u->params as $m) {
@@ -201,7 +201,12 @@ final class CastEmitter
                 }
             }
             $extra .= $name . '::Other__(v) => ' . $this->conv('v', RustType::mixed(), $m) . ', ';
-            $w->line('impl php_rt::CastTo<' . $m->toRust() . '> for ' . $name . ' { fn cast_to(self) -> ' . $m->toRust() . ' { match self { ' . $name . '::' . $vn . '(v) => v, ' . $extra . '_ => panic!("union ' . $name . ' is not ' . $vn . '") } } }');
+            // A Bool member's `CastTo<bool> for union` (member-extract-or-panic) collides with the truthy-based
+            // `CastTo<bool>` emitted below for unit-unions (E0119). The truthy version is the correct PHP bool
+            // coercion (and matches the Bool member anyway: truthy(Bool(v)) == v), so skip this one in that case.
+            if (!($m->kind === RustType::BOOL && ($this->casts->hasUnit($u, 'True') || $this->casts->hasUnit($u, 'False')))) {
+                $w->line('impl php_rt::CastTo<' . $m->toRust() . '> for ' . $name . ' { fn cast_to(self) -> ' . $m->toRust() . ' { match self { ' . $name . '::' . $vn . '(v) => v, ' . $extra . '_ => panic!("union ' . $name . ' is not ' . $vn . '") } } }');
+            }
             $w->line('impl php_rt::CastTo<' . $name . '> for ' . $m->toRust() . ' { fn cast_to(self) -> ' . $name . ' { ' . $name . '::' . $vn . '(self) } }');
         }
         if ($this->casts->hasUnit($u, 'True') || $this->casts->hasUnit($u, 'False')) {
@@ -306,8 +311,11 @@ final class CastEmitter
         }
         $h = $cls->handle();
         $ht = RustType::class($cls->fqcn);
+        // A CLOSED hierarchy (no downstream-crate subclass) has no `Other__` variant: it dispatches by
+        // exhaustive match over its concrete variants, exactly like a leaf, so it takes the leaf path here.
+        $closed = !$cls->has_downstream;
         // Truthy / ToStr / Identical / PhpCmp on the handle type
-        if ($cls->isLeaf()) {
+        if ($cls->isLeaf() || $closed) {
             $w->line('impl php_rt::Truthy for ' . $h . ' { fn truthy(&self) -> bool { true } }');
             $w->line('impl php_rt::Identical for ' . $h . ' { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }');
         } else {
@@ -325,7 +333,9 @@ final class CastEmitter
             $w->line('impl php_rt::CastTo<Mixed> for ' . $h . ' { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }');
         } else {
             $arms = array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(v) => Mixed::Obj(Rc::new(v))', $cls->concrete);
-            $arms[] = $h . '::Other__(m) => m';
+            if (!$closed) {
+                $arms[] = $h . '::Other__(m) => m';
+            }
             $w->line('impl php_rt::CastTo<Mixed> for ' . $h . ' { fn cast_to(self) -> Mixed { match self { ' . implode(', ', $arms) . ($arms ? ', ' : '') . '_ => unreachable!() } } }');
             if ($cls->isConcrete()) {
                 $own = $cls->ownHandle();
@@ -344,21 +354,24 @@ final class CastEmitter
             $arms[] = $this->program->classId($c) . ' => return ' . $this->wrapConcrete($cls, $c, $get) . ',';
             $some_arms[] = $this->program->classId($c) . ' => return Some(' . $this->wrapConcrete($cls, $c, $get) . '),';
         }
-        $fallback = $cls->isLeaf() ? 'panic!(' . Names::rustStringLiteral('Mixed value is not a ' . $cls->fqcn) . ')' : $h . '::Other__(self)';
+        $fallback = ($cls->isLeaf() || $closed) ? 'panic!(' . Names::rustStringLiteral('Mixed value is not a ' . $cls->fqcn) . ')' : $h . '::Other__(self)';
         $w->line('impl php_rt::CastTo<' . $h . '> for Mixed { fn cast_to(self) -> ' . $h . ' { if let Mixed::Obj(o) = &self { match o.class_id() { ' . implode(' ', $arms) . ' _ => {} } } ' . $fallback . ' } }');
         // a subclass declared in a downstream crate (Psalm's Virtual* nodes extend php-parser nodes)
-        // is still an instance of this class: it lands in the escape variant instead of failing
-        $none = $cls->isLeaf() ? 'None' : 'if o.instance_of_id(' . $this->program->classId($cls) . ') { Some(' . $h . '::Other__(Mixed::Obj(o.clone()))) } else { None }';
+        // is still an instance of this class: it lands in the escape variant instead of failing. A closed
+        // hierarchy has no downstream subclass, so the concrete match above is exhaustive (else: not this type).
+        $none = ($cls->isLeaf() || $closed) ? 'None' : 'if o.instance_of_id(' . $this->program->classId($cls) . ') { Some(' . $h . '::Other__(Mixed::Obj(o.clone()))) } else { None }';
         $w->line('impl php_rt::TryDowncast for ' . $h . ' { fn try_downcast(o: &AnyObj) -> Option<Self> { match o.class_id() { ' . implode(' ', $some_arms) . ' _ => {} } ' . $none . ' } }');
         // AnyObject
         $w->line('impl php_rt::CastTo<AnyObject> for ' . $h . ' { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }');
         $w->line('impl php_rt::CastTo<' . $h . '> for AnyObject { fn cast_to(self) -> ' . $h . ' { cast::<' . $h . '>(cast::<Mixed>(self)) } }');
         $w->line('impl php_rt::InstanceOf<' . $h . '> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_id(' . $this->program->classId($cls) . ') } }');
         $w->line('impl php_rt::InstanceOf<' . $h . '> for Mixed { fn is_instance(&self) -> bool { self.instance_of_id(' . $this->program->classId($cls) . ') } }');
-        if ($cls->isLeaf()) {
+        if ($cls->isLeaf() || $closed) {
             $w->line('impl php_rt::InstanceOf<' . $h . '> for ' . $h . ' { fn is_instance(&self) -> bool { true } }');
         } else {
             $w->line('impl php_rt::InstanceOf<' . $h . '> for ' . $h . ' { fn is_instance(&self) -> bool { match self { ' . $h . '::Other__(__m) => __m.instance_of_id(' . $this->program->classId($cls) . '), _ => true } } }');
+        }
+        if (!$cls->isLeaf()) {
             // narrowing to any leaf class (of this crate or a downstream one) in a single generic impl
             // instead of one impl with an arm per descendant for each target class
             $w->line('impl<T: crate::Leaf__ + Clone + \'static> php_rt::CastTo<T> for ' . $h . ' where Mixed: php_rt::CastTo<T> { fn cast_to(self) -> T { if let Some(v) = self.inner_any().downcast_ref::<T>() { return v.clone(); } cast::<T>(cast::<Mixed>(self)) } }');
@@ -379,6 +392,12 @@ final class CastEmitter
         }
     }
 
+    /** A non-leaf handle that still carries the `Other__` escape variant (i.e. has a downstream subclass). */
+    private function openHandle(?ClassModel $c): bool
+    {
+        return $c !== null && !$c->isLeaf() && $c->has_downstream;
+    }
+
     /** Wrap a concrete own handle value into the handle type of `$cls`. */
     private function wrapConcrete(ClassModel $cls, ClassModel $c, string $code): string
     {
@@ -386,8 +405,11 @@ final class CastEmitter
             return $code;
         }
         if (!in_array($c, $cls->concrete, true)) {
-            // a subclass from a downstream crate: the enum has no variant for it
-            return $cls->path() . '::Other__(Mixed::Obj(Rc::new(' . $code . ')))';
+            // a subclass from a downstream crate: the enum has no variant for it. A closed hierarchy has
+            // no such subclass, so this cannot happen there (guarded to a panic rather than a dead Other__).
+            return $this->openHandle($cls)
+                ? $cls->path() . '::Other__(Mixed::Obj(Rc::new(' . $code . ')))'
+                : 'panic!(' . Names::rustStringLiteral('unexpected downstream subclass in closed hierarchy ' . $cls->fqcn) . ')';
         }
         return $cls->path() . '::' . $c->variant() . '(' . $code . ')';
     }
@@ -618,13 +640,13 @@ final class CastEmitter
         }
         if ($fk === RustType::CLASS_ && $tk === RustType::STR) {
             // (string) $object goes through __toString
-            $w->line('impl php_rt::CastTo<Str> for ' . $from->toRust() . ' { fn cast_to(self) -> Str { self.to_php_string().unwrap_or_else(|__e| panic!("{}", __e)) } }');
+            $w->line('impl php_rt::CastTo<Str> for ' . $from->toRust() . ' { fn cast_to(self) -> Str { self.to_php_string() } }');
             return;
         }
         if ($fk === RustType::CLASS_ && ($tk === RustType::INT || $tk === RustType::FLOAT || $tk === RustType::BOOL)) {
             $fc = $this->program->classOf($from);
             $has_ts = $fc !== null && $this->program->findMethod($fc, '__tostring') !== null;
-            $via = $has_ts ? 'to_num(&Mixed::Str(self.to_php_string().unwrap_or_default()))' : '{ let _ = self; Num::Int(1) }';
+            $via = $has_ts ? 'to_num(&Mixed::Str(self.to_php_string()))' : '{ let _ = self; Num::Int(1) }';
             $body = match ($tk) {
                 RustType::INT => $via . '.to_i64()',
                 RustType::FLOAT => $via . '.to_f64()',
@@ -669,7 +691,9 @@ final class CastEmitter
             $tc = $this->program->classOf($to);
             return $fc !== null && $tc !== null && ($fc->isSubclassOf($tc) || $tc->isSubclassOf($fc));
         }
-        $scalars = [RustType::INT, RustType::FLOAT, RustType::STR, RustType::BOOL, RustType::ARRAY_KEY];
+        // SYM (interned name) converts like a string scalar: Sym<->Str/ArrayKey/Int/... via php-rt CastTo impls.
+        // Without SYM here, a `Sym|AnyObject` union cast to Str would panic on the Sym arm too (it should convert).
+        $scalars = [RustType::INT, RustType::FLOAT, RustType::STR, RustType::BOOL, RustType::ARRAY_KEY, RustType::SYM];
         if (in_array($from->kind, $scalars, true) && in_array($to->kind, $scalars, true)) {
             return true;
         }
@@ -708,7 +732,7 @@ final class CastEmitter
             // upcast of a leaf into an ancestor enum, or (impossible) sideways cast
             if ($fc->isSubclassOf($tc)) {
                 $body = $this->wrapConcrete($tc, $fc, 'self');
-            } elseif (!$tc->isLeaf()) {
+            } elseif ($this->openHandle($tc)) {
                 $body = $th . '::Other__(Mixed::Obj(Rc::new(self)))';
             } else {
                 $body = 'panic!(' . Names::rustStringLiteral('cannot cast ' . $fc->fqcn . ' to ' . $tc->fqcn) . ')';
@@ -727,14 +751,16 @@ final class CastEmitter
         foreach ($fc->concrete as $c) {
             if ($c->isSubclassOf($tc)) {
                 $arms[] = $fh . '::' . $c->variant() . '(v) => ' . $this->wrapConcrete($tc, $c, 'v');
-            } elseif ($tc->isLeaf()) {
-                $arms[] = $fh . '::' . $c->variant() . '(_) => panic!(' . Names::rustStringLiteral('cannot cast ' . $c->fqcn . ' to ' . $tc->fqcn) . ')';
-            } else {
+            } elseif ($this->openHandle($tc)) {
                 // not an instance of the target: carried through its escape variant
                 $arms[] = $fh . '::' . $c->variant() . '(v) => ' . $th . '::Other__(Mixed::Obj(Rc::new(v)))';
+            } else {
+                $arms[] = $fh . '::' . $c->variant() . '(_) => panic!(' . Names::rustStringLiteral('cannot cast ' . $c->fqcn . ' to ' . $tc->fqcn) . ')';
             }
         }
-        $arms[] = $fh . '::Other__(m) => ' . $this->conv('m', RustType::mixed(), $to);
+        if ($this->openHandle($fc)) {
+            $arms[] = $fh . '::Other__(m) => ' . $this->conv('m', RustType::mixed(), $to);
+        }
         $w->line('impl php_rt::CastTo<' . $th . '> for ' . $fh . ' { fn cast_to(self) -> ' . $th . ' { match self { ' . implode(', ', $arms) . ($arms ? ', ' : '') . '_ => unreachable!() } } }');
     }
 
@@ -763,8 +789,10 @@ final class CastEmitter
                     $yes[] = $subject->toRust() . '::' . $c->variant() . '(_)';
                 }
             }
-            $other = $subject->toRust() . '::Other__(__m) => __m.instance_of_id(' . $this->program->classId($tc) . ')';
-            $body = 'match self { ' . ($yes === [] ? '' : implode(' | ', $yes) . ' => true, ') . $other . ', _ => false }';
+            $other = $this->openHandle($sc)
+                ? $subject->toRust() . '::Other__(__m) => __m.instance_of_id(' . $this->program->classId($tc) . '), '
+                : '';
+            $body = 'match self { ' . ($yes === [] ? '' : implode(' | ', $yes) . ' => true, ') . $other . '_ => false }';
             $w->line('impl php_rt::InstanceOf<' . $th . '> for ' . $subject->toRust() . ' { fn is_instance(&self) -> bool { ' . $body . ' } }');
             return;
         }

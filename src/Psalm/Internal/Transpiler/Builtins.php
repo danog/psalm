@@ -185,7 +185,7 @@ final class Builtins
         'is_nan' => ['is_nan', ['f'], 'b'],
         'is_finite' => ['is_finite', ['f'], 'b'],
         'is_infinite' => ['is_infinite', ['f'], 'b'],
-        'intdiv' => ['intdiv', ['i', 'i'], 'Si'],
+        'intdiv' => ['intdiv', ['i', 'i'], 'i'],
         'fdiv' => ['fdiv', ['f', 'f'], 'f'],
         'fmod' => ['fmod', ['f', 'f'], 'f'],
         'mt_rand' => ['mt_rand', ['i=0', 'i=2147483647'], 'i'],
@@ -283,7 +283,7 @@ final class Builtins
         'get_object_vars' => ['get_object_vars', ['&m'], 'mkm'],
         'is_callable' => ['is_callable', ['&m'], 'b'],
         'defined' => ['crate::names::constant_defined', ['&s'], 'b'],
-        'constant' => ['crate::names::constant', ['&s'], 'Sm'],
+        'constant' => ['crate::names::constant', ['&s'], 'm'],
         'fwrite' => ['fwrite', ['&r', '&s'], 'oi'],
         'fputs' => ['fwrite', ['&r', '&s'], 'oi'],
         'fclose' => ['fclose', ['&r'], 'b'],
@@ -435,7 +435,8 @@ final class Builtins
         }
         $code = $fn . '(' . implode(', ', $codes) . ')';
         if ($ret[0] === 'S') {
-            $code .= '?';
+            // fallible runtime builtin: on error, throw it as a PHP exception (panic-based error model)
+            $code .= '.unwrap_or_else(|__e| __throw_rt(__e))';
             $ret = substr($ret, 1);
         }
         if ($ret === 'n') {
@@ -585,14 +586,14 @@ final class Builtins
                         $lets[] = 'let __cb' . $i . ' = __p' . $i . ';';
                     }
                     $code = $b->casts->convert($inner->code, $inner->type, $ret);
-                    return 'Rc::new(move |' . implode(', ', $decls) . '| -> Result<' . $ret->toRust() . ', Throw> { ' . implode(' ', $lets) . ' Ok(' . $code . ') }) as ' . $target->toRust();
+                    return 'Rc::new(move |' . implode(', ', $decls) . '| -> ' . $ret->toRust() . ' { ' . implode(' ', $lets) . ' ' . $code . ' }) as ' . $target->toRust();
                 }
             }
         }
         return $b->casts->convert($v->code, $v->type, $target);
     }
 
-    /** Call a runtime fn expecting a closure `FnMut(args) -> Result<_, Throw>` given a PHP callable arg. */
+    /** Call a runtime fn expecting a closure `FnMut(args) -> ret` given a PHP callable arg. */
     private function cb(BodyEmitter $b, Expr $e, array $params, RustType $ret): string
     {
         $c = $this->callback($b, $e, $params, $ret);
@@ -623,7 +624,7 @@ final class Builtins
             $cls = $b->program->classOf($t);
             $m = $cls !== null ? $b->program->findMethod($cls, 'count') : null;
             if ($m !== null) {
-                return new Val($v->code . '.' . $m->rustName() . '()?', RustType::int());
+                return new Val($v->code . '.' . $m->rustName() . '()', RustType::int());
             }
         }
         if ($t->kind === RustType::RT_GENERIC) {
@@ -733,13 +734,21 @@ final class Builtins
         ) {
             // a non-leaf class value may carry a non-object through its escape variant
             $c = $b->program->classOf($inner);
-            if ($c !== null && !$c->isLeaf()) {
+            if ($c !== null && !$c->isLeaf() && $c->has_downstream) {
                 $h = $inner->toRust();
                 $static = in_array($inner->kind, $kinds, true) ? 'true' : 'false';
                 if ($t->kind === RustType::OPTION) {
                     return new Val('(match &' . $v->code . ' { None => ' . ($pred === 'is_null' ? 'true' : 'false') . ', Some(' . $h . '::Other__(__m)) => __m.' . $pred . '(), Some(_) => ' . $static . ' })', RustType::bool());
                 }
                 return new Val('(match &' . $v->code . ' { ' . $h . '::Other__(__m) => __m.' . $pred . '(), _ => ' . $static . ' })', RustType::bool());
+            }
+            if ($c !== null && !$c->isLeaf()) {
+                // closed handle: the value is definitely an object of a known class, so the predicate is static
+                $static = in_array($inner->kind, $kinds, true) ? 'true' : 'false';
+                if ($t->kind === RustType::OPTION) {
+                    return new Val('(match &' . $v->code . ' { None => ' . ($pred === 'is_null' ? 'true' : 'false') . ', Some(_) => ' . $static . ' })', RustType::bool());
+                }
+                return new Val('{ let _ = &' . $v->code . '; ' . $static . ' }', RustType::bool());
             }
         }
         if ($t->kind === RustType::OPTION) {
@@ -983,7 +992,7 @@ final class Builtins
             $ct = $c->type->kind === RustType::LIST ? $c->type : RustType::list($c->type->params[1]);
             $ret = $res->kind === RustType::LIST ? $res->inner() : ($res->kind === RustType::MAP ? $res->params[1] : RustType::mixed());
             $cb = $this->cb($b, $args[0]->value, [$at->inner(), $ct->inner()], $ret);
-            return new Val('array_map2_l(&' . $b->casts->convert($a->code, $a->type, $at) . ', &' . $b->casts->convert($c->code, $c->type, $ct) . ', ' . $cb . ')?', RustType::list($ret));
+            return new Val('array_map2_l(&' . $b->casts->convert($a->code, $a->type, $at) . ', &' . $b->casts->convert($c->code, $c->type, $ct) . ', ' . $cb . ')', RustType::list($ret));
         }
         $a = $this->container($b, $args[1]->value);
         if ($b->isNullLiteral($args[0]->value)) {
@@ -997,9 +1006,9 @@ final class Builtins
         }
         $cb = $this->cb($b, $args[0]->value, [$elem], $ret);
         if ($a->type->kind === RustType::LIST) {
-            return new Val('array_map_l(&' . $a->code . ', ' . $cb . ')?', RustType::list($ret));
+            return new Val('array_map_l(&' . $a->code . ', ' . $cb . ')', RustType::list($ret));
         }
-        return new Val('array_map_m(&' . $a->code . ', ' . $cb . ')?', RustType::map($a->type->params[0], $ret));
+        return new Val('array_map_m(&' . $a->code . ', ' . $cb . ')', RustType::map($a->type->params[0], $ret));
     }
 
     private function f_array_filter(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1022,14 +1031,14 @@ final class Builtins
         }
         if ($mode === 1) {
             $cb = $this->cb($b, $args[1]->value, [$kt], RustType::bool());
-            return new Val('array_filter_key' . $suffix . '(&' . $a->code . ', ' . $cb . ')?', $res_t);
+            return new Val('array_filter_key' . $suffix . '(&' . $a->code . ', ' . $cb . ')', $res_t);
         }
         if ($mode === 2) {
             $cb = $this->cb($b, $args[1]->value, [$vt, $kt], RustType::bool());
-            return new Val('array_filter_both' . $suffix . '(&' . $a->code . ', ' . $cb . ')?', $res_t);
+            return new Val('array_filter_both' . $suffix . '(&' . $a->code . ', ' . $cb . ')', $res_t);
         }
         $cb = $this->cb($b, $args[1]->value, [$vt], RustType::bool());
-        return new Val('array_filter_cb' . $suffix . '(&' . $a->code . ', ' . $cb . ')?', $res_t);
+        return new Val('array_filter_cb' . $suffix . '(&' . $a->code . ', ' . $cb . ')', $res_t);
     }
 
     private function f_array_reduce(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1040,7 +1049,7 @@ final class Builtins
         $init = isset($args[2]) ? $b->expr($args[2]->value, $res) : new Val($b->casts->convert('()', RustType::unit(), $res), $res);
         $cb = $this->cb($b, $args[1]->value, [$res, $vt], $res);
         $fn = $a->type->kind === RustType::LIST ? 'array_reduce_l' : 'array_reduce_m';
-        return new Val($fn . '(&' . $a->code . ', ' . $init->code . ', ' . $cb . ')?', $res);
+        return new Val($fn . '(&' . $a->code . ', ' . $init->code . ', ' . $cb . ')', $res);
     }
 
     private function f_array_walk(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1269,6 +1278,25 @@ final class Builtins
     /** `next($a)`, `prev($a)`, `reset($a)`, `end($a)`: move the internal array pointer of the place */
     private function pointerMove(BodyEmitter $b, Expr\FuncCall $call, array $args, string $method): Val
     {
+        // `reset($this->field)` on an immutable (Rc<T>) class reads the FIRST value; there's no interior
+        // mutability to move a pointer through &self, so emit a non-mutating Map::first()/List index instead of
+        // ptr_reset() (which needs &mut). Callers of reset() here use only the return value, not the moved pointer.
+        $arg = $args[0]->value;
+        if ($method === 'ptr_reset' && $arg instanceof Expr\PropertyFetch && $arg->name instanceof Identifier) {
+            $recvT = ($arg->var instanceof Expr\Variable && $arg->var->name === 'this')
+                ? $b->this_type
+                : $b->inferred($arg->var);
+            $recvC = $recvT !== null ? $b->program->classOf($recvT) : null;
+            if ($recvC !== null && $recvC->immutable()) {
+                $ip = $this->arrayPlace($b, $b->place($arg));
+                if ($ip->type->kind === RustType::MAP) {
+                    return $b->narrow(new Val('{ let __m = ' . $ip->read() . '; __m.first().map(|(_, __v)| __v.clone()) }', RustType::option($ip->type->params[1])), $call);
+                }
+                if ($ip->type->kind === RustType::LIST) {
+                    return $b->narrow(new Val('{ let __m = ' . $ip->read() . '; __m.get(0).cloned() }', RustType::option($ip->type->inner())), $call);
+                }
+            }
+        }
         $place = $this->arrayPlace($b, $b->place($args[0]->value));
         $pt = $place->type;
         if ($pt->kind !== RustType::LIST && $pt->kind !== RustType::MAP) {
@@ -1353,7 +1381,7 @@ final class Builtins
         $sep = $b->exprTo($args[0]->value, RustType::str());
         $s = $b->exprTo($args[1]->value, RustType::str());
         $limit = isset($args[2]) ? $b->exprTo($args[2]->value, RustType::int()) : 'i64::MAX';
-        return new Val('explode(&' . $sep . ', &' . $s . ', ' . $limit . ')?', RustType::list(RustType::str()));
+        return new Val('explode(&' . $sep . ', &' . $s . ', ' . $limit . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::list(RustType::str()));
     }
 
     private function f_str_replace(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1374,9 +1402,9 @@ final class Builtins
             $b->late['__sr'] = false;
             $v = $this->f_str_replace($b, $inner, $inner->getArgs());
             if ($c->type->kind === RustType::LIST) {
-                return new Val('array_map_l(&' . $b->casts->convert($c->code, $c->type, RustType::list(RustType::str())) . ', |__sr: Str| -> Result<Str, Throw> { Ok(' . $v->code . ') })?', RustType::list(RustType::str()));
+                return new Val('array_map_l(&' . $b->casts->convert($c->code, $c->type, RustType::list(RustType::str())) . ', |__sr: Str| { ' . $v->code . ' })', RustType::list(RustType::str()));
             }
-            return new Val('array_map_m(&' . $b->casts->convert($c->code, $c->type, RustType::map($c->type->params[0], RustType::str())) . ', |__sr: Str| -> Result<Str, Throw> { Ok(' . $v->code . ') })?', RustType::map($c->type->params[0], RustType::str()));
+            return new Val('array_map_m(&' . $b->casts->convert($c->code, $c->type, RustType::map($c->type->params[0], RustType::str())) . ', |__sr: Str| { ' . $v->code . ' })', RustType::map($c->type->params[0], RustType::str()));
         }
         $s = $subject->code;
         if (isset($args[3])) {
@@ -1429,7 +1457,7 @@ final class Builtins
         if (count($args) === 1) {
             $c = $this->container($b, $args[0]->value);
             $vt = $c->type->kind === RustType::LIST ? $c->type->inner() : $c->type->params[1];
-            return new Val($fn . ($c->type->kind === RustType::LIST ? '_l' : '_m') . '(&' . $c->code . ')?', $vt);
+            return new Val($fn . ($c->type->kind === RustType::LIST ? '_l' : '_m') . '(&' . $c->code . ').unwrap_or_else(|__e| __throw_rt(__e))', $vt);
         }
         $vals = array_map(fn(Arg $a) => $b->expr($a->value), $args);
         $t = $res->kind !== RustType::MIXED && $res->kind !== RustType::UNION ? $res : $vals[0]->type;
@@ -1510,7 +1538,7 @@ final class Builtins
         $kt = $keys->type->kind === RustType::LIST ? $keys->type->inner() : $keys->type->params[1];
         $kk = $kt->kind === RustType::INT ? RustType::int() : ($kt->kind === RustType::STR ? RustType::str() : RustType::arrayKey());
         $vt = $vals->type->kind === RustType::LIST ? $vals->type->inner() : $vals->type->params[1];
-        return new Val('array_combine(&' . $b->casts->convert($keys->code, $keys->type, RustType::list($kk)) . ', &' . $b->casts->convert($vals->code, $vals->type, RustType::list($vt)) . ')?', RustType::map($kk, $vt));
+        return new Val('array_combine(&' . $b->casts->convert($keys->code, $keys->type, RustType::list($kk)) . ', &' . $b->casts->convert($vals->code, $vals->type, RustType::list($vt)) . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::map($kk, $vt));
     }
 
     private function f_array_diff(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1666,7 +1694,7 @@ final class Builtins
         $kt = $is_list ? RustType::int() : $c->type->params[0];
         $vt = $is_list ? $c->type->inner() : $c->type->params[1];
         $cb = $this->cbFlexible($b, $args[1]->value, [$vt, $kt], RustType::bool());
-        return new Val($fn . ($is_list ? '_l' : '_m') . '(&' . $c->code . ', ' . $cb . ')?', RustType::bool());
+        return new Val($fn . ($is_list ? '_l' : '_m') . '(&' . $c->code . ', ' . $cb . ')', RustType::bool());
     }
 
     /** Callback that may declare fewer params than provided (extra args dropped). */
@@ -1691,7 +1719,7 @@ final class Builtins
         $kt = $is_list ? RustType::int() : $c->type->params[0];
         $vt = $is_list ? $c->type->inner() : $c->type->params[1];
         $cb = $this->cbFlexible($b, $args[1]->value, [$vt, $kt], RustType::bool());
-        return $b->narrow(new Val('array_find' . ($is_list ? '_l' : '_m') . '(&' . $c->code . ', ' . $cb . ')?', RustType::option($vt)), $call);
+        return $b->narrow(new Val('array_find' . ($is_list ? '_l' : '_m') . '(&' . $c->code . ', ' . $cb . ')', RustType::option($vt)), $call);
     }
 
     private function f_array_find_key(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1702,7 +1730,7 @@ final class Builtins
         $vt = $is_list ? $c->type->inner() : $c->type->params[1];
         $m = $is_list ? $b->casts->convert($c->code, $c->type, RustType::map(RustType::int(), $vt)) : $c->code;
         $cb = $this->cbFlexible($b, $args[1]->value, [$vt, $kt], RustType::bool());
-        return $b->narrow(new Val('array_find_key_m(&' . $m . ', ' . $cb . ')?', RustType::option($kt)), $call);
+        return $b->narrow(new Val('array_find_key_m(&' . $m . ', ' . $cb . ')', RustType::option($kt)), $call);
     }
 
     private function f_array_change_key_case(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1777,21 +1805,21 @@ final class Builtins
             // sort/rsort/usort: result is a list
             if ($is_list) {
                 $rf = $flag_string ? 'sort_flag_string_l' : $fn . '_l';
-                $stmt = $place->wrap($rf . '(&mut ' . $place->mut() . $cb . ')' . ($has_cb ? '?' : '') . ';');
+                $stmt = $place->wrap($rf . '(&mut ' . $place->mut() . $cb . ')' . '' . ';');
                 return new Val('{ ' . $pre . $stmt . ' true }', RustType::bool());
             }
             $tmp = '__sorted';
-            $stmt = 'let ' . $tmp . ' = ' . $fn . '_m(&' . $place->read() . $cb . ')' . ($has_cb ? '?' : '') . '; ' . $place->write($b->casts->convert($tmp, RustType::list($vt), $pt));
+            $stmt = 'let ' . $tmp . ' = ' . $fn . '_m(&' . $place->read() . $cb . ')' . '' . '; ' . $place->write($b->casts->convert($tmp, RustType::list($vt), $pt));
             return new Val('{ ' . $pre . $stmt . ' true }', RustType::bool());
         }
         // key-preserving sorts on lists become maps
         if ($is_list) {
             $mt = RustType::map(RustType::int(), $vt);
-            $stmt = 'let mut __m = ' . $b->casts->convert($place->read(), $pt, $mt) . '; ' . ($flag_string ? 'ksort_flag_string' : $fn . '_m') . '(&mut __m' . $cb . ')' . ($has_cb ? '?' : '') . '; ' . $place->write($b->casts->convert('__m', $mt, $pt));
+            $stmt = 'let mut __m = ' . $b->casts->convert($place->read(), $pt, $mt) . '; ' . ($flag_string ? 'ksort_flag_string' : $fn . '_m') . '(&mut __m' . $cb . ')' . '' . '; ' . $place->write($b->casts->convert('__m', $mt, $pt));
             return new Val('{ ' . $pre . $stmt . ' true }', RustType::bool());
         }
         $rf = $flag_string && $fn === 'ksort' ? 'ksort_flag_string' : $fn . '_m';
-        $stmt = $place->wrap($rf . '(&mut ' . $place->mut() . $cb . ')' . ($has_cb ? '?' : '') . ';');
+        $stmt = $place->wrap($rf . '(&mut ' . $place->mut() . $cb . ')' . '' . ';');
         return new Val('{ ' . $pre . $stmt . ' true }', RustType::bool());
     }
 
@@ -1863,9 +1891,9 @@ final class Builtins
             $fn = $flags === '0' ? 'preg_match_groups' : 'preg_match_groups_flags';
             $flag_arg = $flags === '0' ? '' : ', ' . $flags;
             $store = $b->casts->convert($tmp, $mt, $pt);
-            return new Val('{ let (__r, ' . $tmp . ') = ' . $fn . '(&' . $pat . ', &' . $s . $flag_arg . ', ' . $offset . ')?; ' . $place->write($store) . ' __r }', RustType::int());
+            return new Val('{ let (__r, ' . $tmp . ') = ' . $fn . '(&' . $pat . ', &' . $s . $flag_arg . ', ' . $offset . ').unwrap_or_else(|__e| __throw_rt(__e)); ' . $place->write($store) . ' __r }', RustType::int());
         }
-        return new Val('preg_match(&' . $pat . ', &' . $s . ', ' . $offset . ')?', RustType::int());
+        return new Val('preg_match(&' . $pat . ', &' . $s . ', ' . $offset . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::int());
     }
 
     private function f_preg_match_all(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1876,9 +1904,9 @@ final class Builtins
         if (isset($args[2])) {
             $place = $b->place($args[2]->value);
             $mt = RustType::map(RustType::arrayKey(), RustType::mixed());
-            return new Val('{ let (__r, __m) = preg_match_all(&' . $pat . ', &' . $s . ', ' . $flags . ')?; ' . $place->write($b->casts->convert('__m', $mt, $place->type)) . ' __r }', RustType::int());
+            return new Val('{ let (__r, __m) = preg_match_all(&' . $pat . ', &' . $s . ', ' . $flags . ').unwrap_or_else(|__e| __throw_rt(__e)); ' . $place->write($b->casts->convert('__m', $mt, $place->type)) . ' __r }', RustType::int());
         }
-        return new Val('preg_match_all(&' . $pat . ', &' . $s . ', ' . $flags . ')?.0', RustType::int());
+        return new Val('preg_match_all(&' . $pat . ', &' . $s . ', ' . $flags . ').unwrap_or_else(|__e| __throw_rt(__e)).0', RustType::int());
     }
 
     private function f_preg_replace(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1894,19 +1922,19 @@ final class Builtins
             $p = $b->casts->convert($pat->code, $pat->type, RustType::str());
             $r = $b->casts->convert($rep->code, $rep->type, RustType::str());
             $fn = $c->type->kind === RustType::LIST ? 'array_map_l' : 'array_map_m';
-            return new Val($fn . '(&' . $lst . ', |__s: Str| preg_replace(&' . $p . ', &' . $r . ', &__s, ' . $limit . '))?', $c->type->kind === RustType::LIST ? RustType::list($vt) : RustType::map($c->type->params[0], $vt));
+            return new Val($fn . '(&' . $lst . ', |__s: Str| preg_replace(&' . $p . ', &' . $r . ', &__s, ' . $limit . ').unwrap_or_else(|__e| __throw_rt(__e)))', $c->type->kind === RustType::LIST ? RustType::list($vt) : RustType::map($c->type->params[0], $vt));
         }
         $s = $b->casts->convert($subj->code, $subj->type, RustType::str());
         if ($pat->type->kind === RustType::STR) {
             $r = $b->casts->convert($rep->code, $rep->type, RustType::str());
-            return $b->narrow(new Val('preg_replace(&' . $pat->code . ', &' . $r . ', &' . $s . ', ' . $limit . ')?', RustType::str()), $call);
+            return $b->narrow(new Val('preg_replace(&' . $pat->code . ', &' . $r . ', &' . $s . ', ' . $limit . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::str()), $call);
         }
         $pl = $b->casts->convert($pat->code, $pat->type, RustType::list(RustType::str()));
         if ($rep->type->kind === RustType::STR) {
-            return $b->narrow(new Val('preg_replace_arr_s(&' . $pl . ', &' . $rep->code . ', &' . $s . ', ' . $limit . ')?', RustType::str()), $call);
+            return $b->narrow(new Val('preg_replace_arr_s(&' . $pl . ', &' . $rep->code . ', &' . $s . ', ' . $limit . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::str()), $call);
         }
         $rl = $b->casts->convert($rep->code, $rep->type, RustType::list(RustType::str()));
-        return $b->narrow(new Val('preg_replace_arr(&' . $pl . ', &' . $rl . ', &' . $s . ', ' . $limit . ')?', RustType::str()), $call);
+        return $b->narrow(new Val('preg_replace_arr(&' . $pl . ', &' . $rl . ', &' . $s . ', ' . $limit . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::str()), $call);
     }
 
     private function f_preg_replace_callback(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1918,7 +1946,7 @@ final class Builtins
         $mt = $ct !== null && $ct->kind === RustType::CLOSURE && isset($ct->params[0]) ? $ct->params[0] : RustType::map(RustType::arrayKey(), RustType::str());
         $cb = $this->callback($b, $args[1]->value, [$mt], RustType::str());
         $conv = $b->casts->convert('__m', RustType::map(RustType::arrayKey(), RustType::str()), $mt);
-        return $b->narrow(new Val('preg_replace_callback(&' . $pat . ', &' . $s . ', ' . $limit . ', { let __f = ' . $cb . '; move |__m: Map<ArrayKey, Str>| __f(' . $conv . ') })?', RustType::str()), $call);
+        return $b->narrow(new Val('preg_replace_callback(&' . $pat . ', &' . $s . ', ' . $limit . ', { let __f = ' . $cb . '; move |__m: Map<ArrayKey, Str>| __f(' . $conv . ') }).unwrap_or_else(|__e| __throw_rt(__e))', RustType::str()), $call);
     }
 
     private function f_preg_split(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1929,9 +1957,9 @@ final class Builtins
         $flags = isset($args[3]) ? $b->exprTo($args[3]->value, RustType::int()) : '0';
         $res = $b->inferredOrMixed($call);
         if ($flags !== '0' && str_contains($flags, 'OFFSET_CAPTURE')) {
-            return $b->narrow(new Val('preg_split_offsets(&' . $pat . ', &' . $s . ', ' . $limit . ', ' . $flags . ')?', RustType::list(RustType::tuple([RustType::str(), RustType::int()]))), $call);
+            return $b->narrow(new Val('preg_split_offsets(&' . $pat . ', &' . $s . ', ' . $limit . ', ' . $flags . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::list(RustType::tuple([RustType::str(), RustType::int()]))), $call);
         }
-        return $b->narrow(new Val('preg_split(&' . $pat . ', &' . $s . ', ' . $limit . ', ' . $flags . ')?', RustType::list(RustType::str())), $call);
+        return $b->narrow(new Val('preg_split(&' . $pat . ', &' . $s . ', ' . $limit . ', ' . $flags . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::list(RustType::str())), $call);
     }
 
     private function f_preg_grep(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1940,7 +1968,7 @@ final class Builtins
         $c = $this->container($b, $args[1]->value);
         $m = $b->casts->convert($c->code, $c->type, $c->type->kind === RustType::LIST ? RustType::map(RustType::int(), RustType::str()) : RustType::map($c->type->params[0], RustType::str()));
         $kt = $c->type->kind === RustType::LIST ? RustType::int() : $c->type->params[0];
-        return new Val('preg_grep(&' . $pat . ', &' . $m . ')?', RustType::map($kt, RustType::str()));
+        return new Val('preg_grep(&' . $pat . ', &' . $m . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::map($kt, RustType::str()));
     }
 
     // json
@@ -1950,7 +1978,7 @@ final class Builtins
         $v = $b->exprTo($args[0]->value, RustType::mixed());
         $flags = isset($args[1]) ? $b->exprTo($args[1]->value, RustType::int()) : '0';
         $depth = isset($args[2]) ? $b->exprTo($args[2]->value, RustType::int()) : '512';
-        return $b->narrow(new Val('json_encode(&' . $v . ', ' . $flags . ', ' . $depth . ')?', RustType::option(RustType::str())), $call);
+        return $b->narrow(new Val('json_encode(&' . $v . ', ' . $flags . ', ' . $depth . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::option(RustType::str())), $call);
     }
 
     private function f_json_decode(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1959,7 +1987,7 @@ final class Builtins
         $assoc = isset($args[1]) && !$b->isNullLiteral($args[1]->value) ? $b->exprTo($args[1]->value, RustType::bool()) : 'false';
         $depth = isset($args[2]) ? $b->exprTo($args[2]->value, RustType::int()) : '512';
         $flags = isset($args[3]) ? $b->exprTo($args[3]->value, RustType::int()) : '0';
-        return $b->narrow(new Val('json_decode(&' . $s . ', ' . $assoc . ', ' . $depth . ', ' . $flags . ')?', RustType::mixed()), $call);
+        return $b->narrow(new Val('json_decode(&' . $s . ', ' . $assoc . ', ' . $depth . ', ' . $flags . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::mixed()), $call);
     }
 
     // misc
@@ -1968,7 +1996,7 @@ final class Builtins
     {
         $cond = $b->truthy($args[0]->value);
         $msg = isset($args[1]) ? $b->exprTo($args[1]->value, RustType::str()) : Names::strLit('assert(' . $args[0]->value->getType() . ')');
-        return new Val('{ if !(' . $cond . ') { return Err(Throw::assertion(' . $msg . ')); } true }', RustType::bool());
+        return new Val('{ if !(' . $cond . ') { php_rt::do_throw(cast::<Mixed>(Throw::assertion(' . $msg . '))); } true }', RustType::bool());
     }
 
     private function f_func_get_args(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1993,7 +2021,7 @@ final class Builtins
     {
         $callee = $b->exprTo($args[0]->value, RustType::dynCallable());
         $list = $b->exprTo($args[1]->value, RustType::list(RustType::mixed()));
-        return $b->narrow(new Val($callee . '.call(' . $list . '.into_vec())?', RustType::mixed()), $call);
+        return $b->narrow(new Val($callee . '.call(' . $list . '.into_vec())', RustType::mixed()), $call);
     }
 
     private function f_class_alias(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -2031,7 +2059,7 @@ final class Builtins
             $cls = $b->program->classOf($t);
             $get = $cls !== null ? $b->program->findMethod($cls, 'getiterator') : null;
             if ($get !== null) {
-                $inner = new Val($v->code . '.' . $get->rustName() . '()?', $get->return_type);
+                $inner = new Val($v->code . '.' . $get->rustName() . '()', $get->return_type);
                 $fake = new Expr\FuncCall($call->name, [new Arg(new Expr\Variable('__it')), ...array_slice($args, 1)], $call->getAttributes());
                 $b->vars['__it'] = $get->return_type;
                 $b->late['__it'] = false;
@@ -2346,5 +2374,15 @@ final class Builtins
         }
         $b->warn('unknown runtime method ' . $t->name . '::' . $name, $site);
         return $b->dead('runtime method ' . $t->name . '::' . $name . '', $res);
+    }
+
+    /**
+     * Axis-8: is `$lc_name` a SIMPLE-table builtin that never emits `?` (return code not 'S' = Result)? Calling
+     * such a builtin does not force the caller to be Result. Custom-handled builtins not in SIMPLE (count,
+     * in_array, array_map, …) return false here — conservatively treated as Result-forcing by computeThrows.
+     */
+    public static function isInfallibleBuiltin(string $lc_name): bool
+    {
+        return isset(self::SIMPLE[$lc_name]) && (self::SIMPLE[$lc_name][2][0] ?? 'S') !== 'S';
     }
 }
