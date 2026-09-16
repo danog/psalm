@@ -141,6 +141,7 @@ use const SCANDIR_SORT_NONE;
  * @psalm-consistent-constructor
  *
  * @psalm-import-type ComposerJson from Composer
+ * @psalm-import-type FileFilterConfig from \Psalm\Config\FileFilter
  */
 final class Config
 {
@@ -1526,7 +1527,7 @@ final class Config
         return $this->issue_handlers;
     }
 
-    /** @param array<string, mixed> $config */
+    /** @param list<FileFilterConfig> $config */
     public function setAdvancedErrorLevel(string $issue_key, array $config, ?string $default_error_level = null): void
     {
         $this->issue_handlers[$issue_key] = new IssueHandler();

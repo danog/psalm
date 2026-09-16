@@ -45,6 +45,21 @@ use const GLOB_ONLYDIR;
 /**
  * @psalm-consistent-constructor
  * @api
+ *
+ * @psalm-type FileFilterEntry = array{name: string, ignoreTypeStats?: bool, resolveSymlinks?: bool, useStrictTypes?: bool}
+ * @psalm-type FileFilterNamed = array{name: string}
+ * @psalm-type FileFilterConfig = array{
+ *     allowMissingFiles?: bool,
+ *     directory?: list<FileFilterEntry>,
+ *     file?: list<FileFilterNamed>,
+ *     referencedClass?: list<FileFilterNamed>,
+ *     referencedMethod?: list<FileFilterNamed>,
+ *     referencedFunction?: list<FileFilterNamed>,
+ *     referencedProperty?: list<FileFilterNamed>,
+ *     referencedVariable?: list<FileFilterNamed>,
+ *     referencedConstant?: list<FileFilterNamed>,
+ *     type?: string,
+ * }
  */
 class FileFilter
 {
@@ -111,6 +126,7 @@ class FileFilter
     }
 
     /**
+     * @param FileFilterConfig $config
      * @return static
      */
     public static function loadFromArray(
@@ -392,6 +408,7 @@ class FileFilter
         string $base_dir,
         bool $inclusive,
     ): static {
+        /** @var FileFilterConfig $config */
         $config = [];
         $config['allowMissingFiles'] = ((string) $e['allowMissingFiles']) === 'true';
 

@@ -11,13 +11,17 @@ use SimpleXMLElement;
 
 use function in_array;
 
-/** @internal */
+/**
+ * @internal
+ * @psalm-import-type FileFilterConfig from FileFilter
+ */
 final class ErrorLevelFileFilter extends FileFilter
 {
     private string $error_level = '';
 
     public int $suppressions = 0;
 
+    /** @param FileFilterConfig $config */
     #[Override]
     public static function loadFromArray(
         array $config,
