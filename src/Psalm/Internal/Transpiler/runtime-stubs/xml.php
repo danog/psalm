@@ -399,6 +399,7 @@ class SimpleXMLElement implements Stringable, Countable, ArrayAccess, Iterator
  * @property DOMNodeList $childNodes
  * @property ?DOMDocument $ownerDocument
  * @property ?DOMNamedNodeMap $attributes
+ * @property string $tagName
  */
 class DOMNode
 {
@@ -424,11 +425,12 @@ class DOMNode
         return new DOMElement($xml, $doc);
     }
 
-    /** @return mixed */
-    public function __get(string $name)
+    /** The typed property union: every magic property of a node is one of these (no `mixed`). */
+    public function __get(string $name): DOMNodeList|DOMNamedNodeMap|DOMNode|string|null
     {
         switch ($name) {
             case 'nodeName':
+            case 'tagName':
                 return $this->xml->name;
             case 'nodeValue':
             case 'textContent':
@@ -466,6 +468,41 @@ class DOMNode
     public function getLineNo(): int
     {
         return 0;
+    }
+
+    // Element accessors live on DOMNode (a text node has no attributes: reads are empty, writes ignored) so
+    // node-typed values from lists/iteration need no narrowing to DOMElement.
+    public function getAttribute(string $qualifiedName): string
+    {
+        return $this->xml->attrs[$qualifiedName] ?? '';
+    }
+
+    public function hasAttribute(string $qualifiedName): bool
+    {
+        return isset($this->xml->attrs[$qualifiedName]);
+    }
+
+    public function setAttribute(string $qualifiedName, string $value): void
+    {
+        $this->xml->attrs[$qualifiedName] = $value;
+    }
+
+    public function removeAttribute(string $qualifiedName): bool
+    {
+        if (!isset($this->xml->attrs[$qualifiedName])) {
+            return false;
+        }
+        unset($this->xml->attrs[$qualifiedName]);
+        return true;
+    }
+
+    public function getElementsByTagName(string $qualifiedName): DOMNodeList
+    {
+        $nodes = [];
+        foreach ($this->xml->descendantsNamed($qualifiedName) as $n) {
+            $nodes[] = DOMNode::wrap($n, $this->doc);
+        }
+        return new DOMNodeList($nodes);
     }
 
     public function appendChild(DOMNode $node): DOMNode
@@ -551,38 +588,6 @@ class DOMNamedNodeMap implements IteratorAggregate, Countable
 
 class DOMElement extends DOMNode
 {
-    public function getAttribute(string $qualifiedName): string
-    {
-        return $this->xml->attrs[$qualifiedName] ?? '';
-    }
-
-    public function hasAttribute(string $qualifiedName): bool
-    {
-        return isset($this->xml->attrs[$qualifiedName]);
-    }
-
-    public function setAttribute(string $qualifiedName, string $value): void
-    {
-        $this->xml->attrs[$qualifiedName] = $value;
-    }
-
-    public function removeAttribute(string $qualifiedName): bool
-    {
-        if (!isset($this->xml->attrs[$qualifiedName])) {
-            return false;
-        }
-        unset($this->xml->attrs[$qualifiedName]);
-        return true;
-    }
-
-    public function getElementsByTagName(string $qualifiedName): DOMNodeList
-    {
-        $nodes = [];
-        foreach ($this->xml->descendantsNamed($qualifiedName) as $n) {
-            $nodes[] = DOMNode::wrap($n, $this->doc);
-        }
-        return new DOMNodeList($nodes);
-    }
 }
 
 /**
@@ -606,8 +611,7 @@ class DOMDocument extends DOMNode
         $this->encoding = $encoding;
     }
 
-    /** @return mixed */
-    public function __get(string $name)
+    public function __get(string $name): DOMNodeList|DOMNamedNodeMap|DOMNode|string|null
     {
         if ($name === 'documentElement') {
             $els = $this->xml->elementChildren();
