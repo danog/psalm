@@ -41,6 +41,7 @@ final class BodyEmitter
      */
     private function dynPropName(string $name): string
     {
+        \fwrite(\STDERR, "[dyn-used-prop] $name\n");
         if (!isset(ClassEmitter::DYN_ACCESS_PROPS[$name])) {
             \fwrite(\STDERR, "[dyn-prop-MISS] $name — add to ClassEmitter::DYN_ACCESS_PROPS or its get_prop/set_prop arm is elided\n");
         }

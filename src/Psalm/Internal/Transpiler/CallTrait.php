@@ -525,6 +525,7 @@ trait CallTrait
             }
             // not declared on the static type (e.g. `hasAttribute` on a `DOMNode`): dispatched by name at runtime
             $this->warn('unknown method ' . $name . ' on ' . $rt->toRust() . ' (dynamic call)', $e);
+            \fwrite(\STDERR, "[dyn-used-method] $lc\n");
             if (!isset(ClassEmitter::DYN_DISPATCH_METHODS[$lc])) {
                 \fwrite(\STDERR, "[dyn-allowlist-MISS] $lc (call_method) — add to ClassEmitter::DYN_DISPATCH_METHODS or its arm is elided\n");
             }
@@ -568,6 +569,7 @@ trait CallTrait
             foreach ($args as $a) {
                 $argc[] = $this->exprTo($a->value, RustType::mixed());
             }
+            \fwrite(\STDERR, "[dyn-used-method] " . strtolower($name) . "\n");
             if (!isset(ClassEmitter::DYN_DISPATCH_METHODS[strtolower($name)])) {
                 \fwrite(\STDERR, "[dyn-allowlist-MISS] " . strtolower($name) . " (mixed_call) — add to ClassEmitter::DYN_DISPATCH_METHODS or its arm is elided\n");
             }
