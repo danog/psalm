@@ -76,6 +76,13 @@ final class BodyEmitter
     public array $single_use = [];
 
     /**
+     * Owned/borrowed (axis 5): locals that appear inside a closure or try block (the latter is emitted as a
+     * generated catch_unwind closure). Moving such a local risks move-into-closure, so moveVar refuses them --
+     * this blocks BOTH single-use move and return-move. @var array<string, bool>
+     */
+    public array $move_captured = [];
+
+    /**
      * Active `instanceof` narrowings for the current sub-expression: `$var name => narrowed class type`.
      * Set while emitting the RHS of `$v instanceof X && ...` (and the true branch of `$v instanceof X ? ... : ...`)
      * so a method/property call on `$v` in that sub-expression resolves statically on the subclass instead of
@@ -377,17 +384,31 @@ final class BodyEmitter
                 $writes[spl_object_id($v)] = true;
             }
         }
-        // Names read in a REPEATED position (a loop body/condition) execute multiple times, and names read
-        // inside a closure are captured -> never single-use-movable. A loop's once-evaluated parts (a foreach
-        // collection, a `for` init) are NOT repeated, so vars there stay movable.
-        $unsafe = [];
-        $repeated = [];
+        // CAPTURED vars appear inside a real closure or a try block (emitted as a generated catch_unwind
+        // closure): moving them anywhere risks move-into-closure, so they are unsafe for BOTH single-use move
+        // and return-move (moveVar consults $this->move_captured). REPEATED vars appear in a loop's repeated
+        // part (body/cond/update) -> unsafe for single-use only (a return diverges, so return-move is fine).
+        // A loop's once-evaluated parts (a foreach collection, a `for` init) constrain neither.
+        $this->move_captured = [];
+        $captured = [];
         foreach ($finder->findInstanceOf($stmts, Closure::class) as $node) {
-            $repeated[] = $node; // whole closure body is captured/repeatable
+            $captured[] = $node;
         }
         foreach ($finder->findInstanceOf($stmts, ArrowFunction::class) as $node) {
-            $repeated[] = $node;
+            $captured[] = $node;
         }
+        foreach ($finder->findInstanceOf($stmts, Stmt\TryCatch::class) as $node) {
+            $captured[] = $node;
+        }
+        foreach ($captured as $node) {
+            foreach ($finder->findInstanceOf([$node], Expr\Variable::class) as $v) {
+                if (is_string($v->name)) {
+                    $this->move_captured[$v->name] = true;
+                }
+            }
+        }
+        $unsafe = $this->move_captured; // single-use is also blocked by everything that blocks return-move
+        $repeated = [];
         foreach ($finder->findInstanceOf($stmts, Stmt\Foreach_::class) as $node) {
             $repeated = array_merge($repeated, $node->stmts, [$node->valueVar]);
             if ($node->keyVar !== null) {
@@ -675,7 +696,7 @@ final class BodyEmitter
             return null;
         }
         if (!empty($this->cells[$name]) || !empty($this->refvars[$name]) || !empty($this->byref[$name])
-            || !empty($this->globals[$name])
+            || !empty($this->globals[$name]) || !empty($this->move_captured[$name])
         ) {
             return null;
         }

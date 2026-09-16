@@ -1721,6 +1721,29 @@ final class Program
             if (!$has_body || $agreed === null || $agreed === []) {
                 continue;
             }
+            // A param may be borrowed only if its type is IDENTICAL across every member: dispatch forwards the
+            // arg by reference with no conversion, so a member that narrows/widens param i (its enum arm would
+            // cast, which can't apply to a &T) must veto the borrow of i.
+            foreach (array_keys($agreed) as $i) {
+                $ty = null;
+                foreach ($group as $m) {
+                    $mt = $m->param_types[$i] ?? null;
+                    if ($mt === null) {
+                        unset($agreed[$i]); // arity mismatch across the group
+                        break;
+                    }
+                    $r = $mt->toRust();
+                    if ($ty === null) {
+                        $ty = $r;
+                    } elseif ($ty !== $r) {
+                        unset($agreed[$i]);
+                        break;
+                    }
+                }
+            }
+            if ($agreed === []) {
+                continue;
+            }
             foreach ($group as $m) {
                 $m->borrow_params = $agreed;
             }
@@ -1744,7 +1767,9 @@ final class Program
         // Variable nodes that are a borrowing read (safe): the receiver/base/operand of a read expression.
         $safe = [];
         foreach ($finder->findInstanceOf($stmts, \PhpParser\Node\Expr\MethodCall::class) as $m) {
-            if ($m->var instanceof \PhpParser\Node\Expr\Variable) {
+            // A first-class callable `$x->m(...)` CAPTURES the receiver into a closure that may be stored/
+            // escape ('static), so its receiver is NOT a plain borrow.
+            if ($m->var instanceof \PhpParser\Node\Expr\Variable && !$m->isFirstClassCallable()) {
                 $safe[spl_object_id($m->var)] = true;
             }
         }
