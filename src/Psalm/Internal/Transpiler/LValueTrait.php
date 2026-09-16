@@ -680,6 +680,25 @@ trait LValueTrait
             // property common to several classes
             $arms = [];
             $res = $this->inferredOrMixed($e);
+            if ($res->kind === RustType::MIXED) {
+                // Psalm cannot type the property of a union member: the members' field types do
+                $ftypes = [];
+                foreach ($bt->params as $m) {
+                    $mc = $m->kind === RustType::CLASS_ ? $this->program->classOf($m) : null;
+                    if ($mc === null) {
+                        continue;
+                    }
+                    $mf = $mc->fields[$name] ?? null;
+                    if ($mf !== null) {
+                        $ftypes[] = $mf->type;
+                    } elseif (($vf = $this->program->variantField($mc, $name)) !== null) {
+                        $ftypes[] = $vf[1];
+                    }
+                }
+                if ($ftypes !== []) {
+                    $res = $this->program->unionOfRust($ftypes) ?? $res;
+                }
+            }
             foreach ($bt->params as $m) {
                 if ($m->kind !== RustType::CLASS_) {
                     continue;
@@ -967,6 +986,10 @@ trait LValueTrait
                 [$kt, $vtt] = $vt->params;
                 $kcode = $item->key !== null ? $this->keyExpr($item->key, $kt) : $this->keyFrom(new Val($key . 'i64', RustType::int()), $kt);
                 $elem = new Val($tmp . '.idx(&' . $kcode . ').clone()', $vtt);
+            } elseif ($vt->kind === RustType::UNION && ($ui = $this->unionIndex($tmp . '.clone()', $vt, $item->key !== null ? $this->keyExpr($item->key, RustType::arrayKey()) : 'ArrayKey::Int(' . (int) $key . ')')) !== null) {
+                // a union holding an array (the parser's semantic values): the array member is read, typed
+                [$ucode, $et] = $ui;
+                $elem = new Val($et->hasDefault() ? '(match ' . $ucode . ' { Some(__v) => __v, None => Default::default() })' : $ucode . '.expect("destructuring: missing element")', $et);
             } elseif ($vt->kind === RustType::MIXED || $vt->kind === RustType::UNION) {
                 // a union that may hold an array (e.g. the parser's semantic values): read through Mixed
                 $kcode = $item->key !== null ? $this->keyExpr($item->key, RustType::arrayKey()) : 'ArrayKey::Int(' . (int) $key . ')';
