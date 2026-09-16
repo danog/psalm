@@ -150,6 +150,24 @@ function case_single_use_move(): string
     return passOnce() . '' . twice() . inLoop([1, 2, 3]);
 }
 
+// ---- feature: move single-use collection into foreach (not clone) ---------
+
+/** @param list<int> $items */
+function sumList(array $items): int
+{
+    $total = 0;
+    foreach ($items as $n) {
+        $total = $total + $n;
+    }
+    return $total;
+}
+
+function case_foreach_collection_move(): string
+{
+    $data = [10, 20, 30];
+    return (string) sumList($data);
+}
+
 // ---- feature: object identity preserved through moves ---------------------
 
 function case_alias_mutation(): string
@@ -175,5 +193,6 @@ function run_all(): string
         . check('value_of', case_value_of(), 'HS')
         . check('return_move', case_return_move(), '534')
         . check('single_use_move', case_single_use_move(), '766')
+        . check('foreach_collection_move', case_foreach_collection_move(), '60')
         . check('alias_mutation', case_alias_mutation(), '7');
 }

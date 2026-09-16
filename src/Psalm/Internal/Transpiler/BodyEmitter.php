@@ -374,15 +374,37 @@ final class BodyEmitter
                 $writes[spl_object_id($v)] = true;
             }
         }
-        // Names read inside a loop/closure execute multiple times or are captured -> never single-use-movable.
+        // Names read in a REPEATED position (a loop body/condition) execute multiple times, and names read
+        // inside a closure are captured -> never single-use-movable. A loop's once-evaluated parts (a foreach
+        // collection, a `for` init) are NOT repeated, so vars there stay movable.
         $unsafe = [];
-        $scoped = [];
-        foreach ([Stmt\For_::class, Stmt\Foreach_::class, Stmt\While_::class, Stmt\Do_::class, Closure::class, ArrowFunction::class] as $cls) {
-            foreach ($finder->findInstanceOf($stmts, $cls) as $node) {
-                $scoped[] = $node;
+        $repeated = [];
+        foreach ($finder->findInstanceOf($stmts, Closure::class) as $node) {
+            $repeated[] = $node; // whole closure body is captured/repeatable
+        }
+        foreach ($finder->findInstanceOf($stmts, ArrowFunction::class) as $node) {
+            $repeated[] = $node;
+        }
+        foreach ($finder->findInstanceOf($stmts, Stmt\Foreach_::class) as $node) {
+            $repeated = array_merge($repeated, $node->stmts, [$node->valueVar]);
+            if ($node->keyVar !== null) {
+                $repeated[] = $node->keyVar;
             }
         }
-        foreach ($scoped as $node) {
+        foreach ($finder->findInstanceOf($stmts, Stmt\While_::class) as $node) {
+            $repeated = array_merge($repeated, $node->stmts, $node->cond);
+        }
+        foreach ($finder->findInstanceOf($stmts, Stmt\Do_::class) as $node) {
+            $repeated = array_merge($repeated, $node->stmts, $node->cond);
+        }
+        foreach ($finder->findInstanceOf($stmts, Stmt\For_::class) as $node) {
+            // init runs once; cond, loop (update) and body repeat
+            $repeated = array_merge($repeated, $node->stmts, $node->cond, $node->loop);
+        }
+        foreach ($repeated as $node) {
+            if ($node === null) {
+                continue;
+            }
             foreach ($finder->findInstanceOf([$node], Expr\Variable::class) as $v) {
                 if (is_string($v->name)) {
                     $unsafe[$v->name] = true;
