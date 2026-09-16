@@ -202,6 +202,24 @@ final class Casts
             if ($fk === RustType::DYN_CALLABLE && $to->inner()->kind === RustType::DYN_CALLABLE) {
                 return 'DynCallable::into_option(' . $code . ')';
             }
+            if ($fk === RustType::UNION) {
+                // A union may itself carry null via an Option-typed member (`Opt_*`, e.g. resolveType's `?Node` typed
+                // `U_Opt_Node_or_Name`). `Some(cast(union -> inner))` would force Some and cast a null into the now-
+                // closed inner union -> panic. Match instead: flatten the Option member (preserving None), Some() the
+                // rest — no Mixed round-trip.
+                $mangle = $from->mangle();
+                $arms = [];
+                foreach ($from->params as $m) {
+                    if ($this->isUnit($m)) {
+                        $arms[] = $mangle . '::' . $this->unitName($m) . ' => None';
+                    } elseif ($m->kind === RustType::OPTION) {
+                        $arms[] = $mangle . '::' . $m->variantName() . '(__x) => ' . $this->convert('__x', $m, $to);
+                    } else {
+                        $arms[] = $mangle . '::' . $m->variantName() . '(__x) => Some(' . $this->convert('__x', $m, $to->inner()) . ')';
+                    }
+                }
+                return '(match ' . $code . ' { ' . implode(', ', $arms) . ' })';
+            }
             return 'Some(' . $this->convert($code, $from, $to->inner()) . ')';
         }
         if ($fk === RustType::UNIT) {
