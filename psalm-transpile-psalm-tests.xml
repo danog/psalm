@@ -51,6 +51,7 @@
             <directory name="src/Psalm/Internal/LanguageServer/Server"/>
             <directory name="src/Psalm/Internal/Fork"/>
             <directory name="src/Psalm/Internal/PluginManager/Command"/>
+            <file name="src/Psalm/Internal/Cli/Plugin.php"/>
             <file name="src/Psalm/Internal/Cli/LanguageServer.php"/>
             <directory name="vendor/amphp"/>
             <directory name="vendor/symfony"/>

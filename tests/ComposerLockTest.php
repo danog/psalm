@@ -19,7 +19,7 @@ final class ComposerLockTest extends TestCase
      */
     public function packageIsPsalmPlugin(): void
     {
-        $lock = new ComposerLock([$this->jsonFile((object)[])]);
+        $lock = new ComposerLock([$this->jsonFile([])]);
 
         $this->assertTrue($lock->isPlugin([
             'name' => 'vendor/package',
@@ -70,9 +70,9 @@ final class ComposerLockTest extends TestCase
      */
     public function seesNonDevPlugins(): void
     {
-        $lock = new ComposerLock([$this->jsonFile((object)[
+        $lock = new ComposerLock([$this->jsonFile([
             'packages' => [
-                (object)$this->pluginEntry('vendor/package', 'Vendor\Package\PluginClass'),
+                $this->pluginEntry('vendor/package', 'Vendor\Package\PluginClass'),
             ],
             'packages-dev' => [],
         ])]);
@@ -87,10 +87,10 @@ final class ComposerLockTest extends TestCase
      */
     public function seesDevPlugins(): void
     {
-        $lock = new ComposerLock([$this->jsonFile((object)[
+        $lock = new ComposerLock([$this->jsonFile([
             'packages' => [],
             'packages-dev' => [
-                (object) $this->pluginEntry('vendor/package', 'Vendor\Package\PluginClass'),
+                $this->pluginEntry('vendor/package', 'Vendor\Package\PluginClass'),
             ],
         ])]);
 
@@ -104,12 +104,12 @@ final class ComposerLockTest extends TestCase
      */
     public function skipsNonPlugins(): void
     {
-        $nonPlugin = (object)[
+        $nonPlugin = [
             'name' => 'vendor/package',
             'type' => 'library',
         ];
 
-        $lock = new ComposerLock([$this->jsonFile((object)[
+        $lock = new ComposerLock([$this->jsonFile([
             'packages' => [$nonPlugin],
             'packages-dev' => [$nonPlugin],
         ])]);
@@ -143,7 +143,7 @@ final class ComposerLockTest extends TestCase
      */
     public function failsOnMissingPackagesEntry(): void
     {
-        $noPackagesFile = $this->jsonFile((object)[
+        $noPackagesFile = $this->jsonFile([
             'packages-dev' => [],
         ]);
         $lock = new ComposerLock([$noPackagesFile]);
@@ -156,7 +156,7 @@ final class ComposerLockTest extends TestCase
      */
     public function failsOnMissingPackagesDevEntry(): void
     {
-        $noPackagesDevFile = $this->jsonFile((object)[
+        $noPackagesDevFile = $this->jsonFile([
             'packages' => [],
         ]);
         $lock = new ComposerLock([$noPackagesDevFile]);
@@ -170,18 +170,18 @@ final class ComposerLockTest extends TestCase
         $lock = new ComposerLock([
             $this->jsonFile([
                 'packages' => [
-                    (object) $this->pluginEntry('vendor/packageA', 'Vendor\PackageA\PluginClass'),
+                    $this->pluginEntry('vendor/packageA', 'Vendor\PackageA\PluginClass'),
                 ],
                 'packages-dev' => [
-                    (object) $this->pluginEntry('vendor/packageB', 'Vendor\PackageB\PluginClass'),
+                    $this->pluginEntry('vendor/packageB', 'Vendor\PackageB\PluginClass'),
                 ],
             ]),
             $this->jsonFile([
                 'packages' => [
-                    (object) $this->pluginEntry('vendor/packageC', 'Vendor\PackageC\PluginClass'),
+                    $this->pluginEntry('vendor/packageC', 'Vendor\PackageC\PluginClass'),
                 ],
                 'packages-dev' => [
-                    (object) $this->pluginEntry('vendor/packageD', 'Vendor\PackageD\PluginClass'),
+                    $this->pluginEntry('vendor/packageD', 'Vendor\PackageD\PluginClass'),
                 ],
             ]),
         ]);
@@ -216,7 +216,8 @@ final class ComposerLockTest extends TestCase
     /**
      * @psalm-pure
      */
-    private function jsonFile(mixed $data): string
+    /** @param array<array-key, mixed> $data */
+    private function jsonFile(array $data): string
     {
         return 'data:application/json,' . json_encode($data, JSON_THROW_ON_ERROR);
     }

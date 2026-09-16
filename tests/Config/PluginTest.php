@@ -6,7 +6,6 @@ namespace Psalm\Tests\Config;
 
 use InvalidArgumentException;
 use Override;
-use PHPUnit\Framework\MockObject\MockObject;
 use Psalm\Config;
 use Psalm\Context;
 use Psalm\Exception\CodeException;
@@ -32,7 +31,6 @@ use Psalm\Tests\Config\Plugin\StoragePlugin;
 use Psalm\Tests\Internal\Provider\FakeParserCacheProvider;
 use Psalm\Tests\TestCase;
 use Psalm\Tests\TestConfig;
-use stdClass;
 
 use function dirname;
 use function get_class;
@@ -895,22 +893,14 @@ final class PluginTest extends TestCase
             ),
         );
 
-        $mock = $this->getMockBuilder(stdClass::class)->setMethods(['check'])->getMock();
-        $mock->expects($this->exactly(4))
-            ->method('check')
-            ->withConsecutive(
-                [$this->equalTo('b')],
-                [$this->equalTo('array_map')],
-                [$this->equalTo('fopen')],
-                [$this->equalTo('a')],
-            );
-        $plugin = new class($mock) implements AfterEveryFunctionCallAnalysisInterface {
-            private static MockObject $m;
+        $spy = new FunctionCallSpy();
+        $plugin = new class($spy) implements AfterEveryFunctionCallAnalysisInterface {
+            private static FunctionCallSpy $m;
 
             /**
              * @psalm-mutation-free
              */
-            public function __construct(MockObject $m)
+            public function __construct(FunctionCallSpy $m)
             {
                 self::$m = $m;
             }
@@ -922,7 +912,6 @@ final class PluginTest extends TestCase
             public static function afterEveryFunctionCallAnalysis(AfterEveryFunctionCallAnalysisEvent $event): void
             {
                 $function_id = $event->getFunctionId();
-                /** @psalm-suppress UndefinedInterfaceMethod */
                 self::$m->check($function_id);
             }
         };
@@ -948,6 +937,8 @@ final class PluginTest extends TestCase
         );
 
         $this->analyzeFile($file_path, new Context());
+
+        $this->assertSame(['b', 'array_map', 'fopen', 'a'], $spy->calls);
     }
 
     public function testAddTaints(): void
@@ -1135,5 +1126,17 @@ final class PluginTest extends TestCase
         );
 
         $this->analyzeFile($file_path, new Context());
+    }
+}
+
+/** Records the function ids a plugin was called for (in call order). */
+final class FunctionCallSpy
+{
+    /** @var list<string> */
+    public array $calls = [];
+
+    public function check(string $function_id): void
+    {
+        $this->calls[] = $function_id;
     }
 }

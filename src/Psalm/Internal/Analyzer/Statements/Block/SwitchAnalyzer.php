@@ -14,7 +14,6 @@ use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Scope\SwitchScope;
 use Psalm\Type;
 use Psalm\Type\Reconciler;
-use SplFixedArray;
 
 use function array_merge;
 use function count;
@@ -68,7 +67,8 @@ final class SwitchAnalyzer
         // the last statement always breaks, by default
         $last_case_exit_type = 'break';
 
-        $case_exit_types = new SplFixedArray(count($stmt->cases));
+        /** @var array<int, string> $case_exit_types */
+        $case_exit_types = [];
 
         $has_default = false;
 
