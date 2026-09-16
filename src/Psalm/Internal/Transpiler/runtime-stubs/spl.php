@@ -576,8 +576,9 @@ class SplFixedArray implements IteratorAggregate, ArrayAccess, Countable, JsonSe
     }
 
     /**
-     * @param array<int, TValue> $array
-     * @return SplFixedArray<TValue>
+     * @template T
+     * @param array<int, T> $array
+     * @return SplFixedArray<T>
      */
     public static function fromArray(array $array, bool $preserveKeys = true): SplFixedArray
     {
