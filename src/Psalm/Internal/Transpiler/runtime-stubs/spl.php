@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 /**
  * Simplified SPL classes: enough for directory walking as used by php-parser's tests and Psalm.
+ *
+ * @template-covariant TKey
+ * @template-covariant TValue
  */
 
 interface Traversable
@@ -13,6 +16,7 @@ interface Traversable
 /**
  * @template TKey
  * @template TValue
+ * @template-extends Traversable<TKey, TValue>
  */
 interface Iterator extends Traversable
 {
@@ -32,6 +36,7 @@ interface Iterator extends Traversable
 /**
  * @template TKey
  * @template TValue
+ * @template-extends Traversable<TKey, TValue>
  */
 interface IteratorAggregate extends Traversable
 {
@@ -42,6 +47,7 @@ interface IteratorAggregate extends Traversable
 /**
  * @template TKey
  * @template TValue
+ * @template-extends Iterator<TKey, TValue>
  */
 interface RecursiveIterator extends Iterator
 {
