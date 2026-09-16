@@ -369,6 +369,8 @@ pub trait PhpValue:
     + crate::traits::PhpCmp
     + crate::traits::Truthy
     + crate::traits::ToStr
+    + crate::traits::PhpKind
+    + crate::traits::InstanceOfName
     + CastTo<crate::mixed::Mixed>
     + Send
     + Sync
@@ -382,6 +384,8 @@ impl<T> PhpValue for T where
         + crate::traits::PhpCmp
         + crate::traits::Truthy
         + crate::traits::ToStr
+        + crate::traits::PhpKind
+        + crate::traits::InstanceOfName
         + CastTo<crate::mixed::Mixed>
         + Send
         + Sync

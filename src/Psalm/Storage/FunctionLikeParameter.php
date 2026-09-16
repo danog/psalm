@@ -105,6 +105,7 @@ final class FunctionLikeParameter implements HasAttributesInterface, TypeNode
 
     /**
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
+     * @param self $node
      */
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool

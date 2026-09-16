@@ -26,8 +26,10 @@ pub trait PhpObject: Any + Send + Sync {
     fn instance_of_id(&self, id: u32) -> bool {
         self.class_ancestor_ids().contains(&id)
     }
+    /// Property table of the object viewed dynamically. Generated classes implement it only when the
+    /// program erases them to Mixed somewhere; a statically typed class must never get here.
     fn props(&self) -> Vec<(Str, Mixed)> {
-        Vec::new()
+        panic!("dynamic property access on statically typed class {}", self.class_name())
     }
     /// Public properties only (object iteration / get_object_vars from outside the class).
     fn public_props(&self) -> Vec<(Str, Mixed)> {
@@ -41,8 +43,8 @@ pub trait PhpObject: Any + Send + Sync {
         panic!("Uncaught exception: object of class {} is not cloneable", self.class_name())
     }
     /// Dynamic property write; returns false when the property is unknown.
-    fn set_prop(&self, _name: &str, _value: Mixed) -> bool {
-        false
+    fn set_prop(&self, name: &str, _value: Mixed) -> bool {
+        panic!("dynamic write of ${} on statically typed class {}", name, self.class_name())
     }
     /// Dynamic property read (`None` when the property is unknown or uninitialized).
     fn get_prop(&self, name: &str) -> Option<Mixed> {

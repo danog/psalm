@@ -748,7 +748,7 @@ final class TKeyedArray extends Atomic
     }
 
     /**
-     * @param TypeNode $node
+     * @param self $node
      * @param-out TypeNode $node
      *
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint

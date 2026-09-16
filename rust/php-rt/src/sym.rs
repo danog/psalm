@@ -132,6 +132,12 @@ impl CastTo<Sym> for Mixed {
     }
 }
 
+impl crate::traits::PhpKind for Sym {
+    fn php_kind(&self) -> crate::traits::Kind { crate::traits::Kind::Str }
+}
+impl crate::traits::InstanceOfName for Sym {
+    fn php_instance_of(&self, _name: &[u8]) -> bool { false }
+}
 impl Truthy for Sym {
     #[inline]
     fn truthy(&self) -> bool {

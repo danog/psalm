@@ -159,7 +159,7 @@ class TClassString extends TString
     }
 
     /**
-     * @param TypeNode $node
+     * @param self $node
      * @param-out TypeNode $node
      *
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint

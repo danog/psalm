@@ -411,7 +411,7 @@ final class Union implements TypeNode
     }
 
     /**
-     * @param TypeNode $node
+     * @param self $node
      * @param-out TypeNode $node
      *
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint

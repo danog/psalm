@@ -8,6 +8,107 @@ use crate::mixed::Mixed;
 use crate::string::Str;
 use std::cmp::Ordering;
 
+// ---------------------------------------------------------------- dynamic kind / instanceof on typed values
+
+/// The PHP value category of a statically typed value: what `is_array()`/`is_object()`/… answer on a generic.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Kind {
+    Null,
+    Bool,
+    Int,
+    Float,
+    Str,
+    Arr,
+    Obj,
+    Closure,
+}
+pub trait PhpKind {
+    fn php_kind(&self) -> Kind;
+}
+/// `gettype()` of a kind.
+pub fn kind_name(k: Kind) -> Str {
+    Str::from_static(match k {
+        Kind::Null => "NULL",
+        Kind::Bool => "boolean",
+        Kind::Int => "integer",
+        Kind::Float => "double",
+        Kind::Str => "string",
+        Kind::Arr => "array",
+        Kind::Obj | Kind::Closure => "object",
+    })
+}
+/// `$v instanceof $class_name` on a typed value (`name` is the class name as written, any case).
+pub trait InstanceOfName {
+    fn php_instance_of(&self, name: &[u8]) -> bool;
+}
+macro_rules! kind_impls {
+    ($($t:ty => $k:expr),+ $(,)?) => {
+        $(
+            impl PhpKind for $t {
+                #[inline]
+                fn php_kind(&self) -> Kind { $k }
+            }
+            impl InstanceOfName for $t {
+                #[inline]
+                fn php_instance_of(&self, _name: &[u8]) -> bool { false }
+            }
+        )+
+    };
+}
+kind_impls!(bool => Kind::Bool, i64 => Kind::Int, f64 => Kind::Float, Str => Kind::Str, () => Kind::Null);
+impl PhpKind for ArrayKey {
+    fn php_kind(&self) -> Kind {
+        if self.is_int() { Kind::Int } else { Kind::Str }
+    }
+}
+impl InstanceOfName for ArrayKey {
+    fn php_instance_of(&self, _name: &[u8]) -> bool { false }
+}
+impl<T: PhpKind> PhpKind for Option<T> {
+    fn php_kind(&self) -> Kind {
+        match self { Some(v) => v.php_kind(), None => Kind::Null }
+    }
+}
+impl<T: InstanceOfName> InstanceOfName for Option<T> {
+    fn php_instance_of(&self, name: &[u8]) -> bool {
+        match self { Some(v) => v.php_instance_of(name), None => false }
+    }
+}
+impl<T> PhpKind for List<T> {
+    fn php_kind(&self) -> Kind { Kind::Arr }
+}
+impl<T> InstanceOfName for List<T> {
+    fn php_instance_of(&self, _name: &[u8]) -> bool { false }
+}
+impl<K: MapKey, V> PhpKind for Map<K, V> {
+    fn php_kind(&self) -> Kind { Kind::Arr }
+}
+impl<K: MapKey, V> InstanceOfName for Map<K, V> {
+    fn php_instance_of(&self, _name: &[u8]) -> bool { false }
+}
+impl PhpKind for Mixed {
+    fn php_kind(&self) -> Kind {
+        match self {
+            Mixed::Null => Kind::Null,
+            Mixed::Bool(_) => Kind::Bool,
+            Mixed::Int(_) => Kind::Int,
+            Mixed::Float(_) => Kind::Float,
+            Mixed::Str(_) => Kind::Str,
+            Mixed::Arr(_) => Kind::Arr,
+            Mixed::Obj(_) => Kind::Obj,
+            Mixed::Closure(_) => Kind::Closure,
+        }
+    }
+}
+impl InstanceOfName for Mixed {
+    fn php_instance_of(&self, name: &[u8]) -> bool {
+        match self {
+            Mixed::Obj(o) => o.class_ancestors().iter().any(|a| a.as_bytes().eq_ignore_ascii_case(name)),
+            _ => false,
+        }
+    }
+}
+
 // ---------------------------------------------------------------- truthiness
 
 pub trait Truthy {
@@ -737,6 +838,12 @@ macro_rules! tuple_impls {
         impl<$($T),+> Truthy for ($($T,)+) {
             fn truthy(&self) -> bool { true }
         }
+        impl<$($T),+> PhpKind for ($($T,)+) {
+            fn php_kind(&self) -> Kind { Kind::Arr }
+        }
+        impl<$($T),+> InstanceOfName for ($($T,)+) {
+            fn php_instance_of(&self, _name: &[u8]) -> bool { false }
+        }
         impl<$($T: ToStr),+> ToStr for ($($T,)+) {
             fn to_php_str(&self) -> Str { Str::from_static("Array") }
         }
@@ -753,9 +860,10 @@ macro_rules! tuple_impls {
                 ($( crate::cast::cast::<$T>(l.get($n).cloned().unwrap_or_default()), )+)
             }
         }
-        impl<$($T: crate::cast::CastTo<Mixed> + Clone),+> PhpCmp for ($($T,)+) {
+        impl<$($T: PhpCmp),+> PhpCmp for ($($T,)+) {
             fn php_cmp(&self, o: &Self) -> Ordering {
-                crate::cast::cast::<Mixed>(self.clone()).php_cmp(&crate::cast::cast::<Mixed>(o.clone()))
+                $( let c = self.$n.php_cmp(&o.$n); if c != Ordering::Equal { return c; } )+
+                Ordering::Equal
             }
         }
         impl<$($T),+> Len for ($($T,)+) {

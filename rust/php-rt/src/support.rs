@@ -804,3 +804,15 @@ impl<T> Drop for PropMut<'_, T> {
 pub fn dyn_prop(m: &Mixed, name: &str) -> Mixed {
     other_obj(m).get_prop(name).unwrap_or(Mixed::Null)
 }
+
+/// `var_export($v, $return)` / `print_r($v, $return)` on a statically typed value: the Debug rendering, printed
+/// (returning "") or returned.
+pub fn debug_export<T: std::fmt::Debug + ?Sized>(v: &T, ret: bool) -> Str {
+    let s = format!("{:?}", v);
+    if ret {
+        Str::from_str(&s)
+    } else {
+        crate::output::echo(s.as_bytes());
+        Str::from_static("")
+    }
+}

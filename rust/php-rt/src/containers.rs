@@ -80,6 +80,8 @@ impl<V: Clone> Generator<Mixed, V> {
         Self::from_pairs(l.into_iter().enumerate().map(|(i, v)| (Mixed::Int(i as i64), v)).collect())
     }
 }
+impl<K: Clone, V: Clone> crate::traits::PhpKind for Generator<K, V> { fn php_kind(&self) -> crate::traits::Kind { crate::traits::Kind::Obj } }
+impl<K: Clone, V: Clone> crate::traits::InstanceOfName for Generator<K, V> { fn php_instance_of(&self, name: &[u8]) -> bool { name.eq_ignore_ascii_case(b"generator") || name.eq_ignore_ascii_case(b"traversable") || name.eq_ignore_ascii_case(b"iterator") } }
 impl<K: Clone, V: Clone> Truthy for Generator<K, V> {
     fn truthy(&self) -> bool {
         true
@@ -212,6 +214,8 @@ impl<K: MapKey, V: Clone> ArrayObject<K, V> {
     }
 }
 pub type ArrayIterator<K, V> = ArrayObject<K, V>;
+impl<K: MapKey, V: Clone> crate::traits::PhpKind for ArrayObject<K, V> { fn php_kind(&self) -> crate::traits::Kind { crate::traits::Kind::Obj } }
+impl<K: MapKey, V: Clone> crate::traits::InstanceOfName for ArrayObject<K, V> { fn php_instance_of(&self, name: &[u8]) -> bool { name.eq_ignore_ascii_case(b"arrayobject") || name.eq_ignore_ascii_case(b"traversable") || name.eq_ignore_ascii_case(b"countable") || name.eq_ignore_ascii_case(b"arrayaccess") || name.eq_ignore_ascii_case(b"iteratoraggregate") } }
 impl<K: MapKey, V: Clone> Truthy for ArrayObject<K, V> {
     fn truthy(&self) -> bool {
         true
@@ -322,6 +326,8 @@ impl<K: PhpObject + Clone, V: Clone> Default for SplObjectStorage<K, V> {
         Self::new()
     }
 }
+impl<K, V> crate::traits::PhpKind for SplObjectStorage<K, V> { fn php_kind(&self) -> crate::traits::Kind { crate::traits::Kind::Obj } }
+impl<K, V> crate::traits::InstanceOfName for SplObjectStorage<K, V> { fn php_instance_of(&self, name: &[u8]) -> bool { name.eq_ignore_ascii_case(b"splobjectstorage") } }
 impl<K, V> Truthy for SplObjectStorage<K, V> {
     fn truthy(&self) -> bool {
         true
@@ -447,6 +453,8 @@ impl<T: Clone> WeakReference<T> {
         self.0.borrow().clone()
     }
 }
+impl<T> crate::traits::PhpKind for WeakReference<T> { fn php_kind(&self) -> crate::traits::Kind { crate::traits::Kind::Obj } }
+impl<T> crate::traits::InstanceOfName for WeakReference<T> { fn php_instance_of(&self, name: &[u8]) -> bool { name.eq_ignore_ascii_case(b"weakreference") } }
 impl<T> Truthy for WeakReference<T> {
     fn truthy(&self) -> bool {
         true
@@ -538,6 +546,8 @@ impl StdClass {
         self.0.borrow().clone()
     }
 }
+impl crate::traits::PhpKind for StdClass { fn php_kind(&self) -> crate::traits::Kind { crate::traits::Kind::Obj } }
+impl crate::traits::InstanceOfName for StdClass { fn php_instance_of(&self, name: &[u8]) -> bool { name.eq_ignore_ascii_case(b"stdclass") } }
 impl Truthy for StdClass {
     fn truthy(&self) -> bool {
         true
@@ -632,6 +642,8 @@ impl DynCallable {
         (self.f)(args)
     }
 }
+impl crate::traits::PhpKind for DynCallable { fn php_kind(&self) -> crate::traits::Kind { crate::traits::Kind::Closure } }
+impl crate::traits::InstanceOfName for DynCallable { fn php_instance_of(&self, name: &[u8]) -> bool { name.eq_ignore_ascii_case(b"closure") } }
 impl Truthy for DynCallable {
     fn truthy(&self) -> bool {
         !self.is_null
@@ -707,6 +719,8 @@ impl std::fmt::Debug for Resource {
         write!(f, "Resource id #{}", self.id)
     }
 }
+impl<T: ?Sized> crate::traits::PhpKind for Rc<T> { fn php_kind(&self) -> crate::traits::Kind { crate::traits::Kind::Closure } }
+impl<T: ?Sized> crate::traits::InstanceOfName for Rc<T> { fn php_instance_of(&self, name: &[u8]) -> bool { name.eq_ignore_ascii_case(b"closure") } }
 impl<T: ?Sized> Truthy for Rc<T> {
     fn truthy(&self) -> bool {
         true

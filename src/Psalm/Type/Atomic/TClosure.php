@@ -177,7 +177,7 @@ final class TClosure extends TNamedObject
     }
 
     /**
-     * @param TypeNode $node
+     * @param self $node
      * @param-out TypeNode $node
      *
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
