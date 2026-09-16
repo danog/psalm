@@ -93,6 +93,7 @@ final class Casts
         }
         if ($from->hasGeneric() && !$to->hasGeneric()) {
             if ($tk === RustType::MIXED) {
+                $this->noteErasure($from);
                 return 'cast::<Mixed>(' . $code . ')';
             }
             return 'php_rt::gcast::<' . $to->toRust() . '>(' . $code . ')';
@@ -116,6 +117,7 @@ final class Casts
             return '{ let _ = ' . $code . '; unreachable!() }';
         }
         if ($tk === RustType::MIXED) {
+            $this->noteErasure($from);
             if ($fk === RustType::UNIT) {
                 // keep the side effects of the unit-typed expression (a call returning void)
                 return $code === '()' ? 'Mixed::Null' : '{ let _ = ' . $code . '; Mixed::Null }';
@@ -797,6 +799,185 @@ final class Casts
                 $this->needMixedFrom($from->params[1]);
                 break;
         }
+    }
+
+    /**
+     * Every type a body erases to Mixed, with the first member that does it: the objects reachable
+     * through these conversions are the only ones the dynamic object protocol (props/get_prop/call_method)
+     * can ever be applied to. Keyed by Rust type; value = [type, context].
+     *
+     * @var array<string, array{RustType, ?string}>
+     */
+    public array $erasures = [];
+
+    public function noteErasure(RustType $from): void
+    {
+        $k = $from->toRust();
+        if (!isset($this->erasures[$k])) {
+            $this->erasures[$k] = [$from, $this->program->types->context];
+        }
+    }
+
+    /**
+     * Classes whose objects can reach the runtime's dynamic protocol: the closure of the recorded erasures
+     * over union members, shape fields, containers, class fields (props() erases every field) and
+     * subclasses. An `object` or generic value erased to Mixed may hold any class ("all").
+     *
+     * @return array{all: ?string, classes: array<string, true>, keepers: list<string>}
+     */
+    /** `get_class($v)` / `$v::class` without erasing the object; null when the type has no static class name. */
+    public function classNameOf(string $code, RustType $t): ?string
+    {
+        if ($t->kind === RustType::OPTION) {
+            $inner = $this->classNameOf($code . '.clone().expect("null where object expected")', $t->inner());
+            return $inner;
+        }
+        if ($t->kind === RustType::CLASS_ || $t->kind === RustType::ANY_OBJECT) {
+            return 'Str::from_static(php_rt::PhpObject::class_name(&' . $code . '))';
+        }
+        if ($t->kind === RustType::UNION && self::unionHasObject($t)) {
+            return 'Str::from_static(' . $code . '.class_name())';
+        }
+        return null;
+    }
+
+    /** `spl_object_id($v)` without erasing the object; null when the type is not statically an object. */
+    public function objIdOf(string $code, RustType $t): ?string
+    {
+        if ($t->kind === RustType::OPTION) {
+            return $this->objIdOf($code . '.clone().expect("null where object expected")', $t->inner());
+        }
+        if ($t->kind === RustType::CLASS_ || $t->kind === RustType::ANY_OBJECT) {
+            return '(php_rt::PhpObject::obj_id(&' . $code . ') as i64)';
+        }
+        if ($t->kind === RustType::UNION && self::unionHasObject($t)) {
+            return '(' . $code . '.obj_id() as i64)';
+        }
+        return null;
+    }
+
+    /** `$v instanceof $name` (`$name` a `Str` expression): typed on objects/unions/generics, through Mixed otherwise. */
+    public function instanceOfName(string $code, RustType $t, string $name): string
+    {
+        $inner = $t->kind === RustType::OPTION ? $t->inner() : $t;
+        if ($inner->kind === RustType::CLASS_ || $inner->kind === RustType::ANY_OBJECT || $inner->kind === RustType::GENERIC
+            || ($inner->kind === RustType::UNION && self::unionHasObject($inner))
+        ) {
+            return 'php_rt::InstanceOfName::php_instance_of(&' . $code . ', ' . $name . '.as_bytes())';
+        }
+        return 'instance_of_name(&' . $this->convert($code, $t, RustType::mixed()) . ', &' . $name . ')';
+    }
+
+    /** Whether a value of type `$from` converts losslessly into `$to` (equal, Option widening, or a union member). */
+    public function fits(RustType $from, RustType $to): bool
+    {
+        if ($from->toRust() === $to->toRust()) {
+            return true;
+        }
+        if ($to->kind === RustType::OPTION) {
+            return $this->fits($from->kind === RustType::OPTION ? $from->inner() : $from, $to->inner());
+        }
+        if ($from->kind === RustType::OPTION) {
+            return false;
+        }
+        if ($to->kind === RustType::UNION) {
+            return $this->pickMember($to, $from) !== null;
+        }
+        return false;
+    }
+
+    public static function unionHasObject(RustType $u): bool
+    {
+        foreach ($u->params as $m) {
+            if ($m->kind === RustType::CLASS_ || $m->kind === RustType::ANY_OBJECT) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** @var array<string, array{all: ?string, classes: array<string, true>}> */
+    private array $reach_memo = [];
+
+    /**
+     * The classes reachable from a value of type $t once it is erased to Mixed (through union members, shape
+     * fields, containers, class fields and subclasses); 'all' names the member that can hold any object.
+     *
+     * @return array{all: ?string, classes: array<string, true>}
+     */
+    private function reachOf(RustType $t): array
+    {
+        $k = $t->toRust();
+        if (isset($this->reach_memo[$k])) {
+            return $this->reach_memo[$k];
+        }
+        $this->reach_memo[$k] = ['all' => null, 'classes' => []]; // cycle guard
+        $r = ['all' => null, 'classes' => []];
+        $merge = function (RustType $sub) use (&$r): void {
+            $sr = $this->reachOf($sub);
+            $r['all'] ??= $sr['all'];
+            $r['classes'] += $sr['classes'];
+        };
+        switch ($t->kind) {
+            case RustType::CLASS_:
+                $c = $this->program->classOf($t);
+                if ($c !== null) {
+                    foreach (array_merge([$c], $c->concrete) as $cc) {
+                        $r['classes'][$cc->fqcn] = true;
+                    }
+                    foreach (array_merge([$c], $c->concrete) as $cc) {
+                        foreach ($cc->fields as $f) {
+                            $merge($f->type);
+                        }
+                    }
+                }
+                break;
+            case RustType::UNION:
+            case RustType::OPTION:
+            case RustType::LIST:
+            case RustType::TUPLE:
+            case RustType::MAP:
+            case RustType::CLOSURE:
+                foreach ($t->params as $pt) {
+                    $merge($pt);
+                }
+                if ($t->kind === RustType::CLOSURE && $t->ret !== null) {
+                    $merge($t->ret);
+                }
+                break;
+            case RustType::SHAPE:
+                foreach ($t->fields as [$ft]) {
+                    $merge($ft);
+                }
+                break;
+            case RustType::ANY_OBJECT:
+            case RustType::GENERIC:
+            case RustType::DYN_CALLABLE:
+                $r['all'] = $k;
+                break;
+        }
+        return $this->reach_memo[$k] = $r;
+    }
+
+    public function dynReachable(): array
+    {
+        $classes = [];
+        $all = null;
+        $keepers = [];
+        foreach ($this->erasures as $k => [$t, $ctx]) {
+            $r = $this->reachOf($t);
+            if ($r['all'] === null && $r['classes'] === []) {
+                continue;
+            }
+            $all ??= $r['all'] === null ? null : $r['all'] . ' erased as ' . $k;
+            $classes += $r['classes'];
+            $desc = $k;
+            if ($t->kind === RustType::SHAPE) {
+                $desc .= '{' . implode(', ', array_map(fn($fk, $f) => $fk . ': ' . $f[0]->toRust(), array_keys($t->fields), $t->fields)) . '}';
+            }
+            $keepers[] = ($r['all'] !== null ? 'ALL(' . $r['all'] . ') ' : count($r['classes']) . ' classes ') . $desc . ' @ ' . ($ctx ?? '?');
+        }
+        return ['all' => $all, 'classes' => $classes, 'keepers' => $keepers];
     }
 
     public function needMixedTo(RustType $to): void

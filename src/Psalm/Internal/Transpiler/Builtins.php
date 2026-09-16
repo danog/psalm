@@ -451,7 +451,11 @@ final class Builtins
 
     private function fmtArg(BodyEmitter $b, Val $v): string
     {
-        return match ($v->type->kind) {
+        $k = $v->type->kind;
+        if ($k === RustType::CLASS_ || $k === RustType::ANY_OBJECT || $k === RustType::GENERIC || ($k === RustType::UNION && Casts::unionHasObject($v->type))) {
+            return 'php_rt::ToStr::to_php_str(&' . $v->code . ')';
+        }
+        return match ($k) {
             RustType::INT, RustType::FLOAT, RustType::STR, RustType::BOOL, RustType::ARRAY_KEY, RustType::MIXED => $v->code,
             RustType::OPTION => $v->code,
             default => $b->casts->convert($v->code, $v->type, RustType::mixed()),
@@ -701,6 +705,18 @@ final class Builtins
         $inner = $t->kind === RustType::OPTION ? $t->inner() : $t;
         if ($t->kind === RustType::MIXED) {
             return new Val($v->code . '.' . $pred . '()', RustType::bool());
+        }
+        if ($inner->kind === RustType::GENERIC) {
+            // a generic value answers through its runtime kind (no Mixed representation)
+            $kinds_of = [
+                'is_null' => ['Null'], 'is_int' => ['Int'], 'is_float' => ['Float'], 'is_string' => ['Str'], 'is_bool' => ['Bool'],
+                'is_array' => ['Arr'], 'is_object' => ['Obj', 'Closure'], 'is_scalar' => ['Bool', 'Int', 'Float', 'Str'],
+                'is_callable' => ['Closure'], 'is_iterable' => ['Arr', 'Obj'], 'is_numeric' => ['Int', 'Float'],
+            ];
+            if (isset($kinds_of[$pred])) {
+                $pat = implode(' | ', array_map(fn($k) => 'php_rt::Kind::' . $k, $kinds_of[$pred]));
+                return new Val('matches!(php_rt::PhpKind::php_kind(&' . $v->code . '), ' . $pat . ')', RustType::bool());
+            }
         }
         if ($t->kind === RustType::UNION || ($t->kind === RustType::OPTION && $inner->kind === RustType::UNION)) {
             $u = $inner;
@@ -2168,10 +2184,60 @@ final class Builtins
             return new Val(Names::strLit($b->class?->fqcn ?? ''), RustType::str());
         }
         $v = $b->expr($args[0]->value);
+        if (($typed = $b->casts->classNameOf($v->code, $v->type)) !== null) {
+            return new Val($typed, RustType::str());
+        }
         if ($v->type->kind === RustType::CLASS_ || $v->type->kind === RustType::UNION || $v->type->kind === RustType::ANY_OBJECT) {
             return new Val('class_name_of(&' . $b->casts->convert($v->code, $v->type, RustType::mixed()) . ')', RustType::str());
         }
         return new Val('get_class(&' . $b->casts->convert($v->code, $v->type, RustType::mixed()) . ')', RustType::str());
+    }
+
+    /** var_export/print_r/var_dump of a typed object/generic value: its Debug rendering (no Mixed round trip). */
+    private function debugExport(BodyEmitter $b, Expr\FuncCall $call, array $args, string $fallback): Val
+    {
+        if (!isset($args[0])) {
+            return $this->simple($b, $call, $args, self::SIMPLE[$fallback]);
+        }
+        $v = $b->rawValue($args[0]->value);
+        $inner = $v->type->kind === RustType::OPTION ? $v->type->inner() : $v->type;
+        $typed = in_array($inner->kind, [RustType::GENERIC, RustType::CLASS_, RustType::ANY_OBJECT, RustType::SHAPE], true)
+            || ($inner->kind === RustType::UNION && Casts::unionHasObject($inner));
+        if (!$typed) {
+            return $this->simple($b, $call, $args, self::SIMPLE[$fallback]);
+        }
+        $ret = isset($args[1]) ? $b->exprTo($args[1]->value, RustType::bool()) : 'false';
+        if ($fallback === 'var_dump') {
+            $ret = 'false';
+        }
+        return new Val('php_rt::debug_export(&' . $v->code . ', ' . $ret . ')', RustType::str());
+    }
+
+    private function f_gettype(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        if (!isset($args[0])) {
+            return $this->simple($b, $call, $args, self::SIMPLE['gettype']);
+        }
+        $v = $b->rawValue($args[0]->value);
+        if ($v->type->kind === RustType::MIXED) {
+            return $this->simple($b, $call, $args, self::SIMPLE['gettype']);
+        }
+        return new Val('php_rt::kind_name(php_rt::PhpKind::php_kind(&' . $v->code . '))', RustType::str());
+    }
+
+    private function f_var_export(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        return $this->debugExport($b, $call, $args, 'var_export');
+    }
+
+    private function f_print_r(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        return $this->debugExport($b, $call, $args, 'print_r');
+    }
+
+    private function f_var_dump(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        return $this->debugExport($b, $call, $args, 'var_dump');
     }
 
     private function f_spl_object_id(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -2179,6 +2245,9 @@ final class Builtins
         $v = $b->expr($args[0]->value);
         if ($v->type->kind === RustType::CLASS_) {
             return new Val($v->code . '.obj_id() as i64', RustType::int());
+        }
+        if (($typed = $b->casts->objIdOf($v->code, $v->type)) !== null) {
+            return new Val($typed, RustType::int());
         }
         return new Val('spl_object_id(&' . $b->casts->convert($v->code, $v->type, RustType::mixed()) . ')', RustType::int());
     }

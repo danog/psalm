@@ -1267,6 +1267,31 @@ trait ExprTrait
                     . ', Some(' . $this->exprTo($sa[2]->value, RustType::int()) . '), ' . Names::rustStringLiteral($b->value) . ')';
             }
         }
+        // `$list === ['a', 'b']` / `$map === []`: the literal takes the container's type (no Mixed array)
+        foreach ([[$left, $right], [$right, $left]] as [$a, $b]) {
+            if ($b instanceof Expr\Array_ && !$a instanceof Expr\Array_) {
+                $va = $this->rawValue($a);
+                $containers = [RustType::LIST, RustType::MAP, RustType::SHAPE];
+                if (in_array($va->type->kind, $containers, true)) {
+                    return 'identical(' . Names::refOf($va->code) . ', ' . Names::refOf($this->exprTo($b, $va->type)) . ')';
+                }
+                if ($va->type->kind === RustType::OPTION && in_array($va->type->inner()->kind, $containers, true)) {
+                    return 'identical(' . Names::refOf($va->code) . ', &Some(' . $this->exprTo($b, $va->type->inner()) . '))';
+                }
+                $u = $va->type->kind === RustType::OPTION ? $va->type->inner() : $va->type;
+                if ($u->kind === RustType::UNION) {
+                    foreach ($u->params as $m) {
+                        if (in_array($m->kind, $containers, true)) {
+                            $lit = $this->casts->convert($this->exprTo($b, $m), $m, $u);
+                            if ($va->type->kind === RustType::OPTION) {
+                                $lit = 'Some(' . $lit . ')';
+                            }
+                            return 'identical(' . Names::refOf($va->code) . ', &' . $lit . ')';
+                        }
+                    }
+                }
+            }
+        }
         [$l, $r, $t] = $this->commonOperands($left, $right, false);
         if ($t->isCopy() && $t->kind !== RustType::OPTION) {
             return '(' . $l . ' == ' . $r . ')';
@@ -1680,12 +1705,12 @@ trait ExprTrait
             $tc = $this->program->getClass($fqcn);
             $t = $v->type;
             if ($tc !== null && !$tc->is_project) {
-                return new Val('instance_of_name(&' . $this->casts->convert($v->code, $t, RustType::mixed()) . ', &Str::from_static(' . Names::rustStringLiteral($fqcn) . '))', RustType::bool());
+                return new Val($this->casts->instanceOfName($v->code, $t, 'Str::from_static(' . Names::rustStringLiteral($fqcn) . ')'), RustType::bool());
             }
             $dyn_kinds = [RustType::RT_GENERIC, RustType::DYN_CALLABLE, RustType::CLOSURE, RustType::RESOURCE];
             if (in_array($t->kind, $dyn_kinds, true) || ($t->kind === RustType::OPTION && in_array($t->inner()->kind, $dyn_kinds, true))) {
                 // runtime containers (generators, callables): checked by class name on the Mixed form
-                return new Val('instance_of_name(&' . $this->casts->convert($v->code, $t, RustType::mixed()) . ', &Str::from_static(' . Names::rustStringLiteral($fqcn) . '))', RustType::bool());
+                return new Val($this->casts->instanceOfName($v->code, $t, 'Str::from_static(' . Names::rustStringLiteral($fqcn) . ')'), RustType::bool());
             }
             if ($t->kind === RustType::OPTION) {
                 $inner = $t->inner();
@@ -1709,8 +1734,8 @@ trait ExprTrait
         }
         // dynamic class name
         $cls = $this->expr($e->class);
-        $name = $cls->type->kind === RustType::STR ? $cls->code : 'class_name_of(&' . $this->casts->convert($cls->code, $cls->type, RustType::mixed()) . ')';
-        return new Val('instance_of_name(&' . $this->casts->convert($v->code, $v->type, RustType::mixed()) . ', &' . $name . ')', RustType::bool());
+        $name = $cls->type->kind === RustType::STR ? $cls->code : ($this->casts->classNameOf($cls->code, $cls->type) ?? 'class_name_of(&' . $this->casts->convert($cls->code, $cls->type, RustType::mixed()) . ')');
+        return new Val($this->casts->instanceOfName($v->code, $v->type, $name), RustType::bool());
     }
 
     /** Resolve a class name node (self/static/parent/FQCN) to a canonical FQCN. */

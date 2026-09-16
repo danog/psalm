@@ -212,6 +212,7 @@ final class TestEmitter
     /** Emits the collector of a test method's trials and returns its name. */
     private function emitTest(ClassModel $cls, MethodModel $m, Writer $w): string
     {
+        $this->program->types->context = '<test harness> ' . $cls->fqcn . '::' . $m->name;
         $path = $cls->path();
         $fn_name = 'collect__' . Names::ident(str_replace('\\', '_', $cls->fqcn) . '__' . $m->name);
         $provider_name = $this->dataProvider($m);

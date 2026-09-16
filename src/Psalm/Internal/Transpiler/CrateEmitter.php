@@ -131,17 +131,35 @@ final class CrateEmitter
             }
             // dispatch accessors for variant-specific fields written/read through a base/interface enum
             // (MutableTypeVisitor pattern) — requested during body emission, may accrue as more bodies emit.
-            foreach ($this->program->enum_field_accessors as $k => [$enum, $field]) {
+            foreach ($this->program->enum_field_accessors as $k => [$enum, $field, $ftype]) {
                 if (isset($done_copies['efa:' . $k])) {
                     continue;
                 }
                 $done_copies['efa:' . $k] = true;
                 $new = true;
-                $class_emitter->emitEnumFieldAccessor($enum, $field, $this->classModule($enum));
+                $class_emitter->emitEnumFieldAccessor($enum, $field, $ftype, $this->classModule($enum));
             }
         } while ($new);
 
-        // AnyObject enum over all concrete classes of the main crate, init(), Throw
+        // the runtime object protocol, dynamic part only for classes some body erases to Mixed
+        $this->program->types->context = '<post-pass: unions, shapes, casts>';
+        $dyn = $this->casts->dynReachable();
+        $n_dyn = 0;
+        foreach ($project_classes as $cls) {
+            $dynamic = $dyn['all'] !== null || isset($dyn['classes'][$cls->fqcn]);
+            $n_dyn += $dynamic ? 1 : 0;
+            $class_emitter->emitObjectProtocol($cls, $this->classModule($cls), $dynamic);
+        }
+        fwrite(STDERR, '[dyn] object protocol emitted for ' . $n_dyn . ' of ' . count($project_classes) . ' classes'
+            . ($dyn['all'] !== null ? ' (everything: ' . $dyn['all'] . ' erased to Mixed)' : '') . "\n");
+        $keepers = $dyn['keepers'];
+        usort($keepers, fn($a, $b) => strcmp(substr($a, strpos($a, ' @ ')), substr($b, strpos($b, ' @ '))));
+        fwrite(STDERR, '[dyn] ' . count($keepers) . " erasures reach objects\n");
+        foreach (array_slice($keepers, 0, 400) as $keeper) {
+            fwrite(STDERR, "  [dyn-keeper] $keeper\n");
+        }
+
+        // AnyObject newtype, init(), Throw
         $any = new Writer();
         $this->emitAnyObject($any);
 
@@ -389,6 +407,8 @@ final class CrateEmitter
         $w->line('impl php_rt::CastTo<AnyObject> for Mixed { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(self) } }');
         $w->line('impl php_rt::TryDowncast for AnyObject { fn try_downcast(o: &AnyObj) -> Option<Self> { Some(AnyObject(o.clone())) } }');
         $w->line('impl php_rt::Truthy for AnyObject { fn truthy(&self) -> bool { true } }');
+        $w->line('impl php_rt::PhpKind for AnyObject { fn php_kind(&self) -> php_rt::Kind { php_rt::Kind::Obj } }');
+        $w->line('impl php_rt::InstanceOfName for AnyObject { fn php_instance_of(&self, __n: &[u8]) -> bool { self.0.class_ancestors().iter().any(|a| a.as_bytes().eq_ignore_ascii_case(__n)) } }');
         $w->line('impl php_rt::Identical for AnyObject { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }');
         $w->line('impl php_rt::PhpCmp for AnyObject { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { Mixed::Obj(self.0.clone()).php_cmp(&Mixed::Obj(o.0.clone())) } }');
         $w->line('impl php_rt::ToStr for AnyObject { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_str(self.class_name())) } }');

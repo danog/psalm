@@ -62,6 +62,11 @@ class ReflectionFunction
         return null;
     }
 
+    public function hasTentativeReturnType(): bool
+    {
+        return false;
+    }
+
     public function getTentativeReturnType(): ?ReflectionType
     {
         return null;

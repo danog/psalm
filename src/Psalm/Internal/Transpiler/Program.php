@@ -160,6 +160,7 @@ final class Program
             $this->types->current_crate = $model->crate;
             $this->buildMethods($model);
         }
+        $this->unifyDispatchTypes();
         foreach ($this->functions as $fn) {
             $this->types->current_crate = $this->crateOfRecord($fn->record);
             $this->resolveSignature($fn->record->storage, $fn->param_types, $fn->return_type, $fn->record->node);
@@ -899,7 +900,7 @@ final class Program
     }
 
     /**
-     * @var array<string, array{ClassModel, FieldModel}> field accessors to emit on a dispatch enum (interface / class
+     * @var array<string, array{ClassModel, FieldModel, RustType}> field accessors to emit on a dispatch enum (interface / class
      *   base) for a CONCRETE-VARIANT-SPECIFIC field written/read through it — keyed by enumLc::fieldName. Needed for
      *   the MutableTypeVisitor pattern: `$self = $node; assert($self instanceof TNamedObject); $self->extra_types = v`
      *   where $self's storage type is the TypeNode interface but the field lives on the concrete variant.
@@ -907,9 +908,42 @@ final class Program
     public array $enum_field_accessors = [];
 
     /** Request set_/get_/mut dispatch for `$field` on the dispatch enum `$enum` (a variant-specific field). */
-    public function requestEnumFieldAccessor(ClassModel $enum, FieldModel $field): void
+    public function requestEnumFieldAccessor(ClassModel $enum, FieldModel $field, RustType $type): void
     {
-        $this->enum_field_accessors[$enum->lc() . '::' . $field->name] = [$enum, $field];
+        $this->enum_field_accessors[$enum->lc() . '::' . $field->name] = [$enum, $field, $type];
+    }
+
+    /**
+     * A field that concrete variants of the hierarchy `$cls` carry (not declared on `$cls` itself): a sample
+     * FieldModel (for the accessor name) and the union of the variants' field types, with the dispatch accessor
+     * requested; null when no variant has it or the types cannot be joined.
+     *
+     * @return array{FieldModel, RustType}|null
+     */
+    public function variantField(ClassModel $cls, string $name): ?array
+    {
+        if ($cls->isLeaf()) {
+            return null;
+        }
+        $sample = null;
+        $types = [];
+        foreach ($cls->concrete as $c) {
+            $cf = $c->fields[$name] ?? null;
+            if ($cf === null) {
+                continue;
+            }
+            $sample ??= $cf;
+            $types[] = $cf->type;
+        }
+        if ($sample === null) {
+            return null;
+        }
+        $t = $this->unionOfRust($types);
+        if ($t === null) {
+            return null;
+        }
+        $this->requestEnumFieldAccessor($cls, $sample, $t);
+        return [$sample, $t];
     }
 
     /** @var array<string, true> recursive unions being measured by typeCrate() */
@@ -1858,6 +1892,22 @@ final class Program
         return $borrow;
     }
 
+    /**
+     * Whether an overridden method's docblock type is at least as precise as the override's own native type
+     * (an interface's `@return mixed` must not replace an implementation's native `?DOMNode`).
+     */
+    private function refines(Union $inherited, ?Union $native): bool
+    {
+        if ($native === null || $native->isMixed()) {
+            return true;
+        }
+        try {
+            return \Psalm\Internal\Type\Comparator\UnionTypeComparator::isContainedBy($this->codebase, $inherited, $native);
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
     /** Whether a declared type carries no docblock information beyond the native signature type. */
     private static function isNativeOnly(?Union $type, ?Union $signature_type): bool
     {
@@ -1906,7 +1956,9 @@ final class Program
             if (self::isNativeOnly($ptype, $param->signature_type)) {
                 foreach ($inherited as $inh) {
                     foreach ($inh->params as $ip) {
-                        if ($ip->name === $param->name && $ip->type !== null && !self::isNativeOnly($ip->type, $ip->signature_type)) {
+                        if ($ip->name === $param->name && $ip->type !== null && !self::isNativeOnly($ip->type, $ip->signature_type)
+                            && $this->refines($ip->type, $ptype)
+                        ) {
                             $ptype = $ip->type;
                             break 2;
                         }
@@ -1931,6 +1983,7 @@ final class Program
             foreach ($inherited as $inh) {
                 if ($inh->return_type !== null && !self::isNativeOnly($inh->return_type, $inh->signature_return_type)
                     && !($ret_union !== null && ($ret_union->isVoid() || $ret_union->isNever()))
+                    && $this->refines($inh->return_type, $ret_union)
                 ) {
                     $ret_union = $inh->return_type;
                     break;
@@ -1970,6 +2023,101 @@ final class Program
             }
             $return_type = RustType::rtGeneric('Generator', [$key, $val]);
         }
+    }
+
+    /**
+     * Dispatch unions: a hierarchy method declared with `mixed` (or a class template) in a position where every
+     * concrete implementation declares a real type gets the union of those types on the hierarchy handle
+     * (`Iterator::current(): mixed` over `SplFileInfo`/`string` implementors dispatches as `U_SplFileInfo_or_Str`;
+     * the caller narrows it with the type Psalm gives the call). Closed hierarchies only: an open one shares
+     * its signature with downstream crates.
+     */
+    private function unifyDispatchTypes(): void
+    {
+        $n = 0;
+        foreach ($this->uniqueClasses() as $cls) {
+            if (getenv('DBG_DISPATCH')) {
+                fwrite(STDERR, "[dbg-dispatch] {$cls->fqcn} leaf=" . var_export($cls->isLeaf(), true) . " down=" . var_export($cls->has_downstream, true) . " concrete=" . count($cls->concrete) . " methods=" . implode(',', array_keys($cls->methods)) . "\n");
+            }
+            if ($cls->isLeaf() || $cls->isTrait() || $cls->isEnum() || $cls->has_downstream || $cls->concrete === []) {
+                continue;
+            }
+            foreach ($cls->methods as $lc => $m) {
+                if ($m->isStatic() || $m->isPrivate()) {
+                    continue;
+                }
+                $impls = [];
+                foreach ($cls->concrete as $c) {
+                    $cm = $this->findMethod($c, $lc);
+                    if ($cm === null || $cm->isAbstract()) {
+                        continue 2;
+                    }
+                    if ($cm !== $m) {
+                        $impls[] = $cm;
+                    }
+                }
+                if (getenv('DBG_DISPATCH')) {
+                    fwrite(STDERR, "[dbg-dispatch]   {$cls->fqcn}::$lc ret=" . $m->return_type->toRust() . " impls=" . count($impls) . ' [' . implode(' | ', array_map(static fn(MethodModel $cm) => $cm->declaring->fqcn . ':' . $cm->return_type->toRust(), $impls)) . "]\n");
+                }
+                if ($impls === []) {
+                    continue;
+                }
+                if ($m->return_type->containsMixed()) {
+                    $u = $this->unionOfRust(array_map(static fn(MethodModel $cm) => $cm->return_type, $impls));
+                    if ($u !== null) {
+                        $m->return_type = $u;
+                        $n++;
+                    }
+                }
+                foreach ($m->param_types as $i => $pt) {
+                    if (!$pt->containsMixed()) {
+                        continue;
+                    }
+                    $types = [];
+                    foreach ($impls as $cm) {
+                        if (!isset($cm->param_types[$i])) {
+                            continue 2;
+                        }
+                        $types[] = $cm->param_types[$i];
+                    }
+                    $u = $this->unionOfRust($types);
+                    if ($u !== null) {
+                        $m->param_types[$i] = $u;
+                        $n++;
+                    }
+                }
+            }
+        }
+        fwrite(STDERR, "[program] $n dispatch signatures typed as unions of their implementations\n");
+    }
+
+    /**
+     * The union of the implementations' types, or null when one of them is itself dynamic/generic/void.
+     *
+     * @param list<RustType> $types
+     */
+    public function unionOfRust(array $types): ?RustType
+    {
+        $members = [];
+        $nullable = false;
+        foreach ($types as $t) {
+            if ($t->kind === RustType::OPTION) {
+                $nullable = true;
+                $t = $t->inner();
+            }
+            if ($t->containsMixed() || $t->hasGeneric() || in_array($t->kind, [RustType::UNIT, RustType::NEVER, RustType::RT_GENERIC, RustType::CLOSURE, RustType::DYN_CALLABLE], true)) {
+                return null;
+            }
+            $members[$t->toRust()] = $t;
+        }
+        if ($members === []) {
+            return null;
+        }
+        $u = $this->types->combine(array_values($members));
+        if ($u->containsMixed()) {
+            return null;
+        }
+        return $nullable ? RustType::option($u) : $u;
     }
 
     /** Resolve the method reachable as `$lc_name` on `$class`. */

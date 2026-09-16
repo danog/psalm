@@ -246,8 +246,17 @@ final class BodyEmitter
                         $declared = $sp->type;
                     }
                 }
+                if ($params[$name]->hasGeneric()) {
+                    // a generic parameter stays generic: Psalm's narrowings (`is_array($t)`, instanceof) are
+                    // applied at the narrowing use through gcast, not by retyping the variable
+                    continue;
+                }
                 $joined = $this->types()->join($declared !== null ? [$declared, ...$types] : $types);
                 $rust = $this->types()->map($joined);
+                if ($rust->containsMixed() && !$params[$name]->containsMixed()) {
+                    // the signature's (docblock-inherited) type is more precise than the body's native view
+                    continue;
+                }
                 if ($rust->toRust() !== $params[$name]->toRust()) {
                     $this->rebound[$name] = $params[$name];
                     $this->vars[$name] = $rust;
@@ -257,6 +266,16 @@ final class BodyEmitter
             }
             $joined = $this->types()->join($types);
             $rust = $this->types()->map($joined);
+            if ($rust->containsMixed()) {
+                // a local holding a generic value plus Psalm narrowings of it keeps the generic type
+                foreach ($types as $__t) {
+                    $__r = $this->types()->map($__t);
+                    if ($__r->kind === RustType::GENERIC) {
+                        $rust = $__r;
+                        break;
+                    }
+                }
+            }
             $this->vars[$name] = $rust;
             $this->late[$name] = !$rust->hasDefault();
             // SSA axis diagnostic: a local whose value takes >=2 types across the function forces a union/Mixed

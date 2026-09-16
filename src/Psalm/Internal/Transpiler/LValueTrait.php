@@ -115,6 +115,17 @@ trait LValueTrait
                         fn() => '(*' . $bc . '.' . $rn . '_mut())',
                     );
                 }
+                if ($cls !== null && ($vf = $this->program->variantField($cls, $name)) !== null) {
+                    // a field of some concrete variants, reached through the hierarchy handle
+                    [$sf, $vt] = $vf;
+                    $rn = $sf->acc();
+                    $bc = $base->code;
+                    return new Place(
+                        $vt,
+                        fn() => $bc . '.' . $rn . '_get()',
+                        fn(string $v) => '{ let __wv = ' . $v . '; let mut __b = ' . $bc . '; __b.set_' . $rn . '(__wv); }',
+                    );
+                }
                 $this->warn('unknown property ' . $name . ' on ' . $bt->toRust(), $e);
             }
             if ($bt->kind === RustType::RT_GENERIC && $bt->name === 'StdClass') {
@@ -135,11 +146,15 @@ trait LValueTrait
                     }
                     $cls = $this->program->classOf($m);
                     $field = $cls?->fields[$name] ?? null;
+                    $ftype = $field?->type;
+                    if ($field === null && $cls !== null && ($vf = $this->program->variantField($cls, $name)) !== null) {
+                        [$field, $ftype] = $vf;
+                    }
                     if ($field === null) {
                         continue;
                     }
-                    $arms_get[] = $bt->mangle() . '::' . $m->variantName() . '(__o) => ' . $this->casts->convert('__o.' . $field->acc() . '_get()', $field->type, $inf);
-                    $arms_set[] = $bt->mangle() . '::' . $m->variantName() . '(__o) => __o.set_' . $field->acc() . '(' . $this->casts->convert('__v', $inf, $field->type) . ')';
+                    $arms_get[] = $bt->mangle() . '::' . $m->variantName() . '(__o) => ' . $this->casts->convert('__o.' . $field->acc() . '_get()', $ftype, $inf);
+                    $arms_set[] = $bt->mangle() . '::' . $m->variantName() . '(mut __o) => __o.set_' . $field->acc() . '(' . $this->casts->convert('__v', $inf, $ftype) . ')';
                 }
                 if ($arms_get !== []) {
                     $bc = $base->code;
@@ -583,9 +598,15 @@ trait LValueTrait
             if ($field !== null) {
                 return $this->narrow(new Val($base->code . '.' . $field->acc() . '_get()', $field->type), $e);
             }
-            if ($cls !== null && $cls->isEnum() && ($name === 'name' || $name === 'value')) {
-                $t = $name === 'name' ? RustType::str() : ($cls->storage->enum_type === 'int' ? RustType::int() : RustType::str());
-                return new Val($base->code . '.' . $name . '()', $t);
+            if ($cls !== null && ($vf = $this->program->variantField($cls, $name)) !== null) {
+                return $this->narrow(new Val($base->code . '.' . $vf[0]->acc() . '_get()', $vf[1]), $e);
+            }
+            if ($cls !== null && ($name === 'name' || $name === 'value') && ($cls->isEnum() || ($cls->concrete !== [] && !array_filter($cls->concrete, static fn(ClassModel $c) => !$c->isEnum())))) {
+                $backing = $cls->isEnum() ? (string) $cls->storage->enum_type : (string) $cls->concrete[0]->storage->enum_type;
+                if ($name === 'name' || $backing !== '') {
+                    $t = $name === 'name' ? RustType::str() : ($backing === 'int' ? RustType::int() : RustType::str());
+                    return new Val($base->code . '.' . $name . '()', $t);
+                }
             }
             $getter = $cls !== null ? $this->program->findMethod($cls, '__get') : null;
             if ($getter !== null && $getter->node !== null) {
@@ -606,10 +627,14 @@ trait LValueTrait
                 }
                 $cls = $this->program->classOf($m);
                 $field = $cls?->fields[$name] ?? null;
+                $ftype = $field?->type;
+                if ($field === null && $cls !== null && ($vf = $this->program->variantField($cls, $name)) !== null) {
+                    [$field, $ftype] = $vf;
+                }
                 if ($field === null) {
                     continue;
                 }
-                $arms[] = $bt->mangle() . '::' . $m->variantName() . '(__o) => ' . $this->casts->convert('__o.' . $field->acc() . '_get()', $field->type, $res);
+                $arms[] = $bt->mangle() . '::' . $m->variantName() . '(__o) => ' . $this->casts->convert('__o.' . $field->acc() . '_get()', $ftype, $res);
             }
             if ($arms !== []) {
                 return new Val('(match ' . $base->code . ' { ' . implode(', ', $arms) . ', _ => unreachable!() })', $res);
@@ -703,7 +728,7 @@ trait LValueTrait
         // $obj::class / $obj::CONST
         $base = $this->expr($e->class);
         if ($name === 'class') {
-            return new Val('class_name_of(&' . $this->casts->convert($base->code, $base->type, RustType::mixed()) . ')', RustType::str());
+            return new Val($this->casts->classNameOf($base->code, $base->type) ?? 'class_name_of(&' . $this->casts->convert($base->code, $base->type, RustType::mixed()) . ')', RustType::str());
         }
         $res = $this->inferredOrMixed($e);
         $bt = $base->type->kind === RustType::OPTION ? $base->type->inner() : $base->type;

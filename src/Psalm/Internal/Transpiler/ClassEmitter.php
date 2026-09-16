@@ -28,6 +28,7 @@ final class ClassEmitter
 
     public function emit(ClassModel $cls, Writer $w): void
     {
+        $this->program->types->context = '<class-level> ' . $cls->fqcn;
         if ($cls->isTrait()) {
             return;
         }
@@ -88,7 +89,7 @@ final class ClassEmitter
             }
             $w->line('pub fn new_same_class' . $this->ctorSig($cls, true) . ' -> ' . $cls->path() . ' { ' . $this->wrapOwn($cls, 'Self::new(' . $this->ctorArgs($cls) . ')') . ' }');
             $w->close();
-            $this->emitPhpObject($cls, $w);
+            $this->emitOwnCloneImpls($cls, $w);
         }
 
         // ---- statics, constants and bodies live on the handle type
@@ -250,6 +251,7 @@ final class ClassEmitter
 
     private function emitEnumAccessors(ClassModel $cls, FieldModel $f, Writer $w): void
     {
+        $this->program->types->context = '<enum accessors> ' . $cls->fqcn . '::$' . $f->name;
         $rn = $f->acc();
         $t = $f->type->toRust();
         $h = $cls->handle();
@@ -351,6 +353,7 @@ final class ClassEmitter
 
     private function emitConstructor(ClassModel $cls, Writer $w): void
     {
+        $this->program->types->context = '<constructor> ' . $cls->fqcn;
         $own = $cls->ownHandle();
         $obj = $cls->objStruct();
         $body = $this->constExprEmitter($cls);
@@ -533,6 +536,7 @@ final class ClassEmitter
 
     private function emitMethodOnEnum(ClassModel $cls, MethodModel $m, Writer $w): void
     {
+        $this->program->types->context = '<dispatch> ' . $cls->fqcn . '::' . $m->name;
         $rn = $m->rustName();
         $h = $cls->handle();
         if ($cls->allConcreteImmutable() && !$m->isStatic() && $m->lc() === '__construct') {
@@ -718,19 +722,20 @@ final class ClassEmitter
      * access is guarded by the narrowing that reached this variant). set_ is `&mut self` (works for the concrete
      * variant's &self Cell setter or &mut make_mut setter); get_ is `&self`.
      */
-    public function emitEnumFieldAccessor(ClassModel $enum, FieldModel $f, Writer $w): void
+    public function emitEnumFieldAccessor(ClassModel $enum, FieldModel $f, RustType $ft, Writer $w): void
     {
+        $this->program->types->context = '<variant field accessor> ' . $enum->fqcn . '::$' . $f->name;
         $h = $enum->handle();
-        $t = $f->type->toRust();
+        $t = $ft->toRust();
         $set = [];
         $get = [];
         foreach ($enum->concrete as $c) {
             $cf = $c->fields[$f->name] ?? null;
-            if ($cf === null) {
+            if ($cf === null || !$this->casts->fits($cf->type, $ft)) {
                 continue;
             }
-            $set[] = $h . '::' . $c->variant() . '(__h) => __h.set_' . $cf->acc() . '(v)';
-            $get[] = $h . '::' . $c->variant() . '(__h) => __h.' . $cf->acc() . '_get()';
+            $set[] = $h . '::' . $c->variant() . '(__h) => __h.set_' . $cf->acc() . '(' . $this->casts->convert('v', $ft, $cf->type) . ')';
+            $get[] = $h . '::' . $c->variant() . '(__h) => ' . $this->casts->convert('__h.' . $cf->acc() . '_get()', $cf->type, $ft);
         }
         if ($set === []) {
             return;
@@ -815,7 +820,26 @@ final class ClassEmitter
 
     // ------------------------------------------------------------------ PhpObject and enum impls
 
-    private function emitPhpObject(ClassModel $cls, Writer $w): void
+    /**
+     * The runtime object trait for the class (and, for a hierarchy root, for its enum handle). Emitted after
+     * every body, because the dynamic part (props/get_prop/set_prop/call_method: the object viewed through
+     * Mixed) is only generated for classes some body actually erases to Mixed ($dynamic); the others keep the
+     * runtime's panicking defaults.
+     */
+    public function emitObjectProtocol(ClassModel $cls, Writer $w, bool $dynamic): void
+    {
+        if ($cls->isEnum()) {
+            return; // PHP enums carry their own (static) object impl
+        }
+        if ($cls->isConcrete()) {
+            $this->emitPhpObject($cls, $w, $dynamic);
+        }
+        if (!$cls->isLeaf()) {
+            $this->emitEnumHandleProtocol($cls, $w, $dynamic);
+        }
+    }
+
+    private function emitPhpObject(ClassModel $cls, Writer $w, bool $dynamic): void
     {
         $own = $cls->ownHandle();
         $w->open('impl php_rt::PhpObject for ' . $own . ' {');
@@ -826,6 +850,14 @@ final class ClassEmitter
         $w->line('fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }');
         $w->line('fn as_any(&self) -> &dyn std::any::Any { self }');
         $w->line('fn php_clone_dyn(&self) -> AnyObj { Rc::new(self.php_clone()) }');
+        $ts = $this->program->findMethod($cls, '__tostring');
+        if ($ts !== null) {
+            $w->line('fn php_to_string(&self) -> Option<Str> { Some(self.' . $ts->rustName() . '()) }');
+        }
+        if (!$dynamic) {
+            $w->close();
+            return;
+        }
         $props = [];
         foreach ($cls->fields as $f) {
             $get = $f->isLate() ? 'self.' . $f->acc() . '_opt()' : 'Some(self.' . $f->acc() . '_get())';
@@ -866,12 +898,15 @@ final class ClassEmitter
             $gets[] = Names::rustStringLiteral($f->name) . ' => ' . $get . '.map(|v| ' . $this->casts->convert('v', $f->type, RustType::mixed()) . ')';
         }
         $w->line('fn get_prop(&self, name: &str) -> Option<Mixed> { match name { ' . implode(', ', $gets) . ($gets ? ', ' : '') . '_ => None } }');
-        $ts = $this->program->findMethod($cls, '__tostring');
-        if ($ts !== null) {
-            $w->line('fn php_to_string(&self) -> Option<Str> { Some(self.' . $ts->rustName() . '()) }');
-        }
         $w->line('fn call_method(&self, name: &str, args: Vec<Mixed>) -> Mixed { match name { ' . $this->callMethodArms($cls) . '_ => php_rt::do_throw(Throw::error(cat!(Str::from_static(' . Names::rustStringLiteral('Call to undefined method ' . $cls->fqcn . '::') . '), Str::from_str(name), Str::from_static("()")))) } }');
         $w->close();
+    }
+
+    /** `to_php_string()` and `clone` support on the own handle (class-time emission). */
+    private function emitOwnCloneImpls(ClassModel $cls, Writer $w): void
+    {
+        $own = $cls->ownHandle();
+        $ts = $this->program->findMethod($cls, '__tostring');
         $w->line('impl ' . $own . ' { pub fn to_php_string(&self) -> Str { ' . ($ts !== null ? 'self.' . $ts->rustName() . '()' : 'panic!(' . Names::rustStringLiteral('Uncaught exception: Object of class ' . $cls->fqcn . ' could not be converted to string') . ')') . ' } }');
         $clone = $this->program->findMethod($cls, '__clone');
         $clone_call = '';
@@ -994,10 +1029,16 @@ final class ClassEmitter
         return $arms;
     }
 
-    private function emitEnumHandleImpls(ClassModel $cls, Writer $w): void
+    private function enumArms(ClassModel $cls): callable
     {
         $h = $cls->handle();
-        $arms = fn(string $call) => implode(', ', array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => __h.' . $call, $cls->concrete)) . ($cls->concrete ? ', ' : '') . ($cls->has_downstream ? $h . '::Other__(__m) => php_rt::other_obj(__m).' . $call . ', ' : '') . '_ => unreachable!()';
+        return fn(string $call) => implode(', ', array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => __h.' . $call, $cls->concrete)) . ($cls->concrete ? ', ' : '') . ($cls->has_downstream ? $h . '::Other__(__m) => php_rt::other_obj(__m).' . $call . ', ' : '') . '_ => unreachable!()';
+    }
+
+    private function emitEnumHandleProtocol(ClassModel $cls, Writer $w, bool $dynamic): void
+    {
+        $h = $cls->handle();
+        $arms = $this->enumArms($cls);
         $w->open('impl php_rt::PhpObject for ' . $h . ' {');
         $w->line('fn class_name(&self) -> &\'static str { match self { ' . $arms('class_name()') . ' } }');
         $w->line('fn class_ancestors(&self) -> &\'static [&\'static str] { match self { ' . $arms('class_ancestors()') . ' } }');
@@ -1006,13 +1047,33 @@ final class ClassEmitter
         $w->line('fn obj_id(&self) -> usize { match self { ' . $arms('obj_id()') . ' } }');
         $w->line('fn as_any(&self) -> &dyn std::any::Any { self }');
         $w->line('fn php_clone_dyn(&self) -> AnyObj { match self { ' . $arms('php_clone_dyn()') . ' } }');
-        $w->line('fn props(&self) -> Vec<(Str, Mixed)> { match self { ' . $arms('props()') . ' } }');
-        $w->line('fn set_prop(&self, name: &str, value: Mixed) -> bool { match self { ' . $arms('set_prop(name, value)') . ' } }');
-        $w->line('fn get_prop(&self, name: &str) -> Option<Mixed> { match self { ' . $arms('get_prop(name)') . ' } }');
         $w->line('fn php_to_string(&self) -> Option<Str> { match self { ' . $arms('php_to_string()') . ' } }');
-        $w->line('fn call_method(&self, name: &str, args: Vec<Mixed>) -> Mixed { match self { ' . $arms('call_method(name, args)') . ' } }');
-        $w->line('fn public_props(&self) -> Vec<(Str, Mixed)> { match self { ' . $arms('public_props()') . ' } }');
+        if ($dynamic) {
+            $w->line('fn props(&self) -> Vec<(Str, Mixed)> { match self { ' . $arms('props()') . ' } }');
+            $w->line('fn set_prop(&self, name: &str, value: Mixed) -> bool { match self { ' . $arms('set_prop(name, value)') . ' } }');
+            $w->line('fn get_prop(&self, name: &str) -> Option<Mixed> { match self { ' . $arms('get_prop(name)') . ' } }');
+            $w->line('fn call_method(&self, name: &str, args: Vec<Mixed>) -> Mixed { match self { ' . $arms('call_method(name, args)') . ' } }');
+            $w->line('fn public_props(&self) -> Vec<(Str, Mixed)> { match self { ' . $arms('public_props()') . ' } }');
+        }
         $w->close();
+    }
+
+    private function emitEnumHandleImpls(ClassModel $cls, Writer $w): void
+    {
+        $this->program->types->context = '<handle impls> ' . $cls->fqcn;
+        $h = $cls->handle();
+        $arms = $this->enumArms($cls);
+        if ($cls->concrete !== [] && !array_filter($cls->concrete, static fn(ClassModel $c) => !$c->isEnum())) {
+            // an interface implemented only by PHP enums (UnitEnum/BackedEnum): `->name` / `->value` dispatch
+            $name_arms = implode(', ', array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => __h.name()', $cls->concrete));
+            $w->line('impl ' . $h . ' { pub fn name(&self) -> Str { match self { ' . $name_arms . ', _ => unreachable!() } } }');
+            $backing = array_unique(array_map(static fn(ClassModel $c) => (string) $c->storage->enum_type, $cls->concrete));
+            if (count($backing) === 1 && $backing[0] !== '') {
+                $vt = $backing[0] === 'int' ? 'i64' : 'Str';
+                $value_arms = implode(', ', array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => __h.value()', $cls->concrete));
+                $w->line('impl ' . $h . ' { pub fn value(&self) -> ' . $vt . ' { match self { ' . $value_arms . ', _ => unreachable!() } } }');
+            }
+        }
         $to_string_arms = implode(', ', array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => __h.to_php_string()', $cls->concrete)) . ($cls->concrete ? ', ' : '') . ($cls->has_downstream ? $h . '::Other__(__m) => to_str(__m), ' : '') . '_ => unreachable!()';
         $w->line('impl ' . $h . ' { pub fn to_php_string(&self) -> Str { match self { ' . $to_string_arms . ' } } }');
         $w->line('impl ' . $h . ' { pub fn inner_any(&self) -> &dyn std::any::Any { match self { ' . implode(', ', array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => __h', $cls->concrete)) . ($cls->concrete ? ', ' : '') . ($cls->has_downstream ? $h . '::Other__(__m) => __m, ' : '') . '_ => unreachable!() } } }');

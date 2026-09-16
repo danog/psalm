@@ -550,6 +550,7 @@ class DOMAttr extends DOMNode
 /**
  * @implements IteratorAggregate<int, DOMAttr>
  */
+/** @template-implements IteratorAggregate<int, DOMAttr> */
 class DOMNamedNodeMap implements IteratorAggregate, Countable
 {
     public int $length;

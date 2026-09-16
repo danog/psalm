@@ -65,6 +65,19 @@ final class CastEmitter
             }
         }
         $w->line('impl php_rt::Truthy for ' . $name . ' { fn truthy(&self) -> bool { match self { ' . implode(', ', $arms) . ' } } }');
+        $kind_arms = [];
+        $inst_arms = [];
+        foreach ($u->params as $m) {
+            if ($this->isUnit($m)) {
+                $kind_arms[] = $this->memberPat($name, $m, 'v') . ' => ' . ($this->unitName($m) === 'Null' ? 'php_rt::Kind::Null' : 'php_rt::Kind::Bool');
+                $inst_arms[] = $this->memberPat($name, $m, 'v') . ' => false';
+            } else {
+                $kind_arms[] = $this->memberPat($name, $m, 'v') . ' => php_rt::PhpKind::php_kind(v)';
+                $inst_arms[] = $this->memberPat($name, $m, 'v') . ' => php_rt::InstanceOfName::php_instance_of(v, __n)';
+            }
+        }
+        $w->line('impl php_rt::PhpKind for ' . $name . ' { fn php_kind(&self) -> php_rt::Kind { match self { ' . implode(', ', $kind_arms) . ' } } }');
+        $w->line('impl php_rt::InstanceOfName for ' . $name . ' { fn php_instance_of(&self, __n: &[u8]) -> bool { match self { ' . implode(', ', $inst_arms) . ' } } }');
         // ToStr
         $arms = [];
         foreach ($u->params as $m) {
@@ -92,8 +105,8 @@ final class CastEmitter
             }
         }
         $w->line('impl php_rt::Identical for ' . $name . ' { fn identical(&self, o: &Self) -> bool { match (self, o) { ' . implode(', ', $arms) . ', _ => false } } }');
-        // PhpCmp via Mixed
-        $w->line('impl php_rt::PhpCmp for ' . $name . ' { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }');
+        // PhpCmp: pairwise over the members, PHP's loose comparison rules per kind (no Mixed round trip)
+        $w->line('impl php_rt::PhpCmp for ' . $name . ' { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { use std::cmp::Ordering::*; match (self, o) { ' . $this->unionCmpArms($u, $name) . ' } } }');
         // Mixed conversion
         $arms = [];
         foreach ($u->params as $m) {
@@ -121,12 +134,23 @@ final class CastEmitter
                 break;
             }
         }
-        // ToInt/ToFloat/ToArrayKey helpers via Mixed
-        $w->line('impl php_rt::ToInt for ' . $name . ' { fn to_php_int(&self) -> i64 { cast::<Mixed>(self.clone()).to_php_int() } }');
-        $w->line('impl php_rt::ToFloat for ' . $name . ' { fn to_php_float(&self) -> f64 { cast::<Mixed>(self.clone()).to_php_float() } }');
-        $w->line('impl php_rt::ToArrayKey for ' . $name . ' { fn to_php_key(&self) -> ArrayKey { cast::<Mixed>(self.clone()).to_php_key() } }');
-        $w->line('impl std::fmt::Debug for ' . $name . ' { fn fmt(&self, f: &mut std::fmt::Formatter<\'_>) -> std::fmt::Result { write!(f, "{:?}", cast::<Mixed>(self.clone())) } }');
+        // ToInt/ToFloat/ToArrayKey/Debug: member-wise
+        $w->line('impl php_rt::ToInt for ' . $name . ' { fn to_php_int(&self) -> i64 { match self { ' . $this->unionMemberArms($u, $name, 'int') . ' } } }');
+        $w->line('impl php_rt::ToFloat for ' . $name . ' { fn to_php_float(&self) -> f64 { match self { ' . $this->unionMemberArms($u, $name, 'float') . ' } } }');
+        $w->line('impl php_rt::ToArrayKey for ' . $name . ' { fn to_php_key(&self) -> ArrayKey { match self { ' . $this->unionMemberArms($u, $name, 'key') . ' } } }');
+        $w->line('impl std::fmt::Debug for ' . $name . ' { fn fmt(&self, f: &mut std::fmt::Formatter<\'_>) -> std::fmt::Result { match self { ' . $this->unionMemberArms($u, $name, 'debug') . ' } } }');
         $w->line('impl ' . $name . ' { pub fn unwrap_or_default_marker(self) -> Self { self } }');
+        if (Casts::unionHasObject($u)) {
+            // get_class() / spl_object_id() on a union holding objects
+            $cn = [];
+            $oi = [];
+            foreach ($u->params as $m) {
+                $obj = $m->kind === RustType::CLASS_ || $m->kind === RustType::ANY_OBJECT;
+                $cn[] = $this->memberPat($name, $m, 'v') . ' => ' . ($obj ? 'php_rt::PhpObject::class_name(v)' : 'panic!("get_class(): Argument #1 ($object) must be of type object")');
+                $oi[] = $this->memberPat($name, $m, 'v') . ' => ' . ($obj ? 'php_rt::PhpObject::obj_id(v)' : 'panic!("spl_object_id(): Argument #1 ($object) must be of type object")');
+            }
+            $w->line('impl ' . $name . ' { pub fn class_name(&self) -> &\'static str { match self { ' . implode(', ', $cn) . ' } } pub fn obj_id(&self) -> usize { match self { ' . implode(', ', $oi) . ' } } }');
+        }
         // member accessors / predicates
         foreach ($u->params as $m) {
             if ($this->isUnit($m)) {
@@ -212,6 +236,173 @@ final class CastEmitter
         }
     }
 
+    /** PHP comparison kind of a union member: null, bool, int, float, str, key, arr, obj, closure, other. */
+    private function cmpKind(RustType $m): string
+    {
+        if ($this->isUnit($m)) {
+            return $this->unitName($m) === 'Null' ? 'null' : 'bool';
+        }
+        return match ($m->kind) {
+            RustType::BOOL => 'bool',
+            RustType::INT => 'int',
+            RustType::FLOAT => 'float',
+            RustType::STR, RustType::SYM => 'str',
+            RustType::ARRAY_KEY => 'key',
+            RustType::LIST, RustType::MAP, RustType::SHAPE, RustType::TUPLE => 'arr',
+            RustType::CLASS_, RustType::ANY_OBJECT => 'obj',
+            RustType::CLOSURE, RustType::DYN_CALLABLE => 'closure',
+            default => 'other',
+        };
+    }
+
+    /** Pattern binding a member of the union to `$var` (unit members bind nothing). */
+    private function memberPat(string $name, RustType $m, string $var): string
+    {
+        return $this->isUnit($m) ? $name . '::' . $this->unitName($m) : $name . '::' . $m->variantName() . '(' . $var . ')';
+    }
+
+    private function truthyOf(RustType $m, string $var): string
+    {
+        if ($this->isUnit($m)) {
+            return $this->unitName($m) === 'True' ? 'true' : 'false';
+        }
+        return match ($this->cmpKind($m)) {
+            'obj', 'closure' => 'true',
+            'bool' => '(*' . $var . ')',
+            default => 'php_rt::Truthy::truthy(' . $var . ')',
+        };
+    }
+
+    private function strOf(RustType $m, string $var): string
+    {
+        return $m->kind === RustType::STR ? $var . '.clone()' : 'php_rt::ToStr::to_php_str(' . $var . ')';
+    }
+
+    private function numOf(RustType $m, string $var): string
+    {
+        return $m->kind === RustType::INT ? 'php_rt::Num::Int(*' . $var . ')' : 'php_rt::Num::Float(*' . $var . ')';
+    }
+
+    /** One arm of the pairwise union comparison: the rules of php-rt's `PhpCmp for Mixed`, per member kind. */
+    private function unionCmpArm(string $name, RustType $a, RustType $b): string
+    {
+        $pat = '(' . $this->memberPat($name, $a, 'a') . ', ' . $this->memberPat($name, $b, 'b') . ') => ';
+        $ka = $this->cmpKind($a);
+        $kb = $this->cmpKind($b);
+        if ($a === $b) {
+            if ($a->kind === RustType::CLOSURE) {
+                return $pat . 'if Rc::ptr_eq(a, b) { Equal } else { Greater }';
+            }
+            if ($ka === 'closure') {
+                return $pat . 'if identical(a, b) { Equal } else { Greater }';
+            }
+            if ($ka === 'null' || $ka === 'bool' && $this->isUnit($a)) {
+                return $pat . 'Equal';
+            }
+            if ($this->cmpableType($a, false)) {
+                return $pat . 'a.php_cmp(b)';
+            }
+            return $pat . 'if identical(a, b) { Equal } else { Greater }';
+        }
+        $num = fn(string $k) => $k === 'int' || $k === 'float';
+        if ($ka === 'null' && $kb === 'null') {
+            return $pat . 'Equal';
+        }
+        if ($ka === 'null' && $kb === 'str') {
+            return $pat . 'if ' . $this->strOf($b, 'b') . '.as_bytes().is_empty() { Equal } else { Less }';
+        }
+        if ($ka === 'str' && $kb === 'null') {
+            return $pat . 'if ' . $this->strOf($a, 'a') . '.as_bytes().is_empty() { Equal } else { Greater }';
+        }
+        if ($ka === 'null') {
+            return $pat . 'false.cmp(&' . $this->truthyOf($b, 'b') . ')';
+        }
+        if ($kb === 'null') {
+            return $pat . $this->truthyOf($a, 'a') . '.cmp(&false)';
+        }
+        if ($ka === 'bool' || $kb === 'bool') {
+            return $pat . $this->truthyOf($a, 'a') . '.cmp(&' . $this->truthyOf($b, 'b') . ')';
+        }
+        if ($num($ka) && $num($kb)) {
+            $fa = $ka === 'int' ? '(*a as f64)' : '(*a)';
+            $fb = $kb === 'int' ? '(*b as f64)' : '(*b)';
+            return $pat . $fa . '.partial_cmp(&' . $fb . ').unwrap_or(Equal)';
+        }
+        if ($num($ka) && $kb === 'str') {
+            return $pat . 'php_rt::cmp_num_str(' . $this->numOf($a, 'a') . ', ' . $this->strOf($b, 'b') . '.as_bytes())';
+        }
+        if ($ka === 'str' && $num($kb)) {
+            return $pat . 'php_rt::cmp_num_str(' . $this->numOf($b, 'b') . ', ' . $this->strOf($a, 'a') . '.as_bytes()).reverse()';
+        }
+        if ($ka === 'str' && $kb === 'str') {
+            return $pat . 'php_rt::cmp_str(' . $this->strOf($a, 'a') . '.as_bytes(), ' . $this->strOf($b, 'b') . '.as_bytes())';
+        }
+        $keyable = fn(string $k) => in_array($k, ['int', 'float', 'str', 'bool'], true);
+        if ($ka === 'key' && $keyable($kb)) {
+            return $pat . 'a.php_cmp(&php_rt::ToArrayKey::to_php_key(b))';
+        }
+        if ($kb === 'key' && $keyable($ka)) {
+            return $pat . 'php_rt::ToArrayKey::to_php_key(a).php_cmp(b)';
+        }
+        if ($ka === 'arr') {
+            return $pat . 'Greater';
+        }
+        if ($kb === 'arr') {
+            return $pat . 'Less';
+        }
+        if ($ka === 'obj' && $kb === 'obj') {
+            return $pat . 'if php_rt::PhpObject::obj_id(a) == php_rt::PhpObject::obj_id(b) { Equal } else { Greater }';
+        }
+        if ($ka === 'obj' && $kb === 'str') {
+            return $pat . 'match php_rt::PhpObject::php_to_string(a) { Some(s) => php_rt::cmp_str(s.as_bytes(), ' . $this->strOf($b, 'b') . '.as_bytes()), None => Greater }';
+        }
+        if ($ka === 'str' && $kb === 'obj') {
+            return $pat . 'match php_rt::PhpObject::php_to_string(b) { Some(s) => php_rt::cmp_str(' . $this->strOf($a, 'a') . '.as_bytes(), s.as_bytes()), None => Less }';
+        }
+        if ($ka === 'obj' || $ka === 'closure') {
+            return $pat . 'Greater';
+        }
+        if ($kb === 'obj' || $kb === 'closure') {
+            return $pat . 'Less';
+        }
+        return $pat . 'Greater';
+    }
+
+    private function unionCmpArms(RustType $u, string $name): string
+    {
+        $arms = [];
+        foreach ($u->params as $a) {
+            foreach ($u->params as $b) {
+                $arms[] = $this->unionCmpArm($name, $a, $b);
+            }
+        }
+        return implode(', ', $arms);
+    }
+
+    /** Member-wise arms of a union's ToInt ('int'), ToFloat ('float'), ToArrayKey ('key') or Debug ('debug'). */
+    private function unionMemberArms(RustType $u, string $name, string $what): string
+    {
+        $arms = [];
+        foreach ($u->params as $m) {
+            $pat = $this->memberPat($name, $m, 'v') . ' => ';
+            $k = $this->cmpKind($m);
+            if ($this->isUnit($m)) {
+                $lit = ['Null' => ['0', '0.0', 'ArrayKey::Str(Str::from_static(""))', 'write!(f, "null")'], 'True' => ['1', '1.0', 'ArrayKey::Int(1)', 'write!(f, "true")'], 'False' => ['0', '0.0', 'ArrayKey::Int(0)', 'write!(f, "false")']][$this->unitName($m)];
+                $arms[] = $pat . $lit[['int' => 0, 'float' => 1, 'key' => 2, 'debug' => 3][$what]];
+                continue;
+            }
+            $scalar = in_array($k, ['bool', 'int', 'float', 'str', 'key'], true);
+            $sv = $m->kind === RustType::SYM ? '&php_rt::ToStr::to_php_str(v)' : 'v';
+            $arms[] = $pat . match ($what) {
+                'int' => $scalar ? 'php_rt::ToInt::to_php_int(' . $sv . ')' : ($k === 'arr' ? '(' . $this->truthyOf($m, 'v') . ') as i64' : '1'),
+                'float' => $scalar ? 'php_rt::ToFloat::to_php_float(' . $sv . ')' : ($k === 'arr' ? '(' . $this->truthyOf($m, 'v') . ') as i64 as f64' : '1.0'),
+                'key' => $scalar ? 'php_rt::ToArrayKey::to_php_key(' . $sv . ')' : 'panic!(' . Names::rustStringLiteral('Illegal offset type (' . $m->toRust() . ')') . ')',
+                'debug' => $k === 'closure' ? 'write!(f, "Closure")' : 'write!(f, "{:?}", v)',
+            };
+        }
+        return implode(', ', $arms);
+    }
+
     private function mixedToMemberArm(string $name, RustType $m): string
     {
         if ($this->isUnit($m)) {
@@ -262,6 +453,8 @@ final class CastEmitter
         }
         $w->close();
         $w->line('impl php_rt::Truthy for ' . $name . ' { fn truthy(&self) -> bool { ' . (count($s->fields) ? 'true' : 'false') . ' } }');
+        $w->line('impl php_rt::PhpKind for ' . $name . ' { fn php_kind(&self) -> php_rt::Kind { php_rt::Kind::Arr } }');
+        $w->line('impl php_rt::InstanceOfName for ' . $name . ' { fn php_instance_of(&self, _n: &[u8]) -> bool { false } }');
         $w->line('impl php_rt::ToStr for ' . $name . ' { fn to_php_str(&self) -> Str { Str::from_static("Array") } }');
         $parts = [];
         foreach ($s->fields as $k => [$t, $opt]) {
@@ -270,12 +463,11 @@ final class CastEmitter
         $w->line('impl php_rt::Identical for ' . $name . ' { fn identical(&self, o: &Self) -> bool { ' . ($parts ? implode(' && ', $parts) : 'true') . ' } }');
         // PhpCmp: field by field (PHP compares arrays element-wise) when every field type is comparable
         $cmp_parts = [];
-        $typed_cmp = true;
         foreach ($s->fields as $k => [$t, $opt]) {
             $ft = RustType::shapeField($t, $opt);
             if (!$this->cmpableType($ft)) {
-                $typed_cmp = false;
-                break;
+                fwrite(STDERR, '  [cmp-skip] shape ' . $name . '.' . $k . ' :: ' . $ft->toRust() . "\n");
+                continue;
             }
             $inner = $ft->kind === RustType::OPTION ? $ft->inner() : $ft;
             if (in_array($inner->kind, [RustType::CLOSURE, RustType::DYN_CALLABLE, RustType::RT_GENERIC], true)) {
@@ -284,11 +476,7 @@ final class CastEmitter
                 $cmp_parts[] = '{ let __c = self.' . Names::field($k) . '.php_cmp(&o.' . Names::field($k) . '); if __c != std::cmp::Ordering::Equal { return __c; } }';
             }
         }
-        if ($typed_cmp) {
-            $w->line('impl php_rt::PhpCmp for ' . $name . ' { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { ' . implode(' ', $cmp_parts) . ' std::cmp::Ordering::Equal } }');
-        } else {
-            $w->line('impl php_rt::PhpCmp for ' . $name . ' { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }');
-        }
+        $w->line('impl php_rt::PhpCmp for ' . $name . ' { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { ' . implode(' ', $cmp_parts) . ' std::cmp::Ordering::Equal } }');
         $w->line('impl php_rt::Len for ' . $name . ' { fn php_count(&self) -> i64 { let mut n = 0i64; ' . implode(' ', array_map(fn($k, $f) => $f[1] ? 'if self.' . Names::field($k) . '.is_some() { n += 1; }' : 'n += 1;', array_keys($s->fields), $s->fields)) . ' n } }');
         $ins = [];
         foreach ($s->fields as $k => [$t, $opt]) {
@@ -311,22 +499,17 @@ final class CastEmitter
             }
         }
         $w->line('impl php_rt::CastTo<' . $name . '> for Mixed { fn cast_to(self) -> ' . $name . ' { let m = cast::<Map<ArrayKey, Mixed>>(self); ' . $name . ' { ' . implode(', ', $outs) . ' } } }');
-        // Debug: field by field (every generated/runtime value type implements Debug except closures)
-        $debuggable = true;
+        // Debug: field by field (closures and runtime containers print their kind)
+        $dbg = '';
         foreach ($s->fields as $k => [$t, $opt]) {
             $ft = RustType::shapeField($t, $opt);
             $inner = $ft->kind === RustType::OPTION ? $ft->inner() : $ft;
-            if (in_array($inner->kind, [RustType::CLOSURE, RustType::DYN_CALLABLE, RustType::RT_GENERIC, RustType::TUPLE], true)) {
-                $debuggable = false;
-                break;
-            }
+            $val = in_array($inner->kind, [RustType::CLOSURE, RustType::DYN_CALLABLE, RustType::RT_GENERIC, RustType::TUPLE], true)
+                ? '&' . Names::rustStringLiteral($inner->kind === RustType::TUPLE ? 'array' : 'Closure')
+                : '&self.' . Names::field($k);
+            $dbg .= '.field(' . Names::rustStringLiteral((string) $k) . ', ' . $val . ')';
         }
-        if ($debuggable) {
-            $dbg = implode('', array_map(fn($k) => '.field(' . Names::rustStringLiteral((string) $k) . ', &self.' . Names::field($k) . ')', array_keys($s->fields)));
-            $w->line('impl std::fmt::Debug for ' . $name . ' { fn fmt(&self, f: &mut std::fmt::Formatter<\'_>) -> std::fmt::Result { f.debug_struct("array")' . $dbg . '.finish() } }');
-        } else {
-            $w->line('impl std::fmt::Debug for ' . $name . ' { fn fmt(&self, f: &mut std::fmt::Formatter<\'_>) -> std::fmt::Result { write!(f, "{:?}", cast::<Mixed>(self.clone())) } }');
-        }
+        $w->line('impl std::fmt::Debug for ' . $name . ' { fn fmt(&self, f: &mut std::fmt::Formatter<\'_>) -> std::fmt::Result { f.debug_struct("array")' . $dbg . '.finish() } }');
     }
 
     // ------------------------------------------------------------------ class conversions
@@ -347,9 +530,13 @@ final class CastEmitter
         $closed = !$cls->has_downstream;
         // Truthy / ToStr / Identical / PhpCmp on the handle type
         if ($cls->isLeaf() || $closed) {
+            $w->line('impl php_rt::PhpKind for ' . $h . ' { fn php_kind(&self) -> php_rt::Kind { php_rt::Kind::Obj } }');
+            $w->line('impl php_rt::InstanceOfName for ' . $h . ' { fn php_instance_of(&self, __n: &[u8]) -> bool { php_rt::PhpObject::class_ancestors(self).iter().any(|a| a.as_bytes().eq_ignore_ascii_case(__n)) } }');
             $w->line('impl php_rt::Truthy for ' . $h . ' { fn truthy(&self) -> bool { true } }');
             $w->line('impl php_rt::Identical for ' . $h . ' { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }');
         } else {
+            $w->line('impl php_rt::PhpKind for ' . $h . ' { fn php_kind(&self) -> php_rt::Kind { match self { ' . $h . '::Other__(__m) => php_rt::PhpKind::php_kind(__m), _ => php_rt::Kind::Obj } } }');
+            $w->line('impl php_rt::InstanceOfName for ' . $h . ' { fn php_instance_of(&self, __n: &[u8]) -> bool { match self { ' . $h . '::Other__(__m) => php_rt::InstanceOfName::php_instance_of(__m, __n), _ => php_rt::PhpObject::class_ancestors(self).iter().any(|a| a.as_bytes().eq_ignore_ascii_case(__n)) } } }');
             $w->line('impl php_rt::Truthy for ' . $h . ' { fn truthy(&self) -> bool { match self { ' . $h . '::Other__(__m) => truthy(__m), _ => true } } }');
             $w->line('impl php_rt::Identical for ' . $h . ' { fn identical(&self, o: &Self) -> bool { match (self, o) { (' . $h . '::Other__(a), ' . $h . '::Other__(b)) => identical(a, b), (' . $h . '::Other__(_), _) | (_, ' . $h . '::Other__(_)) => false, _ => self.obj_id() == o.obj_id() } } }');
         }
@@ -372,6 +559,8 @@ final class CastEmitter
                 $own = $cls->ownHandle();
                 $w->line('impl php_rt::CastTo<Mixed> for ' . $own . ' { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }');
                 $w->line('impl php_rt::Truthy for ' . $own . ' { fn truthy(&self) -> bool { true } }');
+                $w->line('impl php_rt::PhpKind for ' . $own . ' { fn php_kind(&self) -> php_rt::Kind { php_rt::Kind::Obj } }');
+                $w->line('impl php_rt::InstanceOfName for ' . $own . ' { fn php_instance_of(&self, __n: &[u8]) -> bool { php_rt::PhpObject::class_ancestors(self).iter().any(|a| a.as_bytes().eq_ignore_ascii_case(__n)) } }');
                 $w->line('impl php_rt::Identical for ' . $own . ' { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }');
             }
         }
@@ -447,6 +636,7 @@ final class CastEmitter
         if (!in_array($c, $cls->concrete, true)) {
             // a subclass from a downstream crate: the enum has no variant for it. A closed hierarchy has
             // no such subclass, so this cannot happen there (guarded to a panic rather than a dead Other__).
+            $this->casts->noteErasure(RustType::class($c->fqcn));
             return $this->openHandle($cls)
                 ? $cls->path() . '::Other__(Mixed::Obj(Rc::new(' . $code . ')))'
                 : 'panic!(' . Names::rustStringLiteral('unexpected downstream subclass in closed hierarchy ' . $cls->fqcn) . ')';
@@ -771,6 +961,7 @@ final class CastEmitter
             if ($fc->isSubclassOf($tc)) {
                 $body = $this->wrapConcrete($tc, $fc, 'self');
             } elseif ($this->openHandle($tc)) {
+                $this->casts->noteErasure($from);
                 $body = $th . '::Other__(Mixed::Obj(Rc::new(self)))';
             } else {
                 $body = 'panic!(' . Names::rustStringLiteral('cannot cast ' . $fc->fqcn . ' to ' . $tc->fqcn) . ')';
@@ -791,6 +982,7 @@ final class CastEmitter
                 $arms[] = $fh . '::' . $c->variant() . '(v) => ' . $this->wrapConcrete($tc, $c, 'v');
             } elseif ($this->openHandle($tc)) {
                 // not an instance of the target: carried through its escape variant
+                $this->casts->noteErasure(RustType::class($c->fqcn));
                 $arms[] = $fh . '::' . $c->variant() . '(v) => ' . $th . '::Other__(Mixed::Obj(Rc::new(v)))';
             } else {
                 $arms[] = $fh . '::' . $c->variant() . '(_) => panic!(' . Names::rustStringLiteral('cannot cast ' . $c->fqcn . ' to ' . $tc->fqcn) . ')';
@@ -810,20 +1002,17 @@ final class CastEmitter
     private function emitHandleCmp(ClassModel $cls, Writer $w): void
     {
         $h = $cls->handle();
-        $typed = $this->cmpableClass($cls);
         if ($cls->isLeaf()) {
-            $body = $typed ? $this->fieldCmpBody($cls) : 'cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone()))';
-            $w->line('impl php_rt::PhpCmp for ' . $h . ' { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { ' . $body . ' } }');
-            return;
-        }
-        $closed = !$cls->has_downstream;
-        if (!$typed || !$closed) {
-            $w->line('impl php_rt::PhpCmp for ' . $h . ' { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }');
+            $w->line('impl php_rt::PhpCmp for ' . $h . ' { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { ' . $this->fieldCmpBody($cls) . ' } }');
             return;
         }
         $arms = [];
         foreach ($cls->concrete as $c) {
             $arms[] = '(' . $h . '::' . $c->variant() . '(a), ' . $h . '::' . $c->variant() . '(b)) => a.php_cmp(b)';
+        }
+        if ($this->openHandle($cls)) {
+            // downstream subclasses travel erased (their erasure is recorded where they are wrapped)
+            $arms[] = '(' . $h . '::Other__(a), ' . $h . '::Other__(b)) => a.php_cmp(b)';
         }
         $w->line('impl php_rt::PhpCmp for ' . $h . ' { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { match (self, o) { ' . implode(', ', $arms) . ($arms ? ', ' : '') . '_ => std::cmp::Ordering::Greater } } }');
         if ($cls->isConcrete() && $cls->ownHandle() !== $h) {
@@ -842,6 +1031,11 @@ final class CastEmitter
             if (in_array($inner->kind, [RustType::CLOSURE, RustType::DYN_CALLABLE, RustType::RT_GENERIC], true)) {
                 // closures and runtime containers compare by identity (PHP compares closures/iterators by handle)
                 $parts[] = '{ if !identical(&self.' . $get . ', &o.' . $get . ') { return std::cmp::Ordering::Greater; } }';
+                continue;
+            }
+            if (!$this->cmpableType($f->type)) {
+                // a container of closures: no element comparison exists; the field does not take part
+                fwrite(STDERR, '  [cmp-skip] ' . $cls->fqcn . '::$' . $f->name . ' :: ' . $f->type->toRust() . "\n");
                 continue;
             }
             $parts[] = '{ let __c = self.' . $get . '.php_cmp(&o.' . $get . '); if __c != std::cmp::Ordering::Equal { return __c; } }';
@@ -912,8 +1106,15 @@ final class CastEmitter
             case RustType::DYN_CALLABLE:
             case RustType::RT_GENERIC:
                 return $allow_identity; // compared by identity (see fieldCmpBody) when a field/Option field
+            case RustType::TUPLE:
+                foreach ($t->params as $pt) {
+                    if (!$this->cmpableType($pt, false)) {
+                        return false;
+                    }
+                }
+                return true;
             default:
-                return false; // tuples
+                return false;
         }
     }
 

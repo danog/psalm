@@ -9,9 +9,9 @@ namespace Amp\Serialization;
  */
 interface Serializer
 {
-    public function serialize(array|object|string $data): string;
+    public function serialize(mixed $data): string;
 
-    public function unserialize(string $data): array|object|string;
+    public function unserialize(string $data): mixed;
 }
 
 final class SerializationException extends \Exception
@@ -20,12 +20,12 @@ final class SerializationException extends \Exception
 
 final class NativeSerializer implements Serializer
 {
-    public function serialize(array|object|string $data): string
+    public function serialize(mixed $data): string
     {
         return serialize($data);
     }
 
-    public function unserialize(string $data): array|object|string
+    public function unserialize(string $data): mixed
     {
         $value = unserialize($data);
         if (!is_array($value) && !is_object($value) && !is_string($value)) {
@@ -37,12 +37,12 @@ final class NativeSerializer implements Serializer
 
 final class IgbinarySerializer implements Serializer
 {
-    public function serialize(array|object|string $data): string
+    public function serialize(mixed $data): string
     {
         return serialize($data);
     }
 
-    public function unserialize(string $data): array|object|string
+    public function unserialize(string $data): mixed
     {
         $value = unserialize($data);
         if (!is_array($value) && !is_object($value) && !is_string($value)) {

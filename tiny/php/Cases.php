@@ -489,6 +489,7 @@ function readOnlyCb(A $a): int
     return $a->a + 1;
 }
 
+/** @param callable(A): int $f */
 function applyIt(callable $f, A $a): int
 {
     return $f($a);
