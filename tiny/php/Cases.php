@@ -207,6 +207,62 @@ function case_loops(): string
     return whileLoop(4) . '' . doLoop(3);
 }
 
+// ---- regression: assorted control flow (nested loops, break/continue, foreach-key, switch) --
+
+/** @param list<list<int>> $rows */
+function nested(array $rows): int
+{
+    $sum = 0;
+    foreach ($rows as $row) {
+        foreach ($row as $v) {
+            $sum = $sum + $v;
+        }
+    }
+    return $sum;
+}
+
+function withBreakContinue(int $n): int
+{
+    $sum = 0;
+    for ($i = 0; $i < $n; $i++) {
+        if ($i === 2) {
+            continue;
+        }
+        if ($i === 5) {
+            break;
+        }
+        $sum = $sum + $i;
+    }
+    return $sum;
+}
+
+/** @param array<string, int> $m */
+function foreachKey(array $m): int
+{
+    $sum = 0;
+    foreach ($m as $k => $v) {
+        $sum = $sum + strlen($k) + $v;
+    }
+    return $sum;
+}
+
+function switchCase(int $n): string
+{
+    switch ($n) {
+        case 1:
+            return 'one';
+        case 2:
+            return 'two';
+        default:
+            return 'other';
+    }
+}
+
+function case_control_flow(): string
+{
+    return nested([[1, 2], [3, 4]]) . '|' . withBreakContinue(10) . '|' . foreachKey(['ab' => 3]) . '|' . switchCase(2);
+}
+
 // ---- edge: single-use as a method-call receiver moves safely -------------
 
 function getA(A $f): int
@@ -494,6 +550,7 @@ function run_all(): string
         . check('alias_mutation', case_alias_mutation(), '7')
         . check('narrow_downcast', case_narrow_downcast(), 'arr1arr1keyed3')
         . check('loops', case_loops(), '63')
+        . check('control_flow', case_control_flow(), '10|8|5|two')
         . check('receiver_move', case_receiver_move(), '11')
         . check('borrow_param', case_borrow_param(), '42425')
         . check('private_method_borrow', case_private_method_borrow(), '210')
