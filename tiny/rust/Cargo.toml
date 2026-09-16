@@ -1,0 +1,10 @@
+[workspace]
+resolver = "2"
+members = ["php-rt", "generated/tiny_repro", "driver"]
+
+[profile.dev]
+opt-level = 0
+debug = "line-tables-only"
+incremental = false
+codegen-units = 256
+lto = "off"

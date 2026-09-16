@@ -1,0 +1,6 @@
+# Reproducible artifacts
+rust/generated/
+rust/php-rt/
+rust/target/
+rust/Cargo.lock
+build/
