@@ -12,6 +12,9 @@
     usePhpDocMethodsWithoutMagicCall="true"
     cacheDirectory="build/psalm-cache-phpparser-lib"
 >
+    <stubs>
+        <file name="../psalm-transpiler/src/Psalm/Internal/Transpiler/runtime-stubs/rt.phpstub"/>
+    </stubs>
     <projectFiles>
         <directory name="../psalm-transpiler/src/Psalm/Internal/Transpiler/runtime-stubs"/>
         <directory name="../php-parser/lib"/>

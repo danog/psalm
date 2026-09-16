@@ -13,6 +13,7 @@
     cacheDirectory="build/psalm-cache-psalm-tests"
 >
     <stubs>
+        <file name="../psalm-transpiler/src/Psalm/Internal/Transpiler/runtime-stubs/rt.phpstub"/>
         <file name="stubs/phpparser.phpstub"/>
     </stubs>
     <projectFiles>
