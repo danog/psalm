@@ -178,6 +178,31 @@ function case_alias_mutation(): string
     return (string) $y->a;
 }
 
+// ---- edge: single-use as a method-call receiver moves safely -------------
+
+function getA(A $f): int
+{
+    return $f->a;
+}
+
+function case_receiver_move(): string
+{
+    $x = new A(11);
+    return (string) getA($x);
+}
+
+// ---- edge: a var captured by a closure must NOT be moved -----------------
+
+function case_closure_capture(): string
+{
+    $x = new A(4);
+    $f = function () use ($x): int {
+        return $x->a;
+    };
+    // $x read both in the closure and here: must stay cloned, closure still valid
+    return (string) ($x->a + $f());
+}
+
 // ---- runner --------------------------------------------------------------
 
 function check(string $name, string $actual, string $expected): string
@@ -194,5 +219,7 @@ function run_all(): string
         . check('return_move', case_return_move(), '534')
         . check('single_use_move', case_single_use_move(), '766')
         . check('foreach_collection_move', case_foreach_collection_move(), '60')
-        . check('alias_mutation', case_alias_mutation(), '7');
+        . check('alias_mutation', case_alias_mutation(), '7')
+        . check('receiver_move', case_receiver_move(), '11')
+        . check('closure_capture', case_closure_capture(), '8');
 }
