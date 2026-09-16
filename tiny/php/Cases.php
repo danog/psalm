@@ -344,6 +344,16 @@ function case_dispatch_disagree_owned(): string
     return dispatchHandle(new HandlerSafe(), new A(3)) . '' . dispatchHandle(new HandlerEscapes(), new A(4));
 }
 
+// ---- safety: a param whose method is unmodeled (dynamic dispatch) stays OWNED
+
+// DOMDocument::getElementsByTagNameNS is not in the stub -> dynamic call_method path casts the receiver to
+// Mixed, which can't apply to a &T. $d must therefore NOT be borrowed. (Compiled, not called at runtime.)
+function domDynamic(\DOMDocument $d): int
+{
+    $list = $d->getElementsByTagNameNS('ns', 'tag');
+    return 0;
+}
+
 // ---- safety: a borrow-param fn used as a first-class callable still works --
 
 function readOnlyCb(A $a): int

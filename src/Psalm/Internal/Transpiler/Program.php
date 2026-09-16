@@ -1766,11 +1766,15 @@ final class Program
         $finder = new \PhpParser\NodeFinder();
         // Variable nodes that are a borrowing read (safe): the receiver/base/operand of a read expression.
         $safe = [];
+        $recv_method = []; // receiver Variable node-id => lowercase method name (for static-resolvability check)
         foreach ($finder->findInstanceOf($stmts, \PhpParser\Node\Expr\MethodCall::class) as $m) {
             // A first-class callable `$x->m(...)` CAPTURES the receiver into a closure that may be stored/
             // escape ('static), so its receiver is NOT a plain borrow.
             if ($m->var instanceof \PhpParser\Node\Expr\Variable && !$m->isFirstClassCallable()) {
                 $safe[spl_object_id($m->var)] = true;
+                if ($m->name instanceof \PhpParser\Node\Identifier) {
+                    $recv_method[spl_object_id($m->var)] = strtolower($m->name->name);
+                }
             }
         }
         foreach ($finder->findInstanceOf($stmts, \PhpParser\Node\Expr\NullsafeMethodCall::class) as $m) {
@@ -1814,14 +1818,32 @@ final class Program
             if (isset($written_base[$name])) {
                 continue;
             }
+            // Classes the param type can be at runtime, for the method-resolvability check below.
+            $recv_classes = $t->kind === RustType::CLASS_
+                ? [$this->classOf($t)]
+                : array_map(fn(RustType $m) => $m->kind === RustType::CLASS_ ? $this->classOf($m) : null, $t->params);
             $all_safe = true;
             foreach ($finder->findInstanceOf($stmts, \PhpParser\Node\Expr\Variable::class) as $v) {
                 if (!is_string($v->name) || $v->name !== $name) {
                     continue;
                 }
-                if (!isset($safe[spl_object_id($v)])) {
+                $oid = spl_object_id($v);
+                if (!isset($safe[$oid])) {
                     $all_safe = false;
                     break;
+                }
+                // A method-call receiver escapes into Mixed when the method is NOT statically resolvable on the
+                // param's type (unmodeled builtin like DOMDocument::getElementsByTagNameNS -> the dynamic
+                // call_method path casts the receiver to Mixed, which cannot apply to a &T). Require resolution
+                // on every possible runtime class.
+                if (isset($recv_method[$oid])) {
+                    $lcm = $recv_method[$oid];
+                    foreach ($recv_classes as $rc) {
+                        if ($rc === null || $this->findMethod($rc, $lcm) === null) {
+                            $all_safe = false;
+                            break 2;
+                        }
+                    }
                 }
             }
             if ($all_safe) {
