@@ -438,10 +438,16 @@ trait CallTrait
                 $recv_code = $recv->code;
                 if ($e instanceof Expr\MethodCall && $e->var instanceof Expr\Variable && is_string($e->var->name)
                     && $e->var->name !== 'this'
-                    && $recv_code === Names::var($e->var->name) . '.clone()'
                     && !($m->declaring->immutable() && isset($m->declaring->constructionMethods()[$m->lc()]))
                 ) {
-                    $recv_code = Names::var($e->var->name);
+                    $bind = Names::var($e->var->name);
+                    if ($recv_code === $bind . '.clone()') {
+                        // plain local: `x.clone().m()` -> `x.m()`
+                        $recv_code = $bind;
+                    } elseif ($recv_code === $bind . '.get().clone()') {
+                        // Late local: `x.get().clone().m()` -> `x.get().m()` (borrow the stored value)
+                        $recv_code = $bind . '.get()';
+                    }
                 }
                 return new Val($this->finishCall($recv_code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')' . ($m->throws ? '?' : '')), $m->return_type);
             }

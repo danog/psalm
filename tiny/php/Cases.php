@@ -191,6 +191,25 @@ function case_receiver_move(): string
     return (string) getA($x);
 }
 
+// ---- feature: &self call on a Late-local receiver borrows (no clone) ------
+
+final class Counter
+{
+    public int $n = 0;
+    public function get(): int
+    {
+        return $this->n;
+    }
+}
+
+function case_late_receiver_borrow(): string
+{
+    // $c is reassigned -> Late local; used twice as a &self receiver -> should borrow, not clone.
+    $c = new Counter();
+    $c = new Counter();
+    return $c->get() . '' . $c->get();
+}
+
 // ---- edge: a var captured by a closure must NOT be moved -----------------
 
 function case_closure_capture(): string
@@ -221,5 +240,6 @@ function run_all(): string
         . check('foreach_collection_move', case_foreach_collection_move(), '60')
         . check('alias_mutation', case_alias_mutation(), '7')
         . check('receiver_move', case_receiver_move(), '11')
+        . check('late_receiver_borrow', case_late_receiver_borrow(), '00')
         . check('closure_capture', case_closure_capture(), '8');
 }
