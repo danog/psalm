@@ -1031,8 +1031,70 @@ final class Builtins
         return new Val('array_map_m(&' . $a->code . ', ' . $cb . ')', RustType::map($a->type->params[0], $ret));
     }
 
+    /**
+     * `get_object_vars($obj)` on a statically known leaf class: the shape of its properties (all of them for
+     * `$this`, public ones from outside), built field by field; null when the receiver is not such a class.
+     */
+    public static function objectVarsShape(BodyEmitter $b, Val $v, bool $all): ?Val
+    {
+        $t = $v->type;
+        if ($t->kind !== RustType::CLASS_) {
+            return null;
+        }
+        $cls = $b->program->classOf($t);
+        if ($cls === null || !$cls->isLeaf() || !$cls->isConcrete()) {
+            return null;
+        }
+        $fields = [];
+        $inits = [];
+        foreach ($cls->fields as $f) {
+            if (!$all && $f->storage->visibility !== \Psalm\Internal\Analyzer\ClassLikeAnalyzer::VISIBILITY_PUBLIC) {
+                continue;
+            }
+            $late = $f->isLate();
+            $fields[$f->name] = [$f->type, $late];
+            $inits[] = Names::field($f->name) . ': ' . $v->code . '.' . $f->acc() . ($late ? '_opt()' : '_get()');
+        }
+        if ($fields === []) {
+            return null;
+        }
+        $shape = $b->types()->registerShape(RustType::shape($fields));
+        return new Val($shape->toRust() . ' { ' . implode(', ', $inits) . ' }', $shape);
+    }
+
+    private function f_get_object_vars(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        if (isset($args[0])) {
+            $v = $b->rawValue($args[0]->value);
+            $all = $args[0]->value instanceof Expr\Variable && $args[0]->value->name === 'this';
+            $shape = self::objectVarsShape($b, $v, $all);
+            if ($shape !== null) {
+                return $shape;
+            }
+        }
+        return $this->simple($b, $call, $args, self::SIMPLE['get_object_vars']);
+    }
+
     private function f_array_filter(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
+        if ((!isset($args[1]) || $b->isNullLiteral($args[1]->value)) && $args[0]->value instanceof Expr\FuncCall) {
+            // array_filter(get_object_vars($this)): the shape with every field optional (falsy ones dropped)
+            $inner = $b->rawValue($args[0]->value);
+            if ($inner->type->kind === RustType::SHAPE) {
+                $fields = [];
+                $inits = [];
+                $tmp = '__af';
+                foreach ($inner->type->fields as $k => [$ft, $opt]) {
+                    $fields[$k] = [$ft, true];
+                    $get = $tmp . '.' . Names::field($k);
+                    $inits[] = Names::field($k) . ': ' . ($opt
+                        ? '(match ' . $get . ' { Some(__v) if php_rt::Truthy::truthy(&__v) => Some(__v), _ => None })'
+                        : '{ let __v = ' . $get . '; if php_rt::Truthy::truthy(&__v) { Some(__v) } else { None } }');
+                }
+                $shape = $b->types()->registerShape(RustType::shape($fields));
+                return new Val('{ let ' . $tmp . ' = ' . $inner->code . '; ' . $shape->toRust() . ' { ' . implode(', ', $inits) . ' } }', $shape);
+            }
+        }
         $a = $this->container($b, $args[0]->value);
         $is_list = $a->type->kind === RustType::LIST;
         $kt = $is_list ? RustType::int() : $a->type->params[0];

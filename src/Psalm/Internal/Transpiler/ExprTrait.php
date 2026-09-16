@@ -1714,6 +1714,9 @@ trait ExprTrait
             if ($t->kind === RustType::MIXED) {
                 return new Val('mixed_to_array(' . $v->code . ')', RustType::map(RustType::arrayKey(), RustType::mixed()));
             }
+            if ($t->kind === RustType::CLASS_ && ($shape = Builtins::objectVarsShape($this, $v, $e->expr instanceof Expr\Variable && $e->expr->name === 'this')) !== null) {
+                return $shape;
+            }
             if ($t->kind === RustType::CLASS_ || $t->kind === RustType::ANY_OBJECT) {
                 return new Val('object_to_array(&' . $this->casts->convert($v->code, $t, RustType::mixed()) . ')', RustType::map(RustType::arrayKey(), RustType::mixed()));
             }

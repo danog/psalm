@@ -259,7 +259,7 @@ final class ReturnTypeAnalyzer
             $inferred_return_type = Type::getNever();
         }
 
-        if ($return_type === null && $function_like_storage !== null && Transpiler::isEnabled()) {
+        if (($return_type === null || $return_type->hasMixed()) && $function_like_storage !== null && Transpiler::isEnabled()) {
             Transpiler::get()->recordInferredReturnType($function_like_storage, $inferred_return_type);
         }
 

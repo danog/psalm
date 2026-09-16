@@ -19,5 +19,8 @@
         <directory name="../src/Psalm/Internal/Transpiler/runtime-stubs"/>
         <directory name="php"/>
         <directory name="../../phpunit-port/typed/src"/>
+        <ignoreFiles>
+            <file name="../src/Psalm/Internal/Transpiler/runtime-stubs/fork.php"/>
+        </ignoreFiles>
     </projectFiles>
 </psalm>

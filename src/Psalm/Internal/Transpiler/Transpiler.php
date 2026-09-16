@@ -328,7 +328,8 @@ final class Transpiler
     {
         $n = 0;
         foreach ($this->inferred_return_types as [$storage, $type]) {
-            if ($storage->return_type === null) {
+            if ($storage->return_type === null || ($storage->return_type->hasMixed() && $storage->signature_return_type === null)) {
+                // no declared type, or only an inherited/docblock `mixed`: the analysis knows better
                 $storage->return_type = $type;
                 $n++;
                 if (getenv('DBG_REC')) {

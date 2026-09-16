@@ -287,6 +287,13 @@ final class TypeMapper
         return RustType::rtGeneric('__unit_' . $name, []);
     }
 
+    /** Register a shape built outside the mapper (typed get_object_vars / (array) casts) for emission. */
+    public function registerShape(RustType $shape): RustType
+    {
+        $this->shapes[$shape->mangle()] = $shape;
+        return $shape;
+    }
+
     /**
      * @param list<RustType> $members
      */
