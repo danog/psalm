@@ -361,52 +361,40 @@ final class CrateEmitter
 
     private function emitAnyObject(Writer $w): void
     {
-        $concrete = [];
-        foreach ($this->program->uniqueClasses() as $cls) {
-            if ($cls->is_project && $cls->isConcrete() && !$cls->isTrait() && !$cls->isEnum() && $cls->crate === 0) {
-                $concrete[] = $cls;
-            }
-        }
+        // `object`-typed values: a newtype over the runtime's type-erased handle. Every class converts
+        // into it directly (`AnyObject(Rc::new(own))`) and narrows out of it through its `TryDowncast`
+        // (a class-id match over the target hierarchy), so no program-wide enum is needed.
         $w->line('#[derive(Clone)]');
-        $w->open('pub enum AnyObject {');
-        foreach ($concrete as $c) {
-            $w->line($c->variant() . '(' . $c->ownPath() . '),');
-        }
-        $w->line('Other(AnyObj),');
-        $w->close();
-        $arms = fn(string $call) => implode(', ', array_map(fn(ClassModel $c) => 'AnyObject::' . $c->variant() . '(h) => h.' . $call, $concrete)) . ($concrete ? ', ' : '') . 'AnyObject::Other(o) => o.' . $call;
+        $w->line('pub struct AnyObject(pub AnyObj);');
         $w->open('impl php_rt::PhpObject for AnyObject {');
-        $w->line('fn class_name(&self) -> &\'static str { match self { ' . $arms('class_name()') . ' } }');
-        $w->line('fn class_ancestors(&self) -> &\'static [&\'static str] { match self { ' . $arms('class_ancestors()') . ' } }');
-        $w->line('fn class_id(&self) -> u32 { match self { ' . $arms('class_id()') . ' } }');
-        $w->line('fn class_ancestor_ids(&self) -> &\'static [u32] { match self { ' . $arms('class_ancestor_ids()') . ' } }');
-        $w->line('fn obj_id(&self) -> usize { match self { ' . $arms('obj_id()') . ' } }');
-        $w->line('fn as_any(&self) -> &dyn std::any::Any { self }');
-        $w->line('fn props(&self) -> Vec<(Str, Mixed)> { match self { ' . $arms('props()') . ' } }');
-        $w->line('fn set_prop(&self, name: &str, value: Mixed) -> bool { match self { ' . $arms('set_prop(name, value)') . ' } }');
-        $w->line('fn get_prop(&self, name: &str) -> Option<Mixed> { match self { ' . $arms('get_prop(name)') . ' } }');
-        $w->line('fn php_to_string(&self) -> Option<Str> { match self { ' . $arms('php_to_string()') . ' } }');
-        $w->line('fn call_method(&self, name: &str, args: Vec<Mixed>) -> Mixed { match self { ' . $arms('call_method(name, args)') . ' } }');
-        $w->line('fn public_props(&self) -> Vec<(Str, Mixed)> { match self { ' . $arms('public_props()') . ' } }');
+        $w->line('fn class_name(&self) -> &\'static str { self.0.class_name() }');
+        $w->line('fn class_ancestors(&self) -> &\'static [&\'static str] { self.0.class_ancestors() }');
+        $w->line('fn class_id(&self) -> u32 { self.0.class_id() }');
+        $w->line('fn class_ancestor_ids(&self) -> &\'static [u32] { self.0.class_ancestor_ids() }');
+        $w->line('fn obj_id(&self) -> usize { self.0.obj_id() }');
+        $w->line('fn as_any(&self) -> &dyn std::any::Any { self.0.as_any() }');
+        $w->line('fn props(&self) -> Vec<(Str, Mixed)> { self.0.props() }');
+        $w->line('fn set_prop(&self, name: &str, value: Mixed) -> bool { self.0.set_prop(name, value) }');
+        $w->line('fn get_prop(&self, name: &str) -> Option<Mixed> { self.0.get_prop(name) }');
+        $w->line('fn php_to_string(&self) -> Option<Str> { self.0.php_to_string() }');
+        $w->line('fn call_method(&self, name: &str, args: Vec<Mixed>) -> Mixed { self.0.call_method(name, args) }');
+        $w->line('fn public_props(&self) -> Vec<(Str, Mixed)> { self.0.public_props() }');
+        $w->line('fn php_clone_dyn(&self) -> AnyObj { self.0.php_clone_dyn() }');
         $w->close();
         $w->open('impl AnyObject {');
-        $downs = [];
-        foreach ($concrete as $c) {
-            $downs[] = $this->program->classId($c) . ' => return AnyObject::' . $c->variant() . '(o.as_any().downcast_ref::<' . $c->ownPath() . '>().unwrap().clone()),';
-        }
-        $w->line('pub fn from_mixed(m: Mixed) -> AnyObject { if let Mixed::Obj(o) = &m { match o.class_id() { ' . implode(' ', $downs) . ' _ => {} } return AnyObject::Other(o.clone()); } panic!("not an object: {:?}", m) }');
+        $w->line('pub fn from_mixed(m: Mixed) -> AnyObject { if let Mixed::Obj(o) = m { return AnyObject(o); } panic!("not an object: {:?}", m) }');
         $w->line('pub fn to_php_string(&self) -> Str { self.php_to_string().unwrap_or_else(|| panic!("Uncaught exception: Object could not be converted to string")) }');
         $w->close();
-        $w->line('impl php_rt::CastTo<Mixed> for AnyObject { fn cast_to(self) -> Mixed { match self { ' . implode(', ', array_map(fn(ClassModel $c) => 'AnyObject::' . $c->variant() . '(h) => Mixed::Obj(Rc::new(h))', $concrete)) . ($concrete ? ', ' : '') . 'AnyObject::Other(o) => Mixed::Obj(o) } } }');
+        $w->line('impl php_rt::CastTo<Mixed> for AnyObject { fn cast_to(self) -> Mixed { Mixed::Obj(self.0) } }');
         $w->line('impl php_rt::CastTo<AnyObject> for Mixed { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(self) } }');
-        $w->line('impl php_rt::TryDowncast for AnyObject { fn try_downcast(o: &AnyObj) -> Option<Self> { Some(AnyObject::from_mixed(Mixed::Obj(o.clone()))) } }');
+        $w->line('impl php_rt::TryDowncast for AnyObject { fn try_downcast(o: &AnyObj) -> Option<Self> { Some(AnyObject(o.clone())) } }');
         $w->line('impl php_rt::Truthy for AnyObject { fn truthy(&self) -> bool { true } }');
         $w->line('impl php_rt::Identical for AnyObject { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }');
-        $w->line('impl php_rt::PhpCmp for AnyObject { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }');
+        $w->line('impl php_rt::PhpCmp for AnyObject { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { Mixed::Obj(self.0.clone()).php_cmp(&Mixed::Obj(o.0.clone())) } }');
         $w->line('impl php_rt::ToStr for AnyObject { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_str(self.class_name())) } }');
         $w->line('impl std::fmt::Debug for AnyObject { fn fmt(&self, f: &mut std::fmt::Formatter<\'_>) -> std::fmt::Result { write!(f, "object({})", self.class_name()) } }');
-        $w->line('pub fn php_clone_mixed(m: Mixed) -> Mixed { match m { Mixed::Obj(_) => cast::<Mixed>(AnyObject::from_mixed(m).php_clone()), other => other } }');
-        $w->line('impl php_rt::PhpClone for AnyObject { fn php_clone(&self) -> Self { match self { ' . implode(', ', array_map(fn(ClassModel $c) => 'AnyObject::' . $c->variant() . '(h) => AnyObject::' . $c->variant() . '(h.php_clone())', $concrete)) . ($concrete ? ', ' : '') . 'AnyObject::Other(o) => AnyObject::Other(o.clone()) } } }');
+        $w->line('pub fn php_clone_mixed(m: Mixed) -> Mixed { match m { Mixed::Obj(o) => Mixed::Obj(o.php_clone_dyn()), other => other } }');
+        $w->line('impl php_rt::PhpClone for AnyObject { fn php_clone(&self) -> Self { AnyObject(self.0.php_clone_dyn()) } }');
 
         $this->emitInit($w, 0);
 

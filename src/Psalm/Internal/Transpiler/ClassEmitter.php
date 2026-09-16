@@ -825,6 +825,7 @@ final class ClassEmitter
         $w->line('fn class_ancestor_ids(&self) -> &\'static [u32] { ' . $this->ancestorIdsLiteral($cls) . ' }');
         $w->line('fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }');
         $w->line('fn as_any(&self) -> &dyn std::any::Any { self }');
+        $w->line('fn php_clone_dyn(&self) -> AnyObj { Rc::new(self.php_clone()) }');
         $props = [];
         foreach ($cls->fields as $f) {
             $get = $f->isLate() ? 'self.' . $f->acc() . '_opt()' : 'Some(self.' . $f->acc() . '_get())';
@@ -1004,6 +1005,7 @@ final class ClassEmitter
         $w->line('fn class_ancestor_ids(&self) -> &\'static [u32] { match self { ' . $arms('class_ancestor_ids()') . ' } }');
         $w->line('fn obj_id(&self) -> usize { match self { ' . $arms('obj_id()') . ' } }');
         $w->line('fn as_any(&self) -> &dyn std::any::Any { self }');
+        $w->line('fn php_clone_dyn(&self) -> AnyObj { match self { ' . $arms('php_clone_dyn()') . ' } }');
         $w->line('fn props(&self) -> Vec<(Str, Mixed)> { match self { ' . $arms('props()') . ' } }');
         $w->line('fn set_prop(&self, name: &str, value: Mixed) -> bool { match self { ' . $arms('set_prop(name, value)') . ' } }');
         $w->line('fn get_prop(&self, name: &str) -> Option<Mixed> { match self { ' . $arms('get_prop(name)') . ' } }');

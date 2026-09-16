@@ -393,16 +393,17 @@ final class CastEmitter
         $none = ($cls->isLeaf() || $closed) ? 'None' : 'if o.instance_of_id(' . $this->program->classId($cls) . ') { Some(' . $h . '::Other__(Mixed::Obj(o.clone()))) } else { None }';
         $w->line('impl php_rt::TryDowncast for ' . $h . ' { fn try_downcast(o: &AnyObj) -> Option<Self> { match o.class_id() { ' . implode(' ', $some_arms) . ' _ => {} } ' . $none . ' } }');
         // AnyObject
-        // to AnyObject: the concrete own handle becomes its AnyObject variant directly (no Mixed round trip)
-        if ($cls->isLeaf() && $cls->crate === 0 && !$cls->isEnum()) {
-            $w->line('impl php_rt::CastTo<AnyObject> for ' . $h . ' { fn cast_to(self) -> AnyObject { AnyObject::' . $cls->variant() . '(self) } }');
-        } elseif ($closed && $cls->concrete !== [] && !array_filter($cls->concrete, static fn(ClassModel $c) => $c->crate !== 0 || $c->isEnum())) {
-            $arms = array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(v) => AnyObject::' . $c->variant() . '(v)', $cls->concrete);
+        // to AnyObject: the concrete own handle is erased directly (no Mixed round trip)
+        if ($cls->isLeaf() && !$cls->isEnum()) {
+            $w->line('impl php_rt::CastTo<AnyObject> for ' . $h . ' { fn cast_to(self) -> AnyObject { AnyObject(Rc::new(self)) } }');
+        } elseif ($closed && $cls->concrete !== [] && !array_filter($cls->concrete, static fn(ClassModel $c) => $c->isEnum())) {
+            $arms = array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(v) => AnyObject(Rc::new(v))', $cls->concrete);
             $w->line('impl php_rt::CastTo<AnyObject> for ' . $h . ' { fn cast_to(self) -> AnyObject { match self { ' . implode(', ', $arms) . ', _ => unreachable!() } } }');
         } else {
             $w->line('impl php_rt::CastTo<AnyObject> for ' . $h . ' { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }');
         }
-        $w->line('impl php_rt::CastTo<' . $h . '> for AnyObject { fn cast_to(self) -> ' . $h . ' { cast::<' . $h . '>(cast::<Mixed>(self)) } }');
+        // from AnyObject: the hierarchy's class-id match (its TryDowncast)
+        $w->line('impl php_rt::CastTo<' . $h . '> for AnyObject { fn cast_to(self) -> ' . $h . ' { php_rt::try_downcast::<' . $h . '>(&self.0).unwrap_or_else(|| panic!(' . Names::rustStringLiteral('object is not a ' . $cls->fqcn) . ')) } }');
         $w->line('impl php_rt::InstanceOf<' . $h . '> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_id(' . $this->program->classId($cls) . ') } }');
         $w->line('impl php_rt::InstanceOf<' . $h . '> for Mixed { fn is_instance(&self) -> bool { self.instance_of_id(' . $this->program->classId($cls) . ') } }');
         if ($cls->isLeaf() || $closed) {
