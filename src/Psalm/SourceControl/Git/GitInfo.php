@@ -53,7 +53,9 @@ final class GitInfo extends SourceControlInfo
     }
 
     #[Override]
-    /** @return array<string, mixed> */
+    /**
+     * @return array{branch: string, head: array{id: string, author_name: string, author_email: string, committer_name: string, committer_email: string, message: string, date: int}, remotes: list<array{name: string, url: string}>}
+     */
     public function toArray(): array
     {
         $remotes = [];

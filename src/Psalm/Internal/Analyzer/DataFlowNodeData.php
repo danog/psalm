@@ -31,4 +31,26 @@ final class DataFlowNodeData
         public readonly int $column_to,
     ) {
     }
+
+    /**
+     * The node as the report serializers emit it (every public property, in declaration order).
+     *
+     * @return array{label: string, line_from: int, line_to: int, file_name: string, file_path: string, snippet: string, from: int, to: int, snippet_from: int, column_from: int, column_to: int}
+     */
+    public function toArray(): array
+    {
+        return [
+            'label' => $this->label,
+            'line_from' => $this->line_from,
+            'line_to' => $this->line_to,
+            'file_name' => $this->file_name,
+            'file_path' => $this->file_path,
+            'snippet' => $this->snippet,
+            'from' => $this->from,
+            'to' => $this->to,
+            'snippet_from' => $this->snippet_from,
+            'column_from' => $this->column_from,
+            'column_to' => $this->column_to,
+        ];
+    }
 }

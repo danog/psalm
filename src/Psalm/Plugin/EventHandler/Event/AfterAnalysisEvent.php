@@ -42,7 +42,7 @@ final class AfterAnalysisEvent
         return $this->issues;
     }
 
-    /** @return array<string, mixed> */
+    /** @return array<string, string> */
     public function getBuildInfo(): array
     {
         return $this->build_info;

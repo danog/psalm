@@ -318,7 +318,7 @@ final class Psalm
             $plugins_from_options = $options['plugin'];
 
             if (is_array($plugins_from_options)) {
-                $plugins = $plugins_from_options;
+                $plugins = array_values(array_filter($plugins_from_options, 'is_string'));
             } elseif (is_string($plugins_from_options)) {
                 $plugins = [$plugins_from_options];
             }

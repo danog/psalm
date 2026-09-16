@@ -30,7 +30,7 @@ final class XmlReport extends Report
 
                         if (null !== $issue_data['taint_trace']) {
                             $issue_data['taint_trace'] = array_map(
-                                static fn($trace): array => (array) $trace,
+                                static fn(DataFlowNodeData|array $trace): array => $trace instanceof DataFlowNodeData ? $trace->toArray() : $trace,
                                 $issue_data['taint_trace'],
                             );
                         }
@@ -40,7 +40,7 @@ final class XmlReport extends Report
 
                         if (null !== $issue_data['other_references']) {
                             $issue_data['other_references'] = array_map(
-                                static fn(DataFlowNodeData $reference): array => (array) $reference,
+                                static fn(DataFlowNodeData $reference): array => $reference->toArray(),
                                 $issue_data['other_references'],
                             );
                         }

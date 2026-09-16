@@ -50,7 +50,7 @@ final class CommitInfo
 
     /**
      * @psalm-mutation-free
-     * @return array<string, mixed>
+     * @return array{id: string, author_name: string, author_email: string, committer_name: string, committer_email: string, message: string, date: int}
      */
     public function toArray(): array
     {
