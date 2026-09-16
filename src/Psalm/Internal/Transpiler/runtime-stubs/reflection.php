@@ -55,6 +55,75 @@ class ReflectionFunction
     {
         return [];
     }
+
+    /** No return type information exists for functions in a compiled program. */
+    public function getReturnType(): ?ReflectionType
+    {
+        return null;
+    }
+
+    public function getTentativeReturnType(): ?ReflectionType
+    {
+        return null;
+    }
+
+    public function hasReturnType(): bool
+    {
+        return false;
+    }
+}
+
+abstract class ReflectionType
+{
+    public function allowsNull(): bool
+    {
+        return true;
+    }
+
+    abstract public function __toString(): string;
+}
+
+final class ReflectionNamedType extends ReflectionType
+{
+    public function __construct(private readonly string $name)
+    {
+    }
+
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function isBuiltin(): bool
+    {
+        return true;
+    }
+
+    #[\Override]
+    public function __toString(): string
+    {
+        return $this->name;
+    }
+}
+
+final class ReflectionUnionType extends ReflectionType
+{
+    /** @param list<ReflectionNamedType> $types */
+    public function __construct(private readonly array $types)
+    {
+    }
+
+    /** @return list<ReflectionNamedType> */
+    public function getTypes(): array
+    {
+        return $this->types;
+    }
+
+    #[\Override]
+    public function __toString(): string
+    {
+        return implode('|', array_map(static fn(ReflectionNamedType $t): string => $t->getName(), $this->types));
+    }
 }
 
 class ReflectionClass
@@ -135,6 +204,12 @@ class ReflectionClass
     }
 
     /** @return string|false */
+    /** Source positions are not available for classes in a compiled program. */
+    public function getStartLine(): int|false
+    {
+        return false;
+    }
+
     public function getFileName()
     {
         $file = __rt_class_file($this->name);
