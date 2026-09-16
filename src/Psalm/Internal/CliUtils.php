@@ -62,6 +62,7 @@ use const STDIN;
  * @internal
  *
  * @psalm-import-type ComposerJson from Composer
+ * @psalm-type CliOptions = array<string, string|false|list<string|false>>
  */
 final class CliUtils
 {
@@ -488,7 +489,9 @@ final class CliUtils
         file_put_contents($config_file, $amended_config_file_contents);
     }
 
-    /** @param array<string, bool|string|list<string|false>> $options */
+    /** @param array<string, bool|string|list<string|false>> $options 
+     * @param CliOptions $options
+     */
     public static function getPathToConfig(array $options): ?string
     {
         $path_to_config = isset($options['c']) && is_string($options['c']) ? realpath($options['c']) : null;
@@ -501,7 +504,7 @@ final class CliUtils
     }
 
     /**
-     * @param array<string,string|false|list<string|false>> $options
+     * @param CliOptions $options
      * @throws ConfigException
      */
     public static function setMemoryLimit(array $options, string $display_error = 'stderr'): void
@@ -524,7 +527,9 @@ final class CliUtils
         }
     }
 
-    /** @param array<string, bool|string|list<string|false>> $options */
+    /** @param array<string, bool|string|list<string|false>> $options 
+     * @param CliOptions $options
+     */
     public static function initPhpVersion(array $options, Config $config, ProjectAnalyzer $project_analyzer): void
     {
         $source = null;
