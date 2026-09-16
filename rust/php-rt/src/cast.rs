@@ -357,3 +357,44 @@ closure_casts!(3, A1, A2, A3);
 closure_casts!(4, A1, A2, A3, A4);
 closure_casts!(5, A1, A2, A3, A4, A5);
 closure_casts!(6, A1, A2, A3, A4, A5, A6);
+
+
+/// The uniform bound of a Rust generic parameter standing for a PHP `@template T`: every PHP value type
+/// (scalars, containers, generated class handles/unions/shapes) implements these, so a generic function can
+/// compare, print, test and clone its arguments without a dynamically typed representation.
+pub trait PhpValue:
+    Clone
+    + std::fmt::Debug
+    + crate::traits::Identical
+    + crate::traits::PhpCmp
+    + crate::traits::Truthy
+    + crate::traits::ToStr
+    + CastTo<crate::mixed::Mixed>
+    + Send
+    + Sync
+    + 'static
+{
+}
+impl<T> PhpValue for T where
+    T: Clone
+        + std::fmt::Debug
+        + crate::traits::Identical
+        + crate::traits::PhpCmp
+        + crate::traits::Truthy
+        + crate::traits::ToStr
+        + CastTo<crate::mixed::Mixed>
+        + Send
+        + Sync
+        + 'static
+{
+}
+
+/// A generic value narrowed by the analysis to a concrete type (`is_string($x)` on a `T`): the static type is
+/// recovered by downcasting the generic (the analysis proved the branch).
+pub fn gcast<To: 'static>(v: impl std::any::Any) -> To {
+    let b: Box<dyn std::any::Any> = Box::new(v);
+    match b.downcast::<To>() {
+        Ok(x) => *x,
+        Err(_) => panic!("generic value is not of the narrowed type {}", std::any::type_name::<To>()),
+    }
+}

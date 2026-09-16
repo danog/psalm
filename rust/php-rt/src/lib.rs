@@ -47,7 +47,7 @@ pub fn fast_map<K, V>() -> FastMap<K, V> {
 pub use error::{RtError, Flow, R, Never, never, dead, uncaught, do_throw, take_thrown, take_thrown_opt, install_throw_panic_hook, PhpThrow, PhpThrowable};
 pub use traits::*;
 pub use ops::*;
-pub use cast::{CastTo, cast};
+pub use cast::{CastTo, cast, PhpValue, gcast};
 pub use support::*;
 pub use containers::*;
 pub use conv::Num;
