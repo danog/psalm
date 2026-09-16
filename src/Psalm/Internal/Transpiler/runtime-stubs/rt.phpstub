@@ -1,0 +1,23 @@
+<?php
+
+/**
+ * Psalm-visible declarations of the transpiler's runtime hook functions (implemented natively in php-rt and
+ * mapped by Builtins.php, so they have no PHP body): analysis sees their precise types instead of `mixed`.
+ */
+
+/** @return list<array{int, string, int, int}> */
+function __rt_tokenize(string $code): array {}
+
+/** @return mixed */
+function __rt_xml_parse(string $xml) {}
+
+function __rt_xml_escape(string $text, bool $attribute = false): string {}
+
+function __rt_class_file(string $class): ?string {}
+
+function __rt_function_is_builtin(string $name): bool {}
+
+function __rt_class_is_trait(string $class): bool {}
+
+/** @return array<string, mixed> */
+function __rt_class_constants(string $class): array {}

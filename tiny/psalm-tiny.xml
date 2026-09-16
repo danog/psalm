@@ -12,6 +12,9 @@
     usePhpDocMethodsWithoutMagicCall="true"
     cacheDirectory="build/psalm-cache-tiny"
 >
+    <stubs>
+        <file name="../src/Psalm/Internal/Transpiler/runtime-stubs/rt.phpstub"/>
+    </stubs>
     <projectFiles>
         <directory name="../src/Psalm/Internal/Transpiler/runtime-stubs"/>
         <directory name="php"/>
