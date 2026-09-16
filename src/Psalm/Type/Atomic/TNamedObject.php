@@ -270,8 +270,10 @@ class TNamedObject extends Atomic
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
+        // SSA/typed-local (transpiler): narrow $node BEFORE the assignment so $self's storage type is the concrete
+        // `self` (not the TypeNode union), letting $self->extra_types be a typed write on the concrete Rc<T>.
+        assert($node instanceof self);
         $self = $node;
-        assert($self instanceof self);
         $values = $self->extra_types;
         $changed = false;
         $result = true;

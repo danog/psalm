@@ -756,8 +756,8 @@ final class TKeyedArray extends Atomic
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
+        assert($node instanceof self);
         $self = $node;
-        assert($self instanceof self);
         $values = $self->properties;
         $changed = false;
         $result = true;

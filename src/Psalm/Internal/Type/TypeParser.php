@@ -1249,7 +1249,10 @@ final class TypeParser
         if ($intersect_static
             && $first_type instanceof TNamedObject
         ) {
-            $first_type->is_static = true;
+            // typed-local (transpiler): write is_static on a TNamedObject-typed local, not the Atomic-typed $first_type
+            $named_first = $first_type;
+            $named_first->is_static = true;
+            $first_type = $named_first;
         }
 
         if ($keyed_intersection_types) {

@@ -66,8 +66,8 @@ final class TObjectWithProperties extends TObject
         $cloned = clone $this;
         $cloned->properties = $properties;
 
-        $cloned->is_stringable_object_only =
-            $cloned->properties === [] && $cloned->methods === ['__tostring' => 'string'];
+        $stringable_only = $cloned->properties === [] && $cloned->methods === ['__tostring' => 'string'];
+        $cloned->is_stringable_object_only = $stringable_only;
 
         return $cloned;
     }
@@ -83,8 +83,8 @@ final class TObjectWithProperties extends TObject
         $cloned = clone $this;
         $cloned->methods = $methods;
 
-        $cloned->is_stringable_object_only =
-            $cloned->properties === [] && $cloned->methods === ['__tostring' => 'string'];
+        $stringable_only = $cloned->properties === [] && $cloned->methods === ['__tostring' => 'string'];
+        $cloned->is_stringable_object_only = $stringable_only;
 
         return $cloned;
     }
@@ -334,8 +334,8 @@ final class TObjectWithProperties extends TObject
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
+        assert($node instanceof self);
         $self = $node;
-        assert($self instanceof self);
         $values = $self->properties;
         $changed = false;
         $result = true;

@@ -167,8 +167,8 @@ class TClassString extends TString
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
+        assert($node instanceof self);
         $self = $node;
-        assert($self instanceof self);
         if ($self->as_type !== null) {
             $value = $self->as_type;
             $result = $visitor->traverse($value);

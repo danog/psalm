@@ -102,8 +102,8 @@ final class TPropertiesOf extends Atomic
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
+        assert($node instanceof self);
         $self = $node;
-        assert($self instanceof self);
         $value = $self->classlike_type;
         $result = $visitor->traverse($value);
         if ($value !== $self->classlike_type) {

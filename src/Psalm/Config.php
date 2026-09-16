@@ -1108,8 +1108,8 @@ final class Config
 
         $no_cache = false;
         if (isset($config_xml['noCache'])) {
-            $no_cache = (string) $config_xml['noCache'];
-            $no_cache = $no_cache === '1' || $no_cache === 'true';
+            $no_cache_text = (string) $config_xml['noCache'];
+            $no_cache = $no_cache_text === '1' || $no_cache_text === 'true';
         }
         if ($no_cache) {
             $config->cache_directory = null;
@@ -1197,15 +1197,15 @@ final class Config
         }
 
         if (isset($config_xml['errorLevel'])) {
-            $attribute_text = (int) $config_xml['errorLevel'];
+            $error_level = (int) $config_xml['errorLevel'];
 
-            if (!in_array($attribute_text, [1, 2, 3, 4, 5, 6, 7, 8], true)) {
+            if (!in_array($error_level, [1, 2, 3, 4, 5, 6, 7, 8], true)) {
                 throw new ConfigException(
                     'Invalid error level ' . $config_xml['errorLevel'],
                 );
             }
 
-            $config->level = $attribute_text;
+            $config->level = $error_level;
         } else {
             $config->level = 2;
         }
@@ -1225,18 +1225,18 @@ final class Config
         }
 
         if (isset($config_xml['maxStringLength'])) {
-            $attribute_text = (int)$config_xml['maxStringLength'];
-            $config->max_string_length = $attribute_text;
+            $max_string_length = (int)$config_xml['maxStringLength'];
+            $config->max_string_length = $max_string_length;
         }
 
         if (isset($config_xml['maxShapedArraySize'])) {
-            $attribute_text = (int)$config_xml['maxShapedArraySize'];
-            $config->max_shaped_array_size = $attribute_text;
+            $max_shaped_array_size = (int)$config_xml['maxShapedArraySize'];
+            $config->max_shaped_array_size = $max_shaped_array_size;
         }
 
         if (isset($config_xml['longScanWarning'])) {
-            $attribute_text = (float)$config_xml['longScanWarning'];
-            $config->long_scan_warning = $attribute_text;
+            $long_scan_warning = (float)$config_xml['longScanWarning'];
+            $config->long_scan_warning = $long_scan_warning;
         }
 
         if (isset($config_xml['inferPropertyTypesFromConstructor'])) {
@@ -1783,18 +1783,20 @@ final class Config
         $from = str_replace('\\', '/', $from);
         $to   = str_replace('\\', '/', $to);
 
-        $from     = explode('/', $from);
-        $to       = explode('/', $to);
-        $relPath  = $to;
+        // SSA: distinct names for the exploded path segment lists so the string vars above stay `string` (one type
+        // per variable name, pzoom-style — no `string|list<string>` union local).
+        $from_parts = explode('/', $from);
+        $to_parts   = explode('/', $to);
+        $relPath    = $to_parts;
 
-        foreach ($from as $depth => $dir) {
+        foreach ($from_parts as $depth => $dir) {
             // find first non-matching dir
-            if ($dir === $to[$depth]) {
+            if ($dir === $to_parts[$depth]) {
                 // ignore this directory
                 array_shift($relPath);
             } else {
                 // get number of remaining dirs to $from
-                $remaining = count($from) - $depth;
+                $remaining = count($from_parts) - $depth;
                 if ($remaining > 1) {
                     // add traversals up to first matching dir
                     $padLength = (count($relPath) + $remaining - 1) * -1;

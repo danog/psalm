@@ -419,8 +419,8 @@ final class Union implements TypeNode
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
+        assert($node instanceof self);
         $self = $node;
-        assert($self instanceof self);
         $result = true;
         $changed = false;
         $types = $self->types;

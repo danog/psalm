@@ -157,8 +157,8 @@ final class TCallable extends Atomic
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
+        assert($node instanceof self);
         $self = $node;
-        assert($self instanceof self);
         if ($self->params !== null) {
             $values = $self->params;
             $changed = false;

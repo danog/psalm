@@ -194,8 +194,8 @@ class TArray extends Atomic
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
+        assert($node instanceof self);
         $self = $node;
-        assert($self instanceof self);
         $values = $self->type_params;
         $changed = false;
         $result = true;

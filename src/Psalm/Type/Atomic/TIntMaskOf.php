@@ -69,8 +69,8 @@ final class TIntMaskOf extends TInt
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
+        assert($node instanceof self);
         $self = $node;
-        assert($self instanceof self);
         $value = $self->value;
         $result = $visitor->traverse($value);
         if ($value !== $self->value) {
