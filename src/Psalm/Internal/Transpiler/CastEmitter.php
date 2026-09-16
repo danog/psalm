@@ -802,6 +802,12 @@ final class CastEmitter
         $parts = ['if self.obj_id() == o.obj_id() { return std::cmp::Ordering::Equal; }'];
         foreach ($cls->fields as $f) {
             $get = $f->isLate() ? $f->acc() . '_opt()' : $f->acc() . '_get()';
+            $inner = $f->type->kind === RustType::OPTION ? $f->type->inner() : $f->type;
+            if (in_array($inner->kind, [RustType::CLOSURE, RustType::DYN_CALLABLE, RustType::RT_GENERIC], true)) {
+                // closures and runtime containers compare by identity (PHP compares closures/iterators by handle)
+                $parts[] = '{ if !identical(&self.' . $get . ', &o.' . $get . ') { return std::cmp::Ordering::Greater; } }';
+                continue;
+            }
             $parts[] = '{ let __c = self.' . $get . '.php_cmp(&o.' . $get . '); if __c != std::cmp::Ordering::Equal { return __c; } }';
         }
         $parts[] = 'std::cmp::Ordering::Equal';
@@ -859,8 +865,13 @@ final class CastEmitter
             case RustType::CLASS_:
                 $c = $this->program->classOf($t);
                 return $c !== null && $c->is_project && !$c->isEnum() && !$c->isTrait();
+            case RustType::CLOSURE:
+            case RustType::DYN_CALLABLE:
+            case RustType::RT_GENERIC:
+            case RustType::GENERIC:
+                return true; // compared by identity (see fieldCmpBody) / PhpValue bound
             default:
-                return false; // closures, callables, tuples, runtime generics, generics
+                return false; // tuples
         }
     }
 
