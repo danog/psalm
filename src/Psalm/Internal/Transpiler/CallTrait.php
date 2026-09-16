@@ -430,7 +430,20 @@ trait CallTrait
                     }
                     return new Val('{ let _ = ' . $recv->code . '; ' . $this->finishCall($m->declaring->path() . '::' . $m->rustName() . '(' . implode(', ', $argc) . ')') . ' }', $m->return_type);
                 }
-                return new Val($this->finishCall($recv->code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')' . ($m->throws ? '?' : '')), $m->return_type);
+                // Owned/borrowed (axis 5): a `&self` method on a plain local receiver only needs to BORROW it — drop
+                // the defensive Rc-clone (`x.clone().m()` -> `x.m()`), saving a refcount bump on the hot call path.
+                // Safe: generated methods take &self/&mut self (never `self` by value) and return owned values, so the
+                // borrow is confined to the call. Only for &self (not immutable construction methods, which are &mut
+                // self and must own a fresh value); &self allows any number of concurrent borrows so args can't conflict.
+                $recv_code = $recv->code;
+                if ($e instanceof Expr\MethodCall && $e->var instanceof Expr\Variable && is_string($e->var->name)
+                    && $e->var->name !== 'this'
+                    && $recv_code === Names::var($e->var->name) . '.clone()'
+                    && !($m->declaring->immutable() && isset($m->declaring->constructionMethods()[$m->lc()]))
+                ) {
+                    $recv_code = Names::var($e->var->name);
+                }
+                return new Val($this->finishCall($recv_code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')' . ($m->throws ? '?' : '')), $m->return_type);
             }
             if ($cls !== null && $cls->isEnum()) {
                 return $this->enumStaticCall($cls, $lc, $args, $e, $recv);
