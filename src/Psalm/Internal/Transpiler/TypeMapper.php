@@ -19,6 +19,7 @@ use Psalm\Type\Atomic\TClassConstant;
 use Psalm\Type\Atomic\TCallableString;
 use Psalm\Type\Atomic\TClassString;
 use Psalm\Type\Atomic\TClassStringMap;
+use Psalm\Type\Atomic\TValueOf;
 use Psalm\Type\Atomic\TTraitString;
 use Psalm\Type\Atomic\TClosedResource;
 use Psalm\Type\Atomic\TClosure;
@@ -515,6 +516,19 @@ final class TypeMapper
         }
         if ($atomic instanceof TClassStringMap) {
             return RustType::map(RustType::str(), $this->map($atomic->value_param));
+        }
+        if ($atomic instanceof TValueOf) {
+            // `value-of<Enum|array>` -> the underlying value type (e.g. a backed enum's backing int/string),
+            // rather than falling back to Mixed.
+            try {
+                $resolved = TValueOf::getValueType($atomic->type, $this->codebase);
+            } catch (\Throwable) {
+                $resolved = null;
+            }
+            if ($resolved !== null) {
+                return $this->map($resolved);
+            }
+            return $this->mixedRoot('TValueOf');
         }
 
         $this->unsupported[$atomic::class] = ($this->unsupported[$atomic::class] ?? 0) + 1;
