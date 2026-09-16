@@ -124,10 +124,54 @@ final class TypeMapper
         'traversable' => 'Generator',
     ];
 
+    /**
+     * Rust generic parameters in scope (PHP template name => Rust generic name) while mapping the signature
+     * and body of a generic function: an unbounded `@template T` maps to a Rust generic `T` instead of Mixed.
+     *
+     * @var array<string, string>
+     */
+    public array $generic_names = [];
+
     public function __construct(
         private readonly Codebase $codebase,
         private readonly Program $program,
     ) {
+    }
+
+    /**
+     * The unbounded (`mixed`-bounded) fn-level templates of a function, as Rust generic names.
+     *
+     * @return array<string, string>
+     */
+    /**
+     * Whether a template param has no concrete bound: its `as` is `mixed`, or (as Psalm types a value re-derived
+     * from the template inside the body) `T|mixed` / `T as (T as mixed)|mixed` — the same param nested.
+     */
+    private static function isUnboundedTemplate(TTemplateParam $t, int $depth = 0): bool
+    {
+        foreach ($t->as->getAtomicTypes() as $a) {
+            if ($a instanceof TMixed) {
+                continue;
+            }
+            if ($a instanceof TTemplateParam && $a->param_name === $t->param_name && $depth < 6 && self::isUnboundedTemplate($a, $depth + 1)) {
+                continue;
+            }
+            return false;
+        }
+        return true;
+    }
+
+    public static function genericNamesOf(\Psalm\Storage\FunctionLikeStorage $storage): array
+    {
+        $out = [];
+        foreach ($storage->template_types ?? [] as $name => $defs) {
+            foreach ($defs as $bound) {
+                if ($bound->isMixed()) {
+                    $out[$name] = 'G_' . preg_replace('/[^A-Za-z0-9_]/', '_', $name);
+                }
+            }
+        }
+        return $out;
     }
 
     /** Count a `Mixed` type at its root cause (drive-to-zero diagnostics), returning `Mixed`. */
@@ -465,6 +509,9 @@ final class TypeMapper
             return RustType::dynCallable();
         }
         if ($atomic instanceof TTemplateParam) {
+            if (isset($this->generic_names[$atomic->param_name]) && self::isUnboundedTemplate($atomic)) {
+                return RustType::generic($this->generic_names[$atomic->param_name]);
+            }
             return $this->map($atomic->as);
         }
         if ($atomic instanceof TEnumCase) {

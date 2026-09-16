@@ -86,6 +86,17 @@ final class Casts
         $fk = $from->kind;
         $tk = $to->kind;
 
+        // Rust generics: a value flows into/out of a generic parameter unchanged (rustc infers/checks T);
+        // a generic narrowed by Psalm to a concrete type is downcast (Any) at the narrowing point.
+        if ($to->hasGeneric()) {
+            return $code;
+        }
+        if ($from->hasGeneric()) {
+            if ($tk === RustType::MIXED) {
+                return 'cast::<Mixed>(' . $code . ')';
+            }
+            return 'php_rt::gcast::<' . $to->toRust() . '>(' . $code . ')';
+        }
         if ($fk === RustType::NEVER) {
             return 'never(' . $code . ')';
         }

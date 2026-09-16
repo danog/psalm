@@ -163,6 +163,8 @@ final class Program
         foreach ($this->functions as $fn) {
             $this->types->current_crate = $this->crateOfRecord($fn->record);
             $this->resolveSignature($fn->record->storage, $fn->param_types, $fn->return_type, $fn->record->node);
+            $fn->generics = $this->last_generics;
+            $this->types->generic_names = [];
             $this->computeBorrowParams($fn);
         }
         $this->types->current_crate = 0;
@@ -1452,6 +1454,8 @@ final class Program
         $this->types->current_class = $body_owner->fqcn;
         $this->types->current_crate = $body_owner->crate;
         $this->resolveSignature($storage, $method->param_types, $method->return_type, $method->node);
+        $method->generics = $this->last_generics;
+        $this->types->generic_names = [];
         $this->types->current_class = $saved;
         $this->types->current_crate = $saved_crate;
         // by-reference parameters must keep the type of the root declaration so dispatch signatures agree
@@ -1866,8 +1870,17 @@ final class Program
         return $type->getId() === $signature_type->getId();
     }
 
+    /** The generics of the signature resolved last (a side result of resolveSignature). @var array<string, string> */
+    private array $last_generics = [];
+
     private function resolveSignature(FunctionLikeStorage $storage, array &$param_types, RustType &$return_type, ?\PhpParser\Node $node = null): void
     {
+        // Rust generics: an unbounded fn-level @template becomes a generic parameter for single-implementation
+        // callees (free functions, static and private methods); dispatched methods keep the Mixed mapping.
+        $generic_ok = !($storage instanceof MethodStorage) || $storage->is_static
+            || $storage->visibility === \Psalm\Internal\Analyzer\ClassLikeAnalyzer::VISIBILITY_PRIVATE;
+        $this->last_generics = $generic_ok ? TypeMapper::genericNamesOf($storage) : [];
+        $this->types->generic_names = $this->last_generics;
         $param_types = [];
         $fn = ($storage instanceof \Psalm\Storage\MethodStorage && $storage->defining_fqcln !== null ? $storage->defining_fqcln . '::' : '') . ($storage->cased_name ?? '{closure}');
         // Overriding methods without their own docblock inherit the overridden method's docblock types (the

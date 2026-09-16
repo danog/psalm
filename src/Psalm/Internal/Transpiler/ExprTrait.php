@@ -52,7 +52,59 @@ trait ExprTrait
 
     public function exprTo(Expr $e, RustType $to): string
     {
+        if ($to->hasGeneric()) {
+            // an argument for a generic parameter: emitted in its own natural type (rustc infers/checks T), with
+            // the parameter's container structure kept (`list<T>` takes a List of the literal's element type,
+            // not the tuple/shape the literal would naturally be)
+            $unified = $this->unifyGeneric($to, $this->inferred($e));
+            return $this->expr($e, $unified !== null && !$unified->hasGeneric() ? $unified : null)->code;
+        }
         return $this->expr($e, $to)->code;
+    }
+
+    /** The generic-containing target type with its generics bound from a concrete type of the same structure. */
+    private function unifyGeneric(RustType $target, ?RustType $actual): ?RustType
+    {
+        if ($actual === null) {
+            return null;
+        }
+        if ($target->kind === RustType::GENERIC) {
+            return $actual;
+        }
+        if (!$target->hasGeneric()) {
+            return $target;
+        }
+        $types = $this->types();
+        switch ($target->kind) {
+            case RustType::OPTION:
+                $inner = $this->unifyGeneric($target->inner(), $actual->kind === RustType::OPTION ? $actual->inner() : $actual);
+                return $inner === null ? null : RustType::option($inner);
+            case RustType::LIST:
+                if ($actual->kind === RustType::LIST) {
+                    $elem = $this->unifyGeneric($target->inner(), $actual->inner());
+                } elseif ($actual->kind === RustType::TUPLE && $actual->params !== []) {
+                    $elem = $this->unifyGeneric($target->inner(), $types->combine($actual->params));
+                } else {
+                    return null;
+                }
+                return $elem === null ? null : RustType::list($elem);
+            case RustType::MAP:
+                if ($actual->kind === RustType::MAP) {
+                    $k = $this->unifyGeneric($target->params[0], $actual->params[0]);
+                    $v = $this->unifyGeneric($target->params[1], $actual->params[1]);
+                } elseif ($actual->kind === RustType::SHAPE && $actual->fields !== []) {
+                    $k = $this->unifyGeneric($target->params[0], $this->allIntKeys($actual) ? RustType::int() : RustType::str());
+                    $v = $this->unifyGeneric($target->params[1], $types->combine(array_map(static fn(array $f) => $f[0], array_values($actual->fields))));
+                } elseif ($actual->kind === RustType::LIST) {
+                    $k = $this->unifyGeneric($target->params[0], RustType::int());
+                    $v = $this->unifyGeneric($target->params[1], $actual->inner());
+                } else {
+                    return null;
+                }
+                return $k === null || $v === null ? null : RustType::map($k, $v);
+            default:
+                return null;
+        }
     }
 
     /** Emit an expression yielding an owned value of its natural Rust type. */

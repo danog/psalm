@@ -440,7 +440,16 @@ final class ClassEmitter
         // writes $this in place and needs &mut self even though $m->declaring (the base) is not a leaf.
         $recv = ($force_mut_self || ($m->declaring->immutable() && isset($m->declaring->constructionMethods()[$m->lc()]))) ? '&mut self' : '&self';
         $self = $with_self ? $recv . ($params ? ', ' : '') : '';
-        return '(' . $self . implode(', ', $params) . ') -> ' . $this->retType($m);
+        return self::genericParams($m->generics) . '(' . $self . implode(', ', $params) . ') -> ' . $this->retType($m);
+    }
+
+    /** `<G_T: php_rt::PhpValue, ...>` for a generic fn (every PHP value type implements PhpValue). */
+    public static function genericParams(array $generics): string
+    {
+        if ($generics === []) {
+            return '';
+        }
+        return '<' . implode(', ', array_map(static fn(string $g) => $g . ': php_rt::PhpValue', array_values($generics))) . '>';
     }
 
     /** Axis-8: `Result<T, Throw>` for throwing methods (default), bare `T` for provably non-throwing ones. */
@@ -660,6 +669,7 @@ final class ClassEmitter
             return "    unreachable!(\"method " . $m->name . " was not analyzed\")\n";
         }
         $b = new BodyEmitter($this->program, $m->record, $cls, $this->casts, $this->builtins, $this->diag, null, $static_class);
+        $b->generics = $m->generics;
         if ($m->isStatic()) {
             $b->this_type = null;
         }

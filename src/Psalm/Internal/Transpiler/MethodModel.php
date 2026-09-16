@@ -14,6 +14,8 @@ final class MethodModel
 {
     /** @var list<RustType> */
     public array $param_types = [];
+    /** @var array<string, string> PHP template name => Rust generic parameter (see TypeMapper::$generic_names) */
+    public array $generics = [];
 
     /**
      * Owned/borrowed (axis 5): parameter indices received as `&T` (non-escaping read-only). Finalised by
@@ -64,6 +66,7 @@ final class MethodModel
     {
         $m = new MethodModel($this->name, $declaring, $this->storage, $this->node, $this->record);
         $m->param_types = $this->param_types;
+        $m->generics = $this->generics;
         $m->return_type = $this->return_type;
         $m->uses_lsb = $this->uses_lsb;
         $m->borrow_params = $this->borrow_params;

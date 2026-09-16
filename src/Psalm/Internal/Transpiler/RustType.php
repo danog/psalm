@@ -41,6 +41,8 @@ final class RustType
     public const ANY_OBJECT = 'any_object';
     public const RT_GENERIC = 'rt_generic';
     public const RESOURCE = 'resource';
+    /** a Rust generic type parameter of the enclosing fn (a PHP @template with no concrete bound) */
+    public const GENERIC = 'generic';
 
     /**
      * @param list<RustType> $params  type parameters (option/list/map/tuple/union members/closure params)
@@ -104,6 +106,30 @@ final class RustType
     {
         return self::intern(new self(self::RESOURCE));
     }
+    /** Whether the type mentions a generic parameter anywhere (so no concrete cast/literal can target it). */
+    public function hasGeneric(): bool
+    {
+        if ($this->kind === self::GENERIC) {
+            return true;
+        }
+        foreach ($this->params as $p) {
+            if ($p->hasGeneric()) {
+                return true;
+            }
+        }
+        foreach ($this->fields as $f) {
+            if ($f[0]->hasGeneric()) {
+                return true;
+            }
+        }
+        return $this->ret !== null && $this->ret->hasGeneric();
+    }
+
+    public static function generic(string $name): RustType
+    {
+        return self::intern(new self(self::GENERIC, [], $name));
+    }
+
     public static function anyObject(): RustType
     {
         return self::intern(new self(self::ANY_OBJECT));
@@ -282,6 +308,7 @@ final class RustType
             self::ARRAY_KEY => 'ArrayKey',
             self::RESOURCE => 'Rc<Resource>',
             self::ANY_OBJECT => 'AnyObject',
+            self::GENERIC => $this->name,
             self::DYN_CALLABLE => 'DynCallable',
             self::OPTION => 'Option<' . $this->params[0]->toRust() . '>',
             self::LIST => 'List<' . $this->params[0]->toRust() . '>',
@@ -312,6 +339,7 @@ final class RustType
             self::ARRAY_KEY => 'ArrayKey',
             self::RESOURCE => 'Resource',
             self::ANY_OBJECT => 'AnyObject',
+            self::GENERIC => 'G_' . $this->name,
             self::DYN_CALLABLE => 'DynCallable',
             self::OPTION => 'Opt_' . $this->params[0]->mangle(),
             self::LIST => 'List_' . $this->params[0]->mangle(),

@@ -11,6 +11,8 @@ final class FunctionModel
 {
     /** @var list<RustType> */
     public array $param_types = [];
+    /** @var array<string, string> PHP template name => Rust generic parameter (see TypeMapper::$generic_names) */
+    public array $generics = [];
 
     /**
      * Owned/borrowed (axis 5): parameter indices that are non-escaping read-only -> emitted as `&T` so

@@ -331,6 +331,7 @@ final class CrateEmitter
         $record = $fn->record;
         $b = new BodyEmitter($this->program, $record, null, $this->casts, $this->builtins, $this->diag, null);
         $b->this_type = null;
+        $b->generics = $fn->generics;
         $params = [];
         $decls = [];
         foreach ($record->storage->params as $i => $p) {
@@ -353,7 +354,7 @@ final class CrateEmitter
             $this->diag->warn('transpiler error: ' . $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine(), $record->node, $record->file_path);
             $body = "    unreachable!(\"transpiler error\")\n";
         }
-        $w->line('pub fn ' . $fn->rustName() . '(' . implode(', ', $decls) . ') -> ' . $fn->return_type->toRust() . ' {');
+        $w->line('pub fn ' . $fn->rustName() . ClassEmitter::genericParams($fn->generics) . '(' . implode(', ', $decls) . ') -> ' . $fn->return_type->toRust() . ' {');
         $w->raw($body);
         $w->line('}');
     }

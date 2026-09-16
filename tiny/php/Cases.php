@@ -629,6 +629,75 @@ function case_try_catch(): string
     return implode(',', $out);
 }
 
+// ---- feature: Rust generics for unbounded @template (no Mixed) ----
+
+final class GAssert
+{
+    /**
+     * @template T
+     * @param T $expected
+     * @param T $actual
+     */
+    public static function same($expected, $actual, string $label): string
+    {
+        if ($expected !== $actual) {
+            return $label . ':ne';
+        }
+        return $label . ':eq';
+    }
+
+    /**
+     * @template T
+     * @param T $value
+     * @return T
+     */
+    public static function identity($value)
+    {
+        return $value;
+    }
+
+    /**
+     * @template T
+     * @param list<T> $items
+     * @param T $needle
+     */
+    public static function has(array $items, $needle): bool
+    {
+        foreach ($items as $item) {
+            if ($item === $needle) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+/**
+ * @template T
+ * @param T $v
+ * @return string
+ */
+function g_describe($v): string
+{
+    return is_string($v) ? 'str' : (is_int($v) ? 'int' : 'other');
+}
+
+function case_generics(): string
+{
+    $out = [];
+    $out[] = GAssert::same(1, 1, 'i');
+    $out[] = GAssert::same('a', 'b', 's');
+    $out[] = GAssert::same([1, 2], [1, 2], 'l');
+    $out[] = (string) GAssert::identity(41 + 1);
+    $out[] = GAssert::identity('x') . 'y';
+    $out[] = GAssert::has(['p', 'q'], 'q') ? 'has' : 'no';
+    $out[] = GAssert::has([1, 2], 3) ? 'has' : 'no';
+    $a = new A(5);
+    $out[] = (string) GAssert::identity($a)->a;
+    $out[] = g_describe('s') . g_describe(3) . g_describe(1.5);
+    return implode(',', $out);
+}
+
 function run_all(): string
 {
     return check('nullable_union', case_nullable_union(), 'nullA7')
@@ -654,3 +723,4 @@ function run_all(): string
 }
     check('empty_arrays', case_empty_arrays(), 's0,s1|0|2');
     check('try_catch', case_try_catch(), '2,f,caught:big 3,f,outer,d,unhandled');
+    check('generics', case_generics(), 'i:eq,s:ne,l:eq,42,xy,has,no,5,strintother');

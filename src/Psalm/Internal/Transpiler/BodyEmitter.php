@@ -126,6 +126,8 @@ final class BodyEmitter
 
     /** class `self`/`parent` refer to (the declaring class of an inherited body emitted for a subclass); defaults to `class` */
     public ?ClassModel $self_class = null;
+    /** @var array<string, string> Rust generics of the fn being emitted (PHP template name => Rust name) */
+    public array $generics = [];
 
     public function __construct(
         public readonly Program $program,
@@ -149,12 +151,14 @@ final class BodyEmitter
         if ($parent !== null) {
             $this->this_expr = 'this';
             $this->this_type = $parent->this_type;
+            $this->generics = $parent->generics;
         }
     }
 
     public function types(): TypeMapper
     {
         $this->program->types->context = $this->type_context;
+        $this->program->types->generic_names = $this->generics;
         return $this->program->types;
     }
 
