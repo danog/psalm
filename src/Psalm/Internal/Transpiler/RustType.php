@@ -290,8 +290,9 @@ final class RustType
                 . (count($this->params) === 1 ? ',' : '') . ')',
             self::SHAPE, self::UNION => $this->mangle(),
             self::CLASS_ => Names::classPath($this->name),
+            // axis-7: closures stored in Send+Sync object graphs must be Send+Sync themselves
             self::CLOSURE => 'Rc<dyn Fn(' . implode(', ', array_map(static fn(RustType $p) => $p->toRust(), $this->params))
-                . ') -> ' . $this->ret->toRust() . '>',
+                . ') -> ' . $this->ret->toRust() . ' + Send + Sync>',
             self::RT_GENERIC => $this->name . '<' . implode(', ', array_map(static fn(RustType $p) => $p->toRust(), $this->params)) . '>',
         };
     }

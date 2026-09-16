@@ -1,0 +1,15 @@
+[package]
+name = "php-rt"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "php_rt"
+
+[dependencies]
+parking_lot = "0.12"
+memchr = "2"
+mimalloc = { version = "0.1", default-features = false }
+hashbrown = "0.15"
+pcre2 = "0.2"
+foldhash = "0.1"
