@@ -210,8 +210,9 @@ final class Casts
                 $mangle = $from->mangle();
                 $arms = [];
                 foreach ($from->params as $m) {
-                    if ($this->isUnit($m)) {
-                        $arms[] = $mangle . '::' . $this->unitName($m) . ' => None';
+                    $isUnit = $m->kind === RustType::RT_GENERIC && str_starts_with($m->name, '__unit_');
+                    if ($isUnit) {
+                        $arms[] = $mangle . '::' . substr($m->name, 7) . ' => None';
                     } elseif ($m->kind === RustType::OPTION) {
                         $arms[] = $mangle . '::' . $m->variantName() . '(__x) => ' . $this->convert('__x', $m, $to);
                     } else {
