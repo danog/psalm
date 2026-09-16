@@ -88,15 +88,16 @@ final class Casts
 
         // Rust generics: a value flows into/out of a generic parameter unchanged (rustc infers/checks T);
         // a generic narrowed by Psalm to a concrete type is downcast (Any) at the narrowing point.
-        if ($to->hasGeneric()) {
-            return $code;
+        if ($to->hasGeneric() && !$from->hasGeneric()) {
+            return $code; // a concrete value flowing into a generic slot: rustc infers T
         }
-        if ($from->hasGeneric()) {
+        if ($from->hasGeneric() && !$to->hasGeneric()) {
             if ($tk === RustType::MIXED) {
                 return 'cast::<Mixed>(' . $code . ')';
             }
             return 'php_rt::gcast::<' . $to->toRust() . '>(' . $code . ')';
         }
+        // both generic (List<T> -> Map<K, T>, T -> Option<T>): the ordinary structural conversion applies
         if ($fk === RustType::NEVER) {
             return 'never(' . $code . ')';
         }

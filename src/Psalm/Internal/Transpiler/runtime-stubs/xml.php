@@ -704,6 +704,18 @@ class DOMDocument extends DOMNode
         return new DOMText(new XmlNode('#text', $data, true), $this);
     }
 
+    /** A CDATA section is stored as a text node (the port serializes it as text). */
+    public function createCDATASection(string $data): DOMText
+    {
+        return new DOMText(new XmlNode('#text', $data, true), $this);
+    }
+
+    /** Namespace-qualified lookup: the port's XML model keeps local names only, so the namespace is ignored. */
+    public function getElementsByTagNameNS(?string $namespace, string $localName): DOMNodeList
+    {
+        return $this->getElementsByTagName($localName);
+    }
+
     public function getElementsByTagName(string $qualifiedName): DOMNodeList
     {
         $nodes = [];

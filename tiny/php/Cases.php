@@ -698,6 +698,75 @@ function case_generics(): string
     return implode(',', $out);
 }
 
+// ---- feature: typed PHPUnit (generic Assert + TestCase hooks, no Mixed) ----
+
+final class PuTest extends \PHPUnit\Framework\TestCase
+{
+    public int $setups = 0;
+
+    public function setUp(): void
+    {
+        $this->setups++;
+    }
+
+    public function testThrows(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('boom');
+        throw new \RuntimeException('kaboom');
+    }
+}
+
+function case_phpunit(): string
+{
+    $out = [];
+    $t = new PuTest('testThrows');
+    $t->runSetUp();
+    $out[] = (string) $t->setups;
+    \PHPUnit\Framework\Assert::assertSame(3, 1 + 2);
+    \PHPUnit\Framework\Assert::assertSame('ab', 'a' . 'b');
+    \PHPUnit\Framework\Assert::assertEquals(['x' => 1], ['x' => 1]);
+    \PHPUnit\Framework\Assert::assertCount(2, ['p', 'q']);
+    \PHPUnit\Framework\Assert::assertContains('q', ['p', 'q']);
+    \PHPUnit\Framework\Assert::assertNotNull($t);
+    \PHPUnit\Framework\Assert::assertEmpty([]);
+    \PHPUnit\Framework\Assert::assertStringContainsString('ell', 'hello');
+    \PHPUnit\Framework\Assert::assertEqualsCanonicalizing(['b', 'a'], ['a', 'b']);
+    \PHPUnit\Framework\Assert::assertThat('hello', \PHPUnit\Framework\Assert::stringContains('ll'));
+    try {
+        \PHPUnit\Framework\Assert::assertSame(1, 2, 'custom');
+        $out[] = 'no';
+    } catch (\PHPUnit\Framework\AssertionFailedError $e) {
+        $out[] = str_contains($e->getMessage(), 'custom') && str_contains($e->getMessage(), 'identical') ? 'failed' : $e->getMessage();
+    }
+    try {
+        \PHPUnit\Framework\Assert::markTestSkipped('later');
+    } catch (\PHPUnit\Framework\SkippedTestError $e) {
+        $out[] = 'skip:' . $e->getMessage();
+    }
+    try {
+        $t->testThrows();
+    } catch (\Throwable $e) {
+        $out[] = $t->expectsException() ? 'expects' : 'no';
+        try {
+            $t->verifyExpectedException($e);
+            $out[] = 'verified';
+        } catch (\PHPUnit\Framework\ExpectationFailedException $f) {
+            $out[] = 'mismatch';
+        }
+        $t->expectExceptionMessage('other');
+        try {
+            $t->verifyExpectedException($e);
+            $out[] = 'bad';
+        } catch (\PHPUnit\Framework\ExpectationFailedException $f) {
+            $out[] = 'mismatch';
+        }
+    }
+    $t->setDataName('ds');
+    $out[] = $t->getName();
+    return implode(',', $out);
+}
+
 function run_all(): string
 {
     return check('nullable_union', case_nullable_union(), 'nullA7')
@@ -724,3 +793,4 @@ function run_all(): string
     check('empty_arrays', case_empty_arrays(), 's0,s1|0|2');
     check('try_catch', case_try_catch(), '2,f,caught:big 3,f,outer,d,unhandled');
     check('generics', case_generics(), 'i:eq,s:ne,l:eq,42,xy,has,no,5,strintother');
+    check('phpunit', case_phpunit(), '1,failed,skip:later,expects,verified,mismatch,testThrows with data set "ds"');

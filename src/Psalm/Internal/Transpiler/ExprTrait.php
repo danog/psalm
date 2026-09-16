@@ -98,6 +98,10 @@ trait ExprTrait
                 } elseif ($actual->kind === RustType::LIST) {
                     $k = $this->unifyGeneric($target->params[0], RustType::int());
                     $v = $this->unifyGeneric($target->params[1], $actual->inner());
+                } elseif ($actual->kind === RustType::TUPLE && $actual->params !== []) {
+                    // a positional literal (`['p', 'q']` inferred as a tuple) for an `array<K, T>` parameter
+                    $k = $this->unifyGeneric($target->params[0], RustType::int());
+                    $v = $this->unifyGeneric($target->params[1], $types->combine($actual->params));
                 } else {
                     return null;
                 }

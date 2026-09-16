@@ -201,6 +201,28 @@ final class TypeMapper
         }
 
         $atomics = $this->expandAliases(array_values($type->getAtomicTypes()));
+        // `T|mixed` (Psalm's sort/ksort/array_* @param-out for a template T): an unbounded template already
+        // covers every value, so the union IS the generic parameter (not Mixed)
+        if ($this->generic_names !== [] && count($atomics) >= 2) {
+            $generic = null;
+            $only_generic_and_mixed = true;
+            foreach ($atomics as $a) {
+                if ($a instanceof TMixed) {
+                    continue;
+                }
+                if ($a instanceof TTemplateParam && isset($this->generic_names[$a->param_name]) && self::isUnboundedTemplate($a)
+                    && ($generic === null || $generic === $this->generic_names[$a->param_name])
+                ) {
+                    $generic = $this->generic_names[$a->param_name];
+                    continue;
+                }
+                $only_generic_and_mixed = false;
+                break;
+            }
+            if ($only_generic_and_mixed && $generic !== null) {
+                return RustType::generic($generic);
+            }
+        }
         $nullable = false;
         $members = [];
         $has_true = false;

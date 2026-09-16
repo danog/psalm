@@ -15,5 +15,6 @@
     <projectFiles>
         <directory name="../src/Psalm/Internal/Transpiler/runtime-stubs"/>
         <directory name="php"/>
+        <directory name="../../phpunit-port/typed/src"/>
     </projectFiles>
 </psalm>

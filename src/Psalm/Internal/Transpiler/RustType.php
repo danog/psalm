@@ -106,6 +106,25 @@ final class RustType
     {
         return self::intern(new self(self::RESOURCE));
     }
+    /** Whether the type mentions Mixed anywhere (Mixed-removal diagnostics). */
+    public function containsMixed(): bool
+    {
+        if ($this->kind === self::MIXED) {
+            return true;
+        }
+        foreach ($this->params as $p) {
+            if ($p->containsMixed()) {
+                return true;
+            }
+        }
+        foreach ($this->fields as $f) {
+            if ($f[0]->containsMixed()) {
+                return true;
+            }
+        }
+        return $this->ret !== null && $this->ret->containsMixed();
+    }
+
     /** Whether the type mentions a generic parameter anywhere (so no concrete cast/literal can target it). */
     public function hasGeneric(): bool
     {

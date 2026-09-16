@@ -489,6 +489,29 @@ trait CallTrait
             if ($cls !== null && $cls->isEnum()) {
                 return $this->enumStaticCall($cls, $lc, $args, $e, $recv);
             }
+            // an intersection-typed receiver (`$atomic instanceof DependentType` narrows to Atomic&DependentType):
+            // the method lives on an intersected interface — downcast the handle to that interface's enum and call
+            // it there (closed dispatch), instead of falling back to the dynamic protocol
+            $psalm = $e instanceof Expr\MethodCall || $e instanceof Expr\NullsafeMethodCall ? $this->psalmType($e->var) : null;
+            if ($psalm !== null) {
+                foreach ($psalm->getAtomicTypes() as $atomic) {
+                    if (!$atomic instanceof \Psalm\Type\Atomic\TNamedObject) {
+                        continue;
+                    }
+                    foreach ($atomic->extra_types as $extra) {
+                        if (!$extra instanceof \Psalm\Type\Atomic\TNamedObject) {
+                            continue;
+                        }
+                        $it = $this->types()->mapAtomic($extra);
+                        $icls = $it->kind === RustType::CLASS_ ? $this->program->classOf($it) : null;
+                        if ($icls === null || $icls === $cls || $this->program->findMethod($icls, $lc) === null) {
+                            continue;
+                        }
+                        $this->casts->need($rt, $it);
+                        return $this->methodCallOn(new Val($this->casts->convert($recv->code, $rt, $it), $it), $name, $e);
+                    }
+                }
+            }
             // magic __call
             $call = $cls !== null ? $this->program->findMethod($cls, '__call') : null;
             if ($call !== null) {
