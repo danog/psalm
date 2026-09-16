@@ -109,39 +109,43 @@ final class RustType
     /** Whether the type mentions Mixed anywhere (Mixed-removal diagnostics). */
     public function containsMixed(): bool
     {
-        if ($this->kind === self::MIXED) {
+        return $this->walkAny(static fn(RustType $t): bool => $t->kind === self::MIXED);
+    }
+
+    /**
+     * Whether any type reachable through params/fields/ret satisfies $pred; recursive unions (which refer to
+     * themselves through their list member) are visited once.
+     *
+     * @param callable(RustType): bool $pred
+     * @param array<int, true> $visiting
+     */
+    private function walkAny(callable $pred, array &$visiting = []): bool
+    {
+        if ($pred($this)) {
             return true;
         }
+        $id = spl_object_id($this);
+        if (isset($visiting[$id])) {
+            return false;
+        }
+        $visiting[$id] = true;
         foreach ($this->params as $p) {
-            if ($p->containsMixed()) {
+            if ($p->walkAny($pred, $visiting)) {
                 return true;
             }
         }
         foreach ($this->fields as $f) {
-            if ($f[0]->containsMixed()) {
+            if ($f[0]->walkAny($pred, $visiting)) {
                 return true;
             }
         }
-        return $this->ret !== null && $this->ret->containsMixed();
+        return $this->ret !== null && $this->ret->walkAny($pred, $visiting);
     }
 
     /** Whether the type mentions a generic parameter anywhere (so no concrete cast/literal can target it). */
     public function hasGeneric(): bool
     {
-        if ($this->kind === self::GENERIC) {
-            return true;
-        }
-        foreach ($this->params as $p) {
-            if ($p->hasGeneric()) {
-                return true;
-            }
-        }
-        foreach ($this->fields as $f) {
-            if ($f[0]->hasGeneric()) {
-                return true;
-            }
-        }
-        return $this->ret !== null && $this->ret->hasGeneric();
+        return $this->walkAny(static fn(RustType $t): bool => $t->kind === self::GENERIC);
     }
 
     public static function generic(string $name): RustType
