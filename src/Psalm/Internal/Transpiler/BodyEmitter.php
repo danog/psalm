@@ -65,6 +65,14 @@ final class BodyEmitter
     public array $refvars = [];
 
     /**
+     * Owned/borrowed (axis 5): locals whose value is READ exactly once in the whole body, outside any
+     * loop/closure. That single read is necessarily the last use, so it can MOVE out of the local instead
+     * of cloning (readVar consults this). Excludes loop/closure-scoped reads (runtime-multi-use / captured).
+     * @var array<string, bool>
+     */
+    public array $single_use = [];
+
+    /**
      * Active `instanceof` narrowings for the current sub-expression: `$var name => narrowed class type`.
      * Set while emitting the RHS of `$v instanceof X && ...` (and the true branch of `$v instanceof X ? ... : ...`)
      * so a method/property call on `$v` in that sub-expression resolves statically on the subclass instead of
@@ -337,6 +345,88 @@ final class BodyEmitter
         }
     }
 
+    /**
+     * Owned/borrowed (axis 5): find locals read exactly once (outside loops/closures) so that read can move.
+     * @param list<Stmt> $stmts
+     */
+    private function scanSingleUse(array $stmts): void
+    {
+        $this->single_use = [];
+        $finder = new NodeFinder();
+        // Variable nodes that are WRITE targets (a fresh `$v = ...`), not value reads. `$v[..] =`/`$v->p =`
+        // read the base, so they are deliberately NOT collected here (counted as reads -> inflate count -> safe).
+        $writes = [];
+        foreach ($finder->findInstanceOf($stmts, Expr\Assign::class) as $a) {
+            foreach ($this->assignTargetVars($a->var) as $v) {
+                $writes[spl_object_id($v)] = true;
+            }
+        }
+        foreach ($finder->findInstanceOf($stmts, Expr\AssignRef::class) as $a) {
+            if ($a->var instanceof Expr\Variable) {
+                $writes[spl_object_id($a->var)] = true;
+            }
+        }
+        foreach ($finder->findInstanceOf($stmts, Stmt\Foreach_::class) as $f) {
+            if ($f->keyVar instanceof Expr\Variable) {
+                $writes[spl_object_id($f->keyVar)] = true;
+            }
+            foreach ($this->assignTargetVars($f->valueVar) as $v) {
+                $writes[spl_object_id($v)] = true;
+            }
+        }
+        // Names read inside a loop/closure execute multiple times or are captured -> never single-use-movable.
+        $unsafe = [];
+        $scoped = [];
+        foreach ([Stmt\For_::class, Stmt\Foreach_::class, Stmt\While_::class, Stmt\Do_::class, Closure::class, ArrowFunction::class] as $cls) {
+            foreach ($finder->findInstanceOf($stmts, $cls) as $node) {
+                $scoped[] = $node;
+            }
+        }
+        foreach ($scoped as $node) {
+            foreach ($finder->findInstanceOf([$node], Expr\Variable::class) as $v) {
+                if (is_string($v->name)) {
+                    $unsafe[$v->name] = true;
+                }
+            }
+        }
+        $counts = [];
+        foreach ($finder->findInstanceOf($stmts, Expr\Variable::class) as $v) {
+            if (!is_string($v->name) || isset($writes[spl_object_id($v)])) {
+                continue;
+            }
+            $counts[$v->name] = ($counts[$v->name] ?? 0) + 1;
+        }
+        foreach ($counts as $name => $n) {
+            if ($n === 1 && !isset($unsafe[$name])) {
+                $this->single_use[$name] = true;
+            }
+        }
+    }
+
+    /**
+     * Variable nodes assigned as fresh values by an assignment target (a bare `$v` or the `$v`s of a
+     * list()/[] destructuring). ArrayDim/Property/StaticProp targets read their base, so return none.
+     * @return list<Expr\Variable>
+     */
+    private function assignTargetVars(Expr $var): array
+    {
+        if ($var instanceof Expr\Variable) {
+            return [$var];
+        }
+        if ($var instanceof Expr\List_ || $var instanceof Expr\Array_) {
+            $out = [];
+            foreach ($var->items as $item) {
+                if ($item !== null) {
+                    foreach ($this->assignTargetVars($item->value) as $v) {
+                        $out[] = $v;
+                    }
+                }
+            }
+            return $out;
+        }
+        return [];
+    }
+
     /** Emit `let` declarations for locals that are not parameters. */
     public function emitLocalDecls(array $params): void
     {
@@ -517,6 +607,10 @@ final class BodyEmitter
             // never assigned anywhere: PHP reads an undefined variable as null
             $this->warn('unknown variable $' . $name);
             return new Val('Mixed::Null', RustType::mixed());
+        }
+        // Owned/borrowed (axis 5): a local read exactly once (outside loops/closures) can move, not clone.
+        if (!empty($this->single_use[$name]) && ($moved = $this->moveVar($name)) !== null) {
+            return $moved;
         }
         $t = $this->vars[$name];
         $rn = Names::var($name);
@@ -756,6 +850,7 @@ final class BodyEmitter
         }
 
         $this->scanReferences($stmts ?? []);
+        $this->scanSingleUse($stmts ?? []);
         $this->declareLocals($params);
         $this->declareAssignedVars($stmts ?? [], $params);
         $this->emitLocalDecls($params);
