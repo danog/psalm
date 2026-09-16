@@ -491,7 +491,10 @@ final class TypeMapper
                 }
             }
             $key = strtolower($const_class) . '::' . $atomic->const_name;
-            if (!isset($this->resolving_class_const[$key]) && strpos($atomic->const_name, '*') === false) {
+            // Wildcards (`Foo::BAR_*`) resolve too: getClassConstantType expands the pattern (via
+            // StorageByPatternResolver) to the union of all matching constants' types -> avoids Mixed for
+            // e.g. Reconciler::RECONCILIATION_* (a set of int literals).
+            if (!isset($this->resolving_class_const[$key])) {
                 $this->resolving_class_const[$key] = true;
                 try {
                     $resolved = $this->codebase->classlikes->getClassConstantType(
