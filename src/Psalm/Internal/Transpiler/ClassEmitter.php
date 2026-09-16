@@ -901,6 +901,7 @@ final class ClassEmitter
         'loginfo' => true, 'disableextension' => true, 'close' => true, 'willreturn' => true, 'runall' => true, 'render' => true,
         'matches' => true, 'getcount' => true, 'getattribute' => true, 'fetch' => true, 'disableextensions' => true,
         'setsubnode' => true, 'setattributes' => true, 'send' => true, 'receive' => true, 'parseconstraints' => true,
+        'settypes' => true, 'setheaders' => true, 'setdefaultcommand' => true,
     ];
 
     /**
