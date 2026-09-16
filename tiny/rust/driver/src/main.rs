@@ -1,4 +1,4 @@
 fn main() {
     tiny_repro::init();
-    println!("run() = {}", tiny_repro::g::run());
+    print!("{}", tiny_repro::g::run_all());
 }
