@@ -692,10 +692,50 @@ pub fn iterate_object<K, V>(_o: impl PhpObject) -> Result<std::vec::IntoIter<(K,
 
 // ---------------------------------------------------------------- dynamic property access
 
+/// Axis-7: a Sync interior-mutability cell (Arc<RwCell<T>> is Send+Sync). Drop-in for RefCell:
+/// .borrow()/.borrow_mut() keep RefCell's fail-fast semantics via try_read/try_write, and the guards are
+/// parking_lot MAPPED guards so generated Ref::map/RefMut::map accessors keep working. The prelude aliases
+/// RefCell->RwCell, Ref->CellRef, RefMut->CellRefMut so generated code converts transparently.
+pub type CellRef<'a, T> = parking_lot::MappedRwLockReadGuard<'a, T>;
+pub type CellRefMut<'a, T> = parking_lot::MappedRwLockWriteGuard<'a, T>;
+pub struct RwCell<T>(parking_lot::RwLock<T>);
+impl<T> RwCell<T> {
+    pub fn new(v: T) -> Self {
+        RwCell(parking_lot::RwLock::new(v))
+    }
+    pub fn borrow(&self) -> CellRef<'_, T> {
+        parking_lot::RwLockReadGuard::map(self.0.try_read().expect("RwCell already mutably borrowed"), |x| x)
+    }
+    pub fn borrow_mut(&self) -> CellRefMut<'_, T> {
+        parking_lot::RwLockWriteGuard::map(self.0.try_write().expect("RwCell already borrowed"), |x| x)
+    }
+    pub fn get_mut(&mut self) -> &mut T {
+        self.0.get_mut()
+    }
+    pub fn into_inner(self) -> T {
+        self.0.into_inner()
+    }
+}
+impl<T: Clone> Clone for RwCell<T> {
+    fn clone(&self) -> Self {
+        RwCell::new(self.borrow().clone())
+    }
+}
+impl<T: Default> Default for RwCell<T> {
+    fn default() -> Self {
+        RwCell::new(T::default())
+    }
+}
+impl<T: std::fmt::Debug> std::fmt::Debug for RwCell<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.borrow().fmt(f)
+    }
+}
+
 /// A property read through a dispatch enum: borrowed from a known object, or a copy fetched
 /// dynamically (`get_prop`) from an object of a class defined in another crate.
 pub enum PropRef<'a, T> {
-    Borrowed(std::cell::Ref<'a, T>),
+    Borrowed(CellRef<'a, T>),
     Owned(T),
 }
 impl<T> std::ops::Deref for PropRef<'_, T> {
@@ -711,7 +751,7 @@ impl<T> std::ops::Deref for PropRef<'_, T> {
 /// A mutable property access through a dispatch enum; the owned form hands the value to a
 /// write-back closure (`set_prop`) when dropped.
 pub enum PropMut<'a, T> {
-    Borrowed(std::cell::RefMut<'a, T>),
+    Borrowed(CellRefMut<'a, T>),
     Owned { value: Option<T>, write: Option<Box<dyn FnOnce(T) + 'a>> },
 }
 impl<'a, T> PropMut<'a, T> {
