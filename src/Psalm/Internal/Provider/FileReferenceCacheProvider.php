@@ -29,6 +29,9 @@ final class FileReferenceCacheProvider
     private const UNKNOWN_MEMBER_CACHE_NAME = 'unknown_member_references';
     private const METHOD_PARAM_USE_CACHE_NAME = 'method_param_uses';
     private const CODE_USE_GRAPH_CACHE_NAME = 'code_use_graph';
+    private const NONMETHOD_CLASS_REFERENCE_CACHE_NAME = 'nonmethod_class_references';
+    private const METHOD_CLASS_REFERENCE_CACHE_NAME = 'method_class_references';
+    private const CLASS_METHOD_CACHE_NAME = 'class_method_references';
     /** @var Cache<array> */
     private readonly Cache $cache;
 
@@ -84,6 +87,24 @@ final class FileReferenceCacheProvider
         return $this->cache->getItem(self::METHOD_PARAM_USE_CACHE_NAME);
     }
 
+    /** @return array<string, array<string, bool>>|null */
+    public function getCachedMethodDependencies(): ?array
+    {
+        return $this->cache->getItem(self::METHOD_DEPENDENCIES_CACHE_NAME);
+    }
+
+    /**
+     * @return array{
+     *     edges: array<string, array<string, string>>,
+     *     node_files: array<string, string>,
+     *     mutation_info: array<string, \Psalm\Internal\Codebase\MutationInfo>
+     * }|null
+     */
+    public function getCachedCodeUseGraph(): ?array
+    {
+        return $this->cache->getItem(self::CODE_USE_GRAPH_CACHE_NAME);
+    }
+
     /** @return array<string, array<int, \Psalm\Internal\Analyzer\IssueData>>|null */
     public function getCachedIssues(): ?array
     {
@@ -130,6 +151,24 @@ final class FileReferenceCacheProvider
     public function setCachedMethodParamUses(array $uses): void
     {
         $this->cache->saveItem(self::METHOD_PARAM_USE_CACHE_NAME, $uses);
+    }
+
+    /** @param array<string, array<string, bool>> $dependencies */
+    public function setCachedMethodDependencies(array $dependencies): void
+    {
+        $this->cache->saveItem(self::METHOD_DEPENDENCIES_CACHE_NAME, $dependencies);
+    }
+
+    /**
+     * @param array{
+     *     edges: array<string, array<string, string>>,
+     *     node_files: array<string, string>,
+     *     mutation_info: array<string, \Psalm\Internal\Codebase\MutationInfo>
+     * } $data
+     */
+    public function setCachedCodeUseGraph(array $data): void
+    {
+        $this->cache->saveItem(self::CODE_USE_GRAPH_CACHE_NAME, $data);
     }
 
     /** @param array<string, array<int, \Psalm\Internal\Analyzer\IssueData>> $issues */
