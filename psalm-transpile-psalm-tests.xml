@@ -22,6 +22,7 @@
         <directory name="src"/>
         <directory name="tests"/>
         <directory name="../phpunit-port/typed/src"/>
+        <directory name="vendor/felixfbecker/language-server-protocol/src"/>
         <ignoreFiles>
             <directory name="tests/fixtures"/>
             <directory name="tests/EndToEnd"/>
@@ -30,7 +31,23 @@
             <file name="tests/ErrorBaselineTest.php"/>
             <file name="tests/PsalmPluginTest.php"/>
             <file name="tests/Config/PluginListTest.php"/>
-            <directory name="src/Psalm/Internal/LanguageServer"/>
+            <directory name="src/Psalm/Internal/LanguageServer/Client"/>
+            <file name="src/Psalm/Internal/LanguageServer/ClientConfiguration.php"/>
+            <file name="src/Psalm/Internal/LanguageServer/ClientHandler.php"/>
+            <file name="src/Psalm/Internal/LanguageServer/EmitterInterface.php"/>
+            <file name="src/Psalm/Internal/LanguageServer/EmitterTrait.php"/>
+            <file name="src/Psalm/Internal/LanguageServer/IdGenerator.php"/>
+            <file name="src/Psalm/Internal/LanguageServer/LanguageClient.php"/>
+            <file name="src/Psalm/Internal/LanguageServer/LanguageServer.php"/>
+            <file name="src/Psalm/Internal/LanguageServer/Message.php"/>
+            <file name="src/Psalm/Internal/LanguageServer/PathMapper.php"/>
+            <file name="src/Psalm/Internal/LanguageServer/Progress.php"/>
+            <file name="src/Psalm/Internal/LanguageServer/ProtocolReader.php"/>
+            <file name="src/Psalm/Internal/LanguageServer/ProtocolStreamReader.php"/>
+            <file name="src/Psalm/Internal/LanguageServer/ProtocolStreamWriter.php"/>
+            <file name="src/Psalm/Internal/LanguageServer/ProtocolWriter.php"/>
+            <directory name="src/Psalm/Internal/LanguageServer/Provider"/>
+            <directory name="src/Psalm/Internal/LanguageServer/Server"/>
             <directory name="src/Psalm/Internal/Fork"/>
             <directory name="src/Psalm/Internal/PluginManager/Command"/>
             <file name="src/Psalm/Internal/Cli/LanguageServer.php"/>
