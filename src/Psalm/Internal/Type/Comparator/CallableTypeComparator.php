@@ -97,7 +97,10 @@ final class CallableTypeComparator
                 if (isset($container_type_part->params[$i])) {
                     $container_param = $container_type_part->params[$i];
                 } elseif ($container_type_part->params) {
-                    $last_param = end($container_type_part->params);
+                    // copy to a local before end() so it advances the local array's pointer, not the property's
+                    // (end() on a property compiles to a property write, which the immutable Rc<T> union can't dispatch)
+                    $cparams = $container_type_part->params;
+                    $last_param = end($cparams);
 
                     if ($last_param->is_variadic) {
                         $container_param = $last_param;
