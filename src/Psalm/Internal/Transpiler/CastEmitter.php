@@ -42,8 +42,8 @@ final class CastEmitter
                 $w->line($m->variantName() . '(' . $m->toRust() . '),');
             }
         }
-        // escape hatch for values that don't match any declared member (docblocks lying, invalid-input tests)
-        $w->line('Other__(Mixed),');
+        // Unions are CLOSED: no Other__(Mixed) escape. A value that matches no declared member is a docblock/type
+        // lie and PANICS at construction (CastTo<Union> for Mixed below), per the no-Mixed policy.
         $w->close();
         // in-place access to an array member (`$u[] = v` on a union-typed place): a value that is not that
         // array becomes an empty one, as PHP autovivifies null
@@ -64,7 +64,6 @@ final class CastEmitter
                 $arms[] = $name . '::' . $m->variantName() . '(v) => truthy(v)';
             }
         }
-        $arms[] = $name . '::Other__(v) => truthy(v)';
         $w->line('impl php_rt::Truthy for ' . $name . ' { fn truthy(&self) -> bool { match self { ' . implode(', ', $arms) . ' } } }');
         // ToStr
         $arms = [];
@@ -79,7 +78,6 @@ final class CastEmitter
                 $arms[] = $name . '::' . $m->variantName() . '(v) => ' . $this->conv('v.clone()', $m, RustType::mixed()) . '.to_php_str()';
             }
         }
-        $arms[] = $name . '::Other__(v) => v.to_php_str()';
         $w->line('impl php_rt::ToStr for ' . $name . ' { fn to_php_str(&self) -> Str { match self { ' . implode(', ', $arms) . ' } } }');
         $w->line('impl ' . $name . ' { pub fn to_php_string(&self) -> Str { self.to_php_str() } }');
         // Identical
@@ -93,7 +91,6 @@ final class CastEmitter
                 $arms[] = '(' . $name . '::' . $m->variantName() . '(a), ' . $name . '::' . $m->variantName() . '(b)) => identical(a, b)';
             }
         }
-        $arms[] = '(' . $name . '::Other__(a), ' . $name . '::Other__(b)) => identical(a, b)';
         $w->line('impl php_rt::Identical for ' . $name . ' { fn identical(&self, o: &Self) -> bool { match (self, o) { ' . implode(', ', $arms) . ', _ => false } } }');
         // PhpCmp via Mixed
         $w->line('impl php_rt::PhpCmp for ' . $name . ' { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }');
@@ -106,14 +103,13 @@ final class CastEmitter
                 $arms[] = $name . '::' . $m->variantName() . '(v) => ' . $this->conv('v', $m, RustType::mixed());
             }
         }
-        $arms[] = $name . '::Other__(v) => v';
         $w->line('impl php_rt::CastTo<Mixed> for ' . $name . ' { fn cast_to(self) -> Mixed { match self { ' . implode(', ', $arms) . ' } } }');
         // from Mixed
         $arms = [];
         foreach ($u->params as $m) {
             $arms[] = $this->mixedToMemberArm($name, $m);
         }
-        $w->line('impl php_rt::CastTo<' . $name . '> for Mixed { fn cast_to(self) -> ' . $name . ' { ' . implode(' ', $arms) . ' ' . $name . '::Other__(self) } }');
+        $w->line('impl php_rt::CastTo<' . $name . '> for Mixed { fn cast_to(self) -> ' . $name . ' { ' . implode(' ', $arms) . ' ' . 'panic!("Mixed value {:?} not in union ' . $name . '", self) } }');
         // Default for unions containing a defaultable member (first)
         foreach ($u->params as $m) {
             if ($this->isUnit($m)) {
@@ -200,7 +196,7 @@ final class CastEmitter
                     }
                 }
             }
-            $extra .= $name . '::Other__(v) => ' . $this->conv('v', RustType::mixed(), $m) . ', ';
+            // (union is closed — no Other__ arm; the `_ => panic!` fallback below covers a wrong-member extract)
             // A Bool member's `CastTo<bool> for union` (member-extract-or-panic) collides with the truthy-based
             // `CastTo<bool>` emitted below for unit-unions (E0119). The truthy version is the correct PHP bool
             // coercion (and matches the Bool member anyway: truthy(Bool(v)) == v), so skip this one in that case.
@@ -498,7 +494,6 @@ final class CastEmitter
                     $arms[] = $from->mangle() . '::' . $m->variantName() . '(v) => ' . $this->conv($this->conv('v', $m, RustType::mixed()), RustType::mixed(), $to);
                 }
             }
-            $arms[] = $from->mangle() . '::Other__(v) => ' . $this->conv('v', RustType::mixed(), $to);
             $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ' . $from->toRust() . ' { fn cast_to(self) -> ' . $to->toRust() . ' { match self { ' . implode(', ', $arms) . ' } } }');
             return;
         }
@@ -532,7 +527,6 @@ final class CastEmitter
                     $arms[] = $from->mangle() . '::' . $m->variantName() . '(_) => panic!("cannot narrow ' . $from->mangle() . '::' . $m->variantName() . ' into ' . $to->toRust() . '")';
                 }
             }
-            $arms[] = $from->mangle() . '::Other__(v) => ' . $this->conv('v', RustType::mixed(), $to);
             $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ' . $from->toRust() . ' { fn cast_to(self) -> ' . $to->toRust() . ' { match self { ' . implode(', ', $arms) . ' } } }');
             return;
         }
@@ -573,7 +567,7 @@ final class CastEmitter
                             $tc = $this->program->classOf($target);
                             $arms[] = $from->toRust() . '::' . $c->variant() . '(v) => ' . $to->mangle() . '::' . $target->variantName() . '(' . ($tc !== null ? $this->wrapConcrete($tc, $c, 'v') : 'v') . ')';
                         } else {
-                            $arms[] = $from->toRust() . '::' . $c->variant() . '(v) => ' . $to->mangle() . '::Other__(' . $this->conv('v', RustType::class($c->fqcn), RustType::mixed()) . ')';
+                            $arms[] = $from->toRust() . '::' . $c->variant() . '(_) => panic!("' . $c->fqcn . ' is not a member of union ' . $to->mangle() . '")';
                         }
                     }
                     $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ' . $from->toRust() . ' { fn cast_to(self) -> ' . $to->toRust() . ' { match self { ' . implode(', ', $arms) . ($arms ? ', ' : '') . '_ => unreachable!() } } }');
@@ -809,7 +803,6 @@ final class CastEmitter
                 }
             }
             $this->casts->needInstanceOf(RustType::mixed(), $target);
-            $arms[] = $subject->mangle() . '::Other__(v) => is_instance::<' . $th . '>(v)';
             $w->line('impl php_rt::InstanceOf<' . $th . '> for ' . $subject->toRust() . ' { fn is_instance(&self) -> bool { match self { ' . implode(', ', $arms) . ' } } }');
             return;
         }

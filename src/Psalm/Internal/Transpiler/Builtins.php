@@ -718,7 +718,6 @@ final class Builtins
                 }
             }
             if (in_array($pred, ['is_null', 'is_int', 'is_float', 'is_string', 'is_bool', 'is_array', 'is_object', 'is_scalar'], true)) {
-                $arms[] = $u->mangle() . '::Other__(__m) => __m.' . $pred . '()';
             }
             $code = 'match ' . ($t->kind === RustType::OPTION ? $v->code . '.unwrap_or_default_marker()' : $v->code) . ' { ' . implode(', ', $arms) . ($arms ? ', ' : '') . '_ => false }';
             if ($t->kind === RustType::OPTION) {

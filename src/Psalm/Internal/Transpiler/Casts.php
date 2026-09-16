@@ -469,7 +469,6 @@ final class Casts
                         $arms[] = $from->mangle() . '::' . $m->variantName() . '(__v) => ' . $this->convert('__v', $m, $to);
                     }
                 }
-                $arms[] = $from->mangle() . '::Other__(__v) => ' . $this->convert('__v', RustType::mixed(), $to);
                 $arms[] = '_ => panic!(' . Names::rustStringLiteral('cannot narrow ' . $from->mangle() . ' into ' . $to->toRust()) . ')';
                 return '(match ' . $code . ' { ' . implode(', ', $arms) . ' })';
             }
