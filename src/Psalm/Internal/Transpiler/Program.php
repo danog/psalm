@@ -1622,7 +1622,12 @@ final class Program
      */
     private function computeMethodBorrowParams(MethodModel $method): void
     {
-        if ($method->node === null || $method->isStatic() || $method->isAbstract()) {
+        if ($method->node === null || $method->isAbstract()) {
+            return;
+        }
+        // Non-private static methods are reachable through the `__static` / late-static-binding dispatch
+        // variants (uniform signature required across the hierarchy); only private statics are single-impl.
+        if ($method->isStatic() && !$method->isPrivate()) {
             return;
         }
         $lc = $method->lc();
@@ -1632,6 +1637,10 @@ final class Program
             return;
         }
         $method->local_borrow = $this->borrowSafeParams($method->node->stmts ?? [], $method->node->params, $method->param_types);
+        if ($method->isStatic()) {
+            // private static: single implementation, not in the instance-method agreement pass -> finalise now.
+            $method->borrow_params = $method->local_borrow;
+        }
     }
 
     /**

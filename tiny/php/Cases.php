@@ -241,6 +241,26 @@ function case_private_method_borrow(): string
     return (string) $c->total(new A(5));
 }
 
+// ---- feature: &T borrowed param on a private static method ----------------
+
+final class StaticCalc
+{
+    private static function twice(A $x): int
+    {
+        return $x->a + $x->a;
+    }
+
+    public static function run(A $x): int
+    {
+        return self::twice($x) + self::twice($x);
+    }
+}
+
+function case_private_static_borrow(): string
+{
+    return (string) StaticCalc::run(new A(8));
+}
+
 // ---- feature: &T borrowed param on a leaf class's own public method -------
 
 final class LeafSvc
@@ -393,6 +413,7 @@ function run_all(): string
         . check('receiver_move', case_receiver_move(), '11')
         . check('borrow_param', case_borrow_param(), '42425')
         . check('private_method_borrow', case_private_method_borrow(), '210')
+        . check('private_static_borrow', case_private_static_borrow(), '32')
         . check('leaf_public_borrow', case_leaf_public_borrow(), '24')
         . check('dispatch_agree_borrow', case_dispatch_agree_borrow(), '26')
         . check('dispatch_disagree_owned', case_dispatch_disagree_owned(), '34')
