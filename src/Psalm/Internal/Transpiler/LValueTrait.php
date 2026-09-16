@@ -101,7 +101,10 @@ trait LValueTrait
                         return new Place(
                             $field->type,
                             fn() => $bc . '.' . $rn . '_get()',
-                            fn(string $v) => $bind . '.set_' . $rn . '(' . $v . ');',
+                            // Hoist the value before the `get_mut()`/make_mut receiver borrow: the RHS may read the same
+                            // object (`$c->x = f($c->y)` in a wither), which would be an immutable borrow while the
+                            // receiver is mutably borrowed (E0502). Evaluating it into __wv first releases that borrow.
+                            fn(string $v) => '{ let __wv = ' . $v . '; ' . $bind . '.set_' . $rn . '(__wv); }',
                             fn() => '(*' . $bind . '.' . $rn . '_mut())',
                         );
                     }
