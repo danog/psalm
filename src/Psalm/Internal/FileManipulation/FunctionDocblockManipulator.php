@@ -94,7 +94,7 @@ final class FunctionDocblockManipulator
         string $file_path,
         Closure|Function_|ClassMethod|ArrowFunction $stmt,
     ): FunctionDocblockManipulator {
-        $function_start = (int) $stmt->getAttribute('startFilePos');
+        $function_start = $stmt->getStartFilePos();
 
         if (isset(self::$manipulators[$file_path][$function_start])) {
             return self::$manipulators[$file_path][$function_start];

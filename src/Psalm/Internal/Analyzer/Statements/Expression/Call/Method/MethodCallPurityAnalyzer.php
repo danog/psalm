@@ -40,7 +40,7 @@ final class MethodCallPurityAnalyzer
         // Already checked in isPureCompatible below
         // $stmt->var->getAttribute('pure', false)
         return $statements_analyzer->node_data->isPureCompatible($var)
-            || $var->getAttribute('external_mutation_free', false)
+            || ($var->getAttributes()->external_mutation_free ?? false)
             || $method_id->fq_class_name === $context->self;
     }
 

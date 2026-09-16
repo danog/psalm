@@ -626,7 +626,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                     true,
                     // inline callbacks are not worth annotating, closures assigned to a variable are
                     !$this->function instanceof Closure
-                        || $this->function->getAttribute('assigned_var_id') !== null,
+                        || $this->function->getAttributes()->assigned_var_id !== null,
                 ));
             }
         }

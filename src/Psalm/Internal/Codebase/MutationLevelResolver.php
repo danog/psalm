@@ -177,7 +177,7 @@ final class MutationLevelResolver
         $node = $finder->findFirst(
             $stmts,
             static fn(Node $node): bool => $node instanceof FunctionLike
-                && (int) $node->getAttribute('startFilePos') === $start_pos,
+                && $node->getStartFilePos() === $start_pos,
         );
 
         if ($node instanceof Function_

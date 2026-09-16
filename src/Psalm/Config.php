@@ -806,6 +806,8 @@ final class Config
             );
         }
 
+        assert($psalm_node instanceof DOMElement);
+
         if (!$psalm_node->hasAttribute('xmlns')) {
             $psalm_node->setAttribute('xmlns', self::CONFIG_NAMESPACE);
 

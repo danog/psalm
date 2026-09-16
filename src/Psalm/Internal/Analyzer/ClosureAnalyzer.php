@@ -71,10 +71,7 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
      */
     public function getRecursiveVarId(): ?string
     {
-        /** @var mixed $var_id */
-        $var_id = $this->function->getAttribute('recursive_var_id');
-
-        return is_string($var_id) ? $var_id : null;
+        return $this->function->getAttributes()->recursive_var_id;
     }
 
 
