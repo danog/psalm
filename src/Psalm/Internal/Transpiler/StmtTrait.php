@@ -214,6 +214,14 @@ trait StmtTrait
             $w->line('unreachable!();');
             return;
         }
+        // Owned/borrowed (axis 5): `return $x;` is the last use of $x on this (diverging) path, so move out of
+        // the local instead of cloning it — Rust permits the move even when other, non-returning paths use $x.
+        if ($s->expr instanceof Expr\Variable && is_string($s->expr->name)
+            && ($moved = $this->moveVar($s->expr->name)) !== null
+        ) {
+            $w->line($this->returnCode($this->casts->convert($moved->code, $moved->type, $this->ret_type)) . ';');
+            return;
+        }
         $w->line($this->returnCode($this->exprTo($s->expr, $this->ret_type)) . ';');
     }
 

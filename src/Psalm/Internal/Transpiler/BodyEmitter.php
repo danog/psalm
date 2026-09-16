@@ -538,6 +538,34 @@ final class BodyEmitter
         return new Val($rn . '.clone()', $t);
     }
 
+    /**
+     * Owned/borrowed (axis 5): read a local by MOVING out of it instead of cloning, saving an Rc refcount
+     * bump. Only valid where the read is the last use on this control-flow path — the caller must guarantee
+     * that (e.g. a bare `return $x;`, which diverges, so Rust permits the move even if other paths use $x).
+     * Returns null when the local can't be safely moved (reference/cell/byref/global/captured/Copy/superglobal
+     * /unknown), leaving the caller to fall back to the cloning read.
+     */
+    public function moveVar(string $name): ?Val
+    {
+        if ($name === 'this' || isset(self::SUPERGLOBALS[$name]) || !isset($this->vars[$name])) {
+            return null;
+        }
+        if (!empty($this->cells[$name]) || !empty($this->refvars[$name]) || !empty($this->byref[$name])
+            || !empty($this->globals[$name])
+        ) {
+            return null;
+        }
+        $t = $this->vars[$name];
+        if ($t->isCopy()) {
+            return null; // a plain read is already a cheap copy; nothing to save
+        }
+        $rn = Names::var($name);
+        if (!empty($this->late[$name])) {
+            return new Val($rn . '.take()', $t);
+        }
+        return new Val($rn, $t);
+    }
+
     /** Statement storing a value (already of the declared type) into a local. */
     public function storeVar(string $name, string $code): string
     {
