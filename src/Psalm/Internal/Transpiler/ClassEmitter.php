@@ -900,6 +900,7 @@ final class ClassEmitter
         'createmock' => true, 'await' => true, 'equalto' => true, 'check' => true, 'run' => true, 'method' => true,
         'loginfo' => true, 'disableextension' => true, 'close' => true, 'willreturn' => true, 'runall' => true, 'render' => true,
         'matches' => true, 'getcount' => true, 'getattribute' => true, 'fetch' => true, 'disableextensions' => true,
+        'setsubnode' => true, 'setattributes' => true, 'send' => true, 'receive' => true, 'parseconstraints' => true,
     ];
 
     /**
