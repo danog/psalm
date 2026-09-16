@@ -872,8 +872,12 @@ final class CastEmitter
         return $this->cmpable_classes[$cls->fqcn] = $ok;
     }
 
-    /** Whether values of the type implement php_rt::PhpCmp (and Truthy, for Option members). */
-    private function cmpableType(RustType $t): bool
+    /**
+     * Whether values of the type implement php_rt::PhpCmp (and Truthy, for Option members). Closures, callables
+     * and runtime containers have no PhpCmp: at the top level (or under Option) a field of such a type is compared
+     * by identity instead ($allow_identity), but inside a list/map there is no such fallback.
+     */
+    private function cmpableType(RustType $t, bool $allow_identity = true): bool
     {
         switch ($t->kind) {
             case RustType::INT:
@@ -893,19 +897,20 @@ final class CastEmitter
                 // Option<T>: PhpCmp needs T: PhpCmp + Truthy; identity-compared kinds go through Option<T: Identical>
                 $inner = $t->inner();
                 return in_array($inner->kind, [RustType::INT, RustType::FLOAT, RustType::BOOL, RustType::STR, RustType::SYM, RustType::LIST, RustType::MAP, RustType::CLASS_, RustType::UNION, RustType::SHAPE, RustType::ARRAY_KEY, RustType::MIXED, RustType::CLOSURE, RustType::DYN_CALLABLE, RustType::RT_GENERIC, RustType::GENERIC], true)
-                    && $this->cmpableType($inner);
+                    && $this->cmpableType($inner, $allow_identity);
             case RustType::LIST:
-                return $this->cmpableType($t->inner());
+                return $this->cmpableType($t->inner(), false);
             case RustType::MAP:
-                return $this->cmpableType($t->params[1]);
+                return $this->cmpableType($t->params[1], false);
             case RustType::CLASS_:
                 $c = $this->program->classOf($t);
                 return $c !== null && $c->is_project && !$c->isEnum() && !$c->isTrait();
+            case RustType::GENERIC:
+                return true; // PhpValue bound
             case RustType::CLOSURE:
             case RustType::DYN_CALLABLE:
             case RustType::RT_GENERIC:
-            case RustType::GENERIC:
-                return true; // compared by identity (see fieldCmpBody) / PhpValue bound
+                return $allow_identity; // compared by identity (see fieldCmpBody) when a field/Option field
             default:
                 return false; // tuples
         }
