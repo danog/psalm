@@ -59,6 +59,7 @@ final class MethodModel
         $m->param_types = $this->param_types;
         $m->return_type = $this->return_type;
         $m->uses_lsb = $this->uses_lsb;
+        $m->borrow_params = $this->borrow_params;
         $m->import_of = $this;
         return $m;
     }
