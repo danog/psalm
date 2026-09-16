@@ -458,6 +458,10 @@ final class Casts
         }
 
         // unions
+        if ($tk === RustType::UNION && $fk === RustType::OPTION && !$this->hasUnit($to, 'Null')) {
+            // Option<X> into a union without a null member: the value must be present
+            return '(match ' . $code . ' { Some(__o) => ' . $this->convert('__o', $from->inner(), $to) . ', None => panic!(' . Names::rustStringLiteral('null where ' . $to->toRust() . ' expected') . ') })';
+        }
         if ($tk === RustType::UNION) {
             $member = $this->pickMember($to, $from);
             if ($member !== null) {

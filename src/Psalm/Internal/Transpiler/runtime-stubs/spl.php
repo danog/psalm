@@ -134,7 +134,7 @@ class SplFileInfo implements Stringable
 /**
  * Iterates the entries of one directory; the iterator itself is positioned on the current entry.
  *
- * @implements Iterator<int|string, mixed>
+ * @implements Iterator<int|string, SplFileInfo|string>
  */
 class DirectoryIterator extends SplFileInfo implements Iterator
 {
@@ -197,8 +197,7 @@ class DirectoryIterator extends SplFileInfo implements Iterator
         return $name === '.' || $name === '..';
     }
 
-    /** @return static|SplFileInfo|string */
-    public function current(): mixed
+    public function current(): SplFileInfo|string
     {
         if ($this->flags & self::CURRENT_AS_PATHNAME) {
             return $this->getPathname();
@@ -209,8 +208,7 @@ class DirectoryIterator extends SplFileInfo implements Iterator
         return new SplFileInfo($this->getPathname());
     }
 
-    /** @return int|string */
-    public function key(): mixed
+    public function key(): int|string
     {
         if ($this->flags & self::KEY_AS_FILENAME) {
             return $this->getFilename();
@@ -240,7 +238,7 @@ class DirectoryIterator extends SplFileInfo implements Iterator
 }
 
 /**
- * @implements Iterator<string, mixed>
+ * @implements Iterator<string, SplFileInfo|string>
  */
 class FilesystemIterator extends DirectoryIterator
 {
@@ -249,8 +247,7 @@ class FilesystemIterator extends DirectoryIterator
         parent::__construct($directory, $flags);
     }
 
-    /** @return string */
-    public function key(): mixed
+    public function key(): string
     {
         if ($this->flags & self::KEY_AS_FILENAME) {
             return $this->getFilename();
@@ -270,7 +267,7 @@ class FilesystemIterator extends DirectoryIterator
 }
 
 /**
- * @implements RecursiveIterator<string, mixed>
+ * @implements RecursiveIterator<string, SplFileInfo|string>
  */
 class RecursiveDirectoryIterator extends FilesystemIterator implements RecursiveIterator
 {
@@ -310,25 +307,32 @@ class RecursiveDirectoryIterator extends FilesystemIterator implements Recursive
 /**
  * Filters a RecursiveIterator with a callback; children are filtered with the same callback.
  *
- * @implements RecursiveIterator<mixed, mixed>
+ * @implements RecursiveIterator<string, SplFileInfo|string>
  */
 class RecursiveCallbackFilterIterator implements RecursiveIterator
 {
-    /** @var callable(mixed, mixed, RecursiveIterator): bool */
+    /** @var callable(SplFileInfo|string, string, RecursiveIterator<string, SplFileInfo|string>): bool */
     private $callback;
 
-    /** @param callable(mixed, mixed, RecursiveIterator): bool $callback */
+    /**
+     * @param RecursiveIterator<string, SplFileInfo|string> $iterator
+     * @param callable(SplFileInfo|string, string, RecursiveIterator<string, SplFileInfo|string>): bool $callback
+     */
     public function __construct(private RecursiveIterator $iterator, callable $callback)
     {
         $this->callback = $callback;
     }
 
+    /** @return RecursiveIterator<string, SplFileInfo|string> */
     public function getInnerIterator(): RecursiveIterator
     {
         return $this->iterator;
     }
 
-    /** @internal the wrapped iterator, typed precisely for the flattening iterator */
+    /**
+     * @internal the wrapped iterator, typed precisely for the flattening iterator
+     * @return RecursiveIterator<string, SplFileInfo|string>
+     */
     public function innerIterator(): RecursiveIterator
     {
         return $this->iterator;
@@ -346,12 +350,12 @@ class RecursiveCallbackFilterIterator implements RecursiveIterator
         }
     }
 
-    public function current(): mixed
+    public function current(): SplFileInfo|string
     {
         return $this->iterator->current();
     }
 
-    public function key(): mixed
+    public function key(): string
     {
         return $this->iterator->key();
     }
@@ -389,7 +393,7 @@ class RecursiveCallbackFilterIterator implements RecursiveIterator
  * current sub-iterator; the stub models the common case (directory iteration) by being positioned on
  * the current entry like a RecursiveDirectoryIterator.
  *
- * @implements Iterator<mixed, mixed>
+ * @implements Iterator<string, SplFileInfo|string>
  */
 class RecursiveIteratorIterator extends RecursiveDirectoryIterator
 {
@@ -398,11 +402,12 @@ class RecursiveIteratorIterator extends RecursiveDirectoryIterator
     public const CHILD_FIRST = 2;
     public const CATCH_GET_CHILD = 16;
 
-    /** @var list<array{mixed, mixed, string}> key, value, pathname */
+    /** @var list<array{string, SplFileInfo|string, string}> key, value, pathname */
     private array $items = [];
 
     private int $mode;
 
+    /** @param RecursiveIterator<string, SplFileInfo|string> $iterator */
     public function __construct(RecursiveIterator $iterator, int $mode = self::LEAVES_ONLY, int $flags = 0)
     {
         $this->mode = $mode;
@@ -411,6 +416,7 @@ class RecursiveIteratorIterator extends RecursiveDirectoryIterator
         $this->collect($iterator);
     }
 
+    /** @param RecursiveIterator<string, SplFileInfo|string> $iterator */
     private function collect(RecursiveIterator $iterator): void
     {
         for ($iterator->rewind(); $iterator->valid(); $iterator->next()) {
@@ -456,12 +462,12 @@ class RecursiveIteratorIterator extends RecursiveDirectoryIterator
         return $this->getFilename();
     }
 
-    public function current(): mixed
+    public function current(): SplFileInfo|string
     {
         return $this->items[$this->position][1];
     }
 
-    public function key(): mixed
+    public function key(): string
     {
         return $this->items[$this->position][0];
     }
@@ -545,108 +551,3 @@ class RegexIterator implements Iterator
     }
 }
 
-/**
- * @template TValue
- * @implements IteratorAggregate<int, TValue>
- * @implements ArrayAccess<int, TValue>
- */
-class SplFixedArray implements IteratorAggregate, ArrayAccess, Countable, JsonSerializable
-{
-    /** @var list<TValue|null> */
-    private array $data = [];
-
-    public function __construct(int $size = 0)
-    {
-        $this->setSize($size);
-    }
-
-    public function getSize(): int
-    {
-        return count($this->data);
-    }
-
-    public function setSize(int $size): bool
-    {
-        $data = [];
-        for ($i = 0; $i < $size; $i++) {
-            $data[] = $this->data[$i] ?? null;
-        }
-        $this->data = $data;
-        return true;
-    }
-
-    /** @return list<TValue|null> */
-    public function toArray(): array
-    {
-        return $this->data;
-    }
-
-    /**
-     * @template T
-     * @param array<int, T> $array
-     * @return SplFixedArray<T>
-     */
-    public static function fromArray(array $array, bool $preserveKeys = true): SplFixedArray
-    {
-        $max = -1;
-        foreach ($array as $k => $_) {
-            if ($preserveKeys && $k > $max) {
-                $max = $k;
-            }
-        }
-        $fixed = new SplFixedArray($preserveKeys ? $max + 1 : count($array));
-        $i = 0;
-        foreach ($array as $k => $v) {
-            $fixed->data[$preserveKeys ? $k : $i] = $v;
-            $i++;
-        }
-        return $fixed;
-    }
-
-    public function offsetExists(mixed $offset): bool
-    {
-        return is_int($offset) && $offset >= 0 && $offset < count($this->data);
-    }
-
-    /** @return TValue|null */
-    public function offsetGet(mixed $offset): mixed
-    {
-        if (!$this->offsetExists($offset)) {
-            throw new RuntimeException('Index invalid or out of range');
-        }
-        return $this->data[(int) $offset];
-    }
-
-    /** @param TValue $value */
-    public function offsetSet(mixed $offset, mixed $value): void
-    {
-        if (!$this->offsetExists($offset)) {
-            throw new RuntimeException('Index invalid or out of range');
-        }
-        $this->data[(int) $offset] = $value;
-    }
-
-    public function offsetUnset(mixed $offset): void
-    {
-        if ($this->offsetExists($offset)) {
-            $this->data[(int) $offset] = null;
-        }
-    }
-
-    public function count(): int
-    {
-        return count($this->data);
-    }
-
-    /** @return ArrayIterator<int, TValue|null> */
-    public function getIterator(): Iterator
-    {
-        return new ArrayIterator($this->data);
-    }
-
-    /** @return list<TValue|null> */
-    public function jsonSerialize(): array
-    {
-        return $this->data;
-    }
-}
