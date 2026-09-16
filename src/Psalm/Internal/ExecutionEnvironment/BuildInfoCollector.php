@@ -27,6 +27,8 @@ final class BuildInfoCollector
 {
     /**
      * Read environment variables.
+     *
+     * @var array<string, string>
      */
     private array $readEnv = [];
 
@@ -38,6 +40,8 @@ final class BuildInfoCollector
          * Environment variables.
          *
          * Overwritten through collection process.
+         *
+         * @var array<string, string>
          */
         protected array $env,
     ) {
@@ -47,7 +51,7 @@ final class BuildInfoCollector
 
     /**
      * Collect environment variables.
-     * @return array<string, mixed>
+     * @return array<string, string>
      */
     public function collect(): array
     {

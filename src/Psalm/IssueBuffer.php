@@ -122,6 +122,7 @@ final class IssueBuffer
     private static array $used_suppressions = [];
 
     /** @var array<string, string|int|float|list<string>> */
+    /** @var array<string, string|int|float|list<string>> */
     private static array $server = [];
 
     /**
@@ -730,7 +731,7 @@ final class IssueBuffer
 
         if ($codebase->config->eventDispatcher->after_analysis) {
             $source_control_info = null;
-            $build_info = (new BuildInfoCollector(self::$server))->collect();
+            $build_info = (new BuildInfoCollector(array_filter(self::$server, 'is_string')))->collect();
 
             try {
                 $source_control_info = (new GitInfoCollector())->collect();
@@ -1149,7 +1150,7 @@ final class IssueBuffer
 
     /**
      * @internal
-     * @param array<string, mixed> $server
+     * @param array<string, string|int|float|list<string>> $server
      * @psalm-external-mutation-free
      */
     final public static function captureServer(array $server): void
