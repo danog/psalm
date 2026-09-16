@@ -259,3 +259,200 @@ class ReflectionClass
         return new ReflectionClass($parent);
     }
 }
+
+/**
+ * Reflection of members: never produced at runtime in a compiled program (reflection of internal functions is
+ * guarded out and classes are compiled in), but typed so the code that would consume them stays typed.
+ */
+abstract class ReflectionFunctionAbstract
+{
+    public string $name = '';
+
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    /** @return list<ReflectionParameter> */
+    public function getParameters(): array
+    {
+        return [];
+    }
+
+    public function getNumberOfParameters(): int
+    {
+        return 0;
+    }
+
+    public function getReturnType(): ?ReflectionType
+    {
+        return null;
+    }
+
+    public function getTentativeReturnType(): ?ReflectionType
+    {
+        return null;
+    }
+
+    public function hasReturnType(): bool
+    {
+        return false;
+    }
+
+    public function isStatic(): bool
+    {
+        return false;
+    }
+}
+
+class ReflectionMethod extends ReflectionFunctionAbstract
+{
+    public const IS_STATIC = 16;
+    public const IS_PUBLIC = 1;
+    public const IS_PROTECTED = 2;
+    public const IS_PRIVATE = 4;
+    public const IS_ABSTRACT = 64;
+    public const IS_FINAL = 32;
+
+    public string $class = '';
+
+    /** @param object|string $objectOrMethod */
+    public function __construct($objectOrMethod, ?string $method = null)
+    {
+        throw new ReflectionException('Methods cannot be reflected in a compiled program');
+    }
+
+    public function getDeclaringClass(): ReflectionClass
+    {
+        return new ReflectionClass($this->class);
+    }
+
+    public function isPublic(): bool
+    {
+        return true;
+    }
+
+    public function isProtected(): bool
+    {
+        return false;
+    }
+
+    public function isPrivate(): bool
+    {
+        return false;
+    }
+
+    public function isAbstract(): bool
+    {
+        return false;
+    }
+}
+
+class ReflectionParameter
+{
+    public string $name = '';
+
+    /** @param string|array{0: object|string, 1: string}|object $function */
+    public function __construct($function, int|string $param)
+    {
+        throw new ReflectionException('Parameters cannot be reflected in a compiled program');
+    }
+
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function getType(): ?ReflectionType
+    {
+        return null;
+    }
+
+    public function hasType(): bool
+    {
+        return false;
+    }
+
+    public function isOptional(): bool
+    {
+        return false;
+    }
+
+    public function isVariadic(): bool
+    {
+        return false;
+    }
+
+    public function isPassedByReference(): bool
+    {
+        return false;
+    }
+
+    public function allowsNull(): bool
+    {
+        return true;
+    }
+
+    public function isDefaultValueAvailable(): bool
+    {
+        return false;
+    }
+
+    public function getPosition(): int
+    {
+        return 0;
+    }
+}
+
+class ReflectionProperty
+{
+    public const IS_STATIC = 16;
+    public const IS_READONLY = 128;
+    public const IS_PUBLIC = 1;
+    public const IS_PROTECTED = 2;
+    public const IS_PRIVATE = 4;
+
+    public string $name = '';
+    public string $class = '';
+
+    /** @param object|string $class */
+    public function __construct($class, string $property)
+    {
+        throw new ReflectionException('Properties cannot be reflected in a compiled program');
+    }
+
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function getType(): ?ReflectionType
+    {
+        return null;
+    }
+
+    public function isStatic(): bool
+    {
+        return false;
+    }
+
+    public function isPublic(): bool
+    {
+        return true;
+    }
+
+    public function isProtected(): bool
+    {
+        return false;
+    }
+
+    public function isPrivate(): bool
+    {
+        return false;
+    }
+
+    public function getDeclaringClass(): ReflectionClass
+    {
+        return new ReflectionClass($this->class);
+    }
+}
