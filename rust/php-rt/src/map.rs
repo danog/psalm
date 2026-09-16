@@ -6,7 +6,7 @@ use hashbrown::HashTable;
 use std::borrow::Borrow;
 use std::fmt;
 use std::hash::{BuildHasher, Hash, Hasher};
-use std::rc::Rc;
+use std::sync::Arc as Rc;
 
 const HASH_SEED: u64 = 0x5eed_1234_abcd_9876;
 

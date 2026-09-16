@@ -57,3 +57,70 @@ pub fn never(n: Never) -> ! {
 
 /// Result alias used by builtins.
 pub type R<T> = Result<T, RtError>;
+
+/// An uncaught PHP exception (a `throw` outside any `try` in the transpiled program). Under the panic-based
+/// error model these do not need to be recovered from — they abort like a Rust panic, carrying the exception
+/// message. Returns `!` so it fits any expression/return position (including bare-`T` non-Result functions).
+pub fn uncaught<E: std::fmt::Display>(e: E) -> ! {
+    panic!("Uncaught exception: {}", e)
+}
+
+
+/// PHP `throw`/`try`/`catch` under the panic-based error model. A PHP `throw` unwinds the Rust stack carrying
+/// the thrown exception object (the program's `Throw` type — a closed enum over its Throwable classes) as the
+/// panic payload; `try` boundaries catch_unwind and call take_thrown::<Throw>(). Nothing is dynamically typed:
+/// the payload is downcast back to the one static type the program throws.
+pub struct PhpThrow(pub Box<dyn std::any::Any + Send>);
+
+/// The typed exception interface the generated `Throw` type implements (used by the test harness).
+pub trait PhpThrowable: std::any::Any + Send + 'static {
+    fn class_name(&self) -> &'static str;
+    /// Lower-cased fully qualified names of the class and all its ancestors/interfaces.
+    fn class_ancestors(&self) -> &'static [&'static str];
+    fn message(&self) -> crate::Str;
+}
+
+/// Execute a PHP `throw`: unwind with the exception object as the payload. Returns `!` (fits any position).
+pub fn do_throw<T: std::any::Any + Send>(e: T) -> ! {
+    std::panic::panic_any(PhpThrow(Box::new(e)))
+}
+
+/// At a `try` boundary, given a caught panic payload: return the thrown PHP exception if it was a `throw`,
+/// else resume unwinding (a genuine Rust panic = invariant violation, not catchable by PHP).
+pub fn take_thrown<T: std::any::Any>(payload: Box<dyn std::any::Any + Send>) -> T {
+    match payload.downcast::<PhpThrow>() {
+        Ok(t) => match t.0.downcast::<T>() {
+            Ok(e) => *e,
+            Err(_) => panic!("PHP throw payload is not the program's Throw type"),
+        },
+        Err(p) => std::panic::resume_unwind(p),
+    }
+}
+
+/// Like [`take_thrown`] but non-resuming: `Ok(exception)` if the payload is a PHP `throw`,
+/// else `Err(payload)` so the caller can report a genuine Rust panic itself (used by the test harness).
+pub fn take_thrown_opt<T: std::any::Any>(payload: Box<dyn std::any::Any + Send>) -> Result<T, Box<dyn std::any::Any + Send>> {
+    match payload.downcast::<PhpThrow>() {
+        Ok(t) => match t.0.downcast::<T>() {
+            Ok(e) => Ok(*e),
+            Err(_) => panic!("PHP throw payload is not the program's Throw type"),
+        },
+        Err(p) => Err(p),
+    }
+}
+
+/// Install a panic hook that stays silent for PhpThrow (PHP exceptions in flight, usually caught) so caught
+/// exceptions do not spam stderr with Rust panic backtraces; all other panics use the default hook.
+pub fn install_throw_panic_hook() {
+    use std::sync::Once;
+    static ONCE: Once = Once::new();
+    ONCE.call_once(|| {
+        let default = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
+            if info.payload().is::<PhpThrow>() {
+                return;
+            }
+            default(info);
+        }));
+    });
+}

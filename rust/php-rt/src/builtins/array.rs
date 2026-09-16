@@ -214,33 +214,29 @@ pub fn array_splice_m<K: MapKey, V: Clone>(m: &mut Map<K, V>, offset: i64, lengt
     *m = out;
     List::from_vec(removed)
 }
-pub fn array_map_l<T, U, E, F: FnMut(T) -> Result<U, E>>(l: &List<T>, mut f: F) -> Result<List<U>, E>
-where
-    T: Clone,
-{
+pub fn array_map_l<T: Clone, U, F: FnMut(T) -> U>(l: &List<T>, mut f: F) -> List<U> {
     let mut out = Vec::with_capacity(l.len());
     for v in l.iter() {
-        out.push(f(v.clone())?);
+        out.push(f(v.clone()));
     }
-    Ok(List::from_vec(out))
+    List::from_vec(out)
 }
-pub fn array_map_m<K: MapKey, V: Clone, U: Clone, E, F: FnMut(V) -> Result<U, E>>(m: &Map<K, V>, mut f: F) -> Result<Map<K, U>, E> {
+pub fn array_map_m<K: MapKey, V: Clone, U: Clone, F: FnMut(V) -> U>(m: &Map<K, V>, mut f: F) -> Map<K, U> {
     let mut out = Map::with_capacity(m.len());
     for (k, v) in m.iter() {
-        out.insert(k.clone(), f(v.clone())?);
+        out.insert(k.clone(), f(v.clone()));
     }
-    Ok(out)
+    out
 }
-pub fn array_map2_l<A: Clone, B: Clone, U, E, F: FnMut(A, B) -> Result<U, E>>(a: &List<A>, b: &List<B>, mut f: F) -> Result<List<U>, E> {
-    // PHP pads the shorter array with nulls; typed element types cannot express that
+pub fn array_map2_l<A: Clone, B: Clone, U, F: FnMut(A, B) -> U>(a: &List<A>, b: &List<B>, mut f: F) -> List<U> {
     let n = a.len().max(b.len());
     let mut out = Vec::with_capacity(n);
     for i in 0..n {
         let x = a.get(i as i64).cloned().expect("array_map: arrays of different lengths");
         let y = b.get(i as i64).cloned().expect("array_map: arrays of different lengths");
-        out.push(f(x, y)?);
+        out.push(f(x, y));
     }
-    Ok(List::from_vec(out))
+    List::from_vec(out)
 }
 pub fn array_filter_l<T: Clone + Truthy>(l: &List<T>) -> Map<i64, T> {
     l.iter().enumerate().filter(|(_, v)| v.truthy()).map(|(i, v)| (i as i64, v.clone())).collect()
@@ -248,79 +244,78 @@ pub fn array_filter_l<T: Clone + Truthy>(l: &List<T>) -> Map<i64, T> {
 pub fn array_filter_m<K: MapKey, V: Clone + Truthy>(m: &Map<K, V>) -> Map<K, V> {
     m.iter().filter(|(_, v)| v.truthy()).map(|(k, v)| (k.clone(), v.clone())).collect()
 }
-pub fn array_filter_cb_l<T: Clone, E, F: FnMut(T) -> Result<bool, E>>(l: &List<T>, mut f: F) -> Result<Map<i64, T>, E> {
+pub fn array_filter_cb_l<T: Clone, F: FnMut(T) -> bool>(l: &List<T>, mut f: F) -> Map<i64, T> {
     let mut out = Map::new();
     for (i, v) in l.iter().enumerate() {
-        if f(v.clone())? {
+        if f(v.clone()) {
             out.insert(i as i64, v.clone());
         }
     }
-    Ok(out)
+    out
 }
-pub fn array_filter_cb_m<K: MapKey, V: Clone, E, F: FnMut(V) -> Result<bool, E>>(m: &Map<K, V>, mut f: F) -> Result<Map<K, V>, E> {
+pub fn array_filter_cb_m<K: MapKey, V: Clone, F: FnMut(V) -> bool>(m: &Map<K, V>, mut f: F) -> Map<K, V> {
     let mut out = Map::new();
     for (k, v) in m.iter() {
-        if f(v.clone())? {
+        if f(v.clone()) {
             out.insert(k.clone(), v.clone());
         }
     }
-    Ok(out)
+    out
 }
-pub fn array_filter_key_m<K: MapKey, V: Clone, E, F: FnMut(K) -> Result<bool, E>>(m: &Map<K, V>, mut f: F) -> Result<Map<K, V>, E> {
+pub fn array_filter_key_m<K: MapKey, V: Clone, F: FnMut(K) -> bool>(m: &Map<K, V>, mut f: F) -> Map<K, V> {
     let mut out = Map::new();
     for (k, v) in m.iter() {
-        if f(k.clone())? {
+        if f(k.clone()) {
             out.insert(k.clone(), v.clone());
         }
     }
-    Ok(out)
+    out
 }
-pub fn array_filter_both_m<K: MapKey, V: Clone, E, F: FnMut(V, K) -> Result<bool, E>>(m: &Map<K, V>, mut f: F) -> Result<Map<K, V>, E> {
+pub fn array_filter_both_m<K: MapKey, V: Clone, F: FnMut(V, K) -> bool>(m: &Map<K, V>, mut f: F) -> Map<K, V> {
     let mut out = Map::new();
     for (k, v) in m.iter() {
-        if f(v.clone(), k.clone())? {
+        if f(v.clone(), k.clone()) {
             out.insert(k.clone(), v.clone());
         }
     }
-    Ok(out)
+    out
 }
-pub fn array_filter_key_l<T: Clone, E, F: FnMut(i64) -> Result<bool, E>>(l: &List<T>, mut f: F) -> Result<Map<i64, T>, E> {
+pub fn array_filter_key_l<T: Clone, F: FnMut(i64) -> bool>(l: &List<T>, mut f: F) -> Map<i64, T> {
     let mut out = Map::new();
     for (i, v) in l.iter().enumerate() {
-        if f(i as i64)? {
+        if f(i as i64) {
             out.insert(i as i64, v.clone());
         }
     }
-    Ok(out)
+    out
 }
-pub fn array_filter_both_l<T: Clone, E, F: FnMut(T, i64) -> Result<bool, E>>(l: &List<T>, mut f: F) -> Result<Map<i64, T>, E> {
+pub fn array_filter_both_l<T: Clone, F: FnMut(T, i64) -> bool>(l: &List<T>, mut f: F) -> Map<i64, T> {
     let mut out = Map::new();
     for (i, v) in l.iter().enumerate() {
-        if f(v.clone(), i as i64)? {
+        if f(v.clone(), i as i64) {
             out.insert(i as i64, v.clone());
         }
     }
-    Ok(out)
+    out
 }
-pub fn array_reduce_l<T: Clone, A, E, F: FnMut(A, T) -> Result<A, E>>(l: &List<T>, init: A, mut f: F) -> Result<A, E> {
+pub fn array_reduce_l<T: Clone, A, F: FnMut(A, T) -> A>(l: &List<T>, init: A, mut f: F) -> A {
     let mut acc = init;
     for v in l.iter() {
-        acc = f(acc, v.clone())?;
+        acc = f(acc, v.clone());
     }
-    Ok(acc)
+    acc
 }
-pub fn array_reduce_m<K: MapKey, V: Clone, A, E, F: FnMut(A, V) -> Result<A, E>>(m: &Map<K, V>, init: A, mut f: F) -> Result<A, E> {
+pub fn array_reduce_m<K: MapKey, V: Clone, A, F: FnMut(A, V) -> A>(m: &Map<K, V>, init: A, mut f: F) -> A {
     let mut acc = init;
     for (_, v) in m.iter() {
-        acc = f(acc, v.clone())?;
+        acc = f(acc, v.clone());
     }
-    Ok(acc)
+    acc
 }
-pub fn array_walk_l<T: Clone, E, F: FnMut(&mut T) -> Result<(), E>>(l: &mut List<T>, mut f: F) -> Result<(), E> {
+pub fn array_walk_l<T: Clone, F: FnMut(&mut T)>(l: &mut List<T>, mut f: F) {
     for v in l.make_mut().iter_mut() {
-        f(v)?;
+        f(v);
     }
-    Ok(())
 }
 pub fn array_sum_i(l: &[i64]) -> i64 {
     l.iter().fold(0i64, |a, b| a.wrapping_add(*b))
@@ -371,12 +366,12 @@ pub fn array_diff_key<K: MapKey, V: Clone, V2>(a: &Map<K, V>, b: &Map<K, V2>) ->
 pub fn array_diff_key_l<T: Clone, V2>(a: &List<T>, b: &Map<i64, V2>) -> Map<i64, T> {
     a.iter().enumerate().filter(|(i, _)| !b.contains_key(&(*i as i64))).map(|(i, v)| (i as i64, v.clone())).collect()
 }
-pub fn array_diff_ukey<K: MapKey, V: Clone, V2, E, F: FnMut(K, K) -> Result<i64, E>>(a: &Map<K, V>, b: &Map<K, V2>, mut f: F) -> Result<Map<K, V>, E> {
+pub fn array_diff_ukey<K: MapKey, V: Clone, V2, F: FnMut(K, K) -> i64>(a: &Map<K, V>, b: &Map<K, V2>, mut f: F) -> Map<K, V> {
     let mut out = Map::new();
     for (k, v) in a.iter() {
         let mut found = false;
         for (k2, _) in b.iter() {
-            if f(k.clone(), k2.clone())? == 0 {
+            if f(k.clone(), k2.clone()) == 0 {
                 found = true;
                 break;
             }
@@ -385,7 +380,7 @@ pub fn array_diff_ukey<K: MapKey, V: Clone, V2, E, F: FnMut(K, K) -> Result<i64,
             out.insert(k.clone(), v.clone());
         }
     }
-    Ok(out)
+    out
 }
 pub fn array_intersect_key<K: MapKey, V: Clone, V2>(a: &Map<K, V>, b: &Map<K, V2>) -> Map<K, V> {
     a.iter().filter(|(k, _)| b.contains_key(k)).map(|(k, v)| (k.clone(), v.clone())).collect()
@@ -464,61 +459,61 @@ where
 pub fn array_key_exists_l<T>(k: i64, l: &List<T>) -> bool {
     l.has(k)
 }
-pub fn array_any_l<T: Clone, E, F: FnMut(T, i64) -> Result<bool, E>>(l: &List<T>, mut f: F) -> Result<bool, E> {
+pub fn array_any_l<T: Clone, F: FnMut(T, i64) -> bool>(l: &List<T>, mut f: F) -> bool {
     for (i, v) in l.iter().enumerate() {
-        if f(v.clone(), i as i64)? {
-            return Ok(true);
+        if f(v.clone(), i as i64) {
+            return true;
         }
     }
-    Ok(false)
+    false
 }
-pub fn array_any_m<K: MapKey, V: Clone, E, F: FnMut(V, K) -> Result<bool, E>>(m: &Map<K, V>, mut f: F) -> Result<bool, E> {
+pub fn array_any_m<K: MapKey, V: Clone, F: FnMut(V, K) -> bool>(m: &Map<K, V>, mut f: F) -> bool {
     for (k, v) in m.iter() {
-        if f(v.clone(), k.clone())? {
-            return Ok(true);
+        if f(v.clone(), k.clone()) {
+            return true;
         }
     }
-    Ok(false)
+    false
 }
-pub fn array_all_l<T: Clone, E, F: FnMut(T, i64) -> Result<bool, E>>(l: &List<T>, mut f: F) -> Result<bool, E> {
+pub fn array_all_l<T: Clone, F: FnMut(T, i64) -> bool>(l: &List<T>, mut f: F) -> bool {
     for (i, v) in l.iter().enumerate() {
-        if !f(v.clone(), i as i64)? {
-            return Ok(false);
+        if !f(v.clone(), i as i64) {
+            return false;
         }
     }
-    Ok(true)
+    true
 }
-pub fn array_all_m<K: MapKey, V: Clone, E, F: FnMut(V, K) -> Result<bool, E>>(m: &Map<K, V>, mut f: F) -> Result<bool, E> {
+pub fn array_all_m<K: MapKey, V: Clone, F: FnMut(V, K) -> bool>(m: &Map<K, V>, mut f: F) -> bool {
     for (k, v) in m.iter() {
-        if !f(v.clone(), k.clone())? {
-            return Ok(false);
+        if !f(v.clone(), k.clone()) {
+            return false;
         }
     }
-    Ok(true)
+    true
 }
-pub fn array_find_l<T: Clone, E, F: FnMut(T, i64) -> Result<bool, E>>(l: &List<T>, mut f: F) -> Result<Option<T>, E> {
+pub fn array_find_l<T: Clone, F: FnMut(T, i64) -> bool>(l: &List<T>, mut f: F) -> Option<T> {
     for (i, v) in l.iter().enumerate() {
-        if f(v.clone(), i as i64)? {
-            return Ok(Some(v.clone()));
+        if f(v.clone(), i as i64) {
+            return Some(v.clone());
         }
     }
-    Ok(None)
+    None
 }
-pub fn array_find_m<K: MapKey, V: Clone, E, F: FnMut(V, K) -> Result<bool, E>>(m: &Map<K, V>, mut f: F) -> Result<Option<V>, E> {
+pub fn array_find_m<K: MapKey, V: Clone, F: FnMut(V, K) -> bool>(m: &Map<K, V>, mut f: F) -> Option<V> {
     for (k, v) in m.iter() {
-        if f(v.clone(), k.clone())? {
-            return Ok(Some(v.clone()));
+        if f(v.clone(), k.clone()) {
+            return Some(v.clone());
         }
     }
-    Ok(None)
+    None
 }
-pub fn array_find_key_m<K: MapKey, V: Clone, E, F: FnMut(V, K) -> Result<bool, E>>(m: &Map<K, V>, mut f: F) -> Result<Option<K>, E> {
+pub fn array_find_key_m<K: MapKey, V: Clone, F: FnMut(V, K) -> bool>(m: &Map<K, V>, mut f: F) -> Option<K> {
     for (k, v) in m.iter() {
-        if f(v.clone(), k.clone())? {
-            return Ok(Some(k.clone()));
+        if f(v.clone(), k.clone()) {
+            return Some(k.clone());
         }
     }
-    Ok(None)
+    None
 }
 pub fn array_change_key_case_lower<V: Clone>(m: &Map<Str, V>) -> Map<Str, V> {
     m.iter().map(|(k, v)| (k.to_lowercase(), v.clone())).collect()
@@ -560,73 +555,19 @@ pub fn rsort_m<K: MapKey, V: Clone + PhpCmp>(m: &Map<K, V>) -> List<V> {
     rsort_l(&mut v);
     v
 }
-pub fn usort_l<T: Clone, E, F: FnMut(T, T) -> Result<i64, E>>(l: &mut List<T>, mut f: F) -> Result<(), E> {
-    let mut err = None;
-    l.sort_by(|a, b| {
-        if err.is_some() {
-            return Ordering::Equal;
-        }
-        match f(a.clone(), b.clone()) {
-            Ok(r) => r.cmp(&0),
-            Err(e) => {
-                err = Some(e);
-                Ordering::Equal
-            }
-        }
-    });
-    match err {
-        Some(e) => Err(e),
-        None => Ok(()),
-    }
+pub fn usort_l<T: Clone, F: FnMut(T, T) -> i64>(l: &mut List<T>, mut f: F) {
+    l.sort_by(|a, b| f(a.clone(), b.clone()).cmp(&0));
 }
-pub fn usort_m<K: MapKey, V: Clone, E, F: FnMut(V, V) -> Result<i64, E>>(m: &Map<K, V>, f: F) -> Result<List<V>, E> {
+pub fn usort_m<K: MapKey, V: Clone, F: FnMut(V, V) -> i64>(m: &Map<K, V>, f: F) -> List<V> {
     let mut v = m.values_list();
-    usort_l(&mut v, f)?;
-    Ok(v)
+    usort_l(&mut v, f);
+    v
 }
-pub fn uasort_m<K: MapKey, V: Clone, E, F: FnMut(V, V) -> Result<i64, E>>(m: &mut Map<K, V>, mut f: F) -> Result<(), E> {
-    let mut err = None;
-    m.sort_by(
-        |a, b| {
-            if err.is_some() {
-                return Ordering::Equal;
-            }
-            match f(a.1.clone(), b.1.clone()) {
-                Ok(r) => r.cmp(&0),
-                Err(e) => {
-                    err = Some(e);
-                    Ordering::Equal
-                }
-            }
-        },
-        false,
-    );
-    match err {
-        Some(e) => Err(e),
-        None => Ok(()),
-    }
+pub fn uasort_m<K: MapKey, V: Clone, F: FnMut(V, V) -> i64>(m: &mut Map<K, V>, mut f: F) {
+    m.sort_by(|a, b| f(a.1.clone(), b.1.clone()).cmp(&0), false);
 }
-pub fn uksort_m<K: MapKey, V: Clone, E, F: FnMut(K, K) -> Result<i64, E>>(m: &mut Map<K, V>, mut f: F) -> Result<(), E> {
-    let mut err = None;
-    m.sort_by(
-        |a, b| {
-            if err.is_some() {
-                return Ordering::Equal;
-            }
-            match f(a.0.clone(), b.0.clone()) {
-                Ok(r) => r.cmp(&0),
-                Err(e) => {
-                    err = Some(e);
-                    Ordering::Equal
-                }
-            }
-        },
-        false,
-    );
-    match err {
-        Some(e) => Err(e),
-        None => Ok(()),
-    }
+pub fn uksort_m<K: MapKey, V: Clone, F: FnMut(K, K) -> i64>(m: &mut Map<K, V>, mut f: F) {
+    m.sort_by(|a, b| f(a.0.clone(), b.0.clone()).cmp(&0), false);
 }
 pub fn ksort_m<K: MapKey + PhpCmp, V: Clone>(m: &mut Map<K, V>) {
     m.sort_by(|a, b| a.0.php_cmp(&b.0), false);

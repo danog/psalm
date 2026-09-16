@@ -3,7 +3,7 @@
 use crate::map::Map;
 use std::fmt;
 use std::ops::{Deref, Index};
-use std::rc::Rc;
+use std::sync::Arc as Rc;
 
 /// The second field is PHP's internal array pointer (`current()`/`next()`...), copied with the value.
 pub struct List<T>(Rc<Vec<T>>, usize);

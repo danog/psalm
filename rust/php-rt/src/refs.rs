@@ -6,7 +6,7 @@
 
 use crate::late::Late;
 use std::cell::RefCell;
-use std::rc::Rc;
+use std::sync::Arc as Rc;
 
 pub type Cell<T> = Rc<RefCell<Late<T>>>;
 

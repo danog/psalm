@@ -7,7 +7,7 @@
 //! string's hash be computed once and reused across map lookups.
 
 use std::alloc::{alloc, dealloc, handle_alloc_error, Layout};
-use std::cell::Cell;
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
@@ -16,12 +16,12 @@ use std::ptr::{self, NonNull};
 /// Header of a heap string's single allocation; the bytes follow inline immediately after it.
 #[repr(C)]
 struct Hdr {
-    /// Non-atomic strong reference count (single-threaded runtime, like `Rc`).
-    strong: Cell<usize>,
+    /// Atomic strong reference count (axis-7: Str is Send+Sync, like `Arc`).
+    strong: AtomicUsize,
     /// Cached hash of the bytes; `0` means "not computed yet" (a real hash of 0 is bumped to 1).
-    hash: Cell<u64>,
-    /// Number of live bytes.
-    len: Cell<usize>,
+    hash: AtomicU64,
+    /// Number of live bytes (mutated in place only while uniquely owned -- COW).
+    len: AtomicUsize,
     /// Bytes of inline capacity available after the header (fixed per allocation).
     cap: usize,
 }
@@ -46,7 +46,7 @@ impl HeapStr {
             if p.is_null() {
                 handle_alloc_error(l);
             }
-            ptr::write(p, Hdr { strong: Cell::new(1), hash: Cell::new(0), len: Cell::new(0), cap });
+            ptr::write(p, Hdr { strong: AtomicUsize::new(1), hash: AtomicU64::new(0), len: AtomicUsize::new(0), cap });
             NonNull::new_unchecked(p)
         }
     }
@@ -65,22 +65,22 @@ impl HeapStr {
         let hs = Self::with_capacity(b.len());
         unsafe {
             ptr::copy_nonoverlapping(b.as_ptr(), hs.data_ptr(), b.len());
-            hs.hdr().len.set(b.len());
+            hs.hdr().len.store(b.len(), Ordering::Relaxed);
         }
         hs
     }
     #[inline]
     pub fn as_bytes(&self) -> &[u8] {
-        unsafe { std::slice::from_raw_parts(self.data_ptr() as *const u8, self.hdr().len.get()) }
+        unsafe { std::slice::from_raw_parts(self.data_ptr() as *const u8, self.hdr().len.load(Ordering::Relaxed)) }
     }
     #[inline]
     fn is_unique(&self) -> bool {
-        self.hdr().strong.get() == 1
+        self.hdr().strong.load(Ordering::Relaxed) == 1
     }
     /// Cached byte-hash: compute once with `f`, then reuse (`0` is reserved for "uncomputed").
     #[inline]
     pub fn cached_hash(&self, f: impl FnOnce(&[u8]) -> u64) -> u64 {
-        let cur = self.hdr().hash.get();
+        let cur = self.hdr().hash.load(Ordering::Relaxed);
         if cur != 0 {
             return cur;
         }
@@ -88,22 +88,22 @@ impl HeapStr {
         if v == 0 {
             v = 1;
         }
-        self.hdr().hash.set(v);
+        self.hdr().hash.store(v, Ordering::Relaxed);
         v
     }
     /// Ensure this handle uniquely owns a buffer with room for `needed` bytes; copies on share/grow.
     /// After this call the current bytes are preserved, the buffer is unique, and the hash is cleared.
     fn ensure_unique_cap(&mut self, needed: usize) {
-        let len = self.hdr().len.get();
+        let len = self.hdr().len.load(Ordering::Relaxed);
         if self.is_unique() && needed <= self.hdr().cap {
-            self.hdr().hash.set(0);
+            self.hdr().hash.store(0, Ordering::Relaxed);
             return;
         }
         let new_cap = needed.max(self.hdr().cap.saturating_mul(2)).max(needed);
         let np = Self::alloc_with(new_cap);
         unsafe {
             ptr::copy_nonoverlapping(self.data_ptr() as *const u8, (np.as_ptr() as *mut u8).add(HDR_SIZE), len);
-            np.as_ref().len.set(len);
+            np.as_ref().len.store(len, Ordering::Relaxed);
         }
         let old = std::mem::replace(&mut self.ptr, np);
         drop(HeapStr { ptr: old });
@@ -112,16 +112,16 @@ impl HeapStr {
         if b.is_empty() {
             return;
         }
-        let len = self.hdr().len.get();
+        let len = self.hdr().len.load(Ordering::Relaxed);
         self.ensure_unique_cap(len + b.len());
         unsafe {
             ptr::copy_nonoverlapping(b.as_ptr(), self.data_ptr().add(len), b.len());
-            self.hdr().len.set(len + b.len());
+            self.hdr().len.store(len + b.len(), Ordering::Relaxed);
         }
     }
     /// Set the byte at an in-range index (copies first if shared).
     fn set_byte(&mut self, idx: usize, c: u8) {
-        let len = self.hdr().len.get();
+        let len = self.hdr().len.load(Ordering::Relaxed);
         debug_assert!(idx < len);
         self.ensure_unique_cap(len);
         unsafe {
@@ -133,26 +133,28 @@ impl HeapStr {
     }
 }
 
+// Axis-7: the payload is immutable while shared (COW: in-place mutation only when strong==1), and the
+// refcount is atomic, so HeapStr is safe to Send/Sync between threads (same invariant as Arc<[u8]>).
+unsafe impl Send for HeapStr {}
+unsafe impl Sync for HeapStr {}
+
 impl Clone for HeapStr {
     #[inline]
     fn clone(&self) -> Self {
-        let h = self.hdr();
-        h.strong.set(h.strong.get() + 1);
+        self.hdr().strong.fetch_add(1, Ordering::Relaxed);
         HeapStr { ptr: self.ptr }
     }
 }
 
 impl Drop for HeapStr {
     fn drop(&mut self) {
-        let c = self.hdr().strong.get();
-        if c == 1 {
+        if self.hdr().strong.fetch_sub(1, Ordering::Release) == 1 {
+            std::sync::atomic::fence(Ordering::Acquire);
             let cap = self.hdr().cap;
             unsafe {
                 ptr::drop_in_place(self.ptr.as_ptr());
                 dealloc(self.ptr.as_ptr() as *mut u8, Self::layout(cap));
             }
-        } else {
-            self.hdr().strong.set(c - 1);
         }
     }
 }

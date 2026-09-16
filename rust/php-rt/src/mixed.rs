@@ -6,10 +6,10 @@ use crate::map::Map;
 use crate::string::Str;
 use std::any::Any;
 use std::fmt;
-use std::rc::Rc;
+use std::sync::Arc as Rc;
 
 /// Implemented (by generated code) for every class handle type.
-pub trait PhpObject: Any {
+pub trait PhpObject: Any + Send + Sync {
     fn class_name(&self) -> &'static str;
     /// Lower-cased fully qualified names of the class and all its ancestors/interfaces.
     fn class_ancestors(&self) -> &'static [&'static str];
@@ -48,12 +48,8 @@ pub trait PhpObject: Any {
         self.class_ancestors().iter().any(|a| *a == lname)
     }
     /// Call a method by (case-insensitive) name with dynamically typed arguments.
-    fn call_method(&self, name: &str, _args: Vec<Mixed>) -> Result<Mixed, crate::containers::DynError> {
-        Err(crate::containers::DynError::Rt(crate::error::RtError::error(crate::sfmt!(
-            "Call to undefined method {}::{}()",
-            self.class_name(),
-            name
-        ))))
+    fn call_method(&self, name: &str, _args: Vec<Mixed>) -> Mixed {
+        panic!("Uncaught exception: Call to undefined method {}::{}()", self.class_name(), name)
     }
 
     /// Cross-hierarchy ("sideways") cast for the closed world, registry-free. A concrete class
@@ -95,7 +91,7 @@ pub enum Mixed {
     Str(Str),
     Arr(Map<ArrayKey, Mixed>),
     Obj(AnyObj),
-    Closure(Rc<dyn Any>),
+    Closure(Rc<dyn Any + Send + Sync>),
 }
 
 impl Default for Mixed {

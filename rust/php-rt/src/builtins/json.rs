@@ -152,10 +152,7 @@ fn encode(m: &Mixed, flags: i64, depth: usize, max_depth: i64, out: &mut Vec<u8>
         }
         Mixed::Obj(o) => {
             if o.instance_of_name("jsonserializable") {
-                let v = o.call_method("jsonserialize", Vec::new()).map_err(|e| match e {
-                    crate::containers::DynError::Rt(e) => e,
-                    crate::containers::DynError::Obj(_) => RtError::error("jsonSerialize() threw"),
-                })?;
+                let v = o.call_method("jsonserialize", Vec::new());
                 return encode(&v, flags, depth, max_depth, out);
             }
             // stdClass / plain objects encode their public props
@@ -408,7 +405,7 @@ impl<'a> Parser<'a> {
             Mixed::Arr(m)
         } else {
             let sm: Map<Str, Mixed> = m.into_iter().map(|(k, v)| (k.to_str(), v)).collect();
-            Mixed::Obj(std::rc::Rc::new(crate::containers::StdClass::from_map(sm)))
+            Mixed::Obj(std::sync::Arc::new(crate::containers::StdClass::from_map(sm)))
         }
     }
 }

@@ -8,11 +8,11 @@ use crate::mixed::Mixed;
 use crate::string::Str;
 use pcre2::bytes::{Regex, RegexBuilder};
 use std::cell::RefCell;
-use std::collections::HashMap;
-use std::rc::Rc;
+use crate::{FastMap, fast_map};
+use std::sync::Arc as Rc;
 
 thread_local! {
-    static CACHE: RefCell<HashMap<Vec<u8>, Rc<Compiled>>> = RefCell::new(HashMap::new());
+    static CACHE: RefCell<FastMap<Vec<u8>, Rc<Compiled>>> = RefCell::new(fast_map());
     static LAST_ERROR: RefCell<(i64, Str)> = RefCell::new((0, Str::from_static("No error")));
 }
 
@@ -367,29 +367,15 @@ pub fn preg_replace_arr_s(patterns: &List<Str>, replacement: &Str, subject: &Str
     Ok(cur)
 }
 
-pub fn preg_replace_callback<E, F: FnMut(Map<ArrayKey, Str>) -> Result<Str, E>>(pattern: &Str, subject: &Str, limit: i64, mut f: F) -> Result<Str, E>
-where
-    E: From<RtError>,
-{
+pub fn preg_replace_callback<F: FnMut(Map<ArrayKey, Str>) -> Str>(pattern: &Str, subject: &Str, limit: i64, mut f: F) -> Result<Str, RtError> {
     let c = compile(pattern)?;
-    let mut err: Option<E> = None;
     let res = replace_impl(&c, subject, limit, |caps, out| {
         let m = groups_map(&c, &spans_of(caps), subject, false, false, false);
         let m: Map<ArrayKey, Str> = m.into_iter().map(|(k, v)| (k, crate::traits::ToStr::to_php_str(&v))).collect();
-        match f(m) {
-            Ok(s) => {
-                out.extend_from_slice(&s);
-                Ok(())
-            }
-            Err(e) => {
-                err = Some(e);
-                Err(RtError::error("callback failed"))
-            }
-        }
+        let s = f(m);
+        out.extend_from_slice(&s);
+        Ok::<(), RtError>(())
     });
-    if let Some(e) = err {
-        return Err(e);
-    }
     let (out, _) = res?;
     Ok(Str::from_vec(out))
 }

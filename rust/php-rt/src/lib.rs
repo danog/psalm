@@ -37,7 +37,14 @@ pub use map::Map;
 pub use late::Late;
 pub use refs::{PhpRef, Cell as PhpCell, new_cell, cell_of};
 pub use mixed::{Mixed, AnyObj, PhpObject, erase_dyn, unerase_dyn};
-pub use error::{RtError, Flow, R, Never, never, dead};
+/// A fast (non-cryptographic) hash map for internal caches where PHP insertion order is NOT observed
+/// (the FxHashMap-style axis; the ordered PHP `array` map lives in `map.rs`). Uses foldhash.
+pub type FastMap<K, V> = std::collections::HashMap<K, V, foldhash::fast::FixedState>;
+#[inline]
+pub fn fast_map<K, V>() -> FastMap<K, V> {
+    std::collections::HashMap::with_hasher(foldhash::fast::FixedState::with_seed(0x5eed_1234_abcd_9876))
+}
+pub use error::{RtError, Flow, R, Never, never, dead, uncaught, do_throw, take_thrown, take_thrown_opt, install_throw_panic_hook, PhpThrow, PhpThrowable};
 pub use traits::*;
 pub use ops::*;
 pub use cast::{CastTo, cast};
@@ -65,6 +72,6 @@ pub mod prelude {
     pub use crate::builtins::*;
     pub use crate::consts;
     pub use crate::names;
-    pub use std::rc::Rc;
-    pub use std::cell::{Ref, RefCell, RefMut};
+    pub use std::sync::Arc as Rc;
+    pub use crate::support::{RwCell as RefCell, CellRef as Ref, CellRefMut as RefMut};
 }

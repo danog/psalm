@@ -7,14 +7,16 @@ use crate::map::Map;
 use crate::mixed::{AnyObj, Mixed, PhpObject};
 use crate::string::Str;
 use crate::traits::*;
-use std::cell::{Cell, RefCell};
-use std::rc::{Rc, Weak};
+use std::cell::RefCell;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use crate::support::RwCell;
+use std::sync::{Arc as Rc, Weak};
 
 // ---------------------------------------------------------------- Generator (eagerly evaluated)
 
 pub struct GeneratorData<K, V> {
     pairs: Vec<(K, V)>,
-    pos: Cell<usize>,
+    pos: AtomicUsize,
 }
 
 /// An eagerly-evaluated PHP generator / iterator over key-value pairs.
@@ -28,7 +30,7 @@ impl<K, V> Clone for Generator<K, V> {
 
 impl<K: Clone, V: Clone> Generator<K, V> {
     pub fn from_pairs(pairs: Vec<(K, V)>) -> Self {
-        Generator(Rc::new(GeneratorData { pairs, pos: Cell::new(0) }))
+        Generator(Rc::new(GeneratorData { pairs, pos: AtomicUsize::new(0) }))
     }
     pub fn into_pairs(&self) -> Vec<(K, V)> {
         self.0.pairs.clone()
@@ -40,19 +42,19 @@ impl<K: Clone, V: Clone> Generator<K, V> {
         self.0.pairs.len() as i64
     }
     pub fn current(&self) -> Option<V> {
-        self.0.pairs.get(self.0.pos.get()).map(|(_, v)| v.clone())
+        self.0.pairs.get(self.0.pos.load(Ordering::Relaxed)).map(|(_, v)| v.clone())
     }
     pub fn key(&self) -> Option<K> {
-        self.0.pairs.get(self.0.pos.get()).map(|(k, _)| k.clone())
+        self.0.pairs.get(self.0.pos.load(Ordering::Relaxed)).map(|(k, _)| k.clone())
     }
     pub fn next(&self) {
-        self.0.pos.set(self.0.pos.get() + 1);
+        self.0.pos.store(self.0.pos.load(Ordering::Relaxed) + 1, Ordering::Relaxed);
     }
     pub fn rewind(&self) {
-        self.0.pos.set(0);
+        self.0.pos.store(0, Ordering::Relaxed);
     }
     pub fn valid(&self) -> bool {
-        self.0.pos.get() < self.0.pairs.len()
+        self.0.pos.load(Ordering::Relaxed) < self.0.pairs.len()
     }
 }
 impl<K: MapKey, V: Clone> Generator<K, V> {
@@ -93,7 +95,7 @@ impl<K: Clone, V: Clone> Len for Generator<K, V> {
         self.count()
     }
 }
-impl<K: Clone + crate::cast::CastTo<Mixed> + 'static, V: Clone + crate::cast::CastTo<Mixed> + 'static> PhpObject for Generator<K, V> {
+impl<K: Clone + crate::cast::CastTo<Mixed> + Send + Sync + 'static, V: Clone + crate::cast::CastTo<Mixed> + Send + Sync + 'static> PhpObject for Generator<K, V> {
     fn class_name(&self) -> &'static str {
         "Generator"
     }
@@ -107,7 +109,7 @@ impl<K: Clone + crate::cast::CastTo<Mixed> + 'static, V: Clone + crate::cast::Ca
         self
     }
 }
-impl<K: Clone + crate::cast::CastTo<Mixed> + 'static, V: Clone + crate::cast::CastTo<Mixed> + 'static> crate::cast::CastTo<Mixed> for Generator<K, V> {
+impl<K: Clone + crate::cast::CastTo<Mixed> + Send + Sync + 'static, V: Clone + crate::cast::CastTo<Mixed> + Send + Sync + 'static> crate::cast::CastTo<Mixed> for Generator<K, V> {
     fn cast_to(self) -> Mixed {
         Mixed::Obj(Rc::new(self))
     }
@@ -124,10 +126,7 @@ where
             }
             // any other Iterator object: drive it through its methods
             let call = |name: &str| -> Mixed {
-                o.call_method(name, Vec::new()).unwrap_or_else(|e| match e {
-                    DynError::Rt(r) => panic!("{}", r.message),
-                    DynError::Obj(_) => panic!("exception while iterating {}", o.class_name()),
-                })
+                o.call_method(name, Vec::new())
             };
             let mut pairs = Vec::new();
             call("rewind");
@@ -155,16 +154,16 @@ pub type IteratorAggregate<K, V> = Generator<K, V>;
 
 // ---------------------------------------------------------------- ArrayObject / ArrayIterator
 
-pub struct ArrayObject<K, V>(Rc<RefCell<Map<K, V>>>, Cell<usize>);
+pub struct ArrayObject<K, V>(Rc<RwCell<Map<K, V>>>, AtomicUsize);
 
 impl<K, V> Clone for ArrayObject<K, V> {
     fn clone(&self) -> Self {
-        ArrayObject(self.0.clone(), Cell::new(self.1.get()))
+        ArrayObject(self.0.clone(), AtomicUsize::new(self.1.load(Ordering::Relaxed)))
     }
 }
 impl<K: MapKey, V: Clone> ArrayObject<K, V> {
     pub fn new(m: Map<K, V>) -> Self {
-        ArrayObject(Rc::new(RefCell::new(m)), Cell::new(0))
+        ArrayObject(Rc::new(RwCell::new(m)), AtomicUsize::new(0))
     }
     pub fn get_array_copy(&self) -> Map<K, V> {
         self.0.borrow().clone()
@@ -191,25 +190,25 @@ impl<K: MapKey, V: Clone> ArrayObject<K, V> {
         self.0.borrow_mut().remove(k);
     }
     pub fn get_iterator(&self) -> ArrayIterator<K, V> {
-        ArrayObject(self.0.clone(), Cell::new(0))
+        ArrayObject(self.0.clone(), AtomicUsize::new(0))
     }
     pub fn into_pairs(&self) -> Vec<(K, V)> {
         self.0.borrow().to_pairs()
     }
     pub fn current(&self) -> Option<V> {
-        self.0.borrow().iter().nth(self.1.get()).map(|(_, v)| v.clone())
+        self.0.borrow().iter().nth(self.1.load(Ordering::Relaxed)).map(|(_, v)| v.clone())
     }
     pub fn key(&self) -> Option<K> {
-        self.0.borrow().iter().nth(self.1.get()).map(|(k, _)| k.clone())
+        self.0.borrow().iter().nth(self.1.load(Ordering::Relaxed)).map(|(k, _)| k.clone())
     }
     pub fn next(&self) {
-        self.1.set(self.1.get() + 1);
+        self.1.store(self.1.load(Ordering::Relaxed) + 1, Ordering::Relaxed);
     }
     pub fn rewind(&self) {
-        self.1.set(0);
+        self.1.store(0, Ordering::Relaxed);
     }
     pub fn valid(&self) -> bool {
-        self.1.get() < self.0.borrow().len()
+        self.1.load(Ordering::Relaxed) < self.0.borrow().len()
     }
 }
 pub type ArrayIterator<K, V> = ArrayObject<K, V>;
@@ -228,7 +227,7 @@ impl<K: MapKey, V: Clone> Len for ArrayObject<K, V> {
         self.count()
     }
 }
-impl<K: MapKey + 'static, V: Clone + 'static> PhpObject for ArrayObject<K, V> {
+impl<K: MapKey + Send + Sync + 'static, V: Clone + Send + Sync + 'static> PhpObject for ArrayObject<K, V> {
     fn class_name(&self) -> &'static str {
         "ArrayObject"
     }
@@ -242,12 +241,12 @@ impl<K: MapKey + 'static, V: Clone + 'static> PhpObject for ArrayObject<K, V> {
         self
     }
 }
-impl<K: MapKey + 'static, V: Clone + 'static> crate::cast::CastTo<Mixed> for ArrayObject<K, V> {
+impl<K: MapKey + Send + Sync + 'static, V: Clone + Send + Sync + 'static> crate::cast::CastTo<Mixed> for ArrayObject<K, V> {
     fn cast_to(self) -> Mixed {
         Mixed::Obj(Rc::new(self))
     }
 }
-impl<K: MapKey + 'static, V: Clone + 'static> crate::cast::CastTo<ArrayObject<K, V>> for Mixed {
+impl<K: MapKey + Send + Sync + 'static, V: Clone + Send + Sync + 'static> crate::cast::CastTo<ArrayObject<K, V>> for Mixed {
     fn cast_to(self) -> ArrayObject<K, V> {
         if let Mixed::Obj(o) = &self {
             if let Some(g) = o.as_any().downcast_ref::<ArrayObject<K, V>>() {
@@ -265,7 +264,7 @@ impl<K: MapKey, V> std::fmt::Debug for ArrayObject<K, V> {
 
 // ---------------------------------------------------------------- SplObjectStorage / WeakMap
 
-pub struct SplObjectStorage<K, V>(Rc<RefCell<Vec<(K, V)>>>);
+pub struct SplObjectStorage<K, V>(Rc<RwCell<Vec<(K, V)>>>);
 
 impl<K, V> Clone for SplObjectStorage<K, V> {
     fn clone(&self) -> Self {
@@ -274,7 +273,7 @@ impl<K, V> Clone for SplObjectStorage<K, V> {
 }
 impl<K: PhpObject + Clone, V: Clone> SplObjectStorage<K, V> {
     pub fn new() -> Self {
-        SplObjectStorage(Rc::new(RefCell::new(Vec::new())))
+        SplObjectStorage(Rc::new(RwCell::new(Vec::new())))
     }
     fn find(&self, k: &K) -> Option<usize> {
         let id = k.obj_id();
@@ -341,7 +340,7 @@ impl<K, V> Len for SplObjectStorage<K, V> {
 impl<K, V> PhpObject for SplObjectStorage<K, V>
 where
     K: PhpObject + Clone + 'static,
-    V: Clone + crate::cast::CastTo<Mixed> + 'static,
+    V: Clone + crate::cast::CastTo<Mixed> + Send + Sync + 'static,
     Mixed: crate::cast::CastTo<K> + crate::cast::CastTo<V>,
 {
     fn class_name(&self) -> &'static str {
@@ -356,11 +355,11 @@ where
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn call_method(&self, name: &str, args: Vec<Mixed>) -> Result<Mixed, DynError> {
+    fn call_method(&self, name: &str, args: Vec<Mixed>) -> Mixed {
         use crate::cast::CastTo;
         let arg = |i: usize| args.get(i).cloned().unwrap_or(Mixed::Null);
         let key = |i: usize| -> K { CastTo::<K>::cast_to(arg(i)) };
-        Ok(match name {
+        match name {
             "attach" | "offsetset" => {
                 let v: V = CastTo::<V>::cast_to(arg(1));
                 self.attach(key(0), v);
@@ -374,7 +373,7 @@ where
             "offsetget" => match self.get(&key(0)) {
                 Some(v) => CastTo::<Mixed>::cast_to(v),
                 None => {
-                    return Err(DynError::Rt(RtError::new("UnexpectedValueException", "Object not found")));
+                    panic!("Uncaught exception: UnexpectedValueException: Object not found");
                 }
             },
             "count" => Mixed::Int(self.count()),
@@ -385,15 +384,15 @@ where
                 Mixed::Null
             }
             _ => {
-                return Err(DynError::Rt(RtError::error(crate::sfmt!("Call to undefined method SplObjectStorage::{}()", name))));
+                panic!("Uncaught exception: Call to undefined method SplObjectStorage::{}()", name);
             }
-        })
+        }
     }
 }
 impl<K, V> crate::cast::CastTo<Mixed> for SplObjectStorage<K, V>
 where
     K: PhpObject + Clone + 'static,
-    V: Clone + crate::cast::CastTo<Mixed> + 'static,
+    V: Clone + crate::cast::CastTo<Mixed> + Send + Sync + 'static,
     Mixed: crate::cast::CastTo<K> + crate::cast::CastTo<V>,
 {
     fn cast_to(self) -> Mixed {
@@ -403,7 +402,7 @@ where
 impl<K, V> crate::cast::CastTo<SplObjectStorage<K, V>> for Mixed
 where
     K: PhpObject + Clone + 'static,
-    V: Clone + crate::cast::CastTo<Mixed> + 'static,
+    V: Clone + crate::cast::CastTo<Mixed> + Send + Sync + 'static,
     Mixed: crate::cast::CastTo<K> + crate::cast::CastTo<V>,
 {
     fn cast_to(self) -> SplObjectStorage<K, V> {
@@ -425,19 +424,19 @@ pub type WeakMap<K, V> = SplObjectStorage<K, V>;
 // ---------------------------------------------------------------- WeakReference
 
 #[derive(Clone)]
-pub struct WeakReference<T>(Rc<RefCell<Option<T>>>);
+pub struct WeakReference<T>(Rc<RwCell<Option<T>>>);
 impl<T: Clone + PhpObject + 'static> WeakReference<T> {
     /// As in PHP, creating a weak reference to the same object twice yields the same instance.
     pub fn create(v: T) -> Self {
         thread_local! {
-            static REGISTRY: RefCell<std::collections::HashMap<usize, Box<dyn std::any::Any>>> = RefCell::new(std::collections::HashMap::new());
+            static REGISTRY: RefCell<crate::FastMap<usize, Box<dyn std::any::Any>>> = RefCell::new(crate::fast_map());
         }
         let id = v.obj_id();
         REGISTRY.with(|r| {
             if let Some(existing) = r.borrow().get(&id).and_then(|b| b.downcast_ref::<WeakReference<T>>()) {
                 return existing.clone();
             }
-            let w = WeakReference(Rc::new(RefCell::new(Some(v))));
+            let w = WeakReference(Rc::new(RwCell::new(Some(v))));
             r.borrow_mut().insert(id, Box::new(w.clone()));
             w
         })
@@ -463,7 +462,7 @@ impl<T> std::fmt::Debug for WeakReference<T> {
         write!(f, "WeakReference")
     }
 }
-impl<T: Clone + crate::cast::CastTo<Mixed> + 'static> PhpObject for WeakReference<T> {
+impl<T: Clone + crate::cast::CastTo<Mixed> + Send + Sync + 'static> PhpObject for WeakReference<T> {
     fn class_name(&self) -> &'static str {
         "WeakReference"
     }
@@ -476,22 +475,22 @@ impl<T: Clone + crate::cast::CastTo<Mixed> + 'static> PhpObject for WeakReferenc
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn call_method(&self, name: &str, _args: Vec<Mixed>) -> Result<Mixed, DynError> {
+    fn call_method(&self, name: &str, _args: Vec<Mixed>) -> Mixed {
         match name {
-            "get" => Ok(match self.get() {
+            "get" => match self.get() {
                 Some(v) => crate::cast::CastTo::<Mixed>::cast_to(v),
                 None => Mixed::Null,
-            }),
-            _ => Err(DynError::Rt(RtError::error(crate::sfmt!("Call to undefined method WeakReference::{}()", name)))),
+            },
+            _ => panic!("Uncaught exception: Call to undefined method WeakReference::{}()", name),
         }
     }
 }
-impl<T: Clone + crate::cast::CastTo<Mixed> + 'static> crate::cast::CastTo<Mixed> for WeakReference<T> {
+impl<T: Clone + crate::cast::CastTo<Mixed> + Send + Sync + 'static> crate::cast::CastTo<Mixed> for WeakReference<T> {
     fn cast_to(self) -> Mixed {
         Mixed::Obj(Rc::new(self))
     }
 }
-impl<T: Clone + crate::cast::CastTo<Mixed> + 'static> crate::cast::CastTo<WeakReference<T>> for Mixed {
+impl<T: Clone + crate::cast::CastTo<Mixed> + Send + Sync + 'static> crate::cast::CastTo<WeakReference<T>> for Mixed {
     fn cast_to(self) -> WeakReference<T> {
         if let Mixed::Obj(o) = &self {
             if let Some(w) = o.as_any().downcast_ref::<WeakReference<T>>() {
@@ -505,13 +504,13 @@ impl<T: Clone + crate::cast::CastTo<Mixed> + 'static> crate::cast::CastTo<WeakRe
 // ---------------------------------------------------------------- stdClass
 
 #[derive(Clone, Default)]
-pub struct StdClass(Rc<RefCell<Map<Str, Mixed>>>);
+pub struct StdClass(Rc<RwCell<Map<Str, Mixed>>>);
 impl StdClass {
     pub fn new() -> Self {
-        StdClass(Rc::new(RefCell::new(Map::new())))
+        StdClass(Rc::new(RwCell::new(Map::new())))
     }
     pub fn from_map(m: Map<Str, Mixed>) -> Self {
-        StdClass(Rc::new(RefCell::new(m)))
+        StdClass(Rc::new(RwCell::new(m)))
     }
     pub fn from_mixed(m: Mixed) -> Self {
         match m {
@@ -596,7 +595,7 @@ impl From<RtError> for DynError {
     }
 }
 
-type DynFn = dyn Fn(Vec<Mixed>) -> Result<Mixed, DynError>;
+type DynFn = dyn Fn(Vec<Mixed>) -> Mixed + Send + Sync;
 
 /// A callable of unknown signature: arguments and result travel as Mixed.
 #[derive(Clone)]
@@ -606,16 +605,16 @@ pub struct DynCallable {
     is_null: bool,
 }
 impl DynCallable {
-    pub fn new<F: Fn(Vec<Mixed>) -> Result<Mixed, DynError> + 'static>(arity: usize, f: F) -> Self {
+    pub fn new<F: Fn(Vec<Mixed>) -> Mixed + Send + Sync + 'static>(arity: usize, f: F) -> Self {
         DynCallable { arity, f: Rc::new(f), is_null: false }
     }
-    pub fn from_rt<F: Fn(Vec<Mixed>) -> Result<Mixed, RtError> + 'static>(arity: usize, f: F) -> Self {
-        DynCallable { arity, f: Rc::new(move |a| f(a).map_err(DynError::Rt)), is_null: false }
+    pub fn from_rt<F: Fn(Vec<Mixed>) -> Result<Mixed, RtError> + Send + Sync + 'static>(arity: usize, f: F) -> Self {
+        DynCallable { arity, f: Rc::new(move |a| f(a).unwrap_or_else(|__e| panic!("Uncaught exception: {}", __e))), is_null: false }
     }
     /// A `null` stored where a callable is expected (docblocks like `callable[]` holding nulls):
     /// invoking it is an Error, as in PHP, and `=== null` comparisons see it as null.
     pub fn null_callable() -> Self {
-        let mut c = DynCallable::from_rt(0, |_| Err(RtError::error("Value of type null is not callable")));
+        let mut c = DynCallable::from_rt(0, |_| panic!("Uncaught exception: Value of type null is not callable"));
         c.is_null = true;
         c
     }
@@ -626,7 +625,7 @@ impl DynCallable {
     pub fn into_option(self) -> Option<DynCallable> {
         if self.is_null { None } else { Some(self) }
     }
-    pub fn call(&self, mut args: Vec<Mixed>) -> Result<Mixed, DynError> {
+    pub fn call(&self, mut args: Vec<Mixed>) -> Mixed {
         while args.len() < self.arity {
             args.push(Mixed::Null);
         }
@@ -688,14 +687,14 @@ pub enum ResourceKind {
     Stdin,
     Stdout,
     Stderr,
-    File(RefCell<std::fs::File>, Str),
-    Memory(RefCell<Vec<u8>>, Cell<usize>),
+    File(RwCell<std::fs::File>, Str),
+    Memory(RwCell<Vec<u8>>, AtomicUsize),
     Closed,
 }
 
 pub struct Resource {
     pub id: usize,
-    pub kind: RefCell<ResourceKind>,
+    pub kind: RwCell<ResourceKind>,
 }
 
 impl Resource {
@@ -754,19 +753,19 @@ pub fn resource_by_id(id: usize) -> Option<Rc<Resource>> {
 }
 
 thread_local! {
-    static RESOURCES: RefCell<std::collections::HashMap<usize, Rc<Resource>>> = RefCell::new(std::collections::HashMap::new());
-    static RES_COUNTER: Cell<usize> = Cell::new(4);
-    static STDIN_RES: Rc<Resource> = Rc::new(Resource { id: 1, kind: RefCell::new(ResourceKind::Stdin) });
-    static STDOUT_RES: Rc<Resource> = Rc::new(Resource { id: 2, kind: RefCell::new(ResourceKind::Stdout) });
-    static STDERR_RES: Rc<Resource> = Rc::new(Resource { id: 3, kind: RefCell::new(ResourceKind::Stderr) });
+    static RESOURCES: RefCell<crate::FastMap<usize, Rc<Resource>>> = RefCell::new(crate::fast_map());
+    static RES_COUNTER: AtomicUsize = AtomicUsize::new(4);
+    static STDIN_RES: Rc<Resource> = Rc::new(Resource { id: 1, kind: RwCell::new(ResourceKind::Stdin) });
+    static STDOUT_RES: Rc<Resource> = Rc::new(Resource { id: 2, kind: RwCell::new(ResourceKind::Stdout) });
+    static STDERR_RES: Rc<Resource> = Rc::new(Resource { id: 3, kind: RwCell::new(ResourceKind::Stderr) });
 }
 pub fn new_resource(kind: ResourceKind) -> Rc<Resource> {
     let id = RES_COUNTER.with(|c| {
-        let v = c.get();
-        c.set(v + 1);
+        let v = c.load(std::sync::atomic::Ordering::Relaxed);
+        c.store(v + 1, std::sync::atomic::Ordering::Relaxed);
         v
     });
-    let r = Rc::new(Resource { id, kind: RefCell::new(kind) });
+    let r = Rc::new(Resource { id, kind: RwCell::new(kind) });
     RESOURCES.with(|m| m.borrow_mut().insert(id, r.clone()));
     r
 }

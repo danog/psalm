@@ -18,47 +18,46 @@ pub fn imul(a: i64, b: i64) -> i64 {
     a.wrapping_mul(b)
 }
 /// `intdiv` / `%` helpers.
-pub fn imod(a: i64, b: i64) -> Result<i64, RtError> {
+pub fn imod(a: i64, b: i64) -> i64 {
     if b == 0 {
-        return Err(RtError::new("DivisionByZeroError", "Modulo by zero"));
+        panic!("Uncaught exception: DivisionByZeroError: Modulo by zero");
     }
     if b == -1 {
-        return Ok(0);
+        return 0;
     }
-    Ok(a % b)
+    a % b
 }
-pub fn intdiv(a: i64, b: i64) -> Result<i64, RtError> {
+pub fn intdiv(a: i64, b: i64) -> i64 {
     if b == 0 {
-        return Err(RtError::division_by_zero());
+        panic!("Uncaught exception: DivisionByZeroError: Division by zero");
     }
     if a == i64::MIN && b == -1 {
-        return Err(RtError::new("ArithmeticError", "Division of PHP_INT_MIN by -1 is not an integer"));
+        panic!("Uncaught exception: ArithmeticError: Division of PHP_INT_MIN by -1 is not an integer");
     }
-    Ok(a / b)
+    a / b
 }
-/// PHP `/`: int when exact, float otherwise.
-pub fn div(a: Num, b: Num) -> Result<Num, RtError> {
+pub fn div(a: Num, b: Num) -> Num {
     let bf = b.to_f64();
     if bf == 0.0 {
-        return Err(RtError::division_by_zero());
+        panic!("Uncaught exception: DivisionByZeroError: Division by zero");
     }
     if let (Num::Int(x), Num::Int(y)) = (a, b) {
         if y != 0 && x % y == 0 && !(x == i64::MIN && y == -1) {
-            return Ok(Num::Int(x / y));
+            return Num::Int(x / y);
         }
     }
-    Ok(Num::Float(a.to_f64() / bf))
+    Num::Float(a.to_f64() / bf)
 }
-pub fn div_f(a: f64, b: f64) -> Result<f64, RtError> {
+pub fn div_f(a: f64, b: f64) -> f64 {
     if b == 0.0 {
-        return Err(RtError::division_by_zero());
+        panic!("Uncaught exception: DivisionByZeroError: Division by zero");
     }
-    Ok(a / b)
+    a / b
 }
-pub fn div_i(a: i64, b: i64) -> Result<i64, RtError> {
-    match div(Num::Int(a), Num::Int(b))? {
-        Num::Int(i) => Ok(i),
-        Num::Float(f) => Ok(f as i64),
+pub fn div_i(a: i64, b: i64) -> i64 {
+    match div(Num::Int(a), Num::Int(b)) {
+        Num::Int(i) => i,
+        Num::Float(f) => f as i64,
     }
 }
 pub fn pow_i(a: i64, b: i64) -> Num {

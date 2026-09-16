@@ -9,7 +9,7 @@ use crate::mixed::{AnyObj, Mixed, PhpObject};
 use crate::string::Str;
 use crate::traits::*;
 use std::cell::RefCell;
-use std::rc::Rc;
+use std::sync::Arc as Rc;
 
 // ---------------------------------------------------------------- instanceof / downcasts
 
@@ -90,7 +90,7 @@ impl FallbackThrow {
     pub fn assertion(msg: Str) -> Self {
         FallbackThrow(RtError::new("AssertionError", msg))
     }
-    pub fn unhandled_match(v: &Mixed) -> Self {
+    pub fn unhandled_match<T: std::fmt::Debug>(v: &T) -> Self {
         FallbackThrow(RtError::new("UnhandledMatchError", crate::sfmt!("Unhandled match case {:?}", v)))
     }
     pub fn exit(status: i64) -> Self {
@@ -100,6 +100,17 @@ impl FallbackThrow {
         if self.0.class == "exit" { Some(crate::conv::str_to_int(&self.0.message)) } else { None }
     }
     pub fn message(&self) -> Str {
+        self.0.message.clone()
+    }
+}
+impl crate::error::PhpThrowable for FallbackThrow {
+    fn class_name(&self) -> &'static str {
+        "Exception"
+    }
+    fn class_ancestors(&self) -> &'static [&'static str] {
+        &["exception", "throwable"]
+    }
+    fn message(&self) -> Str {
         self.0.message.clone()
     }
 }
@@ -159,7 +170,7 @@ macro_rules! impl_enum_handle {
         }
         impl $crate::CastTo<$crate::Mixed> for $name {
             fn cast_to(self) -> $crate::Mixed {
-                $crate::Mixed::Obj(std::rc::Rc::new(self))
+                $crate::Mixed::Obj(std::sync::Arc::new(self))
             }
         }
         impl $crate::CastTo<$name> for $crate::Mixed {
@@ -210,8 +221,8 @@ where
 
 /// `$_SERVER` and friends: a minimal environment view (argv, REQUEST_TIME, env variables).
 thread_local! {
-    static SUPERGLOBALS: std::cell::RefCell<std::collections::HashMap<String, Map<Str, Mixed>>> = std::cell::RefCell::new(std::collections::HashMap::new());
-    static GLOBALS: std::cell::RefCell<std::collections::HashMap<String, Mixed>> = std::cell::RefCell::new(std::collections::HashMap::new());
+    static SUPERGLOBALS: std::cell::RefCell<crate::FastMap<String, Map<Str, Mixed>>> = std::cell::RefCell::new(crate::fast_map());
+    static GLOBALS: std::cell::RefCell<crate::FastMap<String, Mixed>> = std::cell::RefCell::new(crate::fast_map());
 }
 
 /// `$_SERVER` and friends: stored per thread, initialized from the environment on first use.
@@ -340,9 +351,10 @@ pub fn mixed_get(m: &Mixed, k: &ArrayKey) -> Option<Mixed> {
         Mixed::Obj(o) => {
             // ArrayAccess objects: offsetExists() then offsetGet()
             let key = match k { ArrayKey::Int(i) => Mixed::Int(*i), ArrayKey::Str(s) => Mixed::Str(s.clone()) };
-            match o.call_method("offsetexists", vec![key.clone()]) {
-                Ok(exists) if crate::traits::Truthy::truthy(&exists) => o.call_method("offsetget", vec![key]).ok().and_then(|v| v.to_option()),
-                _ => None,
+            if crate::traits::Truthy::truthy(&o.call_method("offsetexists", vec![key.clone()])) {
+                o.call_method("offsetget", vec![key]).to_option()
+            } else {
+                None
             }
         }
         _ => None,
@@ -452,15 +464,15 @@ pub fn mixed_dec(m: &Mixed) -> Mixed {
     }
 }
 
-pub fn mixed_call(m: &Mixed, name: &Str, args: Vec<Mixed>) -> Result<Mixed, crate::containers::DynError> {
-    use crate::containers::{DynError, to_callable};
+pub fn mixed_call(m: &Mixed, name: &Str, args: Vec<Mixed>) -> Mixed {
+    use crate::containers::to_callable;
     match m {
         Mixed::Obj(o) => o.call_method(&name.to_string_lossy().to_ascii_lowercase(), args),
         Mixed::Closure(c) if name.as_bytes().eq_ignore_ascii_case(b"__invoke") || name.as_bytes().eq_ignore_ascii_case(b"call") => {
             let _ = c;
             to_callable(m).call(args)
         }
-        _ => Err(DynError::Rt(RtError::error(crate::sfmt!("Call to a member function {}() on {}", name, m.type_name())))),
+        _ => panic!("Uncaught exception: Call to a member function {}() on {}", name, m.type_name()),
     }
 }
 
@@ -666,20 +678,20 @@ pub fn json_encode_simple(m: &Mixed) -> Str {
 }
 
 /// Drive a PHP `Iterator` object through its methods, collecting all (key, value) pairs.
-pub fn iterate_php_iterator<K, V, E>(
-    mut rewind: impl FnMut() -> Result<(), E>,
-    mut valid: impl FnMut() -> Result<bool, E>,
-    mut next: impl FnMut() -> Result<(), E>,
-    mut key: impl FnMut() -> Result<K, E>,
-    mut current: impl FnMut() -> Result<V, E>,
-) -> Result<std::vec::IntoIter<(K, V)>, E> {
+pub fn iterate_php_iterator<K, V>(
+    mut rewind: impl FnMut(),
+    mut valid: impl FnMut() -> bool,
+    mut next: impl FnMut(),
+    mut key: impl FnMut() -> K,
+    mut current: impl FnMut() -> V,
+) -> std::vec::IntoIter<(K, V)> {
     let mut out = Vec::new();
-    rewind()?;
-    while valid()? {
-        out.push((key()?, current()?));
-        next()?;
+    rewind();
+    while valid() {
+        out.push((key(), current()));
+        next();
     }
-    Ok(out.into_iter())
+    out.into_iter()
 }
 
 /// Iterate a PHP Iterator object by calling its methods through Mixed (dynamic fallback).
@@ -689,10 +701,55 @@ pub fn iterate_object<K, V>(_o: impl PhpObject) -> Result<std::vec::IntoIter<(K,
 
 // ---------------------------------------------------------------- dynamic property access
 
+/// Axis-7: a Sync interior-mutability cell (Arc<RwCell<T>> is Send+Sync so shared object storage can be
+/// shared across scan/analyze threads). Drop-in for RefCell: `.borrow()`/`.borrow_mut()` keep RefCell's
+/// fail-fast semantics via try_read/try_write (panic on contention, not deadlock), and the guards are
+/// parking_lot MAPPED guards so `Ref::map`/`RefMut::map` in generated accessors keep working. The prelude
+/// aliases RefCell->RwCell, Ref->CellRef, RefMut->CellRefMut, so generated code converts transparently.
+pub type CellRef<'a, T> = parking_lot::MappedRwLockReadGuard<'a, T>;
+pub type CellRefMut<'a, T> = parking_lot::MappedRwLockWriteGuard<'a, T>;
+pub struct RwCell<T>(parking_lot::RwLock<T>);
+impl<T> RwCell<T> {
+    pub fn new(v: T) -> Self {
+        RwCell(parking_lot::RwLock::new(v))
+    }
+    pub fn borrow(&self) -> CellRef<'_, T> {
+        // Blocking read: concurrent readers proceed; blocks only while a writer holds the lock. (Generated
+        // code is structured to avoid same-thread reentrant borrow-across-borrow_mut, so no self-deadlock.)
+        parking_lot::RwLockReadGuard::map(self.0.read(), |x| x)
+    }
+    pub fn borrow_mut(&self) -> CellRefMut<'_, T> {
+        // Blocking write: supports real concurrent mutation across threads (waits for contention instead of
+        // panicking, which is what the multithreaded scan/analyze model needs).
+        parking_lot::RwLockWriteGuard::map(self.0.write(), |x| x)
+    }
+    pub fn get_mut(&mut self) -> &mut T {
+        self.0.get_mut()
+    }
+    pub fn into_inner(self) -> T {
+        self.0.into_inner()
+    }
+}
+impl<T: Clone> Clone for RwCell<T> {
+    fn clone(&self) -> Self {
+        RwCell::new(self.borrow().clone())
+    }
+}
+impl<T: Default> Default for RwCell<T> {
+    fn default() -> Self {
+        RwCell::new(T::default())
+    }
+}
+impl<T: std::fmt::Debug> std::fmt::Debug for RwCell<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.borrow().fmt(f)
+    }
+}
+
 /// A property read through a dispatch enum: borrowed from a known object, or a copy fetched
 /// dynamically (`get_prop`) from an object of a class defined in another crate.
 pub enum PropRef<'a, T> {
-    Borrowed(std::cell::Ref<'a, T>),
+    Borrowed(CellRef<'a, T>),
     Owned(T),
 }
 impl<T> std::ops::Deref for PropRef<'_, T> {
@@ -708,7 +765,7 @@ impl<T> std::ops::Deref for PropRef<'_, T> {
 /// A mutable property access through a dispatch enum; the owned form hands the value to a
 /// write-back closure (`set_prop`) when dropped.
 pub enum PropMut<'a, T> {
-    Borrowed(std::cell::RefMut<'a, T>),
+    Borrowed(CellRefMut<'a, T>),
     Owned { value: Option<T>, write: Option<Box<dyn FnOnce(T) + 'a>> },
 }
 impl<'a, T> PropMut<'a, T> {

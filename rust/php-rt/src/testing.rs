@@ -3,13 +3,13 @@
 use std::fmt::Display;
 use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
 
-use crate::mixed::PhpObject;
+use crate::error::PhpThrowable;
 use crate::Str;
 
 const STACK_SIZE: usize = 512 * 1024 * 1024;
 
-/// Whether a thrown object is PHPUnit's "skipped"/"incomplete" marker (the test then counts as passed).
-pub fn is_skip<E: PhpObject>(e: &E) -> bool {
+/// Whether a thrown exception is PHPUnit's "skipped"/"incomplete" marker (the test then counts as passed).
+pub fn is_skip<E: PhpThrowable>(e: &E) -> bool {
     let name = e.class_name().to_ascii_lowercase();
     if name == "phpunit\\framework\\skippedtesterror" || name == "phpunit\\framework\\incompletetesterror" {
         return true;
@@ -19,8 +19,13 @@ pub fn is_skip<E: PhpObject>(e: &E) -> bool {
     })
 }
 
+/// A human-readable message for a caught PHP exception: "Class: message".
+pub fn exc_message<E: PhpThrowable>(e: &E) -> String {
+    format!("{}: {}", e.class_name(), e.message().to_string_lossy())
+}
+
 /// Runs one test method on a thread with a large stack; PHP exceptions become panics with the PHP message.
-pub fn run<E: PhpObject + Display>(name: &str, root: &str, f: impl FnOnce() -> Result<(), E> + Send + 'static) {
+pub fn run<E: PhpThrowable + Display>(name: &str, root: &str, f: impl FnOnce() -> Result<(), E> + Send + 'static) {
     let root = root.to_string();
     let test_name = name.to_string();
     let handle = std::thread::Builder::new()
@@ -47,22 +52,10 @@ pub fn run<E: PhpObject + Display>(name: &str, root: &str, f: impl FnOnce() -> R
 }
 
 /// Runs one data set of a test; skips are swallowed, failures are annotated with the data set name.
-pub fn case<E: PhpObject + Display>(dataset: Str, f: impl FnOnce() -> Result<(), E>) -> Result<(), E> {
-    let result = catch_unwind(AssertUnwindSafe(f));
-    match result {
-        Ok(Ok(())) => Ok(()),
-        Ok(Err(e)) if is_skip(&e) => {
-            eprintln!("[skipped] data set \"{}\": {}", dataset, e);
-            Ok(())
-        }
-        Ok(Err(e)) => {
-            eprintln!("[failed] data set \"{}\": {}", dataset, e);
-            Err(e)
-        }
-        Err(payload) => {
-            eprintln!("[panicked] data set \"{}\"", dataset);
-            resume_unwind(payload)
-        }
+pub fn case(dataset: Str, f: impl FnOnce()) {
+    if let Err(payload) = catch_unwind(AssertUnwindSafe(f)) {
+        eprintln!("[data set \"{}\"]", dataset);
+        resume_unwind(payload);
     }
 }
 
@@ -79,14 +72,20 @@ fn panic_message(payload: &(dyn std::any::Any + Send)) -> String {
 
 /// Runs `f` on a thread with a large stack (the source root set, the working directory at the root);
 /// a PHP exception or a panic becomes the error message.
-pub fn in_thread<T: Send + 'static, E: Display>(root: &str, f: impl FnOnce() -> Result<T, E> + Send + 'static) -> Result<T, String> {
+pub fn in_thread<T: Send + 'static, E: PhpThrowable>(root: &str, f: impl FnOnce() -> T + Send + 'static) -> Result<T, String> {
     let root = root.to_string();
     let handle = std::thread::Builder::new()
         .stack_size(STACK_SIZE)
         .spawn(move || -> Result<T, String> {
             crate::support::set_src_root(&root);
             let _ = std::env::set_current_dir(&root);
-            f().map_err(|e| e.to_string())
+            match catch_unwind(AssertUnwindSafe(f)) {
+                Ok(v) => Ok(v),
+                Err(payload) => match crate::error::take_thrown_opt::<E>(payload) {
+                    Ok(e) => Err(exc_message(&e)),
+                    Err(p) => Err(panic_message(&*p)),
+                },
+            }
         })
         .expect("spawn test thread");
     match handle.join() {
@@ -97,7 +96,7 @@ pub fn in_thread<T: Send + 'static, E: Display>(root: &str, f: impl FnOnce() -> 
 
 /// Runs one trial (a test method, or one data set of it): `Ok` when it passes or is skipped (the skip
 /// is printed), `Err(message)` when it fails or panics.
-pub fn run_trial<E: PhpObject + Display>(name: &str, root: &str, f: impl FnOnce() -> Result<(), E> + Send + 'static) -> Result<(), String> {
+pub fn run_trial<E: PhpThrowable + Display>(name: &str, root: &str, f: impl FnOnce() -> Result<(), E> + Send + 'static) -> Result<(), String> {
     let root = root.to_string();
     let test_name = name.to_string();
     let handle = std::thread::Builder::new()
@@ -125,15 +124,17 @@ pub fn run_trial<E: PhpObject + Display>(name: &str, root: &str, f: impl FnOnce(
 
 /// Runs one data set on the current (worker) thread: `Ok` when it passes or is skipped, `Err(message)`
 /// when it fails or panics (the panic is contained so the worker can serve the next data set).
-pub fn run_row<E: PhpObject + Display>(name: &str, f: impl FnOnce() -> Result<(), E>) -> Result<(), String> {
+pub fn run_row<E: PhpThrowable>(name: &str, f: impl FnOnce()) -> Result<(), String> {
     match catch_unwind(AssertUnwindSafe(f)) {
-        Ok(Ok(())) => Ok(()),
-        Ok(Err(e)) if is_skip(&e) => {
-            eprintln!("[skipped] {}: {}", name, e);
-            Ok(())
-        }
-        Ok(Err(e)) => Err(e.to_string()),
-        Err(payload) => Err(format!("panicked: {}", panic_message(&*payload))),
+        Ok(()) => Ok(()),
+        Err(payload) => match crate::error::take_thrown_opt::<E>(payload) {
+            Ok(e) if is_skip(&e) => {
+                eprintln!("[skipped] {}: {}", name, exc_message(&e));
+                Ok(())
+            }
+            Ok(e) => Err(exc_message(&e)),
+            Err(p) => Err(format!("panicked: {}", panic_message(&*p))),
+        },
     }
 }
 
@@ -260,19 +261,19 @@ pub fn run_on_pool(root: &str, job: Job) -> Result<(), String> {
 }
 
 thread_local! {
-    static ROWS: std::cell::RefCell<std::collections::HashMap<&'static str, std::rc::Rc<dyn std::any::Any>>> = std::cell::RefCell::new(std::collections::HashMap::new());
+    static ROWS: std::cell::RefCell<crate::FastMap<&'static str, std::sync::Arc<dyn std::any::Any>>> = std::cell::RefCell::new(crate::fast_map());
 }
 
 /// The data-provider rows of a test method on this worker thread, computed once per thread.
-pub fn cached_rows<T: 'static, R, E>(key: &'static str, compute: impl FnOnce() -> Result<T, E>, f: impl FnOnce(&T) -> R) -> Result<R, E> {
+pub fn cached_rows<T: 'static, R>(key: &'static str, compute: impl FnOnce() -> T, f: impl FnOnce(&T) -> R) -> R {
     let cached = ROWS.with(|r| r.borrow().get(key).cloned());
-    let rows: std::rc::Rc<dyn std::any::Any> = match cached {
+    let rows: std::sync::Arc<dyn std::any::Any> = match cached {
         Some(r) => r,
         None => {
-            let r: std::rc::Rc<dyn std::any::Any> = std::rc::Rc::new(compute()?);
+            let r: std::sync::Arc<dyn std::any::Any> = std::sync::Arc::new(compute());
             ROWS.with(|c| c.borrow_mut().insert(key, r.clone()));
             r
         }
     };
-    Ok(f(rows.downcast_ref::<T>().expect("data provider row type")))
+    f(rows.downcast_ref::<T>().expect("data provider row type"))
 }

@@ -5,7 +5,7 @@ use crate::error::RtError;
 use crate::list::List;
 use crate::string::Str;
 use std::io::{Read, Seek, SeekFrom, Write};
-use std::rc::Rc;
+use std::sync::Arc as Rc;
 
 fn path(s: &Str) -> std::path::PathBuf {
     std::path::PathBuf::from(std::ffi::OsStr::new(&*s.to_string_lossy()))
@@ -287,7 +287,7 @@ pub fn fopen(p: &Str, mode: &Str) -> Option<Rc<Resource>> {
         b"php://stdin" => return Some(crate::containers::stdin_res()),
         b"php://stdout" | b"php://output" => return Some(crate::containers::stdout_res()),
         b"php://stderr" => return Some(crate::containers::stderr_res()),
-        b"php://memory" | b"php://temp" => return Some(new_resource(ResourceKind::Memory(std::cell::RefCell::new(Vec::new()), std::cell::Cell::new(0)))),
+        b"php://memory" | b"php://temp" => return Some(new_resource(ResourceKind::Memory(crate::support::RwCell::new(Vec::new()), std::sync::atomic::AtomicUsize::new(0)))),
         _ => {}
     }
     let m = mode.as_bytes();
@@ -312,7 +312,7 @@ pub fn fopen(p: &Str, mode: &Str) -> Option<Rc<Resource>> {
         _ => return None,
     }
     let f = o.open(path(p)).ok()?;
-    Some(new_resource(ResourceKind::File(std::cell::RefCell::new(f), p.clone())))
+    Some(new_resource(ResourceKind::File(crate::support::RwCell::new(f), p.clone())))
 }
 
 pub fn fwrite(r: &Rc<Resource>, data: &Str) -> Option<i64> {
@@ -329,7 +329,7 @@ pub fn fwrite(r: &Rc<Resource>, data: &Str) -> Option<i64> {
         ResourceKind::File(f, _) => f.borrow_mut().write_all(data).is_ok(),
         ResourceKind::Memory(buf, pos) => {
             let mut b = buf.borrow_mut();
-            let p = pos.get();
+            let p = pos.load(std::sync::atomic::Ordering::Relaxed);
             if p >= b.len() {
                 b.extend_from_slice(data);
             } else {
@@ -337,7 +337,7 @@ pub fn fwrite(r: &Rc<Resource>, data: &Str) -> Option<i64> {
                 b[p..end].copy_from_slice(&data[..end - p]);
                 b.extend_from_slice(&data[end - p..]);
             }
-            pos.set(p + data.len());
+            pos.store(p + data.len(), std::sync::atomic::Ordering::Relaxed);
             true
         }
         _ => false,
@@ -395,12 +395,12 @@ pub fn fgets(r: &Rc<Resource>) -> Option<Str> {
         }
         ResourceKind::Memory(buf, pos) => {
             let b = buf.borrow();
-            let p = pos.get();
+            let p = pos.load(std::sync::atomic::Ordering::Relaxed);
             if p >= b.len() {
                 return None;
             }
             let end = b[p..].iter().position(|&c| c == b'\n').map(|i| p + i + 1).unwrap_or(b.len());
-            pos.set(end);
+            pos.store(end, std::sync::atomic::Ordering::Relaxed);
             Some(Str::from_bytes(&b[p..end]))
         }
         _ => None,
@@ -418,9 +418,9 @@ pub fn fread(r: &Rc<Resource>, len: i64) -> Option<Str> {
         }
         ResourceKind::Memory(buf, pos) => {
             let b = buf.borrow();
-            let p = pos.get().min(b.len());
+            let p = pos.load(std::sync::atomic::Ordering::Relaxed).min(b.len());
             let end = (p + len).min(b.len());
-            pos.set(end);
+            pos.store(end, std::sync::atomic::Ordering::Relaxed);
             Some(Str::from_bytes(&b[p..end]))
         }
         ResourceKind::Stdin => {
@@ -441,7 +441,7 @@ pub fn feof(r: &Rc<Resource>) -> bool {
             let len = f.metadata().map(|m| m.len()).unwrap_or(0);
             pos >= len
         }
-        ResourceKind::Memory(buf, pos) => pos.get() >= buf.borrow().len(),
+        ResourceKind::Memory(buf, pos) => pos.load(std::sync::atomic::Ordering::Relaxed) >= buf.borrow().len(),
         _ => true,
     }
 }
@@ -461,7 +461,7 @@ pub fn rewind(r: &Rc<Resource>) -> bool {
     match &*kind {
         ResourceKind::File(f, _) => f.borrow_mut().seek(SeekFrom::Start(0)).is_ok(),
         ResourceKind::Memory(_, pos) => {
-            pos.set(0);
+            pos.store(0, std::sync::atomic::Ordering::Relaxed);
             true
         }
         _ => false,
@@ -477,8 +477,8 @@ pub fn stream_get_contents(r: &Rc<Resource>) -> Option<Str> {
         }
         ResourceKind::Memory(buf, pos) => {
             let b = buf.borrow();
-            let p = pos.get().min(b.len());
-            pos.set(b.len());
+            let p = pos.load(std::sync::atomic::Ordering::Relaxed).min(b.len());
+            pos.store(b.len(), std::sync::atomic::Ordering::Relaxed);
             Some(Str::from_bytes(&b[p..]))
         }
         ResourceKind::Stdin => {

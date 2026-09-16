@@ -9,10 +9,10 @@ use crate::mixed::Mixed;
 use crate::string::Str;
 use crate::traits::*;
 use std::cell::RefCell;
-use std::collections::HashMap;
+use crate::{FastMap, fast_map};
 
 thread_local! {
-    static INI: RefCell<HashMap<Vec<u8>, Str>> = RefCell::new(HashMap::new());
+    static INI: RefCell<FastMap<Vec<u8>, Str>> = RefCell::new(fast_map());
     static ERROR_LEVEL: RefCell<i64> = RefCell::new(32767);
     static LAST_ERROR: RefCell<Option<Map<ArrayKey, Mixed>>> = RefCell::new(None);
     static INCLUDED: RefCell<Vec<Str>> = RefCell::new(Vec::new());
@@ -336,7 +336,7 @@ pub fn rt_function_is_builtin(name: &Str) -> bool {
 /// `hash_init()` context: the algorithm and the data fed so far.
 pub struct HashContext {
     pub algo: Str,
-    pub data: std::cell::RefCell<Vec<u8>>,
+    pub data: crate::support::RwCell<Vec<u8>>,
 }
 impl crate::mixed::PhpObject for HashContext {
     fn class_name(&self) -> &'static str {
@@ -353,7 +353,7 @@ impl crate::mixed::PhpObject for HashContext {
     }
 }
 pub fn hash_init(algo: &Str) -> Mixed {
-    Mixed::Obj(std::rc::Rc::new(HashContext { algo: algo.clone(), data: std::cell::RefCell::new(Vec::new()) }))
+    Mixed::Obj(std::sync::Arc::new(HashContext { algo: algo.clone(), data: crate::support::RwCell::new(Vec::new()) }))
 }
 pub fn hash_update(ctx: &Mixed, data: &Str) -> bool {
     if let Mixed::Obj(o) = ctx {

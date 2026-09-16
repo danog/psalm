@@ -440,7 +440,7 @@ impl Identical for Mixed {
             (Mixed::Str(a), Mixed::Str(b)) => a == b,
             (Mixed::Arr(a), Mixed::Arr(b)) => a.identical(b),
             (Mixed::Obj(a), Mixed::Obj(b)) => a.obj_id() == b.obj_id(),
-            (Mixed::Closure(a), Mixed::Closure(b)) => std::rc::Rc::ptr_eq(a, b),
+            (Mixed::Closure(a), Mixed::Closure(b)) => std::sync::Arc::ptr_eq(a, b),
             _ => false,
         }
     }
