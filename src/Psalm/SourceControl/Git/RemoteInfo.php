@@ -25,7 +25,7 @@ final class RemoteInfo
 
     /**
      * @psalm-mutation-free
-     * @return array{name: string, url: string}
+     * @return array{name: ?string, url: ?string}
      */
     public function toArray(): array
     {
