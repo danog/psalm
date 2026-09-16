@@ -28,5 +28,20 @@ fn main() {
     });
     // 8 threads * sum(0..100) = 8 * 4950 = 39600
     println!("threaded_reads={}", total.load(std::sync::atomic::Ordering::Relaxed));
+// probe: concurrent mutation of a shared RwCell across threads
+    let c = std::sync::Arc::new(php_rt::support::RwCell::new(0i64));
+    std::thread::scope(|s| {
+        for _ in 0..8 {
+            let c = std::sync::Arc::clone(&c);
+            s.spawn(move || {
+                for _ in 0..1000 {
+                    let mut g = c.borrow_mut();  // try_write -> panics on contention?
+                    *g += 1;
+                }
+            });
+        }
+    });
+    println!("concurrent_mut={}", *c.borrow());
+
     print!("{}", tiny_repro::g::run_all());
 }

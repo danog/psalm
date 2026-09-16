@@ -703,10 +703,14 @@ impl<T> RwCell<T> {
         RwCell(parking_lot::RwLock::new(v))
     }
     pub fn borrow(&self) -> CellRef<'_, T> {
-        parking_lot::RwLockReadGuard::map(self.0.try_read().expect("RwCell already mutably borrowed"), |x| x)
+        // Blocking read: concurrent readers proceed; blocks only while a writer holds the lock. (Generated
+        // code is structured to avoid same-thread reentrant borrow-across-borrow_mut, so no self-deadlock.)
+        parking_lot::RwLockReadGuard::map(self.0.read(), |x| x)
     }
     pub fn borrow_mut(&self) -> CellRefMut<'_, T> {
-        parking_lot::RwLockWriteGuard::map(self.0.try_write().expect("RwCell already borrowed"), |x| x)
+        // Blocking write: supports real concurrent mutation across threads (waits for contention instead of
+        // panicking, which is what the multithreaded scan/analyze model needs).
+        parking_lot::RwLockWriteGuard::map(self.0.write(), |x| x)
     }
     pub fn get_mut(&mut self) -> &mut T {
         self.0.get_mut()
