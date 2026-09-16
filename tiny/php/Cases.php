@@ -258,14 +258,47 @@ function case_leaf_public_borrow(): string
     return (string) ($s->describe($x) + $s->describe($x));
 }
 
-// ---- safety: a dispatched (interface) method param must stay OWNED ---------
+// ---- feature: dispatch-agreement -- borrow only if ALL impls agree --------
 
+// Every implementation is borrow-safe -> the interface method + both impls all take &A.
+interface Reader
+{
+    public function read(A $a): int;
+}
+
+final class ReaderX implements Reader
+{
+    public function read(A $a): int
+    {
+        return $a->a;
+    }
+}
+
+final class ReaderY implements Reader
+{
+    public function read(A $a): int
+    {
+        return $a->a * 3;
+    }
+}
+
+function dispatchRead(Reader $r, A $a): int
+{
+    return $r->read($a);
+}
+
+function case_dispatch_agree_borrow(): string
+{
+    return dispatchRead(new ReaderX(), new A(2)) . '' . dispatchRead(new ReaderY(), new A(2));
+}
+
+// One implementation escapes the param (passes it to an owned-param fn) -> the whole group stays OWNED.
 interface Handler
 {
     public function handle(A $a): int;
 }
 
-final class HandlerImpl implements Handler
+final class HandlerSafe implements Handler
 {
     public function handle(A $a): int
     {
@@ -273,15 +306,22 @@ final class HandlerImpl implements Handler
     }
 }
 
-function useHandler(Handler $h, A $a): int
+final class HandlerEscapes implements Handler
+{
+    public function handle(A $a): int
+    {
+        return keepIt($a)->a; // $a passed to an owned param -> escapes
+    }
+}
+
+function dispatchHandle(Handler $h, A $a): int
 {
     return $h->handle($a);
 }
 
-function case_interface_method_owned(): string
+function case_dispatch_disagree_owned(): string
 {
-    $h = new HandlerImpl();
-    return (string) useHandler($h, new A(9));
+    return dispatchHandle(new HandlerSafe(), new A(3)) . '' . dispatchHandle(new HandlerEscapes(), new A(4));
 }
 
 // ---- feature: &self call on a Late-local receiver borrows (no clone) ------
@@ -336,7 +376,8 @@ function run_all(): string
         . check('borrow_param', case_borrow_param(), '42425')
         . check('private_method_borrow', case_private_method_borrow(), '210')
         . check('leaf_public_borrow', case_leaf_public_borrow(), '24')
-        . check('interface_method_owned', case_interface_method_owned(), '9')
+        . check('dispatch_agree_borrow', case_dispatch_agree_borrow(), '26')
+        . check('dispatch_disagree_owned', case_dispatch_disagree_owned(), '34')
         . check('late_receiver_borrow', case_late_receiver_borrow(), '00')
         . check('closure_capture', case_closure_capture(), '8');
 }

@@ -177,6 +177,7 @@ final class Program
         $this->computeThrows();
         $this->computeExternalWrites();
         $this->computeHierarchyImmutable();
+        $this->computeBorrowAgreement();
     }
 
     /**
@@ -1612,42 +1613,109 @@ final class Program
      * private methods because they have a single implementation and are never dispatched, so the borrowed
      * signature can't diverge from another variant/override the way a public/protected method's could.
      */
+    /**
+     * Owned/borrowed (axis 5): per-body escape analysis for one method. Records which params THIS body could
+     * receive as `&T` into $local_borrow; the final $borrow_params is decided later by computeBorrowAgreement,
+     * which intersects local_borrow across each dispatch group so overriders keep a uniform signature.
+     * Excludes constructors and immutable construction helpers (reached via new/super-copy with owned args)
+     * and static methods (dispatched through the `__static` variant machinery).
+     */
     private function computeMethodBorrowParams(MethodModel $method): void
     {
-        if ($method->node === null) {
+        if ($method->node === null || $method->isStatic() || $method->isAbstract()) {
             return;
         }
-        // Borrow-eligible only where the method has a single implementation reachable through one signature:
-        //   (a) private methods -- never overridden, never dispatched; or
-        //   (b) a leaf class's own concrete instance method that overrides/implements nothing -- it is reachable
-        //       only via a direct call on the concrete type (a dispatch enum only routes an interface/base method
-        //       NAME to overriders, which this isn't), so its `&T` signature can't diverge from a sibling's.
-        // Public/protected methods that participate in dispatch are excluded: their signature must stay uniform
-        // across the whole override set, which needs a cross-implementation agreement pass (not yet done).
-        // Constructors (incl. the dispatched magic__construct) are reached through `new`/super-copy paths that
-        // pass owned values and whose signatures aren't borrow-aware; never borrow them.
         $lc = $method->lc();
         if ($lc === '__construct' || $lc === 'magic__construct'
             || isset($method->declaring->constructionMethods()[$lc])
         ) {
             return;
         }
-        $eligible = $method->isPrivate();
-        if (!$eligible
-            && !$method->isStatic()
-            && !$method->isAbstract()
-            && $method->declaring->isLeaf()
-            && $method->declaring === $method->origin()->declaring
-            // overridden_method_ids on the CLASS storage covers both parent overrides and interface
-            // implementations -- a method sharing a name with a base/interface contract is dispatched.
-            && ($method->declaring->storage->overridden_method_ids[$lc] ?? []) === []
-        ) {
-            $eligible = true;
+        $method->local_borrow = $this->borrowSafeParams($method->node->stmts ?? [], $method->node->params, $method->param_types);
+    }
+
+    /**
+     * Owned/borrowed (axis 5): finalise every instance method's $borrow_params. A method that participates in
+     * dispatch (an interface/abstract method plus all its concrete implementations, or a base method plus its
+     * overriders) MUST keep a uniform signature, so a param is borrowed only if EVERY implementation in the
+     * group could borrow it locally. We union all methods that share a dispatch point, then per group borrow
+     * param i iff all body-carrying members have local_borrow[i]; the agreed set is applied to the whole group
+     * (a bodyless interface/abstract method receives the group's decision). Ungrouped methods (private,
+     * leaf-own non-overriding) form singleton groups and simply keep their local analysis.
+     */
+    private function computeBorrowAgreement(): void
+    {
+        $parent = [];
+        $models = [];
+        $find = function (int $x) use (&$parent, &$find): int {
+            while ($parent[$x] !== $x) {
+                $parent[$x] = $parent[$parent[$x]] ?? $parent[$x];
+                $x = $parent[$x];
+            }
+            return $x;
+        };
+        $add = function (MethodModel $m) use (&$parent, &$models): int {
+            $id = spl_object_id($m);
+            if (!isset($parent[$id])) {
+                $parent[$id] = $id;
+                $models[$id] = $m;
+            }
+            return $id;
+        };
+        $union = function (MethodModel $a, MethodModel $b) use ($add, $find, &$parent): void {
+            $ra = $find($add($a));
+            $rb = $find($add($b));
+            if ($ra !== $rb) {
+                $parent[$ra] = $rb;
+            }
+        };
+        foreach ($this->uniqueClasses() as $cls) {
+            foreach ($cls->methods as $m) {
+                if (!$m->isStatic()) {
+                    $add($m);
+                }
+            }
+            // A class dispatched on (interface/abstract root, or a base with subclasses) routes each instance
+            // method NAME to its concrete implementations -- those must share one signature.
+            if ($cls->concrete === [] && $cls->children === []) {
+                continue;
+            }
+            foreach ($cls->methods as $m) {
+                if ($m->isStatic() || $m->isPrivate() || $m->lc() === '__construct' || $m->lc() === 'magic__construct') {
+                    continue;
+                }
+                foreach ($cls->concrete as $c) {
+                    $cm = $this->findMethod($c, $m->lc());
+                    if ($cm !== null && !$cm->isStatic()) {
+                        $union($m, $cm);
+                    }
+                }
+            }
         }
-        if (!$eligible) {
-            return;
+        $groups = [];
+        foreach ($models as $id => $m) {
+            $groups[$find($id)][] = $m;
         }
-        $method->borrow_params = $this->borrowSafeParams($method->node->stmts ?? [], $method->node->params, $method->param_types);
+        foreach ($groups as $group) {
+            $agreed = null;
+            $has_body = false;
+            foreach ($group as $m) {
+                if ($m->node === null || $m->isAbstract()) {
+                    continue; // interface/abstract declaration: receives the decision, doesn't constrain it
+                }
+                $has_body = true;
+                $agreed = $agreed === null ? $m->local_borrow : array_intersect_key($agreed, $m->local_borrow);
+                if ($agreed === []) {
+                    break;
+                }
+            }
+            if (!$has_body || $agreed === null || $agreed === []) {
+                continue;
+            }
+            foreach ($group as $m) {
+                $m->borrow_params = $agreed;
+            }
+        }
     }
 
     /**

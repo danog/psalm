@@ -16,11 +16,18 @@ final class MethodModel
     public array $param_types = [];
 
     /**
-     * Owned/borrowed (axis 5): parameter indices received as `&T` (non-escaping read-only). Only set for
-     * PRIVATE methods (single implementation, never dispatched, so the borrowed signature is unambiguous).
+     * Owned/borrowed (axis 5): parameter indices received as `&T` (non-escaping read-only). Finalised by
+     * Program::computeBorrowAgreement -- for a dispatched method it is the agreement across the whole
+     * override/interface group so every impl keeps a uniform signature.
      * @var array<int, true>
      */
     public array $borrow_params = [];
+
+    /**
+     * Owned/borrowed (axis 5): per-body escape-analysis result (which params THIS body could borrow),
+     * before dispatch-group agreement. @var array<int, true>
+     */
+    public array $local_borrow = [];
 
     public RustType $return_type;
 
