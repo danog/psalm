@@ -416,10 +416,10 @@ final class BodyEmitter
             }
         }
         foreach ($finder->findInstanceOf($stmts, Stmt\While_::class) as $node) {
-            $repeated = array_merge($repeated, $node->stmts, $node->cond);
+            $repeated = array_merge($repeated, $node->stmts, [$node->cond]); // While_->cond is a single Expr
         }
         foreach ($finder->findInstanceOf($stmts, Stmt\Do_::class) as $node) {
-            $repeated = array_merge($repeated, $node->stmts, $node->cond);
+            $repeated = array_merge($repeated, $node->stmts, [$node->cond]); // Do_->cond is a single Expr
         }
         foreach ($finder->findInstanceOf($stmts, Stmt\For_::class) as $node) {
             // init runs once; cond, loop (update) and body repeat

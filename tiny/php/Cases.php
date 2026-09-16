@@ -178,6 +178,35 @@ function case_alias_mutation(): string
     return (string) $y->a;
 }
 
+// ---- regression: while/do loops must transpile (scanSingleUse cond handling) --
+
+function whileLoop(int $n): int
+{
+    $sum = 0;
+    $i = 0;
+    while ($i < $n) {
+        $sum = $sum + $i;
+        $i = $i + 1;
+    }
+    return $sum;
+}
+
+function doLoop(int $n): int
+{
+    $sum = 0;
+    $i = 0;
+    do {
+        $sum = $sum + $i;
+        $i = $i + 1;
+    } while ($i < $n);
+    return $sum;
+}
+
+function case_loops(): string
+{
+    return whileLoop(4) . '' . doLoop(3);
+}
+
 // ---- edge: single-use as a method-call receiver moves safely -------------
 
 function getA(A $f): int
@@ -420,6 +449,7 @@ function run_all(): string
         . check('single_use_move', case_single_use_move(), '766')
         . check('foreach_collection_move', case_foreach_collection_move(), '60')
         . check('alias_mutation', case_alias_mutation(), '7')
+        . check('loops', case_loops(), '63')
         . check('receiver_move', case_receiver_move(), '11')
         . check('borrow_param', case_borrow_param(), '42425')
         . check('private_method_borrow', case_private_method_borrow(), '210')
