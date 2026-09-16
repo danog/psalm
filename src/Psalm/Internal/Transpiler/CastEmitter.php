@@ -268,7 +268,27 @@ final class CastEmitter
             $parts[] = 'identical(&self.' . Names::field($k) . ', &o.' . Names::field($k) . ')';
         }
         $w->line('impl php_rt::Identical for ' . $name . ' { fn identical(&self, o: &Self) -> bool { ' . ($parts ? implode(' && ', $parts) : 'true') . ' } }');
-        $w->line('impl php_rt::PhpCmp for ' . $name . ' { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }');
+        // PhpCmp: field by field (PHP compares arrays element-wise) when every field type is comparable
+        $cmp_parts = [];
+        $typed_cmp = true;
+        foreach ($s->fields as $k => [$t, $opt]) {
+            $ft = RustType::shapeField($t, $opt);
+            if (!$this->cmpableType($ft)) {
+                $typed_cmp = false;
+                break;
+            }
+            $inner = $ft->kind === RustType::OPTION ? $ft->inner() : $ft;
+            if (in_array($inner->kind, [RustType::CLOSURE, RustType::DYN_CALLABLE, RustType::RT_GENERIC], true)) {
+                $cmp_parts[] = '{ if !identical(&self.' . Names::field($k) . ', &o.' . Names::field($k) . ') { return std::cmp::Ordering::Greater; } }';
+            } else {
+                $cmp_parts[] = '{ let __c = self.' . Names::field($k) . '.php_cmp(&o.' . Names::field($k) . '); if __c != std::cmp::Ordering::Equal { return __c; } }';
+            }
+        }
+        if ($typed_cmp) {
+            $w->line('impl php_rt::PhpCmp for ' . $name . ' { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { ' . implode(' ', $cmp_parts) . ' std::cmp::Ordering::Equal } }');
+        } else {
+            $w->line('impl php_rt::PhpCmp for ' . $name . ' { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }');
+        }
         $w->line('impl php_rt::Len for ' . $name . ' { fn php_count(&self) -> i64 { let mut n = 0i64; ' . implode(' ', array_map(fn($k, $f) => $f[1] ? 'if self.' . Names::field($k) . '.is_some() { n += 1; }' : 'n += 1;', array_keys($s->fields), $s->fields)) . ' n } }');
         $ins = [];
         foreach ($s->fields as $k => [$t, $opt]) {
@@ -291,7 +311,22 @@ final class CastEmitter
             }
         }
         $w->line('impl php_rt::CastTo<' . $name . '> for Mixed { fn cast_to(self) -> ' . $name . ' { let m = cast::<Map<ArrayKey, Mixed>>(self); ' . $name . ' { ' . implode(', ', $outs) . ' } } }');
-        $w->line('impl std::fmt::Debug for ' . $name . ' { fn fmt(&self, f: &mut std::fmt::Formatter<\'_>) -> std::fmt::Result { write!(f, "{:?}", cast::<Mixed>(self.clone())) } }');
+        // Debug: field by field (every generated/runtime value type implements Debug except closures)
+        $debuggable = true;
+        foreach ($s->fields as $k => [$t, $opt]) {
+            $ft = RustType::shapeField($t, $opt);
+            $inner = $ft->kind === RustType::OPTION ? $ft->inner() : $ft;
+            if (in_array($inner->kind, [RustType::CLOSURE, RustType::DYN_CALLABLE, RustType::RT_GENERIC, RustType::TUPLE], true)) {
+                $debuggable = false;
+                break;
+            }
+        }
+        if ($debuggable) {
+            $dbg = implode('', array_map(fn($k) => '.field(' . Names::rustStringLiteral((string) $k) . ', &self.' . Names::field($k) . ')', array_keys($s->fields)));
+            $w->line('impl std::fmt::Debug for ' . $name . ' { fn fmt(&self, f: &mut std::fmt::Formatter<\'_>) -> std::fmt::Result { f.debug_struct("array")' . $dbg . '.finish() } }');
+        } else {
+            $w->line('impl std::fmt::Debug for ' . $name . ' { fn fmt(&self, f: &mut std::fmt::Formatter<\'_>) -> std::fmt::Result { write!(f, "{:?}", cast::<Mixed>(self.clone())) } }');
+        }
     }
 
     // ------------------------------------------------------------------ class conversions

@@ -897,26 +897,9 @@ final class ClassEmitter
      * @var array<string, true>
      */
     public const DYN_DISPATCH_METHODS = [
-        'add' => true, 'addcommands' => true, 'addpsr4' => true, 'addrow' => true, 'allowsnull' => true,
-        'attributes' => true, 'await' => true, 'c14n' => true, 'check' => true, 'contains' => true,
-        'createcdatasection' => true, 'disableextension' => true, 'disableextensions' => true, 'evaluate' => true, 'expects' => true,
-        'fetch' => true, 'findfile' => true, 'format' => true, 'getattribute' => true, 'getattributes' => true,
-        'getclosureid' => true, 'getcode' => true, 'getcount' => true, 'getdeclaringclass' => true, 'getelementsbytagnamens' => true,
-        'getfunctionid' => true, 'getgenerickeytype' => true, 'getgenericvaluetype' => true, 'getmessage' => true, 'getmethod' => true,
-        'getmethodid' => true, 'getmixedoriginmessage' => true, 'getname' => true, 'getnamespacename' => true, 'getnumberofparameters' => true,
-        'getnumberofrequiredparameters' => true, 'getoriginallocation' => true, 'getparameters' => true, 'getprefixespsr4' => true, 'getproperty' => true,
-        'getreplacement' => true, 'getreturntype' => true, 'getstartline' => true, 'gettainttrace' => true, 'gettentativereturntype' => true,
-        'gettype' => true, 'gettypes' => true, 'getvalue' => true, 'getvarid' => true, 'hasattribute' => true,
-        'hasmethod' => true, 'hasproperty' => true, 'hasreturntype' => true, 'hastentativereturntype' => true, 'hastype' => true,
-        'importnode' => true, 'isabstract' => true, 'isemptyarray' => true, 'isiterable' => true, 'isnonempty' => true,
-        'isoptional' => true, 'ispassedbyreference' => true, 'isprivate' => true, 'isprotected' => true, 'ispublic' => true,
-        'isstatic' => true, 'isvariadic' => true, 'item' => true, 'loginfo' => true, 'matches' => true,
-        'method' => true, 'modify' => true, 'normalizedocument' => true, 'offsetexists' => true, 'offsetget' => true,
-        'offsetset' => true, 'offsetunset' => true, 'parseconstraints' => true,
-        'query' => true, 'registernamespace' => true, 'render' => true, 'run' => true, 'runall' => true,
-        'setattribute' => true, 'setattributes' => true, 'setdefaultcommand' => true, 'setheaders' => true, 'setmethods' => true,
-        'setsubnode' => true, 'settimezone' => true, 'settypes' => true, 'setvalue' => true, 'tooffset' => true,
-        'tostring' => true,
+        'createmock' => true, 'await' => true, 'equalto' => true, 'check' => true, 'run' => true, 'method' => true,
+        'loginfo' => true, 'disableextension' => true, 'close' => true, 'willreturn' => true, 'runall' => true, 'render' => true,
+        'matches' => true, 'getcount' => true, 'getattribute' => true, 'fetch' => true, 'disableextensions' => true,
     ];
 
     /**
@@ -927,14 +910,9 @@ final class ClassEmitter
      * @var array<string, true>
      */
     public const DYN_ACCESS_PROPS = [
-        'analyzer' => true, 'as' => true, 'attributes' => true, 'childNodes' => true, 'class' => true, 'config' => true,
-        'count' => true, 'default_type' => true, 'documentURI' => true, 'enableJit' => true, 'eventDispatcher' => true, 'extra_types' => true,
-        'f' => true, 'file_path' => true, 'generated_report_options' => true, 'id' => true, 'insertText' => true, 'insertTextFormat' => true,
-        'is_static' => true, 'items' => true, 'label' => true, 'length' => true, 'line' => true, 'max_bound' => true,
-        'min_bound' => true, 'name' => true, 'nodeValue' => true, 'out_type' => true, 'pos' => true, 'props' => true,
-        'range' => true, 'signature_type' => true, 'stdout_report_options' => true, 'stmts' => true, 'symbol' => true, 'tagName' => true,
-        'text' => true, 'textContent' => true, 'track_mutations' => true, 'type' => true, 'type_params' => true, 'types' => true,
-        'value' => true, 'visibility' => true,
+        'type' => true, 'name' => true, 'stmts' => true, 'signature_type' => true, 'out_type' => true, 'extra_types' => true,
+        'default_type' => true, 'value' => true, 'types' => true, 'type_params' => true, 'stdout_report_options' => true, 'track_mutations' => true,
+        'textContent' => true,
     ];
 
     /** Match arms (lowercase method name => dynamic invocation) for `PhpObject::call_method`. */
