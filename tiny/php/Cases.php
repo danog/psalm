@@ -584,6 +584,51 @@ function case_empty_arrays(): string
     return $r . '|' . count($s['ignored']) . '|' . $n;
 }
 
+// ---- feature: typed throw path (no Mixed in throw/catch/rethrow/match) ----
+
+final class MyEx extends \Exception
+{
+}
+
+function thrower(int $n): int
+{
+    if ($n > 2) {
+        throw new MyEx("big $n");
+    }
+    return $n * 2;
+}
+
+function case_try_catch(): string
+{
+    $out = [];
+    foreach ([1, 3] as $n) {
+        try {
+            $out[] = (string) thrower($n);
+        } catch (MyEx $e) {
+            $out[] = 'caught:' . $e->getMessage();
+        } finally {
+            $out[] = 'f';
+        }
+    }
+    try {
+        try {
+            throw new \RuntimeException('inner');
+        } catch (MyEx $e) {
+            $out[] = 'wrong';
+        }
+    } catch (\Exception $e) {
+        $out[] = get_class($e) === 'RuntimeException' ? 'outer' : 'bad';
+    }
+    $out[] = match (1) { 2 => 'x', default => 'd' };
+    try {
+        $v = match (7) { 1 => 'a' };
+        $out[] = $v;
+    } catch (\UnhandledMatchError $e) {
+        $out[] = 'unhandled';
+    }
+    return implode(',', $out);
+}
+
 function run_all(): string
 {
     return check('nullable_union', case_nullable_union(), 'nullA7')
@@ -608,3 +653,4 @@ function run_all(): string
         . check('closure_capture', case_closure_capture(), '8');
 }
     check('empty_arrays', case_empty_arrays(), 's0,s1|0|2');
+    check('try_catch', case_try_catch(), '2,f,caught:big 3,f,outer,d,unhandled');

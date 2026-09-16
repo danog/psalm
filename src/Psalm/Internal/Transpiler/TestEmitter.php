@@ -279,18 +279,18 @@ final class TestEmitter
         }
 
         if ($rows === null) {
-            $w->open('trials.push(libtest_mimic::Trial::test(' . $name . '.to_string(), move || php_rt::testing::run_on_pool(' . $root . ', Box::new(move || php_rt::testing::run_row(' . $name . ', || {');
+            $w->open('trials.push(libtest_mimic::Trial::test(' . $name . '.to_string(), move || php_rt::testing::run_on_pool(' . $root . ', Box::new(move || php_rt::testing::run_row::<Throw>(' . $name . ', || {');
             $w->raw($body->get());
             $w->close('}))).map_err(libtest_mimic::Failed::from)));');
         } else {
             [$iter] = $rows;
             // the data sets are named by running the provider once; every trial then runs on the warm worker
             // pool, where each worker evaluates the provider once and keeps its rows
-            $w->line('let __keys: Result<Vec<String>, String> = php_rt::testing::in_thread(' . $root . ', || { crate::init(); (' . $iter . ').into_iter().map(|(__k, _)| to_str(&__k).to_string()).collect::<Vec<String>>() });');
+            $w->line('let __keys: Result<Vec<String>, String> = php_rt::testing::in_thread::<_, Throw>(' . $root . ', || { crate::init(); (' . $iter . ').into_iter().map(|(__k, _)| to_str(&__k).to_string()).collect::<Vec<String>>() });');
             $w->open('match __keys {');
             $w->line('Err(__msg) => trials.push(libtest_mimic::Trial::test(' . $name . '.to_string(), move || Err(libtest_mimic::Failed::from(format!("data provider failed: {}", __msg))))),');
             $w->open('Ok(__keys) => for (__i, __key) in __keys.into_iter().enumerate() {');
-            $w->open('trials.push(libtest_mimic::Trial::test(format!("{} [{}]", ' . $name . ', __key), move || php_rt::testing::run_on_pool(' . $root . ', Box::new(move || php_rt::testing::run_row(' . $name . ', || {');
+            $w->open('trials.push(libtest_mimic::Trial::test(format!("{} [{}]", ' . $name . ', __key), move || php_rt::testing::run_on_pool(' . $root . ', Box::new(move || php_rt::testing::run_row::<Throw>(' . $name . ', || {');
             $w->line('crate::init();');
             $w->line('let (__key, __row) = php_rt::testing::cached_rows(' . $name . ', || { (' . $iter . ').into_iter().collect::<Vec<_>>() }, |__rows| __rows[__i].clone());');
             $w->raw($body->get());
@@ -421,8 +421,8 @@ final class TestEmitter
         $w->line('let __outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| __t.' . $m->rustName() . '(' . implode(', ', $args) . ')));');
         $w->line('let __td = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| __t.' . $mm('runTearDown') . '()));');
         $w->open('match __outcome {');
-        $w->line('Ok(_) => { if __t.' . $mm('expectsException') . '() { php_rt::do_throw(cast::<Mixed>(Throw::assertion(cat!(Str::from_static("Failed asserting that exception of type \\""), __t.' . $mm('expectedExceptionDescription') . '(), Str::from_static("\\" is thrown"))))); } }');
-        $w->line('Err(__p) => { let __e: Mixed = php_rt::take_thrown(__p); if __t.' . $mm('expectsException') . '() && !php_rt::testing::is_skip_mixed(&__e) { __t.' . $mm('verifyExpectedException') . '(cast::<Throw>(__e)); } else { php_rt::do_throw(__e); } }');
+        $w->line('Ok(_) => { if __t.' . $mm('expectsException') . '() { php_rt::do_throw(Throw::assertion(cat!(Str::from_static("Failed asserting that exception of type \\""), __t.' . $mm('expectedExceptionDescription') . '(), Str::from_static("\\" is thrown")))); } }');
+        $w->line('Err(__p) => { let __e: Throw = php_rt::take_thrown::<Throw>(__p); if __t.' . $mm('expectsException') . '() && !php_rt::testing::is_skip(&__e) { __t.' . $mm('verifyExpectedException') . '(__e); } else { php_rt::do_throw(__e); } }');
         $w->close();
         $w->line('if let Err(__p) = __td { std::panic::resume_unwind(__p); }');
         $w->close('});');

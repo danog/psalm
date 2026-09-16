@@ -859,7 +859,7 @@ final class ClassEmitter
         if ($ts !== null) {
             $w->line('fn php_to_string(&self) -> Option<Str> { Some(self.' . $ts->rustName() . '()) }');
         }
-        $w->line('fn call_method(&self, name: &str, args: Vec<Mixed>) -> Mixed { match name { ' . $this->callMethodArms($cls) . '_ => php_rt::do_throw(cast::<Mixed>(Throw::error(cat!(Str::from_static(' . Names::rustStringLiteral('Call to undefined method ' . $cls->fqcn . '::') . '), Str::from_str(name), Str::from_static("()"))))) } }');
+        $w->line('fn call_method(&self, name: &str, args: Vec<Mixed>) -> Mixed { match name { ' . $this->callMethodArms($cls) . '_ => php_rt::do_throw(Throw::error(cat!(Str::from_static(' . Names::rustStringLiteral('Call to undefined method ' . $cls->fqcn . '::') . '), Str::from_str(name), Str::from_static("()")))) } }');
         $w->close();
         $w->line('impl ' . $own . ' { pub fn to_php_string(&self) -> Str { ' . ($ts !== null ? 'self.' . $ts->rustName() . '()' : 'panic!(' . Names::rustStringLiteral('Uncaught exception: Object of class ' . $cls->fqcn . ' could not be converted to string') . ')') . ' } }');
         $clone = $this->program->findMethod($cls, '__clone');

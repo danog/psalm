@@ -1995,7 +1995,7 @@ final class Builtins
     {
         $cond = $b->truthy($args[0]->value);
         $msg = isset($args[1]) ? $b->exprTo($args[1]->value, RustType::str()) : Names::strLit('assert(' . $args[0]->value->getType() . ')');
-        return new Val('{ if !(' . $cond . ') { php_rt::do_throw(cast::<Mixed>(Throw::assertion(' . $msg . '))); } true }', RustType::bool());
+        return new Val('{ if !(' . $cond . ') { php_rt::do_throw(Throw::assertion(' . $msg . ')); } true }', RustType::bool());
     }
 
     private function f_func_get_args(BodyEmitter $b, Expr\FuncCall $call, array $args): Val

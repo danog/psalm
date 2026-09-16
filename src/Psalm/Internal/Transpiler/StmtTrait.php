@@ -525,10 +525,10 @@ trait StmtTrait
      */
     private function throwCode(Expr $e): string
     {
-        // Panic-based errors: every `throw` unwinds via php_rt::do_throw (stashes the exception object as Mixed and
-        // panics with a PhpThrow marker); a `try` boundary catch_unwinds and matches it. Returns `!`.
+        // Panic-based errors: every `throw` unwinds via php_rt::do_throw carrying the exception as the program's
+        // typed `Throw` (the Throwable handle enum); a `try` boundary catch_unwinds and matches it. Returns `!`.
         $v = $this->expr($e);
-        return 'php_rt::do_throw(' . $this->casts->convert($v->code, $v->type, RustType::mixed()) . ')';
+        return 'php_rt::do_throw(' . $this->casts->convert($v->code, $v->type, RustType::class('Throwable')) . ')';
     }
 
     private function tryStmt(Stmt\TryCatch $s): void
@@ -555,8 +555,8 @@ trait StmtTrait
         $w->line('Ok(__flow) => __flow,');
         $w->line('Err(__payload) => {');
         $w->indent();
-        $w->line('let __e = ' . $this->casts->convert('php_rt::take_thrown(__payload)', $mixed, $throwable) . ';');
-        $rethrow = 'php_rt::do_throw(' . $this->casts->convert('__e', $throwable, $mixed) . ')';
+        $w->line('let __e: ' . $throwable->toRust() . ' = php_rt::take_thrown::<' . $throwable->toRust() . '>(__payload);');
+        $rethrow = 'php_rt::do_throw(__e)';
         if ($s->catches !== []) {
             $w->line('(|| -> ' . $flow_t . ' {');
             $w->indent();

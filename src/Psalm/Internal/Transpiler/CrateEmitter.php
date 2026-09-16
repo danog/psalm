@@ -551,7 +551,7 @@ final class CrateEmitter
         $w->line('pub fn type_error(msg: Str) -> Self { ' . $mk('TypeError', 'msg') . ' }');
         $w->line('pub fn value_error(msg: Str) -> Self { ' . $mk('ValueError', 'msg') . ' }');
         $w->line('pub fn assertion(msg: Str) -> Self { ' . $mk('AssertionError', 'msg') . ' }');
-        $w->line('pub fn unhandled_match(v: &Mixed) -> Self { ' . $mk('UnhandledMatchError', 'cat!(Str::from_static("Unhandled match case "), json_encode_simple(v))') . ' }');
+        $w->line('pub fn unhandled_match<T: std::fmt::Debug>(v: &T) -> Self { ' . $mk('UnhandledMatchError', 'php_rt::sfmt!("Unhandled match case {:?}", v)') . ' }');
         $exit = $this->program->getClass('PhpExitException');
         if ($exit !== null && $exit->is_project) {
             $w->line('pub fn exit(status: i64) -> Self { ' . $this->casts->convert($exit->path() . '::new(status)', RustType::class($exit->fqcn), $tt) . ' }');
@@ -564,6 +564,8 @@ final class CrateEmitter
         }
         $w->line('pub fn message(&self) -> Str { self.getMessage() }');
         $w->close();
+        // the typed exception interface of the test harness (php_rt::testing) and of php-rt's take_thrown
+        $w->line('impl php_rt::PhpThrowable for ' . $throwable->path() . ' { fn class_name(&self) -> &\'static str { php_rt::PhpObject::class_name(self) } fn class_ancestors(&self) -> &\'static [&\'static str] { php_rt::PhpObject::class_ancestors(self) } fn message(&self) -> Str { self.getMessage() } }');
         $classes = ['Error', 'TypeError', 'ValueError', 'ArgumentCountError', 'ArithmeticError', 'DivisionByZeroError', 'AssertionError', 'UnhandledMatchError', 'JsonException', 'RuntimeException', 'LogicException', 'InvalidArgumentException', 'UnexpectedValueException', 'OutOfBoundsException'];
         $arms = [];
         foreach ($classes as $cls) {
@@ -577,7 +579,7 @@ final class CrateEmitter
         $w->line('impl std::fmt::Display for ' . $throwable->path() . ' { fn fmt(&self, f: &mut std::fmt::Formatter<\'_>) -> std::fmt::Result { write!(f, "{}: {}", self.class_name(), self.message()) } }');
         // Convert a runtime error (RRtError) into a PHP exception object and throw it via the panic-based
         // error model, so a surrounding PHP try/catch can catch runtime failures (division by zero, etc.).
-        $w->line('#[inline] pub fn __throw_rt(e: RtError) -> ! { php_rt::do_throw(' . $this->casts->convert($throwable->path() . '::from(e)', $tt, RustType::mixed()) . ') }');
+        $w->line('#[inline] pub fn __throw_rt(e: RtError) -> ! { php_rt::do_throw(' . $throwable->path() . '::from(e)) }');
         // Unwrap a fallible runtime call (php-rt `R<T>`) in a non-Result context: on error, throw it.
         $w->line('#[inline] pub fn __unwrap<T>(r: R<T>) -> T { match r { Ok(v) => v, Err(e) => __throw_rt(e) } }');
     }
@@ -594,7 +596,7 @@ final class CrateEmitter
         for ($i = 0; $i < $crate; $i++) {
             $upstream[] = $this->transpiler->crateName($i);
         }
-        $prelude = "#![recursion_limit = \"4096\"]\n#![allow(unused_imports, unused_variables, unused_mut, dead_code, non_snake_case, non_camel_case_types, unreachable_code, unused_parens, unused_braces, unused_assignments, unused_labels, unused_unsafe, clippy::all, irrefutable_let_patterns, unreachable_patterns, unused_must_use, non_upper_case_globals, deprecated, ambiguous_glob_reexports, hidden_glob_reexports)]\n";
+        $prelude = "#![allow(unused_imports, unused_variables, unused_mut, dead_code, non_snake_case, non_camel_case_types, unreachable_code, unused_parens, unused_braces, unused_assignments, unused_labels, unused_unsafe, clippy::all, irrefutable_let_patterns, unreachable_patterns, unused_must_use, non_upper_case_globals, deprecated, ambiguous_glob_reexports, hidden_glob_reexports)]\n";
         $use = "use php_rt::prelude::*;\n";
         foreach ($upstream as $up) {
             $use .= "use ::$up::generated::*;\n";
@@ -612,7 +614,8 @@ final class CrateEmitter
             }
             unset($node);
         }
-        $lib = $prelude . "pub mod generated;\npub mod consts;\npub use generated::*;\n";
+        // recursion_limit: rustc's Send/Sync auto-trait proof over the recursive node graph overflows the default
+        $lib = "#![recursion_limit = \"4096\"]\n" . $prelude . "pub mod generated;\npub mod consts;\npub use generated::*;\n";
         $lib .= "/// Marker of the leaf classes of this crate (targets of the generic narrowing casts of dispatch enums).\npub trait Leaf__ {}\n";
         $lib .= $this->writeTree($crate, $tree, $src, $use, '') . "\n";
         if ($any !== null) {
@@ -641,7 +644,7 @@ final class CrateEmitter
         if (!is_dir($out . '/tests')) {
             mkdir($out . '/tests', 0777, true);
         }
-        $harness = $prelude . str_replace('crate::', '::' . $name . '::', $this->rewritePaths($use, $crate)) . str_replace('crate::', '::' . $name . '::', $this->rewritePaths($tests->get(), $crate));
+        $harness = "#![recursion_limit = \"4096\"]\n" . $prelude . str_replace('crate::', '::' . $name . '::', $this->rewritePaths($use, $crate)) . str_replace('crate::', '::' . $name . '::', $this->rewritePaths($tests->get(), $crate));
         $this->writeFile($out . '/tests/harness.rs', $harness);
         if (file_exists($src . '/tests.rs')) {
             unlink($src . '/tests.rs');

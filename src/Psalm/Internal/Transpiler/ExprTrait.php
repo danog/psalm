@@ -182,12 +182,12 @@ trait ExprTrait
         if ($e instanceof Expr\Exit_) {
             $code = $e->expr !== null ? $this->expr($e->expr) : null;
             if ($code === null) {
-                return new Val('php_rt::do_throw(cast::<Mixed>(Throw::exit(0)))', RustType::never());
+                return new Val('php_rt::do_throw(Throw::exit(0))', RustType::never());
             }
             if ($code->type->kind === RustType::INT) {
-                return new Val('php_rt::do_throw(cast::<Mixed>(Throw::exit(' . $code->code . ')))', RustType::never());
+                return new Val('php_rt::do_throw(Throw::exit(' . $code->code . '))', RustType::never());
             }
-            return new Val('{ echo(to_str(' . $code->code . ').as_bytes()); php_rt::do_throw(cast::<Mixed>(Throw::exit(0))) }', RustType::never());
+            return new Val('{ echo(to_str(' . $code->code . ').as_bytes()); php_rt::do_throw(Throw::exit(0)) }', RustType::never());
         }
         if ($e instanceof Expr\Print_) {
             return new Val('{ echo(' . $this->exprTo($e->expr, RustType::str()) . '.as_bytes()); 1i64 }', RustType::int());
@@ -1607,7 +1607,7 @@ trait ExprTrait
         if ($default !== null) {
             $code .= ($first ? '{ ' : 'else { ') . $this->exprTo($default->body, $res) . ' } ';
         } else {
-            $code .= ($first ? '{ ' : 'else { ') . 'php_rt::do_throw(cast::<Mixed>(Throw::unhandled_match(&' . $this->casts->convert($tmp . '.clone()', $subj->type, RustType::mixed()) . '))) } ';
+            $code .= ($first ? '{ ' : 'else { ') . 'php_rt::do_throw(Throw::unhandled_match(&' . $tmp . ')) } ';
         }
         return new Val($code . '}', $res);
     }
