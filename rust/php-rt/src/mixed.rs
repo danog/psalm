@@ -36,6 +36,10 @@ pub trait PhpObject: Any + Send + Sync {
     fn php_to_string(&self) -> Option<Str> {
         None
     }
+    /// `clone $obj` on a type-erased object (generated classes return a fresh `Rc` of their own handle).
+    fn php_clone_dyn(&self) -> AnyObj {
+        panic!("Uncaught exception: object of class {} is not cloneable", self.class_name())
+    }
     /// Dynamic property write; returns false when the property is unknown.
     fn set_prop(&self, _name: &str, _value: Mixed) -> bool {
         false
