@@ -269,6 +269,15 @@ final class BodyEmitter
                     }
                 }
             }
+            if ($rust->kind === RustType::MIXED) {
+                // Mixed-removal diagnostic: every local whose storage type is Mixed, with the Psalm types that
+                // produced it (the actionable per-variable list for retyping the PHP source).
+                $psalm_names = [];
+                foreach ($types as $__t) {
+                    $psalm_names[(string) $__t] = true;
+                }
+                \fwrite(\STDERR, '[mixed-var] $' . $name . ' <= ' . implode(' , ', array_keys($psalm_names)) . ' @ ' . $this->type_context . "\n");
+            }
             if (($rust->kind === RustType::MIXED || ($rust->kind === RustType::UNION && $real_members >= 2)) && count($types) >= 2) {
                 $psalm_names = [];
                 foreach ($types as $__t) {

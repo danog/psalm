@@ -594,7 +594,7 @@ final class CrateEmitter
         for ($i = 0; $i < $crate; $i++) {
             $upstream[] = $this->transpiler->crateName($i);
         }
-        $prelude = "#![allow(unused_imports, unused_variables, unused_mut, dead_code, non_snake_case, non_camel_case_types, unreachable_code, unused_parens, unused_braces, unused_assignments, unused_labels, unused_unsafe, clippy::all, irrefutable_let_patterns, unreachable_patterns, unused_must_use, non_upper_case_globals, deprecated, ambiguous_glob_reexports, hidden_glob_reexports)]\n";
+        $prelude = "#![recursion_limit = \"4096\"]\n#![allow(unused_imports, unused_variables, unused_mut, dead_code, non_snake_case, non_camel_case_types, unreachable_code, unused_parens, unused_braces, unused_assignments, unused_labels, unused_unsafe, clippy::all, irrefutable_let_patterns, unreachable_patterns, unused_must_use, non_upper_case_globals, deprecated, ambiguous_glob_reexports, hidden_glob_reexports)]\n";
         $use = "use php_rt::prelude::*;\n";
         foreach ($upstream as $up) {
             $use .= "use ::$up::generated::*;\n";

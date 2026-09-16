@@ -131,6 +131,16 @@ final class TypeMapper
     }
 
     /** Count a `Mixed` type at its root cause (drive-to-zero diagnostics), returning `Mixed`. */
+    /** Count an `AnyObject` (dynamic object handle) at its root cause, returning `AnyObject`. */
+    private function anyRoot(string $why): RustType
+    {
+        $this->mixed_roots['ANYOBJECT ' . $why] = ($this->mixed_roots['ANYOBJECT ' . $why] ?? 0) + 1;
+        if ($this->context !== null) {
+            $this->mixed_sites['ANYOBJECT ' . $why][$this->context] = ($this->mixed_sites['ANYOBJECT ' . $why][$this->context] ?? 0) + 1;
+        }
+        return RustType::anyObject();
+    }
+
     private function mixedRoot(string $why): RustType
     {
         $this->mixed_roots[$why] = ($this->mixed_roots[$why] ?? 0) + 1;
@@ -474,10 +484,10 @@ final class TypeMapper
             return $this->mapNamedObject($atomic);
         }
         if ($atomic instanceof TObjectWithProperties) {
-            return RustType::anyObject();
+            return $this->anyRoot('TObjectWithProperties');
         }
         if ($atomic instanceof TObject) {
-            return RustType::anyObject();
+            return $this->anyRoot('TObject (declared object)');
         }
         if ($atomic instanceof TConditional) {
             return $this->combine([$this->map($atomic->if_type), $this->map($atomic->else_type)]);
@@ -594,13 +604,13 @@ final class TypeMapper
             if ($this->current_class !== null) {
                 return RustType::class($this->current_class);
             }
-            return RustType::anyObject();
+            return $this->anyRoot('static/self outside a class');
         }
         $fqcn = $this->program->canonicalClassName($atomic->value);
         $model = $this->program->getClass($fqcn);
         if ($model === null || !$model->is_project) {
             // no generated code for this class (a vendor dependency that is not transpiled): dynamic object
-            return RustType::anyObject();
+            return $this->anyRoot('external class ' . $fqcn);
         }
         while ($model !== null && $model->crate > $this->current_crate) {
             // a class of a downstream crate (a test subclass seen by inference): the upstream crate can only
@@ -608,7 +618,7 @@ final class TypeMapper
             $model = $model->parent;
         }
         if ($model === null || !$model->is_project) {
-            return RustType::anyObject();
+            return $this->anyRoot('downstream-crate class ' . $fqcn);
         }
         return RustType::class($model->fqcn);
     }
