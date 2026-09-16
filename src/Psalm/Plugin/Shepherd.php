@@ -47,6 +47,14 @@ use const STDERR;
 
 /**
  * @api
+ * @psalm-type ShepherdPayload = array{
+ *     build: array<string, string>,
+ *     git: array{branch: string, head: array{id: ?string, author_name: ?string, author_email: ?string, committer_name: ?string, committer_email: ?string, message: ?string, date: ?int}, remotes: list<array{name: ?string, url: ?string}>}|array<never, never>,
+ *     issues: list<\Psalm\Internal\Analyzer\IssueData>,
+ *     coverage: list<int>,
+ *     level: int<1, 8>,
+ *     versions: array<string, string>
+ * }
  */
 final class Shepherd implements AfterAnalysisInterface
 {
@@ -75,14 +83,7 @@ final class Shepherd implements AfterAnalysisInterface
     }
 
     /**
-     * @return array{
-     *     build: array,
-     *     git: array,
-     *     issues: array,
-     *     coverage: list<int>,
-     *     level: int<1, 8>,
-     *     versions: array<string, string>
-     * }|null
+     * @return ShepherdPayload|null
      */
     private static function collectPayloadToSend(AfterAnalysisEvent $event): ?array
     {
@@ -128,7 +129,7 @@ final class Shepherd implements AfterAnalysisInterface
         ];
     }
 
-    /** @param array<string, mixed> $rawPayload */
+    /** @param ShepherdPayload $rawPayload */
     private static function sendPayload(string $endpoint, array $rawPayload): void
     {
         $payload = json_encode($rawPayload, JSON_THROW_ON_ERROR);
