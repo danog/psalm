@@ -767,6 +767,30 @@ function case_phpunit(): string
     return implode(',', $out);
 }
 
+// ---- feature: typed object comparison (== on objects compares properties, no Mixed) ----
+
+final class Pt
+{
+    public function __construct(public int $x, public string $tag, public ?Pt $next = null) {}
+}
+
+function case_object_eq(): string
+{
+    $a = new Pt(1, 'a', new Pt(2, 'b'));
+    $b = new Pt(1, 'a', new Pt(2, 'b'));
+    $c = new Pt(1, 'a', new Pt(3, 'b'));
+    $out = [];
+    $out[] = $a == $b ? 'eq' : 'ne';
+    $out[] = $a == $c ? 'eq' : 'ne';
+    $out[] = $a != $c ? 'ne' : 'eq';
+    $out[] = $a === $b ? 'same' : 'notsame';
+    $out[] = $a == $a ? 'eq' : 'ne';
+    $x = new A(7);
+    $out[] = $x == new A(7) ? 'eq' : 'ne';
+    $out[] = $x == new A(8) ? 'eq' : 'ne';
+    return implode(',', $out);
+}
+
 function run_all(): string
 {
     return check('nullable_union', case_nullable_union(), 'nullA7')
@@ -794,3 +818,4 @@ function run_all(): string
     check('try_catch', case_try_catch(), '2,f,caught:big 3,f,outer,d,unhandled');
     check('generics', case_generics(), 'i:eq,s:ne,l:eq,42,xy,has,no,5,strintother');
     check('phpunit', case_phpunit(), '1,failed,skip:later,expects,verified,mismatch,testThrows with data set "ds"');
+    check('object_eq', case_object_eq(), 'eq,ne,ne,notsame,eq,eq,ne');

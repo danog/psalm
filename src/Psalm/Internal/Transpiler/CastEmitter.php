@@ -322,7 +322,7 @@ final class CastEmitter
         $num = $this->program->findMethod($cls, '__tostring') !== null ? 'to_num(&Mixed::Str(self.to_php_str()))' : '{ let _ = self; Num::Int(1) }';
         $w->line('impl php_rt::ToInt for ' . $h . ' { fn to_php_int(&self) -> i64 { ' . $num . '.to_i64() } }');
         $w->line('impl php_rt::ToFloat for ' . $h . ' { fn to_php_float(&self) -> f64 { ' . $num . '.to_f64() } }');
-        $w->line('impl php_rt::PhpCmp for ' . $h . ' { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }');
+        $this->emitHandleCmp($cls, $w);
         $w->line('impl std::fmt::Debug for ' . $h . ' { fn fmt(&self, f: &mut std::fmt::Formatter<\'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }');
         // to Mixed: store the concrete own handle
         if ($cls->isLeaf()) {
@@ -358,7 +358,15 @@ final class CastEmitter
         $none = ($cls->isLeaf() || $closed) ? 'None' : 'if o.instance_of_id(' . $this->program->classId($cls) . ') { Some(' . $h . '::Other__(Mixed::Obj(o.clone()))) } else { None }';
         $w->line('impl php_rt::TryDowncast for ' . $h . ' { fn try_downcast(o: &AnyObj) -> Option<Self> { match o.class_id() { ' . implode(' ', $some_arms) . ' _ => {} } ' . $none . ' } }');
         // AnyObject
-        $w->line('impl php_rt::CastTo<AnyObject> for ' . $h . ' { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }');
+        // to AnyObject: the concrete own handle becomes its AnyObject variant directly (no Mixed round trip)
+        if ($cls->isLeaf() && $cls->crate === 0 && !$cls->isEnum()) {
+            $w->line('impl php_rt::CastTo<AnyObject> for ' . $h . ' { fn cast_to(self) -> AnyObject { AnyObject::' . $cls->variant() . '(self) } }');
+        } elseif ($closed && $cls->concrete !== [] && !array_filter($cls->concrete, static fn(ClassModel $c) => $c->crate !== 0 || $c->isEnum())) {
+            $arms = array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(v) => AnyObject::' . $c->variant() . '(v)', $cls->concrete);
+            $w->line('impl php_rt::CastTo<AnyObject> for ' . $h . ' { fn cast_to(self) -> AnyObject { match self { ' . implode(', ', $arms) . ', _ => unreachable!() } } }');
+        } else {
+            $w->line('impl php_rt::CastTo<AnyObject> for ' . $h . ' { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }');
+        }
         $w->line('impl php_rt::CastTo<' . $h . '> for AnyObject { fn cast_to(self) -> ' . $h . ' { cast::<' . $h . '>(cast::<Mixed>(self)) } }');
         $w->line('impl php_rt::InstanceOf<' . $h . '> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_id(' . $this->program->classId($cls) . ') } }');
         $w->line('impl php_rt::InstanceOf<' . $h . '> for Mixed { fn is_instance(&self) -> bool { self.instance_of_id(' . $this->program->classId($cls) . ') } }');
@@ -756,6 +764,104 @@ final class CastEmitter
             $arms[] = $fh . '::Other__(m) => ' . $this->conv('m', RustType::mixed(), $to);
         }
         $w->line('impl php_rt::CastTo<' . $th . '> for ' . $fh . ' { fn cast_to(self) -> ' . $th . ' { match self { ' . implode(', ', $arms) . ($arms ? ', ' : '') . '_ => unreachable!() } } }');
+    }
+
+    /**
+     * PHP `==`/`<=>` on objects: same class and every property equal (compared in declaration order), typed
+     * field by field; different classes are uncomparable (Greater, as php-rt orders them). Classes with a field
+     * whose type has no PhpCmp (closures, runtime containers) keep the Mixed-protocol comparison.
+     */
+    private function emitHandleCmp(ClassModel $cls, Writer $w): void
+    {
+        $h = $cls->handle();
+        $typed = $this->cmpableClass($cls);
+        if ($cls->isLeaf()) {
+            $body = $typed ? $this->fieldCmpBody($cls) : 'cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone()))';
+            $w->line('impl php_rt::PhpCmp for ' . $h . ' { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { ' . $body . ' } }');
+            return;
+        }
+        $closed = !$cls->has_downstream;
+        if (!$typed || !$closed) {
+            $w->line('impl php_rt::PhpCmp for ' . $h . ' { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { cast::<Mixed>(self.clone()).php_cmp(&cast::<Mixed>(o.clone())) } }');
+            return;
+        }
+        $arms = [];
+        foreach ($cls->concrete as $c) {
+            $arms[] = '(' . $h . '::' . $c->variant() . '(a), ' . $h . '::' . $c->variant() . '(b)) => a.php_cmp(b)';
+        }
+        $w->line('impl php_rt::PhpCmp for ' . $h . ' { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { match (self, o) { ' . implode(', ', $arms) . ($arms ? ', ' : '') . '_ => std::cmp::Ordering::Greater } } }');
+        if ($cls->isConcrete() && $cls->ownHandle() !== $h) {
+            // a concrete non-leaf: its own newtype (an enum variant payload) compares field by field too
+            $w->line('impl php_rt::PhpCmp for ' . $cls->ownHandle() . ' { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { ' . $this->fieldCmpBody($cls) . ' } }');
+        }
+    }
+
+    /** Field-by-field comparison of two instances of the same concrete class. */
+    private function fieldCmpBody(ClassModel $cls): string
+    {
+        $parts = ['if self.obj_id() == o.obj_id() { return std::cmp::Ordering::Equal; }'];
+        foreach ($cls->fields as $f) {
+            $get = $f->isLate() ? $f->acc() . '_opt()' : $f->acc() . '_get()';
+            $parts[] = '{ let __c = self.' . $get . '.php_cmp(&o.' . $get . '); if __c != std::cmp::Ordering::Equal { return __c; } }';
+        }
+        $parts[] = 'std::cmp::Ordering::Equal';
+        return implode(' ', $parts);
+    }
+
+    /** @var array<string, bool> */
+    private array $cmpable_classes = [];
+
+    /** Whether every field of every concrete member of the hierarchy has a PhpCmp type. */
+    private function cmpableClass(ClassModel $cls): bool
+    {
+        if (isset($this->cmpable_classes[$cls->fqcn])) {
+            return $this->cmpable_classes[$cls->fqcn];
+        }
+        $this->cmpable_classes[$cls->fqcn] = true; // provisional (cycles through class-typed fields)
+        $members = $cls->isLeaf() ? [$cls] : $cls->concrete;
+        $ok = true;
+        foreach ($members as $m) {
+            foreach ($m->fields as $f) {
+                if (!$this->cmpableType($f->type)) {
+                    $ok = false;
+                    break 2;
+                }
+            }
+        }
+        return $this->cmpable_classes[$cls->fqcn] = $ok;
+    }
+
+    /** Whether values of the type implement php_rt::PhpCmp (and Truthy, for Option members). */
+    private function cmpableType(RustType $t): bool
+    {
+        switch ($t->kind) {
+            case RustType::INT:
+            case RustType::FLOAT:
+            case RustType::BOOL:
+            case RustType::STR:
+            case RustType::SYM:
+            case RustType::UNIT:
+            case RustType::ARRAY_KEY:
+            case RustType::MIXED:
+            case RustType::RESOURCE:
+            case RustType::SHAPE:
+            case RustType::UNION:
+            case RustType::ANY_OBJECT:
+                return true;
+            case RustType::OPTION:
+                $inner = $t->inner();
+                return in_array($inner->kind, [RustType::INT, RustType::FLOAT, RustType::BOOL, RustType::STR, RustType::SYM, RustType::LIST, RustType::MAP, RustType::CLASS_, RustType::UNION, RustType::SHAPE, RustType::ARRAY_KEY, RustType::MIXED], true)
+                    && $this->cmpableType($inner);
+            case RustType::LIST:
+                return $this->cmpableType($t->inner());
+            case RustType::MAP:
+                return $this->cmpableType($t->params[1]);
+            case RustType::CLASS_:
+                $c = $this->program->classOf($t);
+                return $c !== null && $c->is_project && !$c->isEnum() && !$c->isTrait();
+            default:
+                return false; // closures, callables, tuples, runtime generics, generics
+        }
     }
 
     private function emitInstanceOf(RustType $subject, RustType $target, Writer $w): void
