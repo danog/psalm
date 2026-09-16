@@ -1536,6 +1536,8 @@ final class FilterUtils
         );
 
         // https://www.php.net/manual/en/filter.filters.sanitize.php
+        /** @var array<int, array{flags: list<int>, options: array<string, Union>}> $sanitize_filters */
+
         $sanitize_filters = array(
             FILTER_SANITIZE_EMAIL => array(
                 'flags' => array(),
@@ -1636,6 +1638,9 @@ final class FilterUtils
         // validation filters all match bitmask 0x100
         // all support FILTER_NULL_ON_FAILURE flag https://www.php.net/manual/en/filter.filters.flags.php
         $general_filter_flags_validate = array_merge($general_filter_flags, array(FILTER_NULL_ON_FAILURE));
+
+        /** @var array<int, array{flags: list<int>, options: array<string, Union>}> $validate_filters */
+
 
         $validate_filters = array(
             FILTER_VALIDATE_BOOLEAN => array(
@@ -1738,6 +1743,8 @@ final class FilterUtils
         }
 
         // https://www.php.net/manual/en/filter.filters.misc.php
+        /** @var array<int, array{flags: list<int>, options: array<string, Union>}> $other_filters */
+
         $other_filters = array(
             FILTER_CALLBACK => array(
                 // the docs say that all flags are ignored
