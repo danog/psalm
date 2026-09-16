@@ -912,7 +912,8 @@ final class ClassEmitter
     public const DYN_ACCESS_PROPS = [
         'type' => true, 'name' => true, 'stmts' => true, 'signature_type' => true, 'out_type' => true, 'extra_types' => true,
         'default_type' => true, 'value' => true, 'types' => true, 'type_params' => true, 'stdout_report_options' => true, 'track_mutations' => true,
-        'textContent' => true,
+        'textContent' => true, 'props' => true, 'nodeValue' => true, 'is_static' => true, 'generated_report_options' => true, 'eventDispatcher' => true,
+        'enableJit' => true,
     ];
 
     /** Match arms (lowercase method name => dynamic invocation) for `PhpObject::call_method`. */
