@@ -57,10 +57,11 @@ trait CallTrait
     /** @var list<array{string, string}> per-args() frames of (pre, post) code produced by byRefArg() */
     private array $byref_frames = [];
 
-    public function args(array $args, FunctionLikeStorage $storage, array $param_types, ?ClassModel $callee_class, string $callee_name): array
+    /** @param array<int, true> $borrow_params param indices the callee receives as `&T` (owned/borrowed axis 5) */
+    public function args(array $args, FunctionLikeStorage $storage, array $param_types, ?ClassModel $callee_class, string $callee_name, array $borrow_params = []): array
     {
         $this->byref_frames[] = ['', ''];
-        $out = $this->argsInner($args, $storage, $param_types, $callee_class, $callee_name);
+        $out = $this->argsInner($args, $storage, $param_types, $callee_class, $callee_name, $borrow_params);
         [$pre, $post] = array_pop($this->byref_frames);
         $has_byref = false;
         foreach (array_values($storage->params) as $i => $p) {
@@ -91,7 +92,8 @@ trait CallTrait
         $this->byref_frames[count($this->byref_frames) - 1][0] .= $code . ' ';
     }
 
-    private function argsInner(array $args, FunctionLikeStorage $storage, array $param_types, ?ClassModel $callee_class, string $callee_name): array
+    /** @param array<int, true> $borrow_params */
+    private function argsInner(array $args, FunctionLikeStorage $storage, array $param_types, ?ClassModel $callee_class, string $callee_name, array $borrow_params = []): array
     {
         $params = array_values($storage->params);
         $out = [];
@@ -160,6 +162,11 @@ trait CallTrait
                 $out[] = $this->byRefArg($arg->value, $t);
                 continue;
             }
+            if (isset($borrow_params[$i])) {
+
+                $out[] = $this->borrowArg($arg->value, $t);
+                continue;
+            }
             $out[] = $this->exprTo($arg->value, $t);
         }
         return $out;
@@ -186,6 +193,34 @@ trait CallTrait
         $this->byref_frames[$frame][0] .= 'let mut ' . $tmp . ': ' . $t->toRust() . ' = ' . $this->casts->convert($place->read(), $place->type, $t) . '; ';
         $this->byref_frames[$frame][1] .= $place->write($this->casts->convert($tmp, $t, $place->type)) . ' ';
         return '&mut ' . $tmp;
+    }
+
+    /**
+     * Owned/borrowed (axis 5): pass an argument as `&T` to a borrow-safe param, without cloning where the
+     * value is already available as `T` (a local of matching type, or a Late local). Otherwise borrow a
+     * converted temporary (`&expr`), which still avoids an extra Rc clone for a computed owned value.
+     */
+    private function borrowArg(Expr $e, RustType $t): string
+    {
+        if ($e instanceof Expr\Variable && is_string($e->name) && $e->name !== 'this'
+            && isset($this->vars[$e->name])
+            && $this->vars[$e->name]->toRust() === $t->toRust()
+            && empty($this->cells[$e->name]) && empty($this->refvars[$e->name])
+            && empty($this->byref[$e->name]) && empty($this->globals[$e->name])
+        ) {
+            $name = $e->name;
+            $rn = Names::var($name);
+            if (!empty($this->borrow[$name])) {
+                return $rn; // already `&T`
+            }
+            if (!empty($this->late[$name])) {
+                return $rn . '.get()'; // `&T` into the Late's stored value
+            }
+            if (!$this->vars[$name]->isCopy()) {
+                return '&' . $rn; // plain local: borrow in place, no clone
+            }
+        }
+        return '&' . $this->exprTo($e, $t);
     }
 
     /** The default value expression of a parameter, evaluated in the callee's scope. */
@@ -274,7 +309,7 @@ trait CallTrait
         // user-defined function?
         $fn = $this->program->getFunction($resolved) ?? $this->program->getFunction($short);
         if ($fn !== null) {
-            $argc = $this->args($args, $fn->record->storage, $fn->param_types, null, $fn->fq_name);
+            $argc = $this->args($args, $fn->record->storage, $fn->param_types, null, $fn->fq_name, $fn->borrow_params);
             return new Val($this->finishCall($fn->path() . '(' . implode(', ', $argc) . ')' . ($fn->throws ? '?' : '')), $fn->return_type);
         }
 

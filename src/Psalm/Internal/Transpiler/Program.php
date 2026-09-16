@@ -162,6 +162,7 @@ final class Program
         foreach ($this->functions as $fn) {
             $this->types->current_crate = $this->crateOfRecord($fn->record);
             $this->resolveSignature($fn->record->storage, $fn->param_types, $fn->return_type, $fn->record->node);
+            $this->computeBorrowParams($fn);
         }
         $this->types->current_crate = 0;
         $this->propagateLateStaticBinding();
@@ -1588,6 +1589,86 @@ final class Program
     /**
      * @param list<RustType> $param_types
      */
+    /**
+     * Owned/borrowed (axis 5): mark free-function params that are non-escaping read-only, so they can be
+     * emitted as `&T` and callers borrow instead of cloning. Conservative: a param qualifies only if its
+     * type is a heap object/union (CLASS_/UNION -- where an Rc clone actually costs) and EVERY occurrence
+     * of it in the body is a borrowing read (method-call receiver, property-fetch base, or instanceof
+     * operand). Any other use (return, store, pass-by-value, reassignment, closure capture, by-ref) makes
+     * it escape -> keep it owned. rustc is the backstop: an unsound borrow would fail to compile.
+     */
+    private function computeBorrowParams(FunctionModel $fn): void
+    {
+        $node = $fn->record->node;
+        if (!$node instanceof \PhpParser\Node\Stmt\Function_) {
+            return; // free functions only for this increment (methods have dispatch/override machinery)
+        }
+        $stmts = $node->stmts;
+        $finder = new \PhpParser\NodeFinder();
+        // Variable nodes that are a borrowing read (safe): the receiver/base/operand of a read expression.
+        $safe = [];
+        foreach ($finder->findInstanceOf($stmts, \PhpParser\Node\Expr\MethodCall::class) as $m) {
+            if ($m->var instanceof \PhpParser\Node\Expr\Variable) {
+                $safe[spl_object_id($m->var)] = true;
+            }
+        }
+        foreach ($finder->findInstanceOf($stmts, \PhpParser\Node\Expr\NullsafeMethodCall::class) as $m) {
+            if ($m->var instanceof \PhpParser\Node\Expr\Variable) {
+                $safe[spl_object_id($m->var)] = true;
+            }
+        }
+        foreach ($finder->findInstanceOf($stmts, \PhpParser\Node\Expr\PropertyFetch::class) as $p) {
+            if ($p->var instanceof \PhpParser\Node\Expr\Variable) {
+                $safe[spl_object_id($p->var)] = true;
+            }
+        }
+        foreach ($finder->findInstanceOf($stmts, \PhpParser\Node\Expr\NullsafePropertyFetch::class) as $p) {
+            if ($p->var instanceof \PhpParser\Node\Expr\Variable) {
+                $safe[spl_object_id($p->var)] = true;
+            }
+        }
+        // NB: `instanceof` is deliberately NOT a safe use: the transpiler inserts a narrowing cast
+        // (cast::<Sub>($p)) after it, which needs an owned value -> would not typecheck on a `&T`.
+        // A property WRITE ($p->x = ...) reads the base too, but mutating the borrow is not what we allow;
+        // exclude params whose base is written.
+        $written_base = [];
+        foreach ($finder->findInstanceOf($stmts, \PhpParser\Node\Expr\Assign::class) as $a) {
+            $tgt = $a->var;
+            if (($tgt instanceof \PhpParser\Node\Expr\PropertyFetch || $tgt instanceof \PhpParser\Node\Expr\ArrayDimFetch)
+                && $tgt->var instanceof \PhpParser\Node\Expr\Variable && is_string($tgt->var->name)
+            ) {
+                $written_base[$tgt->var->name] = true;
+                unset($safe[spl_object_id($tgt->var)]);
+            }
+        }
+        foreach ($node->params as $i => $p) {
+            if ($p->byRef || $p->variadic || !$p->var instanceof \PhpParser\Node\Expr\Variable || !is_string($p->var->name)) {
+                continue;
+            }
+            $t = $fn->param_types[$i] ?? null;
+            if ($t === null || ($t->kind !== RustType::CLASS_ && $t->kind !== RustType::UNION)) {
+                continue; // only heap objects/unions are worth borrowing
+            }
+            $name = $p->var->name;
+            if (isset($written_base[$name])) {
+                continue;
+            }
+            $all_safe = true;
+            foreach ($finder->findInstanceOf($stmts, \PhpParser\Node\Expr\Variable::class) as $v) {
+                if (!is_string($v->name) || $v->name !== $name) {
+                    continue;
+                }
+                if (!isset($safe[spl_object_id($v)])) {
+                    $all_safe = false;
+                    break;
+                }
+            }
+            if ($all_safe) {
+                $fn->borrow_params[$i] = true;
+            }
+        }
+    }
+
     private function resolveSignature(FunctionLikeStorage $storage, array &$param_types, RustType &$return_type, ?\PhpParser\Node $node = null): void
     {
         $param_types = [];

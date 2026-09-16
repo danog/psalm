@@ -58,6 +58,9 @@ final class BodyEmitter
     /** @var array<string, bool> params passed as `&mut T` */
     public array $byref = [];
 
+    /** @var array<string, bool> params received as `&T` (owned/borrowed axis 5: non-escaping read-only) */
+    public array $borrow = [];
+
     /** @var array<string, bool> locals stored as Rc<RefCell<T>> (captured by reference) */
     public array $cells = [];
 
@@ -644,6 +647,11 @@ final class BodyEmitter
         }
         if (!empty($this->byref[$name])) {
             return new Val('(*' . $rn . ').clone()', $t);
+        }
+        if (!empty($this->borrow[$name])) {
+            // `&T` param (borrow-safe): every use is a read (method receiver / property fetch), which works on
+            // the borrow directly -- no Rc clone. `$rn` is already `&T`; Rust auto-refs for `.m()`/`.prop_get()`.
+            return new Val($rn, $t);
         }
         if (!empty($this->late[$name])) {
             return new Val($rn . '.get().clone()', $t);

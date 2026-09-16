@@ -191,6 +191,31 @@ function case_receiver_move(): string
     return (string) getA($x);
 }
 
+// ---- feature: &T borrowed param for non-escaping read-only param ---------
+
+/** $a is used only as a property-fetch base (read) -> non-escaping -> borrowed &T. */
+function readOnly(A $a): int
+{
+    return $a->a + $a->a;
+}
+
+/** $a escapes (returned) -> must stay owned T. */
+function keepIt(A $a): A
+{
+    return $a;
+}
+
+function case_borrow_param(): string
+{
+    $x = new A(21);
+    // $x used twice (not single-use): without borrow each call clones; with &T param -> &x, no clone.
+    $r1 = readOnly($x);
+    $r2 = readOnly($x);
+    // escaping param still works (owned)
+    $y = keepIt(new A(5));
+    return $r1 . '' . $r2 . $y->a;
+}
+
 // ---- feature: &self call on a Late-local receiver borrows (no clone) ------
 
 final class Counter
@@ -240,6 +265,7 @@ function run_all(): string
         . check('foreach_collection_move', case_foreach_collection_move(), '60')
         . check('alias_mutation', case_alias_mutation(), '7')
         . check('receiver_move', case_receiver_move(), '11')
+        . check('borrow_param', case_borrow_param(), '42425')
         . check('late_receiver_borrow', case_late_receiver_borrow(), '00')
         . check('closure_capture', case_closure_capture(), '8');
 }

@@ -338,8 +338,14 @@ final class CrateEmitter
             $params[$p->name] = $t;
             if ($p->by_ref) {
                 $b->byref[$p->name] = true;
+                $decls[] = 'mut ' . Names::var($p->name) . ': &mut ' . $t->toRust();
+            } elseif (isset($fn->borrow_params[$i])) {
+                // owned/borrowed (axis 5): non-escaping read-only param -> `&T`, callers borrow (no clone).
+                $b->borrow[$p->name] = true;
+                $decls[] = Names::var($p->name) . ': &' . $t->toRust();
+            } else {
+                $decls[] = 'mut ' . Names::var($p->name) . ': ' . $t->toRust();
             }
-            $decls[] = 'mut ' . Names::var($p->name) . ': ' . ($p->by_ref ? '&mut ' : '') . $t->toRust();
         }
         try {
             $body = $b->emitBody($params, $record->node->stmts, $fn->return_type);

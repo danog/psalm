@@ -12,6 +12,13 @@ final class FunctionModel
     /** @var list<RustType> */
     public array $param_types = [];
 
+    /**
+     * Owned/borrowed (axis 5): parameter indices that are non-escaping read-only -> emitted as `&T` so
+     * callers borrow instead of cloning. See Program::computeBorrowParams.
+     * @var array<int, true>
+     */
+    public array $borrow_params = [];
+
     public RustType $return_type;
 
     /** Panic-based model: no function returns Result (default false). See MethodModel::$throws. */
