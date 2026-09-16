@@ -182,3 +182,9 @@ impl MapKey for Sym {
         Sym::from_str(&<Str as MapKey>::from_index(i))
     }
 }
+
+impl crate::traits::PhpCmp for Sym {
+    fn php_cmp(&self, o: &Self) -> std::cmp::Ordering {
+        crate::traits::ToStr::to_php_str(self).php_cmp(&crate::traits::ToStr::to_php_str(o))
+    }
+}
