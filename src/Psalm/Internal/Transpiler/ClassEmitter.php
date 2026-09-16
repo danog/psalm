@@ -424,7 +424,14 @@ final class ClassEmitter
         $params = [];
         foreach ($m->storage->params as $i => $p) {
             $t = $m->param_types[$i] ?? RustType::mixed();
-            $params[] = 'mut ' . Names::var($p->name) . ': ' . ($p->by_ref ? '&mut ' : '') . $t->toRust();
+            if ($p->by_ref) {
+                $params[] = 'mut ' . Names::var($p->name) . ': &mut ' . $t->toRust();
+            } elseif (isset($m->borrow_params[$i])) {
+                // owned/borrowed (axis 5): private-method param received as `&T` (non-escaping read-only).
+                $params[] = Names::var($p->name) . ': &' . $t->toRust();
+            } else {
+                $params[] = 'mut ' . Names::var($p->name) . ': ' . $t->toRust();
+            }
         }
         // An immutable (Rc<T>) class's construction methods (ctor + init helpers reachable from it) write $this
         // fields via make_mut on the fresh object, so they need &mut self (withers write clones, not $this, and
@@ -665,6 +672,8 @@ final class ClassEmitter
             $params[$p->name] = $m->param_types[$i] ?? RustType::mixed();
             if ($p->by_ref) {
                 $b->byref[$p->name] = true;
+            } elseif (isset($m->borrow_params[$i])) {
+                $b->borrow[$p->name] = true;
             }
         }
         $b->throws = $m->throws;
@@ -973,14 +982,16 @@ final class ClassEmitter
                     continue;
                 }
                 if ($pt->kind === RustType::MIXED) {
-                    $params[] = 'dyn_arg_req::<Mixed>(&args, ' . $i . ')';
+                    $pc = 'dyn_arg_req::<Mixed>(&args, ' . $i . ')';
                 } elseif (in_array($inner->kind, [RustType::CLOSURE, RustType::TUPLE, RustType::DYN_CALLABLE, RustType::RT_GENERIC, RustType::RESOURCE], true)) {
-                    $params[] = $this->casts->convert('dyn_arg_req::<Mixed>(&args, ' . $i . ')', RustType::mixed(), $pt);
+                    $pc = $this->casts->convert('dyn_arg_req::<Mixed>(&args, ' . $i . ')', RustType::mixed(), $pt);
                 } elseif ($pt->hasDefault() && $pt->kind !== RustType::CLASS_) {
-                    $params[] = 'dyn_arg::<' . $pt->toRust() . '>(&args, ' . $i . ')';
+                    $pc = 'dyn_arg::<' . $pt->toRust() . '>(&args, ' . $i . ')';
                 } else {
-                    $params[] = 'dyn_arg_req::<' . $pt->toRust() . '>(&args, ' . $i . ')';
+                    $pc = 'dyn_arg_req::<' . $pt->toRust() . '>(&args, ' . $i . ')';
                 }
+                // a `&T` (borrow-safe) param: borrow the marshalled owned temporary for the call
+                $params[] = isset($m->borrow_params[$i]) ? '&' . $pc : $pc;
             }
             if (!$ok) {
                 continue;

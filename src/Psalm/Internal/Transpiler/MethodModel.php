@@ -15,6 +15,13 @@ final class MethodModel
     /** @var list<RustType> */
     public array $param_types = [];
 
+    /**
+     * Owned/borrowed (axis 5): parameter indices received as `&T` (non-escaping read-only). Only set for
+     * PRIVATE methods (single implementation, never dispatched, so the borrowed signature is unambiguous).
+     * @var array<int, true>
+     */
+    public array $borrow_params = [];
+
     public RustType $return_type;
 
     /** static method whose body refers to `static` (needs a copy per calling class) */

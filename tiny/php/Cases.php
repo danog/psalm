@@ -216,6 +216,31 @@ function case_borrow_param(): string
     return $r1 . '' . $r2 . $y->a;
 }
 
+// ---- feature: &T borrowed param on a PRIVATE method -----------------------
+
+final class Calc
+{
+    public int $base = 100;
+
+    /** private, non-dispatched: $x used only as a property base -> borrowed &T */
+    private function add(A $x): int
+    {
+        return $this->base + $x->a;
+    }
+
+    public function total(A $x): int
+    {
+        // $x passed twice as an arg (owned here) to the borrow-param private method
+        return $this->add($x) + $this->add($x);
+    }
+}
+
+function case_private_method_borrow(): string
+{
+    $c = new Calc();
+    return (string) $c->total(new A(5));
+}
+
 // ---- feature: &self call on a Late-local receiver borrows (no clone) ------
 
 final class Counter
@@ -266,6 +291,7 @@ function run_all(): string
         . check('alias_mutation', case_alias_mutation(), '7')
         . check('receiver_move', case_receiver_move(), '11')
         . check('borrow_param', case_borrow_param(), '42425')
+        . check('private_method_borrow', case_private_method_borrow(), '210')
         . check('late_receiver_borrow', case_late_receiver_borrow(), '00')
         . check('closure_capture', case_closure_capture(), '8');
 }

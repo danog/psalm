@@ -1466,6 +1466,7 @@ final class Program
                 }
             }
         }
+        $this->computeMethodBorrowParams($method);
         $this->method_cache[$key] = $method;
         return $method;
     }
@@ -1601,9 +1602,37 @@ final class Program
     {
         $node = $fn->record->node;
         if (!$node instanceof \PhpParser\Node\Stmt\Function_) {
-            return; // free functions only for this increment (methods have dispatch/override machinery)
+            return;
         }
-        $stmts = $node->stmts;
+        $fn->borrow_params = $this->borrowSafeParams($node->stmts, $node->params, $fn->param_types);
+    }
+
+    /**
+     * Owned/borrowed (axis 5): mark a PRIVATE method's non-escaping read-only params as `&T`. Restricted to
+     * private methods because they have a single implementation and are never dispatched, so the borrowed
+     * signature can't diverge from another variant/override the way a public/protected method's could.
+     */
+    private function computeMethodBorrowParams(MethodModel $method): void
+    {
+        if (!$method->isPrivate() || $method->node === null) {
+            return;
+        }
+        $method->borrow_params = $this->borrowSafeParams($method->node->stmts ?? [], $method->node->params, $method->param_types);
+    }
+
+    /**
+     * The escape-analysis core shared by free functions and private methods: a param qualifies as borrow-safe
+     * (`&T`) when its type is a heap object/union (CLASS_/UNION) and EVERY occurrence of it in the body is a
+     * borrowing read -- a method-call receiver or property-fetch base. Any other use (return, store, compare,
+     * pass-by-value, reassignment, closure capture, by-ref, instanceof-narrowing) makes it escape -> owned.
+     * @param list<\PhpParser\Node\Stmt> $stmts
+     * @param list<\PhpParser\Node\Param> $params
+     * @param list<RustType> $param_types
+     * @return array<int, true>
+     */
+    private function borrowSafeParams(array $stmts, array $params, array $param_types): array
+    {
+        $borrow = [];
         $finder = new \PhpParser\NodeFinder();
         // Variable nodes that are a borrowing read (safe): the receiver/base/operand of a read expression.
         $safe = [];
@@ -1641,11 +1670,11 @@ final class Program
                 unset($safe[spl_object_id($tgt->var)]);
             }
         }
-        foreach ($node->params as $i => $p) {
+        foreach ($params as $i => $p) {
             if ($p->byRef || $p->variadic || !$p->var instanceof \PhpParser\Node\Expr\Variable || !is_string($p->var->name)) {
                 continue;
             }
-            $t = $fn->param_types[$i] ?? null;
+            $t = $param_types[$i] ?? null;
             if ($t === null || ($t->kind !== RustType::CLASS_ && $t->kind !== RustType::UNION)) {
                 continue; // only heap objects/unions are worth borrowing
             }
@@ -1664,9 +1693,10 @@ final class Program
                 }
             }
             if ($all_safe) {
-                $fn->borrow_params[$i] = true;
+                $borrow[$i] = true;
             }
         }
+        return $borrow;
     }
 
     private function resolveSignature(FunctionLikeStorage $storage, array &$param_types, RustType &$return_type, ?\PhpParser\Node $node = null): void

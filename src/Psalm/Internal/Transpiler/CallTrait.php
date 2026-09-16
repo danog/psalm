@@ -362,7 +362,7 @@ trait CallTrait
             $cls = $this->program->classOf($t);
             $m = $cls !== null ? $this->program->findMethod($cls, '__invoke') : null;
             if ($m !== null) {
-                $argc = $this->args($args, $m->storage, $m->param_types, $m->declaring, $m->name);
+                $argc = $this->args($args, $m->storage, $m->param_types, $m->declaring, $m->name, $m->borrow_params);
                 return new Val($this->finishCall($callee->code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')' . ($m->throws ? '?' : '')), $m->return_type);
             }
         }
@@ -457,7 +457,7 @@ trait CallTrait
             $cls = $this->program->classOf($rt);
             $m = $cls !== null ? $this->program->findMethod($cls, $lc) : null;
             if ($m !== null) {
-                $argc = $this->args($args, $m->storage, $m->param_types, $m->declaring, $m->name);
+                $argc = $this->args($args, $m->storage, $m->param_types, $m->declaring, $m->name, $m->borrow_params);
                 if ($m->isStatic()) {
                     if (!$cls->isLeaf() && !$m->isPrivate() && !$m->declaring->isEnum()) {
                         // a static method called on an instance: the runtime class' implementation
@@ -526,7 +526,7 @@ trait CallTrait
                 if ($m === null) {
                     continue;
                 }
-                $argc = $this->args($args, $m->storage, $m->param_types, $m->declaring, $m->name);
+                $argc = $this->args($args, $m->storage, $m->param_types, $m->declaring, $m->name, $m->borrow_params);
                 $call = $this->finishCall('__o.' . $m->rustName() . '(' . implode(', ', $argc) . ')' . ($m->throws ? '?' : ''));
                 $arms[] = $rt->mangle() . '::' . $member->variantName() . '(__o) => ' . $this->casts->convert($call, $m->return_type, $res);
             }
@@ -614,7 +614,7 @@ trait CallTrait
             $this->warn('unknown static method ' . $fqcn . '::' . $name, $e);
             return $this->dead('unknown static method ' . $name . '', $this->inferredOrMixed($e));
         }
-        $argc = $this->args($args, $m->storage, $m->param_types, $m->declaring, $m->name);
+        $argc = $this->args($args, $m->storage, $m->param_types, $m->declaring, $m->name, $m->borrow_params);
         if ($m->isStatic()) {
             $target = $m->declaring;
             if ($m->uses_lsb && !$m->isPrivate()) {
@@ -690,7 +690,7 @@ trait CallTrait
         }
         $m = $this->program->findMethod($cls, $lc);
         if ($m !== null) {
-            $argc = $this->args($args, $m->storage, $m->param_types, $m->declaring, $m->name);
+            $argc = $this->args($args, $m->storage, $m->param_types, $m->declaring, $m->name, $m->borrow_params);
             if ($m->isStatic() || $recv === null) {
                 return new Val($this->finishCall($path . '::' . $m->rustName() . '(' . implode(', ', $argc) . ')'), $m->return_type);
             }
@@ -784,7 +784,7 @@ trait CallTrait
         if ($ctor === null) {
             return [];
         }
-        return $this->args($args, $ctor->storage, $ctor->param_types, $ctor->declaring, '__construct');
+        return $this->args($args, $ctor->storage, $ctor->param_types, $ctor->declaring, '__construct', $ctor->borrow_params);
     }
 
     public function construct(ClassModel $cls, array $args, Expr $e): Val
