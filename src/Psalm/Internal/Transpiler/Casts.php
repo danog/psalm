@@ -75,6 +75,26 @@ final class Casts
         }
     }
 
+    /** Demand the `ToJson` impls a typed `json_encode` argument needs (generated types nested in `$t`). */
+    public function needToJson(RustType $t): void
+    {
+        switch ($t->kind) {
+            case RustType::UNION:
+            case RustType::SHAPE:
+            case RustType::CLASS_:
+                $this->need(RustType::rtGeneric('Json', []), $t);
+                break;
+            case RustType::TUPLE:
+            case RustType::OPTION:
+            case RustType::LIST:
+            case RustType::MAP:
+                foreach ($t->params as $p) {
+                    $this->needToJson($p);
+                }
+                break;
+        }
+    }
+
     /** Types defined by the generated crate (eligible for trait impls). */
     public static function isLocal(RustType $t): bool
     {

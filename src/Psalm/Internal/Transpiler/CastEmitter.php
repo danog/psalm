@@ -603,6 +603,104 @@ final class CastEmitter
         $w->line('impl php_rt::data::FromData for ' . $name . ' { fn from_data(_d: &php_rt::data::Data) -> Self { ' . $panic('a data value') . ' } }');
     }
 
+    /** `php_rt::json::ToJson` for a generated type: `json_encode` of a typed value. */
+    private function emitToJson(RustType $to, Writer $w): void
+    {
+        $name = $to->toRust();
+        $sig = 'fn encode_json(&self, flags: i64, depth: usize, max_depth: i64, out: &mut Vec<u8>) -> Result<(), RtError>';
+        $enc = function (RustType $t, string $ref): string {
+            $this->casts->needToJson($t);
+            return 'php_rt::json::ToJson::encode_json(' . $ref . ', flags, depth, max_depth, out)';
+        };
+        if ($to->kind === RustType::UNION) {
+            $arms = [];
+            foreach ($to->params as $m) {
+                if ($this->isUnit($m)) {
+                    $lit = ['Null' => '&()', 'True' => '&true', 'False' => '&false'][$this->unitName($m)];
+                    $arms[] = $to->mangle() . '::' . $this->unitName($m) . ' => ' . $enc(RustType::unit(), $lit);
+                } else {
+                    $arms[] = $this->memberPat($to->mangle(), $m, 'v') . ' => ' . $enc($m, 'v');
+                }
+            }
+            $w->line('impl php_rt::json::ToJson for ' . $name . ' { ' . $sig . ' { match self { ' . implode(', ', $arms) . ' } } }');
+            return;
+        }
+        if ($to->kind === RustType::SHAPE) {
+            $keys = array_keys($to->fields);
+            $is_list = $keys === range(0, count($keys) - 1) || array_map('strval', $keys) === array_map('strval', range(0, count($keys) - 1));
+            $parts = [];
+            foreach ($to->fields as $k => [$ft, $opt]) {
+                $field = 'self.' . Names::field((string) $k);
+                $key = Names::rustStringLiteral((string) $k);
+                if ($opt) {
+                    $parts[] = 'if let Some(__v) = &' . $field . ' { __f.push((' . $key . '.as_bytes(), __v as &dyn php_rt::json::ToJson)); }';
+                    $this->casts->needToJson($ft);
+                } else {
+                    $parts[] = '__f.push((' . $key . '.as_bytes(), &' . $field . ' as &dyn php_rt::json::ToJson));';
+                    $this->casts->needToJson($ft);
+                }
+            }
+            $body = 'let mut __f: Vec<(&[u8], &dyn php_rt::json::ToJson)> = Vec::new(); ' . implode(' ', $parts) . ' '
+                . ($is_list
+                    ? 'if flags & 16 == 0 { let __items: Vec<&dyn php_rt::json::ToJson> = __f.iter().map(|(_, v)| *v).collect(); php_rt::json::encode_seq(&__items, flags, depth, max_depth, out) } else { php_rt::json::encode_fields(&__f, flags, depth, max_depth, out) }'
+                    : 'php_rt::json::encode_fields(&__f, flags, depth, max_depth, out)');
+            $w->line('impl php_rt::json::ToJson for ' . $name . ' { ' . $sig . ' { ' . $body . ' } }');
+            return;
+        }
+        if ($to->kind === RustType::TUPLE) {
+            $items = [];
+            foreach ($to->params as $i => $pt) {
+                $this->casts->needToJson($pt);
+                $items[] = '&self.' . $i . ' as &dyn php_rt::json::ToJson';
+            }
+            $w->line('impl php_rt::json::ToJson for ' . $name . ' { ' . $sig . ' { let __items: Vec<&dyn php_rt::json::ToJson> = vec![' . implode(', ', $items) . ']; php_rt::json::encode_seq(&__items, flags, depth, max_depth, out) } }');
+            return;
+        }
+        if ($to->kind === RustType::CLASS_) {
+            $cls = $this->program->classOf($to);
+            if ($cls === null) {
+                $w->line('impl php_rt::json::ToJson for ' . $name . ' { ' . $sig . ' { out.extend_from_slice(b"{}"); Ok(()) } }');
+                return;
+            }
+            if (!$cls->isLeaf()) {
+                // a hierarchy handle: each concrete class encodes itself
+                $arms = [];
+                foreach ($cls->concrete as $c) {
+                    $arms[] = $cls->handle() . '::' . $c->variant() . '(v) => ' . $enc(RustType::class($c->fqcn), 'v');
+                }
+                if ($cls->has_downstream) {
+                    $arms[] = $cls->handle() . '::Other__(m) => php_rt::json::ToJson::encode_json(m, flags, depth, max_depth, out)';
+                }
+                $w->line('impl php_rt::json::ToJson for ' . $name . ' { ' . $sig . ' { match self { ' . implode(', ', $arms) . ($arms ? ', ' : '') . '_ => { out.extend_from_slice(b"{}"); Ok(()) } } } }');
+                return;
+            }
+            $json = $this->program->findMethod($cls, 'jsonserialize');
+            if ($json !== null && isset($cls->storage->class_implements['jsonserializable'])) {
+                // JsonSerializable: the value jsonSerialize() returns
+                $this->casts->needToJson($json->return_type);
+                $w->line('impl php_rt::json::ToJson for ' . $name . ' { ' . $sig . ' { let __v = self.clone().' . $json->rustName() . '(); php_rt::json::ToJson::encode_json(&__v, flags, depth, max_depth, out) } }');
+                return;
+            }
+            // a plain object: its public properties (uninitialized ones absent), as get_object_vars() sees them
+            $parts = [];
+            foreach ($cls->fields as $f) {
+                if ($f->is_static || $f->storage->visibility !== \Psalm\Internal\Analyzer\ClassLikeAnalyzer::VISIBILITY_PUBLIC) {
+                    continue;
+                }
+                $this->casts->needToJson($f->type);
+                $key = Names::rustStringLiteral($f->name);
+                if ($f->isLate()) {
+                    $parts[] = 'let __' . $f->rustName() . ' = self.' . $f->acc() . '_opt(); if let Some(__v) = &__' . $f->rustName() . ' { __f.push((' . $key . '.as_bytes(), __v as &dyn php_rt::json::ToJson)); }';
+                } else {
+                    $parts[] = 'let __' . $f->rustName() . ' = self.' . $f->acc() . '_get(); __f.push((' . $key . '.as_bytes(), &__' . $f->rustName() . ' as &dyn php_rt::json::ToJson));';
+                }
+            }
+            $w->line('impl php_rt::json::ToJson for ' . $name . ' { ' . $sig . ' { let mut __f: Vec<(&[u8], &dyn php_rt::json::ToJson)> = Vec::new(); ' . implode(' ', $parts) . ' php_rt::json::encode_fields(&__f, flags, depth, max_depth, out) } }');
+            return;
+        }
+        $w->line('impl php_rt::json::ToJson for ' . $name . ' { ' . $sig . ' { out.extend_from_slice(b"null"); Ok(()) } }');
+    }
+
     /** The `object` (AnyObject) conversions of a class: emitted only when some body names AnyObject. */
     public function emitAnyObjectImpls(ClassModel $cls, Writer $w): void
     {
@@ -884,6 +982,10 @@ final class CastEmitter
     {
         if ($from->kind === RustType::RT_GENERIC && $from->name === 'Data') {
             $this->emitFromData($to, $w);
+            return;
+        }
+        if ($from->kind === RustType::RT_GENERIC && $from->name === 'Json') {
+            $this->emitToJson($to, $w);
             return;
         }
         if ($this->isExternal($from) || $this->isExternal($to)) {

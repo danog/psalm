@@ -897,3 +897,39 @@ function case_elseif_assign(): string
     return implode(',', $out) . '|' . $src->flagCount();
 }
 check('elseif_assign', case_elseif_assign(), 'none,a5,skip|1');
+
+// ---- feature: typed json_encode (unions, shapes, lists, maps, objects; no Mixed) ----
+
+final class JsonPoint implements \JsonSerializable
+{
+    public function __construct(public int $x, public ?string $label = null) {}
+
+    /** @return array{x: int, label: ?string} */
+    public function jsonSerialize(): array
+    {
+        return ['x' => $this->x, 'label' => $this->label];
+    }
+}
+
+final class JsonPlain
+{
+    public int $a = 1;
+    public string $b = 'two';
+    private int $hidden = 3;
+    /** @var list<int> */
+    public array $c = [3, 4];
+}
+
+function case_json_encode(): string
+{
+    $out = [];
+    $out[] = json_encode(['a' => 1, 'b' => [1, 2, 3], 'c' => null, 'd' => true, 'e' => 1.5, 'f' => 'x"y']);
+    $out[] = json_encode([new JsonPoint(1), new JsonPoint(2, 'p')]);
+    $out[] = json_encode(new JsonPlain());
+    $mixed_keys = [3 => 'a', 5 => 'b'];
+    $out[] = json_encode($mixed_keys);
+    $out[] = json_encode([]);
+    $out[] = json_encode(['k' => [1, 'z']], JSON_PRETTY_PRINT);
+    return implode('|', $out);
+}
+check('json_encode', case_json_encode(), '{"a":1,"b":[1,2,3],"c":null,"d":true,"e":1.5,"f":"x\\"y"}|[{"x":1,"label":null},{"x":2,"label":"p"}]|{"a":1,"b":"two","c":[3,4]}|{"3":"a","5":"b"}|[]|{\n    "k": [\n        1,\n        "z"\n    ]\n}');

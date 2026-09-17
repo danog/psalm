@@ -225,3 +225,32 @@ namespace Psalm\Internal\Fork {
         }
     }
 }
+
+namespace Amp\PHPUnit {
+
+/**
+ * The Amp async test base: the compiled tests run synchronously (no event loop), so it is PHPUnit's TestCase
+ * with the fixture hooks the Psalm tests override.
+ */
+abstract class AsyncTestCase extends \PHPUnit\Framework\TestCase
+{
+    public static function setUpBeforeClass(): void
+    {
+        parent::setUpBeforeClass();
+    }
+
+    public function setUp(): void
+    {
+        parent::setUp();
+    }
+
+    public function tearDown(): void
+    {
+        parent::tearDown();
+    }
+
+    protected function setTimeout(float $seconds): void
+    {
+    }
+}
+}

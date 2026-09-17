@@ -2131,9 +2131,15 @@ final class Builtins
 
     private function f_json_encode(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
-        $v = $b->exprTo($args[0]->value, RustType::mixed());
         $flags = isset($args[1]) ? $b->exprTo($args[1]->value, RustType::int()) : '0';
         $depth = isset($args[2]) ? $b->exprTo($args[2]->value, RustType::int()) : '512';
+        $tv = $b->expr($args[0]->value);
+        if (!$tv->type->containsMixed() && !$tv->type->hasGeneric() && $tv->type->kind !== RustType::RT_GENERIC) {
+            // a typed value encodes through its ToJson impl (generated for unions, shapes and classes)
+            $b->casts->needToJson($tv->type);
+            return $b->narrow(new Val('php_rt::json::json_encode_typed(&' . $tv->code . ', ' . $flags . ', ' . $depth . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::option(RustType::str())), $call);
+        }
+        $v = $b->casts->convert($tv->code, $tv->type, RustType::mixed());
         return $b->narrow(new Val('json_encode(&' . $v . ', ' . $flags . ', ' . $depth . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::option(RustType::str())), $call);
     }
 
