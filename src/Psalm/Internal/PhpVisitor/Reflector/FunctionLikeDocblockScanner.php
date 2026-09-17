@@ -649,7 +649,7 @@ final class FunctionLikeDocblockScanner
         $namespaced_type->queueClassLikesForScanning(
             $codebase,
             $file_storage,
-            $function_template_types + $class_template_types,
+            array_fill_keys(array_keys($function_template_types + $class_template_types), true),
         );
 
         $assertion_type_parts = [];
@@ -818,7 +818,7 @@ final class FunctionLikeDocblockScanner
             $new_param_type->queueClassLikesForScanning(
                 $codebase,
                 $file_storage,
-                $storage->template_types ?: [],
+                array_fill_keys(array_keys($storage->template_types ?: []), true),
             );
 
             if ($storage->template_types) {
@@ -1407,7 +1407,7 @@ final class FunctionLikeDocblockScanner
         $out_type->queueClassLikesForScanning(
             $codebase,
             $file_storage,
-            $storage->template_types ?: [],
+            array_fill_keys(array_keys($storage->template_types ?: []), true),
         );
 
         foreach ($storage->params as $param_storage) {

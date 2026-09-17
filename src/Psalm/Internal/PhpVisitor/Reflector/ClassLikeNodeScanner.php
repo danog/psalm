@@ -506,7 +506,7 @@ final class ClassLikeNodeScanner
                     $yield_type->queueClassLikesForScanning(
                         $this->codebase,
                         $this->file_storage,
-                        $storage->template_types ?: [],
+                        array_fill_keys(array_keys($storage->template_types ?: []), true),
                     );
 
                     $storage->yield = $yield_type;
@@ -592,7 +592,7 @@ final class ClassLikeNodeScanner
                         $pseudo_property_type->queueClassLikesForScanning(
                             $this->codebase,
                             $this->file_storage,
-                            $storage->template_types ?: [],
+                            array_fill_keys(array_keys($storage->template_types ?: []), true),
                         );
 
                         if ($property['tag'] !== 'property-read' && $property['tag'] !== 'psalm-property-read') {
@@ -691,7 +691,7 @@ final class ClassLikeNodeScanner
                 $mixin_type->queueClassLikesForScanning(
                     $this->codebase,
                     $this->file_storage,
-                    $storage->template_types ?: [],
+                    array_fill_keys(array_keys($storage->template_types ?: []), true),
                 );
 
                 if ($mixin_type->isSingle()) {
@@ -1027,7 +1027,7 @@ final class ClassLikeNodeScanner
         $extended_union_type->queueClassLikesForScanning(
             $this->codebase,
             $this->file_storage,
-            $storage->template_types ?: [],
+            array_fill_keys(array_keys($storage->template_types ?: []), true),
         );
 
         foreach ($extended_union_type->getAtomicTypes() as $atomic_type) {
@@ -1113,7 +1113,7 @@ final class ClassLikeNodeScanner
         $implemented_union_type->queueClassLikesForScanning(
             $this->codebase,
             $this->file_storage,
-            $storage->template_types ?: [],
+            array_fill_keys(array_keys($storage->template_types ?: []), true),
         );
 
         foreach ($implemented_union_type->getAtomicTypes() as $atomic_type) {
@@ -1199,7 +1199,7 @@ final class ClassLikeNodeScanner
         $used_union_type->queueClassLikesForScanning(
             $this->codebase,
             $this->file_storage,
-            $storage->template_types ?: [],
+            array_fill_keys(array_keys($storage->template_types ?: []), true),
         );
 
         foreach ($used_union_type->getAtomicTypes() as $atomic_type) {
