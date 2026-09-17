@@ -536,6 +536,25 @@ final class TypeParser
     }
 
     /**
+     * The values reachable by OR-ing one more mask bit: the bit itself, then the bit with every value so far.
+     *
+     * @param list<int> $potential_values
+     * @return list<int>
+     */
+    private static function combineMask(int $ith, array $potential_values): array
+    {
+        $new_values = [$ith];
+
+        if ($ith !== 0) {
+            foreach ($potential_values as $potential_value) {
+                $new_values[] = $ith | $potential_value;
+            }
+        }
+
+        return [...$new_values, ...$potential_values];
+    }
+
+    /**
      * @param non-empty-list<int>  $potential_ints
      * @return non-empty-list<TLiteralInt>
      * @psalm-pure
@@ -546,17 +565,7 @@ final class TypeParser
         $potential_values = [];
 
         foreach ($potential_ints as $ith) {
-            $new_values = [];
-
-            $new_values[] = $ith;
-
-            if ($ith !== 0) {
-                foreach ($potential_values as $potential_value) {
-                    $new_values[] = $ith | $potential_value;
-                }
-            }
-
-            $potential_values = [...$new_values, ...$potential_values];
+            $potential_values = self::combineMask($ith, $potential_values);
         }
 
         $potential_values = array_unique([0, ...$potential_values]);

@@ -281,6 +281,16 @@ final class Populator
         }
     }
 
+    /**
+     * @param array<string, MethodIdentifier> $a
+     * @param array<string, MethodIdentifier> $b
+     * @return array<string, MethodIdentifier>
+     */
+    private static function intersectOverriddenIds(array $a, array $b): array
+    {
+        return array_intersect_key($a, $b);
+    }
+
     private function populateOverriddenMethods(
         ClassLikeStorage $storage,
         ClassLikeStorageProvider $storage_provider,
@@ -357,17 +367,12 @@ final class Populator
                         = $declaring_class_storages[$declaring_class]
                         = $this->classlike_storage_provider->get($declaring_class);
 
-                    if ($candidate_overridden_ids === null) {
-                        $candidate_overridden_ids
-                            = ($declaring_class_storage->overridden_method_ids[$method_name] ?? [])
-                                + [$declaring_method_id->fq_class_name => $declaring_method_id];
-                    } else {
-                        $candidate_overridden_ids = array_intersect_key(
-                            $candidate_overridden_ids,
-                            ($declaring_class_storage->overridden_method_ids[$method_name] ?? [])
-                                + [$declaring_method_id->fq_class_name => $declaring_method_id],
-                        );
-                    }
+                    $declaring_overridden_ids = ($declaring_class_storage->overridden_method_ids[$method_name] ?? [])
+                        + [$declaring_method_id->fq_class_name => $declaring_method_id];
+
+                    $candidate_overridden_ids = $candidate_overridden_ids === null
+                        ? $declaring_overridden_ids
+                        : self::intersectOverriddenIds($candidate_overridden_ids, $declaring_overridden_ids);
                 }
 
                 foreach ($overridden_method_ids as $declaring_method_id) {

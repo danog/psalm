@@ -538,7 +538,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
     /**
      * Gets the Psalm type from a particular value
      *
-     * @param scalar|null|list<scalar|null|list<scalar|null|array>|array<string, scalar|null|array>>|array<string, scalar|null|list<scalar|null|array>|array<string, scalar|null|array>> $value
+     * @param scalar|null|list<scalar|null|list<scalar|null|list<scalar|null>|array<string, scalar|null>>|array<string, scalar|null|list<scalar|null>|array<string, scalar|null>>>|array<string, scalar|null|list<scalar|null|list<scalar|null>|array<string, scalar|null>>|array<string, scalar|null|list<scalar|null>|array<string, scalar|null>>> $value
      */
     public static function getTypeFromValue(mixed $value): Union
     {

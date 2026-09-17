@@ -103,12 +103,22 @@ final class ReportOutputTest extends TestCase
         $this->analyzeFile('taintflow-test/vulnerable.php', new Context(), true, true);
     }
 
+    /**
+     * @return array<string, scalar|null|array<string, scalar|null|array<string, scalar|null|list<scalar|null>>>>
+     */
+    private static function decodeSarifFixture(): array
+    {
+        $json = file_get_contents(__DIR__ . '/sarif.json');
+        assert($json !== false);
+
+        return json_decode($json, true, flags: JSON_THROW_ON_ERROR);
+    }
+
     public function testSarifReport(): void
     {
         $this->analyzeTaintFlowFilesForReport();
 
-        /** @var array<string, scalar|null|array<string, scalar|null|array>> $issue_data */
-        $issue_data = json_decode(file_get_contents(__DIR__.'/sarif.json'), true, flags: JSON_THROW_ON_ERROR);
+        $issue_data = self::decodeSarifFixture();
 
         $sarif_report_options = ProjectAnalyzer::getFileReportOptions([__DIR__ . '/test-report.sarif'])[0];
 
