@@ -1452,6 +1452,11 @@ final class CastEmitter
         if (in_array($from->kind, $scalars, true) && in_array($to->kind, $scalars, true)) {
             return true;
         }
+        if ($from->kind === RustType::CLASS_ && in_array($to->kind, [RustType::STR, RustType::SYM], true)) {
+            // an object in string position goes through __toString, as PHP does
+            $fc = $this->program->classOf($from);
+            return $fc !== null && $this->program->findMethod($fc, '__tostring') !== null;
+        }
         $containers = [RustType::LIST, RustType::MAP, RustType::TUPLE, RustType::SHAPE];
         if (in_array($from->kind, $containers, true) && in_array($to->kind, $containers, true)) {
             return true;

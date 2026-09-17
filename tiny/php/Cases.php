@@ -942,9 +942,27 @@ function case_prop_empty_narrow(): string
     return (string) $n . ':' . count($c->ids);
 }
 
+abstract class SAtomic { public function __toString(): string { return 'atom'; } }
+final class SNamed extends SAtomic { public function __construct(public string $value) {} public function __toString(): string { return 'named:' . $this->value; } }
+final class STmplClass extends SAtomic { public function __toString(): string { return 'tmpl'; } }
+
+final class SAssertion {
+    /** @param SNamed|STmplClass $type */
+    public function __construct(public readonly SAtomic $type) {}
+    public function __toString(): string { return 'isa-' . $this->type; }
+}
+
+function case_union_tostring(): string
+{
+    $a = new SAssertion(new SNamed('X'));
+    $b = new SAssertion(new STmplClass());
+    return (string) $a . '|' . (string) $b;
+}
+
 function run_all(): string
 {
-    return check('prop_empty_narrow', case_prop_empty_narrow(), '1:1')
+    return check('union_tostring', case_union_tostring(), 'isa-named:X|isa-tmpl')
+        . check('prop_empty_narrow', case_prop_empty_narrow(), '1:1')
         . check('sym_str_funcs', case_sym_str_funcs(), 'XBox|YBox')
         . check('int_or_false_arith', case_int_or_false_arith(), '4')
         . check('key_narrow', case_key_narrow(), '3F7')
