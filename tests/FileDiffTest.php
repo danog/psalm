@@ -21,6 +21,10 @@ final class FileDiffTest extends TestCase
     /**
      * @dataProvider getChanges
      * @param string[] $same_methods
+     * @param string[] $same_signatures
+     * @param string[] $changed_methods
+     * @param array<array-key, array{int, int}> $diff_map_offsets
+     * @param list<array{int, int}> $deletion_ranges
      */
     public function testCode(
         string $a,

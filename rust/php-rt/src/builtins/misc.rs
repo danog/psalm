@@ -317,6 +317,22 @@ pub fn filter_var_str(s: &Str, filter: i64) -> Option<Str> {
     }
 }
 
+/// `$key++` on an array key: ints step, strings follow PHP's string increment.
+pub fn key_inc(k: &ArrayKey) -> ArrayKey {
+    match k {
+        ArrayKey::Int(i) => ArrayKey::Int(i.wrapping_add(1)),
+        ArrayKey::Str(s) => crate::traits::to_key(crate::support::mixed_inc(&Mixed::Str(s.clone()))),
+    }
+}
+
+/// `$key--` on an array key: ints step, strings are unchanged (as in PHP).
+pub fn key_dec(k: &ArrayKey) -> ArrayKey {
+    match k {
+        ArrayKey::Int(i) => ArrayKey::Int(i.wrapping_sub(1)),
+        ArrayKey::Str(s) => ArrayKey::Str(s.clone()),
+    }
+}
+
 pub fn filter_var(v: &Mixed, filter: i64, _options: Mixed) -> Mixed {
     let s = v.to_php_str();
     match filter {

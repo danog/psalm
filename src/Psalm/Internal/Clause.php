@@ -22,8 +22,9 @@ use function hash;
 use function implode;
 use function ksort;
 use function reset;
-use function serialize;
+use function json_encode;
 use function substr;
+use const JSON_THROW_ON_ERROR;
 
 /**
  * @internal
@@ -101,8 +102,8 @@ final class Clause implements Stringable
                 $possibility_strings[$i] = array_keys($v);
             }
 
-            /** @psalm-suppress ImpureFunctionCall */
-            $data = serialize($possibility_strings);
+            // the identity of the possibility set: its JSON form (typed, unlike serialize())
+            $data = json_encode($possibility_strings, JSON_THROW_ON_ERROR);
             $this->hash = hash('xxh128', $data);
         }
 

@@ -253,6 +253,8 @@ final class InternalCallMapHandler
 
             /** @var string $arg_name - key type changed with above array_shift */
             foreach ($call_map_function_args as $arg_name => $arg_type) {
+                // parameter names are strings (index 0 holds the return type)
+                $arg_name = (string) $arg_name;
                 $by_reference = false;
                 $optional = false;
                 $variadic = false;

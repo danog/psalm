@@ -168,7 +168,7 @@ final class FileReferenceCacheProvider
         $this->method_member_references = $member_references;
     }
 
-    /** @param array<string, array<string, bool>> $member_references */
+    /** @param array<string, array<string, bool>> $references */
     public function setCachedMixedMemberNameReferences(array $references): void
     {
         $this->mixed_member_name_references = $references;

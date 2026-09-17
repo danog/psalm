@@ -1244,6 +1244,7 @@ final class TypeParseTest extends TestCase
             /**
              * @psalm-suppress UnusedParam
              * @psalm-pure
+             * @param list<string> $param2
              */
             function someFunction(string $param, array $param2, ?int $param3 = null): string
             {

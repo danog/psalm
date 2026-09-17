@@ -247,6 +247,7 @@ final class ClassLikeDocblockParserTest extends TestCase
 
     /**
      * @dataProvider providerMethodAnnotation
+     * @param array{name: string, returnType: string, is_static: bool, params: array<string, array{type: string}>} $expected
      */
     public function testMethodAnnotation(string $annotation, array $expected): void
     {

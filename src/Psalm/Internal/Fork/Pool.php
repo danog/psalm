@@ -95,6 +95,8 @@ final class Pool
 
     /**
      * @template TResult
+     * @template TReceive
+     * @template TSend
      * @param array<string, string> $process_task_data_iterator
      * An array of task data items to be divided up among the
      * workers. The size of this is the number of forked processes.

@@ -198,7 +198,7 @@ final class Union implements TypeNode
      * Suppresses memory usage when unserializing objects.
      *
      * @see \Psalm\Storage\UnserializeMemoryUsageSuppressionTrait
-     * @param array<string, mixed> $properties
+     * @param array<string, never> $properties objects are never unserialized in the compiled program
      */
     public function __unserialize(array $properties): void
     {
