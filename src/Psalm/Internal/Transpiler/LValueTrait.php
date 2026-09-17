@@ -882,6 +882,9 @@ trait LValueTrait
             return $this->destructure($target, $value);
         }
         $place = $this->place($target);
+        if ($target instanceof Expr\Variable && is_string($target->name) && $place->type->kind === RustType::MIXED) {
+            $this->noteMixedAssign($target->name, $value->type);
+        }
         return $place->write($this->casts->convert($value->code, $value->type, $place->type));
     }
 

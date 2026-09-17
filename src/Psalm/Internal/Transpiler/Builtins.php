@@ -631,6 +631,17 @@ final class Builtins
                 return new Val($v->code . '.' . $m->rustName() . '()', RustType::int());
             }
         }
+        if ($t->kind === RustType::UNION) {
+            $arms = [];
+            foreach ($t->params as $m) {
+                if ($m->kind === RustType::LIST || $m->kind === RustType::MAP || $m->kind === RustType::SHAPE) {
+                    $arms[] = $t->mangle() . '::' . $m->variantName() . '(__c) => ' . ($m->kind === RustType::SHAPE ? 'php_rt::Len::php_count(__c)' : '__c.count()');
+                }
+            }
+            if ($arms !== []) {
+                return new Val('(match &' . $v->code . ' { ' . implode(', ', $arms) . ', _ => panic!("count(): Argument #1 ($value) must be of type Countable|array") })', RustType::int());
+            }
+        }
         if ($t->kind === RustType::RT_GENERIC) {
             return new Val($v->code . '.count()', RustType::int());
         }

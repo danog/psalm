@@ -130,6 +130,21 @@ final class BodyEmitter
     /** @var array<string, string> Rust generics of the fn being emitted (PHP template name => Rust name) */
     public array $generics = [];
 
+    /** @var array<string, list<RustType>> static types assigned to locals Psalm types as mixed (first pass) */
+    private array $mixed_assigns = [];
+
+    /** @var array<string, RustType> locals retyped from their assignments for the second pass */
+    private array $retyped = [];
+
+    /** @var array<string, true> locals written other than by a plain `$x = ...` (never retyped) */
+    private array $complex_writes = [];
+
+    /** A plain assignment into a local Psalm types as mixed: its static type is a retyping candidate. */
+    public function noteMixedAssign(string $name, RustType $t): void
+    {
+        $this->mixed_assigns[$name][] = $t;
+    }
+
     public function __construct(
         public readonly Program $program,
         public readonly FunctionRecord $record,
@@ -940,7 +955,102 @@ final class BodyEmitter
         }
     }
 
+    /**
+     * Locals Psalm types as `mixed` but whose every (plain) assignment has a precise static type are retyped to
+     * the join of those types and the body is emitted again: Psalm loses the type where the transpiler's
+     * declarations keep it (a property of a union member, a deep alias read).
+     */
     private function emitBodyInner(array $params, ?array $stmts, RustType $ret_type): string
+    {
+        $this->scanWriteKinds($stmts ?? []);
+        $out = $this->emitBodyPass($params, $stmts, $ret_type);
+        $retype = [];
+        foreach ($this->mixed_assigns as $name => $types) {
+            if (isset($this->retyped[$name]) || isset($this->complex_writes[$name]) || isset($params[$name])
+                || !empty($this->byref[$name]) || !empty($this->cells[$name]) || !empty($this->refvars[$name]) || !empty($this->globals[$name])
+            ) {
+                continue;
+            }
+            $u = $this->program->unionOfRust($types);
+            if ($u !== null && !$u->containsMixed() && !$u->hasGeneric()) {
+                $retype[$name] = $u;
+            }
+        }
+        if ($retype === []) {
+            return $out;
+        }
+        $this->retyped = $retype + $this->retyped;
+        $this->mixed_assigns = [];
+        $this->w = new Writer();
+        return $this->emitBodyPass($params, $stmts, $ret_type);
+    }
+
+    /** Locals written other than by `$x = expr` (compound ops, element/property writes, foreach, list(), references). */
+    private function scanWriteKinds(array $stmts): void
+    {
+        $finder = new NodeFinder();
+        $root = function (Expr $e): ?string {
+            while ($e instanceof Expr\ArrayDimFetch || $e instanceof Expr\PropertyFetch || $e instanceof Expr\StaticPropertyFetch) {
+                if ($e instanceof Expr\StaticPropertyFetch) {
+                    return null;
+                }
+                $e = $e->var;
+            }
+            return $e instanceof Expr\Variable && is_string($e->name) ? $e->name : null;
+        };
+        $mark = function (?string $n): void {
+            if ($n !== null) {
+                $this->complex_writes[$n] = true;
+            }
+        };
+        foreach ($finder->find($stmts, static fn(Node $n) => $n instanceof Expr\Assign || $n instanceof Expr\AssignOp || $n instanceof Expr\AssignRef
+            || $n instanceof Expr\PreInc || $n instanceof Expr\PreDec || $n instanceof Expr\PostInc || $n instanceof Expr\PostDec
+            || $n instanceof Node\Stmt\Foreach_ || $n instanceof Node\Stmt\Global_ || $n instanceof Node\Stmt\Static_ || $n instanceof Expr\Closure || $n instanceof Expr\List_ || $n instanceof Expr\Unset_ || $n instanceof Node\Stmt\Unset_) as $n) {
+            if ($n instanceof Expr\Assign) {
+                if (!($n->var instanceof Expr\Variable)) {
+                    $mark($root($n->var));
+                }
+            } elseif ($n instanceof Expr\AssignOp || $n instanceof Expr\AssignRef) {
+                $mark($root($n->var));
+                if ($n instanceof Expr\AssignRef) {
+                    $mark($root($n->expr));
+                }
+            } elseif ($n instanceof Expr\PreInc || $n instanceof Expr\PreDec || $n instanceof Expr\PostInc || $n instanceof Expr\PostDec) {
+                $mark($root($n->var));
+            } elseif ($n instanceof Node\Stmt\Foreach_) {
+                $mark($root($n->valueVar));
+                if ($n->keyVar !== null) {
+                    $mark($root($n->keyVar));
+                }
+            } elseif ($n instanceof Node\Stmt\Global_) {
+                foreach ($n->vars as $v) {
+                    $mark($root($v));
+                }
+            } elseif ($n instanceof Node\Stmt\Static_) {
+                foreach ($n->vars as $v) {
+                    $mark($v->var->name === null || !is_string($v->var->name) ? null : $v->var->name);
+                }
+            } elseif ($n instanceof Expr\Closure) {
+                foreach ($n->uses as $u) {
+                    if ($u->byRef && is_string($u->var->name)) {
+                        $mark($u->var->name);
+                    }
+                }
+            } elseif ($n instanceof Expr\List_) {
+                foreach ($n->items as $item) {
+                    if ($item !== null) {
+                        $mark($root($item->value));
+                    }
+                }
+            } elseif ($n instanceof Node\Stmt\Unset_) {
+                foreach ($n->vars as $v) {
+                    $mark($root($v));
+                }
+            }
+        }
+    }
+
+    private function emitBodyPass(array $params, ?array $stmts, RustType $ret_type): string
     {
         $this->types()->current_class = $this->class?->fqcn;
         $this->types()->current_crate = $this->class !== null ? $this->class->crate : $this->program->crateOfRecord($this->record);
@@ -956,6 +1066,10 @@ final class BodyEmitter
         $this->scanSingleUse($stmts ?? []);
         $this->declareLocals($params);
         $this->declareAssignedVars($stmts ?? [], $params);
+        foreach ($this->retyped as $name => $t) {
+            $this->vars[$name] = $t;
+            $this->late[$name] = !$t->hasDefault();
+        }
         $this->emitLocalDecls($params);
         if ($this->is_generator) {
             $this->w->line('let mut __gen: Vec<(' . $this->gen_key->toRust() . ', ' . $this->gen_val->toRust() . ')> = Vec::new();');
