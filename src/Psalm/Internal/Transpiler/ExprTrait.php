@@ -1477,11 +1477,44 @@ trait ExprTrait
                 }
             }
         }
+        // an object is never identical to a scalar, an array or null: a dead comparison (no Mixed)
+        $ta = $this->inferred($left);
+        $tb = $this->inferred($right);
+        if ($ta !== null && $tb !== null && $this->isPlainRead($left) && $this->isPlainRead($right)) {
+            foreach ([[$ta, $tb], [$tb, $ta]] as [$obj, $other]) {
+                if ($obj->kind === RustType::CLASS_ && $this->hasNoObject($other)) {
+                    return 'false';
+                }
+            }
+        }
         [$l, $r, $t] = $this->commonOperands($left, $right, false);
         if ($t->isCopy() && $t->kind !== RustType::OPTION) {
             return '(' . $l . ' == ' . $r . ')';
         }
         return 'identical(' . Names::refOf($l) . ', ' . Names::refOf($r) . ')';
+    }
+
+    /** A variable or property read: evaluating it has no side effect, so a dead comparison may skip it. */
+    private function isPlainRead(Expr $e): bool
+    {
+        while ($e instanceof Expr\PropertyFetch) {
+            $e = $e->var;
+        }
+        return $e instanceof Expr\Variable && is_string($e->name);
+    }
+
+    /** True when values of the type are never objects (scalars, null, arrays, unions of those). */
+    private function hasNoObject(RustType $t): bool
+    {
+        if ($t->kind === RustType::OPTION) {
+            return $this->hasNoObject($t->inner());
+        }
+        return match ($t->kind) {
+            RustType::STR, RustType::INT, RustType::FLOAT, RustType::BOOL, RustType::UNIT, RustType::ARRAY_KEY, RustType::SYM,
+            RustType::LIST, RustType::MAP, RustType::TUPLE, RustType::SHAPE, RustType::NEVER => true,
+            RustType::UNION => !Casts::unionHasObject($t) && !$t->containsMixed(),
+            default => false,
+        };
     }
 
     /** Every member of `$u` is `$cls` or a subclass of it. */
