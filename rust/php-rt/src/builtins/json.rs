@@ -642,3 +642,236 @@ to_json_tuple!(0 A, 1 B, 2 C, 3 D, 4 E);
 to_json_tuple!(0 A, 1 B, 2 C, 3 D, 4 E, 5 F);
 to_json_tuple!(0 A, 1 B, 2 C, 3 D, 4 E, 5 F, 6 G);
 to_json_tuple!(0 A, 1 B, 2 C, 3 D, 4 E, 5 F, 6 G, 7 H);
+
+// ---------------------------------------------------------------- typed decoding
+
+/// A decoded JSON document (`json_decode` with assoc = true: objects are ordered key/value lists).
+#[derive(Clone, Debug)]
+pub enum JsonValue {
+    Null,
+    Bool(bool),
+    Int(i64),
+    Float(f64),
+    Str(Str),
+    Arr(Vec<JsonValue>),
+    Obj(Vec<(Str, JsonValue)>),
+}
+
+impl JsonValue {
+    fn from_mixed(m: Mixed) -> JsonValue {
+        match m {
+            Mixed::Null => JsonValue::Null,
+            Mixed::Bool(b) => JsonValue::Bool(b),
+            Mixed::Int(i) => JsonValue::Int(i),
+            Mixed::Float(f) => JsonValue::Float(f),
+            Mixed::Str(s) => JsonValue::Str(s),
+            Mixed::Arr(a) => {
+                if a.is_list() {
+                    JsonValue::Arr(a.into_iter().map(|(_, v)| JsonValue::from_mixed(v)).collect())
+                } else {
+                    JsonValue::Obj(a.into_iter().map(|(k, v)| (k.to_str(), JsonValue::from_mixed(v))).collect())
+                }
+            }
+            Mixed::Obj(o) => JsonValue::Obj(o.props().into_iter().map(|(k, v)| (k, JsonValue::from_mixed(v))).collect()),
+            Mixed::Closure(_) => JsonValue::Null,
+        }
+    }
+
+    /// The member of an object under a key.
+    pub fn get(&self, key: &str) -> Option<&JsonValue> {
+        match self {
+            JsonValue::Obj(items) => items.iter().find(|(k, _)| k.as_bytes() == key.as_bytes()).map(|(_, v)| v),
+            _ => None,
+        }
+    }
+
+    /// The element of an array at an index (or of an object under the decimal key).
+    pub fn get_index(&self, index: i64) -> Option<&JsonValue> {
+        match self {
+            JsonValue::Arr(items) => items.get(index as usize),
+            JsonValue::Obj(items) => {
+                let key = index.to_string();
+                items.iter().find(|(k, _)| k.as_bytes() == key.as_bytes()).map(|(_, v)| v)
+            }
+            _ => None,
+        }
+    }
+}
+
+/// A typed value read out of a decoded JSON document (the type the decoding site declares).
+pub trait FromJson: Sized {
+    fn from_json(v: &JsonValue) -> Self;
+}
+
+/// A typed map key read out of a JSON object key (or array index).
+pub trait FromJsonKey: Sized {
+    fn from_json_key(k: &Str) -> Self;
+    fn from_json_index(i: usize) -> Self;
+}
+impl FromJsonKey for Str {
+    fn from_json_key(k: &Str) -> Self {
+        k.clone()
+    }
+    fn from_json_index(i: usize) -> Self {
+        crate::traits::ToStr::to_php_str(&(i as i64))
+    }
+}
+impl FromJsonKey for i64 {
+    fn from_json_key(k: &Str) -> Self {
+        conv::str_to_int(k.as_bytes())
+    }
+    fn from_json_index(i: usize) -> Self {
+        i as i64
+    }
+}
+impl FromJsonKey for ArrayKey {
+    fn from_json_key(k: &Str) -> Self {
+        ArrayKey::from_str_val(k.clone())
+    }
+    fn from_json_index(i: usize) -> Self {
+        ArrayKey::Int(i as i64)
+    }
+}
+
+impl FromJson for i64 {
+    fn from_json(v: &JsonValue) -> Self {
+        match v {
+            JsonValue::Int(i) => *i,
+            JsonValue::Float(f) => *f as i64,
+            JsonValue::Bool(b) => *b as i64,
+            JsonValue::Str(s) => conv::str_to_int(s.as_bytes()),
+            _ => 0,
+        }
+    }
+}
+impl FromJson for f64 {
+    fn from_json(v: &JsonValue) -> Self {
+        match v {
+            JsonValue::Float(f) => *f,
+            JsonValue::Int(i) => *i as f64,
+            JsonValue::Bool(b) => *b as i64 as f64,
+            JsonValue::Str(s) => conv::str_to_float(s.as_bytes()),
+            _ => 0.0,
+        }
+    }
+}
+impl FromJson for bool {
+    fn from_json(v: &JsonValue) -> Self {
+        match v {
+            JsonValue::Bool(b) => *b,
+            JsonValue::Int(i) => *i != 0,
+            JsonValue::Float(f) => *f != 0.0,
+            JsonValue::Str(s) => !s.is_empty() && s.as_bytes() != b"0",
+            JsonValue::Arr(a) => !a.is_empty(),
+            JsonValue::Obj(o) => !o.is_empty(),
+            JsonValue::Null => false,
+        }
+    }
+}
+impl FromJson for Str {
+    fn from_json(v: &JsonValue) -> Self {
+        match v {
+            JsonValue::Str(s) => s.clone(),
+            JsonValue::Int(i) => crate::traits::ToStr::to_php_str(i),
+            JsonValue::Float(f) => crate::traits::ToStr::to_php_str(f),
+            JsonValue::Bool(b) => crate::traits::ToStr::to_php_str(b),
+            _ => Str::from_static(""),
+        }
+    }
+}
+impl FromJson for () {
+    fn from_json(_v: &JsonValue) -> Self {}
+}
+impl FromJson for ArrayKey {
+    fn from_json(v: &JsonValue) -> Self {
+        match v {
+            JsonValue::Int(i) => ArrayKey::Int(*i),
+            other => ArrayKey::from_str_val(Str::from_json(other)),
+        }
+    }
+}
+impl FromJson for Mixed {
+    fn from_json(v: &JsonValue) -> Self {
+        match v {
+            JsonValue::Null => Mixed::Null,
+            JsonValue::Bool(b) => Mixed::Bool(*b),
+            JsonValue::Int(i) => Mixed::Int(*i),
+            JsonValue::Float(f) => Mixed::Float(*f),
+            JsonValue::Str(s) => Mixed::Str(s.clone()),
+            JsonValue::Arr(items) => {
+                let mut m: Map<ArrayKey, Mixed> = Map::new();
+                for (i, item) in items.iter().enumerate() {
+                    m.insert(ArrayKey::Int(i as i64), Mixed::from_json(item));
+                }
+                Mixed::Arr(m)
+            }
+            JsonValue::Obj(items) => {
+                let mut m: Map<ArrayKey, Mixed> = Map::new();
+                for (k, item) in items.iter() {
+                    m.insert(ArrayKey::from_str_val(k.clone()), Mixed::from_json(item));
+                }
+                Mixed::Arr(m)
+            }
+        }
+    }
+}
+impl<T: FromJson> FromJson for Option<T> {
+    fn from_json(v: &JsonValue) -> Self {
+        match v {
+            JsonValue::Null => None,
+            other => Some(T::from_json(other)),
+        }
+    }
+}
+impl<T: FromJson + Clone> FromJson for List<T> {
+    fn from_json(v: &JsonValue) -> Self {
+        match v {
+            JsonValue::Arr(items) => List::from_vec(items.iter().map(T::from_json).collect()),
+            JsonValue::Obj(items) => List::from_vec(items.iter().map(|(_, x)| T::from_json(x)).collect()),
+            _ => List::new(),
+        }
+    }
+}
+impl<K: FromJsonKey + MapKey, V: FromJson + Clone> FromJson for Map<K, V> {
+    fn from_json(v: &JsonValue) -> Self {
+        let mut m: Map<K, V> = Map::new();
+        match v {
+            JsonValue::Arr(items) => {
+                for (i, item) in items.iter().enumerate() {
+                    m.insert(K::from_json_index(i), V::from_json(item));
+                }
+            }
+            JsonValue::Obj(items) => {
+                for (k, item) in items.iter() {
+                    m.insert(K::from_json_key(k), V::from_json(item));
+                }
+            }
+            _ => {}
+        }
+        m
+    }
+}
+macro_rules! from_json_tuple {
+    ($($n:tt $t:ident),+) => {
+        impl<$($t: FromJson),+> FromJson for ($($t,)+) {
+            fn from_json(v: &JsonValue) -> Self {
+                ($($t::from_json(v.get_index($n).unwrap_or(&JsonValue::Null)),)+)
+            }
+        }
+    };
+}
+from_json_tuple!(0 A);
+from_json_tuple!(0 A, 1 B);
+from_json_tuple!(0 A, 1 B, 2 C);
+from_json_tuple!(0 A, 1 B, 2 C, 3 D);
+from_json_tuple!(0 A, 1 B, 2 C, 3 D, 4 E);
+from_json_tuple!(0 A, 1 B, 2 C, 3 D, 4 E, 5 F);
+
+/// `json_decode($json, true)` read in a declared type; invalid JSON decodes as null (or throws with JSON_THROW_ON_ERROR).
+pub fn json_decode_typed<T: FromJson>(s: &Str, depth: i64, flags: i64) -> Result<T, RtError> {
+    let v = match json_decode(s, true, depth, flags) {
+        Ok(m) => JsonValue::from_mixed(m),
+        Err(e) => return Err(e),
+    };
+    Ok(T::from_json(&v))
+}
