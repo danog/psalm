@@ -2149,6 +2149,12 @@ final class Builtins
         $assoc = isset($args[1]) && !$b->isNullLiteral($args[1]->value) ? $b->exprTo($args[1]->value, RustType::bool()) : 'false';
         $depth = isset($args[2]) ? $b->exprTo($args[2]->value, RustType::int()) : '512';
         $flags = isset($args[3]) ? $b->exprTo($args[3]->value, RustType::int()) : '0';
+        $expected = $b->call_expected;
+        if ($assoc === 'true' && $expected !== null && $expected->kind !== RustType::MIXED && !$expected->containsMixed() && !$expected->hasGeneric()) {
+            // the document read in the declared type (a return type, a parameter): FromJson impls
+            $b->casts->needFromJson($expected);
+            return new Val('php_rt::json::json_decode_typed::<' . $expected->toRust() . '>(&' . $s . ', ' . $depth . ', ' . $flags . ').unwrap_or_else(|__e| __throw_rt(__e))', $expected);
+        }
         return $b->narrow(new Val('json_decode(&' . $s . ', ' . $assoc . ', ' . $depth . ', ' . $flags . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::mixed()), $call);
     }
 

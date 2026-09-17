@@ -134,6 +134,16 @@ trait ExprTrait
         if ($e instanceof BinaryOp\Coalesce) {
             return $this->coalesce($e, $expected);
         }
+        if ($e instanceof Expr\FuncCall) {
+            // builtins reading a declared type (`json_decode` into a shape) see what the site expects
+            $saved = $this->call_expected;
+            $this->call_expected = $expected;
+            try {
+                return $this->funcCall($e);
+            } finally {
+                $this->call_expected = $saved;
+            }
+        }
         if ($e instanceof Scalar\MagicConst) {
             return $this->magicConst($e);
         }

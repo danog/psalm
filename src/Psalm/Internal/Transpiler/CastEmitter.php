@@ -603,6 +603,62 @@ final class CastEmitter
         $w->line('impl php_rt::data::FromData for ' . $name . ' { fn from_data(_d: &php_rt::data::Data) -> Self { ' . $panic('a data value') . ' } }');
     }
 
+    /** `php_rt::json::FromJson` for a generated type: a decoded document read in the type a site declares. */
+    private function emitFromJson(RustType $to, Writer $w): void
+    {
+        $name = $to->toRust();
+        $J = 'php_rt::json::JsonValue';
+        $conv = function (RustType $t, string $code): string {
+            $this->casts->needFromJson($t);
+            return '<' . $t->toRust() . ' as php_rt::json::FromJson>::from_json(' . $code . ')';
+        };
+        $panic = fn(string $what) => 'panic!(' . Names::rustStringLiteral('json: ' . $what . ' where ' . $name . ' was declared') . ')';
+        if ($to->kind === RustType::UNION) {
+            $m = $to->mangle();
+            $find = function (callable $pred) use ($to): ?RustType {
+                foreach ($to->params as $p) {
+                    if ($pred($p)) {
+                        return $p;
+                    }
+                }
+                return null;
+            };
+            $null = $find(fn(RustType $p) => $this->isUnit($p) && $this->unitName($p) === 'Null');
+            $bool = $find(fn(RustType $p) => $p->kind === RustType::BOOL);
+            $true = $find(fn(RustType $p) => $this->isUnit($p) && $this->unitName($p) === 'True');
+            $false = $find(fn(RustType $p) => $this->isUnit($p) && $this->unitName($p) === 'False');
+            $int = $find(fn(RustType $p) => $p->kind === RustType::INT);
+            $float = $find(fn(RustType $p) => $p->kind === RustType::FLOAT);
+            $str = $find(fn(RustType $p) => $p->kind === RustType::STR);
+            $list = $find(fn(RustType $p) => in_array($p->kind, [RustType::LIST, RustType::TUPLE], true));
+            $map = $find(fn(RustType $p) => in_array($p->kind, [RustType::MAP, RustType::SHAPE], true));
+            $arms = [];
+            $arms[] = $J . '::Null => ' . ($null !== null ? $m . '::Null' : $panic('null'));
+            $arms[] = $J . '::Bool(b) => ' . ($bool !== null ? $m . '::Bool(*b)' : ($true !== null && $false !== null ? 'if *b { ' . $m . '::True } else { ' . $m . '::False }' : $panic('a bool')));
+            $arms[] = $J . '::Int(i) => ' . ($int !== null ? $m . '::Int(*i)' : ($float !== null ? $m . '::Float(*i as f64)' : $panic('an int')));
+            $arms[] = $J . '::Float(f) => ' . ($float !== null ? $m . '::Float(*f)' : ($int !== null ? $m . '::Int(*f as i64)' : $panic('a float')));
+            $arms[] = $J . '::Str(_) => ' . ($str !== null ? $m . '::Str(' . $conv(RustType::str(), 'v') . ')' : $panic('a string'));
+            $arr = $list ?? $map;
+            $obj = $map ?? $list;
+            $arms[] = $J . '::Arr(_) => ' . ($arr !== null ? $m . '::' . $arr->variantName() . '(' . $conv($arr, 'v') . ')' : $panic('an array'));
+            $arms[] = $J . '::Obj(_) => ' . ($obj !== null ? $m . '::' . $obj->variantName() . '(' . $conv($obj, 'v') . ')' : $panic('an object'));
+            $w->line('impl php_rt::json::FromJson for ' . $name . ' { fn from_json(v: &' . $J . ') -> Self { match v { ' . implode(', ', $arms) . ' } } }');
+            return;
+        }
+        if ($to->kind === RustType::SHAPE) {
+            $fields = [];
+            foreach ($to->fields as $k => [$ft, $opt]) {
+                $get = (string) (int) $k === (string) $k ? 'v.get_index(' . (int) $k . 'i64)' : 'v.get(' . Names::rustStringLiteral((string) $k) . ')';
+                $fields[] = Names::field((string) $k) . ': ' . ($opt
+                    ? $get . '.filter(|__x| !matches!(__x, ' . $J . '::Null)).map(|__x| ' . $conv($ft, '__x') . ')'
+                    : $conv($ft, $get . '.unwrap_or(&' . $J . '::Null)'));
+            }
+            $w->line('impl php_rt::json::FromJson for ' . $name . ' { fn from_json(v: &' . $J . ') -> Self { ' . $to->mangle() . ' { ' . implode(', ', $fields) . ' } } }');
+            return;
+        }
+        $w->line('impl php_rt::json::FromJson for ' . $name . ' { fn from_json(_v: &' . $J . ') -> Self { ' . $panic('a JSON value') . ' } }');
+    }
+
     /** `php_rt::json::ToJson` for a generated type: `json_encode` of a typed value. */
     private function emitToJson(RustType $to, Writer $w): void
     {
@@ -986,6 +1042,10 @@ final class CastEmitter
         }
         if ($from->kind === RustType::RT_GENERIC && $from->name === 'Json') {
             $this->emitToJson($to, $w);
+            return;
+        }
+        if ($from->kind === RustType::RT_GENERIC && $from->name === 'JsonV') {
+            $this->emitFromJson($to, $w);
             return;
         }
         if ($this->isExternal($from) || $this->isExternal($to)) {

@@ -259,7 +259,8 @@ class ReflectionClass
     }
 
     /** The port has no class reflection by name. */
-    public function getParentClass(): false
+    /** @return ReflectionClass|false the port has no class hierarchy reflection */
+    public function getParentClass(): ReflectionClass|false
     {
         return false;
     }

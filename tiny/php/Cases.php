@@ -933,3 +933,46 @@ function case_json_encode(): string
     return implode('|', $out);
 }
 check('json_encode', case_json_encode(), '{"a":1,"b":[1,2,3],"c":null,"d":true,"e":1.5,"f":"x\\"y"}|[{"x":1,"label":null},{"x":2,"label":"p"}]|{"a":1,"b":"two","c":[3,4]}|{"3":"a","5":"b"}|[]|{\n    "k": [\n        1,\n        "z"\n    ]\n}');
+
+// ---- probe: DOM iteration types (childNodes, getElementsByTagName) ----
+
+function case_dom_iteration(): string
+{
+    $doc = new \DOMDocument();
+    $doc->loadXML('<files><file src="a.php"><Issue><code>x</code></Issue></file></files>');
+    $out = [];
+    foreach ($doc->getElementsByTagName('file') as $file) {
+        foreach ($file->childNodes as $issue) {
+            if (!$issue instanceof \DOMElement) {
+                continue;
+            }
+            $out[] = $issue->tagName;
+            foreach ($issue->getElementsByTagName('code') as $code) {
+                $out[] = $code->textContent;
+            }
+        }
+    }
+    return implode(',', $out);
+}
+check('dom_iteration', case_dom_iteration(), 'Issue,x');
+
+// ---- feature: typed json_decode (a declared return type reads the document; no Mixed) ----
+
+/** @return array{a: int, b: list<int>, c: array<string, string>, d: ?string, e?: bool, f: float|string}|null */
+function decode_doc(string $json): ?array
+{
+    return json_decode($json, true);
+}
+
+function case_json_decode(): string
+{
+    $doc = decode_doc('{"a":1,"b":[1,2],"c":{"k":"v","k2":"w"},"d":null,"f":"x"}');
+    if ($doc === null) {
+        return 'null';
+    }
+    $out = [(string) $doc['a'], implode('+', $doc['b']), implode(',', array_keys($doc['c'])), $doc['d'] ?? '-', isset($doc['e']) ? 'e' : 'noe', is_string($doc['f']) ? $doc['f'] : 'num'];
+    $bad = decode_doc('nope');
+    $out[] = $bad === null ? 'badnull' : 'bad';
+    return implode('|', $out);
+}
+check('json_decode', case_json_decode(), '1|1+2|k,k2|-|noe|x|badnull');

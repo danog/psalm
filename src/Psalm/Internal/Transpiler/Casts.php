@@ -75,6 +75,26 @@ final class Casts
         }
     }
 
+    /** Demand the `FromJson` impls a typed `json_decode` result needs (generated types nested in `$t`). */
+    public function needFromJson(RustType $t): void
+    {
+        switch ($t->kind) {
+            case RustType::UNION:
+            case RustType::SHAPE:
+            case RustType::CLASS_:
+                $this->need(RustType::rtGeneric('JsonV', []), $t);
+                break;
+            case RustType::TUPLE:
+            case RustType::OPTION:
+            case RustType::LIST:
+            case RustType::MAP:
+                foreach ($t->params as $p) {
+                    $this->needFromJson($p);
+                }
+                break;
+        }
+    }
+
     /** Demand the `ToJson` impls a typed `json_encode` argument needs (generated types nested in `$t`). */
     public function needToJson(RustType $t): void
     {

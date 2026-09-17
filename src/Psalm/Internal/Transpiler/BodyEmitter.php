@@ -50,6 +50,9 @@ final class BodyEmitter
 
     public Writer $w;
 
+    /** The type the surrounding expression expects of the builtin call being emitted (see ExprTrait::exprNatural). */
+    public ?RustType $call_expected = null;
+
     /** @var array<string, RustType> declared Rust type of each local */
     public array $vars = [];
 
