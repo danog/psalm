@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm;
 
 use DOMDocument;
+use DOMElement;
 use Psalm\Exception\ConfigException;
 use Psalm\Internal\Analyzer\IssueData;
 use Psalm\Internal\Provider\FileProvider;
