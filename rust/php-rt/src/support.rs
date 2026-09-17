@@ -741,6 +741,45 @@ pub fn iterate_object<K, V>(_o: impl PhpObject) -> Result<std::vec::IntoIter<(K,
 /// aliases RefCell->RwCell, Ref->CellRef, RefMut->CellRefMut, so generated code converts transparently.
 pub type CellRef<'a, T> = parking_lot::MappedRwLockReadGuard<'a, T>;
 pub type CellRefMut<'a, T> = parking_lot::MappedRwLockWriteGuard<'a, T>;
+/// A `Cell<T>` usable across threads: a mutex-guarded Copy value with the Cell API (per-field interior
+/// mutability of immutable classes).
+pub struct SyncCell<T>(parking_lot::Mutex<T>);
+impl<T: Copy> SyncCell<T> {
+    pub fn new(v: T) -> Self {
+        SyncCell(parking_lot::Mutex::new(v))
+    }
+    pub fn get(&self) -> T {
+        *self.0.lock()
+    }
+    pub fn set(&self, v: T) {
+        *self.0.lock() = v;
+    }
+    pub fn replace(&self, v: T) -> T {
+        std::mem::replace(&mut *self.0.lock(), v)
+    }
+    pub fn get_mut(&mut self) -> &mut T {
+        self.0.get_mut()
+    }
+    pub fn into_inner(self) -> T {
+        self.0.into_inner()
+    }
+}
+impl<T: Copy> Clone for SyncCell<T> {
+    fn clone(&self) -> Self {
+        SyncCell::new(self.get())
+    }
+}
+impl<T: Copy + Default> Default for SyncCell<T> {
+    fn default() -> Self {
+        SyncCell::new(T::default())
+    }
+}
+impl<T: Copy + std::fmt::Debug> std::fmt::Debug for SyncCell<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.get().fmt(f)
+    }
+}
+
 pub struct RwCell<T>(parking_lot::RwLock<T>);
 impl<T> RwCell<T> {
     pub fn new(v: T) -> Self {

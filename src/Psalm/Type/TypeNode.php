@@ -13,7 +13,7 @@ interface TypeNode
     public function visit(TypeVisitor $visitor): bool;
 
     /**
-     * @param self $node
+     * @param TypeNode $node
      * @param-out TypeNode $node
      * @internal Should only be used by the MutableTypeVisitor
      */

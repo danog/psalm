@@ -216,7 +216,7 @@ final class TClassStringMap extends Atomic
     }
 
     /**
-     * @param self $node
+     * @param TypeNode $node
      * @param-out TypeNode $node
      *
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
