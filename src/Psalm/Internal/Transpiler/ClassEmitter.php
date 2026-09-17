@@ -762,19 +762,28 @@ final class ClassEmitter
         $get = [];
         foreach ($enum->concrete as $c) {
             $cf = $c->fields[$f->name] ?? null;
-            if ($cf === null || !$this->casts->fits($cf->type, $ft)) {
+            if ($cf === null) {
                 continue;
             }
-            $set[] = $h . '::' . $c->variant() . '(__h) => __h.set_' . $cf->acc() . '(' . $this->casts->convert('v', $ft, $cf->type) . ')';
-            $get[] = $h . '::' . $c->variant() . '(__h) => ' . $this->casts->convert('__h.' . $cf->acc() . '_get()', $cf->type, $ft);
+            // a variant whose own field is nullable still answers the read (the null is the type error PHP
+            // would raise downstream, not a wrong-variant access), so it must not be left out of the match
+            $narrowing = static fn(RustType $a, RustType $b): bool => $a->kind === RustType::OPTION
+                && $a->inner()->toRust() === $b->toRust();
+            if ($this->casts->fits($cf->type, $ft) || $narrowing($cf->type, $ft)) {
+                $get[] = $h . '::' . $c->variant() . '(__h) => ' . $this->casts->convert('__h.' . $cf->acc() . '_get()', $cf->type, $ft);
+            }
+            if ($this->casts->fits($ft, $cf->type) || $this->casts->fits($cf->type, $ft) || $narrowing($ft, $cf->type)) {
+                $set[] = $h . '::' . $c->variant() . '(__h) => __h.set_' . $cf->acc() . '(' . $this->casts->convert('v', $ft, $cf->type) . ')';
+            }
         }
-        if ($set === []) {
+        if ($set === [] && $get === []) {
             return;
         }
         $rn = $f->acc();
+        $arms = static fn(array $a): string => $a === [] ? '' : implode(', ', $a) . ', ';
         $w->line('impl ' . $h . ' {');
-        $w->line('pub fn set_' . $rn . '(&mut self, v: ' . $t . ') { match self { ' . implode(', ', $set) . ', _ => unreachable!("set_' . $rn . ' on wrong ' . $h . ' variant") } }');
-        $w->line('pub fn ' . $rn . '_get(&self) -> ' . $t . ' { match self { ' . implode(', ', $get) . ', _ => unreachable!("' . $rn . '_get on wrong ' . $h . ' variant") } }');
+        $w->line('pub fn set_' . $rn . '(&mut self, v: ' . $t . ') { match self { ' . $arms($set) . '_ => unreachable!("set_' . $rn . ' on wrong ' . $h . ' variant") } }');
+        $w->line('pub fn ' . $rn . '_get(&self) -> ' . $t . ' { match self { ' . $arms($get) . '_ => unreachable!("' . $rn . '_get on wrong ' . $h . ' variant") } }');
         $w->line('}');
     }
 
