@@ -461,6 +461,36 @@ trait LValueTrait
                 $wrap,
             );
         }
+        if ($pt->kind === RustType::SHAPE && $dim !== null && $pt->fields !== [] && $this->literalKey($dim) === null) {
+            // a shape indexed by a runtime key: the key selects one of the fields, read in their common type and
+            // written through a conversion into the field's own type (a key outside the shape is dead)
+            $vt = $this->shapeValueType($pt);
+            $key = fn() => $this->keyExpr($dim, RustType::arrayKey());
+            $arm = static fn(string|int $k): string => (string) (int) $k === (string) $k
+                ? 'ArrayKey::Int(' . (int) $k . 'i64)'
+                : 'ArrayKey::from_static(' . Names::rustStringLiteral((string) $k) . ')';
+            $read = function () use ($parent, $pt, $vt, $key, $arm): string {
+                $code = '{ let __k = ' . $key() . '; let __s = ' . $parent->read() . '; ';
+                $first = true;
+                foreach ($pt->fields as $k => [$ft, $opt]) {
+                    $st = RustType::shapeField($ft, $opt);
+                    $code .= ($first ? 'if ' : ' else if ') . '__k == ' . $arm($k) . ' { ' . $this->casts->convert('__s.' . Names::field((string) $k), $st, $vt) . ' }';
+                    $first = false;
+                }
+                return $code . ' else { <' . $vt->toRust() . '>::default() } }';
+            };
+            $write = fn(string $v) => $this->hoisted([$key(), $v], fn(string $k, string $v) => $parent->modify(function (string $p) use ($pt, $vt, $k, $v, $arm): string {
+                $code = '{ let __k = ' . $k . '; ';
+                $first = true;
+                foreach ($pt->fields as $fk => [$ft, $opt]) {
+                    $st = RustType::shapeField($ft, $opt);
+                    $code .= ($first ? 'if ' : ' else if ') . '__k == ' . $arm($fk) . ' { ' . $p . '.' . Names::field((string) $fk) . ' = ' . $this->casts->convert($v, $vt, $st) . '; }';
+                    $first = false;
+                }
+                return $code . ' else { php_rt::dead::<()>("write to a key outside the shape"); } }';
+            }));
+            return new Place($vt, $read, $write, null, $wrap);
+        }
         if ($pt->kind === RustType::UNION || $pt->kind === RustType::ANY_OBJECT || $pt->kind === RustType::CLASS_ || $pt->kind === RustType::SHAPE || $pt->kind === RustType::TUPLE) {
             // a union of array forms, a shape written with a runtime key, or an ArrayAccess object typed
             // loosely: modified as a Mixed value

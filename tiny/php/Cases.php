@@ -830,7 +830,9 @@ function run_all(): string
         . check('generic_callable', case_generic_callable(), '42|a,b|run,done,run,done')
         . check('typed_builtins', case_typed_builtins(), '1:ab@2|x|no|0|1,-1|user:0')
         . check('deferred_graph', case_deferred_graph(['root', 'root', 'n1']), 'n0,n1,n2')
-        . check('typed_builtins2', case_typed_builtins2(), "c1,r6,'a\\'b',42,nf,yes,null,1.5,pos");
+        . check('typed_builtins2', case_typed_builtins2(), "c1,r6,'a\\'b',42,nf,yes,null,1.5,pos")
+        . check('elseif_narrowing', case_elseif_narrowing(), 'p,n,-')
+        . check('filter_table', case_filter_table(), '257:1,2,9|min=1,d=0;259:1,9|d=0;516:3|d=0');
 }
 
 // ---- feature: typed constant table (get_defined_constants without Mixed) ----
@@ -1154,4 +1156,91 @@ function case_typed_builtins2(): string
     $v = strpos('abc', 'b');
     $out[] = $v != false ? 'pos' : 'nopos';
     return implode(',', $out);
+}
+
+class NBase
+{
+}
+
+class NMid extends NBase
+{
+}
+
+final class NLit extends NMid
+{
+    public function __construct(public int $v)
+    {
+    }
+}
+
+final class NRange extends NMid
+{
+    public function __construct(private int $min)
+    {
+    }
+
+    public function isPositive(): bool
+    {
+        return $this->min > 0;
+    }
+}
+
+function narrow_pair(NBase $x, NBase $y): string
+{
+    if ($x instanceof NMid && $y instanceof NMid) {
+        $positive = false;
+        if ($x instanceof NLit) {
+            $positive = $x->v > 0;
+        } elseif ($x instanceof NRange) {
+            $positive = $x->isPositive();
+        }
+        return $positive ? 'p' : 'n';
+    }
+    return '-';
+}
+
+function case_elseif_narrowing(): string
+{
+    return narrow_pair(new NLit(3), new NMid()) . ',' . narrow_pair(new NRange(-1), new NLit(1)) . ',' . narrow_pair(new NBase(), new NMid());
+}
+
+/** @return array<int, array{flags: list<int>, options: array<string, int>}> */
+function filter_table(): array
+{
+    $general = [9];
+    $validate = [
+        257 => [
+            'flags' => [1, 2],
+            'options' => ['min' => 1],
+        ],
+        259 => [
+            'flags' => [1],
+            'options' => [],
+        ],
+    ];
+    foreach ($validate as $filter_int => $filter_data) {
+        $validate[$filter_int]['flags'] = array_merge($filter_data['flags'], $general);
+        $defaults = ['d' => 0];
+        $validate[$filter_int]['options'] = array_merge($filter_data['options'], $defaults);
+    }
+    $other = [
+        516 => [
+            'flags' => [3],
+            'options' => ['d' => 0],
+        ],
+    ];
+    return $validate + $other;
+}
+
+function case_filter_table(): string
+{
+    $out = [];
+    foreach (filter_table() as $id => $entry) {
+        $opts = [];
+        foreach ($entry['options'] as $k => $v) {
+            $opts[] = $k . '=' . $v;
+        }
+        $out[] = $id . ':' . implode(',', $entry['flags']) . '|' . implode(',', $opts);
+    }
+    return implode(';', $out);
 }
