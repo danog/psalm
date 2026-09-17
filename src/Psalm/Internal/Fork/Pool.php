@@ -105,7 +105,7 @@ final class Pool
      *                                                                It must return an array (to be gathered).
      *
      * @param Closure(TResult $data):void $task_done_closure A closure to execute when a task is done
-     * @param null|Closure(array|string): array|string $message_handler Handles a message sent by a worker over its task
+     * @param null|Closure(string): array{id: int|null, count: int} $message_handler Handles a message sent by a worker over its task
      *        channel and returns the reply. Used to answer requests a task makes mid-execution (e.g.
      *        registering a custom taint in the parent process).
      */
