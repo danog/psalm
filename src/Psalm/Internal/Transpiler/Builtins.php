@@ -1056,14 +1056,18 @@ final class Builtins
             $vals[] = $c;
         }
         if ($all_list && ($res->kind === RustType::LIST || $res->kind === RustType::MIXED)) {
-            $elem = $res->kind === RustType::LIST ? $res->inner() : $b->types()->combine(array_map(fn(Val $v) => $v->type->inner(), $vals));
+            // an empty-container result type says nothing about what the arguments hold (Psalm keeps a
+            // property narrowed to `array<never, never>` across the call that filled it)
+            $elem = $res->kind === RustType::LIST && !$res->isEmptyIterable()
+                ? $res->inner()
+                : $b->types()->combine(array_map(fn(Val $v) => $v->type->inner(), $vals));
             $parts = [];
             foreach ($vals as $v) {
                 $parts[] = '&' . $b->casts->convert($v->code, $v->type, RustType::list($elem));
             }
             return new Val('array_merge_l(&[' . implode(', ', $parts) . '])', RustType::list($elem));
         }
-        $target = $res->kind === RustType::MAP ? $res : null;
+        $target = $res->kind === RustType::MAP && !$res->isEmptyIterable() ? $res : null;
         if ($target === null) {
             $keys = [];
             $elems = [];
@@ -1093,7 +1097,7 @@ final class Builtins
     {
         $res = $b->inferredOrMixed($call);
         $a = $this->container($b, $args[0]->value);
-        $target = $res->kind === RustType::MAP ? $res : ($a->type->kind === RustType::MAP ? $a->type : RustType::map(RustType::int(), $a->type->inner()));
+        $target = $res->kind === RustType::MAP && !$res->isEmptyIterable() ? $res : ($a->type->kind === RustType::MAP ? $a->type : RustType::map(RustType::int(), $a->type->inner()));
         $code = $b->casts->convert($a->code, $a->type, $target);
         for ($i = 1; $i < count($args); $i++) {
             $c = $this->container($b, $args[$i]->value);

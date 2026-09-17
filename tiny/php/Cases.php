@@ -1011,9 +1011,52 @@ function case_version_regex(): string
     return $a . $b . $c;
 }
 
+function case_prop_empty_merge(): string
+{
+    $c = new MutCtx();
+    $first = $c->ids;
+    $c->ids = [];
+    fill_ctx($c);
+    $more = $c->ids;
+    $c->ids = array_merge($more, $first);
+    $n = count($c->ids);
+    $c->ids = array_replace($c->ids, $more);
+    return $n . ':' . count($c->ids);
+}
+
+abstract class ArgBase { public function tag(): string { return 'base'; } }
+final class ArgLit extends ArgBase { public function __construct(public int $v) {} public function tag(): string { return 'lit'; } }
+final class ArgOther extends ArgBase { public function tag(): string { return 'other'; } }
+
+function takes_arg_base(ArgBase $b): string
+{
+    return $b->tag();
+}
+
+/** @return list<ArgBase> */
+function mk_arg_bases(): array
+{
+    return [new ArgLit(1), new ArgOther()];
+}
+
+function case_arg_no_downcast(): string
+{
+    $out = '';
+    foreach (mk_arg_bases() as $x) {
+        if ($x instanceof ArgLit) {
+            $out .= takes_arg_base($x);
+        } else {
+            $out .= takes_arg_base($x);
+        }
+    }
+    return $out;
+}
+
 function run_all(): string
 {
-    return check('version_regex', case_version_regex(), 'ab-')
+    return check('arg_no_downcast', case_arg_no_downcast(), 'litother')
+        . check('prop_empty_merge', case_prop_empty_merge(), '1:1')
+        . check('version_regex', case_version_regex(), 'ab-')
         . check('union_receiver_base_method', case_union_receiver_base_method(), 'xa|xb|other:base')
         . check('union_prop_coalesce', case_union_prop_coalesce(), 'i:A|node|i:E')
         . check('union_tostring', case_union_tostring(), 'isa-named:X|isa-tmpl')

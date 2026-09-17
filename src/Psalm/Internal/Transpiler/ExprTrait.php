@@ -43,6 +43,18 @@ trait ExprTrait
     /** Emit an expression; if `$expected` is given, the result is converted to that type. */
     public function expr(Expr $e, ?RustType $expected = null): Val
     {
+        if ($expected !== null && $expected->kind === RustType::CLASS_
+            && $e instanceof Expr\Variable && is_string($e->name) && $e->name !== 'this'
+            && !isset($this->narrowings[$e->name])
+        ) {
+            // the stored value already satisfies the target class: read it as it is stored instead of
+            // downcasting to the class Psalm narrowed it to (that narrowing can be wider than the flow
+            // allows, and the downcast would panic on a sibling subclass)
+            $raw = $this->readVar($e->name);
+            if ($raw->type->kind === RustType::CLASS_ && $this->classFitsInto($raw->type, $expected)) {
+                return new Val($this->casts->convert($raw->code, $raw->type, $expected), $expected);
+            }
+        }
         $v = $this->exprNatural($e, $expected);
         if ($expected !== null) {
             return new Val($this->casts->convert($v->code, $v->type, $expected), $expected);
@@ -541,6 +553,17 @@ trait ExprTrait
         }
         $this->warn('unknown constant ' . $resolved, $e);
         return $this->dead('unknown constant ' . $resolved . '', $t ?? RustType::mixed());
+    }
+
+    /** True when a value of class `$from` is already a value of class `$to` (same class or a subclass). */
+    private function classFitsInto(RustType $from, RustType $to): bool
+    {
+        if ($from->toRust() === $to->toRust()) {
+            return true;
+        }
+        $fc = $this->program->classOf($from);
+        $tc = $this->program->classOf($to);
+        return $fc !== null && $tc !== null && $fc->isSubclassOf($tc);
     }
 
     private function variable(Expr\Variable $e): Val
