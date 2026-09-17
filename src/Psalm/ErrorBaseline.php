@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm;
 
 use DOMDocument;
-use DOMElement;
 use Psalm\Exception\ConfigException;
 use Psalm\Internal\Analyzer\IssueData;
 use Psalm\Internal\Provider\FileProvider;
@@ -256,19 +255,16 @@ final class ErrorBaseline
         }
 
         foreach ($groupedIssues as $file => $issueTypes) {
-            /** @var DOMElement $fileNode */
             $fileNode = $baselineDoc->createElement('file');
 
             $fileNode->setAttribute('src', $file);
 
             foreach ($issueTypes as $issueType => $existingIssueType) {
-                /** @var DOMElement $issueNode */
                 $issueNode = $baselineDoc->createElement($issueType);
 
                 sort($existingIssueType['s']);
 
                 foreach ($existingIssueType['s'] as $selection) {
-                    /** @var DOMElement $codeNode */
                     $codeNode = $baselineDoc->createElement('code');
                     $textContent = trim($selection);
                     $codeNode->appendChild($baselineDoc->createCDATASection($textContent));

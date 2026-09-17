@@ -347,7 +347,6 @@ final class Populator
             if (isset($storage->overridden_method_ids[$method_name])) {
                 $overridden_method_ids = $storage->overridden_method_ids[$method_name];
 
-                /** @var array<string, MethodIdentifier>|null $candidate_overridden_ids */
                 $candidate_overridden_ids = null;
 
                 $declaring_class_storages = [];
@@ -359,12 +358,10 @@ final class Populator
                         = $this->classlike_storage_provider->get($declaring_class);
 
                     if ($candidate_overridden_ids === null) {
-                        /** @var array<string, MethodIdentifier> $candidate_overridden_ids */
                         $candidate_overridden_ids
                             = ($declaring_class_storage->overridden_method_ids[$method_name] ?? [])
                                 + [$declaring_method_id->fq_class_name => $declaring_method_id];
                     } else {
-                        /** @var array<string, MethodIdentifier> $candidate_overridden_ids */
                         $candidate_overridden_ids = array_intersect_key(
                             $candidate_overridden_ids,
                             ($declaring_class_storage->overridden_method_ids[$method_name] ?? [])

@@ -29,8 +29,6 @@ final class SystemCommandExecutor
             throw new RuntimeException(sprintf('exec does not exist, failed to execute command: %s', $command));
         }
 
-        /** @var list<string> $result */
-        $result = [];
         exec($command, $result, $returnValue);
 
         if ($returnValue === 0) {

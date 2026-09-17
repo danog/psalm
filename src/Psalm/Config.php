@@ -919,7 +919,6 @@ final class Config
         $config->config_issues = [];
 
         // Attributes to be removed in Psalm 6
-        /** @var list<string> */
         $deprecated_attributes = [];
 
         /** @var list<string> */
