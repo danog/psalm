@@ -65,7 +65,8 @@ final class PluginListFactory
         $composer_lock_filenames = array_filter($composer_lock_filenames, static fn(string $file): bool => is_readable($file));
 
         if (empty($composer_lock_filenames)) {
-            $stub_composer_lock = (object)[
+            // string keys encode as a JSON object, exactly like the stdClass the original built
+            $stub_composer_lock = [
                 'packages' => [],
                 'packages-dev' => [],
             ];
