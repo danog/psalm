@@ -363,10 +363,24 @@ final class TestEmitter
             // PHPUnit passes `array_values($row)`: the i-th field goes to the i-th parameter. Rows keyed by
             // parameter names are matched by name (the struct keeps the docblock's field order, not the row's).
             $keys = array_keys($vt->fields);
+            // PHPUnit passes a data set positionally (`...array_values($data)`), so a row key that is not a
+            // parameter name (`ignored_issues` for `$error_levels`) still fills its slot by position
             $by_name = $params !== [];
             foreach ($params as $p) {
                 if (!isset($vt->fields[$p->name])) {
                     $by_name = false;
+                }
+            }
+            if ($by_name) {
+                $names = [];
+                foreach ($params as $p) {
+                    $names[$p->name] = true;
+                }
+                foreach ($keys as $k) {
+                    if (!isset($names[$k])) {
+                        $by_name = false;
+                        break;
+                    }
                 }
             }
             foreach ($params as $i => $p) {
