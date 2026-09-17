@@ -136,10 +136,10 @@ class ReflectionClass
 {
     public string $name;
 
-    /** @param object|class-string $objectOrClass */
-    public function __construct(object|string $objectOrClass)
+    /** @param class-string $objectOrClass */
+    public function __construct(string $objectOrClass)
     {
-        $this->name = is_object($objectOrClass) ? get_class($objectOrClass) : $objectOrClass;
+        $this->name = $objectOrClass;
     }
 
     public function getName(): string
@@ -163,7 +163,7 @@ class ReflectionClass
         return is_a($this->name, $interface, true);
     }
 
-    public function newInstanceWithoutConstructor(): object
+    public function newInstanceWithoutConstructor(): never
     {
         throw new ReflectionException('Instantiation by class name is not supported in a compiled program');
     }
@@ -222,7 +222,7 @@ class ReflectionClass
         return $file === null || $file === '' ? false : $file;
     }
 
-    /** @return array<string, never> the port has no constant reflection */
+    /** @return array<string, string> the port has no constant reflection */
     public function getConstants(): array
     {
         return [];
@@ -322,8 +322,7 @@ class ReflectionMethod extends ReflectionFunctionAbstract
 
     public string $class = '';
 
-    /** @param object|string $objectOrMethod */
-    public function __construct($objectOrMethod, ?string $method = null)
+    public function __construct(string $objectOrMethod, ?string $method = null)
     {
         throw new ReflectionException('Methods cannot be reflected in a compiled program');
     }
@@ -358,8 +357,8 @@ class ReflectionParameter
 {
     public string $name = '';
 
-    /** @param string|array{0: object|string, 1: string}|object $function */
-    public function __construct($function, int|string $param)
+    /** @param string|array{0: string, 1: string} $function */
+    public function __construct(string|array $function, int|string $param)
     {
         throw new ReflectionException('Parameters cannot be reflected in a compiled program');
     }
@@ -421,8 +420,7 @@ class ReflectionProperty
     public string $name = '';
     public string $class = '';
 
-    /** @param object|string $class */
-    public function __construct($class, string $property)
+    public function __construct(string $class, string $property)
     {
         throw new ReflectionException('Properties cannot be reflected in a compiled program');
     }

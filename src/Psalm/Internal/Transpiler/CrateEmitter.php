@@ -203,9 +203,10 @@ final class CrateEmitter
         // pass, a dead branch or an unused member would otherwise keep its (Mixed-typed) shape alive
         $referenced = [];
         $scan = static function (string $text) use (&$referenced): void {
-            preg_match_all('/\b(?:U_|Shape_)[A-Za-z0-9_]+|\bMixed\b|AnyObject|\bphp_clone_mixed\b/', $text, $m);
+            // runtime helpers producing a Mixed value (`.to_mixed()`, `mixed_get`) count as naming Mixed
+            preg_match_all('/\b(?:U_|Shape_)[A-Za-z0-9_]+|\bMixed\b|\bto_mixed\b|\bmixed_[a-z_]+|AnyObject|\bphp_clone_mixed\b/', $text, $m);
             foreach ($m[0] as $id) {
-                $referenced[$id] = true;
+                $referenced[str_starts_with($id, 'to_mixed') || str_starts_with($id, 'mixed_') ? 'Mixed' : $id] = true;
             }
         };
         foreach ($this->modules as $mods) {
@@ -448,10 +449,7 @@ final class CrateEmitter
         if ($with_clone_mixed) {
             $w->line('pub fn php_clone_mixed(m: Mixed) -> Mixed { match m { Mixed::Obj(o) => Mixed::Obj(o.php_clone_dyn()), other => other } }');
         }
-        if (!$with_any) {
-            $this->emitInit($w, 0);
-            return;
-        }
+        if ($with_any) {
         // `object`-typed values: a newtype over the runtime's type-erased handle. Every class converts
         // into it directly (`AnyObject(Rc::new(own))`) and narrows out of it through its `TryDowncast`
         // (a class-id match over the target hierarchy), so no program-wide enum is needed.
@@ -487,6 +485,7 @@ final class CrateEmitter
         $w->line('impl php_rt::ToStr for AnyObject { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_str(self.class_name())) } }');
         $w->line('impl std::fmt::Debug for AnyObject { fn fmt(&self, f: &mut std::fmt::Formatter<\'_>) -> std::fmt::Result { write!(f, "object({})", self.class_name()) } }');
         $w->line('impl php_rt::PhpClone for AnyObject { fn php_clone(&self) -> Self { AnyObject(self.0.php_clone_dyn()) } }');
+        }
 
         $this->emitInit($w, 0);
 

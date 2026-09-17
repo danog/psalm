@@ -1129,8 +1129,12 @@ trait LValueTrait
                 default => 'num_mul',
             };
             $rhs = $this->numOperand($e->expr);
-            $cur = 'to_num(&' . $this->casts->convert($place->read(), $t, RustType::mixed()) . ')';
-            return '{ let ' . $tmp . ' = ' . $fn . '(' . $cur . ', ' . $rhs . '); ' . $place->write($this->casts->convert($tmp . '.to_mixed()', RustType::mixed(), $t)) . ' }';
+            $cur = $this->numOf($place->read(), $t);
+            $num = RustType::rtGeneric('Num', []);
+            $store = $t->kind === RustType::OPTION && in_array($t->inner()->kind, [RustType::INT, RustType::FLOAT], true)
+                ? 'Some(' . $this->casts->convert($tmp, $num, $t->inner()) . ')'
+                : ($t->kind === RustType::MIXED ? $tmp . '.to_mixed()' : $this->casts->convert($tmp, $num, $t));
+            return '{ let ' . $tmp . ' = ' . $fn . '(' . $cur . ', ' . $rhs . '); ' . $place->write($store) . ' }';
         }
         if ($e instanceof Expr\AssignOp\Div) {
             $rhs = $this->exprTo($e->expr, RustType::float());

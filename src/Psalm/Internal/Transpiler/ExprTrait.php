@@ -166,7 +166,7 @@ trait ExprTrait
             if ($v->type->kind === RustType::INT) {
                 return new Val('(' . $v->code . ').wrapping_neg()', RustType::int());
             }
-            return new Val('num_mul(to_num(&' . $this->casts->convert($v->code, $v->type, RustType::mixed()) . '), Num::Int(-1)).to_mixed()', RustType::mixed());
+            return $this->numResult('num_mul(' . $this->numOf($v->code, $v->type) . ', Num::Int(-1))', $this->inferredOrMixed($e));
         }
         if ($e instanceof Expr\UnaryPlus) {
             return $this->expr($e->expr);
@@ -1106,12 +1106,21 @@ trait ExprTrait
     private function numOperand(Expr $e): string
     {
         $v = $this->expr($e);
-        return match ($v->type->kind) {
-            RustType::INT => 'Num::Int(' . $v->code . ')',
-            RustType::FLOAT => 'Num::Float(' . $v->code . ')',
-            RustType::BOOL => 'Num::Int(' . $v->code . ' as i64)',
-            RustType::STR, RustType::UNIT, RustType::ARRAY_KEY, RustType::OPTION, RustType::UNION => 'php_rt::ToNum::to_php_num(&' . $v->code . ')',
-            default => 'to_num(&' . $this->casts->convert($v->code, $v->type, RustType::mixed()) . ')',
+        return $this->numOf($v->code, $v->type);
+    }
+
+    /** A typed value as a runtime `Num` (through Mixed only for values without a typed numeric view). */
+    public function numOf(string $code, RustType $t): string
+    {
+        if ($t->kind === RustType::RT_GENERIC && $t->name === 'Num') {
+            return $code;
+        }
+        return match ($t->kind) {
+            RustType::INT => 'Num::Int(' . $code . ')',
+            RustType::FLOAT => 'Num::Float(' . $code . ')',
+            RustType::BOOL => 'Num::Int(' . $code . ' as i64)',
+            RustType::STR, RustType::UNIT, RustType::ARRAY_KEY, RustType::OPTION, RustType::UNION => 'php_rt::ToNum::to_php_num(&' . $code . ')',
+            default => 'to_num(&' . $this->casts->convert($code, $t, RustType::mixed()) . ')',
         };
     }
 
@@ -1126,6 +1135,11 @@ trait ExprTrait
         if ($res->kind === RustType::UNION) {
             $this->casts->need(RustType::rtGeneric('Num', []), $res);
             return new Val('cast::<' . $res->toRust() . '>(' . $num_code . ')', $res);
+        }
+        if ($res->kind === RustType::OPTION && in_array($res->inner()->kind, [RustType::INT, RustType::FLOAT, RustType::UNION], true)) {
+            // a nullable result type (`?int`, `ConstValue|null`): a number is never null
+            $inner = $this->numResult($num_code, $res->inner());
+            return new Val('Some(' . $inner->code . ')', $res);
         }
         return new Val($num_code . '.to_mixed()', RustType::mixed());
     }
@@ -1998,7 +2012,7 @@ trait ExprTrait
         }
         $target = RustType::rtGeneric('Generator', [$this->gen_key, $this->gen_val]);
         $src = $this->exprTo($e->expr, $target);
-        return new Val('{ __gen.extend(' . $src . '.into_pairs()); Mixed::Null }', RustType::mixed());
+        return new Val('{ __gen.extend(' . $src . '.into_pairs()); }', RustType::unit());
     }
 
     // ------------------------------------------------------------------ closures

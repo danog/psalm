@@ -2353,16 +2353,14 @@ final class Builtins
 
     private function f_set_error_handler(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
-        // the runtime raises PHP errors as exceptions itself: the handler is evaluated and dropped
-        $v = isset($args[0]) ? $b->expr($args[0]->value) : new Val('()', RustType::unit());
-        return new Val('{ let _ = ' . $v->code . '; Mixed::Null }', RustType::mixed());
+        // the runtime raises PHP errors as exceptions itself: there is no handler to install
+        return new Val('()', RustType::unit());
     }
 
     private function f_set_exception_handler(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
-        // the runtime has no exception-handler hook (uncaught exceptions end the process): evaluate and drop
-        $v = isset($args[0]) ? $b->expr($args[0]->value) : new Val('()', RustType::unit());
-        return new Val('{ let _ = ' . $v->code . '; }', RustType::unit());
+        // the runtime has no exception-handler hook (uncaught exceptions end the process)
+        return new Val('()', RustType::unit());
     }
 
     private function f_constant(BodyEmitter $b, Expr\FuncCall $call, array $args): Val

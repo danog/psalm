@@ -238,7 +238,7 @@ final class BodyEmitter
         $var_types = $this->record->var_types;
         $finder = new NodeFinder();
         $stmts = $this->record->node instanceof ArrowFunction ? [] : ($this->record->node->getStmts() ?? []);
-        foreach ($finder->findInstanceOf($stmts, Expr\Assign::class) as $assign) {
+        foreach (self::ownNodes($stmts, Expr\Assign::class) as $assign) {
             if ($assign->var instanceof Expr\Variable && is_string($assign->var->name) && isset($var_types['$' . $assign->var->name])) {
                 $assigned = $this->psalmType($assign->expr);
                 if ($assigned !== null && !$assigned->hasMixed()) {
@@ -632,10 +632,44 @@ final class BodyEmitter
      *
      * @param list<Stmt> $stmts
      */
+    /**
+     * Instances of `$class` in the function's own body: nested closures, arrow functions and anonymous classes
+     * are not descended into (their assignments declare their own locals).
+     *
+     * @template T of \PhpParser\Node
+     * @param list<\PhpParser\Node> $stmts
+     * @param class-string<T> $class
+     * @return list<T>
+     */
+    private static function ownNodes(array $stmts, string $class): array
+    {
+        $found = [];
+        $traverser = new \PhpParser\NodeTraverser();
+        $traverser->addVisitor(new class ($class, $found) extends \PhpParser\NodeVisitorAbstract {
+            /** @param list<\PhpParser\Node> $found */
+            public function __construct(private string $class, public array &$found)
+            {
+            }
+
+            public function enterNode(\PhpParser\Node $node)
+            {
+                if ($node instanceof Closure || $node instanceof ArrowFunction || $node instanceof Stmt\Class_) {
+                    return \PhpParser\NodeVisitor::DONT_TRAVERSE_CHILDREN;
+                }
+                if ($node instanceof $this->class) {
+                    $this->found[] = $node;
+                }
+                return null;
+            }
+        });
+        $traverser->traverse($stmts);
+        return $found;
+    }
+
     private function declareAssignedVars(array $stmts, array $params): void
     {
         $finder = new \PhpParser\NodeFinder();
-        foreach ($finder->findInstanceOf($stmts, Expr\Assign::class) as $assign) {
+        foreach (self::ownNodes($stmts, Expr\Assign::class) as $assign) {
             $target = $assign->var;
             if ($target instanceof Expr\List_ || $target instanceof Expr\Array_) {
                 foreach ($finder->findInstanceOf([$target], Expr\Variable::class) as $v) {
@@ -662,7 +696,7 @@ final class BodyEmitter
             $this->late[$name] = !$t->hasDefault();
         }
         // catch variables (possibly unused, which Psalm's snapshots omit)
-        foreach ($finder->findInstanceOf($stmts, Stmt\Catch_::class) as $catch) {
+        foreach (self::ownNodes($stmts, Stmt\Catch_::class) as $catch) {
             if ($catch->var === null || !is_string($catch->var->name) || isset($this->vars[$catch->var->name]) || isset($params[$catch->var->name])) {
                 continue;
             }
@@ -673,10 +707,10 @@ final class BodyEmitter
         }
         // out-parameters of calls (`preg_match($re, $s, $matches)`) are assigned by the callee
         $calls = [
-            ...$finder->findInstanceOf($stmts, Expr\FuncCall::class),
-            ...$finder->findInstanceOf($stmts, Expr\MethodCall::class),
-            ...$finder->findInstanceOf($stmts, Expr\StaticCall::class),
-            ...$finder->findInstanceOf($stmts, Expr\New_::class),
+            ...self::ownNodes($stmts, Expr\FuncCall::class),
+            ...self::ownNodes($stmts, Expr\MethodCall::class),
+            ...self::ownNodes($stmts, Expr\StaticCall::class),
+            ...self::ownNodes($stmts, Expr\New_::class),
         ];
         foreach ($calls as $call) {
             foreach ($call->args as $arg) {

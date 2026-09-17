@@ -132,12 +132,13 @@ final class Assert
     }
 
     /**
-     * @template T
-     * @param T $array
+     * @template TKey of array-key
+     * @template TValue
+     * @param array<TKey, TValue> $array
      */
-    public static function keyExists($array, string|int $key, string $message = ''): void
+    public static function keyExists(array $array, string|int $key, string $message = ''): void
     {
-        if (!is_array($array) || !array_key_exists($key, $array)) {
+        if (!array_key_exists($key, $array)) {
             throw new InvalidArgumentException($message !== '' ? $message : 'Expected the key ' . $key . ' to exist.');
         }
     }
