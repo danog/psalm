@@ -801,6 +801,10 @@ final class Builtins
         if ($t->kind === RustType::INT || $t->kind === RustType::FLOAT) {
             return new Val('{ let _ = ' . $v->code . '; true }', RustType::bool());
         }
+        if (!$t->containsMixed()) {
+            // any typed value answers through its runtime kind: numbers are numeric, strings by their text
+            return new Val('{ let __v = &' . $v->code . '; match php_rt::PhpKind::php_kind(__v) { php_rt::Kind::Int | php_rt::Kind::Float => true, php_rt::Kind::Str => is_numeric(&php_rt::ToStr::to_php_str(__v)), _ => false } }', RustType::bool());
+        }
         return new Val($b->casts->convert($v->code, $t, RustType::mixed()) . '.is_numeric()', RustType::bool());
     }
 
@@ -2055,6 +2059,26 @@ final class Builtins
         return new Val('preg_match(&' . $pat . ', &' . $s . ', ' . $offset . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::int());
     }
 
+    /** The value of a PREG_* flags expression (constants and `|` of them), null when not constant. */
+    private function pregFlags(Expr $e): ?int
+    {
+        if ($e instanceof \PhpParser\Node\Scalar\Int_) {
+            return $e->value;
+        }
+        if ($e instanceof Expr\ConstFetch) {
+            return match (strtoupper($e->name->toString())) {
+                'PREG_PATTERN_ORDER' => 1, 'PREG_SET_ORDER' => 2, 'PREG_OFFSET_CAPTURE' => 256, 'PREG_UNMATCHED_AS_NULL' => 512,
+                default => null,
+            };
+        }
+        if ($e instanceof Expr\BinaryOp\BitwiseOr) {
+            $l = $this->pregFlags($e->left);
+            $r = $this->pregFlags($e->right);
+            return $l === null || $r === null ? null : $l | $r;
+        }
+        return null;
+    }
+
     private function f_preg_match_all(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
         $pat = $b->exprTo($args[0]->value, RustType::str());
@@ -2062,6 +2086,21 @@ final class Builtins
         $flags = isset($args[3]) ? $b->exprTo($args[3]->value, RustType::int()) : '1';
         if (isset($args[2])) {
             $place = $b->place($args[2]->value);
+            // flags known at compile time select a typed view of the matches (no Mixed arrays)
+            $static_flags = isset($args[3]) ? $this->pregFlags($args[3]->value) : 1;
+            if ($static_flags !== null) {
+                $set_order = ($static_flags & 2) !== 0;
+                $offsets = ($static_flags & 256) !== 0;
+                $cell = $offsets ? RustType::tuple([RustType::str(), RustType::int()]) : RustType::str();
+                $mt = $set_order
+                    ? RustType::list(RustType::map(RustType::arrayKey(), $cell))
+                    : RustType::map(RustType::arrayKey(), RustType::list($cell));
+                $fn = $set_order ? ($offsets ? 'preg_match_all_sets_offsets' : 'preg_match_all_sets') : ($offsets ? 'preg_match_all_offsets' : 'preg_match_all_typed');
+                if ($args[2]->value instanceof Expr\Variable && is_string($args[2]->value->name)) {
+                    $b->noteMixedAssign($args[2]->value->name, $mt);
+                }
+                return new Val('{ let (__r, __m) = php_rt::builtins::pcre::' . $fn . '(&' . $pat . ', &' . $s . ', ' . $flags . ').unwrap_or_else(|__e| __throw_rt(__e)); ' . $place->write($b->casts->convert('__m', $mt, $place->type)) . ' __r }', RustType::int());
+            }
             $mt = RustType::map(RustType::arrayKey(), RustType::mixed());
             return new Val('{ let (__r, __m) = preg_match_all(&' . $pat . ', &' . $s . ', ' . $flags . ').unwrap_or_else(|__e| __throw_rt(__e)); ' . $place->write($b->casts->convert('__m', $mt, $place->type)) . ' __r }', RustType::int());
         }
