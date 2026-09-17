@@ -809,6 +809,22 @@ final class Builtins
     private function f_in_array(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
         $strict = isset($args[2]) && $args[2]->value instanceof Expr\ConstFetch && strtolower($args[2]->value->name->toString()) === 'true';
+        // a union (or nullable union) needle in a typed list: only the member of the element type can match
+        $nt = $b->inferredOrMixed($args[0]->value);
+        $nu = $nt->kind === RustType::OPTION ? $nt->inner() : $nt;
+        $ht = $b->inferredOrMixed($args[1]->value);
+        if ($strict && $nu->kind === RustType::UNION && $ht->kind === RustType::LIST && !$ht->inner()->containsMixed() && $ht->inner()->kind !== RustType::UNION) {
+            $member = $b->casts->pickMember($nu, $ht->inner());
+            if ($member !== null && $member->toRust() === $ht->inner()->toRust()) {
+                $needle = $b->rawValue($args[0]->value);
+                $hay = $b->exprTo($args[1]->value, $ht);
+                $arm = 'match __n { ' . $nu->mangle() . '::' . $member->variantName() . '(__m) => in_array_l(__m, &' . $hay . '), _ => false }';
+                $code = $needle->type->kind === RustType::OPTION
+                    ? '(match &' . $needle->code . ' { Some(__n) => ' . $arm . ', None => false })'
+                    : '{ let __n = &' . $needle->code . '; ' . $arm . ' }';
+                return new Val($code, RustType::bool());
+            }
+        }
         // a short literal list of strings/ints: a chain of comparisons instead of a list
         if ($args[1]->value instanceof Expr\Array_ && count($args[1]->value->items) > 0 && count($args[1]->value->items) <= 8) {
             $lits = [];
@@ -939,9 +955,16 @@ final class Builtins
         foreach ($args as $a) {
             if ($a->unpack) {
                 $c = $this->container($b, $a->value);
-                if ($c->type->kind === RustType::LIST && $c->type->inner()->kind === RustType::LIST) {
-                    // array_merge(...$lists): the lists concatenated, typed
-                    $vals[] = new Val('array_merge_l(&' . $c->code . '.iter().collect::<Vec<_>>())', $c->type->inner());
+                $outer = $c->type->kind;
+                $elem = $outer === RustType::LIST ? $c->type->inner() : ($outer === RustType::MAP ? $c->type->params[1] : null);
+                if ($elem !== null && ($elem->kind === RustType::LIST || $elem->kind === RustType::MAP)) {
+                    // array_merge(...$arrays): the arrays concatenated (lists) / merged (maps), typed
+                    $iter = $outer === RustType::LIST ? '.iter()' : '.values()';
+                    $fn = $elem->kind === RustType::LIST ? 'array_merge_l' : 'array_merge_m';
+                    $vals[] = new Val($fn . '(&' . $c->code . $iter . '.collect::<Vec<_>>())', $elem);
+                    if ($elem->kind !== RustType::LIST) {
+                        $all_list = false;
+                    }
                     continue;
                 }
                 $b->warn('array_merge with unpacking', $call);

@@ -1012,6 +1012,26 @@ trait ExprTrait
         $res = $this->inferredOrMixed($e);
         $sig = $e->getOperatorSigil();
 
+        // shape + shape: the left fields, then the right-only ones (typed field by field)
+        if ($sig === '+' && $lt->kind === RustType::SHAPE && $rt->kind === RustType::SHAPE) {
+            $fields = [];
+            foreach ($lt->fields as $k => $f) {
+                $fields[$k] = $f;
+            }
+            foreach ($rt->fields as $k => $f) {
+                if (!isset($fields[$k])) {
+                    $fields[$k] = $f;
+                }
+            }
+            $target = $res->kind === RustType::SHAPE && array_keys($res->fields) == array_keys($fields) ? $res : $this->types()->registerShape(RustType::shape($fields));
+            $inits = [];
+            foreach ($target->fields as $k => [$ft, $opt]) {
+                $src = isset($lt->fields[$k]) ? '__l' : '__r';
+                [$st, $sopt] = isset($lt->fields[$k]) ? $lt->fields[$k] : $rt->fields[$k];
+                $inits[] = Names::field($k) . ': ' . $this->casts->convert($src . '.' . Names::field($k), RustType::shapeField($st, $sopt), RustType::shapeField($ft, $opt));
+            }
+            return new Val('{ let __l = ' . $this->exprTo($e->left, $lt) . '; let __r = ' . $this->exprTo($e->right, $rt) . '; ' . $target->toRust() . ' { ' . implode(', ', $inits) . ' } }', $target);
+        }
         // array union
         if ($sig === '+' && ($lt->kind === RustType::MAP || $lt->kind === RustType::LIST || $lt->kind === RustType::SHAPE || $lt->kind === RustType::TUPLE)) {
             $target = $res->kind === RustType::MAP ? $res : RustType::map(RustType::arrayKey(), RustType::mixed());
@@ -1148,6 +1168,12 @@ trait ExprTrait
         }
         if ($sb->kind === RustType::UNION && $sa->kind !== RustType::UNION && $this->casts->pickMember($sb, $sa) !== null) {
             return $wrap($sb);
+        }
+        if ($sa->kind === RustType::UNION && $sb->kind === RustType::UNION) {
+            $joined = $this->program->unionOfRust([$sa, $sb]);
+            if ($joined !== null) {
+                return $wrap($joined);
+            }
         }
         if ($sa->kind === RustType::UNION && $sb->kind === RustType::CLASS_ && $this->unionFitsClass($sa, $sb)) {
             return $wrap($sb);
@@ -1306,6 +1332,39 @@ trait ExprTrait
                 $sa = $a->getArgs();
                 return 'substr_eq(' . Names::refOf($this->exprTo($sa[0]->value, RustType::str())) . ', ' . $this->exprTo($sa[1]->value, RustType::int())
                     . ', Some(' . $this->exprTo($sa[2]->value, RustType::int()) . '), ' . Names::rustStringLiteral($b->value) . ')';
+            }
+        }
+        // a scalar literal against a union that has no member of its kind: never identical (side effects kept)
+        foreach ([[$left, $right], [$right, $left]] as [$a, $b]) {
+            $lit_kind = null;
+            if ($b instanceof Expr\ConstFetch && in_array(strtolower($b->name->toString()), ['true', 'false'], true)) {
+                $lit_kind = 'bool';
+            } elseif ($b instanceof Node\Scalar\Int_) {
+                $lit_kind = 'int';
+            } elseif ($b instanceof Node\Scalar\String_) {
+                $lit_kind = 'str';
+            } elseif ($b instanceof Node\Scalar\Float_) {
+                $lit_kind = 'float';
+            }
+            if ($lit_kind === null) {
+                continue;
+            }
+            $at = $this->inferredOrMixed($a);
+            $u = $at->kind === RustType::OPTION ? $at->inner() : $at;
+            if ($u->kind !== RustType::UNION) {
+                continue;
+            }
+            $has = false;
+            foreach ($u->params as $m) {
+                $has = $has || match ($lit_kind) {
+                    'bool' => $m->kind === RustType::BOOL || ($m->kind === RustType::RT_GENERIC && in_array($m->name, ['__unit_True', '__unit_False'], true)),
+                    'int' => in_array($m->kind, [RustType::INT, RustType::ARRAY_KEY, RustType::FLOAT], true),
+                    'str' => in_array($m->kind, [RustType::STR, RustType::SYM, RustType::ARRAY_KEY], true),
+                    default => $m->kind === RustType::FLOAT,
+                };
+            }
+            if (!$has) {
+                return '{ let _ = ' . $this->rawValue($a)->code . '; false }';
             }
         }
         // `$list === ['a', 'b']` / `$map === []`: the literal takes the container's type (no Mixed array)
@@ -1495,7 +1554,7 @@ trait ExprTrait
                 $k = $this->expr($dim);
                 return new Val('{ let __k = ' . $this->keyFrom($k, RustType::arrayKey()) . '; ' . $base->code . '.and_then(|__b| mixed_get(&__b, &__k)) }', RustType::option(RustType::mixed()));
             }
-            if ($bt->kind === RustType::UNION && ($ui = $this->unionIndex('__b', $bt, $this->keyExpr($dim, RustType::arrayKey()))) !== null) {
+            if ($bt->kind === RustType::UNION && ($ui = $this->unionIndex('__b', $bt, $this->keyExpr($dim, RustType::arrayKey()), $this->literalKey($dim))) !== null) {
                 return $this->flattenOption($base->code . '.and_then(|__b| ' . $ui[0] . ')', $ui[1]);
             }
             if ($bt->kind === RustType::STR) {

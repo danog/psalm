@@ -104,7 +104,11 @@ final class CastEmitter
                 $arms[] = '(' . $name . '::' . $m->variantName() . '(a), ' . $name . '::' . $m->variantName() . '(b)) => identical(a, b)';
             }
         }
-        $w->line('impl php_rt::Identical for ' . $name . ' { fn identical(&self, o: &Self) -> bool { match (self, o) { ' . implode(', ', $arms) . ', _ => false } } }');
+        $obj_members = array_filter($u->params, static fn(RustType $m) => $m->kind === RustType::CLASS_ || $m->kind === RustType::ANY_OBJECT);
+        $fallback = count($obj_members) >= 2
+            ? 'match (self.obj_identity(), o.obj_identity()) { (Some(__a), Some(__b)) => __a == __b, _ => false }'
+            : 'false';
+        $w->line('impl php_rt::Identical for ' . $name . ' { fn identical(&self, o: &Self) -> bool { match (self, o) { ' . implode(', ', $arms) . ', _ => ' . $fallback . ' } } }');
         // PhpCmp: pairwise over the members, PHP's loose comparison rules per kind (no Mixed round trip)
         $w->line('impl php_rt::PhpCmp for ' . $name . ' { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { use std::cmp::Ordering::*; match (self, o) { ' . $this->unionCmpArms($u, $name) . ' } } }');
         // Mixed conversion
@@ -154,7 +158,12 @@ final class CastEmitter
                 $obj = $m->kind === RustType::CLASS_ || $m->kind === RustType::ANY_OBJECT;
                 $ts[] = $this->memberPat($name, $m, 'v') . ' => ' . ($obj ? 'php_rt::PhpObject::php_to_string(v)' : ($m->kind === RustType::STR ? 'Some(v.clone())' : 'None'));
             }
-            $w->line('impl ' . $name . ' { pub fn class_name(&self) -> &\'static str { match self { ' . implode(', ', $cn) . ' } } pub fn obj_id(&self) -> usize { match self { ' . implode(', ', $oi) . ' } } pub fn php_to_string(&self) -> Option<Str> { match self { ' . implode(', ', $ts) . ' } } }');
+            $ident = [];
+            foreach ($u->params as $m) {
+                $obj = $m->kind === RustType::CLASS_ || $m->kind === RustType::ANY_OBJECT;
+                $ident[] = $this->memberPat($name, $m, 'v') . ' => ' . ($obj ? 'Some(php_rt::PhpObject::obj_id(v))' : 'None');
+            }
+            $w->line('impl ' . $name . ' { pub fn class_name(&self) -> &\'static str { match self { ' . implode(', ', $cn) . ' } } pub fn obj_id(&self) -> usize { match self { ' . implode(', ', $oi) . ' } } pub fn php_to_string(&self) -> Option<Str> { match self { ' . implode(', ', $ts) . ' } } pub fn obj_identity(&self) -> Option<usize> { match self { ' . implode(', ', $ident) . ' } } }');
         }
         // member accessors / predicates
         foreach ($u->params as $m) {

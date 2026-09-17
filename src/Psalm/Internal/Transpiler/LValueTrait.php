@@ -115,6 +115,19 @@ trait LValueTrait
                         fn() => '(*' . $bc . '.' . $rn . '_mut())',
                     );
                 }
+                $setter = $cls !== null ? $this->program->findMethod($cls, '__set') : null;
+                $getter = $cls !== null ? $this->program->findMethod($cls, '__get') : null;
+                if ($setter !== null && $setter->node !== null && $getter !== null && $getter->node !== null && isset($setter->param_types[1])) {
+                    // magic property: `__get($name)` / `__set($name, $value)`
+                    $bc = $base->code;
+                    $lit = Names::strLit($name);
+                    $vt = $setter->param_types[1];
+                    return new Place(
+                        $vt,
+                        fn() => $this->casts->convert($bc . '.' . $getter->rustName() . '(' . $lit . ')', $getter->return_type, $vt),
+                        fn(string $v) => $bc . '.' . $setter->rustName() . '(' . $lit . ', ' . $v . ');',
+                    );
+                }
                 if ($cls !== null && ($vf = $this->program->variantField($cls, $name)) !== null) {
                     // a field of some concrete variants, reached through the hierarchy handle
                     [$sf, $vt] = $vf;
@@ -168,6 +181,16 @@ trait LValueTrait
                     $ftype = $field?->type;
                     if ($field === null && $cls !== null && ($vf = $this->program->variantField($cls, $name)) !== null) {
                         [$field, $ftype] = $vf;
+                    }
+                    if ($field === null && $cls !== null) {
+                        $setter = $this->program->findMethod($cls, '__set');
+                        $getter = $this->program->findMethod($cls, '__get');
+                        if ($setter !== null && $setter->node !== null && $getter !== null && $getter->node !== null && isset($setter->param_types[1])) {
+                            $lit = Names::strLit($name);
+                            $arms_get[] = $bt->mangle() . '::' . $m->variantName() . '(__o) => ' . $this->casts->convert('__o.' . $getter->rustName() . '(' . $lit . ')', $getter->return_type, $inf);
+                            $arms_set[] = $bt->mangle() . '::' . $m->variantName() . '(__o) => __o.' . $setter->rustName() . '(' . $lit . ', ' . $this->casts->convert('__v', $inf, $setter->param_types[1]) . ')';
+                        }
+                        continue;
                     }
                     if ($field === null) {
                         continue;
@@ -554,7 +577,7 @@ trait LValueTrait
             return $this->narrow(new Val($base->code . '.idx(&' . $k . ')', $bt->params[1]), $e);
         }
         if ($bt->kind === RustType::UNION) {
-            $ui = $this->unionIndex($base->code, $bt, $this->keyExpr($dim, RustType::arrayKey()));
+            $ui = $this->unionIndex($base->code, $bt, $this->keyExpr($dim, RustType::arrayKey()), $this->literalKey($dim));
             if ($ui !== null) {
                 return $this->narrowOptional(new Val($ui[0], RustType::option($ui[1])), $e);
             }
@@ -572,7 +595,7 @@ trait LValueTrait
      *
      * @return array{string, RustType}|null
      */
-    public function unionIndex(string $base, RustType $u, string $key): ?array
+    public function unionIndex(string $base, RustType $u, string $key, ?string $literal_key = null): ?array
     {
         $elems = [];
         foreach ($u->params as $m) {
@@ -580,6 +603,8 @@ trait LValueTrait
                 $elems[] = $m->inner();
             } elseif ($m->kind === RustType::MAP) {
                 $elems[] = $m->params[1];
+            } elseif ($m->kind === RustType::SHAPE && $literal_key !== null && isset($m->fields[$literal_key])) {
+                $elems[] = $m->fields[$literal_key][0];
             }
         }
         if ($elems === []) {
@@ -595,6 +620,10 @@ trait LValueTrait
                 $arms[] = $u->mangle() . '::' . $m->variantName() . '(__l) => __l.get(php_rt::ToInt::to_php_int(&__k)).cloned().map(|__v| ' . $this->casts->convert('__v', $m->inner(), $et) . ')';
             } elseif ($m->kind === RustType::MAP) {
                 $arms[] = $u->mangle() . '::' . $m->variantName() . '(__m) => __m.get(&' . $this->casts->convert('__k.clone()', RustType::arrayKey(), $m->params[0]) . ').cloned().map(|__v| ' . $this->casts->convert('__v', $m->params[1], $et) . ')';
+            } elseif ($m->kind === RustType::SHAPE && $literal_key !== null && isset($m->fields[$literal_key])) {
+                [$ft, $opt] = $m->fields[$literal_key];
+                $read = $opt ? '__s.' . Names::field($literal_key) : 'Some(__s.' . Names::field($literal_key) . ')';
+                $arms[] = $u->mangle() . '::' . $m->variantName() . '(__s) => ' . $read . '.map(|__v| ' . $this->casts->convert('__v', $ft, $et) . ')';
             }
         }
         return ['{ let __k = ' . $key . '; match ' . $base . ' { ' . implode(', ', $arms) . ', _ => None } }', $et];
@@ -708,6 +737,10 @@ trait LValueTrait
                 $ftype = $field?->type;
                 if ($field === null && $cls !== null && ($vf = $this->program->variantField($cls, $name)) !== null) {
                     [$field, $ftype] = $vf;
+                }
+                if ($field === null && $cls !== null && ($getter = $this->program->findMethod($cls, '__get')) !== null && $getter->node !== null) {
+                    $arms[] = $bt->mangle() . '::' . $m->variantName() . '(__o) => ' . $this->casts->convert('__o.' . $getter->rustName() . '(' . Names::strLit($name) . ')', $getter->return_type, $res);
+                    continue;
                 }
                 if ($field === null) {
                     continue;
