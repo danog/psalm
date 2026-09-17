@@ -258,13 +258,10 @@ class ReflectionClass
         return [];
     }
 
-    public function getParentClass(): ReflectionClass|false
+    /** The port has no class reflection by name. */
+    public function getParentClass(): false
     {
-        $parent = get_parent_class($this->name);
-        if (!$parent) {
-            return false;
-        }
-        return new ReflectionClass($parent);
+        return false;
     }
 }
 

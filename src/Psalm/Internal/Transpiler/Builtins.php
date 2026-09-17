@@ -2401,10 +2401,11 @@ final class Builtins
         return $this->f_array_flip($b, $call, $args);
     }
 
-    /** runtime hook: parsed XML document element as a nested array tree (null when malformed) */
+    /** runtime hook: the parsed XML document as a flat typed node list (null when malformed) */
     private function f___rt_xml_parse(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
-        return new Val('php_rt::xml::xml_parse(&' . $b->exprTo($args[0]->value, RustType::str()) . ')', RustType::option(RustType::mixed()));
+        $t = $b->inferredOrMixed($call);
+        return new Val('php_rt::xml::xml_parse(&' . $b->exprTo($args[0]->value, RustType::str()) . ')', $t);
     }
 
     /** runtime hook: XML-escaped text (attribute context when the flag is set) */

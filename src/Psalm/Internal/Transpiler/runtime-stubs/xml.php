@@ -26,26 +26,25 @@ final class XmlNode
     ) {
     }
 
-    /** @param mixed $tree */
-    public static function fromTree($tree, ?XmlNode $parent = null): XmlNode
-    {
-        /** @var array{name: string, attrs: array<string, string>, children: list<mixed>, text: string} $tree */
-        $node = new XmlNode($tree['name'], $tree['text'], $tree['name'] === '#text');
-        $node->parent = $parent;
-        $node->attrs = $tree['attrs'];
-        foreach ($tree['children'] as $child) {
-            $node->children[] = self::fromTree($child, $node);
-        }
-        return $node;
-    }
-
     public static function parse(string $xml): ?XmlNode
     {
-        $tree = __rt_xml_parse($xml);
-        if ($tree === null) {
+        $flat = __rt_xml_parse($xml);
+        if ($flat === null) {
             return null;
         }
-        return self::fromTree($tree);
+        /** @var list<XmlNode> $nodes */
+        $nodes = [];
+        foreach ($flat as [$name, $text, $is_text, $attrs, $parent_index]) {
+            $node = new XmlNode($name, $text, $is_text);
+            $node->attrs = $attrs;
+            if ($parent_index >= 0) {
+                $parent = $nodes[$parent_index];
+                $node->parent = $parent;
+                $parent->children[] = $node;
+            }
+            $nodes[] = $node;
+        }
+        return $nodes[0];
     }
 
     /** @return list<XmlNode> */
@@ -313,7 +312,6 @@ class SimpleXMLElement implements Stringable, Countable, ArrayAccess, Iterator
         return count($this->nodes);
     }
 
-    /** @param mixed $offset */
     /** @param int|string $offset */
     public function offsetExists($offset): bool
     {
@@ -324,7 +322,6 @@ class SimpleXMLElement implements Stringable, Countable, ArrayAccess, Iterator
         return $first !== null && isset($first->attrs[(string) $offset]);
     }
 
-    /** @param mixed $offset */
     /** @param int|string $offset */
     public function offsetGet($offset): ?SimpleXMLElement
     {
@@ -339,12 +336,8 @@ class SimpleXMLElement implements Stringable, Countable, ArrayAccess, Iterator
     }
 
     /**
-     * @param mixed $offset
-     * @param mixed $value
-     */
-    /**
      * @param int|string|null $offset
-     * @param mixed $value
+     * @param string $value
      */
     public function offsetSet($offset, $value): void
     {
@@ -354,7 +347,6 @@ class SimpleXMLElement implements Stringable, Countable, ArrayAccess, Iterator
         }
     }
 
-    /** @param mixed $offset */
     /** @param int|string $offset */
     public function offsetUnset($offset): void
     {
@@ -774,7 +766,7 @@ class DOMNodeList implements Countable, IteratorAggregate, ArrayAccess
 
     /**
      * @param int|string|null $offset
-     * @param mixed $value
+     * @param DOMNode|null $value
      */
     public function offsetSet($offset, $value): void
     {

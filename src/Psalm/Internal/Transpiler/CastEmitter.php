@@ -854,7 +854,8 @@ final class CastEmitter
                 } elseif (($down = $this->downcastArm('v', $m, $to)) !== null) {
                     $arms[] = $from->mangle() . '::' . $m->variantName() . '(v) => ' . $down;
                 } else {
-                    $arms[] = $from->mangle() . '::' . $m->variantName() . '(v) => ' . $this->conv($this->conv('v', $m, RustType::mixed()), RustType::mixed(), $to);
+                    // a member the target union cannot hold: the narrowing is a type error at runtime
+                    $arms[] = $from->mangle() . '::' . $m->variantName() . '(_) => panic!(' . Names::rustStringLiteral('cannot narrow ' . $from->mangle() . '::' . $m->variantName() . ' into ' . $to->toRust()) . ')';
                 }
             }
             $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ' . $from->toRust() . ' { fn cast_to(self) -> ' . $to->toRust() . ' { match self { ' . implode(', ', $arms) . ' } } }');
@@ -875,11 +876,16 @@ final class CastEmitter
             $arms = [];
             foreach ($from->params as $m) {
                 if ($this->isUnit($m)) {
-                    if ($tk === RustType::BOOL) {
-                        $arms[] = $from->mangle() . '::' . $this->unitName($m) . ' => ' . ($this->unitName($m) === 'True' ? 'true' : 'false');
-                    } else {
-                        $arms[] = $from->mangle() . '::' . $this->unitName($m) . ' => ' . $this->conv('Mixed::Bool(' . ($this->unitName($m) === 'True' ? 'true' : 'false') . ')', RustType::mixed(), $to);
-                    }
+                    $truth = $this->unitName($m) === 'True';
+                    $lit = match ($tk) {
+                        RustType::BOOL => $truth ? 'true' : 'false',
+                        RustType::STR => $truth ? 'Str::from_static("1")' : 'Str::empty()',
+                        RustType::INT => $truth ? '1i64' : '0i64',
+                        RustType::FLOAT => $truth ? '1.0f64' : '0.0f64',
+                        RustType::ARRAY_KEY => $truth ? 'ArrayKey::Int(1)' : 'ArrayKey::Int(0)',
+                        default => null,
+                    };
+                    $arms[] = $from->mangle() . '::' . $this->unitName($m) . ' => ' . ($lit ?? $this->conv('Mixed::Bool(' . ($truth ? 'true' : 'false') . ')', RustType::mixed(), $to));
                     continue;
                 }
                 if ($m->toRust() === $to->toRust()) {
@@ -898,6 +904,16 @@ final class CastEmitter
             $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ' . $from->toRust() . ' { fn cast_to(self) -> ' . $to->toRust() . ' { match self { ' . implode(', ', $arms) . ' } } }');
             return;
         }
+        if ($tk === RustType::UNION && $fk === RustType::ARRAY_KEY && $this->casts->pickMember($to, RustType::int()) !== null && $this->casts->pickMember($to, RustType::str()) !== null) {
+            // int|string key into a union naming both kinds: split
+            $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ArrayKey { fn cast_to(self) -> ' . $to->toRust() . ' { match self { ArrayKey::Int(__i) => ' . $this->conv('__i', RustType::int(), $to) . ', ArrayKey::Str(__s) => ' . $this->conv('__s', RustType::str(), $to) . ' } } }');
+            return;
+        }
+        if ($tk === RustType::UNION && $fk === RustType::STR && $this->casts->pickMember($to, RustType::str()) === null && $this->casts->pickMember($to, RustType::sym()) !== null) {
+            // a string into a union holding an interned name
+            $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for Str { fn cast_to(self) -> ' . $to->toRust() . ' { ' . $this->conv($this->conv('self', RustType::str(), RustType::sym()), RustType::sym(), $to) . ' } }');
+            return;
+        }
         if ($tk === RustType::UNION) {
             $member = $this->casts->pickMember($to, $from);
             if ($member !== null) {
@@ -913,6 +929,11 @@ final class CastEmitter
                 // a class whose descendants map to several members (e.g. Atomic into TInt|TString)
                 $cls = $this->program->classOf($from);
                 $arms = [];
+                if ($cls !== null && !$cls->isLeaf() && ($down = $this->downcastArm('self', $from, $to)) !== null) {
+                    // a typed downcast attempt per union member below this class
+                    $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ' . $from->toRust() . ' { fn cast_to(self) -> ' . $to->toRust() . ' { ' . $down . ' } }');
+                    return;
+                }
                 if ($cls !== null && !$cls->isLeaf()) {
                     // through Mixed: one downcast attempt per union member instead of an arm per descendant
                     // (keeps the generated code small for classes with hundreds of subclasses)

@@ -663,6 +663,9 @@ trait ExprTrait
     private function arrayLiteralValue(Expr\Array_ $e, ?RustType $expected): Val
     {
         $target = $expected;
+        if ($target !== null && $target->kind === RustType::OPTION && in_array($target->inner()->kind, [RustType::LIST, RustType::MAP, RustType::TUPLE, RustType::SHAPE], true)) {
+            $target = $target->inner();
+        }
         if ($target !== null && $target->kind === RustType::OPTION) {
             $target = $target->inner();
         }
@@ -1169,6 +1172,11 @@ trait ExprTrait
         if ($sb->kind === RustType::UNION && $sa->kind !== RustType::UNION && $this->casts->pickMember($sb, $sa) !== null) {
             return $wrap($sb);
         }
+        if (($sa->kind === RustType::ARRAY_KEY && in_array($sb->kind, [RustType::INT, RustType::STR, RustType::SYM], true))
+            || ($sb->kind === RustType::ARRAY_KEY && in_array($sa->kind, [RustType::INT, RustType::STR, RustType::SYM], true))
+        ) {
+            return $wrap(RustType::arrayKey());
+        }
         if ($sa->kind === RustType::UNION && $sb->kind === RustType::UNION) {
             $joined = $this->program->unionOfRust([$sa, $sb]);
             if ($joined !== null) {
@@ -1358,6 +1366,19 @@ trait ExprTrait
             }
             $av = $this->rawValue($a);
             $at = $av->type;
+            if ($at->kind === RustType::GENERIC) {
+                // a generic against a literal: same runtime kind and same value
+                $lit_code = match ($lit_kind) {
+                    'bool' => 'php_rt::Truthy::truthy(&__g) == ' . strtolower($b->name->toString()),
+                    'str' => 'php_rt::ToStr::to_php_str(&__g).as_bytes() == ' . Names::rustStringLiteral($b->value) . '.as_bytes()',
+                    'int' => 'php_rt::ToStr::to_php_str(&__g).as_bytes() == ' . Names::rustStringLiteral((string) $b->value) . '.as_bytes()',
+                    default => null,
+                };
+                $kind = match ($lit_kind) { 'bool' => 'Bool', 'str' => 'Str', 'int' => 'Int', default => 'Float' };
+                if ($lit_code !== null) {
+                    return '{ let __g = &' . $av->code . '; php_rt::PhpKind::php_kind(__g) == php_rt::Kind::' . $kind . ' && ' . $lit_code . ' }';
+                }
+            }
             $u = $at->kind === RustType::OPTION ? $at->inner() : $at;
             if ($u->kind !== RustType::UNION) {
                 continue;
@@ -1907,7 +1928,12 @@ trait ExprTrait
         }
         // dynamic class name
         $cls = $this->expr($e->class);
-        $name = $cls->type->kind === RustType::STR ? $cls->code : ($this->casts->classNameOf($cls->code, $cls->type) ?? 'class_name_of(&' . $this->casts->convert($cls->code, $cls->type, RustType::mixed()) . ')');
+        $name = match (true) {
+            $cls->type->kind === RustType::STR => $cls->code,
+            $cls->type->kind === RustType::SYM => 'php_rt::ToStr::to_php_str(&' . $cls->code . ')',
+            $cls->type->kind === RustType::OPTION && in_array($cls->type->inner()->kind, [RustType::STR, RustType::SYM], true) => 'php_rt::ToStr::to_php_str(&' . $cls->code . '.expect("null class name"))',
+            default => $this->casts->classNameOf($cls->code, $cls->type) ?? 'class_name_of(&' . $this->casts->convert($cls->code, $cls->type, RustType::mixed()) . ')',
+        };
         return new Val($this->casts->instanceOfName($v->code, $v->type, $name), RustType::bool());
     }
 

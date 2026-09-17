@@ -9,7 +9,8 @@
 function __rt_tokenize(string $code): array {}
 
 /** @return mixed */
-function __rt_xml_parse(string $xml) {}
+/** @return list<array{string, string, bool, array<string, string>, int}>|null name, text, is text node, attributes, parent index (-1: root) */
+function __rt_xml_parse(string $xml): ?array {}
 
 function __rt_xml_escape(string $text, bool $attribute = false): string {}
 
