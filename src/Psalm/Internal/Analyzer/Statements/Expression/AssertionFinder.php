@@ -462,7 +462,7 @@ final class AssertionFinder
                 throw new UnexpectedValueException('$count_equality_position value');
             }
 
-            /** @var PhpParser\Node\Expr\FuncCall $count_expr */
+            assert($count_expr instanceof PhpParser\Node\Expr\FuncCall);
             $var_name = ExpressionIdentifier::getExtendedVarId(
                 $count_expr->getArgs()[0]->value,
                 $this_class_name,
@@ -688,7 +688,7 @@ final class AssertionFinder
                 throw new UnexpectedValueException('$count_inequality_position value');
             }
 
-            /** @var PhpParser\Node\Expr\FuncCall $count_expr */
+            assert($count_expr instanceof PhpParser\Node\Expr\FuncCall);
             $var_name = ExpressionIdentifier::getExtendedVarId(
                 $count_expr->getArgs()[0]->value,
                 $this_class_name,
@@ -3928,7 +3928,7 @@ final class AssertionFinder
                 throw new UnexpectedValueException('$count_inequality_position value');
             }
 
-            /** @var PhpParser\Node\Expr\FuncCall $count_expr */
+            assert($count_expr instanceof PhpParser\Node\Expr\FuncCall);
             $var_name = ExpressionIdentifier::getExtendedVarId(
                 $count_expr->getArgs()[0]->value,
                 $this_class_name,
@@ -4011,7 +4011,7 @@ final class AssertionFinder
                 throw new UnexpectedValueException('$count_equality_position value');
             }
 
-            /** @var PhpParser\Node\Expr\FuncCall $count_expr */
+            assert($count_expr instanceof PhpParser\Node\Expr\FuncCall);
             $var_name = ExpressionIdentifier::getExtendedVarId(
                 $count_expr->getArgs()[0]->value,
                 $this_class_name,
@@ -4036,7 +4036,7 @@ final class AssertionFinder
                 throw new UnexpectedValueException('$count_inequality_position value');
             }
 
-            /** @var PhpParser\Node\Expr\FuncCall $count_expr */
+            assert($count_expr instanceof PhpParser\Node\Expr\FuncCall);
             $var_name = ExpressionIdentifier::getExtendedVarId(
                 $count_expr->getArgs()[0]->value,
                 $this_class_name,
