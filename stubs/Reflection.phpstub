@@ -1,5 +1,10 @@
 <?php
 
+interface Reflector extends Stringable
+{
+    public function __toString(): string;
+}
+
 /**
  * @template-covariant T as object
  *
