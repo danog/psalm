@@ -1073,9 +1073,21 @@ function case_variant_isset(): string
     return (string) count_stmts($tree) . ':' . (string) count_stmts(new HEcho('c'));
 }
 
+function case_prop_empty_unset(): string
+{
+    $c = new MutCtx();
+    $c->ids = [];
+    fill_ctx($c);
+    $ids = $c->ids;
+    $copy = $ids;
+    unset($copy['a']);
+    return count($ids) . ':' . count($copy);
+}
+
 function run_all(): string
 {
-    return check('variant_isset', case_variant_isset(), '4:1')
+    return check('prop_empty_unset', case_prop_empty_unset(), '1:0')
+        . check('variant_isset', case_variant_isset(), '4:1')
         . check('arg_no_downcast', case_arg_no_downcast(), 'litother')
         . check('prop_empty_merge', case_prop_empty_merge(), '1:1')
         . check('version_regex', case_version_regex(), 'ab-')

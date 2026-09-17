@@ -1060,7 +1060,10 @@ final class BodyEmitter
                 fwrite(STDERR, '[retype] ' . $this->type_context . ' candidates: ' . implode(', ', array_map(fn($n, $ts) => '$' . $n . '=' . implode('|', array_map(fn($t) => $t->toRust(), $ts)) . (isset($this->complex_writes[$n]) ? ' (complex)' : ''), array_keys($this->mixed_assigns), $this->mixed_assigns)) . "\n");
             }
             foreach ($this->mixed_assigns as $name => $types) {
-                if (isset($this->retyped[$name]) || isset($this->complex_writes[$name]) || isset($params[$name])
+                // a local already retyped to an EMPTY container stays a candidate: its source may itself have
+                // been retyped in this pass (`$b = $a;` where `$a` only became typed now)
+                if ((isset($this->retyped[$name]) && !$this->retyped[$name]->isEmptyIterable())
+                    || isset($this->complex_writes[$name]) || isset($params[$name])
                     || !empty($this->byref[$name]) || !empty($this->cells[$name]) || !empty($this->refvars[$name]) || !empty($this->globals[$name])
                 ) {
                     continue;
@@ -1169,6 +1172,11 @@ final class BodyEmitter
                 }
             } elseif ($n instanceof Node\Stmt\Unset_) {
                 foreach ($n->vars as $v) {
+                    // `unset($x[$k])` removes an element; it does not rebind the local, so the local's
+                    // type still follows from what is assigned to it
+                    if ($v instanceof Expr\ArrayDimFetch && $v->var instanceof Expr\Variable && is_string($v->var->name)) {
+                        continue;
+                    }
                     $mark($root($v));
                 }
             }
