@@ -26,7 +26,6 @@ final class ClassConstantStorage
     /** @psalm-suppress MutableDependency Mutable by design */
     use CustomMetadataTrait;
     use ImmutableNonCloneableTrait;
-    use UnserializeMemoryUsageSuppressionTrait;
 
     /**
      * @param ClassLikeAnalyzer::VISIBILITY_* $visibility

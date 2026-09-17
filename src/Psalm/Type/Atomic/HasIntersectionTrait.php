@@ -20,6 +20,22 @@ use function implode;
  */
 trait HasIntersectionTrait
 {
+    /** The `&Other` suffix of this type's id (see GenericTrait::getId). */
+    protected function getIntersectionId(bool $exact): string
+    {
+        if (!$this->extra_types) {
+            return '';
+        }
+
+        return '&' . implode(
+            '&',
+            array_map(
+                static fn(Atomic $type): string => $type->getId($exact, true),
+                $this->extra_types,
+            ),
+        );
+    }
+
     /**
      * @var array<string, TNamedObject|TTemplateParam|TIterable|TObjectWithProperties|TCallableObject>
      */

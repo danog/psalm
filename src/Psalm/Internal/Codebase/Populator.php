@@ -438,6 +438,7 @@ final class Populator
         }
     }
 
+    /** @param array<string, bool> $dependent_classlikes */
     private function populateDataFromTrait(
         ClassLikeStorage $storage,
         ClassLikeStorageProvider $storage_provider,
@@ -506,6 +507,7 @@ final class Populator
         return new Union($extended_types);
     }
 
+    /** @param array<string, bool> $dependent_classlikes */
     private function populateDataFromParentClass(
         ClassLikeStorage $storage,
         ClassLikeStorageProvider $storage_provider,
@@ -594,6 +596,7 @@ final class Populator
         $parent_storage->has_children = true;
     }
 
+    /** @param array<string, bool> $dependent_classlikes */
     private function populateInterfaceData(
         ClassLikeStorage $storage,
         ClassLikeStorage $interface_storage,
@@ -693,6 +696,7 @@ final class Populator
         }
     }
 
+    /** @param array<string, bool> $dependent_classlikes */
     private function populateInterfaceDataFromParentInterface(
         ClassLikeStorage $storage,
         ClassLikeStorageProvider $storage_provider,
@@ -736,6 +740,7 @@ final class Populator
         }
     }
 
+    /** @param array<string, bool> $dependent_classlikes */
     private function populateDataFromImplementedInterface(
         ClassLikeStorage $storage,
         ClassLikeStorageProvider $storage_provider,

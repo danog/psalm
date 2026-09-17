@@ -1410,7 +1410,6 @@ final class PreloaderList {
         \Psalm\Storage\MethodStorage::class,
         \Psalm\Storage\Possibilities::class,
         \Psalm\Storage\PropertyStorage::class,
-        \Psalm\Storage\UnserializeMemoryUsageSuppressionTrait::class,
         \Psalm\Type::class,
         \Psalm\Type\Atomic::class,
         \Psalm\Type\Atomic\CallableTrait::class,

@@ -18,7 +18,6 @@ use function str_replace;
  */
 final class Possibilities
 {
-    use UnserializeMemoryUsageSuppressionTrait;
 
     /**
      * @param list<Assertion> $rule

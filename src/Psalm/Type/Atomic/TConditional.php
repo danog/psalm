@@ -8,7 +8,6 @@ use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
 use Psalm\Type\MutableTypeVisitor;
@@ -25,7 +24,6 @@ use function assert;
  */
 final class TConditional extends Atomic
 {
-    use UnserializeMemoryUsageSuppressionTrait;
     public function __construct(
         public string $param_name,
         public string $defining_class,

@@ -16,7 +16,6 @@ use Psalm\Internal\Type\TypeAlias;
 use Psalm\Internal\Type\TypeAlias\LinkableTypeAlias;
 use Psalm\Internal\TypeVisitor\ClasslikeReplacer;
 use Psalm\Storage\Mutations;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TArrayKey;
@@ -86,7 +85,6 @@ use function strtolower;
  */
 abstract class Atomic implements TypeNode, Stringable
 {
-    use UnserializeMemoryUsageSuppressionTrait;
 
     /**
      * @psalm-mutation-free

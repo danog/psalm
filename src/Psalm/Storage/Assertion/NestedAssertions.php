@@ -6,7 +6,6 @@ namespace Psalm\Storage\Assertion;
 
 use Override;
 use Psalm\Storage\Assertion;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 use function array_map;
 use function implode;
@@ -17,7 +16,6 @@ use function implode;
  */
 final class NestedAssertions extends Assertion
 {
-    use UnserializeMemoryUsageSuppressionTrait;
     /** @param array<string, list<list<Assertion>>> $assertions */
     public function __construct(public readonly array $assertions)
     {

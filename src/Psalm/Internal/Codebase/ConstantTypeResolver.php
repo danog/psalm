@@ -58,6 +58,7 @@ use function spl_object_id;
  */
 final class ConstantTypeResolver
 {
+    /** @param array<string, true> $visited_constant_ids */
     public static function resolve(
         ClassLikes $classlikes,
         UnresolvedConstantComponent $c,

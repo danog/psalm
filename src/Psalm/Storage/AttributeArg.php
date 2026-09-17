@@ -15,7 +15,6 @@ use Psalm\Type\Union;
 final class AttributeArg
 {
     use ImmutableNonCloneableTrait;
-    use UnserializeMemoryUsageSuppressionTrait;
 
     /**
      * @psalm-mutation-free

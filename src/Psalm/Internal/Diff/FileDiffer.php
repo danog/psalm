@@ -39,7 +39,7 @@ final class FileDiffer
         $n = count($a);
         $m = count($b);
         $max = $n + $m;
-        $v = [1 => 0];
+        $v = array_fill(1, 1, 0);
         $trace = [];
         for ($d = 0; $d <= $max; ++$d) {
             $trace[] = $v;

@@ -10,7 +10,6 @@ use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
@@ -29,7 +28,6 @@ use function assert;
  */
 final class TClassStringMap extends Atomic
 {
-    use UnserializeMemoryUsageSuppressionTrait;
     /**
      * Constructs a new instance of a list
      */

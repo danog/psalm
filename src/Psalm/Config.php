@@ -1532,6 +1532,7 @@ final class Config
         $this->issue_handlers[$issue_key]->setCustomLevels($config, $this->base_dir);
     }
 
+    /** @param list<FileFilterConfig> $config */
     public function safeSetAdvancedErrorLevel(
         string $issue_key,
         array $config,

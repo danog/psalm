@@ -232,7 +232,7 @@ final class Scanner
     }
 
     /**
-     * @param  array<string, mixed> $phantom_classes
+     * @param array<string, bool> $phantom_classes
      */
     public function queueClassLikeForScanning(
         string $fq_classlike_name,

@@ -484,3 +484,86 @@ pub fn preg_quote(s: &Str, delim: Option<&Str>) -> Str {
     }
     Str::from_vec(out)
 }
+
+// ---------------------------------------------------------------- typed preg_match_all views
+
+fn str_of(m: &Mixed) -> Str {
+    match m {
+        Mixed::Str(s) => s.clone(),
+        Mixed::Null => Str::empty(),
+        other => crate::traits::ToStr::to_php_str(other),
+    }
+}
+
+fn offset_of(m: &Mixed) -> (Str, i64) {
+    match m {
+        Mixed::Arr(pair) => (
+            pair.get(&ArrayKey::Int(0)).map(str_of).unwrap_or_else(Str::empty),
+            match pair.get(&ArrayKey::Int(1)) {
+                Some(Mixed::Int(i)) => *i,
+                _ => -1,
+            },
+        ),
+        other => (str_of(other), -1),
+    }
+}
+
+/// PREG_PATTERN_ORDER without offsets: one list of captures per group (index and name).
+pub fn preg_match_all_typed(pattern: &Str, subject: &Str, flags: i64) -> Result<(i64, Map<ArrayKey, List<Str>>), RtError> {
+    let (n, m) = preg_match_all(pattern, subject, flags & !256)?;
+    let mut out: Map<ArrayKey, List<Str>> = Map::new();
+    for (k, col) in m.iter() {
+        let items: Vec<Str> = match col {
+            Mixed::Arr(a) => a.iter().map(|(_, v)| str_of(v)).collect(),
+            _ => Vec::new(),
+        };
+        out.insert(k.clone(), List::from_vec(items));
+    }
+    Ok((n, out))
+}
+
+/// PREG_PATTERN_ORDER | PREG_OFFSET_CAPTURE: one list of (capture, offset) per group.
+pub fn preg_match_all_offsets(pattern: &Str, subject: &Str, flags: i64) -> Result<(i64, Map<ArrayKey, List<(Str, i64)>>), RtError> {
+    let (n, m) = preg_match_all(pattern, subject, flags | 256)?;
+    let mut out: Map<ArrayKey, List<(Str, i64)>> = Map::new();
+    for (k, col) in m.iter() {
+        let items: Vec<(Str, i64)> = match col {
+            Mixed::Arr(a) => a.iter().map(|(_, v)| offset_of(v)).collect(),
+            _ => Vec::new(),
+        };
+        out.insert(k.clone(), List::from_vec(items));
+    }
+    Ok((n, out))
+}
+
+/// PREG_SET_ORDER without offsets: one map of captures per match.
+pub fn preg_match_all_sets(pattern: &Str, subject: &Str, flags: i64) -> Result<(i64, List<Map<ArrayKey, Str>>), RtError> {
+    let (n, m) = preg_match_all(pattern, subject, (flags | 2) & !256)?;
+    let mut out: Vec<Map<ArrayKey, Str>> = Vec::new();
+    for (_, set) in m.iter() {
+        let mut row: Map<ArrayKey, Str> = Map::new();
+        if let Mixed::Arr(a) = set {
+            for (k, v) in a.iter() {
+                row.insert(k.clone(), str_of(v));
+            }
+        }
+        out.push(row);
+    }
+    Ok((n, List::from_vec(out)))
+}
+
+/// PREG_SET_ORDER | PREG_OFFSET_CAPTURE: one map of (capture, offset) per match.
+pub fn preg_match_all_sets_offsets(pattern: &Str, subject: &Str, flags: i64) -> Result<(i64, List<Map<ArrayKey, (Str, i64)>>), RtError> {
+    let (n, m) = preg_match_all(pattern, subject, flags | 2 | 256)?;
+    let mut out: Vec<Map<ArrayKey, (Str, i64)>> = Vec::new();
+    for (_, set) in m.iter() {
+        let mut row: Map<ArrayKey, (Str, i64)> = Map::new();
+        if let Mixed::Arr(a) = set {
+            for (k, v) in a.iter() {
+                row.insert(k.clone(), offset_of(v));
+            }
+        }
+        out.push(row);
+    }
+    Ok((n, List::from_vec(out)))
+}

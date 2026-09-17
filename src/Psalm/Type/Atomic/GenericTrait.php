@@ -28,6 +28,9 @@ use function substr;
  */
 trait GenericTrait
 {
+    /** The `&Other` suffix of an intersection type's id ('' for types without intersections). */
+    abstract protected function getIntersectionId(bool $exact): string;
+
     /**
      * @param TTypeParams $type_params
      * @return static
@@ -50,23 +53,7 @@ trait GenericTrait
             $s .= $type_param->getId($exact) . ', ';
         }
 
-        $extra_types = '';
-
-        if ($this instanceof TNamedObject) {
-            if ($this->extra_types) {
-                $extra_types = '&' . implode(
-                    '&',
-                    array_map(
-                        static fn(Atomic $type): string => $type->getId($exact, true),
-                        $this->extra_types,
-                    ),
-                );
-            }
-
-            if ($this->is_static) {
-                $extra_types .= '&static';
-            }
-        }
+        $extra_types = $this->getIntersectionId($exact);
 
         return $this->value . '<' . substr($s, 0, -2) . '>' . $extra_types;
     }

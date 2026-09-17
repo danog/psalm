@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Type\Atomic;
 
 use Override;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type\Atomic;
 
 /**
@@ -17,7 +16,6 @@ use Psalm\Type\Atomic;
  */
 final class TNever extends Atomic
 {
-    use UnserializeMemoryUsageSuppressionTrait;
     /**
      * @psalm-pure
      */

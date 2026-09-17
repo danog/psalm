@@ -7,7 +7,6 @@ namespace Psalm\Type\Atomic;
 use Override;
 use Psalm\Codebase;
 use Psalm\Storage\EnumCaseStorage;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
 
@@ -26,7 +25,6 @@ use Psalm\Type\TypeNode;
  */
 final class TValueOf extends Atomic
 {
-    use UnserializeMemoryUsageSuppressionTrait;
     public function __construct(public Union $type, bool $from_docblock = false)
     {
         parent::__construct($from_docblock);

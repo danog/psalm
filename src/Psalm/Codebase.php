@@ -2659,7 +2659,7 @@ final class Codebase
     }
 
     /**
-     * @param array<string, mixed> $phantom_classes
+     * @param array<string, bool> $phantom_classes
      */
     public function queueClassLikeForScanning(
         string $fq_classlike_name,

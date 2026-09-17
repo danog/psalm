@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Type\Atomic;
 
 use Override;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type;
 use Psalm\Type\Atomic;
 
@@ -17,7 +16,6 @@ use Psalm\Type\Atomic;
  */
 final class TClassConstant extends Atomic
 {
-    use UnserializeMemoryUsageSuppressionTrait;
     public function __construct(
         public string $fq_classlike_name,
         public string $const_name,

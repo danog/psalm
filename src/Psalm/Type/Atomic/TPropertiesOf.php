@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Type\Atomic;
 
 use Override;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type\Atomic;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeVisitor;
@@ -23,7 +22,6 @@ use function assert;
  */
 final class TPropertiesOf extends Atomic
 {
-    use UnserializeMemoryUsageSuppressionTrait;
     // These should match the values of
     // `Psalm\Internal\Analyzer\ClassLikeAnalyzer::VISIBILITY_*`, as they are
     // used to compared against properties visibility.

@@ -6,7 +6,6 @@ namespace Psalm\Storage\Assertion;
 
 use Override;
 use Psalm\Storage\Assertion;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * @psalm-immutable
@@ -14,7 +13,6 @@ use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
  */
 final class DoesNotHaveAtLeastCount extends Assertion
 {
-    use UnserializeMemoryUsageSuppressionTrait;
     /** @param positive-int $count */
     public function __construct(public readonly int $count)
     {

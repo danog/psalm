@@ -8,7 +8,6 @@ use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Type\TemplateResult;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
@@ -29,12 +28,18 @@ use Psalm\Type\TypeNode;
  */
 final class TIterable extends Atomic
 {
-    use UnserializeMemoryUsageSuppressionTrait;
     use HasIntersectionTrait;
     /**
      * @use GenericTrait<array{Union, Union}>
      */
     use GenericTrait;
+
+    #[Override]
+    protected function getIntersectionId(bool $exact): string
+    {
+        // the id of an iterable/array never carries intersections (as before: only named objects did)
+        return '';
+    }
 
     /**
      * @var array{Union, Union}
