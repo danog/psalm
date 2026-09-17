@@ -946,7 +946,8 @@ final class TypeParser
                 if ($atomic_type instanceof TNamedObject) {
                     if (defined($atomic_type->value)) {
                         /** @var scalar|null|list<scalar|null>|array<string, scalar|null> */
-                        $constant_value = constant($atomic_type->value);
+                        // a builtin constant of the analyzer's runtime (its own table; no dynamic constant lookup)
+                        $constant_value = get_defined_constants()[$atomic_type->value] ?? null;
 
                         if (!is_int($constant_value)) {
                             throw new TypeParseTreeException(
