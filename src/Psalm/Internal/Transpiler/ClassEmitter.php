@@ -49,7 +49,7 @@ final class ClassEmitter
             foreach ($cls->fields as $f) {
                 $st = $f->storageType();
                 if (($ck = $this->cellKind($cls, $f)) !== '') {
-                    $st = ($ck === 'Cell' ? 'std::cell::Cell' : 'RefCell') . '<' . $st . '>';
+                    $st = ($ck === 'Cell' ? 'php_rt::support::SyncCell' : 'RefCell') . '<' . $st . '>';
                 }
                 $w->line('pub ' . $f->rustName() . ': ' . $st . ',');
             }
@@ -373,7 +373,7 @@ final class ClassEmitter
         foreach ($cls->fields as $f) {
             $init = $this->fieldInit($f, $body);
             if (($ck = $this->cellKind($cls, $f)) !== '') {
-                $init = ($ck === 'Cell' ? 'std::cell::Cell' : 'RefCell') . '::new(' . $init . ')';
+                $init = ($ck === 'Cell' ? 'php_rt::support::SyncCell' : 'RefCell') . '::new(' . $init . ')';
             }
             $inits[] = $f->rustName() . ': ' . $init . ',';
         }

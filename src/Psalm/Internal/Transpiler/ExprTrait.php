@@ -2310,6 +2310,9 @@ trait ExprTrait
             $child->predeclared[$name] = true;
         }
         $uses_this = !($e instanceof Closure && $e->static) && $this->this_type !== null;
+        if ($e instanceof Closure && $e->static) {
+            $child->this_type = null; // no `$this` inside (nor inside closures nested in it)
+        }
         if ($uses_this) {
             $captures[] = 'let this = ' . $this->this_expr . '.clone();';
         }

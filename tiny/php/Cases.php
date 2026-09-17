@@ -836,6 +836,7 @@ function run_all(): string
         . check('element_retype', case_element_retype(), 'A=1x,B=2y|ab')
         . check('narrow_reassign', case_narrow_reassign(), 'p,ri,ri,-,rr')
         . check('closure_param', case_closure_param(), 'a:1|none|x:1')
+        . check('generic_binding', case_generic_binding(), 'ok')
         . check('array_to_xml', case_array_to_xml(), "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item/>\n</report>\n|<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item>\n    <severity>error</severity>\n    <line_from>4</line_from>\n    <taint_trace/>\n    <refs>\n      <label>a &amp; b</label>\n    </refs>\n    <refs>\n      <label>c</label>\n    </refs>\n  </item>\n</report>\n");
 }
 
@@ -1369,4 +1370,37 @@ final class MsgPool
             }
         }
     }
+}
+
+final class GBind
+{
+    /**
+     * @template T
+     * @param T $expected
+     * @param T $actual
+     */
+    public static function same($expected, $actual): bool
+    {
+        return $expected === $actual;
+    }
+}
+
+/** @return array<string, array<string, int>> */
+function nested_counts(): array
+{
+    return ['a' => ['x' => 1]];
+}
+
+function maybe_name(int $n): ?string
+{
+    return $n > 0 ? 'n' : null;
+}
+
+function case_generic_binding(): string
+{
+    $ok = GBind::same(['a' => ['x' => 1]], nested_counts())
+        && !GBind::same([], nested_counts())
+        && GBind::same('n', maybe_name(1))
+        && GBind::same([['T', 'of', 'string', false]], [['T', 'of', 'string', false]]);
+    return $ok ? 'ok' : 'bad';
 }

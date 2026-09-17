@@ -186,7 +186,7 @@ trait StmtTrait
         } else {
             // a discarded value: annotated with its type for readability, except a Mixed one (no Mixed text
             // for a value nothing reads)
-            $w->line($v->type->containsMixed() ? 'let _ = ' . $v->code . ';' : 'let _: ' . $v->type->toRust() . ' = ' . $v->code . ';');
+            $w->line($v->type->containsMixed() || $v->type->hasGeneric() ? 'let _ = ' . $v->code . ';' : 'let _: ' . $v->type->toRust() . ' = ' . $v->code . ';');
         }
     }
 

@@ -117,6 +117,24 @@ trait CallTrait
         }
         /** @var array{string, int}|null hoisted list of a spread argument and the parameter index it starts at */
         $unpacked = null;
+        // a bare generic parameter bound by several arguments (`assertSame(T $expected, T $actual)`): the first
+        // non-literal argument decides the type; literals are built in it and other arguments convert to it
+        $bound = [];
+        foreach ($params as $bi => $bp) {
+            $bt = $param_types[$bi] ?? null;
+            $ba = $positional[$bi] ?? $named[$bp->name] ?? null;
+            if ($bt === null || $bt->kind !== RustType::GENERIC || $ba === null || $ba->unpack || $bp->by_ref || isset($bound[$bt->toRust()])) {
+                continue;
+            }
+            $v = $ba->value;
+            if ($v instanceof Expr\Array_ || $v instanceof Node\Scalar || $v instanceof Expr\ConstFetch) {
+                continue;
+            }
+            $vt = $this->expr($v)->type;
+            if (!$vt->containsMixed() && !$vt->hasGeneric() && $vt->kind !== RustType::NEVER && $vt->kind !== RustType::UNIT) {
+                $bound[$bt->toRust()] = $vt;
+            }
+        }
         foreach ($params as $i => $param) {
             $t = $param_types[$i] ?? RustType::mixed();
             if ($param->is_variadic) {
@@ -168,6 +186,10 @@ trait CallTrait
             if (isset($borrow_params[$i])) {
 
                 $out[] = $this->borrowArg($arg->value, $t);
+                continue;
+            }
+            if ($t->kind === RustType::GENERIC && isset($bound[$t->toRust()])) {
+                $out[] = $this->exprTo($arg->value, $bound[$t->toRust()]);
                 continue;
             }
             $out[] = $this->exprTo($arg->value, $t);
