@@ -559,8 +559,7 @@ final class TypeParser
             $potential_values = [...$new_values, ...$potential_values];
         }
 
-        array_unshift($potential_values, 0);
-        $potential_values = array_unique($potential_values);
+        $potential_values = array_unique([0, ...$potential_values]);
 
         return array_map(
             static fn($int): TLiteralInt => new TLiteralInt($int, $from_docblock),

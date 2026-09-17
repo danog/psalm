@@ -264,14 +264,13 @@ final class ArrayFetchAnalyzer
                 && ($stmt->var instanceof PhpParser\Node\Expr\ClassConstFetch
                     || $stmt->var instanceof PhpParser\Node\Expr\ConstFetch)
             ) {
-                /**
-                 * @var TArray|TKeyedArray
-                 */
                 $array_type = $stmt_var_type->getArray();
 
                 if ($array_type instanceof TArray) {
                     $const_array_key_type = $array_type->type_params[0];
                 } else {
+                    // a constant array is a list, a keyed array or an array<K, V>, never a class-string map
+                    assert($array_type instanceof TKeyedArray);
                     $const_array_key_type = $array_type->getGenericKeyType();
                 }
 

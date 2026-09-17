@@ -138,13 +138,10 @@ final class CliUtils
 
         $autoloaders = [];
         foreach ($autoload_files as $file) {
+            // the compiled analyzer cannot run the project's autoloader (it is not part of the program): the
+            // autoload files are only located, never loaded
             $autoloader = ErrorHandler::runWithExceptionsSuppressed(static function () use ($file): ClassLoader|bool|int {
-                /**
-                 * @psalm-suppress UnresolvableInclude
-                 * @var ClassLoader|bool|int $result
-                 */
-                $result = require_once $file;
-                return $result;
+                return file_exists($file);
             });
 
             if ($autoloader instanceof ClassLoader
@@ -153,15 +150,8 @@ final class CliUtils
             }
         }
 
-        if (!$autoloaders && !$in_phar) {
-            if (!$autoload_files) {
-                fwrite(STDERR, 'Failed to find a valid Composer autoloader' . "\n");
-            } else {
-                fwrite(
-                    STDERR,
-                    'Failed to find a valid Composer autoloader in ' . implode(', ', $autoload_files) . "\n",
-                );
-            }
+        if (!$autoloaders && !$in_phar && !$autoload_files) {
+            fwrite(STDERR, 'Failed to find a valid Composer autoloader' . "\n");
 
             fwrite(
                 STDERR,
