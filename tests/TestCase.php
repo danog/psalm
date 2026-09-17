@@ -224,25 +224,45 @@ class TestCase extends BaseTestCase
         self::assertTrue($res, $message);
     }
 
+    /**
+     * @template TKey of array-key
+     * @template TValue
+     * @param array<TKey, TValue> $array
+     */
     public static function assertArrayKeysAreStrings(array $array, string $message = ''): void
     {
         $validKeys = array_filter($array, is_string(...), ARRAY_FILTER_USE_KEY);
         self::assertTrue(count($array) === count($validKeys), $message);
     }
 
+    /**
+     * @template TKey of array-key
+     * @template TValue
+     * @param array<TKey, TValue> $array
+     */
     public static function assertArrayKeysAreZeroOrString(array $array, string $message = ''): void
     {
-        $isZeroOrString = /** @param mixed $key */ static fn($key): bool => $key === 0 || is_string($key);
+        $isZeroOrString = /** @param array-key $key */ static fn($key): bool => $key === 0 || is_string($key);
         $validKeys = array_filter($array, $isZeroOrString, ARRAY_FILTER_USE_KEY);
         self::assertTrue(count($array) === count($validKeys), $message);
     }
 
+    /**
+     * @template TKey of array-key
+     * @template TValue
+     * @param array<TKey, TValue> $array
+     */
     public static function assertArrayValuesAreArrays(array $array, string $message = ''): void
     {
         $validValues = array_filter($array, is_array(...));
         self::assertTrue(count($array) === count($validValues), $message);
     }
 
+    /**
+     * @template TKey of array-key
+     * @template TValue
+     * @param array<TKey, TValue> $array
+     */
     public static function assertArrayValuesAreStrings(array $array, string $message = ''): void
     {
         $validValues = array_filter($array, is_string(...));

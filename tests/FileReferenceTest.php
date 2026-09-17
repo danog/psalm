@@ -155,21 +155,12 @@ final class FileReferenceTest extends TestCase
 
         $graph = $this->project_analyzer->getCodebase()->code_use_graph;
 
-        /**
-         * @psalm-suppress MixedAssignment
-         * @psalm-pure
-         */
-        $ksort_recursive = function (array &$arr) use (&$ksort_recursive): void {
-            ksort($arr);
-            foreach ($arr as &$value) {
-                if (is_array($value)) {
-                    $ksort_recursive($value);
-                }
-            }
-        };
-
         $all = $graph->getAllReferences();
-        $ksort_recursive($all);
+        ksort($all);
+        foreach ($all as &$value) {
+            ksort($value);
+        }
+        unset($value);
         $this->assertSame($expected_references, $all);
     }
 

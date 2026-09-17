@@ -124,6 +124,7 @@ final class MethodGetCompletionItemsForClassishThingTest extends TestCase
 
         $actual_labels = $this->getCompletionLabels($content, 'B\A', $gap);
 
+        /** @var array{'->': list<string>, '::': list<string>} $expected_labels */
         $expected_labels = [
             '->' => [
                 'magicObjProp1',
@@ -198,6 +199,7 @@ final class MethodGetCompletionItemsForClassishThingTest extends TestCase
 
         $actual_labels = $this->getCompletionLabels($content, 'B\A', $gap);
 
+        /** @var array{'->': list<string>, '::': list<string>} $expected_labels */
         $expected_labels = [
             '->' => [
                 'magicObjProp1',
@@ -279,6 +281,7 @@ final class MethodGetCompletionItemsForClassishThingTest extends TestCase
 
         $actual_labels = $this->getCompletionLabels($content, 'B\A', $gap);
 
+        /** @var array{'->': list<string>, '::': list<string>} $expected_labels */
         $expected_labels = [
             '->' => [
                 'magicObjProp1',
@@ -360,6 +363,7 @@ final class MethodGetCompletionItemsForClassishThingTest extends TestCase
 
         $actual_labels = $this->getCompletionLabels($content, 'B\A', $gap);
 
+        /** @var array{'->': list<string>, '::': list<string>} $expected_labels */
         $expected_labels = [
             '->' => [
                 'magicObjProp1',
@@ -438,6 +442,7 @@ final class MethodGetCompletionItemsForClassishThingTest extends TestCase
 
         $actual_labels = $this->getCompletionLabels($content, 'B\A', $gap);
 
+        /** @var array{'->': list<string>, '::': list<string>} $expected_labels */
         $expected_labels = [
             '->' => [
                 'magicObjProp1',
@@ -490,6 +495,7 @@ final class MethodGetCompletionItemsForClassishThingTest extends TestCase
 
         $actual_labels = $this->getCompletionLabels($content, 'B\A', $gap);
 
+        /** @var array{'->': list<string>, '::': list<string>} $expected_labels */
         $expected_labels = [
             '->' => [
                 'publicObjMethod',
@@ -544,6 +550,7 @@ final class MethodGetCompletionItemsForClassishThingTest extends TestCase
 
         $actual_labels = $this->getCompletionLabels($content, 'B\A', $gap);
 
+        /** @var array{'->': list<string>, '::': list<string>} $expected_labels */
         $expected_labels = [
             '->' => [
                 'magicObjProp1',
@@ -579,6 +586,7 @@ final class MethodGetCompletionItemsForClassishThingTest extends TestCase
 
         $actual_labels = $this->getCompletionLabels($content, 'B\A', '->');
 
+        /** @var array{'->': list<string>, '::': list<string>} $expected_labels */
         $expected_labels = [
             'myObjProp',
         ];
