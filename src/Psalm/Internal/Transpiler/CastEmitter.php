@@ -204,7 +204,7 @@ final class CastEmitter
                     if ($oc->isSubclassOf($mc)) {
                         // a member below the target: upcast
                         $extra .= $name . '::' . $o->variantName() . '(v) => ' . $this->conv('v', $o, $m) . ', ';
-                    } elseif (!$mc->isLeaf() && $this->openHandle($mc)) {
+                    } elseif (!$mc->isLeaf() && $this->openHandle($mc) && $this->casts->mixed_allowed) {
                         // unrelated class members are carried through the target's escape variant
                         $extra .= $name . '::' . $o->variantName() . '(v) => ' . $this->conv($this->conv('v', $o, RustType::mixed()), RustType::mixed(), $m) . ', ';
                     } elseif (!$oc->isLeaf()) {
@@ -1131,7 +1131,9 @@ final class CastEmitter
                         RustType::ARRAY_KEY => $truth ? 'ArrayKey::Int(1)' : 'ArrayKey::Int(0)',
                         default => null,
                     };
-                    $arms[] = $from->mangle() . '::' . $this->unitName($m) . ' => ' . ($lit ?? $this->conv('Mixed::Bool(' . ($truth ? 'true' : 'false') . ')', RustType::mixed(), $to));
+                    $arms[] = $from->mangle() . '::' . $this->unitName($m) . ' => ' . ($lit ?? ($this->casts->mixed_allowed
+                        ? $this->conv('Mixed::Bool(' . ($truth ? 'true' : 'false') . ')', RustType::mixed(), $to)
+                        : 'panic!("cannot narrow ' . $from->mangle() . '::' . $this->unitName($m) . ' into ' . $to->toRust() . '")'));
                     continue;
                 }
                 if ($m->toRust() === $to->toRust()) {
@@ -1178,6 +1180,11 @@ final class CastEmitter
                 if ($cls !== null && !$cls->isLeaf() && ($down = $this->downcastArm('self', $from, $to)) !== null) {
                     // a typed downcast attempt per union member below this class
                     $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ' . $from->toRust() . ' { fn cast_to(self) -> ' . $to->toRust() . ' { ' . $down . ' } }');
+                    return;
+                }
+                if ($cls !== null && !$cls->isLeaf() && !$this->casts->mixed_allowed) {
+                    // no descendant is a member of the union: a value of this class never converts
+                    $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ' . $from->toRust() . ' { fn cast_to(self) -> ' . $to->toRust() . ' { let _ = self; panic!(' . Names::rustStringLiteral('cannot convert ' . $from->toRust() . ' into ' . $to->toRust()) . ') } }');
                     return;
                 }
                 if ($cls !== null && !$cls->isLeaf()) {
@@ -1271,6 +1278,10 @@ final class CastEmitter
             }
             if (!$this->casts->fits($from, $to)) {
                 $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ' . $from->toRust() . ' { fn cast_to(self) -> ' . $to->toRust() . ' { panic!(' . Names::rustStringLiteral('no member of ' . $to->toRust() . ' admits a ' . $from->toRust()) . ') } }');
+                return;
+            }
+            if (!$this->casts->mixed_allowed) {
+                $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ' . $from->toRust() . ' { fn cast_to(self) -> ' . $to->toRust() . ' { let _ = self; panic!(' . Names::rustStringLiteral('cannot convert ' . $from->toRust() . ' into ' . $to->toRust() . ' without Mixed') . ') } }');
                 return;
             }
             $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ' . $from->toRust() . ' { fn cast_to(self) -> ' . $to->toRust() . ' { ' . $this->conv($this->conv('self', $from, RustType::mixed()), RustType::mixed(), $to) . ' } }');

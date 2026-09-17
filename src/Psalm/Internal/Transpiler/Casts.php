@@ -32,6 +32,9 @@ final class Casts
     ) {
     }
 
+    /** whether emitted bodies use Mixed at all: without it no conversion may route through Mixed (dead paths panic) */
+    public bool $mixed_allowed = true;
+
     public function need(RustType $from, RustType $to): void
     {
         if (!self::isLocal($from) && !self::isLocal($to)) {

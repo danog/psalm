@@ -222,12 +222,20 @@ final class CrateEmitter
         $any = new Writer();
         $this->emitAnyObject($any, $this->any_object_used, $this->clone_mixed_used);
         $scan($any->get());
-        if (!isset($referenced['Mixed'])) {
-            // no emitted body mentions Mixed: conversions recorded through it (by discarded emissions) are not
-            // demanded; an impl needing one later records it again during the rounds below
-            $this->casts->casts = array_filter($this->casts->casts, static fn(array $p) => $p[0]->kind !== RustType::MIXED && $p[1]->kind !== RustType::MIXED);
-            $this->casts->instance_checks = array_filter($this->casts->instance_checks, static fn(array $p) => $p[0]->kind !== RustType::MIXED);
-        }
+        // whether Mixed exists in this program is decided by the emitted BODIES alone: the type impls emitted in
+        // the rounds below may mention Mixed among themselves (stale conversions recorded by discarded emission
+        // passes), which must not resurrect it
+        $mixed_wanted = isset($referenced['Mixed']);
+        $this->casts->mixed_allowed = $mixed_wanted;
+        $drop_mixed = function () use ($mixed_wanted, &$referenced): void {
+            if ($mixed_wanted) {
+                return;
+            }
+            unset($referenced['Mixed']);
+            $this->casts->casts = array_filter($this->casts->casts, static fn(array $p) => $p[0]->kind !== RustType::MIXED && $p[1]->kind !== RustType::MIXED && !$p[0]->containsMixed() && !$p[1]->containsMixed());
+            $this->casts->instance_checks = array_filter($this->casts->instance_checks, static fn(array $p) => $p[0]->kind !== RustType::MIXED && !$p[0]->containsMixed());
+        };
+        $drop_mixed();
         $emitted = [];
         $select = function (RustType $from, RustType $to) use ($casts_w): ?Writer {
             $home = max($this->program->typeCrate($from), $this->program->typeCrate($to));
@@ -240,6 +248,7 @@ final class CrateEmitter
         };
         for ($round = 0; $round < 10; $round++) {
             $new = false;
+            $drop_mixed();
             foreach ($this->program->types->unions as $name => $u) {
                 if (!isset($emitted[$name]) && isset($referenced[$name])) {
                     $emitted[$name] = true;
