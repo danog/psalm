@@ -976,3 +976,19 @@ function case_json_decode(): string
     return implode('|', $out);
 }
 check('json_decode', case_json_decode(), '1|1+2|k,k2|-|noe|x|badnull');
+
+// ---- probe: SimpleXML magic property iteration types (config.xml style) ----
+
+function case_simplexml_iteration(): string
+{
+    $xml = new \SimpleXMLElement('<psalm cacheDirectory="x"><enableExtensions><extension name="a"/><extension name="b"/></enableExtensions></psalm>');
+    $out = [];
+    foreach ($xml->enableExtensions->extension as $extension) {
+        $out[] = (string) $extension['name'];
+    }
+    if (isset($xml['cacheDirectory'])) {
+        $out[] = (string) $xml['cacheDirectory'];
+    }
+    return implode(',', $out);
+}
+check('simplexml_iteration', case_simplexml_iteration(), 'a,b,x');
