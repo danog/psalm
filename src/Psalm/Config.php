@@ -43,6 +43,7 @@ use Psalm\Issue\PropertyIssue;
 use Psalm\Issue\VariableIssue;
 use Psalm\Plugin\PluginEntryPointInterface;
 use Psalm\Plugin\PluginFileExtensionsInterface;
+use Psalm\Plugin\HookInterface;
 use Psalm\Plugin\PluginInterface;
 use Psalm\Progress\Progress;
 use Psalm\Progress\VoidProgress;
@@ -281,7 +282,7 @@ final class Config
      * How to instantiate the plugin classes named in config files (plugin entry points, hook handlers
      * loaded from files): the program is compiled, classes are never loaded or instantiated by name.
      *
-     * @var array<string, Closure(): object>
+     * @var array<string, Closure(): (PluginInterface|HookInterface)>
      */
     private static array $plugin_factories = [];
 
@@ -1708,7 +1709,7 @@ final class Config
      * Registers how to instantiate a plugin class named in config files (`<pluginClass class="..."/>`,
      * `<plugin filename="..."/>`).
      *
-     * @param Closure(): object $factory
+     * @param Closure(): (PluginInterface|HookInterface) $factory
      */
     public static function registerPluginFactory(string $pluginClassName, Closure $factory): void
     {
@@ -1720,7 +1721,7 @@ final class Config
      *
      * @throws ConfigException when no factory was registered for the class
      */
-    public static function instantiatePluginClass(string $pluginClassName): object
+    public static function instantiatePluginClass(string $pluginClassName): PluginInterface|HookInterface
     {
         $factory = self::$plugin_factories[ltrim($pluginClassName, '\\')] ?? null;
         if ($factory === null) {
