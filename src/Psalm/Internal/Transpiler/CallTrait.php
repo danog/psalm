@@ -83,6 +83,53 @@ trait CallTrait
         return $out;
     }
 
+    /**
+     * Bind the generic names inside a parameter type from an argument's concrete type (structurally: the
+     * element of a list parameter from the element of the list argument, ...).
+     *
+     * @param array<string, RustType> $bound
+     */
+    private static function bindGenerics(RustType $t, RustType $actual, array &$bound): void
+    {
+        if ($t->kind === RustType::GENERIC) {
+            if ($actual->kind !== RustType::NEVER && $actual->kind !== RustType::UNIT) {
+                $bound[$t->toRust()] ??= $actual;
+            }
+            return;
+        }
+        if ($t->kind === RustType::OPTION) {
+            self::bindGenerics($t->inner(), $actual->kind === RustType::OPTION ? $actual->inner() : $actual, $bound);
+        } elseif ($t->kind === RustType::LIST && $actual->kind === RustType::LIST) {
+            self::bindGenerics($t->inner(), $actual->inner(), $bound);
+        } elseif ($t->kind === RustType::MAP && $actual->kind === RustType::MAP) {
+            self::bindGenerics($t->params[0], $actual->params[0], $bound);
+            self::bindGenerics($t->params[1], $actual->params[1], $bound);
+        } elseif ($t->kind === RustType::MAP && $actual->kind === RustType::LIST) {
+            self::bindGenerics($t->params[1], $actual->inner(), $bound);
+        }
+    }
+
+    /**
+     * The parameter type with its bound generic names replaced.
+     *
+     * @param array<string, RustType> $bound
+     */
+    private static function substGenerics(RustType $t, array $bound): RustType
+    {
+        if ($t->kind === RustType::GENERIC) {
+            return $bound[$t->toRust()] ?? $t;
+        }
+        if (!$t->hasGeneric()) {
+            return $t;
+        }
+        return match ($t->kind) {
+            RustType::OPTION => RustType::option(self::substGenerics($t->inner(), $bound)),
+            RustType::LIST => RustType::list(self::substGenerics($t->inner(), $bound)),
+            RustType::MAP => RustType::map(self::substGenerics($t->params[0], $bound), self::substGenerics($t->params[1], $bound)),
+            default => $t,
+        };
+    }
+
     /** Code evaluated before the call being built (see finishCall). */
     private function addPre(string $code): void
     {
@@ -123,7 +170,7 @@ trait CallTrait
         foreach ($params as $bi => $bp) {
             $bt = $param_types[$bi] ?? null;
             $ba = $positional[$bi] ?? $named[$bp->name] ?? null;
-            if ($bt === null || $bt->kind !== RustType::GENERIC || $ba === null || $ba->unpack || $bp->by_ref || isset($bound[$bt->toRust()])) {
+            if ($bt === null || !$bt->hasGeneric() || $ba === null || $ba->unpack || $bp->by_ref) {
                 continue;
             }
             $v = $ba->value;
@@ -131,8 +178,8 @@ trait CallTrait
                 continue;
             }
             $vt = $this->expr($v)->type;
-            if (!$vt->containsMixed() && !$vt->hasGeneric() && $vt->kind !== RustType::NEVER && $vt->kind !== RustType::UNIT) {
-                $bound[$bt->toRust()] = $vt;
+            if (!$vt->containsMixed() && !$vt->hasGeneric()) {
+                self::bindGenerics($bt, $vt, $bound);
             }
         }
         foreach ($params as $i => $param) {
@@ -188,9 +235,12 @@ trait CallTrait
                 $out[] = $this->borrowArg($arg->value, $t);
                 continue;
             }
-            if ($t->kind === RustType::GENERIC && isset($bound[$t->toRust()])) {
-                $out[] = $this->exprTo($arg->value, $bound[$t->toRust()]);
-                continue;
+            if ($t->hasGeneric() && $bound !== []) {
+                $bt = self::substGenerics($t, $bound);
+                if (!$bt->hasGeneric()) {
+                    $out[] = $this->exprTo($arg->value, $bt);
+                    continue;
+                }
             }
             $out[] = $this->exprTo($arg->value, $t);
         }

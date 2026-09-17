@@ -186,7 +186,14 @@ trait StmtTrait
         } else {
             // a discarded value: annotated with its type for readability, except a Mixed one (no Mixed text
             // for a value nothing reads)
-            $w->line($v->type->containsMixed() || $v->type->hasGeneric() ? 'let _ = ' . $v->code . ';' : 'let _: ' . $v->type->toRust() . ' = ' . $v->code . ';');
+            if ($v->type->hasGeneric()) {
+                // the callee's generic result: typed by Psalm's view of the call (else discarded as unit)
+                $inf = $this->inferred($e);
+                $ann = $inf !== null && !$inf->containsMixed() && !$inf->hasGeneric() ? $inf : RustType::unit();
+                $w->line('let _: ' . $ann->toRust() . ' = ' . $v->code . ';');
+            } else {
+                $w->line($v->type->containsMixed() ? 'let _ = ' . $v->code . ';' : 'let _: ' . $v->type->toRust() . ' = ' . $v->code . ';');
+            }
         }
     }
 

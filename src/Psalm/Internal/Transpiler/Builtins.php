@@ -883,8 +883,16 @@ final class Builtins
         }
         if ($strict && $nu->kind === RustType::UNION && $ht->kind === RustType::LIST && !$ht->inner()->containsMixed() && $ht->inner()->kind !== RustType::UNION) {
             $member = $b->casts->pickMember($nu, $ht->inner());
-            if ($member !== null && $member->toRust() === $ht->inner()->toRust()) {
-                $needle = $b->rawValue($args[0]->value);
+            $needle = $b->rawValue($args[0]->value);
+            $ninner = $needle->type->kind === RustType::OPTION ? $needle->type->inner() : $needle->type;
+            if ($ninner->kind !== RustType::UNION && $ninner->toRust() === $ht->inner()->toRust()) {
+                // the emitted needle is already the element type (an Option of it for `T|false`)
+                $hay = $b->exprTo($args[1]->value, $ht);
+                return new Val($needle->type->kind === RustType::OPTION
+                    ? '(match &' . $needle->code . ' { Some(__n) => in_array_l(__n, &' . $hay . '), None => false })'
+                    : 'in_array_l(&' . $needle->code . ', &' . $hay . ')', RustType::bool());
+            }
+            if ($member !== null && $member->toRust() === $ht->inner()->toRust() && $ninner->kind === RustType::UNION) {
                 $hay = $b->exprTo($args[1]->value, $ht);
                 $arm = 'match __n { ' . $nu->mangle() . '::' . $member->variantName() . '(__m) => in_array_l(__m, &' . $hay . '), _ => false }';
                 $code = $needle->type->kind === RustType::OPTION
