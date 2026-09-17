@@ -820,3 +820,18 @@ function run_all(): string
     check('generics', case_generics(), 'i:eq,s:ne,l:eq,42,xy,has,no,5,strintother');
     check('phpunit', case_phpunit(), '1,failed,skip:later,expects,verified,mismatch,testThrows with data set "ds"');
     check('object_eq', case_object_eq(), 'eq,ne,ne,notsame,eq,eq,ne');
+
+// ---- feature: typed constant table (get_defined_constants without Mixed) ----
+
+function case_defined_constants(): string
+{
+    /** @var array<string, scalar|null> $constants */
+    $constants = get_defined_constants();
+    $out = [];
+    $out[] = isset($constants['PHP_INT_SIZE']) ? 'size' . (string) $constants['PHP_INT_SIZE'] : 'nosize';
+    $out[] = isset($constants['E_ALL']) && is_int($constants['E_ALL']) ? 'eall' : 'noeall';
+    $out[] = ($constants['PHP_EOL'] ?? '') === "\n" ? 'eol' : 'noeol';
+    $out[] = array_key_exists('M_PI', $constants) && is_float($constants['M_PI']) ? 'pi' : 'nopi';
+    return implode(',', $out);
+}
+check('defined_constants', case_defined_constants(), 'size8,eall,eol,pi');

@@ -133,6 +133,10 @@ final class Casts
             if ($tk === RustType::MIXED) {
                 return $code . '.to_mixed()';
             }
+            if ($tk === RustType::UNION) {
+                $this->need($from, $to);
+                return 'cast::<' . $to->toRust() . '>(' . $code . ')';
+            }
             if ($tk === RustType::STR) {
                 return 'php_rt::ToStr::to_php_str(&' . $code . ')';
             }

@@ -1573,7 +1573,7 @@ function get_headers(string $url, int $associative = 0, $context = null) : array
 function get_meta_tags(string $filename, bool $use_include_path = false) : array|false {}
 
 /**
- * @return ($categorize is false ? array<string,int|string|float|bool|null|array|resource> : array<string, array<string,int|string|float|bool|null|array|resource>>)
+ * @return array<string, scalar|null> the compiled program's constant table is flat and scalar-valued
  */
 function get_defined_constants(bool $categorize = false): array {}
 
