@@ -1050,8 +1050,19 @@ trait ExprTrait
 
     private function arith(BinaryOp $e): Val
     {
-        $lt = $this->inferredOrMixed($e->left);
-        $rt = $this->inferredOrMixed($e->right);
+        // a local Psalm sees as `int|mixed` (a snapshot it could not type) that the emitter holds as a number
+        // keeps the arithmetic typed: the operand's declared type wins over Psalm's node type
+        $refine = function (Expr $x, RustType $t): RustType {
+            if ($x instanceof Expr\Variable && is_string($x->name) && ($t->kind === RustType::MIXED || $t->kind === RustType::UNION)) {
+                $vt = $this->rawValue($x)->type;
+                if (in_array($vt->kind, [RustType::INT, RustType::FLOAT, RustType::BOOL], true)) {
+                    return $vt;
+                }
+            }
+            return $t;
+        };
+        $lt = $refine($e->left, $this->inferredOrMixed($e->left));
+        $rt = $refine($e->right, $this->inferredOrMixed($e->right));
         $res = $this->inferredOrMixed($e);
         $sig = $e->getOperatorSigil();
 
@@ -1232,6 +1243,10 @@ trait ExprTrait
             || ($sb->kind === RustType::ARRAY_KEY && in_array($sa->kind, [RustType::INT, RustType::STR, RustType::SYM], true))
         ) {
             return $wrap(RustType::arrayKey());
+        }
+        // an interned symbol against a string: the string is interned for the comparison
+        if (($sa->kind === RustType::SYM && $sb->kind === RustType::STR) || ($sa->kind === RustType::STR && $sb->kind === RustType::SYM)) {
+            return $wrap(RustType::sym());
         }
         if ($sa->kind === RustType::UNION && $sb->kind === RustType::UNION) {
             $joined = $this->program->unionOfRust([$sa, $sb]);

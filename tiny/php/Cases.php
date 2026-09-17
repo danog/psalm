@@ -813,13 +813,23 @@ function run_all(): string
         . check('dispatch_disagree_owned', case_dispatch_disagree_owned(), '34')
         . check('callable_borrow', case_callable_borrow(), '11')
         . check('late_receiver_borrow', case_late_receiver_borrow(), '00')
-        . check('closure_capture', case_closure_capture(), '8');
+        . check('closure_capture', case_closure_capture(), '8')
+        . check('empty_arrays', case_empty_arrays(), 's0,s1|0|2')
+        . check('try_catch', case_try_catch(), '2,f,caught:big 3,f,outer,d,unhandled')
+        . check('generics', case_generics(), 'i:eq,s:ne,l:eq,42,xy,has,no,5,strintother')
+        . check('phpunit', case_phpunit(), '1,failed,skip:later,expects,verified,mismatch,testThrows with data set "ds"')
+        . check('object_eq', case_object_eq(), 'eq,ne,ne,notsame,eq,eq,ne')
+        . check('defined_constants', case_defined_constants(), 'size8,eall,eol,pi')
+        . check('data_file', case_data_file(), 'a1x-,b2y3.5|a,b')
+        . check('elseif_assign', case_elseif_assign(), 'none,a5,skip|1')
+        . check('json_encode', case_json_encode(), '{"a":1,"b":[1,2,3],"c":null,"d":true,"e":1.5,"f":"x\\"y"}|[{"x":1,"label":null},{"x":2,"label":"p"}]|{"a":1,"b":"two","c":[3,4]}|{"3":"a","5":"b"}|[]|' . "{\n    \"k\": [\n        1,\n        \"z\"\n    ]\n}")
+        . check('dom_iteration', case_dom_iteration(), 'Issue,x')
+        . check('json_decode', case_json_decode(), '1|1+2|k,k2|-|noe|x|badnull')
+        . check('simplexml_iteration', case_simplexml_iteration(), 'a,b,x')
+        . check('nullable_prop_receiver', case_nullable_prop_receiver(), 'p9,q9,0:1')
+        . check('generic_callable', case_generic_callable(), '42|a,b|run,done,run,done')
+        . check('typed_builtins', case_typed_builtins(), '1:ab@2|x|no|0|1,-1|user:0');
 }
-    check('empty_arrays', case_empty_arrays(), 's0,s1|0|2');
-    check('try_catch', case_try_catch(), '2,f,caught:big 3,f,outer,d,unhandled');
-    check('generics', case_generics(), 'i:eq,s:ne,l:eq,42,xy,has,no,5,strintother');
-    check('phpunit', case_phpunit(), '1,failed,skip:later,expects,verified,mismatch,testThrows with data set "ds"');
-    check('object_eq', case_object_eq(), 'eq,ne,ne,notsame,eq,eq,ne');
 
 // ---- feature: typed constant table (get_defined_constants without Mixed) ----
 
@@ -833,7 +843,6 @@ function case_defined_constants(): string
     $out[] = array_key_exists('M_PI', $constants) && is_float($constants['M_PI']) ? 'pi' : 'nopi';
     return implode(',', $out);
 }
-check('defined_constants', case_defined_constants(), 'size8,eall,eol,pi');
 
 // ---- feature: typed data files (require of a dictionary in the declared type, no Mixed) ----
 
@@ -847,7 +856,6 @@ function case_data_file(): string
     $names = array_keys($table);
     return implode(',', $out) . '|' . implode(',', $names);
 }
-check('data_file', case_data_file(), 'a1x-,b2y3.5|a,b');
 
 // ---- probe: elseif-assigned locals and property array_filter (no Mixed locals expected) ----
 
@@ -896,7 +904,6 @@ function case_elseif_assign(): string
     $src->forgetFlags();
     return implode(',', $out) . '|' . $src->flagCount();
 }
-check('elseif_assign', case_elseif_assign(), 'none,a5,skip|1');
 
 // ---- feature: typed json_encode (unions, shapes, lists, maps, objects; no Mixed) ----
 
@@ -932,7 +939,6 @@ function case_json_encode(): string
     $out[] = json_encode(['k' => [1, 'z']], JSON_PRETTY_PRINT);
     return implode('|', $out);
 }
-check('json_encode', case_json_encode(), '{"a":1,"b":[1,2,3],"c":null,"d":true,"e":1.5,"f":"x\\"y"}|[{"x":1,"label":null},{"x":2,"label":"p"}]|{"a":1,"b":"two","c":[3,4]}|{"3":"a","5":"b"}|[]|{\n    "k": [\n        1,\n        "z"\n    ]\n}');
 
 // ---- probe: DOM iteration types (childNodes, getElementsByTagName) ----
 
@@ -954,7 +960,6 @@ function case_dom_iteration(): string
     }
     return implode(',', $out);
 }
-check('dom_iteration', case_dom_iteration(), 'Issue,x');
 
 // ---- feature: typed json_decode (a declared return type reads the document; no Mixed) ----
 
@@ -975,7 +980,6 @@ function case_json_decode(): string
     $out[] = $bad === null ? 'badnull' : 'bad';
     return implode('|', $out);
 }
-check('json_decode', case_json_decode(), '1|1+2|k,k2|-|noe|x|badnull');
 
 // ---- probe: SimpleXML magic property iteration types (config.xml style) ----
 
@@ -991,7 +995,6 @@ function case_simplexml_iteration(): string
     }
     return implode(',', $out);
 }
-check('simplexml_iteration', case_simplexml_iteration(), 'a,b,x');
 
 // ---- probe: narrowed nullable property used as a call receiver (no Mixed) ----
 
@@ -1015,7 +1018,6 @@ function case_nullable_prop_receiver(): string
     $out[] = count($lines) . ':' . $status;
     return implode(',', $out);
 }
-check('nullable_prop_receiver', case_nullable_prop_receiver(), 'p9,q9,0:1');
 
 // ---- feature: fn-level generics on final-class methods (callable(): T) ----
 
@@ -1045,4 +1047,34 @@ function case_generic_callable(): string
     $list = $c->runAndCollect(/** @return list<string> */ static fn(): array => ['a', 'b']);
     return $n . '|' . implode(',', $list) . '|' . implode(',', $c->seen);
 }
-check('generic_callable', case_generic_callable(), '42|a,b|run,done,run,done');
+
+
+/** @return list<never> */
+function never_list(): array
+{
+    return [];
+}
+
+function case_typed_builtins(): string
+{
+    $out = '';
+    if (preg_match('/(a)(b)/', 'xxab', $m, PREG_OFFSET_CAPTURE) === 1) {
+        $out .= '1:' . $m[0][0] . '@' . $m[0][1];
+    }
+    if (preg_match('/(x)(y)?/', 'x', $m2, PREG_UNMATCHED_AS_NULL) === 1) {
+        $out .= '|' . $m2[1] . ($m2[2] === null ? '' : 'Y');
+    }
+    $empty = never_list();
+    $out .= '|' . (in_array('a', $empty, true) ? 'yes' : 'no');
+    $count = 0;
+    foreach ($empty as $_v) {
+        $count++;
+    }
+    $out .= '|' . $count;
+    if (preg_match('/(a)(z)?/', 'a', $m3, PREG_OFFSET_CAPTURE | PREG_UNMATCHED_AS_NULL) === 1) {
+        $out .= '|' . ($m3[1][0] === null ? 'N' : '1') . ',' . $m3[2][1];
+    }
+    $fns = get_defined_functions();
+    $out .= '|user:' . count(array_filter($fns['user'], static fn(string $n): bool => $n === 'no_such_fn'));
+    return $out;
+}

@@ -90,6 +90,18 @@ final class RustType
     {
         return self::intern(new self(self::UNIT));
     }
+    /**
+     * Whether iterating a value of this type yields nothing: a container of the uninhabited element type
+     * (`list<never>`), Psalm's known-empty array (mapped to never/unit), or null (a PHP foreach over null
+     * warns and runs no iteration).
+     */
+    public function isEmptyIterable(): bool
+    {
+        return $this->kind === self::NEVER || $this->kind === self::UNIT
+            || ($this->kind === self::LIST && $this->inner()->kind === self::NEVER)
+            || ($this->kind === self::MAP && $this->params[1]->kind === self::NEVER);
+    }
+
     public static function never(): RustType
     {
         return self::intern(new self(self::NEVER));

@@ -660,6 +660,14 @@ trait LValueTrait
         // the receiver of `?->` is read with its declared type: Psalm narrows it to non-null for the fetch itself
         $base = $nullsafe ? $this->rawValue($e->var) : $this->receiver($e->var);
         $bt = $base->type;
+        // a generic-typed receiver (`T` returned by a generic call) is read as the concrete type Psalm resolved
+        if ($bt->hasGeneric()) {
+            $conc = $this->inferredOrMixed($e->var);
+            if (!$conc->hasGeneric() && !$conc->containsMixed()) {
+                $base = new Val($this->casts->convert($base->code, $bt, $conc), $conc);
+                $bt = $conc;
+            }
+        }
         if ($bt->kind === RustType::OPTION) {
             if ($nullsafe) {
                 $ov = $this->optionalValue($e);

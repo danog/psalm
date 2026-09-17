@@ -252,8 +252,19 @@ final class BodyEmitter
         // the locals the body mentions (Psalm's snapshots also carry synthetic ids, e.g. `$prop` for
         // `array_filter($this->prop)`): anything else is not a variable of this function
         $mentioned = [];
+        // the key/value variables of a foreach over a known-empty iterable are never bound (its body is not emitted)
+        $unbound = [];
+        foreach (self::ownNodes($stmts, Stmt\Foreach_::class) as $fe) {
+            if ($this->inferredOrMixed($fe->expr)->isEmptyIterable()) {
+                foreach ([$fe->keyVar, $fe->valueVar] as $fv) {
+                    if ($fv instanceof Expr\Variable) {
+                        $unbound[spl_object_id($fv)] = true;
+                    }
+                }
+            }
+        }
         foreach (self::ownNodes($stmts, Expr\Variable::class) as $v) {
-            if (is_string($v->name)) {
+            if (is_string($v->name) && !isset($unbound[spl_object_id($v)])) {
                 $mentioned[$v->name] = true;
             }
         }
@@ -580,7 +591,13 @@ final class BodyEmitter
             }
             if (!empty($this->globals[$name])) {
                 $lit = Names::rustStringLiteral($name);
-                $this->w->line('let mut ' . $rn . ': PhpRef<' . $type->toRust() . '> = PhpRef::new(move || ' . $this->casts->convert('php_rt::global_get(' . $lit . ')', RustType::mixed(), $type) . ', move |__v: ' . $type->toRust() . '| php_rt::global_set(' . $lit . ', ' . $this->casts->convert('__v', $type, RustType::mixed()) . '));');
+                // the CLI globals have runtime accessors of their own types
+                [$src, $src_t] = match ($name) {
+                    'argv' => ['php_rt::argv()', RustType::list(RustType::str())],
+                    'argc' => ['php_rt::argc()', RustType::int()],
+                    default => ['php_rt::global_get(' . $lit . ')', RustType::mixed()],
+                };
+                $this->w->line('let mut ' . $rn . ': PhpRef<' . $type->toRust() . '> = PhpRef::new(move || ' . $this->casts->convert($src, $src_t, $type) . ', move |__v: ' . $type->toRust() . '| php_rt::global_set(' . $lit . ', ' . $this->casts->convert('__v', $type, RustType::mixed()) . '));');
                 continue;
             }
             if (!empty($this->refvars[$name])) {

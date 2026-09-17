@@ -287,6 +287,11 @@ trait StmtTrait
             $subject = new Val($subject->code . '.unwrap_or_default()', $st->inner());
             $st = $st->inner();
         }
+        // a container whose elements are never is always empty: the body never runs
+        if ($st->isEmptyIterable()) {
+            $w->line('let _ = ' . $subject->code . ';');
+            return;
+        }
         $label = $this->newLabel('l');
         $kv = $this->tmp('__kv');
         $key_var = $s->keyVar;

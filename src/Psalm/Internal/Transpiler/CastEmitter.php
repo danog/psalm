@@ -570,13 +570,15 @@ final class CastEmitter
             $int = $find(fn(RustType $p) => $p->kind === RustType::INT);
             $float = $find(fn(RustType $p) => $p->kind === RustType::FLOAT);
             $str = $find(fn(RustType $p) => $p->kind === RustType::STR);
+            // an array-key member takes ints and strings the union has no dedicated member for
+            $key = $find(fn(RustType $p) => $p->kind === RustType::ARRAY_KEY);
             $arr = $find(fn(RustType $p) => in_array($p->kind, [RustType::LIST, RustType::MAP, RustType::SHAPE, RustType::TUPLE], true));
             $arms = [];
             $arms[] = 'php_rt::data::Data::Null => ' . ($null !== null ? $m . '::Null' : $panic('null'));
             $arms[] = 'php_rt::data::Data::Bool(b) => ' . ($bool !== null ? $m . '::Bool(*b)' : ($true !== null && $false !== null ? 'if *b { ' . $m . '::True } else { ' . $m . '::False }' : $panic('a bool')));
-            $arms[] = 'php_rt::data::Data::Int(i) => ' . ($int !== null ? $m . '::Int(*i)' : ($float !== null ? $m . '::Float(*i as f64)' : $panic('an int')));
+            $arms[] = 'php_rt::data::Data::Int(i) => ' . ($int !== null ? $m . '::Int(*i)' : ($key !== null ? $m . '::' . $key->variantName() . '(php_rt::ArrayKey::Int(*i))' : ($float !== null ? $m . '::Float(*i as f64)' : $panic('an int'))));
             $arms[] = 'php_rt::data::Data::Float(f) => ' . ($float !== null ? $m . '::Float(*f)' : ($int !== null ? $m . '::Int(*f as i64)' : $panic('a float')));
-            $arms[] = 'php_rt::data::Data::Str(_) | php_rt::data::Data::Bytes(_) => ' . ($str !== null ? $m . '::Str(' . $conv(RustType::str(), 'd') . ')' : $panic('a string'));
+            $arms[] = 'php_rt::data::Data::Str(_) | php_rt::data::Data::Bytes(_) => ' . ($str !== null ? $m . '::Str(' . $conv(RustType::str(), 'd') . ')' : ($key !== null ? $m . '::' . $key->variantName() . '(php_rt::ArrayKey::from(' . $conv(RustType::str(), 'd') . '))' : $panic('a string')));
             $arms[] = 'php_rt::data::Data::Arr(_) => ' . ($arr !== null ? $m . '::' . $arr->variantName() . '(' . $conv($arr, 'd') . ')' : $panic('an array'));
             $w->line('impl php_rt::data::FromData for ' . $name . ' { fn from_data(d: &php_rt::data::Data) -> Self { match d { ' . implode(', ', $arms) . ' } } }');
             return;

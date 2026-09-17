@@ -315,7 +315,7 @@ final class Builtins
         'get_declared_classes' => ['crate::names::declared_classlikes', ['b=false'], 'ls'],
         'get_declared_interfaces' => ['crate::names::declared_classlikes', ['b=true'], 'ls'],
         'get_defined_constants' => ['get_defined_constants', ['b=false'], 'msc'],
-        'get_defined_functions' => ['get_defined_functions', ['x=crate::names::USER_FUNCTIONS'], 'mkm'],
+        'get_defined_functions' => ['get_defined_functions', ['x=crate::names::USER_FUNCTIONS'], 'msl'],
         'opcache_get_status' => ['opcache_get_status', [], 'om'],
         'get_cfg_var' => ['get_cfg_var', ['&s'], 'os'],
         'filter_var' => ['filter_var', ['&m', 'i=516', 'm=Mixed::Null'], 'm'],
@@ -484,6 +484,7 @@ final class Builtins
             'ls' => RustType::list(RustType::str()),
             'mss' => RustType::map(RustType::str(), RustType::str()),
             'mkm' => RustType::map(RustType::arrayKey(), RustType::mixed()),
+            'msl' => RustType::map(RustType::str(), RustType::list(RustType::str())),
             'msc' => RustType::map(RustType::str(), RustType::rtGeneric('Scalar', [])),
             'mso' => RustType::map(RustType::str(), RustType::rtGeneric('OptValue', [])),
             'L' => RustType::list(RustType::mixed()),
@@ -851,6 +852,10 @@ final class Builtins
         if ($ht->kind === RustType::TUPLE && $ht->params !== [] && count(array_unique(array_map(static fn(RustType $p) => $p->toRust(), $ht->params))) === 1) {
             // a constant list (`self::NAMES`) Psalm sees as a tuple of one element type
             $ht = RustType::list($ht->params[0]);
+        }
+        // a haystack whose elements are never (an always-empty container) holds nothing
+        if ($ht->isEmptyIterable()) {
+            return new Val('{ let _ = (' . $b->expr($args[0]->value)->code . ', ' . $b->exprTo($args[1]->value, $ht) . '); false }', RustType::bool());
         }
         if ($strict && $nu->kind === RustType::UNION && $ht->kind === RustType::LIST && !$ht->inner()->containsMixed() && $ht->inner()->kind !== RustType::UNION) {
             $member = $b->casts->pickMember($nu, $ht->inner());
@@ -2043,16 +2048,22 @@ final class Builtins
     {
         $pat = $b->exprTo($args[0]->value, RustType::str());
         $s = $b->exprTo($args[1]->value, RustType::str());
-        $flags = isset($args[3]) ? $b->exprTo($args[3]->value, RustType::int()) : '0';
         $offset = isset($args[4]) ? $b->exprTo($args[4]->value, RustType::int()) : '0';
         if (isset($args[2])) {
             $place = $b->place($args[2]->value);
             $pt = $place->type;
-            $inner = $pt->kind === RustType::OPTION ? $pt->inner() : $pt;
             $tmp = '__m';
-            $mt = RustType::map(RustType::arrayKey(), $flags === '0' ? RustType::str() : RustType::mixed());
-            $fn = $flags === '0' ? 'preg_match_groups' : 'preg_match_groups_flags';
-            $flag_arg = $flags === '0' ? '' : ', ' . $flags;
+            // constant PREG_* flags select a typed capture view; anything else falls back to the dynamic map
+            $fl = isset($args[3]) ? $this->pregFlags($args[3]->value) : 0;
+            [$fn, $vt] = match ($fl) {
+                0 => ['preg_match_groups', RustType::str()],
+                256 => ['preg_match_offsets', RustType::tuple([RustType::str(), RustType::int()])],
+                512 => ['preg_match_groups_null', RustType::option(RustType::str())],
+                768 => ['preg_match_offsets_null', RustType::tuple([RustType::option(RustType::str()), RustType::int()])],
+                default => ['preg_match_groups_flags', RustType::mixed()],
+            };
+            $flag_arg = $fn === 'preg_match_groups_flags' ? ', ' . $b->exprTo($args[3]->value, RustType::int()) : '';
+            $mt = RustType::map(RustType::arrayKey(), $vt);
             $store = $b->casts->convert($tmp, $mt, $pt);
             return new Val('{ let (__r, ' . $tmp . ') = ' . $fn . '(&' . $pat . ', &' . $s . $flag_arg . ', ' . $offset . ').unwrap_or_else(|__e| __throw_rt(__e)); ' . $place->write($store) . ' __r }', RustType::int());
         }
