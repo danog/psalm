@@ -13,25 +13,25 @@ final class LanguageServer
     {
     }
 
-    /** @param array<string, mixed> $context */
+    /** @param array<string, scalar|null> $context */
     public function logError(string $message, array $context = []): void
     {
         throw new \RuntimeException('the language server is not available');
     }
 
-    /** @param array<string, mixed> $context */
+    /** @param array<string, scalar|null> $context */
     public function logWarning(string $message, array $context = []): void
     {
         throw new \RuntimeException('the language server is not available');
     }
 
-    /** @param array<string, mixed> $context */
+    /** @param array<string, scalar|null> $context */
     public function logInfo(string $message, array $context = []): void
     {
         throw new \RuntimeException('the language server is not available');
     }
 
-    /** @param array<string, mixed> $context */
+    /** @param array<string, scalar|null> $context */
     public function logDebug(string $message, array $context = []): void
     {
         throw new \RuntimeException('the language server is not available');

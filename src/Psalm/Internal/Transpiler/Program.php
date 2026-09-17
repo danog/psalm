@@ -2120,6 +2120,9 @@ final class Program
         return $nullable ? RustType::option($u) : $u;
     }
 
+    /** Some body calls `constant()` (dynamic constant lookup by name). */
+    public bool $uses_constant_fn = false;
+
     /** True while a body is emitted: method resolutions on hierarchy handles are dispatch demands. */
     public bool $record_dispatch = false;
 

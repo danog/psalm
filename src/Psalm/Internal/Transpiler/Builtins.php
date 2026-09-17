@@ -283,7 +283,7 @@ final class Builtins
         'get_object_vars' => ['get_object_vars', ['&m'], 'mkm'],
         'is_callable' => ['is_callable', ['&m'], 'b'],
         'defined' => ['crate::names::constant_defined', ['&s'], 'b'],
-        'constant' => ['crate::names::constant', ['&s'], 'm'],
+
         'fwrite' => ['fwrite', ['&r', '&s'], 'oi'],
         'fputs' => ['fwrite', ['&r', '&s'], 'oi'],
         'fclose' => ['fclose', ['&r'], 'b'],
@@ -336,7 +336,6 @@ final class Builtins
         '__rt_class_file' => ['crate::names::class_file', ['&s'], 'os'],
         '__rt_function_is_builtin' => ['rt_function_is_builtin', ['&s'], 'b'],
         '__rt_class_is_trait' => ['crate::names::class_is_trait', ['&s'], 'b'],
-        '__rt_class_constants' => ['crate::names::class_constants', ['&s'], 'mkm'],
         'lz4_compress' => ['lz4_compress', ['&s'], 'os'],
         'lz4_uncompress' => ['lz4_uncompress', ['&s'], 'os'],
         'parse_url' => ['parse_url', ['&s', 'i=-1'], 'm'],
@@ -2345,6 +2344,12 @@ final class Builtins
         // the runtime has no exception-handler hook (uncaught exceptions end the process): evaluate and drop
         $v = isset($args[0]) ? $b->expr($args[0]->value) : new Val('()', RustType::unit());
         return new Val('{ let _ = ' . $v->code . '; }', RustType::unit());
+    }
+
+    private function f_constant(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        $b->program->uses_constant_fn = true;
+        return new Val('crate::names::constant(&' . $b->exprTo($args[0]->value, RustType::str()) . ')', RustType::mixed());
     }
 
     private function f_gettype(BodyEmitter $b, Expr\FuncCall $call, array $args): Val

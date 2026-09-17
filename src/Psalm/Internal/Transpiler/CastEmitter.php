@@ -87,6 +87,12 @@ final class CastEmitter
                 $arms[] = $name . '::' . $m->variantName() . '(v) => to_str(v)';
             } elseif ($m->kind === RustType::CLOSURE || $m->kind === RustType::DYN_CALLABLE) {
                 $arms[] = $name . '::' . $m->variantName() . '(_) => Str::from_static("Closure")';
+            } elseif (in_array($m->kind, [RustType::LIST, RustType::MAP, RustType::SHAPE, RustType::TUPLE], true)) {
+                $arms[] = $name . '::' . $m->variantName() . '(_) => Str::from_static("Array")';
+            } elseif (in_array($m->kind, [RustType::CLASS_, RustType::ANY_OBJECT, RustType::SYM, RustType::ARRAY_KEY, RustType::GENERIC], true)) {
+                $arms[] = $name . '::' . $m->variantName() . '(v) => php_rt::ToStr::to_php_str(v)';
+            } elseif ($m->kind === RustType::RT_GENERIC) {
+                $arms[] = $name . '::' . $m->variantName() . '(_) => panic!("Uncaught exception: Object could not be converted to string")';
             } else {
                 $arms[] = $name . '::' . $m->variantName() . '(v) => ' . $this->conv('v.clone()', $m, RustType::mixed()) . '.to_php_str()';
             }
@@ -184,10 +190,13 @@ final class CastEmitter
                         continue;
                     }
                     $oc = $this->program->classOf($o);
-                    if ($oc === null || $oc->isSubclassOf($mc)) {
+                    if ($oc === null) {
                         continue;
                     }
-                    if (!$mc->isLeaf()) {
+                    if ($oc->isSubclassOf($mc)) {
+                        // a member below the target: upcast
+                        $extra .= $name . '::' . $o->variantName() . '(v) => ' . $this->conv('v', $o, $m) . ', ';
+                    } elseif (!$mc->isLeaf() && $this->openHandle($mc)) {
                         // unrelated class members are carried through the target's escape variant
                         $extra .= $name . '::' . $o->variantName() . '(v) => ' . $this->conv($this->conv('v', $o, RustType::mixed()), RustType::mixed(), $m) . ', ';
                     } elseif (!$oc->isLeaf()) {
@@ -553,7 +562,7 @@ final class CastEmitter
             $w->line('impl php_rt::Identical for ' . $h . ' { fn identical(&self, o: &Self) -> bool { match (self, o) { (' . $h . '::Other__(a), ' . $h . '::Other__(b)) => identical(a, b), (' . $h . '::Other__(_), _) | (_, ' . $h . '::Other__(_)) => false, _ => self.obj_id() == o.obj_id() } } }');
         }
         $w->line('impl php_rt::ToStr for ' . $h . ' { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static(' . Names::rustStringLiteral($cls->fqcn) . ')) } }');
-        $num = $this->program->findMethod($cls, '__tostring') !== null ? 'to_num(&Mixed::Str(self.to_php_str()))' : '{ let _ = self; Num::Int(1) }';
+        $num = $this->program->findMethod($cls, '__tostring') !== null ? 'php_rt::to_num_str(&self.to_php_str())' : '{ let _ = self; Num::Int(1) }';
         $w->line('impl php_rt::ToInt for ' . $h . ' { fn to_php_int(&self) -> i64 { ' . $num . '.to_i64() } }');
         $w->line('impl php_rt::ToFloat for ' . $h . ' { fn to_php_float(&self) -> f64 { ' . $num . '.to_f64() } }');
         $this->emitHandleCmp($cls, $w);
@@ -999,7 +1008,7 @@ final class CastEmitter
         if ($fk === RustType::CLASS_ && ($tk === RustType::INT || $tk === RustType::FLOAT || $tk === RustType::BOOL)) {
             $fc = $this->program->classOf($from);
             $has_ts = $fc !== null && $this->program->findMethod($fc, '__tostring') !== null;
-            $via = $has_ts ? 'to_num(&Mixed::Str(self.to_php_string()))' : '{ let _ = self; Num::Int(1) }';
+            $via = $has_ts ? 'php_rt::to_num_str(&self.to_php_string())' : '{ let _ = self; Num::Int(1) }';
             $body = match ($tk) {
                 RustType::INT => $via . '.to_i64()',
                 RustType::FLOAT => $via . '.to_f64()',

@@ -19,5 +19,3 @@ function __rt_function_is_builtin(string $name): bool {}
 
 function __rt_class_is_trait(string $class): bool {}
 
-/** @return array<string, mixed> */
-function __rt_class_constants(string $class): array {}

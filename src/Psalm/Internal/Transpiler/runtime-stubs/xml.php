@@ -314,6 +314,7 @@ class SimpleXMLElement implements Stringable, Countable, ArrayAccess, Iterator
     }
 
     /** @param mixed $offset */
+    /** @param int|string $offset */
     public function offsetExists($offset): bool
     {
         if (is_int($offset)) {
@@ -324,6 +325,7 @@ class SimpleXMLElement implements Stringable, Countable, ArrayAccess, Iterator
     }
 
     /** @param mixed $offset */
+    /** @param int|string $offset */
     public function offsetGet($offset): ?SimpleXMLElement
     {
         if (is_int($offset)) {
@@ -340,6 +342,10 @@ class SimpleXMLElement implements Stringable, Countable, ArrayAccess, Iterator
      * @param mixed $offset
      * @param mixed $value
      */
+    /**
+     * @param int|string|null $offset
+     * @param mixed $value
+     */
     public function offsetSet($offset, $value): void
     {
         $first = $this->nodes[0] ?? null;
@@ -349,6 +355,7 @@ class SimpleXMLElement implements Stringable, Countable, ArrayAccess, Iterator
     }
 
     /** @param mixed $offset */
+    /** @param int|string $offset */
     public function offsetUnset($offset): void
     {
         $first = $this->nodes[0] ?? null;
@@ -753,20 +760,27 @@ class DOMNodeList implements Countable, IteratorAggregate, ArrayAccess
 {
     public int $length;
 
+    /** @param int|string $offset */
     public function offsetExists($offset): bool
     {
         return is_int($offset) && isset($this->nodes[$offset]);
     }
 
+    /** @param int|string $offset */
     public function offsetGet($offset): ?DOMNode
     {
         return is_int($offset) ? ($this->nodes[$offset] ?? null) : null;
     }
 
+    /**
+     * @param int|string|null $offset
+     * @param mixed $value
+     */
     public function offsetSet($offset, $value): void
     {
     }
 
+    /** @param int|string $offset */
     public function offsetUnset($offset): void
     {
     }

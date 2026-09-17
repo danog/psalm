@@ -21,7 +21,7 @@ interface Throwable extends Stringable
 
     public function getLine(): int;
 
-    /** @return list<array<string, mixed>> */
+    /** @return list<array{file?: string, line?: int, function: string, class?: string, type?: string}> */
     public function getTrace(): array;
 
     public function getTraceAsString(): string;
@@ -68,7 +68,7 @@ class Exception implements Throwable
         return $this->line;
     }
 
-    /** @return list<array<string, mixed>> */
+    /** @return list<array{file?: string, line?: int, function: string, class?: string, type?: string}> */
     public function getTrace(): array
     {
         return [];
@@ -129,7 +129,7 @@ class Error implements Throwable
         return $this->line;
     }
 
-    /** @return list<array<string, mixed>> */
+    /** @return list<array{file?: string, line?: int, function: string, class?: string, type?: string}> */
     public function getTrace(): array
     {
         return [];

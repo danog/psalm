@@ -524,41 +524,34 @@ final class CrateEmitter
         $w->line('static FUNCTIONS: &[&[u8]] = &[' . implode(', ', array_map(fn($n) => Names::byteStrLiteral($n), array_keys($fns))) . '];');
         $w->line('pub static USER_FUNCTIONS: &[&str] = &[' . implode(', ', $all_functions) . '];');
         $w->line('pub fn function_exists(name: &Str) -> bool { let lc = php_rt::names::norm(name); FUNCTIONS.binary_search(&lc.as_slice()).is_ok() || ' . ($up !== null ? $up . 'function_exists(name)' : 'php_rt::builtins::misc::builtin_function_exists(&lc)') . ' }');
-        // constants
-        $arms = [];
+        // constants: `defined()` checks names; `constant()` (dynamic lookup) only when some body calls it
+        $names = [];
         foreach ($this->program->constants as $c) {
-            if ($this->program->crateOfRecord($c->record) !== $crate) {
-                continue;
+            if ($this->program->crateOfRecord($c->record) === $crate) {
+                $names[] = Names::byteStrLiteral($c->name);
             }
-            $arms[] = Names::byteStrLiteral($c->name) . ' => Some(' . $this->casts->convert('crate::consts::' . Names::constant($c->name) . '()', $c->type, RustType::mixed()) . ')';
         }
-        $w->line('pub fn constant_value(name: &Str) -> Option<Mixed> { if let Some(pos) = name.as_bytes().windows(2).position(|w| w == b"::") { let cls = php_rt::names::norm(&Str::from_bytes(&name.as_bytes()[..pos])); return class_constants_lc(&cls).get(&ArrayKey::from(Str::from_bytes(&name.as_bytes()[pos + 2..]))).cloned(); } match name.as_bytes() { ' . implode(', ', $arms) . ($arms ? ', ' : '') . '_ => ' . ($up !== null ? $up . 'constant_value(name)' : 'php_rt::consts::builtin_value(name.as_bytes())') . ' } }');
-        $w->line('pub fn constant_defined(name: &Str) -> bool { constant_value(name).is_some() }');
-        $w->line('pub fn constant(name: &Str) -> Mixed { constant_value(name).unwrap_or_else(|| panic!("Uncaught exception: Undefined constant {}", name)) }');
-        $carms = [];
         foreach ($classes as $lc => $cls) {
             if ($cls->isTrait()) {
                 continue;
             }
-            $seen = [];
-            $inserts = [];
-            foreach ([$cls, ...$cls->ancestors] as $src) {
-                foreach ($src->constants as $c) {
-                    if ($c->expr === null || isset($seen[$c->name])) {
-                        continue;
-                    }
-                    $seen[$c->name] = true;
-                    $inserts[] = 'm.insert(ArrayKey::from(Str::from_static(' . Names::rustStringLiteral($c->name) . ')), ' . $this->casts->convert($src->path() . '::' . $c->rustName() . '()', $c->type, RustType::mixed()) . ');';
-                }
+            foreach ($cls->constants as $c) {
+                $names[] = Names::byteStrLiteral($cls->fqcn . '::' . $c->name);
             }
-            if ($inserts === []) {
-                continue;
-            }
-            $carms[] = Names::byteStrLiteral($lc) . ' => { let mut m: Map<ArrayKey, Mixed> = Map::new(); ' . implode(' ', $inserts) . ' m }';
         }
-        $w->line('/// All constants of a class (declared or inherited), by name.');
-        $w->line('pub fn class_constants(name: &Str) -> Map<ArrayKey, Mixed> { class_constants_lc(&php_rt::names::norm(name)) }');
-        $w->line('pub fn class_constants_lc(lc: &[u8]) -> Map<ArrayKey, Mixed> { match lc { ' . implode(', ', $carms) . ($carms ? ', ' : '') . '_ => ' . ($up !== null ? $up . 'class_constants_lc(lc)' : 'Map::new()') . ' } }');
+        $w->line('static CONSTANT_NAMES: &[&[u8]] = &[' . implode(', ', array_unique($names)) . '];');
+        $w->line('pub fn constant_defined(name: &Str) -> bool { CONSTANT_NAMES.iter().any(|n| *n == name.as_bytes()) || ' . ($up !== null ? $up . 'constant_defined(name)' : 'php_rt::builtins::misc::builtin_constant_defined(name)') . ' }');
+        if ($this->program->uses_constant_fn) {
+            $arms = [];
+            foreach ($this->program->constants as $c) {
+                if ($this->program->crateOfRecord($c->record) !== $crate) {
+                    continue;
+                }
+                $arms[] = Names::byteStrLiteral($c->name) . ' => Some(' . $this->casts->convert('crate::consts::' . Names::constant($c->name) . '()', $c->type, RustType::mixed()) . ')';
+            }
+            $w->line('pub fn constant_value(name: &Str) -> Option<Mixed> { match name.as_bytes() { ' . implode(', ', $arms) . ($arms ? ', ' : '') . '_ => ' . ($up !== null ? $up . 'constant_value(name)' : 'None') . ' } }');
+            $w->line('pub fn constant(name: &Str) -> Mixed { constant_value(name).unwrap_or_else(|| panic!("Uncaught exception: Undefined constant {}", name)) }');
+        }
         $w->close();
     }
 

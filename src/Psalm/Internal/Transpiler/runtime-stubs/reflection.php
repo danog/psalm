@@ -51,6 +51,7 @@ class ReflectionFunction
     }
 
     /** @return list<never> */
+    /** @return list<ReflectionParameter> */
     public function getParameters(): array
     {
         return [];
@@ -221,29 +222,31 @@ class ReflectionClass
         return $file === null || $file === '' ? false : $file;
     }
 
-    /** @return array<string, mixed> */
+    /** @return array<string, never> the port has no constant reflection */
     public function getConstants(): array
     {
-        return __rt_class_constants($this->name);
+        return [];
     }
 
     public function hasConstant(string $name): bool
     {
-        return array_key_exists($name, __rt_class_constants($this->name));
+        return false;
     }
 
-    public function getConstant(string $name): mixed
+    public function getConstant(string $name): false
     {
-        return __rt_class_constants($this->name)[$name] ?? false;
+        return false;
     }
 
     /** @return list<never> members of builtin classes are not reflectable in a compiled program */
+    /** @return list<ReflectionMethod> */
     public function getMethods(?int $filter = null): array
     {
         return [];
     }
 
     /** @return list<never> */
+    /** @return list<ReflectionProperty> */
     public function getProperties(?int $filter = null): array
     {
         return [];
@@ -278,6 +281,7 @@ abstract class ReflectionFunctionAbstract
         return $this->name;
     }
 
+    /** @return list<ReflectionParameter> */
     /** @return list<ReflectionParameter> */
     public function getParameters(): array
     {
