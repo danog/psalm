@@ -1294,8 +1294,14 @@ final class CastEmitter
                 $has_int = $has_int || $m->kind === RustType::INT;
                 $has_float = $has_float || $m->kind === RustType::FLOAT;
             }
-            if ((($fk === RustType::RT_GENERIC && $from->name === 'Num') || $fk === RustType::STR) && $has_int && $has_float) {
-                $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ' . $from->toRust() . ' { fn cast_to(self) -> ' . $to->toRust() . ' { match php_rt::ToNum::to_php_num(&self) { Num::Int(i) => ' . $to->mangle() . '::Int(i), Num::Float(f) => ' . $to->mangle() . '::Float(f) } } }');
+            if ((($fk === RustType::RT_GENERIC && $from->name === 'Num') || $fk === RustType::STR) && ($has_int || $has_float)) {
+                $int_arm = $has_int
+                    ? 'Num::Int(i) => ' . $to->mangle() . '::Int(i)'
+                    : 'Num::Int(i) => ' . $to->mangle() . '::Float(i as f64)';
+                $float_arm = $has_float
+                    ? 'Num::Float(f) => ' . $to->mangle() . '::Float(f)'
+                    : 'Num::Float(_) => panic!(' . Names::rustStringLiteral('no member of ' . $to->toRust() . ' admits a float') . ')';
+                $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ' . $from->toRust() . ' { fn cast_to(self) -> ' . $to->toRust() . ' { match php_rt::ToNum::to_php_num(&self) { ' . $int_arm . ', ' . $float_arm . ' } } }');
                 return;
             }
             if ($fk === RustType::ARRAY_KEY) {

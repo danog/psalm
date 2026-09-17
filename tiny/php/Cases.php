@@ -896,9 +896,21 @@ function case_key_narrow(): string
     return $out;
 }
 
+function case_int_or_false_arith(): string
+{
+    $s = 'ab*/cd';
+    $end = strpos($s, '*/');
+    if ($end === false) {
+        return 'none';
+    }
+    $end += 2;
+    return (string) $end;
+}
+
 function run_all(): string
 {
-    return check('key_narrow', case_key_narrow(), '3F7')
+    return check('int_or_false_arith', case_int_or_false_arith(), '4')
+        . check('key_narrow', case_key_narrow(), '3F7')
         . check('nullable_list_prop', case_nullable_list_prop(), '2:1')
         . check('union_base_member', case_union_base_member(), 'name:a|node|nullable|')
         . check('invoke_object', case_invoke_object(), 'sock3')
