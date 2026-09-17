@@ -127,7 +127,7 @@ trait CallTrait
                 continue;
             }
             $v = $ba->value;
-            if ($v instanceof Expr\Array_ || $v instanceof Node\Scalar || $v instanceof Expr\ConstFetch) {
+            if ($v instanceof Expr\Array_ || $v instanceof \PhpParser\Node\Scalar || $v instanceof Expr\ConstFetch) {
                 continue;
             }
             $vt = $this->expr($v)->type;
