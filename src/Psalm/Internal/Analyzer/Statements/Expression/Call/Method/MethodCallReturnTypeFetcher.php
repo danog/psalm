@@ -134,7 +134,9 @@ final class MethodCallReturnTypeFetcher
         }
 
         if (InternalCallMapHandler::inCallMap((string) $call_map_id)) {
-            if (($template_result->lower_bounds || $class_storage->stubbed)
+            // a class the project declares under an internal name (the transpiler's runtime stubs) is
+            // authoritative for its own signatures: the call map describes PHP's class, not the program's
+            if (($template_result->lower_bounds || $class_storage->stubbed || $class_storage->user_defined)
                 && ($method_storage = ($class_storage->methods[$method_id->method_name] ?? null))
                 && $method_storage->return_type
             ) {

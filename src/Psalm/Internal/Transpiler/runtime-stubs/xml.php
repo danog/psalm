@@ -540,6 +540,10 @@ class DOMText extends DOMNode
 {
 }
 
+class DOMCdataSection extends DOMText
+{
+}
+
 class DOMAttr extends DOMNode
 {
     public string $name;
@@ -723,9 +727,9 @@ class DOMDocument extends DOMNode
     }
 
     /** A CDATA section is stored as a text node (the port serializes it as text). */
-    public function createCDATASection(string $data): DOMText
+    public function createCDATASection(string $data): DOMCdataSection
     {
-        return new DOMText(new XmlNode('#text', $data, true), $this);
+        return new DOMCdataSection(new XmlNode('#text', $data, true), $this);
     }
 
     /** Namespace-qualified lookup: the port's XML model keeps local names only, so the namespace is ignored. */
