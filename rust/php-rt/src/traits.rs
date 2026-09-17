@@ -24,6 +24,10 @@ pub enum Kind {
 }
 pub trait PhpKind {
     fn php_kind(&self) -> Kind;
+    /// The class name of an object value (`get_class`); None for anything else.
+    fn php_class_name(&self) -> Option<&'static str> {
+        None
+    }
 }
 /// `gettype()` of a kind.
 pub fn kind_name(k: Kind) -> Str {
@@ -97,6 +101,12 @@ impl PhpKind for Mixed {
             Mixed::Arr(_) => Kind::Arr,
             Mixed::Obj(_) => Kind::Obj,
             Mixed::Closure(_) => Kind::Closure,
+        }
+    }
+    fn php_class_name(&self) -> Option<&'static str> {
+        match self {
+            Mixed::Obj(o) => Some(o.class_name()),
+            _ => None,
         }
     }
 }
