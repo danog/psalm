@@ -403,12 +403,10 @@ final class Algebra
                         continue;
                     }
 
-                    if (!isset($assertion->type)) {
-                        continue;
-                    }
+                    $assertion_type = $assertion->getAtomicType();
 
-                    if ($assertion->type instanceof TArray
-                        || $assertion->type instanceof TKeyedArray) {
+                    if ($assertion_type instanceof TArray
+                        || $assertion_type instanceof TKeyedArray) {
                         $has_list_or_array = true;
                         // list/array are collapsed, therefore there can only be 1 and we can abort
                         // otherwise we would have to remove them all individually
@@ -430,12 +428,10 @@ final class Algebra
                         continue;
                     }
 
-                    if (!isset($assertion->type)) {
-                        continue;
-                    }
+                    $assertion_type = $assertion->getAtomicType();
 
-                    if ($assertion->type instanceof TArray
-                        || $assertion->type instanceof TKeyedArray) {
+                    if ($assertion_type instanceof TArray
+                        || $assertion_type instanceof TKeyedArray) {
                         unset($truths[$var][$key][$index]);
                     }
                 }
