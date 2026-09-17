@@ -997,9 +997,24 @@ function case_union_receiver_base_method(): string
     return classify_node(new RecvA()) . '|' . classify_node(new RecvB()) . '|' . classify_node(new RecvC());
 }
 
+final class VerRe
+{
+    public const PHP_VERSION_REGEX = '^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:\\..*)?$';
+    public const SUPPORTED = '^(5\\.[456]|7\\.[01234]|8\\.[012345])(\\..*)?$';
+}
+
+function case_version_regex(): string
+{
+    $a = preg_match('/' . VerRe::PHP_VERSION_REGEX . '/', '7.4') ? 'a' : '-';
+    $b = preg_match('/' . VerRe::SUPPORTED . '/', '7.4') ? 'b' : '-';
+    $c = preg_match('/' . VerRe::PHP_VERSION_REGEX . '/', 'x.y') ? 'c' : '-';
+    return $a . $b . $c;
+}
+
 function run_all(): string
 {
-    return check('union_receiver_base_method', case_union_receiver_base_method(), 'xa|xb|other:base')
+    return check('version_regex', case_version_regex(), 'ab-')
+        . check('union_receiver_base_method', case_union_receiver_base_method(), 'xa|xb|other:base')
         . check('union_prop_coalesce', case_union_prop_coalesce(), 'i:A|node|i:E')
         . check('union_tostring', case_union_tostring(), 'isa-named:X|isa-tmpl')
         . check('prop_empty_narrow', case_prop_empty_narrow(), '1:1')

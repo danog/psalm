@@ -379,7 +379,9 @@ final class TestEmitter
                         $args[] = $this->casts->convert($src, RustType::shapeField($ft, true), $pt);
                     } else {
                         $args[] = $opt
-                            ? $this->casts->convert($src, RustType::shapeField($ft, true), RustType::option($pt)) . '.unwrap_or_default()'
+                            // an absent optional data-set field takes the parameter's own default, as PHP does
+                            ? $this->casts->convert($src, RustType::shapeField($ft, true), RustType::option($pt))
+                                . '.unwrap_or_else(|| ' . $this->paramDefault($m, $i, $pt) . ')'
                             : $this->casts->convert($src, $ft, $pt);
                     }
                 } else {
