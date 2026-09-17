@@ -53,6 +53,10 @@ trait ExprTrait
     public function exprTo(Expr $e, RustType $to): string
     {
         if ($to->hasGeneric()) {
+            if ($to->kind === RustType::GENERIC && $e instanceof Expr\Array_ && $e->items === []) {
+                // an empty literal for a generic slot: an empty list (no element type to infer)
+                return $this->expr($e, RustType::list(RustType::unit()))->code;
+            }
             // an argument for a generic parameter: emitted in its own natural type (rustc infers/checks T), with
             // the parameter's container structure kept (`list<T>` takes a List of the literal's element type,
             // not the tuple/shape the literal would naturally be)
@@ -565,6 +569,10 @@ trait ExprTrait
         }
         // never widen a concrete value into a union/option just because Psalm says so; only narrow
         if ($this->isWidening($v->type, $inf)) {
+            return $v;
+        }
+        // a generic value narrowed to `object`/mixed stays generic (its class name is reachable through PhpKind)
+        if ($v->type->kind === RustType::GENERIC && ($inf->kind === RustType::ANY_OBJECT || $inf->containsMixed())) {
             return $v;
         }
         // a container read keeps its stored element types: a refinement Psalm made (`array<int, int>` for a
@@ -1141,7 +1149,8 @@ trait ExprTrait
             $inner = $this->numResult($num_code, $res->inner());
             return new Val('Some(' . $inner->code . ')', $res);
         }
-        return new Val($num_code . '.to_mixed()', RustType::mixed());
+        // Psalm sees `mixed` (array operands possible): the number stays a typed Num for the consuming conversion
+        return new Val($num_code, RustType::rtGeneric('Num', []));
     }
 
     /**

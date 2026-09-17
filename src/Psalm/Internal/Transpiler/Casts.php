@@ -863,6 +863,10 @@ final class Casts
         if ($t->kind === RustType::UNION && self::unionHasObject($t)) {
             return 'Str::from_static(' . $code . '.class_name())';
         }
+        if ($t->kind === RustType::GENERIC) {
+            // a generic value narrowed to an object by Psalm: its class name through the PhpKind bound
+            return 'Str::from_static(php_rt::PhpKind::php_class_name(&' . $code . ').unwrap_or_else(|| panic!("get_class(): not an object")))';
+        }
         return null;
     }
 

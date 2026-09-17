@@ -478,7 +478,7 @@ final class CrateEmitter
         $w->line('impl php_rt::CastTo<AnyObject> for Mixed { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(self) } }');
         $w->line('impl php_rt::TryDowncast for AnyObject { fn try_downcast(o: &AnyObj) -> Option<Self> { Some(AnyObject(o.clone())) } }');
         $w->line('impl php_rt::Truthy for AnyObject { fn truthy(&self) -> bool { true } }');
-        $w->line('impl php_rt::PhpKind for AnyObject { fn php_kind(&self) -> php_rt::Kind { php_rt::Kind::Obj } }');
+        $w->line('impl php_rt::PhpKind for AnyObject { fn php_kind(&self) -> php_rt::Kind { php_rt::Kind::Obj } fn php_class_name(&self) -> Option<&\'static str> { Some(self.0.class_name()) } }');
         $w->line('impl php_rt::InstanceOfName for AnyObject { fn php_instance_of(&self, __n: &[u8]) -> bool { self.0.class_ancestors().iter().any(|a| a.as_bytes().eq_ignore_ascii_case(__n)) } }');
         $w->line('impl php_rt::Identical for AnyObject { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }');
         $w->line('impl php_rt::PhpCmp for AnyObject { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { Mixed::Obj(self.0.clone()).php_cmp(&Mixed::Obj(o.0.clone())) } }');
