@@ -735,11 +735,10 @@ final class TypeMapper
     private function mapValue(Union $value): RustType
     {
         $v = $this->map($value);
-        if ($v->kind === RustType::NEVER) {
-            return $this->mixedRoot('array-value-never (empty array)');
-        }
-        if ($v->kind === RustType::UNIT && $value->isNever()) {
-            return $this->mixedRoot('array-value-never (empty array)');
+        if ($v->kind === RustType::NEVER || ($v->kind === RustType::UNIT && $value->isNever())) {
+            // an array Psalm knows to be empty (`array<never, never>`): a container of the uninhabited type,
+            // which converts into any typed container (there is no element to convert)
+            return RustType::never();
         }
         return $v;
     }
