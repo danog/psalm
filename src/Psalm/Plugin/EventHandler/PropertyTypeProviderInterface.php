@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace Psalm\Plugin\EventHandler;
 
+use Psalm\Plugin\HookInterface;
+
 use Psalm\Plugin\EventHandler\Event\PropertyTypeProviderEvent;
 use Psalm\Type\Union;
 
 /**
  * @api
  */
-interface PropertyTypeProviderInterface
+interface PropertyTypeProviderInterface extends HookInterface
 {
     /**
      * @return list<string>

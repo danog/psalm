@@ -136,7 +136,10 @@ final class Shepherd implements AfterAnalysisInterface
 
         // Prepare new cURL resource
         $ch = curl_init($endpoint);
-        assert($ch !== false);
+        if ($ch === false) {
+            fwrite(STDERR, "Shepherd error: no HTTP client available to send the results to $endpoint." . PHP_EOL);
+            return;
+        }
         // Reporting is best-effort and must not stall the analysis result.
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);

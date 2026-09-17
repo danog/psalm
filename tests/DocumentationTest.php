@@ -6,7 +6,7 @@ namespace Psalm\Tests;
 
 use DOMAttr;
 use DOMDocument;
-use DOMXPath;
+use DOMElement;
 use Override;
 use PHPUnit\Framework\Constraint\Constraint;
 use Psalm\Config;
@@ -167,14 +167,22 @@ final class DocumentationTest extends TestCase
         $schema = new DOMDocument();
         $schema->load(__DIR__ . '/../config.xsd', LIBXML_NONET);
 
-        $xpath = new DOMXPath($schema);
-        $xpath->registerNamespace('xs', 'http://www.w3.org/2001/XMLSchema');
-
-        /** @var iterable<mixed, DOMAttr> $handlers */
-        $handlers = $xpath->query('//xs:complexType[@name="IssueHandlersType"]/xs:choice/xs:element/@name');
+        // //xs:complexType[@name="IssueHandlersType"]/xs:choice/xs:element/@name, walked with the DOM API
         $handler_types = [];
-        foreach ($handlers as $handler) {
-            $handler_types[] = $handler->value;
+        foreach ($schema->getElementsByTagNameNS('http://www.w3.org/2001/XMLSchema', 'complexType') as $complex_type) {
+            if (!$complex_type instanceof DOMElement || $complex_type->getAttribute('name') !== 'IssueHandlersType') {
+                continue;
+            }
+            foreach ($complex_type->childNodes as $choice) {
+                if ($choice->nodeName !== 'xs:choice') {
+                    continue;
+                }
+                foreach ($choice->childNodes as $element) {
+                    if ($element instanceof DOMElement && $element->nodeName === 'xs:element') {
+                        $handler_types[] = $element->getAttribute('name');
+                    }
+                }
+            }
         }
         sort($handler_types);
 

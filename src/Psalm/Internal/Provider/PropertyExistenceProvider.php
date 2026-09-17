@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider;
 
+use Psalm\Plugin\HookInterface;
+
 use Closure;
 use Psalm\CodeLocation;
 use Psalm\Context;
@@ -34,7 +36,7 @@ final class PropertyExistenceProvider
         self::$handlers = [];
     }
 
-    public function registerClass(object $class): void
+    public function registerClass(HookInterface $class): void
     {
         if ($class instanceof PropertyExistenceProviderInterface) {
             $callable = $class->doesPropertyExist(...);

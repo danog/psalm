@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Psalm\Plugin\EventHandler;
 
+use Psalm\Plugin\HookInterface;
+
 use Psalm\Plugin\EventHandler\Event\AfterClassLikeAnalysisEvent;
 
 /**
  * @api
  */
-interface AfterClassLikeAnalysisInterface
+interface AfterClassLikeAnalysisInterface extends HookInterface
 {
     /**
      * Called after a statement has been checked

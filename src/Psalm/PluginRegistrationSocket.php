@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm;
 
+use Psalm\Plugin\HookInterface;
+
 use Override;
 use Psalm\Plugin\EventHandler\DynamicFunctionStorageProviderInterface;
 use Psalm\Plugin\EventHandler\FunctionExistenceProviderInterface;
@@ -44,7 +46,7 @@ final class PluginRegistrationSocket implements RegistrationInterface
     }
 
     #[Override]
-    public function registerHooksFromClass(object $handler): void
+    public function registerHooksFromClass(HookInterface $handler): void
     {
         $this->config->eventDispatcher->registerClass($handler);
 

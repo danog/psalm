@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Psalm\Plugin\EventHandler;
 
+use Psalm\Plugin\HookInterface;
+
 /**
  * @api
  */
-interface ClassFilePathProviderInterface
+interface ClassFilePathProviderInterface extends HookInterface
 {
     /**
      * @param class-string $class

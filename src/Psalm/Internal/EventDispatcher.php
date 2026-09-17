@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal;
 
+use Psalm\Plugin\HookInterface;
+
 use Psalm\Plugin\EventHandler\AddTaintsInterface;
 use Psalm\Plugin\EventHandler\AfterAnalysisInterface;
 use Psalm\Plugin\EventHandler\AfterClassLikeAnalysisInterface;
@@ -205,7 +207,7 @@ final class EventDispatcher
      *
      * @psalm-external-mutation-free
      */
-    public function registerClass(object $class): void
+    public function registerClass(HookInterface $class): void
     {
         if ($class instanceof AfterMethodCallAnalysisInterface) {
             $this->after_method_checks[] = $class;

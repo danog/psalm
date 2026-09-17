@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider;
 
+use Psalm\Plugin\HookInterface;
+
 use Closure;
 use PhpParser;
 use Psalm\CodeLocation;
@@ -47,7 +49,7 @@ final class MethodReturnTypeProvider
     /**
      * Registers a provider object (classes are never looked up by name: the program is compiled).
      */
-    public function registerClass(object $class): void
+    public function registerClass(HookInterface $class): void
     {
         if ($class instanceof MethodReturnTypeProviderInterface) {
             $callable = $class->getMethodReturnType(...);

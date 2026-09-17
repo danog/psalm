@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Psalm\Plugin\EventHandler;
 
+use Psalm\Plugin\HookInterface;
+
 use Psalm\Plugin\EventHandler\Event\BeforeStatementAnalysisEvent;
 
 /**
  * @api
  */
-interface BeforeStatementAnalysisInterface
+interface BeforeStatementAnalysisInterface extends HookInterface
 {
     /**
      * Called before a statement has been checked
