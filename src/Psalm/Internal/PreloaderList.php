@@ -739,7 +739,6 @@ final class PreloaderList {
         \Psalm\Internal\Analyzer\Statements\UnusedAssignmentRemover::class,
         \Psalm\Internal\Analyzer\TraitAnalyzer::class,
         \Psalm\Internal\Analyzer\TypeAnalyzer::class,
-        \Psalm\Internal\Cache::class,
         \Psalm\Internal\Clause::class,
         \Psalm\Internal\CliUtils::class,
         \Psalm\Internal\Cli\LanguageServer::class,

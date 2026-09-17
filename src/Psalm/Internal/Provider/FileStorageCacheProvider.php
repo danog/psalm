@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Internal\Provider;
 
 use Psalm\Config;
-use Psalm\Internal\Cache;
 use Psalm\Storage\FileStorage;
 use UnexpectedValueException;
 
@@ -23,7 +22,12 @@ use const DIRECTORY_SEPARATOR;
  */
 class FileStorageCacheProvider
 {
-    protected readonly Cache $cache;
+    /**
+     * In-memory cache (the port keeps no persistent cache): lower-cased file path => [contents hash, storage].
+     *
+     * @var array<string, list{string, FileStorage}>
+     */
+    private array $items = [];
 
     private const FILE_STORAGE_CACHE_DIRECTORY = 'file_cache';
 
@@ -53,21 +57,27 @@ class FileStorageCacheProvider
             $dependencies []= (int) filemtime($dependent_file_path);
         }
 
-        $this->cache = new Cache($config, self::FILE_STORAGE_CACHE_DIRECTORY, $dependencies, $persistent);
+        // dependencies only matter to a persistent cache
+        $dependencies = [];
     }
 
     public function consolidate(): void
     {
-        $this->cache->consolidate();
     }
     
     public function writeToCache(FileStorage $storage, string $file_contents): void
     {
-        $this->cache->saveItem(strtolower($storage->file_path), $storage, hash('xxh128', $file_contents));
+        $this->items[strtolower($storage->file_path)] = [hash('xxh128', $file_contents), $storage];
     }
 
     public function getLatestFromCache(string $file_path, string $file_contents): ?FileStorage
     {
-        return $this->cache->getItem(strtolower($file_path), hash('xxh128', $file_contents));
+        $key = strtolower($file_path);
+        $hash = hash('xxh128', $file_contents);
+        if (isset($this->items[$key]) && $this->items[$key][0] === $hash) {
+            return $this->items[$key][1];
+        }
+
+        return null;
     }
 }

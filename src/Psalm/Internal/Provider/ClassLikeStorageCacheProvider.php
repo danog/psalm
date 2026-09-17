@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Internal\Provider;
 
 use Psalm\Config;
-use Psalm\Internal\Cache;
 use Psalm\Storage\ClassLikeStorage;
 use UnexpectedValueException;
 
@@ -23,8 +22,12 @@ use const DIRECTORY_SEPARATOR;
  */
 class ClassLikeStorageCacheProvider
 {
-    /** @var Cache<ClassLikeStorage> */
-    protected readonly Cache $cache;
+    /**
+     * In-memory cache (the port keeps no persistent cache): file path + class name => [contents hash, storage].
+     *
+     * @var array<string, list{string, ClassLikeStorage}>
+     */
+    private array $items = [];
 
     public function __construct(Config $config, string $composerLock, bool $persistent = true)
     {
@@ -52,19 +55,19 @@ class ClassLikeStorageCacheProvider
             $dependencies []= filemtime($dependent_file_path);
         }
 
-        $this->cache = new Cache($config, 'classlike_cache', $dependencies, $persistent);
+        // dependencies only matter to a persistent cache
+        $dependencies = [];
     }
 
     public function consolidate(): void
     {
-        $this->cache->consolidate();
     }
 
     public function writeToCache(ClassLikeStorage $storage, string $file_path, string $file_contents): void
     {
         $fq_classlike_name_lc = strtolower($storage->name);
 
-        $this->cache->saveItem($file_path."\0".$fq_classlike_name_lc, $storage, hash('xxh128', $file_contents));
+        $this->items[$file_path."\0".$fq_classlike_name_lc] = [hash('xxh128', $file_contents), $storage];
     }
 
     /**
@@ -75,9 +78,12 @@ class ClassLikeStorageCacheProvider
         ?string $file_path,
         string $file_contents,
     ): ClassLikeStorage {
-        return $this->cache->getItem(
-            $file_path."\0".$fq_classlike_name_lc,
-            hash('xxh128', $file_contents),
-        );
+        $key = $file_path."\0".$fq_classlike_name_lc;
+        $hash = hash('xxh128', $file_contents);
+        if (isset($this->items[$key]) && $this->items[$key][0] === $hash) {
+            return $this->items[$key][1];
+        }
+
+        throw new UnexpectedValueException('No cached storage for ' . $fq_classlike_name_lc);
     }
 }
