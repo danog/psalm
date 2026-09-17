@@ -45,6 +45,38 @@ pub enum Flow<T> {
 #[derive(Clone, Copy, Debug)]
 pub enum Never {}
 
+// an uninhabited value satisfies every value trait vacuously (a container of it is always empty)
+impl crate::traits::Identical for Never {
+    fn identical(&self, _o: &Self) -> bool {
+        match *self {}
+    }
+}
+impl crate::traits::PhpCmp for Never {
+    fn php_cmp(&self, _o: &Self) -> std::cmp::Ordering {
+        match *self {}
+    }
+}
+impl crate::traits::Truthy for Never {
+    fn truthy(&self) -> bool {
+        match *self {}
+    }
+}
+impl crate::traits::ToStr for Never {
+    fn to_php_str(&self) -> crate::string::Str {
+        match *self {}
+    }
+}
+impl crate::traits::PhpKind for Never {
+    fn php_kind(&self) -> crate::traits::Kind {
+        match *self {}
+    }
+}
+impl crate::traits::InstanceOfName for Never {
+    fn php_instance_of(&self, _name: &[u8]) -> bool {
+        match *self {}
+    }
+}
+
 #[inline]
 /// A value the transpiler proved unreachable (unsupported construct or external code): panics when evaluated.
 pub fn dead<T>(msg: &str) -> T {
