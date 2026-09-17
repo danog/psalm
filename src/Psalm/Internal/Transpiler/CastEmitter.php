@@ -1121,6 +1121,13 @@ final class CastEmitter
                     $arms[] = $from->mangle() . '::' . $m->variantName() . '(v) => ' . $this->conv('v', RustType::bool(), $to);
                 } elseif (($down = $this->downcastArm('v', $m, $to)) !== null) {
                     $arms[] = $from->mangle() . '::' . $m->variantName() . '(v) => ' . $down;
+                } elseif ($m->kind === RustType::OPTION && ($down = $this->downcastArm('__v', $m->inner(), $to)) !== null) {
+                    // a nullable class member: the value narrows through its hierarchy, null takes the target's
+                    // Null member or is the type error PHP would raise
+                    $null_arm = $this->casts->hasUnit($to, 'Null')
+                        ? $to->mangle() . '::Null'
+                        : 'panic!(' . Names::rustStringLiteral('null where ' . $to->toRust() . ' expected') . ')';
+                    $arms[] = $from->mangle() . '::' . $m->variantName() . '(v) => match v { Some(__v) => ' . $down . ', None => ' . $null_arm . ' }';
                 } else {
                     // a member the target union cannot hold: the narrowing is a type error at runtime
                     $arms[] = $from->mangle() . '::' . $m->variantName() . '(_) => panic!(' . Names::rustStringLiteral('cannot narrow ' . $from->mangle() . '::' . $m->variantName() . ' into ' . $to->toRust()) . ')';
