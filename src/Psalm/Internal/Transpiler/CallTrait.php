@@ -143,15 +143,18 @@ trait CallTrait
                 // parameters fed by a spread argument (`f(...$pair)`): element i-k of the hoisted list
                 $k = $i - $unpacked[1];
                 $default = ($param->by_ref ? '&mut ' : '') . $this->defaultArg($param, $t, $callee_class, $callee_name, $i);
-                $out[] = '(match ' . $unpacked[0] . '.get(' . $k . ').cloned() { Some(__ua) => ' . $this->casts->convert('__ua', RustType::mixed(), $t) . ', None => ' . $default . ' })';
+                $out[] = '(match ' . $unpacked[0] . '.get(' . $k . ').cloned() { Some(__ua) => ' . $this->casts->convert('__ua', $unpacked[2], $t) . ', None => ' . $default . ' })';
                 continue;
             }
             if ($arg !== null && $arg->unpack) {
+                // a spread list keeps its element type (a typed `explode()` result feeds typed parameters)
                 $sv = $this->expr($arg->value);
+                $et = $sv->type->kind === RustType::LIST ? $sv->type->inner() : RustType::mixed();
+                $lt = RustType::list($et);
                 $tmp = $this->tmp('__ul');
-                $this->addPre('let ' . $tmp . ': List<Mixed> = ' . $this->casts->convert($sv->code, $sv->type, RustType::list(RustType::mixed())) . ';');
-                $unpacked = [$tmp, $i];
-                $out[] = '(match ' . $tmp . '.get(0).cloned() { Some(__ua) => ' . $this->casts->convert('__ua', RustType::mixed(), $t) . ', None => ' . $this->defaultArg($param, $t, $callee_class, $callee_name, $i) . ' })';
+                $this->addPre('let ' . $tmp . ': ' . $lt->toRust() . ' = ' . $this->casts->convert($sv->code, $sv->type, $lt) . ';');
+                $unpacked = [$tmp, $i, $et];
+                $out[] = '(match ' . $tmp . '.get(0).cloned() { Some(__ua) => ' . $this->casts->convert('__ua', $et, $t) . ', None => ' . $this->defaultArg($param, $t, $callee_class, $callee_name, $i) . ' })';
                 continue;
             }
             if ($arg === null) {
@@ -318,7 +321,10 @@ trait CallTrait
             return $result;
         }
         $this->warn('unknown function ' . $resolved, $e);
-        return $this->dead('unknown function ' . $resolved . '', $this->inferredOrMixed($e));
+        // dead in the closed world: typed by what the site expects (a declared return, a parameter) when known
+        $exp = $this->call_expected;
+        $dead_t = $exp !== null && !$exp->containsMixed() && !$exp->hasGeneric() ? $exp : $this->inferredOrMixed($e);
+        return $this->dead('unknown function ' . $resolved . '', $dead_t);
     }
 
     /** `$callable(...)` */

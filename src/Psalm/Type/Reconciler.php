@@ -956,7 +956,35 @@ class Reconciler
                 $fq_class_name,
             );
 
-            return $declaring_class_storage->pseudo_property_get_types['$' . $property_name] ?? null;
+            $pseudo_type = $declaring_class_storage->pseudo_property_get_types['$' . $property_name] ?? null;
+
+            if ($pseudo_type !== null) {
+                return $pseudo_type;
+            }
+
+            // a magic property: the type its `__get` declares
+            $get_method_id = new MethodIdentifier($fq_class_name, '__get');
+
+            if ($codebase->methodExists($get_method_id)) {
+                $declaring_get_id = $codebase->methods->getDeclaringMethodId($get_method_id);
+
+                if ($declaring_get_id !== null) {
+                    $declaring_get_class = $declaring_get_id->fq_class_name;
+                    $get_return_type = $codebase->getMethodReturnType($get_method_id, $declaring_get_class);
+
+                    if ($get_return_type !== null) {
+                        return TypeExpander::expandUnion(
+                            $codebase,
+                            $get_return_type,
+                            $declaring_get_class,
+                            $declaring_get_class,
+                            null,
+                        );
+                    }
+                }
+            }
+
+            return null;
         }
 
         $declaring_property_class = $codebase->properties->getDeclaringClassForProperty(

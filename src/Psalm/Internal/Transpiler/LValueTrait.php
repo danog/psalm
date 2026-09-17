@@ -925,6 +925,29 @@ trait LValueTrait
         return $t->containsMixed();
     }
 
+    /**
+     * `$x[$k] = v` / `$x[] = v` into a local container whose elements Psalm types as mixed: the local's
+     * name and the container type the value's type would give it (a retyping record).
+     *
+     * @return array{string, Closure(RustType): RustType}|null
+     */
+    private function elementWriteRecord(Expr $target): ?array
+    {
+        if (!($target instanceof Expr\ArrayDimFetch && $target->var instanceof Expr\Variable && is_string($target->var->name))) {
+            return null;
+        }
+        $lt = $this->place($target->var)->type;
+        $inner = $lt->kind === RustType::OPTION ? $lt->inner() : $lt;
+        if ($inner->kind === RustType::LIST && $inner->inner()->kind === RustType::MIXED) {
+            return [$target->var->name, static fn(RustType $vt) => RustType::list($vt)];
+        }
+        if ($inner->kind === RustType::MAP && $inner->params[1]->kind === RustType::MIXED) {
+            $kt = $inner->params[0];
+            return [$target->var->name, static fn(RustType $vt) => RustType::map($kt, $vt)];
+        }
+        return null;
+    }
+
     public function assignTo(Expr $target, Val $value): string
     {
         if ($target instanceof Expr\List_ || $target instanceof Expr\Array_) {
@@ -1012,6 +1035,13 @@ trait LValueTrait
             // a Psalm-mixed local: the value's static type is a retyping candidate (see BodyEmitter::emitBodyInner)
             $rhs = $this->expr($e->expr);
             $this->noteMixedAssign($target->name, $rhs->type);
+            return $place->write($this->casts->convert($rhs->code, $rhs->type, $place->type));
+        }
+        $container = $this->elementWriteRecord($target);
+        if ($container !== null) {
+            [$name, $ct] = $container;
+            $rhs = $this->expr($e->expr);
+            $this->noteMixedAssign($name, $ct($rhs->type));
             return $place->write($this->casts->convert($rhs->code, $rhs->type, $place->type));
         }
         $value = $this->exprTo($e->expr, $place->type);

@@ -517,9 +517,13 @@ final class ForeachAnalyzer
                 $invalid_iterator_types[] = $iterator_atomic_type->getKey();
 
                 $value_type = Type::getMixed();
+            } elseif ($iterator_atomic_type instanceof TNever) {
+                // nothing to iterate: the key and value are uninhabited (never), not mixed
+                $has_valid_iterator = true;
+                $value_type = Type::combineUnionTypes($value_type, Type::getNever());
+                $key_type = Type::combineUnionTypes($key_type, Type::getNever());
             } elseif ($iterator_atomic_type instanceof TObject ||
-                $iterator_atomic_type instanceof TMixed ||
-                $iterator_atomic_type instanceof TNever
+                $iterator_atomic_type instanceof TMixed
             ) {
                 $has_valid_iterator = true;
                 $value_type = Type::getMixed();

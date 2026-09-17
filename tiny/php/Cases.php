@@ -832,7 +832,8 @@ function run_all(): string
         . check('deferred_graph', case_deferred_graph(['root', 'root', 'n1']), 'n0,n1,n2')
         . check('typed_builtins2', case_typed_builtins2(), "c1,r6,'a\\'b',42,nf,yes,null,1.5,pos")
         . check('elseif_narrowing', case_elseif_narrowing(), 'p,n,-')
-        . check('filter_table', case_filter_table(), '257:1,2,9|min=1,d=0;259:1,9|d=0;516:3|d=0');
+        . check('filter_table', case_filter_table(), '257:1,2,9|min=1,d=0;259:1,9|d=0;516:3|d=0')
+        . check('element_retype', case_element_retype(), 'A=1x,B=2y|ab');
 }
 
 // ---- feature: typed constant table (get_defined_constants without Mixed) ----
@@ -1243,4 +1244,24 @@ function case_filter_table(): string
         $out[] = $id . ':' . implode(',', $entry['flags']) . '|' . implode(',', $opts);
     }
     return implode(';', $out);
+}
+
+function pair_str(string $a, string $b): string
+{
+    return $a . $b;
+}
+
+function case_element_retype(): string
+{
+    $table = require __DIR__ . '/data/table.php';
+    $copy = [];
+    foreach ($table as $name => $row) {
+        $copy[strtoupper($name)] = $row;
+    }
+    $out = [];
+    foreach ($copy as $name => [$n, $s]) {
+        $out[] = $name . '=' . $n . $s;
+    }
+    $parts = explode('-', 'a-b');
+    return implode(',', $out) . '|' . pair_str(...$parts);
 }

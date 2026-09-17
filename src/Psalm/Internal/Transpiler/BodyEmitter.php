@@ -1071,6 +1071,11 @@ final class BodyEmitter
                         $values[] = $t;
                     }
                 }
+                // `$x = []` records (a container of never) say nothing next to the records that fill the local
+                $filled = array_values(array_filter($values, static fn(RustType $t) => !$t->isEmptyIterable()));
+                if ($filled !== [] && count($filled) < count($values)) {
+                    $values = $filled;
+                }
                 $u = $values === [] ? null : $this->program->unionOfRust($values);
                 if ($u !== null && !$u->containsMixed() && !$u->hasGeneric()) {
                     $retype[$name] = $nullable && $u->kind !== RustType::OPTION ? RustType::option($u) : $u;
@@ -1114,7 +1119,10 @@ final class BodyEmitter
             || $n instanceof Expr\PreInc || $n instanceof Expr\PreDec || $n instanceof Expr\PostInc || $n instanceof Expr\PostDec
             || $n instanceof Node\Stmt\Foreach_ || $n instanceof Node\Stmt\Global_ || $n instanceof Node\Stmt\Static_ || $n instanceof Expr\Closure || $n instanceof Expr\List_ || $n instanceof Expr\Unset_ || $n instanceof Node\Stmt\Unset_) as $n) {
             if ($n instanceof Expr\Assign) {
-                if (!($n->var instanceof Expr\Variable)) {
+                // `$x[$k] = v` / `$x[] = v` on a local: an element write recorded for retyping (assignTo);
+                // anything deeper rebinds the local in ways the records do not describe
+                $elem_write = $n->var instanceof Expr\ArrayDimFetch && $n->var->var instanceof Expr\Variable && is_string($n->var->var->name);
+                if (!($n->var instanceof Expr\Variable) && !$elem_write) {
                     $mark($root($n->var));
                 }
             } elseif ($n instanceof Expr\AssignOp || $n instanceof Expr\AssignRef) {

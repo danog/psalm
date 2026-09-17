@@ -76,6 +76,17 @@ final class ElseIfAnalyzer
             return false;
         }
 
+        if ($assigned_in_conditional_var_ids) {
+            // the branches after this one see the variables its condition assigned, typed by the negated condition
+            IfAnalyzer::addConditionallyAssignedVarsToContext(
+                $statements_analyzer,
+                $elseif->cond,
+                clone $pre_conditional_context,
+                $else_context,
+                $assigned_in_conditional_var_ids,
+            );
+        }
+
         $mixed_var_ids = [];
 
         foreach ($elseif_context->vars_in_scope as $var_id => $type) {
