@@ -25,4 +25,8 @@
             <directory name="vendor"/>
         </ignoreFiles>
     </projectFiles>
+    <disableExtensions>
+        <extension name="dom"/>
+        <extension name="simplexml"/>
+    </disableExtensions>
 </psalm>

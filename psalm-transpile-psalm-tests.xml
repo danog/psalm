@@ -95,4 +95,8 @@
             <file name="vendor/phpunit/phpunit/src/Framework/TestListenerDefaultImplementation.php"/>
         </ignoreFiles>
     </projectFiles>
+    <disableExtensions>
+        <extension name="dom"/>
+        <extension name="simplexml"/>
+    </disableExtensions>
 </psalm>
