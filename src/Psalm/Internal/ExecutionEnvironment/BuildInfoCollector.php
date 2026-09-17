@@ -264,6 +264,16 @@ final class BuildInfoCollector
      * @return $this
      * @psalm-suppress PossiblyUndefinedStringArrayOffset
      */
+    /**
+     * The GitHub Actions event payload fields the collector reads.
+     *
+     * @return array{head_commit?: array{id: string, author: array{name: string, email: string}, committer: array{name: string, email: string}, message: string, timestamp: string}, number?: int}
+     */
+    private static function decodeGithubEvent(string $event_json): array
+    {
+        return json_decode($event_json, true, 512, JSON_THROW_ON_ERROR);
+    }
+
     private function fillGithubActions(): BuildInfoCollector
     {
         if (isset($this->env['GITHUB_ACTIONS'])) {
@@ -293,7 +303,7 @@ final class BuildInfoCollector
                 $event_json = file_get_contents((string) $this->env['GITHUB_EVENT_PATH']);
                 assert($event_json !== false);
                 /** @var array */
-                $event_data = json_decode($event_json, true, 512, JSON_THROW_ON_ERROR);
+                $event_data = self::decodeGithubEvent($event_json);
 
                 if (isset($event_data['head_commit'])) {
                     /**

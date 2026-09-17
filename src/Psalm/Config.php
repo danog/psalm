@@ -1046,7 +1046,7 @@ final class Config
             $composer_json_contents = file_get_contents($composer_json_path);
             assert($composer_json_contents !== false);
             /** @var ComposerJson|scalar|null $composer_json */
-            $composer_json = json_decode($composer_json_contents, true, 512, JSON_THROW_ON_ERROR);
+            $composer_json = Composer::decodeComposerJson($composer_json_contents);
             if (!is_array($composer_json)) {
                 throw new UnexpectedValueException('Invalid composer.json at ' . $composer_json_path);
             }
@@ -2855,7 +2855,7 @@ final class Config
                 $composer_json_contents = file_get_contents($composer_json_path);
                 assert($composer_json_contents !== false);
                 /** @var ComposerJson|scalar|null $composer_json */
-                $composer_json = json_decode($composer_json_contents, true, 512, JSON_THROW_ON_ERROR);
+                $composer_json = Composer::decodeComposerJson($composer_json_contents);
             } catch (JsonException) {
                 $composer_json = null;
             }

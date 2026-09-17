@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal;
 
+use Psalm\Internal\Composer;
+
 use Composer\Autoload\ClassLoader;
 use JsonException;
 use Phar;
@@ -188,7 +190,7 @@ final class CliUtils
             $composer_file_contents = file_get_contents($composer_json_path);
             assert($composer_file_contents !== false);
             /** @var ComposerJson|scalar|null $composer_json */
-            $composer_json = json_decode($composer_file_contents, true, 512, JSON_THROW_ON_ERROR);
+            $composer_json = Composer::decodeComposerJson($composer_file_contents);
         } catch (JsonException $e) {
             fwrite(
                 STDERR,

@@ -68,18 +68,23 @@ final class ComposerLock
         $file_contents = file_get_contents($file_name);
         assert($file_contents !== false);
 
-        /** @var array{packages?: list<ComposerPackage>|scalar|null, packages-dev?: list<ComposerPackage>|scalar|null}|scalar|null $contents */
-        $contents = json_decode($file_contents, true);
+        $contents = self::decodeLock($file_contents);
 
         if ($error = json_last_error()) {
             throw new RuntimeException(json_last_error_msg(), $error);
         }
 
-        if (!is_array($contents)) {
+        if ($contents === null) {
             throw new RuntimeException('Malformed ' . $file_name . ', expecting JSON-encoded object');
         }
 
         return $contents;
+    }
+
+    /** @return array{packages?: list<ComposerPackage>|scalar|null, packages-dev?: list<ComposerPackage>|scalar|null}|null */
+    private static function decodeLock(string $json): ?array
+    {
+        return json_decode($json, true);
     }
 
     /**

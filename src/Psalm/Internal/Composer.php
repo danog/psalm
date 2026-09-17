@@ -10,9 +10,12 @@ use function basename;
 use function file_exists;
 use function getenv;
 use function is_readable;
+use function json_decode;
 use function pathinfo;
 use function substr;
 use function trim;
+
+use const JSON_THROW_ON_ERROR;
 
 use const PATHINFO_EXTENSION;
 
@@ -28,6 +31,16 @@ use const PATHINFO_EXTENSION;
  */
 final class Composer
 {
+    /**
+     * The composer.json fields the analyzer reads, decoded in their declared shape.
+     *
+     * @return ComposerJson|null
+     */
+    public static function decodeComposerJson(string $composer_json_contents): ?array
+    {
+        return json_decode($composer_json_contents, true, 512, JSON_THROW_ON_ERROR);
+    }
+
     /**
      * Retrieve the path to composer.json file.
      *
