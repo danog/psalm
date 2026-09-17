@@ -130,6 +130,30 @@ trait CallTrait
         };
     }
 
+    /**
+     * A call whose result is the callee's bare generic that no parameter binds (`Future::await_<G_T>`): the
+     * result type Psalm resolved binds it through a typed binding (a downcast could not infer it).
+     *
+     * @param list<RustType> $param_types
+     */
+    private function bindGenericResult(Val $v, Expr $e, array $param_types): Val
+    {
+        if ($v->type->kind !== RustType::GENERIC) {
+            return $v;
+        }
+        $g = $v->type->toRust();
+        foreach ($param_types as $pt) {
+            if (preg_match('/\b' . preg_quote($g, '/') . '\b/', $pt->toRust())) {
+                return $v;
+            }
+        }
+        $inf = $this->inferred($e);
+        if ($inf === null || $inf->hasGeneric() || $inf->containsMixed()) {
+            return $v;
+        }
+        return new Val('{ let __g: ' . $inf->toRust() . ' = ' . $v->code . '; __g }', $inf);
+    }
+
     /** Code evaluated before the call being built (see finishCall). */
     private function addPre(string $code): void
     {
@@ -385,7 +409,7 @@ trait CallTrait
         $fn = $this->program->getFunction($resolved) ?? $this->program->getFunction($short);
         if ($fn !== null) {
             $argc = $this->args($args, $fn->record->storage, $fn->param_types, null, $fn->fq_name, $fn->borrow_params);
-            return new Val($this->finishCall($fn->path() . '(' . implode(', ', $argc) . ')' . ($fn->throws ? '?' : '')), $fn->return_type);
+            return $this->bindGenericResult(new Val($this->finishCall($fn->path() . '(' . implode(', ', $argc) . ')' . ($fn->throws ? '?' : '')), $fn->return_type), $e, $fn->param_types);
         }
 
         $result = $this->builtins->emit($this, $e, strtolower($short), $args);
@@ -442,7 +466,7 @@ trait CallTrait
             $m = $cls !== null ? $this->program->findMethod($cls, '__invoke') : null;
             if ($m !== null) {
                 $argc = $this->args($args, $m->storage, $m->param_types, $m->declaring, $m->name, $m->borrow_params);
-                return new Val($this->finishCall($callee->code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')' . ($m->throws ? '?' : '')), $m->return_type);
+                return $this->bindGenericResult(new Val($this->finishCall($callee->code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')' . ($m->throws ? '?' : '')), $m->return_type), $e, $m->param_types);
             }
         }
         $this->warn('call of ' . $t->toRust(), $site);
@@ -563,7 +587,7 @@ trait CallTrait
                         $recv_code = $bind . '.get()';
                     }
                 }
-                return new Val($this->finishCall($recv_code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')' . ($m->throws ? '?' : '')), $m->return_type);
+                return $this->bindGenericResult(new Val($this->finishCall($recv_code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')' . ($m->throws ? '?' : '')), $m->return_type), $e, $m->param_types);
             }
             if ($cls !== null && $cls->isEnum()) {
                 return $this->enumStaticCall($cls, $lc, $args, $e, $recv);
@@ -758,7 +782,7 @@ trait CallTrait
                     $target = $cls; // explicitly named class
                 }
             }
-            return new Val($this->finishCall($target->path() . '::' . $m->rustName() . '(' . implode(', ', $argc) . ')'), $m->return_type);
+            return $this->bindGenericResult(new Val($this->finishCall($target->path() . '::' . $m->rustName() . '(' . implode(', ', $argc) . ')'), $m->return_type), $e, $m->param_types);
         }
         // instance method called with self::/parent::/static:: => non-virtual call on $this
         if ($this->this_type === null) {
