@@ -2570,12 +2570,11 @@ final class Config
 
         if (!\defined('PSALM_COMPILED') && file_exists($vendor_autoload_files_path)) {
             $this->include_collector->runAndCollect(
-                static fn(): array =>
-                    /**
-                     * @psalm-suppress UnresolvableInclude
-                     * @var list<string>
-                     */
-                    require $vendor_autoload_files_path,
+                /**
+                 * @return list<string>
+                 * @psalm-suppress UnresolvableInclude
+                 */
+                static fn(): array => require $vendor_autoload_files_path,
             );
         }
 

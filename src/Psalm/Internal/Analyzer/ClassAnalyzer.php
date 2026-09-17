@@ -1064,6 +1064,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
 
         /** @var PhpParser\Node\Stmt\Class_ */
         $class = $this->class;
+        assert($class instanceof PhpParser\Node\Stmt\Class_);
         $classlike_storage_provider = $codebase->classlike_storage_provider;
         $class_storage = $classlike_storage_provider->get($fq_class_name_lc);
 

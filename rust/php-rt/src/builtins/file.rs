@@ -489,6 +489,31 @@ pub fn stream_get_contents(r: &Rc<Resource>) -> Option<Str> {
         _ => None,
     }
 }
+/// `stream_get_meta_data`: the metadata of a stream (the runtime's streams are blocking, unread, plain files/stdio).
+pub struct StreamMeta {
+    pub timed_out: bool,
+    pub blocked: bool,
+    pub eof: bool,
+    pub stream_type: Str,
+    pub mode: Str,
+    pub unread_bytes: i64,
+    pub seekable: bool,
+    pub uri: Str,
+}
+
+pub fn stream_meta(_r: &Rc<Resource>) -> StreamMeta {
+    StreamMeta {
+        timed_out: false,
+        blocked: true,
+        eof: false,
+        stream_type: Str::from_static("STDIO"),
+        mode: Str::from_static("r"),
+        unread_bytes: 0,
+        seekable: false,
+        uri: Str::from_static("php://stdin"),
+    }
+}
+
 pub fn stream_set_blocking(_r: &Rc<Resource>, _b: bool) -> bool {
     true
 }

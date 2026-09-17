@@ -380,7 +380,6 @@ final class ConstantTypeResolver
             }
 
             $types = [];
-            /** @var array|scalar|null $val */
             foreach ($value as $key => $val) {
                 $types[$key] = new Union([self::getLiteralTypeFromScalarValue($val)]);
             }

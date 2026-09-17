@@ -15,6 +15,7 @@ use function get_object_vars;
 
 /**
  * @api
+ * @psalm-import-type DataFlowNodeDataArray from DataFlowNodeData
  */
 final class XmlReport extends Report
 {
@@ -30,7 +31,10 @@ final class XmlReport extends Report
 
                         if (null !== $data['taint_trace']) {
                             $data['taint_trace'] = array_map(
-                                /** @param DataFlowNodeData|array{label: string, entry_path_type: string} $trace */
+                                /**
+                                 * @param DataFlowNodeData|array{label: string, entry_path_type: string} $trace
+                                 * @return DataFlowNodeDataArray|array{label: string, entry_path_type: string}
+                                 */
                         static fn(DataFlowNodeData|array $trace): array => $trace instanceof DataFlowNodeData ? $trace->toArray() : $trace,
                                 $data['taint_trace'],
                             );
@@ -41,6 +45,7 @@ final class XmlReport extends Report
 
                         if (null !== $data['other_references']) {
                             $data['other_references'] = array_map(
+                                /** @return DataFlowNodeDataArray */
                                 static fn(DataFlowNodeData $reference): array => $reference->toArray(),
                                 $data['other_references'],
                             );

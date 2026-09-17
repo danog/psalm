@@ -74,6 +74,18 @@ fn var_export_inner(m: &Mixed, indent: usize, out: &mut Vec<u8>) {
         Mixed::Closure(_) => out.extend_from_slice(b"\\Closure::__set_state(array(\n))"),
     }
 }
+pub fn var_export_str(s: &Str, ret: bool) -> Str {
+    var_export(&Mixed::Str(s.clone()), ret)
+}
+pub fn var_export_int(i: &i64, ret: bool) -> Str {
+    var_export(&Mixed::Int(*i), ret)
+}
+pub fn var_export_float(f: &f64, ret: bool) -> Str {
+    var_export(&Mixed::Float(*f), ret)
+}
+pub fn var_export_bool(b: &bool, ret: bool) -> Str {
+    var_export(&Mixed::Bool(*b), ret)
+}
 pub fn var_export(m: &Mixed, ret: bool) -> Str {
     let mut out = Vec::new();
     var_export_inner(m, 0, &mut out);

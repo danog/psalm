@@ -24,6 +24,7 @@ final class AfterAnalysisEvent
     public function __construct(
         private readonly Codebase $codebase,
         private readonly array $issues,
+        /** @var array<string, string> */
         private readonly array $build_info,
         private readonly ?SourceControlInfo $source_control_info = null,
     ) {

@@ -482,7 +482,7 @@ final class DocumentationTest extends TestCase
             #[Override]
             protected function failureDescription(string $other): string
             {
-                return $this->exporter()->shortenedExport($other) . ' ' . $this->toString();
+                return self::export($other) . ' ' . $this->toString();
             }
         };
     }

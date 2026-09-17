@@ -280,6 +280,39 @@ pub fn parse_url(url: &Str, component: i64) -> Mixed {
         _ => Mixed::Null,
     }
 }
+/// `filter_var($s, FILTER_VALIDATE_INT)`: the int, None for the `false` outcome.
+pub fn filter_validate_int(s: &Str) -> Option<i64> {
+    match filter_var(&Mixed::Str(s.clone()), 257, Mixed::Null) {
+        Mixed::Int(i) => Some(i),
+        _ => None,
+    }
+}
+
+/// `filter_var($s, FILTER_VALIDATE_FLOAT)`: the float, None for the `false` outcome.
+pub fn filter_validate_float(s: &Str) -> Option<f64> {
+    match filter_var(&Mixed::Str(s.clone()), 259, Mixed::Null) {
+        Mixed::Float(f) => Some(f),
+        Mixed::Int(i) => Some(i as f64),
+        _ => None,
+    }
+}
+
+/// `filter_var($s, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)`: None for an unrecognized value.
+pub fn filter_validate_bool(s: &Str) -> Option<bool> {
+    match filter_var(&Mixed::Str(s.clone()), 258, Mixed::Null) {
+        Mixed::Bool(b) => Some(b),
+        _ => None,
+    }
+}
+
+/// `filter_var($s, $filter)` for any other filter: the result's string form, None for the `false` outcome.
+pub fn filter_var_str(s: &Str, filter: i64) -> Option<Str> {
+    match filter_var(&Mixed::Str(s.clone()), filter, Mixed::Null) {
+        Mixed::Bool(false) | Mixed::Null => None,
+        other => Some(other.to_php_str()),
+    }
+}
+
 pub fn filter_var(v: &Mixed, filter: i64, _options: Mixed) -> Mixed {
     let s = v.to_php_str();
     match filter {

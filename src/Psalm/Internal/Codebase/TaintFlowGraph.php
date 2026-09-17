@@ -217,20 +217,20 @@ final class TaintFlowGraph extends DataFlowGraph
     public function getIssueTrace(DataFlowNode $source): array
     {
         $out = [];
-        do {
-            /** @var DataFlowNode $source */
-            $previous_source = $source->taintSource;
-            if ($previous_source === $source) {
+        $current = $source;
+        while ($current !== null) {
+            $previous_source = $current->taintSource;
+            if ($previous_source === $current) {
                 break;
             }
-            $path_types = $source->path_types;
+            $path_types = $current->path_types;
             array_unshift($out, [
-                'location' => $source->code_location,
-                'label' => $source->label,
+                'location' => $current->code_location,
+                'label' => $current->label,
                 'entry_path_type' => end($path_types) ?: '',
             ]);
-            $source = $previous_source;
-        } while ($previous_source);
+            $current = $previous_source;
+        }
 
         return $out;
     }

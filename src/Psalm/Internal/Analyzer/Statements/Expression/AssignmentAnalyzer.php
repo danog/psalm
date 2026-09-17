@@ -107,6 +107,8 @@ final class AssignmentAnalyzer
 {
     /**
      * @param  PhpParser\Node\Expr|null $assign_value  This has to be null to support list destructuring
+     * @param array<string, bool> $not_ignored_docblock_var_ids
+     * @param array<string, bool> $not_ignored_docblock_var_ids
      */
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
@@ -630,6 +632,8 @@ final class AssignmentAnalyzer
 
     /**
      * @param list<VarDocblockComment> $var_comments
+     * @param array<string, bool> $not_ignored_docblock_var_ids
+     * @param array<string, bool> $not_ignored_docblock_var_ids
      */
     private static function analyzeDocComment(
         StatementsAnalyzer $statements_analyzer,
@@ -708,6 +712,10 @@ final class AssignmentAnalyzer
         }
     }
 
+    /**
+     * @param array<string, bool> $not_ignored_docblock_var_ids
+     * @param array<string, bool> $not_ignored_docblock_var_ids
+     */
     public static function assignTypeFromVarDocblock(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node $stmt,

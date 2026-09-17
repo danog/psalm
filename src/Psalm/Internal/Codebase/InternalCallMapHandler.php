@@ -157,14 +157,12 @@ final class InternalCallMapHandler
 
                 if ($arg->unpack && !$function_param->is_variadic) {
                     if ($arg_type->hasArray()) {
-                        /**
-                         * @var TArray|TKeyedArray
-                         */
                         $array_atomic_type = $arg_type->getArray();
 
                         if ($array_atomic_type instanceof TKeyedArray) {
                             $arg_type = $array_atomic_type->getGenericValueType();
                         } else {
+                            assert($array_atomic_type instanceof TArray);
                             $arg_type = $array_atomic_type->type_params[1];
                         }
                     }

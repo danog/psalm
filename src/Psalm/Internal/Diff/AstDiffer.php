@@ -24,6 +24,17 @@ use function count;
 abstract class AstDiffer
 {
     /**
+     * The Myers frontier before the first step: the furthest x reached on each diagonal k, seeded at k = 1.
+     *
+     * @return non-empty-array<int, int>
+     * @psalm-pure
+     */
+    private static function initialFrontier(): array
+    {
+        return [1 => 0];
+    }
+
+    /**
      * @param Closure(Stmt, Stmt, string, string, bool=): bool $is_equal
      * @param array<int, Stmt> $a
      * @param array<int, Stmt> $b
@@ -39,7 +50,7 @@ abstract class AstDiffer
         $n = count($a);
         $m = count($b);
         $max = $n + $m;
-        $v = array_fill(1, 1, 0);
+        $v = self::initialFrontier();
         $bc = [];
         $trace = [];
         for ($d = 0; $d <= $max; ++$d) {

@@ -274,8 +274,8 @@ final class CliUtils
         $filtered_input_paths = [];
 
         for ($i = 0, $iMax = count($input_paths); $i < $iMax; ++$i) {
-            /** @var string */
             $input_path = $input_paths[$i];
+            assert(is_string($input_path));
 
             if ($input_path[0] === '-' && strlen($input_path) === 2) {
                 if ($input_path[1] === 'c' || $input_path[1] === 'f' || $input_path[1] === 'r') {

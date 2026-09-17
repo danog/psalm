@@ -464,6 +464,8 @@ final class UnionTypeComparator
 
     /**
      * Does the input param type match the given param type
+     *
+     * @param array<string, bool> $matching_input_keys the keys of the input's atomic types the container accepts
      */
     public static function canBeContainedBy(
         Codebase $codebase,

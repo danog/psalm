@@ -50,7 +50,7 @@ final class ConfigTest extends TestCase
 {
     protected ProjectAnalyzer $project_analyzer;
 
-    /** @var callable(int, string, string=, int=, array=):bool|null */
+    /** @var (callable(int, string, string=, int=): bool)|null */
     protected $original_error_handler = null;
 
     #[Override]

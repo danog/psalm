@@ -41,7 +41,7 @@ final class ClassLikeDocblockParserTest extends TestCase
     }
 
     /**
-     * @return iterable<array-key, array{annotation: string, expected: array}>
+     * @return iterable<array-key, array{annotation: string, expected: array{name: string, returnType: string, is_static: bool, params: array<string, array{type: string}>}}>
      * @psalm-pure
      */
     public function providerMethodAnnotation(): iterable

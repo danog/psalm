@@ -9,6 +9,7 @@ use Psalm\Storage\ImmutableNonCloneableTrait;
 /**
  * @psalm-immutable
  * @internal
+ * @psalm-type DataFlowNodeDataArray = array{label: string, line_from: int, line_to: int, file_name: string, file_path: string, snippet: string, from: int, to: int, snippet_from: int, column_from: int, column_to: int}
  */
 final class DataFlowNodeData
 {
@@ -35,7 +36,7 @@ final class DataFlowNodeData
     /**
      * The node as the report serializers emit it (every public property, in declaration order).
      *
-     * @return array{label: string, line_from: int, line_to: int, file_name: string, file_path: string, snippet: string, from: int, to: int, snippet_from: int, column_from: int, column_to: int}
+     * @return DataFlowNodeDataArray
      */
     public function toArray(): array
     {

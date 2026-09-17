@@ -278,6 +278,20 @@ pub fn global_get(name: &str) -> Mixed {
     })
 }
 
+/// `$argv = ...`: the command line replaced by a list of strings.
+pub fn set_argv(v: List<Str>) {
+    let mut m: Map<ArrayKey, Mixed> = Map::new();
+    for s in v.iter() {
+        m.push(Mixed::Str(s.clone()));
+    }
+    global_set("argv", Mixed::Arr(m));
+}
+
+/// `$argc = ...`.
+pub fn set_argc(n: i64) {
+    global_set("argc", Mixed::Int(n));
+}
+
 pub fn global_set(name: &str, v: Mixed) {
     GLOBALS.with(|g| {
         g.borrow_mut().insert(name.to_string(), v);
