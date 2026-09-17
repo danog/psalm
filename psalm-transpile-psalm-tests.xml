@@ -23,6 +23,7 @@
         <directory name="tests"/>
         <directory name="../phpunit-port/typed/src"/>
         <directory name="vendor/felixfbecker/language-server-protocol/src"/>
+        <directory name="vendor/composer/semver/src"/>
         <ignoreFiles>
             <file name="../php-parser/lib/PhpParser/JsonDecoder.php"/>
             <directory name="tests/fixtures"/>
@@ -55,7 +56,19 @@
             <file name="src/Psalm/Internal/Cli/LanguageServer.php"/>
             <directory name="vendor/amphp"/>
             <directory name="vendor/symfony"/>
-            <directory name="vendor/composer"/>
+            <file name="vendor/composer/autoload_classmap.php"/>
+            <file name="vendor/composer/autoload_files.php"/>
+            <file name="vendor/composer/autoload_namespaces.php"/>
+            <file name="vendor/composer/autoload_psr4.php"/>
+            <file name="vendor/composer/autoload_real.php"/>
+            <file name="vendor/composer/autoload_static.php"/>
+            <file name="vendor/composer/ClassLoader.php"/>
+            <file name="vendor/composer/installed.php"/>
+            <file name="vendor/composer/InstalledVersions.php"/>
+            <file name="vendor/composer/platform_check.php"/>
+            <directory name="vendor/composer/package-versions-deprecated"/>
+            <directory name="vendor/composer/xdebug-handler"/>
+            <directory name="vendor/composer/pcre"/>
             <directory name="vendor/nikic"/>
             <directory name="vendor/phpunit/phpunit/src/Framework/MockObject"/>
             <directory name="vendor/phpunit/phpunit/src/TextUI"/>

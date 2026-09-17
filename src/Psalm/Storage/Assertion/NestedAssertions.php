@@ -8,9 +8,8 @@ use Override;
 use Psalm\Storage\Assertion;
 use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
-use function json_encode;
-
-use const JSON_THROW_ON_ERROR;
+use function array_map;
+use function implode;
 
 /**
  * @psalm-immutable
@@ -32,7 +31,16 @@ final class NestedAssertions extends Assertion
 
     public function __toString(): string
     {
-        return '@' . json_encode($this->assertions, JSON_THROW_ON_ERROR);
+        $vars = [];
+        foreach ($this->assertions as $var_id => $clauses) {
+            $ors = [];
+            foreach ($clauses as $clause) {
+                $ors[] = '[' . implode('|', array_map(static fn(Assertion $assertion): string => (string) $assertion, $clause)) . ']';
+            }
+            $vars[] = $var_id . ':' . implode('&', $ors);
+        }
+
+        return '@{' . implode(',', $vars) . '}';
     }
 
     /**
