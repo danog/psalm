@@ -2120,9 +2120,28 @@ final class Program
         return $nullable ? RustType::option($u) : $u;
     }
 
+    /** True while a body is emitted: method resolutions on hierarchy handles are dispatch demands. */
+    public bool $record_dispatch = false;
+
+    /** @var array<string, true> `hierarchyLc::methodLc` dispatch methods some code calls through the handle */
+    public array $dispatch_demands = [];
+
+    /** @var array<string, array{ClassModel, MethodModel}> dispatch methods deferred to the post-pass */
+    public array $pending_dispatch = [];
+
+    public function noteDispatch(ClassModel $class, string $lc_name): void
+    {
+        if (!$class->isLeaf()) {
+            $this->dispatch_demands[$class->lc() . '::' . $lc_name] = true;
+        }
+    }
+
     /** Resolve the method reachable as `$lc_name` on `$class`. */
     public function findMethod(ClassModel $class, string $lc_name): ?MethodModel
     {
+        if ($this->record_dispatch) {
+            $this->noteDispatch($class, $lc_name);
+        }
         if (isset($class->methods[$lc_name])) {
             return $class->methods[$lc_name];
         }

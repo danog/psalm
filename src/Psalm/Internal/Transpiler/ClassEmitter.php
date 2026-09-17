@@ -546,7 +546,15 @@ final class ClassEmitter
         $w->line('pub fn ' . $rn . $sig . ' { ' . $up . '.' . $impl . '(' . $this->argNames($m) . ') }');
     }
 
-    private function emitMethodOnEnum(ClassModel $cls, MethodModel $m, Writer $w): void
+    /** A deferred dispatch method (post-pass): the `match` over the variants, without the shared body. */
+    public function emitDeferredDispatch(ClassModel $cls, MethodModel $m, Writer $w): void
+    {
+        $w->open('impl ' . $cls->handle() . ' {');
+        $this->emitMethodOnEnum($cls, $m, $w, true);
+        $w->close();
+    }
+
+    private function emitMethodOnEnum(ClassModel $cls, MethodModel $m, Writer $w, bool $force_dispatch = false): void
     {
         $this->program->types->context = '<dispatch> ' . $cls->fqcn . '::' . $m->name;
         $rn = $m->rustName();
@@ -598,6 +606,17 @@ final class ClassEmitter
             }
             return;
         }
+        if (!$cls->has_downstream && !$force_dispatch) {
+            // closed hierarchy: the dispatch `match` is emitted in the post-pass, only if some code calls the
+            // method through this handle (Program::$dispatch_demands); the shared body stays here
+            $this->program->pending_dispatch[$cls->lc() . '::' . $m->lc()] = [$cls, $m];
+            if ($m->declaring === $cls && !$m->isAbstract()) {
+                $w->line('pub fn ' . $rn . '__impl' . $this->signature($m, true) . ' {');
+                $w->raw($this->body($cls, $m));
+                $w->line('}');
+            }
+            return;
+        }
         // virtual dispatch: an arm per concrete class that overrides the method; the others run the shared
         // body (`__impl`, present on this handle for every non-abstract method) with `self` being this enum
         $shared = $m->isAbstract() ? null : 'self.' . $rn . '__impl(' . $this->argNames($m) . ')';
@@ -619,7 +638,7 @@ final class ClassEmitter
         }
         $arms[] = '_ => ' . ($shared ?? 'unreachable!()');
         $w->line('pub fn ' . $rn . $this->signature($m, true) . ' { match self { ' . implode(', ', $arms) . ' } }');
-        if ($m->declaring === $cls && !$m->isAbstract()) {
+        if ($m->declaring === $cls && !$m->isAbstract() && !$force_dispatch) {
             $w->line('pub fn ' . $rn . '__impl' . $this->signature($m, true) . ' {');
             $w->raw($this->body($cls, $m));
             $w->line('}');

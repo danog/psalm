@@ -468,6 +468,17 @@ class DOMNode
         return in_array($name, ['nodeName', 'nodeValue', 'textContent', 'parentNode', 'firstChild', 'childNodes', 'ownerDocument', 'attributes'], true);
     }
 
+    /** The writable magic properties: the node's text (`nodeValue` / `textContent`). */
+    public function __set(string $name, string $value): void
+    {
+        if ($name === 'nodeValue' || $name === 'textContent') {
+            $this->xml->children = [];
+            $this->xml->text = $value;
+            return;
+        }
+        throw new \LogicException('DOMNode::$' . $name . ' is not writable');
+    }
+
     public function getLineNo(): int
     {
         return 0;

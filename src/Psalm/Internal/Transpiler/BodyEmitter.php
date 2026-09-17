@@ -931,6 +931,17 @@ final class BodyEmitter
      */
     public function emitBody(array $params, ?array $stmts, RustType $ret_type): string
     {
+        $saved = $this->program->record_dispatch;
+        $this->program->record_dispatch = true;
+        try {
+            return $this->emitBodyInner($params, $stmts, $ret_type);
+        } finally {
+            $this->program->record_dispatch = $saved;
+        }
+    }
+
+    private function emitBodyInner(array $params, ?array $stmts, RustType $ret_type): string
+    {
         $this->types()->current_class = $this->class?->fqcn;
         $this->types()->current_crate = $this->class !== null ? $this->class->crate : $this->program->crateOfRecord($this->record);
         $this->ret_type = $ret_type;

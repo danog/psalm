@@ -213,6 +213,9 @@ final class TestEmitter
     private function emitTest(ClassModel $cls, MethodModel $m, Writer $w): string
     {
         $this->program->types->context = '<test harness> ' . $cls->fqcn . '::' . $m->name;
+        foreach (['runsetup', 'runteardown', 'expectsexception', 'expectedexceptiondescription', 'verifyexpectedexception', 'setdataname', '__construct', $m->lc()] as $lc) {
+            $this->program->noteDispatch($cls, $lc);
+        }
         $path = $cls->path();
         $fn_name = 'collect__' . Names::ident(str_replace('\\', '_', $cls->fqcn) . '__' . $m->name);
         $provider_name = $this->dataProvider($m);

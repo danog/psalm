@@ -141,6 +141,23 @@ final class CrateEmitter
             }
         } while ($new);
 
+        // dispatch methods of closed hierarchies: only those some code calls through the handle
+        // (the Throw glue and the harness read exceptions through the Throwable handle)
+        $thr = $this->program->getClass('Throwable');
+        if ($thr !== null) {
+            foreach (['getmessage', 'getcode', 'getprevious', 'getfile', 'getline', 'gettraceasstring', '__tostring'] as $lc) {
+                $this->program->noteDispatch($thr, $lc);
+            }
+        }
+        $n_disp = 0;
+        foreach ($this->program->pending_dispatch as $k => [$dcls, $dm]) {
+            if (isset($this->program->dispatch_demands[$k])) {
+                $class_emitter->emitDeferredDispatch($dcls, $dm, $this->classModule($dcls));
+                $n_disp++;
+            }
+        }
+        fwrite(STDERR, '[lazy-dispatch] ' . $n_disp . ' of ' . count($this->program->pending_dispatch) . " hierarchy dispatch methods emitted\n");
+
         // the runtime object protocol, dynamic part only for classes some body erases to Mixed
         $this->program->types->context = '<post-pass: unions, shapes, casts>';
         $dyn = $this->casts->dynReachable();
@@ -573,6 +590,7 @@ final class CrateEmitter
         }
         $w->line('pub fn message(&self) -> Str { self.getMessage() }');
         $w->close();
+
         // the typed exception interface of the test harness (php_rt::testing) and of php-rt's take_thrown
         $w->line('impl php_rt::PhpThrowable for ' . $throwable->path() . ' { fn class_name(&self) -> &\'static str { php_rt::PhpObject::class_name(self) } fn class_ancestors(&self) -> &\'static [&\'static str] { php_rt::PhpObject::class_ancestors(self) } fn message(&self) -> Str { self.getMessage() } }');
         $classes = ['Error', 'TypeError', 'ValueError', 'ArgumentCountError', 'ArithmeticError', 'DivisionByZeroError', 'AssertionError', 'UnhandledMatchError', 'JsonException', 'RuntimeException', 'LogicException', 'InvalidArgumentException', 'UnexpectedValueException', 'OutOfBoundsException'];

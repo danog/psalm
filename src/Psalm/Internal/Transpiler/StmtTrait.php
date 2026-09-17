@@ -363,7 +363,10 @@ trait StmtTrait
         if ($key_var !== null) {
             $w->line($this->assignTo($key_var, new Val($kv . '.0', $key_t)));
         }
-        $w->line($this->assignTo($val_var, new Val($kv . '.1', $val_t)));
+        if (!($val_var instanceof Expr\Variable && $val_var->name === '_')) {
+            // `$_` is the conventional discard: no binding (it never takes a type)
+            $w->line($this->assignTo($val_var, new Val($kv . '.1', $val_t)));
+        }
         $this->pushLoop($label, $label, false);
         $this->block($s->stmts);
         $this->popLoop();
