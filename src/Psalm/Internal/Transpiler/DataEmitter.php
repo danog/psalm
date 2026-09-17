@@ -69,6 +69,113 @@ final class DataEmitter
         throw new RuntimeException('a dictionary may only contain arrays and scalars, found ' . get_debug_type($v));
     }
 
+    /** The value a data file returns (see emitFile). */
+    public function valueOf(string $abs_path): mixed
+    {
+        return (static function (string $__path): mixed {
+            /** @psalm-suppress UnresolvableInclude */
+            return require $__path;
+        })($abs_path);
+    }
+
+    /**
+     * The Rust type of a data value from its shape: scalars by kind, sequential arrays as lists, other arrays
+     * as maps keyed by the kinds of their keys, element types joined (unions of the distinct scalar kinds,
+     * nullable for null elements). No shapes: a dictionary is a uniform table, not a record.
+     */
+    public function inferType(mixed $v, Program $program): ?RustType
+    {
+        if ($v === null) {
+            return RustType::unit();
+        }
+        if (is_bool($v)) {
+            return RustType::bool();
+        }
+        if (is_int($v)) {
+            return RustType::int();
+        }
+        if (is_float($v)) {
+            return RustType::float();
+        }
+        if (is_string($v)) {
+            return RustType::str();
+        }
+        if (!is_array($v)) {
+            return null;
+        }
+        if ($v === []) {
+            return RustType::map(RustType::arrayKey(), RustType::never());
+        }
+        $is_list = array_keys($v) === range(0, count($v) - 1);
+        $str_keys = $int_keys = false;
+        $elem = null;
+        /** @var mixed $item */
+        foreach ($v as $k => $item) {
+            $str_keys = $str_keys || is_string($k);
+            $int_keys = $int_keys || is_int($k);
+            $t = $this->inferType($item, $program);
+            if ($t === null) {
+                return null;
+            }
+            $elem = $elem === null ? $t : $this->joinTypes($elem, $t, $program);
+            if ($elem === null) {
+                return null;
+            }
+        }
+        if ($is_list) {
+            return RustType::list($elem);
+        }
+        $key = $str_keys && !$int_keys ? RustType::str() : ($int_keys && !$str_keys ? RustType::int() : RustType::arrayKey());
+        return RustType::map($key, $elem);
+    }
+
+    /** The type holding values of both types (element-wise for containers, unions for scalar kinds). */
+    private function joinTypes(RustType $a, RustType $b, Program $program): ?RustType
+    {
+        if ($a->toRust() === $b->toRust()) {
+            return $a;
+        }
+        if ($a->kind === RustType::UNIT) {
+            return $b->kind === RustType::OPTION ? $b : RustType::option($b);
+        }
+        if ($b->kind === RustType::UNIT) {
+            return $a->kind === RustType::OPTION ? $a : RustType::option($a);
+        }
+        $nullable = $a->kind === RustType::OPTION || $b->kind === RustType::OPTION;
+        $a = $a->kind === RustType::OPTION ? $a->inner() : $a;
+        $b = $b->kind === RustType::OPTION ? $b->inner() : $b;
+        $joined = null;
+        if ($a->kind === RustType::MAP && $b->kind === RustType::MAP) {
+            if ($b->params[1]->kind === RustType::NEVER) {
+                $joined = $a;
+            } elseif ($a->params[1]->kind === RustType::NEVER) {
+                $joined = $b;
+            } else {
+                $k = $a->params[0]->toRust() === $b->params[0]->toRust() ? $a->params[0] : RustType::arrayKey();
+                $vt = $this->joinTypes($a->params[1], $b->params[1], $program);
+                $joined = $vt === null ? null : RustType::map($k, $vt);
+            }
+        } elseif ($a->kind === RustType::LIST && $b->kind === RustType::LIST) {
+            $vt = $this->joinTypes($a->inner(), $b->inner(), $program);
+            $joined = $vt === null ? null : RustType::list($vt);
+        } elseif (($a->kind === RustType::LIST && $b->kind === RustType::MAP) || ($a->kind === RustType::MAP && $b->kind === RustType::LIST)) {
+            // a list among maps: the same table keyed by integers
+            [$l, $m] = $a->kind === RustType::LIST ? [$a, $b] : [$b, $a];
+            if ($m->params[1]->kind === RustType::NEVER) {
+                $joined = RustType::map(RustType::arrayKey(), $l->inner());
+            } else {
+                $vt = $this->joinTypes($l->inner(), $m->params[1], $program);
+                $joined = $vt === null ? null : RustType::map(RustType::arrayKey(), $vt);
+            }
+        } else {
+            $joined = $program->unionOfRust([$a, $b]);
+        }
+        if ($joined === null) {
+            return null;
+        }
+        return $nullable && $joined->kind !== RustType::OPTION ? RustType::option($joined) : $joined;
+    }
+
     /** @throws RuntimeException for expressions that are not constant data */
     public function emit(Expr $e): string
     {

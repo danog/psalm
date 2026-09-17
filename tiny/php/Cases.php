@@ -825,7 +825,6 @@ function run_all(): string
 
 function case_defined_constants(): string
 {
-    /** @var array<string, scalar|null> $constants */
     $constants = get_defined_constants();
     $out = [];
     $out[] = isset($constants['PHP_INT_SIZE']) ? 'size' . (string) $constants['PHP_INT_SIZE'] : 'nosize';
@@ -840,7 +839,6 @@ check('defined_constants', case_defined_constants(), 'size8,eall,eol,pi');
 
 function case_data_file(): string
 {
-    /** @var array<string, array{int, string, float|null}> $table */
     $table = require __DIR__ . '/data/table.php';
     $out = [];
     foreach ($table as $name => [$n, $s, $f]) {
@@ -850,3 +848,52 @@ function case_data_file(): string
     return implode(',', $out) . '|' . implode(',', $names);
 }
 check('data_file', case_data_file(), 'a1x-,b2y3.5|a,b');
+
+// ---- probe: elseif-assigned locals and property array_filter (no Mixed locals expected) ----
+
+final class TypeSource
+{
+    /** @var array<string, A> */
+    private array $types = [];
+
+    /** @var array<string, bool> */
+    private array $flags = ['x' => true, 'y' => false];
+
+    public function __construct()
+    {
+        $this->types['b'] = new A(5);
+    }
+
+    public function getType(string $key): ?A
+    {
+        return $this->types[$key] ?? null;
+    }
+
+    public function forgetFlags(): void
+    {
+        $this->flags = array_filter($this->flags);
+    }
+
+    public function flagCount(): int
+    {
+        return count($this->flags);
+    }
+}
+
+function case_elseif_assign(): string
+{
+    $src = new TypeSource();
+    $out = [];
+    foreach (['a', 'b', 'c'] as $key) {
+        if ($key === 'c') {
+            $out[] = 'skip';
+        } elseif ($stmt_type = $src->getType($key)) {
+            $out[] = 'a' . $stmt_type->a;
+        } else {
+            $out[] = 'none';
+        }
+    }
+    $src->forgetFlags();
+    return implode(',', $out) . '|' . $src->flagCount();
+}
+check('elseif_assign', case_elseif_assign(), 'none,a5,skip|1');

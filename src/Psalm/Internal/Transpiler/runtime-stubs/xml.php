@@ -32,7 +32,6 @@ final class XmlNode
         if ($flat === null) {
             return null;
         }
-        /** @var list<XmlNode> $nodes */
         $nodes = [];
         foreach ($flat as [$name, $text, $is_text, $attrs, $parent_index]) {
             $node = new XmlNode($name, $text, $is_text);

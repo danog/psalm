@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 <psalm
+    disableVarParsing="true"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xmlns="https://getpsalm.org/schema/config"
     name="Tiny transpile repro"
@@ -23,4 +24,8 @@
             <file name="../src/Psalm/Internal/Transpiler/runtime-stubs/fork.php"/>
         </ignoreFiles>
     </projectFiles>
+    <disableExtensions>
+        <extension name="dom"/>
+        <extension name="simplexml"/>
+    </disableExtensions>
 </psalm>

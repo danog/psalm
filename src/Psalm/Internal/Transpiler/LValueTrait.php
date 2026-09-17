@@ -883,7 +883,8 @@ trait LValueTrait
     /** A local whose storage type is Mixed or nullable Mixed (a retyping candidate). */
     private static function isMixedLocal(RustType $t): bool
     {
-        return $t->kind === RustType::MIXED || ($t->kind === RustType::OPTION && $t->inner()->kind === RustType::MIXED);
+        // a Mixed anywhere in the local's type (`list<mixed>` from a call on a mixed value) is a retyping candidate
+        return $t->containsMixed();
     }
 
     public function assignTo(Expr $target, Val $value): string

@@ -246,10 +246,28 @@ final class BodyEmitter
                 }
             }
         }
+        // the locals the body mentions (Psalm's snapshots also carry synthetic ids, e.g. `$prop` for
+        // `array_filter($this->prop)`): anything else is not a variable of this function
+        $mentioned = [];
+        foreach (self::ownNodes($stmts, Expr\Variable::class) as $v) {
+            if (is_string($v->name)) {
+                $mentioned[$v->name] = true;
+            }
+        }
+        foreach (self::ownNodes($stmts, Closure::class) as $closure) {
+            foreach ($closure->uses as $use) {
+                if (is_string($use->var->name)) {
+                    $mentioned[$use->var->name] = true;
+                }
+            }
+        }
         foreach ($var_types as $var_id => $types) {
             $name = substr($var_id, 1);
             if ($name === 'this' || $name === '_' || isset($this->predeclared[$name])) {
                 // `$_` is the discard variable: never bound (see the foreach/list emission), never declared
+                continue;
+            }
+            if (!isset($mentioned[$name]) && !isset($params[$name])) {
                 continue;
             }
             if (isset($params[$name])) {
@@ -998,49 +1016,52 @@ final class BodyEmitter
     private function emitBodyInner(array $params, ?array $stmts, RustType $ret_type): string
     {
         $this->scanWriteKinds($stmts ?? []);
-        // the first pass may be discarded: its recorded conversions/erasures must not outlive it
+        // a discarded pass must not leave its recorded conversions/erasures behind
         $snap_erasures = $this->casts->erasures;
         $snap_casts = $this->casts->casts;
         $snap_checks = $this->casts->instance_checks;
-        $out = $this->emitBodyPass($params, $stmts, $ret_type);
-        $retype = [];
-        if (getenv('DBG_RETYPE') && $this->mixed_assigns !== []) {
-            fwrite(STDERR, '[retype] ' . $this->type_context . ' candidates: ' . implode(', ', array_map(fn($n, $ts) => '$' . $n . '=' . implode('|', array_map(fn($t) => $t->toRust(), $ts)) . (isset($this->complex_writes[$n]) ? ' (complex)' : ''), array_keys($this->mixed_assigns), $this->mixed_assigns)) . "\n");
-        }
-        foreach ($this->mixed_assigns as $name => $types) {
-            if (isset($this->retyped[$name]) || isset($this->complex_writes[$name]) || isset($params[$name])
-                || !empty($this->byref[$name]) || !empty($this->cells[$name]) || !empty($this->refvars[$name]) || !empty($this->globals[$name])
-            ) {
-                continue;
+        // retyping iterates: a local typed by a retyped one (`foreach ($table as [$a, $b])` after `$table`)
+        // becomes a candidate only in the pass where its source is typed
+        for ($pass = 0; ; $pass++) {
+            $out = $this->emitBodyPass($params, $stmts, $ret_type);
+            $retype = [];
+            if (getenv('DBG_RETYPE') && $this->mixed_assigns !== []) {
+                fwrite(STDERR, '[retype] ' . $this->type_context . ' candidates: ' . implode(', ', array_map(fn($n, $ts) => '$' . $n . '=' . implode('|', array_map(fn($t) => $t->toRust(), $ts)) . (isset($this->complex_writes[$n]) ? ' (complex)' : ''), array_keys($this->mixed_assigns), $this->mixed_assigns)) . "\n");
             }
-            // `$x = null` assignments make the local nullable
-            $nullable = false;
-            $values = [];
-            foreach ($types as $t) {
-                if ($t->kind === RustType::UNIT) {
-                    $nullable = true;
-                } else {
-                    $values[] = $t;
+            foreach ($this->mixed_assigns as $name => $types) {
+                if (isset($this->retyped[$name]) || isset($this->complex_writes[$name]) || isset($params[$name])
+                    || !empty($this->byref[$name]) || !empty($this->cells[$name]) || !empty($this->refvars[$name]) || !empty($this->globals[$name])
+                ) {
+                    continue;
+                }
+                // `$x = null` assignments make the local nullable
+                $nullable = false;
+                $values = [];
+                foreach ($types as $t) {
+                    if ($t->kind === RustType::UNIT) {
+                        $nullable = true;
+                    } else {
+                        $values[] = $t;
+                    }
+                }
+                $u = $values === [] ? null : $this->program->unionOfRust($values);
+                if ($u !== null && !$u->containsMixed() && !$u->hasGeneric()) {
+                    $retype[$name] = $nullable && $u->kind !== RustType::OPTION ? RustType::option($u) : $u;
                 }
             }
-            $u = $values === [] ? null : $this->program->unionOfRust($values);
-            if ($u !== null && !$u->containsMixed() && !$u->hasGeneric()) {
-                $retype[$name] = $nullable && $u->kind !== RustType::OPTION ? RustType::option($u) : $u;
+            if (getenv('DBG_RETYPE') && $retype !== []) {
+                fwrite(STDERR, '[retype] ' . $this->type_context . ' RETYPED: ' . implode(', ', array_map(fn($n, $t) => '$' . $n . '=' . $t->toRust(), array_keys($retype), $retype)) . "\n");
             }
+            if ($retype === [] || $pass >= 4) {
+                return $out;
+            }
+            $this->retyped = $retype + $this->retyped;
+            $this->mixed_assigns = [];
+            $this->w = new Writer();
+            $this->casts->erasures = $snap_erasures;
+            $this->casts->casts = $snap_casts;
+            $this->casts->instance_checks = $snap_checks;
         }
-        if (getenv('DBG_RETYPE') && $retype !== []) {
-            fwrite(STDERR, '[retype] ' . $this->type_context . ' RETYPED: ' . implode(', ', array_map(fn($n, $t) => '$' . $n . '=' . $t->toRust(), array_keys($retype), $retype)) . "\n");
-        }
-        if ($retype === []) {
-            return $out;
-        }
-        $this->retyped = $retype + $this->retyped;
-        $this->mixed_assigns = [];
-        $this->w = new Writer();
-        $this->casts->erasures = $snap_erasures;
-        $this->casts->casts = $snap_casts;
-        $this->casts->instance_checks = $snap_checks;
-        return $this->emitBodyPass($params, $stmts, $ret_type);
     }
 
     /** Locals written other than by `$x = expr` (compound ops, element/property writes, foreach, list(), references). */
@@ -1049,7 +1070,8 @@ final class BodyEmitter
         $finder = new NodeFinder();
         $root = function (Expr $e): ?string {
             while ($e instanceof Expr\ArrayDimFetch || $e instanceof Expr\PropertyFetch || $e instanceof Expr\StaticPropertyFetch) {
-                if ($e instanceof Expr\StaticPropertyFetch) {
+                if ($e instanceof Expr\StaticPropertyFetch || $e instanceof Expr\PropertyFetch) {
+                    // a write through a property does not rebind the local holding the object (a handle)
                     return null;
                 }
                 $e = $e->var;
@@ -1076,8 +1098,9 @@ final class BodyEmitter
             } elseif ($n instanceof Expr\PreInc || $n instanceof Expr\PreDec || $n instanceof Expr\PostInc || $n instanceof Expr\PostDec) {
                 $mark($root($n->var));
             } elseif ($n instanceof Node\Stmt\Foreach_) {
-                // the loop variables are assigned per iteration (a by-reference value is a reference)
-                if ($n->byRef || !($n->valueVar instanceof Expr\Variable)) {
+                // the loop variables are assigned per iteration (a by-reference value is a reference); a
+                // destructured value (`as [$a, $b]`) assigns its variables plainly too
+                if ($n->byRef || !($n->valueVar instanceof Expr\Variable || $n->valueVar instanceof Expr\List_ || $n->valueVar instanceof Expr\Array_)) {
                     $mark($root($n->valueVar));
                 }
                 if ($n->keyVar !== null && !($n->keyVar instanceof Expr\Variable)) {

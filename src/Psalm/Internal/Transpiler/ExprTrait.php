@@ -278,12 +278,16 @@ trait ExprTrait
                     // the value of a data file has ONE type: the type declared at the include site (the
                     // conversion from Mixed happens there), never the literal's own shape
                     if ($file->isData()) {
-                        if ($expected !== null && $expected->kind !== RustType::MIXED && !$expected->hasGeneric() && !$expected->containsMixed()) {
-                            // the table read in the declared type (`/** @var TCallMap */ $map = require ...`)
-                            $key = substr(md5($expected->toRust()), 0, 8);
-                            $this->program->data_demands[$file->rel_path][$key] = $expected;
-                            $this->casts->needFromData($expected);
-                            return new Val($file->path() . '_' . $key . '()', $expected);
+                        // the table read in the type the site expects (a parameter, a return type), else in the
+                        // type of its own contents (a uniform table of scalars/lists/maps)
+                        $t = $expected !== null && $expected->kind !== RustType::MIXED && !$expected->hasGeneric() && !$expected->containsMixed()
+                            ? $expected
+                            : $this->program->dataType($file);
+                        if ($t !== null) {
+                            $key = substr(md5($t->toRust()), 0, 8);
+                            $this->program->data_demands[$file->rel_path][$key] = $t;
+                            $this->casts->needFromData($t);
+                            return new Val($file->path() . '_' . $key . '()', $t);
                         }
                         $this->program->data_demands[$file->rel_path]['mixed'] = RustType::mixed();
                         return new Val($file->path() . '()', RustType::mixed());

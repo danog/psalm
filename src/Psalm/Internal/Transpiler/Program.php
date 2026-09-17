@@ -2135,6 +2135,24 @@ final class Program
     /** @var array<string, array<string, RustType>> data file (rel path) => demanded typed views (key => type; 'mixed' for the Mixed view) */
     public array $data_demands = [];
 
+    /** @var array<string, ?RustType> data file (rel path) => the type of its contents (see DataEmitter::inferType) */
+    private array $data_types = [];
+
+    /** The type of a data file's contents, null when they are not a uniform table. */
+    public function dataType(FileModel $file): ?RustType
+    {
+        if (!array_key_exists($file->rel_path, $this->data_types)) {
+            $emitter = new DataEmitter($this->codebase);
+            try {
+                $this->types->context = 'data file ' . $file->rel_path;
+                $this->data_types[$file->rel_path] = $emitter->inferType($emitter->valueOf($file->abs_path), $this);
+            } catch (\Throwable $e) {
+                $this->data_types[$file->rel_path] = null;
+            }
+        }
+        return $this->data_types[$file->rel_path];
+    }
+
     public function noteDispatch(ClassModel $class, string $lc_name): void
     {
         if (!$class->isLeaf()) {
