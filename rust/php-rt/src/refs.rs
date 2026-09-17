@@ -5,7 +5,7 @@
 //! holds a `PhpRef<T>`: a pair of getter/setter closures onto the current target.
 
 use crate::late::Late;
-use std::cell::RefCell;
+use crate::support::RwCell as RefCell;
 use std::sync::Arc as Rc;
 
 pub type Cell<T> = Rc<RefCell<Late<T>>>;

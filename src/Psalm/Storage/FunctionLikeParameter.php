@@ -109,6 +109,7 @@ final class FunctionLikeParameter implements HasAttributesInterface, TypeNode
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
+        assert($node instanceof self);
         if ($node->type instanceof TypeNode) {
             $value = $node->type;
             $result = $visitor->traverse($value);

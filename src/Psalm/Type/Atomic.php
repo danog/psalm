@@ -670,6 +670,7 @@ abstract class Atomic implements TypeNode, Stringable
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
+        assert($node instanceof self);
         return true;
     }
 

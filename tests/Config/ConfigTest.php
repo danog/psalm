@@ -1733,8 +1733,9 @@ final class ConfigTest extends TestCase
         }
 
         self::assertContains($extension, $config->getFileExtensions());
-        self::assertSame($scanner_factory, $config->getFiletypeScanners()[$extension] ?? null);
-        self::assertSame($analyzer_factory, $config->getFiletypeAnalyzers()[$extension] ?? null);
+        // closures compare by identity (no Debug rendering for a failure message)
+        self::assertTrue($scanner_factory === ($config->getFiletypeScanners()[$extension] ?? null));
+        self::assertTrue($analyzer_factory === ($config->getFiletypeAnalyzers()[$extension] ?? null));
         self::assertNull($expectedExceptionCode, 'Expected exception code was not thrown');
     }
 
