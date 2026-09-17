@@ -1268,6 +1268,7 @@ final class TemplateStandinTypeReplacer
     /**
      * @param TGenericObject|TNamedObject|TIterable $input_type_part
      * @param TGenericObject|TIterable $container_type_part
+     * @param array<int, bool>|null $container_type_params_covariant
      * @psalm-external-mutation-free
      * @return list<Union>
      */

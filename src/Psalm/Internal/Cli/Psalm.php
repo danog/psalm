@@ -1048,30 +1048,8 @@ final class Psalm
 
         $progress->write(PHP_EOL."Running on PHP ".PHP_VERSION.', Psalm '.PSALM_VERSION.'.'.PHP_EOL);
 
+        // the compiled analyzer is native code: there is no opcache and no JIT to report on
         $hasJit = false;
-        if (function_exists('opcache_get_status')) {
-            if (true === (opcache_get_status()['jit']['on'] ?? false)) {
-                $hasJit = true;
-                $progress->write(PHP_EOL
-                    . 'JIT acceleration: ON'
-                    . PHP_EOL . PHP_EOL);
-            } elseif ($force_jit) {
-                $progress->write(PHP_EOL
-                    . 'JIT acceleration: OFF (an error occurred while enabling JIT)' . PHP_EOL
-                    . 'Please report this to https://github.com/vimeo/psalm with your OS and PHP configuration!'
-                    . PHP_EOL . PHP_EOL);
-            } else {
-                $progress->write(PHP_EOL
-                    . 'JIT acceleration: OFF' . PHP_EOL
-                    . 'You can enable JIT acceleration (experimental) with --force-jit.'
-                    . PHP_EOL . PHP_EOL);
-            }
-        } else {
-            $progress->write(PHP_EOL
-                . 'JIT acceleration: OFF (opcache not installed or not enabled)' . PHP_EOL
-                . 'Install and enable the opcache extension to use JIT with --force-jit.'
-                . PHP_EOL . PHP_EOL);
-        }
         if ($force_jit && !$hasJit) {
             $progress->write('Exiting because --force-jit was set but JIT is not available.' . PHP_EOL . PHP_EOL);
             exit(1);

@@ -125,12 +125,14 @@ final class IfConditionalAnalyzer
             throw new ScopeAnalysisException();
         }
 
+        /** @var array<string, int> $first_cond_assigned_var_ids */
         $first_cond_assigned_var_ids = $outer_context->assigned_var_ids;
         $outer_context->assigned_var_ids = array_merge(
             $pre_assigned_var_ids,
             $first_cond_assigned_var_ids,
         );
 
+        /** @var array<string, bool> $first_cond_referenced_var_ids */
         $first_cond_referenced_var_ids = $outer_context->cond_referenced_var_ids;
         $outer_context->cond_referenced_var_ids = array_merge(
             $referenced_var_ids,
