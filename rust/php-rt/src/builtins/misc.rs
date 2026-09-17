@@ -678,3 +678,8 @@ pub fn builtin_function_exists(lc: &[u8]) -> bool {
             b"preg_match" | b"array_map" | b"array_filter" | b"str_contains" | b"str_starts_with" | b"str_ends_with" | b"array_is_list" | b"array_key_first" | b"array_key_last" | b"array_find" | b"array_any" | b"array_all" | b"json_validate" | b"mb_strcut" | b"opcache_get_status" | b"posix_kill" | b"pcntl_fork" | b"igbinary_serialize" | b"lz4_compress"
         )
 }
+
+/// `defined()` on a runtime-provided constant name.
+pub fn builtin_constant_defined(name: &Str) -> bool {
+    get_defined_constants(false).get(&ArrayKey::from(name.clone())).is_some()
+}

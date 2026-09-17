@@ -816,3 +816,8 @@ pub fn debug_export<T: std::fmt::Debug + ?Sized>(v: &T, ret: bool) -> Str {
         Str::from_static("")
     }
 }
+
+/// `(int)`/`(float)` of an object's string form: the numeric prefix of the string (PHP semantics).
+pub fn to_num_str(s: &Str) -> Num {
+    to_num(&Mixed::Str(s.clone()))
+}
