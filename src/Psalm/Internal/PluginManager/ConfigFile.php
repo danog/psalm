@@ -10,6 +10,7 @@ use Psalm\Config;
 use RuntimeException;
 
 use function assert;
+use function is_string;
 use function file_get_contents;
 use function file_put_contents;
 use function sprintf;
@@ -131,6 +132,7 @@ final class ConfigFile
     private function saveXml(DOMDocument $config_xml): void
     {
         $new_file_contents = $config_xml->saveXML($config_xml);
+        assert(is_string($new_file_contents));
 
         if (($tag_start = strpos($new_file_contents, '<psalm')) !== false) {
             $tag_end = strpos($new_file_contents, '>', $tag_start + 1);

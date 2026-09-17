@@ -25,6 +25,7 @@ final class XmlReport extends Report
         $xml = ArrayToXml::convert(
             [
                 'item' => array_map(
+                    /** @return array<string, scalar|null|list<array<string, scalar|null>>> */
                     static function (IssueData $issue_data): array {
                         $data = $issue_data->toArray();
                         unset($data['dupe_key']);

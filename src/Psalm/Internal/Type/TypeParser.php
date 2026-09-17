@@ -1512,7 +1512,8 @@ final class TypeParser
                         || ($had_optional && !$property_maybe_undefined)
                         || $type === 'array'
                         || $type === 'callable-array'
-                        || $previous_property_key !== ($property_key - 1)
+                        || !is_int($property_key)
+                        || $previous_property_key !== $property_key - 1
                     )
                 ) {
                     $is_list = false;
