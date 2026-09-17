@@ -1084,9 +1084,28 @@ function case_prop_empty_unset(): string
     return count($ids) . ':' . count($copy);
 }
 
+/** A class whose truthiness the engine decides, like SimpleXMLElement (see CastEmitter __rt_truthy). */
+final class MaybeEmptyBag
+{
+    public function __construct(private bool $full) {}
+
+    public function __rt_truthy(): bool
+    {
+        return $this->full;
+    }
+}
+
+function case_rt_truthy(): string
+{
+    $full = new MaybeEmptyBag(true);
+    $empty = new MaybeEmptyBag(false);
+    return ($full ? 'F' : '-') . ($empty ? 'E' : '-');
+}
+
 function run_all(): string
 {
-    return check('prop_empty_unset', case_prop_empty_unset(), '1:0')
+    return check('rt_truthy', case_rt_truthy(), 'F-')
+        . check('prop_empty_unset', case_prop_empty_unset(), '1:0')
         . check('variant_isset', case_variant_isset(), '4:1')
         . check('arg_no_downcast', case_arg_no_downcast(), 'litother')
         . check('prop_empty_merge', case_prop_empty_merge(), '1:1')

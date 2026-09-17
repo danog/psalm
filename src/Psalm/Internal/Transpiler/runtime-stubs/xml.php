@@ -219,6 +219,16 @@ class SimpleXMLElement implements Stringable, Countable, ArrayAccess, Iterator
         return $first !== null && $first->elementChildren($name) !== [];
     }
 
+    /** PHP's engine makes an empty SimpleXMLElement falsy (no child elements, no text). */
+    public function __rt_truthy(): bool
+    {
+        $first = $this->nodes[0] ?? null;
+        if ($first === null) {
+            return false;
+        }
+        return $first->children !== [] || $first->text !== '' || $first->attrs !== [];
+    }
+
     public function getName(): string
     {
         $first = $this->nodes[0] ?? null;

@@ -820,16 +820,20 @@ final class CastEmitter
         // A CLOSED hierarchy (no downstream-crate subclass) has no `Other__` variant: it dispatches by
         // exhaustive match over its concrete variants, exactly like a leaf, so it takes the leaf path here.
         $closed = !$cls->has_downstream;
+        // PHP's engine makes a few builtin objects falsy (an empty SimpleXMLElement); a runtime stub
+        // models that by declaring __rt_truthy(): bool, which the handle's Truthy impl then calls
+        $rt_truthy = $this->program->findMethod($cls, '__rt_truthy');
+        $truthy_body = $rt_truthy !== null && $rt_truthy->node !== null ? 'self.' . $rt_truthy->rustName() . '()' : 'true';
         // Truthy / ToStr / Identical / PhpCmp on the handle type
         if ($cls->isLeaf() || $closed) {
             $w->line('impl php_rt::PhpKind for ' . $h . ' { fn php_kind(&self) -> php_rt::Kind { php_rt::Kind::Obj } fn php_class_name(&self) -> Option<&\'static str> { Some(php_rt::PhpObject::class_name(self)) } }');
             $w->line('impl php_rt::InstanceOfName for ' . $h . ' { fn php_instance_of(&self, __n: &[u8]) -> bool { php_rt::PhpObject::class_ancestors(self).iter().any(|a| a.as_bytes().eq_ignore_ascii_case(__n)) } }');
-            $w->line('impl php_rt::Truthy for ' . $h . ' { fn truthy(&self) -> bool { true } }');
+            $w->line('impl php_rt::Truthy for ' . $h . ' { fn truthy(&self) -> bool { ' . $truthy_body . ' } }');
             $w->line('impl php_rt::Identical for ' . $h . ' { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }');
         } else {
             $w->line('impl php_rt::PhpKind for ' . $h . ' { fn php_kind(&self) -> php_rt::Kind { match self { ' . $h . '::Other__(__m) => php_rt::PhpKind::php_kind(__m), _ => php_rt::Kind::Obj } } fn php_class_name(&self) -> Option<&\'static str> { match self { ' . $h . '::Other__(__m) => php_rt::PhpKind::php_class_name(__m), _ => Some(php_rt::PhpObject::class_name(self)) } } }');
             $w->line('impl php_rt::InstanceOfName for ' . $h . ' { fn php_instance_of(&self, __n: &[u8]) -> bool { match self { ' . $h . '::Other__(__m) => php_rt::InstanceOfName::php_instance_of(__m, __n), _ => php_rt::PhpObject::class_ancestors(self).iter().any(|a| a.as_bytes().eq_ignore_ascii_case(__n)) } } }');
-            $w->line('impl php_rt::Truthy for ' . $h . ' { fn truthy(&self) -> bool { match self { ' . $h . '::Other__(__m) => truthy(__m), _ => true } } }');
+            $w->line('impl php_rt::Truthy for ' . $h . ' { fn truthy(&self) -> bool { match self { ' . $h . '::Other__(__m) => truthy(__m), _ => ' . $truthy_body . ' } } }');
             $w->line('impl php_rt::Identical for ' . $h . ' { fn identical(&self, o: &Self) -> bool { match (self, o) { (' . $h . '::Other__(a), ' . $h . '::Other__(b)) => identical(a, b), (' . $h . '::Other__(_), _) | (_, ' . $h . '::Other__(_)) => false, _ => self.obj_id() == o.obj_id() } } }');
         }
         $w->line('impl php_rt::ToStr for ' . $h . ' { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_static(' . Names::rustStringLiteral($cls->fqcn) . ')) } }');
@@ -840,7 +844,7 @@ final class CastEmitter
         $w->line('impl std::fmt::Debug for ' . $h . ' { fn fmt(&self, f: &mut std::fmt::Formatter<\'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }');
         if (!$cls->isLeaf() && $cls->isConcrete()) {
             $own = $cls->ownHandle();
-            $w->line('impl php_rt::Truthy for ' . $own . ' { fn truthy(&self) -> bool { true } }');
+            $w->line('impl php_rt::Truthy for ' . $own . ' { fn truthy(&self) -> bool { ' . $truthy_body . ' } }');
             $w->line('impl php_rt::PhpKind for ' . $own . ' { fn php_kind(&self) -> php_rt::Kind { php_rt::Kind::Obj } fn php_class_name(&self) -> Option<&\'static str> { Some(php_rt::PhpObject::class_name(self)) } }');
             $w->line('impl php_rt::InstanceOfName for ' . $own . ' { fn php_instance_of(&self, __n: &[u8]) -> bool { php_rt::PhpObject::class_ancestors(self).iter().any(|a| a.as_bytes().eq_ignore_ascii_case(__n)) } }');
             $w->line('impl php_rt::Identical for ' . $own . ' { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }');
