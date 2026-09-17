@@ -248,7 +248,8 @@ final class BodyEmitter
         }
         foreach ($var_types as $var_id => $types) {
             $name = substr($var_id, 1);
-            if ($name === 'this' || isset($this->predeclared[$name])) {
+            if ($name === 'this' || $name === '_' || isset($this->predeclared[$name])) {
+                // `$_` is the discard variable: never bound (see the foreach/list emission), never declared
                 continue;
             }
             if (isset($params[$name])) {
