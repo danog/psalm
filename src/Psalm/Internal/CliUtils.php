@@ -179,7 +179,6 @@ final class CliUtils
         try {
             $composer_file_contents = file_get_contents($composer_json_path);
             assert($composer_file_contents !== false);
-            /** @var ComposerJson|scalar|null $composer_json */
             $composer_json = Composer::decodeComposerJson($composer_file_contents);
         } catch (JsonException $e) {
             fwrite(
