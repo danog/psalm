@@ -590,7 +590,12 @@ final class NewAnalyzer extends CallAnalyzer
                             $template_name,
                             $storage->template_extended_params,
                             array_map(
+                                /**
+                                 * @param array<string, list<TemplateBound>> $type_map
+                                 * @return array<string, Union>
+                                 */
                                 static fn(array $type_map): array => array_map(
+                                    /** @param list<TemplateBound> $bounds */
                                     static fn(array $bounds): Union
                                         => TemplateStandinTypeReplacer::getMostSpecificTypeFromBounds(
                                             $bounds,

@@ -177,21 +177,17 @@ pub fn get_included_files() -> List<Str> {
 pub fn get_loaded_extensions() -> List<Str> {
     crate::list![Str::from_static("Core"), Str::from_static("json"), Str::from_static("tokenizer"), Str::from_static("mbstring"), Str::from_static("ctype"), Str::from_static("pcre"), Str::from_static("SPL")]
 }
-pub fn get_defined_constants(categorize: bool) -> Map<ArrayKey, Mixed> {
-    // the compiled program's constants: PHP's builtin table plus the runtime's own (PHP_EOL, PSALM_COMPILED, ...)
-    let mut all: Map<ArrayKey, Mixed> = Map::new();
+pub fn get_defined_constants(_categorize: bool) -> Map<Str, crate::conv::Scalar> {
+    // the compiled program's constants: PHP's builtin table plus the runtime's own (PHP_EOL, PSALM_COMPILED, ...);
+    // always the flat table (the program never asks for the per-extension grouping)
+    let mut all: Map<Str, crate::conv::Scalar> = Map::new();
     for (name, value) in crate::php_constants::PHP_CONSTANTS {
-        all.insert(ArrayKey::Str(Str::from(*name)), value());
+        all.insert(Str::from(*name), value());
     }
     for name in ["PHP_EOL", "PHP_VERSION", "PHP_VERSION_ID", "PHP_INT_MAX", "PHP_INT_MIN", "PHP_INT_SIZE", "PHP_OS", "PHP_OS_FAMILY", "DIRECTORY_SEPARATOR", "E_ALL", "E_STRICT", "PSALM_COMPILED", "PSALM_VERSION", "PHP_PARSER_VERSION"] {
-        if let Some(v) = crate::consts::builtin_value(name.as_bytes()) {
-            all.insert(ArrayKey::Str(Str::from(name.as_bytes())), v);
+        if let Some(v) = crate::consts::builtin_value(name.as_bytes()).and_then(crate::conv::Scalar::from_mixed) {
+            all.insert(Str::from(name.as_bytes()), v);
         }
-    }
-    if categorize {
-        let mut out: Map<ArrayKey, Mixed> = Map::new();
-        out.insert(ArrayKey::Str(Str::from_static("Core")), Mixed::Arr(all));
-        return out;
     }
     all
 }
@@ -681,5 +677,5 @@ pub fn builtin_function_exists(lc: &[u8]) -> bool {
 
 /// `defined()` on a runtime-provided constant name.
 pub fn builtin_constant_defined(name: &Str) -> bool {
-    get_defined_constants(false).get(&ArrayKey::from(name.clone())).is_some()
+    get_defined_constants(false).get(&name.clone()).is_some()
 }

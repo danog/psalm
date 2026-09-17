@@ -919,6 +919,7 @@ final class Config
         $config->config_issues = [];
 
         // Attributes to be removed in Psalm 6
+        /** @var list<string> */
         $deprecated_attributes = [];
 
         /** @var list<string> */
@@ -927,6 +928,7 @@ final class Config
         $psalm_element_item = $dom_document->getElementsByTagName('psalm')->item(0);
         assert($psalm_element_item !== null);
         $attributes = $psalm_element_item->attributes;
+        assert($attributes !== null);
 
         foreach ($attributes as $attribute) {
             if (in_array($attribute->name, $deprecated_attributes, true)) {

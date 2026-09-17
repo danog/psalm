@@ -47,6 +47,9 @@ use Psalm\Type\Atomic\TGenericObject;
 use Psalm\Type\Atomic\TLiteralClassString;
 use Psalm\Type\Atomic\TMixed;
 use Psalm\Type\Atomic\TNamedObject;
+use Psalm\Type\Atomic\TCallableObject;
+use Psalm\Type\Atomic\TObjectWithProperties;
+use Psalm\Type\Atomic\TIterable;
 use Psalm\Type\Atomic\TNull;
 use Psalm\Type\Atomic\TNumericString;
 use Psalm\Type\Atomic\TObject;
@@ -290,6 +293,7 @@ final class AtomicStaticCallAnalyzer
     }
 
     /**
+     * @param array<string, TNamedObject|TTemplateParam|TIterable|TObjectWithProperties|TCallableObject> $intersection_types
      * @psalm-suppress ComplexMethod to be refactored
      */
     private static function handleNamedCall(

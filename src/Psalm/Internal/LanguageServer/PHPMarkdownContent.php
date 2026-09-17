@@ -41,7 +41,8 @@ final class PHPMarkdownContent extends MarkupContent implements JsonSerializable
      */
     #[Override]
     #[ReturnTypeWillChange]
-    public function jsonSerialize(): mixed
+    /** @return array{kind: ?string, value: ?string} */
+    public function jsonSerialize(): array
     {
         return ['kind' => $this->kind, 'value' => $this->value];
     }

@@ -220,3 +220,86 @@ pub fn float_to_export(f: f64) -> String {
         s
     }
 }
+
+/// A PHP constant's value: the scalar kinds (the typed form of the runtime constant table).
+#[derive(Clone, Debug)]
+pub enum Scalar {
+    Null,
+    Bool(bool),
+    Int(i64),
+    Float(f64),
+    Str(crate::string::Str),
+}
+impl Scalar {
+    pub fn to_mixed(self) -> crate::mixed::Mixed {
+        match self {
+            Scalar::Null => crate::mixed::Mixed::Null,
+            Scalar::Bool(b) => crate::mixed::Mixed::Bool(b),
+            Scalar::Int(i) => crate::mixed::Mixed::Int(i),
+            Scalar::Float(f) => crate::mixed::Mixed::Float(f),
+            Scalar::Str(s) => crate::mixed::Mixed::Str(s),
+        }
+    }
+    pub fn from_mixed(m: crate::mixed::Mixed) -> Option<Scalar> {
+        Some(match m {
+            crate::mixed::Mixed::Null => Scalar::Null,
+            crate::mixed::Mixed::Bool(b) => Scalar::Bool(b),
+            crate::mixed::Mixed::Int(i) => Scalar::Int(i),
+            crate::mixed::Mixed::Float(f) => Scalar::Float(f),
+            crate::mixed::Mixed::Str(s) => Scalar::Str(s),
+            _ => return None,
+        })
+    }
+}
+impl crate::cast::CastTo<crate::mixed::Mixed> for Scalar {
+    fn cast_to(self) -> crate::mixed::Mixed {
+        self.to_mixed()
+    }
+}
+impl crate::traits::Identical for Scalar {
+    fn identical(&self, other: &Self) -> bool {
+        crate::traits::Identical::identical(&self.clone().to_mixed(), &other.clone().to_mixed())
+    }
+}
+impl crate::traits::PhpCmp for Scalar {
+    fn php_cmp(&self, other: &Self) -> std::cmp::Ordering {
+        crate::traits::PhpCmp::php_cmp(&self.clone().to_mixed(), &other.clone().to_mixed())
+    }
+}
+impl crate::traits::Truthy for Scalar {
+    fn truthy(&self) -> bool {
+        match self {
+            Scalar::Null => false,
+            Scalar::Bool(b) => *b,
+            Scalar::Int(i) => *i != 0,
+            Scalar::Float(f) => *f != 0.0,
+            Scalar::Str(s) => crate::traits::Truthy::truthy(s),
+        }
+    }
+}
+impl crate::traits::ToStr for Scalar {
+    fn to_php_str(&self) -> crate::string::Str {
+        crate::traits::ToStr::to_php_str(&self.clone().to_mixed())
+    }
+}
+impl crate::traits::PhpKind for Scalar {
+    fn php_kind(&self) -> crate::traits::Kind {
+        match self {
+            Scalar::Null => crate::traits::Kind::Null,
+            Scalar::Bool(_) => crate::traits::Kind::Bool,
+            Scalar::Int(_) => crate::traits::Kind::Int,
+            Scalar::Float(_) => crate::traits::Kind::Float,
+            Scalar::Str(_) => crate::traits::Kind::Str,
+        }
+    }
+}
+impl crate::traits::InstanceOfName for Scalar {
+    fn php_instance_of(&self, _name: &[u8]) -> bool {
+        false
+    }
+}
+impl crate::traits::ToNum for Scalar {
+    fn to_php_num(&self) -> Num {
+        crate::support::to_num(&self.clone().to_mixed())
+    }
+}

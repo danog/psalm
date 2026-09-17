@@ -735,7 +735,7 @@ final class Psalm
     }
 
     /**
-     * @param array{"set-baseline": mixed, ...} $options
+     * @param CliOptions $options
      * @return array<string,array<string,array{o:int, s: list<string>}>>
      
      * @param CliOptions $options
@@ -787,6 +787,10 @@ final class Psalm
      * @param array<string, bool|string|list<string|false>> $options
      
      * @param CliOptions $options
+     */
+    /**
+     * @param array<string, string|false|list<string|false>> $options
+     * @return array<string, array<string, array{o: int, s: list<string>}>>
      */
     private static function updateBaseline(array $options, Config $config): array
     {
@@ -993,6 +997,7 @@ final class Psalm
     }
 
     /** @param CliOptions $options */
+    /** @param array<string, string|false|list<string|false>> $options */
     private static function restart(
         array $options,
         bool $force_jit,
@@ -1393,6 +1398,10 @@ final class Psalm
 
     /** @param array<string, bool|string|list<string|false>> $options 
      * @param CliOptions $options
+     */
+    /**
+     * @param array<string, string|false|list<string|false>> $options
+     * @param list<string> $plugins
      */
     private static function configureShepherd(Config $config, array $options, array &$plugins): void
     {

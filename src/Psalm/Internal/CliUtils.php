@@ -264,6 +264,7 @@ final class CliUtils
     }
 
     /**
+     * @param string|list<string|false>|false|null $f_paths
      * @return list<string>|null
      */
     public static function getPathsToCheck(string|array|false|null $f_paths): ?array

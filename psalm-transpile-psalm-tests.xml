@@ -22,7 +22,6 @@
         <directory name="src"/>
         <directory name="tests"/>
         <directory name="../phpunit-port/typed/src"/>
-        <directory name="vendor/felixfbecker/language-server-protocol/src"/>
         <directory name="vendor/composer/semver/src"/>
         <ignoreFiles>
             <file name="vendor/composer/semver/src/CompilingMatcher.php"/>
@@ -55,6 +54,7 @@
             <directory name="src/Psalm/Internal/PluginManager/Command"/>
             <file name="src/Psalm/Internal/Cli/Plugin.php"/>
             <file name="src/Psalm/Internal/Cli/LanguageServer.php"/>
+            <file name="src/Psalm/Internal/Cli/Refactor.php"/>
             <directory name="vendor/amphp"/>
             <directory name="vendor/symfony"/>
             <file name="vendor/composer/autoload_classmap.php"/>
