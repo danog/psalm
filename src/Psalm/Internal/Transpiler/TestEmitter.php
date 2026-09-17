@@ -223,7 +223,14 @@ final class TestEmitter
         $root = Names::rustStringLiteral($this->program->transpiler->root_dir);
         $name = Names::rustStringLiteral($cls->fqcn . '::' . $m->name);
         $ctor = $this->program->findMethod($cls, '__construct');
-        $new = $path . '::new(' . ($ctor !== null && count($ctor->storage->params) > 0 ? 'Str::from_static(' . Names::rustStringLiteral($m->name) . ')' : '') . ')';
+        // the test name in the constructor's own parameter type (`?string $name` in the typed TestCase)
+        $name_arg = '';
+        if ($ctor !== null && count($ctor->storage->params) > 0) {
+            $lit = 'Str::from_static(' . Names::rustStringLiteral($m->name) . ')';
+            $pt = $ctor->param_types[0] ?? null;
+            $name_arg = $pt !== null && $pt->kind === RustType::OPTION ? 'Some(' . $lit . ')' : $lit;
+        }
+        $new = $path . '::new(' . $name_arg . ')';
         $has_setup_class = $this->program->findMethod($cls, 'setupbeforeclass') !== null;
         $has_teardown_class = $this->program->findMethod($cls, 'teardownafterclass') !== null;
 
