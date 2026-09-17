@@ -1045,6 +1045,26 @@ final class CastEmitter
                     return;
                 }
             }
+            if ($fk === RustType::RT_GENERIC && $from->name === 'OptValue') {
+                // a getopt value into the option union: string, false and repeated-option list members
+                $str = $false = $list = null;
+                foreach ($to->params as $m) {
+                    if ($m->kind === RustType::STR) {
+                        $str = $m;
+                    } elseif ($this->isUnit($m) && $this->unitName($m) === 'False') {
+                        $false = $m;
+                    } elseif ($m->kind === RustType::LIST) {
+                        $list = $m;
+                    }
+                }
+                $m = $to->mangle();
+                $arms = [];
+                $arms[] = 'php_rt::OptValue::Str(s) => ' . ($str !== null ? $m . '::Str(s)' : 'panic!(' . Names::rustStringLiteral('getopt: a string option where ' . $to->toRust() . ' was declared') . ')');
+                $arms[] = 'php_rt::OptValue::False => ' . ($false !== null ? $m . '::False' : 'panic!(' . Names::rustStringLiteral('getopt: a flag where ' . $to->toRust() . ' was declared') . ')');
+                $arms[] = 'php_rt::OptValue::List(l) => ' . ($list !== null ? $m . '::' . $list->variantName() . '(l.map_elems(|v| ' . $this->conv('v', $from, $list->inner()) . '))' : 'panic!(' . Names::rustStringLiteral('getopt: a repeated option where ' . $to->toRust() . ' was declared') . ')');
+                $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for php_rt::OptValue { fn cast_to(self) -> ' . $to->toRust() . ' { match self { ' . implode(', ', $arms) . ' } } }');
+                return;
+            }
             if ($fk === RustType::RT_GENERIC && $from->name === 'Scalar') {
                 // a constant's value into a union: each scalar kind takes its member (a kind without one panics)
                 $arms = [];

@@ -146,6 +146,22 @@ final class Casts
                 return $code . '.to_i64()';
             }
         }
+        if ($fk === RustType::RT_GENERIC && $from->name === 'OptValue') {
+            // a getopt value into the declared option union (or Mixed)
+            if ($tk === RustType::MIXED) {
+                return $code . '.to_mixed()';
+            }
+            if ($tk === RustType::UNION) {
+                $this->need($from, $to);
+                return 'cast::<' . $to->toRust() . '>(' . $code . ')';
+            }
+            if ($tk === RustType::STR) {
+                return 'php_rt::ToStr::to_php_str(&' . $code . ')';
+            }
+            if ($tk === RustType::BOOL) {
+                return 'truthy(&' . $code . ')';
+            }
+        }
         if ($fk === RustType::RT_GENERIC && $from->name === 'Scalar') {
             // a constant's value: null becomes an absent Option, the scalar kinds their typed forms
             if ($tk === RustType::OPTION) {
