@@ -21,6 +21,9 @@ final class SharedStubClassLikeStorageCacheProvider extends ClassLikeStorageCach
 {
     public int $php_version_id = 0;
 
+    /** @var array<string, list{string, ClassLikeStorage}> */
+    private array $shared = [];
+
     public function __construct(Config $config)
     {
         parent::__construct($config, '', false);
@@ -29,20 +32,23 @@ final class SharedStubClassLikeStorageCacheProvider extends ClassLikeStorageCach
     /** Whether the storage of a class of a cached stub file is cached (a test may swap the class cache). */
     public function hasStorage(string $file_path, string $fq_classlike_name_lc, string $file_contents): bool
     {
-        return $this->cache->getItem(strtolower($file_path) . "\0" . $fq_classlike_name_lc, $this->php_version_id . ':' . hash('xxh128', $file_contents)) !== null;
+        $key = strtolower($file_path) . "\0" . $fq_classlike_name_lc;
+
+        return isset($this->shared[$key]) && $this->shared[$key][0] === $this->php_version_id . ':' . hash('xxh128', $file_contents);
     }
 
     #[Override]
     public function writeToCache(ClassLikeStorage $storage, string $file_path, string $file_contents): void
     {
-        $this->cache->saveItem(strtolower($file_path) . "\0" . strtolower($storage->name), $storage, $this->php_version_id . ':' . hash('xxh128', $file_contents));
+        $this->shared[strtolower($file_path) . "\0" . strtolower($storage->name)] = [$this->php_version_id . ':' . hash('xxh128', $file_contents), $storage];
     }
 
     #[Override]
     public function getLatestFromCache(string $fq_classlike_name_lc, ?string $file_path, string $file_contents): ClassLikeStorage
     {
-        $storage = $this->cache->getItem(strtolower((string) $file_path) . "\0" . $fq_classlike_name_lc, $this->php_version_id . ':' . hash('xxh128', $file_contents));
-        if (!$storage instanceof ClassLikeStorage) {
+        $key = strtolower((string) $file_path) . "\0" . $fq_classlike_name_lc;
+        $storage = isset($this->shared[$key]) && $this->shared[$key][0] === $this->php_version_id . ':' . hash('xxh128', $file_contents) ? $this->shared[$key][1] : null;
+        if ($storage === null) {
             throw new UnexpectedValueException('No shared stub storage for ' . $fq_classlike_name_lc . ' in ' . (string) $file_path);
         }
         return $storage;

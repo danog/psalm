@@ -24,6 +24,9 @@ final class SharedStubFileStorageCacheProvider extends FileStorageCacheProvider
 {
     public int $php_version_id = 0;
 
+    /** @var array<string, list{string, FileStorage}> */
+    private array $shared = [];
+
     /** Off while a test uses a class storage cache other than the shared one (the two must match). */
     public bool $enabled = true;
 
@@ -43,7 +46,7 @@ final class SharedStubFileStorageCacheProvider extends FileStorageCacheProvider
                     return;
                 }
             }
-            $this->cache->saveItem(strtolower($storage->file_path), $storage, $this->php_version_id . ':' . hash('xxh128', $file_contents));
+            $this->shared[strtolower($storage->file_path)] = [$this->php_version_id . ':' . hash('xxh128', $file_contents), $storage];
         }
     }
 
@@ -53,6 +56,8 @@ final class SharedStubFileStorageCacheProvider extends FileStorageCacheProvider
         if (!$this->enabled || !str_ends_with($file_path, '.phpstub')) {
             return null;
         }
-        return $this->cache->getItem(strtolower($file_path), $this->php_version_id . ':' . hash('xxh128', $file_contents));
+        $key = strtolower($file_path);
+
+        return isset($this->shared[$key]) && $this->shared[$key][0] === $this->php_version_id . ':' . hash('xxh128', $file_contents) ? $this->shared[$key][1] : null;
     }
 }
