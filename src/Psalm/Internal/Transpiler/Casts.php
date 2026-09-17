@@ -125,6 +125,27 @@ final class Casts
                 return $code . '.to_i64()';
             }
         }
+        if ($fk === RustType::RT_GENERIC && $from->name === 'Scalar') {
+            // a constant's value: null becomes an absent Option, the scalar kinds their typed forms
+            if ($tk === RustType::OPTION) {
+                return '(match ' . $code . ' { php_rt::Scalar::Null => None, __s => Some(' . $this->convert('__s', $from, $to->inner()) . ') })';
+            }
+            if ($tk === RustType::MIXED) {
+                return $code . '.to_mixed()';
+            }
+            if ($tk === RustType::STR) {
+                return 'php_rt::ToStr::to_php_str(&' . $code . ')';
+            }
+            if ($tk === RustType::INT) {
+                return 'php_rt::ToInt::to_php_int(&' . $code . ')';
+            }
+            if ($tk === RustType::FLOAT) {
+                return 'php_rt::ToFloat::to_php_float(&' . $code . ')';
+            }
+            if ($tk === RustType::BOOL) {
+                return 'truthy(&' . $code . ')';
+            }
+        }
         if ($tk === RustType::UNIT) {
             return '{ let _ = ' . $code . '; }';
         }

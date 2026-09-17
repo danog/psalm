@@ -982,6 +982,36 @@ final class CastEmitter
                     return;
                 }
             }
+            if ($fk === RustType::RT_GENERIC && $from->name === 'Scalar') {
+                // a constant's value into a union: each scalar kind takes its member (a kind without one panics)
+                $arms = [];
+                foreach (['Null' => null, 'Bool' => RustType::BOOL, 'Int' => RustType::INT, 'Float' => RustType::FLOAT, 'Str' => RustType::STR] as $variant => $kind) {
+                    $pat = 'php_rt::Scalar::' . $variant . ($kind === null ? '' : '(v)');
+                    $target = null;
+                    foreach ($to->params as $m) {
+                        if ($kind === null ? ($this->isUnit($m) && $this->unitName($m) === 'Null') : $m->kind === $kind) {
+                            $target = $m;
+                            break;
+                        }
+                    }
+                    if ($target === null && $kind === RustType::BOOL) {
+                        $t_true = $t_false = false;
+                        foreach ($to->params as $m) {
+                            $t_true = $t_true || ($this->isUnit($m) && $this->unitName($m) === 'True');
+                            $t_false = $t_false || ($this->isUnit($m) && $this->unitName($m) === 'False');
+                        }
+                        if ($t_true && $t_false) {
+                            $arms[] = $pat . ' => if v { ' . $to->mangle() . '::True } else { ' . $to->mangle() . '::False }';
+                            continue;
+                        }
+                    }
+                    $arms[] = $pat . ' => ' . ($target === null
+                        ? 'panic!(' . Names::rustStringLiteral('no member of ' . $to->toRust() . ' admits a ' . strtolower($variant) . ' constant') . ')'
+                        : ($kind === null ? $to->mangle() . '::Null' : $to->mangle() . '::' . $target->variantName() . '(' . ($target->kind === RustType::STR ? 'v' : 'v') . ')'));
+                }
+                $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for php_rt::Scalar { fn cast_to(self) -> ' . $to->toRust() . ' { match self { ' . implode(', ', $arms) . ' } } }');
+                return;
+            }
             // a number (or numeric string) takes the union's Int/Float member; a value no member admits panics
             $has_int = $has_float = false;
             foreach ($to->params as $m) {

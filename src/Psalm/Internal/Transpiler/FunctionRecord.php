@@ -58,6 +58,10 @@ final class FunctionRecord
             if ($var_id[0] !== '$' || str_contains($var_id, '->') || str_contains($var_id, '[') || str_contains($var_id, '::')) {
                 continue;
             }
+            if ($type->possibly_undefined && $type->hasMixed()) {
+                // a possibly-unset variable's placeholder type says nothing about its values
+                continue;
+            }
             $this->var_types[$var_id][] = $type;
         }
     }
