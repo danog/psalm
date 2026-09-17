@@ -989,6 +989,9 @@ final class BodyEmitter
                 $retype[$name] = $nullable && $u->kind !== RustType::OPTION ? RustType::option($u) : $u;
             }
         }
+        if (getenv('DBG_RETYPE') && $retype !== []) {
+            fwrite(STDERR, '[retype] ' . $this->type_context . ' RETYPED: ' . implode(', ', array_map(fn($n, $t) => '$' . $n . '=' . $t->toRust(), array_keys($retype), $retype)) . "\n");
+        }
         if ($retype === []) {
             return $out;
         }
@@ -1054,7 +1057,9 @@ final class BodyEmitter
                 }
             } elseif ($n instanceof Expr\List_) {
                 foreach ($n->items as $item) {
-                    if ($item !== null) {
+                    if ($item !== null && !($item->value instanceof Expr\Variable) && !$item->byRef) {
+                        $mark($root($item->value));
+                    } elseif ($item !== null && $item->byRef) {
                         $mark($root($item->value));
                     }
                 }

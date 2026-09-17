@@ -111,22 +111,7 @@ final class CastEmitter
         $w->line('impl php_rt::Identical for ' . $name . ' { fn identical(&self, o: &Self) -> bool { match (self, o) { ' . implode(', ', $arms) . ', _ => ' . $fallback . ' } } }');
         // PhpCmp: pairwise over the members, PHP's loose comparison rules per kind (no Mixed round trip)
         $w->line('impl php_rt::PhpCmp for ' . $name . ' { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { use std::cmp::Ordering::*; match (self, o) { ' . $this->unionCmpArms($u, $name) . ' } } }');
-        // Mixed conversion
-        $arms = [];
-        foreach ($u->params as $m) {
-            if ($this->isUnit($m)) {
-                $arms[] = $name . '::' . $this->unitName($m) . ' => Mixed::Bool(' . ($this->unitName($m) === 'True' ? 'true' : 'false') . ')';
-            } else {
-                $arms[] = $name . '::' . $m->variantName() . '(v) => ' . $this->conv('v', $m, RustType::mixed());
-            }
-        }
-        $w->line('impl php_rt::CastTo<Mixed> for ' . $name . ' { fn cast_to(self) -> Mixed { match self { ' . implode(', ', $arms) . ' } } }');
-        // from Mixed
-        $arms = [];
-        foreach ($u->params as $m) {
-            $arms[] = $this->mixedToMemberArm($name, $m);
-        }
-        $w->line('impl php_rt::CastTo<' . $name . '> for Mixed { fn cast_to(self) -> ' . $name . ' { ' . implode(' ', $arms) . ' ' . 'panic!("Mixed value {:?} not in union ' . $name . '", self) } }');
+        // Mixed conversions: emitted on demand (CastEmitter::emitCast) when a body records the conversion
         // Default for unions containing a defaultable member (first)
         foreach ($u->params as $m) {
             if ($this->isUnit($m)) {
@@ -525,27 +510,7 @@ final class CastEmitter
         }
         $w->line('impl php_rt::PhpCmp for ' . $name . ' { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { ' . implode(' ', $cmp_parts) . ' std::cmp::Ordering::Equal } }');
         $w->line('impl php_rt::Len for ' . $name . ' { fn php_count(&self) -> i64 { let mut n = 0i64; ' . implode(' ', array_map(fn($k, $f) => $f[1] ? 'if self.' . Names::field($k) . '.is_some() { n += 1; }' : 'n += 1;', array_keys($s->fields), $s->fields)) . ' n } }');
-        $ins = [];
-        foreach ($s->fields as $k => [$t, $opt]) {
-            $key = 'ArrayKey::from(' . Names::strLit($k) . ')';
-            if ($opt) {
-                $ins[] = 'if let Some(v) = self.' . Names::field($k) . ' { m.insert(' . $key . ', ' . $this->conv('v', $t, RustType::mixed()) . '); }';
-            } else {
-                $ins[] = 'm.insert(' . $key . ', ' . $this->conv('self.' . Names::field($k), $t, RustType::mixed()) . ');';
-            }
-        }
-        $w->line('impl php_rt::CastTo<Mixed> for ' . $name . ' { fn cast_to(self) -> Mixed { let mut m: Map<ArrayKey, Mixed> = Map::new(); ' . implode(' ', $ins) . ' Mixed::Arr(m) } }');
-        $outs = [];
-        foreach ($s->fields as $k => [$t, $opt]) {
-            $key = '&ArrayKey::from(' . Names::strLit($k) . ')';
-            if ($opt) {
-                $this->casts->needMixedTo($t);
-                $outs[] = Names::field($k) . ': ' . $this->casts->optionMap('m.get(' . $key . ').cloned()', RustType::mixed(), $t);
-            } else {
-                $outs[] = Names::field($k) . ': ' . $this->conv('m.get(' . $key . ').cloned().unwrap_or_default()', RustType::mixed(), $t);
-            }
-        }
-        $w->line('impl php_rt::CastTo<' . $name . '> for Mixed { fn cast_to(self) -> ' . $name . ' { let m = cast::<Map<ArrayKey, Mixed>>(self); ' . $name . ' { ' . implode(', ', $outs) . ' } } }');
+        // Mixed conversions: emitted on demand (CastEmitter::emitCast)
         // Debug: field by field (closures and runtime containers print their kind)
         $dbg = '';
         foreach ($s->fields as $k => [$t, $opt]) {
@@ -593,23 +558,12 @@ final class CastEmitter
         $w->line('impl php_rt::ToFloat for ' . $h . ' { fn to_php_float(&self) -> f64 { ' . $num . '.to_f64() } }');
         $this->emitHandleCmp($cls, $w);
         $w->line('impl std::fmt::Debug for ' . $h . ' { fn fmt(&self, f: &mut std::fmt::Formatter<\'_>) -> std::fmt::Result { write!(f, "object({})#{}", self.class_name(), self.obj_id()) } }');
-        // to Mixed: store the concrete own handle
-        if ($cls->isLeaf()) {
-            $w->line('impl php_rt::CastTo<Mixed> for ' . $h . ' { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }');
-        } else {
-            $arms = array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(v) => Mixed::Obj(Rc::new(v))', $cls->concrete);
-            if (!$closed) {
-                $arms[] = $h . '::Other__(m) => m';
-            }
-            $w->line('impl php_rt::CastTo<Mixed> for ' . $h . ' { fn cast_to(self) -> Mixed { match self { ' . implode(', ', $arms) . ($arms ? ', ' : '') . '_ => unreachable!() } } }');
-            if ($cls->isConcrete()) {
-                $own = $cls->ownHandle();
-                $w->line('impl php_rt::CastTo<Mixed> for ' . $own . ' { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }');
-                $w->line('impl php_rt::Truthy for ' . $own . ' { fn truthy(&self) -> bool { true } }');
-                $w->line('impl php_rt::PhpKind for ' . $own . ' { fn php_kind(&self) -> php_rt::Kind { php_rt::Kind::Obj } }');
-                $w->line('impl php_rt::InstanceOfName for ' . $own . ' { fn php_instance_of(&self, __n: &[u8]) -> bool { php_rt::PhpObject::class_ancestors(self).iter().any(|a| a.as_bytes().eq_ignore_ascii_case(__n)) } }');
-                $w->line('impl php_rt::Identical for ' . $own . ' { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }');
-            }
+        if (!$cls->isLeaf() && $cls->isConcrete()) {
+            $own = $cls->ownHandle();
+            $w->line('impl php_rt::Truthy for ' . $own . ' { fn truthy(&self) -> bool { true } }');
+            $w->line('impl php_rt::PhpKind for ' . $own . ' { fn php_kind(&self) -> php_rt::Kind { php_rt::Kind::Obj } }');
+            $w->line('impl php_rt::InstanceOfName for ' . $own . ' { fn php_instance_of(&self, __n: &[u8]) -> bool { php_rt::PhpObject::class_ancestors(self).iter().any(|a| a.as_bytes().eq_ignore_ascii_case(__n)) } }');
+            $w->line('impl php_rt::Identical for ' . $own . ' { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }');
         }
         // from Mixed: downcast to any concrete descendant
         $arms = [];
@@ -621,8 +575,6 @@ final class CastEmitter
             $arms[] = $this->program->classId($c) . ' => return ' . $this->wrapConcrete($cls, $c, $get) . ',';
             $some_arms[] = $this->program->classId($c) . ' => return Some(' . $this->wrapConcrete($cls, $c, $get) . '),';
         }
-        $fallback = ($cls->isLeaf() || $closed) ? 'panic!(' . Names::rustStringLiteral('Mixed value is not a ' . $cls->fqcn) . ')' : $h . '::Other__(self)';
-        $w->line('impl php_rt::CastTo<' . $h . '> for Mixed { fn cast_to(self) -> ' . $h . ' { if let Mixed::Obj(o) = &self { match o.class_id() { ' . implode(' ', $arms) . ' _ => {} } } ' . $fallback . ' } }');
         // a subclass declared in a downstream crate (Psalm's Virtual* nodes extend php-parser nodes)
         // is still an instance of this class: it lands in the escape variant instead of failing. A closed
         // hierarchy has no downstream subclass, so the concrete match above is exhaustive (else: not this type).
@@ -630,18 +582,19 @@ final class CastEmitter
         $w->line('impl php_rt::TryDowncast for ' . $h . ' { fn try_downcast(o: &AnyObj) -> Option<Self> { match o.class_id() { ' . implode(' ', $some_arms) . ' _ => {} } ' . $none . ' } }');
         // AnyObject
         // to AnyObject: the concrete own handle is erased directly (no Mixed round trip)
-        if ($cls->isLeaf() && !$cls->isEnum()) {
+        if ($cls->isLeaf()) {
             $w->line('impl php_rt::CastTo<AnyObject> for ' . $h . ' { fn cast_to(self) -> AnyObject { AnyObject(Rc::new(self)) } }');
-        } elseif ($closed && $cls->concrete !== [] && !array_filter($cls->concrete, static fn(ClassModel $c) => $c->isEnum())) {
-            $arms = array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(v) => AnyObject(Rc::new(v))', $cls->concrete);
-            $w->line('impl php_rt::CastTo<AnyObject> for ' . $h . ' { fn cast_to(self) -> AnyObject { match self { ' . implode(', ', $arms) . ', _ => unreachable!() } } }');
         } else {
-            $w->line('impl php_rt::CastTo<AnyObject> for ' . $h . ' { fn cast_to(self) -> AnyObject { AnyObject::from_mixed(cast::<Mixed>(self)) } }');
+            // every variant (PHP enums included) is a PhpObject: erased directly; a downstream object is already erased
+            $arms = array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(v) => AnyObject(Rc::new(v))', $cls->concrete);
+            if (!$closed) {
+                $arms[] = $h . '::Other__(m) => AnyObject::from_mixed(m)';
+            }
+            $w->line('impl php_rt::CastTo<AnyObject> for ' . $h . ' { fn cast_to(self) -> AnyObject { match self { ' . implode('', array_map(static fn($a) => $a . ', ', $arms)) . '_ => unreachable!() } } }');
         }
         // from AnyObject: the hierarchy's class-id match (its TryDowncast)
         $w->line('impl php_rt::CastTo<' . $h . '> for AnyObject { fn cast_to(self) -> ' . $h . ' { php_rt::try_downcast::<' . $h . '>(&self.0).unwrap_or_else(|| panic!(' . Names::rustStringLiteral('object is not a ' . $cls->fqcn) . ')) } }');
         $w->line('impl php_rt::InstanceOf<' . $h . '> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_id(' . $this->program->classId($cls) . ') } }');
-        $w->line('impl php_rt::InstanceOf<' . $h . '> for Mixed { fn is_instance(&self) -> bool { self.instance_of_id(' . $this->program->classId($cls) . ') } }');
         if ($cls->isLeaf() || $closed) {
             $w->line('impl php_rt::InstanceOf<' . $h . '> for ' . $h . ' { fn is_instance(&self) -> bool { true } }');
         } else {
@@ -650,9 +603,106 @@ final class CastEmitter
         if (!$cls->isLeaf()) {
             // narrowing to any leaf class (of this crate or a downstream one) in a single generic impl
             // instead of one impl with an arm per descendant for each target class
-            $w->line('impl<T: crate::Leaf__ + Clone + \'static> php_rt::CastTo<T> for ' . $h . ' where Mixed: php_rt::CastTo<T> { fn cast_to(self) -> T { if let Some(v) = self.inner_any().downcast_ref::<T>() { return v.clone(); } cast::<T>(cast::<Mixed>(self)) } }');
+            if ($this->openHandle($cls)) {
+                $this->casts->need(RustType::class($cls->fqcn), RustType::mixed());
+                $w->line('impl<T: crate::Leaf__ + Clone + \'static> php_rt::CastTo<T> for ' . $h . ' where Mixed: php_rt::CastTo<T> { fn cast_to(self) -> T { if let Some(v) = self.inner_any().downcast_ref::<T>() { return v.clone(); } cast::<T>(cast::<Mixed>(self)) } }');
+            } else {
+                $w->line('impl<T: crate::Leaf__ + Clone + \'static> php_rt::CastTo<T> for ' . $h . ' { fn cast_to(self) -> T { if let Some(v) = self.inner_any().downcast_ref::<T>() { return v.clone(); } panic!(' . Names::rustStringLiteral('cannot narrow ' . $cls->fqcn . ' to the requested class') . ') } }');
+            }
         }
         $this->emitLeafMarker($cls, $w);
+    }
+
+
+    /** `CastTo<Mixed>` for a union (on demand). */
+    private function emitUnionToMixed(RustType $u, Writer $w): void
+    {
+        $name = $u->mangle();
+        $arms = [];
+        foreach ($u->params as $m) {
+            if ($this->isUnit($m)) {
+                $arms[] = $name . '::' . $this->unitName($m) . ' => Mixed::Bool(' . ($this->unitName($m) === 'True' ? 'true' : 'false') . ')';
+            } else {
+                $arms[] = $name . '::' . $m->variantName() . '(v) => ' . $this->conv('v', $m, RustType::mixed());
+            }
+        }
+        $w->line('impl php_rt::CastTo<Mixed> for ' . $name . ' { fn cast_to(self) -> Mixed { match self { ' . implode(', ', $arms) . ' } } }');
+    }
+
+    /** `CastTo<union> for Mixed` (on demand). */
+    private function emitMixedToUnion(RustType $u, Writer $w): void
+    {
+        $name = $u->mangle();
+        $arms = [];
+        foreach ($u->params as $m) {
+            $this->casts->needMixedTo($m);
+            $arms[] = $this->mixedToMemberArm($name, $m);
+        }
+        $w->line('impl php_rt::CastTo<' . $name . '> for Mixed { fn cast_to(self) -> ' . $name . ' { ' . implode(' ', $arms) . ' ' . 'panic!("Mixed value {:?} not in union ' . $name . '", self) } }');
+    }
+
+    /** `CastTo<Mixed>` for a shape (on demand). */
+    private function emitShapeToMixed(RustType $s, Writer $w): void
+    {
+        $name = $s->mangle();
+        $ins = [];
+        foreach ($s->fields as $k => [$t, $opt]) {
+            $key = 'ArrayKey::from(' . Names::strLit($k) . ')';
+            if ($opt) {
+                $ins[] = 'if let Some(v) = self.' . Names::field($k) . ' { m.insert(' . $key . ', ' . $this->conv('v', $t, RustType::mixed()) . '); }';
+            } else {
+                $ins[] = 'm.insert(' . $key . ', ' . $this->conv('self.' . Names::field($k), $t, RustType::mixed()) . ');';
+            }
+        }
+        $w->line('impl php_rt::CastTo<Mixed> for ' . $name . ' { fn cast_to(self) -> Mixed { let mut m: Map<ArrayKey, Mixed> = Map::new(); ' . implode(' ', $ins) . ' Mixed::Arr(m) } }');
+    }
+
+    /** `CastTo<shape> for Mixed` (on demand). */
+    private function emitMixedToShape(RustType $s, Writer $w): void
+    {
+        $name = $s->mangle();
+        $outs = [];
+        foreach ($s->fields as $k => [$t, $opt]) {
+            $key = '&ArrayKey::from(' . Names::strLit($k) . ')';
+            $this->casts->needMixedTo($t);
+            if ($opt) {
+                $outs[] = Names::field($k) . ': ' . $this->casts->optionMap('m.get(' . $key . ').cloned()', RustType::mixed(), $t);
+            } else {
+                $outs[] = Names::field($k) . ': ' . $this->conv('m.get(' . $key . ').cloned().unwrap_or_default()', RustType::mixed(), $t);
+            }
+        }
+        $w->line('impl php_rt::CastTo<' . $name . '> for Mixed { fn cast_to(self) -> ' . $name . ' { let m = cast::<Map<ArrayKey, Mixed>>(self); ' . $name . ' { ' . implode(', ', $outs) . ' } } }');
+    }
+
+    /** `CastTo<Mixed>` for a class handle (and its own handle) — on demand. */
+    private function emitClassToMixed(ClassModel $cls, Writer $w): void
+    {
+        $h = $cls->path();
+        if ($cls->isLeaf()) {
+            $w->line('impl php_rt::CastTo<Mixed> for ' . $h . ' { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }');
+            return;
+        }
+        $arms = array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(v) => Mixed::Obj(Rc::new(v))', $cls->concrete);
+        if ($this->openHandle($cls)) {
+            $arms[] = $h . '::Other__(m) => m';
+        }
+        $w->line('impl php_rt::CastTo<Mixed> for ' . $h . ' { fn cast_to(self) -> Mixed { match self { ' . implode(', ', $arms) . ($arms ? ', ' : '') . '_ => unreachable!() } } }');
+        if ($cls->isConcrete()) {
+            $w->line('impl php_rt::CastTo<Mixed> for ' . $cls->ownPath() . ' { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }');
+        }
+    }
+
+    /** `CastTo<class> for Mixed`: the class-id match over the concrete descendants — on demand. */
+    private function emitMixedToClass(ClassModel $cls, Writer $w): void
+    {
+        $h = $cls->path();
+        $arms = [];
+        foreach ($cls->concrete as $c) {
+            $get = 'o.as_any().downcast_ref::<' . $c->ownPath() . '>().unwrap().clone()';
+            $arms[] = $this->program->classId($c) . ' => return ' . $this->wrapConcrete($cls, $c, $get) . ',';
+        }
+        $fallback = !$this->openHandle($cls) ? 'panic!(' . Names::rustStringLiteral('Mixed value is not a ' . $cls->fqcn) . ')' : $h . '::Other__(self)';
+        $w->line('impl php_rt::CastTo<' . $h . '> for Mixed { fn cast_to(self) -> ' . $h . ' { if let Mixed::Obj(o) = &self { match o.class_id() { ' . implode(' ', $arms) . ' _ => {} } } ' . $fallback . ' } }');
     }
 
     /** Leaf classes implement the marker trait of their crate and of every upstream crate. */
@@ -750,11 +800,32 @@ final class CastEmitter
         }
         $fk = $from->kind;
         $tk = $to->kind;
-        // member <-> union and Mixed <-> union impls are emitted together with the union enum
-        if ($fk === RustType::UNION && ($tk === RustType::MIXED || $this->isExactMember($from, $to))) {
+        // conversions to/from Mixed of generated types: only where a body records them
+        if ($tk === RustType::MIXED && in_array($fk, [RustType::UNION, RustType::SHAPE, RustType::CLASS_], true)) {
+            if ($fk === RustType::UNION) {
+                $this->emitUnionToMixed($from, $w);
+            } elseif ($fk === RustType::SHAPE) {
+                $this->emitShapeToMixed($from, $w);
+            } elseif (($c = $this->program->classOf($from)) !== null && !$c->isEnum()) {
+                $this->emitClassToMixed($c, $w);
+            }
             return;
         }
-        if ($tk === RustType::UNION && ($fk === RustType::MIXED || $this->isExactMember($to, $from))) {
+        if ($fk === RustType::MIXED && in_array($tk, [RustType::UNION, RustType::SHAPE, RustType::CLASS_], true)) {
+            if ($tk === RustType::UNION) {
+                $this->emitMixedToUnion($to, $w);
+            } elseif ($tk === RustType::SHAPE) {
+                $this->emitMixedToShape($to, $w);
+            } elseif (($c = $this->program->classOf($to)) !== null && !$c->isEnum()) {
+                $this->emitMixedToClass($c, $w);
+            }
+            return;
+        }
+        // member <-> union impls are emitted together with the union enum
+        if ($fk === RustType::UNION && $this->isExactMember($from, $to)) {
+            return;
+        }
+        if ($tk === RustType::UNION && $this->isExactMember($to, $from)) {
             return;
         }
         // unions
@@ -1025,7 +1096,9 @@ final class CastEmitter
         }
         if ($tc->isLeaf() && $tc->crate >= $fc->crate) {
             // covered by the generic `CastTo<T: Leaf__>` impl of the source enum
-            $this->casts->needMixedTo($to);
+            if ($this->openHandle($fc)) {
+                $this->casts->needMixedTo($to);
+            }
             return;
         }
         // one arm per concrete class of the source, however large the enum: a conversion through Mixed
@@ -1220,6 +1293,9 @@ final class CastEmitter
             $w->line('impl php_rt::InstanceOf<' . $th . '> for ' . $subject->toRust() . ' { fn is_instance(&self) -> bool { match self { ' . implode(', ', $arms) . ' } } }');
             return;
         }
-        // Mixed / AnyObject handled by class impls
+        if ($subject->kind === RustType::MIXED && $tc !== null && !$tc->isEnum()) {
+            $w->line('impl php_rt::InstanceOf<' . $th . '> for Mixed { fn is_instance(&self) -> bool { self.instance_of_id(' . $this->program->classId($tc) . ') } }');
+        }
+        // AnyObject handled by class impls
     }
 }
