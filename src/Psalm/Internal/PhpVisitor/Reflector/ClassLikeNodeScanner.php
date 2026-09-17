@@ -414,6 +414,10 @@ final class ClassLikeNodeScanner
 
                 usort(
                     $docblock_info->templates,
+                    /**
+                     * @param array{string, ?string, ?string, bool, int} $l
+                     * @param array{string, ?string, ?string, bool, int} $r
+                     */
                     static fn(array $l, array $r): int => $l[4] > $r[4] ? 1 : -1,
                 );
 

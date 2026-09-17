@@ -836,14 +836,13 @@ final class FunctionLikeDocblockScanner
             }
 
             if (!$docblock_param_variadic && $storage_param->is_variadic && $new_param_type->hasArray()) {
-                /**
-                 * @var TArray|TKeyedArray
-                 */
                 $array_type = $new_param_type->getArray();
 
                 if ($array_type instanceof TKeyedArray) {
                     $new_param_type = $array_type->getGenericValueType();
                 } else {
+                    // a variadic parameter's docblock type is a list or an array<K, V>, never a class-string map
+                    assert($array_type instanceof TArray);
                     $new_param_type = $array_type->type_params[1];
                 }
             }
