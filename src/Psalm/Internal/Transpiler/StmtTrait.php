@@ -583,6 +583,14 @@ trait StmtTrait
                 $first = false;
                 if ($catch->var !== null && is_string($catch->var->name)) {
                     $vt = $this->varType($catch->var->name);
+                    if ($vt->kind === RustType::MIXED || ($vt->kind === RustType::OPTION && $vt->inner()->kind === RustType::MIXED)) {
+                        // a catch variable Psalm lost: its static type is the union of the caught classes
+                        $caught = [];
+                        foreach ($catch->types as $ctn) {
+                            $caught[] = $this->types()->map(new \Psalm\Type\Union([new \Psalm\Type\Atomic\TNamedObject($ctn->toString())]));
+                        }
+                        $this->noteMixedAssign($catch->var->name, $this->program->unionOfRust($caught) ?? $throwable);
+                    }
                     $w->line($this->storeVar($catch->var->name, $this->casts->convert('__e.clone()', $throwable, $vt)));
                 }
                 $this->block($catch->stmts);
