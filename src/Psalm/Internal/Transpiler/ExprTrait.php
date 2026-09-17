@@ -1854,6 +1854,38 @@ trait ExprTrait
                     return $this->flattenOption($code, $magic_get->return_type);
                 }
             }
+            if ($bt->kind === RustType::UNION) {
+                // a property common to several union members: the members' DECLARED field types decide whether
+                // the read can be absent (inside `??`/isset Psalm narrows it to non-null, which must not
+                // become an unwrap)
+                $ftypes = [];
+                foreach ($bt->params as $m) {
+                    $mc = $m->kind === RustType::CLASS_ ? $this->program->classOf($m) : null;
+                    $mf = $mc?->fields[$name] ?? null;
+                    if ($mf !== null) {
+                        $ftypes[] = $mf->type->kind === RustType::OPTION ? $mf->type->inner() : $mf->type;
+                    }
+                }
+                $vt = $ftypes === [] ? null : $this->program->unionOfRust($ftypes);
+                if ($vt !== null) {
+                    $arms = [];
+                    foreach ($bt->params as $m) {
+                        $mc = $m->kind === RustType::CLASS_ ? $this->program->classOf($m) : null;
+                        $mf = $mc?->fields[$name] ?? null;
+                        if ($mf === null) {
+                            continue;
+                        }
+                        $get = '__o.' . $mf->acc() . '_get()';
+                        $arms[] = $bt->mangle() . '::' . $m->variantName() . '(__o) => ' . ($mf->type->kind === RustType::OPTION
+                            ? $get . '.map(|__v| ' . $this->casts->convert('__v', $mf->type->inner(), $vt) . ')'
+                            : 'Some(' . $this->casts->convert($get, $mf->type, $vt) . ')');
+                    }
+                    if ($arms !== []) {
+                        $code = $base->code . '.and_then(|__b| match __b { ' . implode(', ', $arms) . ', #[allow(unreachable_patterns)] _ => None })';
+                        return new Val($code, RustType::option($vt));
+                    }
+                }
+            }
             if ($bt->kind === RustType::MIXED) {
                 return new Val($base->code . '.and_then(|__b| mixed_prop(&__b, &' . $this->dynPropName($name) . '))', RustType::option(RustType::mixed()));
             }

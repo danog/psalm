@@ -959,9 +959,30 @@ function case_union_tostring(): string
     return (string) $a . '|' . (string) $b;
 }
 
+final class SIdent { public function __construct(public string $v) {} }
+final class ClassStmt { public function __construct(public ?SIdent $name) {} }
+final class EnumStmt { public function __construct(public ?SIdent $name) {} }
+
+function name_or_node(ClassStmt|EnumStmt $c): string
+{
+    $n = $c->name ?? $c;
+    if ($n instanceof SIdent) {
+        return 'i:' . $n->v;
+    }
+    return 'node';
+}
+
+function case_union_prop_coalesce(): string
+{
+    return name_or_node(new ClassStmt(new SIdent('A')))
+        . '|' . name_or_node(new ClassStmt(null))
+        . '|' . name_or_node(new EnumStmt(new SIdent('E')));
+}
+
 function run_all(): string
 {
-    return check('union_tostring', case_union_tostring(), 'isa-named:X|isa-tmpl')
+    return check('union_prop_coalesce', case_union_prop_coalesce(), 'i:A|node|i:E')
+        . check('union_tostring', case_union_tostring(), 'isa-named:X|isa-tmpl')
         . check('prop_empty_narrow', case_prop_empty_narrow(), '1:1')
         . check('sym_str_funcs', case_sym_str_funcs(), 'XBox|YBox')
         . check('int_or_false_arith', case_int_or_false_arith(), '4')
