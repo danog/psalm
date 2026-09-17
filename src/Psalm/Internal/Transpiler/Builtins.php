@@ -395,15 +395,22 @@ final class Builtins
                 $spread = null;
                 foreach (array_slice($positional, $i) as $a) {
                     $v = $b->expr($a->value);
-                    if ($a->unpack && $v->type->kind === RustType::LIST && in_array($v->type->inner()->kind, [RustType::STR, RustType::INT, RustType::FLOAT, RustType::BOOL], true)) {
-                        // `...$values`: every element of the typed list is one format argument
-                        $spread = $v->code;
-                        continue;
+                    $scalar_kinds = [RustType::STR, RustType::INT, RustType::FLOAT, RustType::BOOL];
+                    if ($a->unpack && $v->type->kind === RustType::LIST) {
+                        $et = $v->type->inner();
+                        $scalar_union = $et->kind === RustType::UNION && $et->params !== [] && count(array_filter($et->params, static fn(RustType $m) => !in_array($m->kind, $scalar_kinds, true))) === 0;
+                        if (in_array($et->kind, $scalar_kinds, true) || $scalar_union) {
+                            // `...$values`: every element of the typed list is one format argument (a union of
+                            // scalars through its string form, which the formatter converts per placeholder)
+                            $spread = [$v->code, $scalar_union];
+                            continue;
+                        }
                     }
                     $parts[] = 'FmtArg::from(' . $this->fmtArg($b, $v) . ')';
                 }
                 if ($spread !== null) {
-                    $codes[] = '&{ let mut __fa: Vec<FmtArg> = vec![' . implode(', ', $parts) . ']; for __v in ' . $spread . '.iter() { __fa.push(FmtArg::from(__v.clone())); } __fa }[..]';
+                    $elem = $spread[1] ? 'php_rt::ToStr::to_php_str(__v)' : '__v.clone()';
+                    $codes[] = '&{ let mut __fa: Vec<FmtArg> = vec![' . implode(', ', $parts) . ']; for __v in ' . $spread[0] . '.iter() { __fa.push(FmtArg::from(' . $elem . ')); } __fa }[..]';
                 } else {
                     $codes[] = '&[' . implode(', ', $parts) . ']';
                 }

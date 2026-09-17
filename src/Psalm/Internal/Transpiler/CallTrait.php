@@ -546,6 +546,24 @@ trait CallTrait
         }
         if ($rt->kind === RustType::UNION) {
             $res = $this->inferredOrMixed($e);
+            if ($res->containsMixed()) {
+                // Psalm sees `mixed` (the method is declared on some members only): the members that declare
+                // it agree on the result type
+                $arm_types = [];
+                foreach ($rt->params as $member) {
+                    $mc = $member->kind === RustType::CLASS_ ? $this->program->classOf($member) : null;
+                    $mm = $mc !== null ? $this->program->findMethod($mc, $lc) : null;
+                    if ($mm !== null) {
+                        $arm_types[] = $mm->return_type;
+                    }
+                }
+                if ($arm_types !== []) {
+                    $combined = $this->types()->combine($arm_types);
+                    if (!$combined->containsMixed() && !$combined->hasGeneric()) {
+                        $res = $combined;
+                    }
+                }
+            }
             $arms = [];
             $tmp = $this->tmp('__r');
             foreach ($rt->params as $member) {

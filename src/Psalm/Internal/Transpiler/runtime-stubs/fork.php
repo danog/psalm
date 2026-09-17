@@ -18,7 +18,7 @@ namespace Amp {
     final class Future
     {
         /** @return T */
-        public function await(?Cancellation $cancellation = null): mixed
+        public function await(?Cancellation $cancellation = null)
         {
             throw new \RuntimeException('parallel execution is not available');
         }

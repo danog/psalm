@@ -1508,6 +1508,11 @@ trait ExprTrait
             }
             $av = $this->rawValue($a);
             $at = $av->type;
+            $scalar_kinds = ['bool' => RustType::BOOL, 'int' => RustType::INT, 'str' => RustType::STR, 'float' => RustType::FLOAT];
+            if (in_array($at->kind, $scalar_kinds, true) && $at->kind !== $scalar_kinds[$lit_kind]) {
+                // `$string === 0`: values of different scalar types are never identical
+                return '{ let _ = ' . $av->code . '; false }';
+            }
             if ($at->kind === RustType::GENERIC) {
                 // a generic against a literal: same runtime kind and same value
                 $lit_code = match ($lit_kind) {
