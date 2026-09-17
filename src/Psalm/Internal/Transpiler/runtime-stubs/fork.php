@@ -56,10 +56,10 @@ namespace Amp\Sync {
      */
     interface Channel
     {
-        /** @return TReceive */
+        /** @return array{id: int|null, count: int}|string */
         public function receive(?\Amp\Cancellation $cancellation = null): array|string;
 
-        /** @param TSend $data */
+        /** @param array{id: int|null, count: int}|string $data */
         public function send(array|string $data): void;
 
         public function close(): void;

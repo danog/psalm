@@ -96,7 +96,7 @@ final class CastEmitter
                 $arms[] = $name . '::' . $m->variantName() . '(_) => Str::from_static("Closure")';
             } elseif (in_array($m->kind, [RustType::LIST, RustType::MAP, RustType::SHAPE, RustType::TUPLE], true)) {
                 $arms[] = $name . '::' . $m->variantName() . '(_) => Str::from_static("Array")';
-            } elseif (in_array($m->kind, [RustType::CLASS_, RustType::ANY_OBJECT, RustType::SYM, RustType::ARRAY_KEY, RustType::GENERIC], true)) {
+            } elseif (in_array($m->kind, [RustType::CLASS_, RustType::ANY_OBJECT, RustType::SYM, RustType::ARRAY_KEY, RustType::GENERIC, RustType::RESOURCE], true)) {
                 $arms[] = $name . '::' . $m->variantName() . '(v) => php_rt::ToStr::to_php_str(v)';
             } elseif ($m->kind === RustType::RT_GENERIC) {
                 $arms[] = $name . '::' . $m->variantName() . '(_) => panic!("Uncaught exception: Object could not be converted to string")';
