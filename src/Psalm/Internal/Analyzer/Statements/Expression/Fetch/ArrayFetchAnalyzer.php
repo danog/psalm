@@ -1429,9 +1429,8 @@ final class ArrayFetchAnalyzer
                 $statements_analyzer->getSuppressedIssues(),
             );
 
-            if (!IssueBuffer::isRecording()) {
-                $array_access_type = Type::getMixed(true);
-            }
+            // the value read from a known-empty array stays uninhabited (never): a later pass over a loop
+            // that fills the array types the read from its real contents
         }
     }
 
@@ -1765,7 +1764,11 @@ final class ArrayFetchAnalyzer
                     $expected_offset_types[] = $generic_key_type->getId();
                 }
 
-                $array_access_type = Type::getMixed();
+                // an offset the key type does not cover reads one of the array's values if it reads anything
+                $array_access_type = Type::combineUnionTypes(
+                    $array_access_type,
+                    $type->getGenericValueType(),
+                );
             }
         }
     }

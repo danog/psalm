@@ -56,13 +56,8 @@ final class ArraySpliceReturnTypeProvider implements FunctionReturnTypeProviderI
         }
 
         if (!$array_type->type_params[0]->hasString()) {
-            if ($array_type->type_params[1]->isString()) {
-                $array_type = Type::getListAtomic(Type::getString());
-            } elseif ($array_type->type_params[1]->isInt()) {
-                $array_type = Type::getListAtomic(Type::getInt());
-            } else {
-                $array_type = Type::getListAtomic(Type::getMixed());
-            }
+            // the removed slice is a list of the array's own values
+            $array_type = Type::getListAtomic($array_type->type_params[1]);
         }
 
         return new Union([$array_type]);

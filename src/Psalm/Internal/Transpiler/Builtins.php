@@ -2400,10 +2400,10 @@ final class Builtins
         // constants are compile-time: `define()` of a runtime-provided one (PSALM_VERSION) is a no-op
         $name = $args[0]->value;
         if ($name instanceof Scalar\String_ && $this->hasConstant($name->value)) {
-            return new Val('{ let _ = ' . $b->exprTo($args[1]->value, RustType::mixed()) . '; true }', RustType::bool());
+            return new Val('{ let _ = ' . $b->expr($args[1]->value)->code . '; true }', RustType::bool());
         }
         $b->warn('define of a constant unknown to the compiled program', $call);
-        return new Val('{ let _ = ' . $b->exprTo($args[1]->value, RustType::mixed()) . '; false }', RustType::bool());
+        return new Val('{ let _ = ' . $b->expr($args[1]->value)->code . '; false }', RustType::bool());
     }
 
     private function f_get_class(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -2429,6 +2429,14 @@ final class Builtins
         }
         $v = $b->rawValue($args[0]->value);
         $inner = $v->type->kind === RustType::OPTION ? $v->type->inner() : $v->type;
+        $scalar_fn = match ($v->type->kind) {
+            RustType::STR => 'var_export_str', RustType::INT => 'var_export_int', RustType::FLOAT => 'var_export_float', RustType::BOOL => 'var_export_bool',
+            default => null,
+        };
+        if ($fallback === 'var_export' && $scalar_fn !== null) {
+            $ret = isset($args[1]) ? $b->exprTo($args[1]->value, RustType::bool()) : 'false';
+            return new Val($scalar_fn . '(&' . $v->code . ', ' . $ret . ')', RustType::str());
+        }
         $typed = in_array($inner->kind, [RustType::GENERIC, RustType::CLASS_, RustType::ANY_OBJECT, RustType::SHAPE], true)
             || ($inner->kind === RustType::UNION && Casts::unionHasObject($inner));
         if (!$typed) {
@@ -2439,6 +2447,87 @@ final class Builtins
             $ret = 'false';
         }
         return new Val('php_rt::debug_export(&' . $v->code . ', ' . $ret . ')', RustType::str());
+    }
+
+    /** The value of a FILTER_* constant expression, null when not constant. */
+    private function filterConst(Expr $e): ?int
+    {
+        if ($e instanceof Scalar\Int_) {
+            return $e->value;
+        }
+        if ($e instanceof Expr\ConstFetch) {
+            return match (strtoupper($e->name->toString())) {
+                'FILTER_VALIDATE_INT' => 257, 'FILTER_VALIDATE_BOOLEAN', 'FILTER_VALIDATE_BOOL' => 258, 'FILTER_VALIDATE_FLOAT' => 259,
+                'FILTER_VALIDATE_REGEXP' => 272, 'FILTER_VALIDATE_URL' => 273, 'FILTER_VALIDATE_EMAIL' => 274, 'FILTER_VALIDATE_IP' => 275,
+                'FILTER_VALIDATE_MAC' => 276, 'FILTER_VALIDATE_DOMAIN' => 277, 'FILTER_DEFAULT', 'FILTER_UNSAFE_RAW' => 516,
+                'FILTER_SANITIZE_URL' => 517, 'FILTER_SANITIZE_EMAIL' => 518, 'FILTER_SANITIZE_NUMBER_INT' => 519, 'FILTER_SANITIZE_NUMBER_FLOAT' => 520,
+                'FILTER_SANITIZE_SPECIAL_CHARS' => 522, 'FILTER_SANITIZE_FULL_SPECIAL_CHARS' => 523, 'FILTER_SANITIZE_ADD_SLASHES' => 1024,
+                default => null,
+            };
+        }
+        return null;
+    }
+
+    /** Whether a filter_var options argument is exactly FILTER_NULL_ON_FAILURE (as flags, or `['flags' => ...]`). */
+    private function isNullOnFailure(Expr $e): bool
+    {
+        if ($e instanceof Expr\ConstFetch) {
+            return strtoupper($e->name->toString()) === 'FILTER_NULL_ON_FAILURE';
+        }
+        if ($e instanceof Scalar\Int_) {
+            return $e->value === 134217728;
+        }
+        if ($e instanceof Expr\Array_ && count($e->items) === 1) {
+            $item = $e->items[0];
+            return $item->key instanceof Scalar\String_ && $item->key->value === 'flags' && $this->isNullOnFailure($item->value);
+        }
+        return false;
+    }
+
+    /** `filter_var` of a scalar with a constant validation filter: a typed result (Option for the false/null outcome). */
+    private function f_filter_var(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        $vt = $b->inferredOrMixed($args[0]->value);
+        $vi = $vt->kind === RustType::OPTION ? $vt->inner() : $vt;
+        $scalar = in_array($vi->kind, [RustType::STR, RustType::INT, RustType::FLOAT, RustType::BOOL, RustType::SYM], true)
+            || ($vi->kind === RustType::UNION && !Casts::unionHasObject($vi) && !$vi->containsMixed());
+        $null_on_failure = isset($args[2]) && $this->isNullOnFailure($args[2]->value);
+        if (!$scalar || count($args) > 3 || (isset($args[2]) && !$null_on_failure)) {
+            return $this->simple($b, $call, $args, self::SIMPLE['filter_var']);
+        }
+        $s = $b->exprTo($args[0]->value, RustType::str());
+        $filter = isset($args[1]) ? $this->filterConst($args[1]->value) : 516;
+        switch ($filter) {
+            case 257:
+                return new Val('filter_validate_int(&' . $s . ')', RustType::option(RustType::int()));
+            case 259:
+                return new Val('filter_validate_float(&' . $s . ')', RustType::option(RustType::float()));
+            case 258:
+                if ($null_on_failure) {
+                    return new Val('filter_validate_bool(&' . $s . ')', RustType::option(RustType::bool()));
+                }
+                return new Val('filter_validate_bool(&' . $s . ').unwrap_or(false)', RustType::bool());
+            default:
+                // any other (or runtime-chosen) filter: the filtered string, None for the false outcome
+                $f = $filter !== null ? $filter . 'i64' : $b->exprTo($args[1]->value, RustType::int());
+                return new Val('filter_var_str(&' . $s . ', ' . $f . ')', RustType::option(RustType::str()));
+        }
+    }
+
+    /** `stream_get_meta_data` in the shape the stub declares, from the runtime's typed metadata. */
+    private function f_stream_get_meta_data(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        $t = $b->inferredOrMixed($call);
+        $known = ['timed_out', 'blocked', 'eof', 'stream_type', 'mode', 'unread_bytes', 'seekable', 'uri'];
+        if ($t->kind !== RustType::SHAPE || array_diff(array_keys($t->fields), $known) !== []) {
+            $b->warn('stream_get_meta_data outside the typed shape', $call);
+            return $b->dead('stream_get_meta_data outside the typed shape', $t);
+        }
+        $fields = [];
+        foreach ($t->fields as $k => [$ft, $opt]) {
+            $fields[] = Names::field((string) $k) . ': ' . ($opt ? 'Some(__m.' . $k . ')' : '__m.' . $k);
+        }
+        return new Val('{ let __m = stream_meta(&' . $b->exprTo($args[0]->value, RustType::resource()) . '); ' . $t->toRust() . ' { ' . implode(', ', $fields) . ' } }', $t);
     }
 
     private function f_set_error_handler(BodyEmitter $b, Expr\FuncCall $call, array $args): Val

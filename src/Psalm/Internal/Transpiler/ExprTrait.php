@@ -309,7 +309,8 @@ trait ExprTrait
                 return $this->dead('include of a file that is not compiled: ' . $static, $this->inferredOrMixed($e));
             }
             $this->warn('include with a runtime path', $e);
-            return $this->dead('include with a runtime path', $this->inferredOrMixed($e));
+            // dead in the closed world: typed by what the site expects (a declared return), else discarded
+            return $this->dead('include with a runtime path', $expected !== null && !$expected->containsMixed() ? $expected : RustType::unit());
         }
         if ($e instanceof Expr\Eval_) {
             // only constant expressions (`return "\t";`) are supported by the runtime evaluator
@@ -934,6 +935,9 @@ trait ExprTrait
             }
             if ($ft->kind === RustType::OPTION) {
                 return 'to_key(&' . $v->code . ')';
+            }
+            if ($ft->kind === RustType::SYM) {
+                return 'to_key(&' . $v->code . '.to_str())';
             }
             return 'to_key(&' . $this->casts->convert($v->code, $ft, RustType::mixed()) . ')';
         }
@@ -1577,6 +1581,13 @@ trait ExprTrait
             $other = $this->isNullLiteral($right) ? $left : $right;
             return '(!' . $this->truthy($other) . ')';
         }
+        // `$x == false` is `!$x` and `$x == true` is `(bool) $x`: PHP's loose comparison with a bool
+        foreach ([[$left, $right], [$right, $left]] as [$a, $b]) {
+            if ($b instanceof Expr\ConstFetch && in_array(strtolower($b->name->toString()), ['true', 'false'], true)) {
+                $t = $this->truthy($a);
+                return strtolower($b->name->toString()) === 'true' ? $t : '(!' . $t . ')';
+            }
+        }
         $lt = $this->inferredOrMixed($left);
         $rt = $this->inferredOrMixed($right);
         foreach ([[$left, $lt, $right, $rt], [$right, $rt, $left, $lt]] as [$oe, $ot, $se, $st]) {
@@ -1965,6 +1976,29 @@ trait ExprTrait
     private function matchExpr(Expr\Match_ $e): Val
     {
         $res = $this->inferredOrMixed($e);
+        if ($res->containsMixed()) {
+            // Psalm sees `mixed` (arms that `require` data files, for instance): the arms the emitter types
+            // decide the result type instead
+            $arm_types = [];
+            $typed = true;
+            foreach ($e->arms as $arm) {
+                if ($arm->body instanceof Expr\Throw_) {
+                    continue;
+                }
+                $t = $this->expr($arm->body)->type;
+                if ($t->containsMixed()) {
+                    $typed = false;
+                    break;
+                }
+                $arm_types[] = $t;
+            }
+            if ($typed && $arm_types !== []) {
+                $combined = $this->types()->combine($arm_types);
+                if (!$combined->containsMixed()) {
+                    $res = $combined;
+                }
+            }
+        }
         $subj = $this->expr($e->cond);
         $tmp = $this->tmp('__subj');
         $code = '{ let ' . $tmp . ' = ' . $subj->code . '; ';

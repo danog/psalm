@@ -597,7 +597,12 @@ final class BodyEmitter
                     'argc' => ['php_rt::argc()', RustType::int()],
                     default => ['php_rt::global_get(' . $lit . ')', RustType::mixed()],
                 };
-                $this->w->line('let mut ' . $rn . ': PhpRef<' . $type->toRust() . '> = PhpRef::new(move || ' . $this->casts->convert($src, $src_t, $type) . ', move |__v: ' . $type->toRust() . '| php_rt::global_set(' . $lit . ', ' . $this->casts->convert('__v', $type, RustType::mixed()) . '));');
+                $set = match ($name) {
+                    'argv' => 'php_rt::set_argv(' . $this->casts->convert('__v', $type, RustType::list(RustType::str())) . ')',
+                    'argc' => 'php_rt::set_argc(' . $this->casts->convert('__v', $type, RustType::int()) . ')',
+                    default => 'php_rt::global_set(' . $lit . ', ' . $this->casts->convert('__v', $type, RustType::mixed()) . ')',
+                };
+                $this->w->line('let mut ' . $rn . ': PhpRef<' . $type->toRust() . '> = PhpRef::new(move || ' . $this->casts->convert($src, $src_t, $type) . ', move |__v: ' . $type->toRust() . '| ' . $set . ');');
                 continue;
             }
             if (!empty($this->refvars[$name])) {

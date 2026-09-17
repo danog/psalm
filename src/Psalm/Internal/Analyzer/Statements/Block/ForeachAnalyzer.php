@@ -93,7 +93,7 @@ final class ForeachAnalyzer
         $file_path = $statements_analyzer->getRootFilePath();
         $type_aliases = $codebase->file_storage_provider->get($file_path)->type_aliases;
 
-        if ($doc_comment) {
+        if ($doc_comment && !$codebase->config->disable_var_parsing) {
             try {
                 $var_comments = CommentAnalyzer::getTypeFromComment(
                     $codebase,
@@ -457,10 +457,13 @@ final class ForeachAnalyzer
                 $iterator_atomic_type = $iterator_atomic_type->as->getSingleAtomic();
             }
 
-            // if it's an empty array, we cannot iterate over it
+            // if it's an empty array, we cannot iterate over it: its key and value are uninhabited (never),
+            // not mixed, unless another member of the union types them
             if ($iterator_atomic_type instanceof TArray && $iterator_atomic_type->isEmptyArray()) {
                 $always_non_empty_array = false;
                 $has_valid_iterator = true;
+                $value_type = Type::combineUnionTypes($value_type, Type::getNever());
+                $key_type = Type::combineUnionTypes($key_type, Type::getNever());
                 continue;
             }
 

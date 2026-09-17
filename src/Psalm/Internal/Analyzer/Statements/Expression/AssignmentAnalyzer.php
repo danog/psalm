@@ -509,10 +509,8 @@ final class AssignmentAnalyzer
                     ),
                     $statements_analyzer->getSuppressedIssues(),
                 )) {
-                    // if the error is suppressed, do not treat it as never anymore
-                    $new_mutable = $context->vars_in_scope[$var_id]->getBuilder()->addType(new TMixed);
-                    $new_mutable->removeType('never');
-                    $context->vars_in_scope[$var_id] = $new_mutable->freeze();
+                    // if the error is suppressed, analysis continues past the assignment; the variable keeps
+                    // its uninhabited type (a later pass over a loop that fills the source types it)
                     $context->has_returned = false;
                 } else {
                     $context->inside_assignment = $was_in_assignment;

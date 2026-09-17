@@ -361,32 +361,55 @@ final class TypeMapper
     }
 
     /**
-     * `L | list<V>` where `V` is itself `L | list<...>` with the same leaves: one recursive enum.
+     * `L | list<V> | array<K, V>` where `V` is itself `L | list<...> | array<K, ...>` with the same leaves: one
+     * recursive enum (a JSON-like value type nests lists and string-keyed maps of itself).
      *
      * @param list<RustType> $members sorted union members
      */
     private function recursive(array $members): ?RustType
     {
+        [$lists, $maps, $leaves] = self::splitContainers($members);
+        if (count($lists) > 1 || count($maps) > 1 || count($lists) + count($maps) === 0 || count($leaves) === 0) {
+            return null;
+        }
+        $map_key = $maps === [] ? null : $maps[0]->params[0];
+        $elems = array_map(static fn(RustType $c) => $c->kind === RustType::LIST ? $c->inner() : $c->params[1], [...$lists, ...$maps]);
+        foreach ($elems as $e) {
+            if ($e->toRust() !== $elems[0]->toRust()) {
+                return null;
+            }
+        }
+        $elem = $elems[0];
+        $nullable = $elem->kind === RustType::OPTION;
+        $ev = $nullable ? $elem->inner() : $elem;
+        // only for real nesting: the element union must contain a container itself
+        if ($ev->kind !== RustType::UNION || !self::selfSimilar($ev, self::keys($leaves), $nullable, true, $lists !== [], $map_key)) {
+            return null;
+        }
+        return RustType::recursiveUnion($leaves, $nullable, $lists !== [], $map_key);
+    }
+
+    /**
+     * The list members, the string-keyed map members and the other members of a union.
+     *
+     * @param list<RustType> $members
+     * @return array{list<RustType>, list<RustType>, list<RustType>}
+     */
+    private static function splitContainers(array $members): array
+    {
         $lists = [];
+        $maps = [];
         $leaves = [];
         foreach ($members as $m) {
             if ($m->kind === RustType::LIST) {
                 $lists[] = $m;
+            } elseif ($m->kind === RustType::MAP && in_array($m->params[0]->kind, [RustType::STR, RustType::ARRAY_KEY], true)) {
+                $maps[] = $m;
             } else {
                 $leaves[] = $m;
             }
         }
-        if (count($lists) !== 1 || count($leaves) === 0) {
-            return null;
-        }
-        $elem = $lists[0]->inner();
-        $nullable = $elem->kind === RustType::OPTION;
-        $ev = $nullable ? $elem->inner() : $elem;
-        // only for real nesting: the element union must contain a list itself
-        if ($ev->kind !== RustType::UNION || !self::selfSimilar($ev, self::keys($leaves), $nullable, true)) {
-            return null;
-        }
-        return RustType::recursiveUnion($leaves, $nullable);
+        return [$lists, $maps, $leaves];
     }
 
     /** @param list<RustType> $ts */
@@ -397,38 +420,36 @@ final class TypeMapper
         return implode('|', $k);
     }
 
-    private static function selfSimilar(RustType $u, string $leaf_keys, bool $nullable, bool $need_list): bool
+    private static function selfSimilar(RustType $u, string $leaf_keys, bool $nullable, bool $need_container, bool $with_list, ?RustType $map_key): bool
     {
         if ($u->isRecursive()) {
-            $own = [];
-            foreach ($u->params as $m) {
-                if ($m->kind !== RustType::LIST) {
-                    $own[] = $m;
-                }
-            }
+            [, , $own] = self::splitContainers($u->params);
             return self::keys($own) === $leaf_keys;
         }
-        $lists = [];
-        $own = [];
-        foreach ($u->params as $m) {
-            if ($m->kind === RustType::LIST) {
-                $lists[] = $m;
-            } else {
-                $own[] = $m;
+        [$lists, $maps, $own] = self::splitContainers($u->params);
+        if (count($lists) > 1 || count($maps) > 1 || self::keys($own) !== $leaf_keys) {
+            return false;
+        }
+        if ($lists !== [] && !$with_list) {
+            return false;
+        }
+        if ($maps !== [] && ($map_key === null || $maps[0]->params[0]->toRust() !== $map_key->toRust())) {
+            return false;
+        }
+        if ($lists === [] && $maps === []) {
+            return !$need_container;
+        }
+        foreach ([...$lists, ...$maps] as $c) {
+            $elem = $c->kind === RustType::LIST ? $c->inner() : $c->params[1];
+            if (($elem->kind === RustType::OPTION) !== $nullable) {
+                return false;
+            }
+            $ev = $nullable ? $elem->inner() : $elem;
+            if ($ev->kind !== RustType::UNION || !self::selfSimilar($ev, $leaf_keys, $nullable, false, $with_list, $map_key)) {
+                return false;
             }
         }
-        if (count($lists) > 1 || self::keys($own) !== $leaf_keys) {
-            return false;
-        }
-        if (count($lists) === 0) {
-            return !$need_list;
-        }
-        $elem = $lists[0]->inner();
-        if (($elem->kind === RustType::OPTION) !== $nullable) {
-            return false;
-        }
-        $ev = $nullable ? $elem->inner() : $elem;
-        return $ev->kind === RustType::UNION && self::selfSimilar($ev, $leaf_keys, $nullable, false);
+        return true;
     }
 
     /**

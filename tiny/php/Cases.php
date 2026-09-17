@@ -828,7 +828,9 @@ function run_all(): string
         . check('simplexml_iteration', case_simplexml_iteration(), 'a,b,x')
         . check('nullable_prop_receiver', case_nullable_prop_receiver(), 'p9,q9,0:1')
         . check('generic_callable', case_generic_callable(), '42|a,b|run,done,run,done')
-        . check('typed_builtins', case_typed_builtins(), '1:ab@2|x|no|0|1,-1|user:0');
+        . check('typed_builtins', case_typed_builtins(), '1:ab@2|x|no|0|1,-1|user:0')
+        . check('deferred_graph', case_deferred_graph(['root', 'root', 'n1']), 'n0,n1,n2')
+        . check('typed_builtins2', case_typed_builtins2(), "c1,r6,'a\\'b',42,nf,yes,null,1.5,pos");
 }
 
 // ---- feature: typed constant table (get_defined_constants without Mixed) ----
@@ -1077,4 +1079,79 @@ function case_typed_builtins(): string
     $fns = get_defined_functions();
     $out .= '|user:' . count(array_filter($fns['user'], static fn(string $n): bool => $n === 'no_such_fn'));
     return $out;
+}
+
+/** @param list<string> $items */
+function case_deferred_graph(array $items): string
+{
+    $deferred = [];
+    $used = [];
+    $queue = ['root'];
+    foreach ($items as $i => $item) {
+        $deferred[$item][] = 'n' . $i;
+    }
+    while ($queue) {
+        $node = array_pop($queue);
+        if (isset($deferred[$node])) {
+            foreach ($deferred[$node] as $d) {
+                if (!isset($used[$d])) {
+                    $used[$d] = true;
+                    $queue[] = $d;
+                }
+            }
+            unset($deferred[$node]);
+        }
+    }
+    return implode(',', array_keys($used));
+}
+
+abstract class Shape2
+{
+}
+
+final class Circle2 extends Shape2
+{
+    public function __construct(public float $r)
+    {
+    }
+}
+
+final class Rect2 extends Shape2
+{
+    public function __construct(public float $w, public float $h)
+    {
+    }
+
+    public function area(): float
+    {
+        return $this->w * $this->h;
+    }
+}
+
+/** @return list<Shape2> */
+function shapes2(): array
+{
+    return [new Circle2(1.0), new Rect2(2.0, 3.0)];
+}
+
+function case_typed_builtins2(): string
+{
+    $out = [];
+    foreach (shapes2() as $s) {
+        if ($s instanceof Circle2) {
+            $out[] = 'c' . $s->r;
+        } elseif ($s instanceof Rect2) {
+            $out[] = 'r' . $s->area();
+        }
+    }
+    $out[] = var_export('a\'b', true);
+    $out[] = (string) (filter_var('42', FILTER_VALIDATE_INT) ?: 0);
+    $out[] = filter_var('x', FILTER_VALIDATE_INT) === false ? 'nf' : 'f';
+    $out[] = filter_var('yes', FILTER_VALIDATE_BOOLEAN, ['flags' => FILTER_NULL_ON_FAILURE]) === true ? 'yes' : 'no';
+    $out[] = filter_var('maybe', FILTER_VALIDATE_BOOLEAN, ['flags' => FILTER_NULL_ON_FAILURE]) === null ? 'null' : 'nn';
+    $f = filter_var('1.5', FILTER_VALIDATE_FLOAT);
+    $out[] = $f === false ? 'ff' : (string) $f;
+    $v = strpos('abc', 'b');
+    $out[] = $v != false ? 'pos' : 'nopos';
+    return implode(',', $out);
 }

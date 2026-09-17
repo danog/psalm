@@ -1733,10 +1733,8 @@ if (defined('GLOB_BRACE')) {
 }
 
 /**
- * @psalm-template TOutput of array|null
- *
- * @param TOutput $output
- * @param-out (TOutput is null ? list<string> : array) $output
+ * @param list<string>|null $output
+ * @param-out list<string> $output
  * @param-out int $result_code
  *
  * @psalm-taint-specialize
@@ -1796,3 +1794,21 @@ function register_tick_function(callable $callback, mixed ...$args): bool {}
  * @psalm-taint-sink extract $array
  */
 function extract(array &$array, int $flags = EXTR_OVERWRITE, string $prefix = ""): int {}
+
+/**
+ * The runtime keeps configuration values as strings: no array form.
+ */
+function get_cfg_var(string $option): string|false {}
+
+/**
+ * PHP 8 error handlers take no error context.
+ *
+ * @return (callable(int, string, string=, int=): bool)|null
+ */
+function set_error_handler(?callable $callback, int $error_levels = E_ALL): ?callable {}
+
+/**
+ * @param resource $stream
+ * @return array{timed_out: bool, blocked: bool, eof: bool, stream_type: string, mode: string, unread_bytes: int, seekable: bool, uri: string}
+ */
+function stream_get_meta_data($stream): array {}

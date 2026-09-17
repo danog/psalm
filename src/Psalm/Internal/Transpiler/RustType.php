@@ -228,9 +228,10 @@ final class RustType
      *
      * @param list<RustType> $leaves the non-list members, sorted by mangle
      */
-    public static function recursiveUnion(array $leaves, bool $nullable_elem): RustType
+    public static function recursiveUnion(array $leaves, bool $nullable_elem, bool $with_list = true, ?RustType $map_key = null): RustType
     {
-        $name = self::shorten('U_' . implode('_or_', array_map(static fn(RustType $p) => $p->mangle(), $leaves)) . '_or_List_Self');
+        $name = self::shorten('U_' . implode('_or_', array_map(static fn(RustType $p) => $p->mangle(), $leaves))
+            . ($with_list ? '_or_List_Self' : '') . ($map_key !== null ? '_or_Map_' . $map_key->mangle() . '_Self' : ''));
         if (isset(self::$cache[$name])) {
             return self::$cache[$name];
         }
@@ -243,7 +244,13 @@ final class RustType
         $u->fields = [];
         $u->ret = null;
         $elem = $nullable_elem ? self::option($u) : $u;
-        $members = [...$leaves, self::list($elem)];
+        $members = $leaves;
+        if ($with_list) {
+            $members[] = self::list($elem);
+        }
+        if ($map_key !== null) {
+            $members[] = self::map($map_key, $elem);
+        }
         usort($members, static fn(RustType $a, RustType $b) => $a->mangle() <=> $b->mangle());
         $u->params = $members;
         self::$cache[$name] = $u;
