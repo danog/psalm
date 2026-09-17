@@ -781,9 +781,17 @@ final class ClassEmitter
         }
         $rn = $f->acc();
         $arms = static fn(array $a): string => $a === [] ? '' : implode(', ', $a) . ', ';
+        // isset()/`??` on a field only some variants declare: a TOTAL reader that answers None for the others
+        $opt = [];
+        foreach ($get as $arm) {
+            [$pat, $body] = explode(' => ', $arm, 2);
+            $opt[] = $pat . ' => ' . ($ft->kind === RustType::OPTION ? $body : 'Some(' . $body . ')');
+        }
+        $ot = $ft->kind === RustType::OPTION ? $t : 'Option<' . $t . '>';
         $w->line('impl ' . $h . ' {');
         $w->line('pub fn set_' . $rn . '(&mut self, v: ' . $t . ') { match self { ' . $arms($set) . '_ => unreachable!("set_' . $rn . ' on wrong ' . $h . ' variant") } }');
         $w->line('pub fn ' . $rn . '_get(&self) -> ' . $t . ' { match self { ' . $arms($get) . '_ => unreachable!("' . $rn . '_get on wrong ' . $h . ' variant") } }');
+        $w->line('pub fn ' . $rn . '_get_opt(&self) -> ' . $ot . ' { match self { ' . $arms($opt) . '#[allow(unreachable_patterns)] _ => None } }');
         $w->line('}');
     }
 

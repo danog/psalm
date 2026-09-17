@@ -1866,6 +1866,13 @@ trait ExprTrait
                         : 'Some(__b.' . $field->acc() . '_get())';
                     return $this->flattenOption($base->code . '.and_then(|__b| ' . $getter . ')', $field->type);
                 }
+                if ($cls !== null && ($vf = $this->program->variantField($cls, $name)) !== null) {
+                    // a field only some variants of the hierarchy declare: the total reader answers None
+                    // for the others, which is what isset()/`??` mean
+                    [$vfield, $vtype] = $vf;
+                    $inner = $vtype->kind === RustType::OPTION ? $vtype->inner() : $vtype;
+                    return $this->flattenOption($base->code . '.and_then(|__b| __b.' . $vfield->acc() . '_get_opt())', $inner);
+                }
                 $magic_get = $cls !== null ? $this->program->findMethod($cls, '__get') : null;
                 $magic_isset = $cls !== null ? $this->program->findMethod($cls, '__isset') : null;
                 if ($magic_get !== null && $magic_get->node !== null) {

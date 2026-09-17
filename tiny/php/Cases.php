@@ -1052,9 +1052,31 @@ function case_arg_no_downcast(): string
     return $out;
 }
 
+abstract class HStmt {}
+final class HBlock extends HStmt { /** @param list<HStmt> $stmts */ public function __construct(public array $stmts) {} }
+final class HEcho extends HStmt { public function __construct(public string $text) {} }
+
+function count_stmts(HStmt $s): int
+{
+    $n = 1;
+    if (isset($s->stmts)) {
+        foreach ($s->stmts as $inner) {
+            $n += count_stmts($inner);
+        }
+    }
+    return $n;
+}
+
+function case_variant_isset(): string
+{
+    $tree = new HBlock([new HEcho('a'), new HBlock([new HEcho('b')])]);
+    return (string) count_stmts($tree) . ':' . (string) count_stmts(new HEcho('c'));
+}
+
 function run_all(): string
 {
-    return check('arg_no_downcast', case_arg_no_downcast(), 'litother')
+    return check('variant_isset', case_variant_isset(), '4:1')
+        . check('arg_no_downcast', case_arg_no_downcast(), 'litother')
         . check('prop_empty_merge', case_prop_empty_merge(), '1:1')
         . check('version_regex', case_version_regex(), 'ab-')
         . check('union_receiver_base_method', case_union_receiver_base_method(), 'xa|xb|other:base')
