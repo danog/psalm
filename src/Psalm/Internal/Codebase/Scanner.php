@@ -571,7 +571,9 @@ final class Scanner
 
             foreach ($file_storage->classlikes_in_file as $fq_classlike_name) {
                 $provider = $this->codebase->classlike_storage_provider;
-                if ($this->codebase->register_stub_files && $provider->has($fq_classlike_name)) {
+                // re-registering the stub's definition means exhuming it from the class cache: without one
+                // (a test that builds its own providers) whatever is registered has to stand
+                if ($this->codebase->register_stub_files && $provider->cache !== null && $provider->has($fq_classlike_name)) {
                     $replaced = $provider->get($fq_classlike_name);
                     if (!$replaced->stubbed
                         && $replaced->stmt_location
@@ -598,7 +600,11 @@ final class Scanner
                     }
                     continue;
                 }
-                $this->codebase->exhumeClassLikeStorage($fq_classlike_name, $file_path);
+                if ($provider->has($fq_classlike_name) || $provider->cache !== null) {
+                    // in memory already, or re-readable from the cache; with neither there is nothing to
+                    // exhume and the class stays as the scan of this file left it
+                    $this->codebase->exhumeClassLikeStorage($fq_classlike_name, $file_path);
+                }
             }
 
             if ($this->codebase->register_stub_files) {
