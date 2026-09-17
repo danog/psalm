@@ -91,6 +91,30 @@ namespace Psalm\Internal\Fork {
     use Psalm\Progress\Progress;
     use RuntimeException;
 
+    /** The xdebug-handler based restarter: the port never re-executes itself. */
+    final class PsalmRestarter
+    {
+        public bool $enableJit = false;
+
+        public function __construct(string $envPrefix)
+        {
+        }
+
+        public function disableExtension(string $disabled_extension): void
+        {
+        }
+
+        /** @param list<string> $disable_extensions */
+        public function disableExtensions(array $disable_extensions): void
+        {
+        }
+
+        public function check(): bool
+        {
+            return false;
+        }
+    }
+
     final class Pool
     {
         /** @param int<2, max> $threads */

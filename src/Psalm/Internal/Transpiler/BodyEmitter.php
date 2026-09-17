@@ -963,6 +963,10 @@ final class BodyEmitter
     private function emitBodyInner(array $params, ?array $stmts, RustType $ret_type): string
     {
         $this->scanWriteKinds($stmts ?? []);
+        // the first pass may be discarded: its recorded conversions/erasures must not outlive it
+        $snap_erasures = $this->casts->erasures;
+        $snap_casts = $this->casts->casts;
+        $snap_checks = $this->casts->instance_checks;
         $out = $this->emitBodyPass($params, $stmts, $ret_type);
         $retype = [];
         if (getenv('DBG_RETYPE') && $this->mixed_assigns !== []) {
@@ -998,6 +1002,9 @@ final class BodyEmitter
         $this->retyped = $retype + $this->retyped;
         $this->mixed_assigns = [];
         $this->w = new Writer();
+        $this->casts->erasures = $snap_erasures;
+        $this->casts->casts = $snap_casts;
+        $this->casts->instance_checks = $snap_checks;
         return $this->emitBodyPass($params, $stmts, $ret_type);
     }
 

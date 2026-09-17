@@ -127,6 +127,9 @@ trait ExprTrait
         if ($e instanceof Scalar\InterpolatedString) {
             return $this->interpolated($e->parts);
         }
+        if ($e instanceof BinaryOp\Coalesce) {
+            return $this->coalesce($e, $expected);
+        }
         if ($e instanceof Scalar\MagicConst) {
             return $this->magicConst($e);
         }
@@ -730,7 +733,7 @@ trait ExprTrait
                 }
                 [$ft, $opt] = $target->fields[$key];
                 if ($opt) {
-                    $v = $this->expr($item->value);
+                    $v = $this->expr($item->value, $ft);
                     $fields[Names::field($key)] = $this->casts->convert($v->code, $v->type, RustType::shapeField($ft, true));
                 } else {
                     $fields[Names::field($key)] = $this->exprTo($item->value, $ft);
@@ -1107,6 +1110,7 @@ trait ExprTrait
             RustType::INT => 'Num::Int(' . $v->code . ')',
             RustType::FLOAT => 'Num::Float(' . $v->code . ')',
             RustType::BOOL => 'Num::Int(' . $v->code . ' as i64)',
+            RustType::STR, RustType::UNIT, RustType::ARRAY_KEY, RustType::OPTION, RustType::UNION => 'php_rt::ToNum::to_php_num(&' . $v->code . ')',
             default => 'to_num(&' . $this->casts->convert($v->code, $v->type, RustType::mixed()) . ')',
         };
     }
@@ -1498,9 +1502,10 @@ trait ExprTrait
         return $e instanceof Expr\ConstFetch && strtolower($e->name->toString()) === 'null';
     }
 
-    private function coalesce(BinaryOp\Coalesce $e): Val
+    private function coalesce(BinaryOp\Coalesce $e, ?RustType $expected = null): Val
     {
-        $res = $this->inferredOrMixed($e);
+        // the target shapes both sides (`$this->cb = $cb ?? function () {...}` takes the property's callable type)
+        $res = $expected !== null && $expected->kind !== RustType::MIXED && !$expected->hasGeneric() ? $expected : $this->inferredOrMixed($e);
         $left = $this->optionalValue($e->left);
         if ($left === null) {
             $lv = $this->expr($e->left);
@@ -1981,7 +1986,8 @@ trait ExprTrait
         } else {
             $key = $this->casts->defaultOf($this->gen_key);
         }
-        return new Val('{ __gen.push((' . $key . ', ' . $val . ')); Mixed::Null }', RustType::mixed());
+        // a yield produces nothing (generators of the port receive no sent values)
+        return new Val('{ __gen.push((' . $key . ', ' . $val . ')); }', RustType::unit());
     }
 
     private function yieldFrom(Expr\YieldFrom $e): Val

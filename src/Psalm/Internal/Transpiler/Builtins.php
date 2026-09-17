@@ -1243,7 +1243,7 @@ final class Builtins
         $vt = $pt->kind === RustType::LIST ? $pt->inner() : ($pt->kind === RustType::MAP ? $pt->params[1] : RustType::mixed());
         $repl = 'Vec::new()';
         if (isset($args[3])) {
-            $r = $b->expr($args[3]->value);
+            $r = $b->expr($args[3]->value, RustType::list($vt));
             if ($r->type->kind === RustType::OPTION) {
                 $r = new Val($r->code . '.unwrap_or_default()', $r->type->inner());
             }
@@ -1265,7 +1265,10 @@ final class Builtins
         if ($pt->kind !== RustType::LIST && $pt->kind !== RustType::MAP) {
             return $b->narrow(new Val('{ let __r = ' . $place->modifyValue(fn(string $p) => 'mixed_pop(&mut ' . $p . ')') . '; __r }', RustType::option(RustType::mixed())), $call);
         }
-        return $b->narrow(new Val('{ let __r = ' . $place->modifyValue(fn(string $p) => $p . '.pop()') . '; __r }', RustType::option($vt)), $call);
+        // a nullable element popped from an empty array is null either way
+        $flat = $vt->kind === RustType::OPTION ? '.flatten()' : '';
+        $rt = $vt->kind === RustType::OPTION ? $vt : RustType::option($vt);
+        return $b->narrow(new Val('{ let __r = ' . $place->modifyValue(fn(string $p) => $p . '.pop()' . $flat) . '; __r }', $rt), $call);
     }
 
     /**
@@ -1275,6 +1278,22 @@ final class Builtins
     private function arrayPlace(BodyEmitter $b, Place $place): Place
     {
         $pt = $place->type;
+        $u = $pt->kind === RustType::OPTION ? $pt->inner() : $pt;
+        if ($u->kind === RustType::UNION) {
+            // a union with exactly one list member (the parser's semantic values): the list is the place
+            $lists = array_values(array_filter($u->params, static fn(RustType $m) => $m->kind === RustType::LIST));
+            if (count($lists) === 1) {
+                $m = $lists[0];
+                $read = $pt->kind === RustType::OPTION
+                    ? '(match ' . $place->read() . ' { Some(' . $u->mangle() . '::' . $m->variantName() . '(__l)) => __l, _ => Default::default() })'
+                    : '(match ' . $place->read() . ' { ' . $u->mangle() . '::' . $m->variantName() . '(__l) => __l, _ => Default::default() })';
+                return new Place(
+                    $m,
+                    fn() => $read,
+                    fn(string $v) => $place->write($b->casts->convert($v, $m, $pt)),
+                );
+            }
+        }
         if ($pt->kind === RustType::OPTION && ($pt->inner()->kind === RustType::LIST || $pt->inner()->kind === RustType::MAP)) {
             // a nullable array modified in place: PHP treats null as an empty array
             $inner = $pt->inner();

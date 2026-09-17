@@ -131,6 +131,7 @@ final class CastEmitter
         }
         // ToInt/ToFloat/ToArrayKey/Debug: member-wise
         $w->line('impl php_rt::ToInt for ' . $name . ' { fn to_php_int(&self) -> i64 { match self { ' . $this->unionMemberArms($u, $name, 'int') . ' } } }');
+        $w->line('impl php_rt::ToNum for ' . $name . ' { fn to_php_num(&self) -> Num { match self { ' . $this->unionMemberArms($u, $name, 'num') . ' } } }');
         $w->line('impl php_rt::ToFloat for ' . $name . ' { fn to_php_float(&self) -> f64 { match self { ' . $this->unionMemberArms($u, $name, 'float') . ' } } }');
         $w->line('impl php_rt::ToArrayKey for ' . $name . ' { fn to_php_key(&self) -> ArrayKey { match self { ' . $this->unionMemberArms($u, $name, 'key') . ' } } }');
         $w->line('impl std::fmt::Debug for ' . $name . ' { fn fmt(&self, f: &mut std::fmt::Formatter<\'_>) -> std::fmt::Result { match self { ' . $this->unionMemberArms($u, $name, 'debug') . ' } } }');
@@ -420,7 +421,7 @@ final class CastEmitter
         return implode(', ', $arms);
     }
 
-    /** Member-wise arms of a union's ToInt ('int'), ToFloat ('float'), ToArrayKey ('key') or Debug ('debug'). */
+    /** Member-wise arms of a union's ToInt ('int'), ToFloat ('float'), ToNum ('num'), ToArrayKey ('key') or Debug ('debug'). */
     private function unionMemberArms(RustType $u, string $name, string $what): string
     {
         $arms = [];
@@ -428,8 +429,8 @@ final class CastEmitter
             $pat = $this->memberPat($name, $m, 'v') . ' => ';
             $k = $this->cmpKind($m);
             if ($this->isUnit($m)) {
-                $lit = ['Null' => ['0', '0.0', 'ArrayKey::Str(Str::from_static(""))', 'write!(f, "null")'], 'True' => ['1', '1.0', 'ArrayKey::Int(1)', 'write!(f, "true")'], 'False' => ['0', '0.0', 'ArrayKey::Int(0)', 'write!(f, "false")']][$this->unitName($m)];
-                $arms[] = $pat . $lit[['int' => 0, 'float' => 1, 'key' => 2, 'debug' => 3][$what]];
+                $lit = ['Null' => ['0', '0.0', 'ArrayKey::Str(Str::from_static(""))', 'write!(f, "null")', 'Num::Int(0)'], 'True' => ['1', '1.0', 'ArrayKey::Int(1)', 'write!(f, "true")', 'Num::Int(1)'], 'False' => ['0', '0.0', 'ArrayKey::Int(0)', 'write!(f, "false")', 'Num::Int(0)']][$this->unitName($m)];
+                $arms[] = $pat . $lit[['int' => 0, 'float' => 1, 'key' => 2, 'debug' => 3, 'num' => 4][$what]];
                 continue;
             }
             $scalar = in_array($k, ['bool', 'int', 'float', 'str', 'key'], true);
@@ -437,6 +438,7 @@ final class CastEmitter
             $arms[] = $pat . match ($what) {
                 'int' => $scalar ? 'php_rt::ToInt::to_php_int(' . $sv . ')' : ($k === 'arr' ? '(' . $this->truthyOf($m, 'v') . ') as i64' : '1'),
                 'float' => $scalar ? 'php_rt::ToFloat::to_php_float(' . $sv . ')' : ($k === 'arr' ? '(' . $this->truthyOf($m, 'v') . ') as i64 as f64' : '1.0'),
+                'num' => $scalar ? 'php_rt::ToNum::to_php_num(' . $sv . ')' : ($k === 'arr' ? 'Num::Int((' . $this->truthyOf($m, 'v') . ') as i64)' : 'Num::Int(1)'),
                 'key' => $scalar ? 'php_rt::ToArrayKey::to_php_key(' . $sv . ')' : 'panic!(' . Names::rustStringLiteral('Illegal offset type (' . $m->toRust() . ')') . ')',
                 'debug' => $k === 'closure' ? 'write!(f, "Closure")' : 'write!(f, "{:?}", v)',
             };
@@ -535,6 +537,31 @@ final class CastEmitter
 
     // ------------------------------------------------------------------ class conversions
 
+    /** The `object` (AnyObject) conversions of a class: emitted only when some body names AnyObject. */
+    public function emitAnyObjectImpls(ClassModel $cls, Writer $w): void
+    {
+        if ($cls->isTrait() || $cls->isEnum()) {
+            return;
+        }
+        $h = $cls->handle();
+        $closed = !$cls->has_downstream;
+        // AnyObject
+        // to AnyObject: the concrete own handle is erased directly (no Mixed round trip)
+        if ($cls->isLeaf()) {
+            $w->line('impl php_rt::CastTo<AnyObject> for ' . $h . ' { fn cast_to(self) -> AnyObject { AnyObject(Rc::new(self)) } }');
+        } else {
+            // every variant (PHP enums included) is a PhpObject: erased directly; a downstream object is already erased
+            $arms = array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(v) => AnyObject(Rc::new(v))', $cls->concrete);
+            if (!$closed) {
+                $arms[] = $h . '::Other__(m) => AnyObject::from_mixed(m)';
+            }
+            $w->line('impl php_rt::CastTo<AnyObject> for ' . $h . ' { fn cast_to(self) -> AnyObject { match self { ' . implode('', array_map(static fn($a) => $a . ', ', $arms)) . '_ => unreachable!() } } }');
+        }
+        // from AnyObject: the hierarchy's class-id match (its TryDowncast)
+        $w->line('impl php_rt::CastTo<' . $h . '> for AnyObject { fn cast_to(self) -> ' . $h . ' { php_rt::try_downcast::<' . $h . '>(&self.0).unwrap_or_else(|| panic!(' . Names::rustStringLiteral('object is not a ' . $cls->fqcn) . ')) } }');
+        $w->line('impl php_rt::InstanceOf<' . $h . '> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_id(' . $this->program->classId($cls) . ') } }');
+    }
+
     public function emitClassImpls(ClassModel $cls, Writer $w): void
     {
         if ($cls->isTrait()) {
@@ -589,21 +616,6 @@ final class CastEmitter
         // hierarchy has no downstream subclass, so the concrete match above is exhaustive (else: not this type).
         $none = ($cls->isLeaf() || $closed) ? 'None' : 'if o.instance_of_id(' . $this->program->classId($cls) . ') { Some(' . $h . '::Other__(Mixed::Obj(o.clone()))) } else { None }';
         $w->line('impl php_rt::TryDowncast for ' . $h . ' { fn try_downcast(o: &AnyObj) -> Option<Self> { match o.class_id() { ' . implode(' ', $some_arms) . ' _ => {} } ' . $none . ' } }');
-        // AnyObject
-        // to AnyObject: the concrete own handle is erased directly (no Mixed round trip)
-        if ($cls->isLeaf()) {
-            $w->line('impl php_rt::CastTo<AnyObject> for ' . $h . ' { fn cast_to(self) -> AnyObject { AnyObject(Rc::new(self)) } }');
-        } else {
-            // every variant (PHP enums included) is a PhpObject: erased directly; a downstream object is already erased
-            $arms = array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(v) => AnyObject(Rc::new(v))', $cls->concrete);
-            if (!$closed) {
-                $arms[] = $h . '::Other__(m) => AnyObject::from_mixed(m)';
-            }
-            $w->line('impl php_rt::CastTo<AnyObject> for ' . $h . ' { fn cast_to(self) -> AnyObject { match self { ' . implode('', array_map(static fn($a) => $a . ', ', $arms)) . '_ => unreachable!() } } }');
-        }
-        // from AnyObject: the hierarchy's class-id match (its TryDowncast)
-        $w->line('impl php_rt::CastTo<' . $h . '> for AnyObject { fn cast_to(self) -> ' . $h . ' { php_rt::try_downcast::<' . $h . '>(&self.0).unwrap_or_else(|| panic!(' . Names::rustStringLiteral('object is not a ' . $cls->fqcn) . ')) } }');
-        $w->line('impl php_rt::InstanceOf<' . $h . '> for AnyObject { fn is_instance(&self) -> bool { self.instance_of_id(' . $this->program->classId($cls) . ') } }');
         if ($cls->isLeaf() || $closed) {
             $w->line('impl php_rt::InstanceOf<' . $h . '> for ' . $h . ' { fn is_instance(&self) -> bool { true } }');
         } else {
@@ -963,6 +975,20 @@ final class CastEmitter
                     return;
                 }
             }
+            // a number (or numeric string) takes the union's Int/Float member; a value no member admits panics
+            $has_int = $has_float = false;
+            foreach ($to->params as $m) {
+                $has_int = $has_int || $m->kind === RustType::INT;
+                $has_float = $has_float || $m->kind === RustType::FLOAT;
+            }
+            if ((($fk === RustType::RT_GENERIC && $from->name === 'Num') || $fk === RustType::STR) && $has_int && $has_float) {
+                $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ' . $from->toRust() . ' { fn cast_to(self) -> ' . $to->toRust() . ' { match php_rt::ToNum::to_php_num(&self) { Num::Int(i) => ' . $to->mangle() . '::Int(i), Num::Float(f) => ' . $to->mangle() . '::Float(f) } } }');
+                return;
+            }
+            if (!$this->casts->fits($from, $to)) {
+                $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ' . $from->toRust() . ' { fn cast_to(self) -> ' . $to->toRust() . ' { panic!(' . Names::rustStringLiteral('no member of ' . $to->toRust() . ' admits a ' . $from->toRust()) . ') } }');
+                return;
+            }
             $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ' . $from->toRust() . ' { fn cast_to(self) -> ' . $to->toRust() . ' { ' . $this->conv($this->conv('self', $from, RustType::mixed()), RustType::mixed(), $to) . ' } }');
             return;
         }
@@ -1319,7 +1345,6 @@ final class CastEmitter
                     $arms[] = $subject->mangle() . '::' . $m->variantName() . '(_) => false';
                 }
             }
-            $this->casts->needInstanceOf(RustType::mixed(), $target);
             $w->line('impl php_rt::InstanceOf<' . $th . '> for ' . $subject->toRust() . ' { fn is_instance(&self) -> bool { match self { ' . implode(', ', $arms) . ' } } }');
             return;
         }

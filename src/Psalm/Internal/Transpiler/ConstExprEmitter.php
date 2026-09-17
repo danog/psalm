@@ -194,6 +194,28 @@ final class ConstExprEmitter
         return new Val('unreachable!("unsupported constant expression ' . $e->getType() . '")', $t);
     }
 
+    /** A literal key, or a class constant with a literal value (`self::PUBLIC => 'public'`). */
+    private function constKey(Expr $key): ?string
+    {
+        $lit = $this->body->literalKey($key);
+        if ($lit !== null) {
+            return $lit;
+        }
+        if ($key instanceof Expr\ClassConstFetch && $key->class instanceof Name && $key->name instanceof \PhpParser\Node\Identifier) {
+            $fqcn = $this->body->resolveClassName($key->class);
+            $cls = $fqcn !== null ? $this->body->program->getClass($fqcn) : null;
+            $cs = $cls !== null ? ($cls->storage->constants[$key->name->name] ?? null) : null;
+            $ct = $cs !== null ? ($cs->type ?? $cs->inferred_type) : null;
+            if ($ct !== null && $ct->isSingleIntLiteral()) {
+                return (string) $ct->getSingleIntLiteral()->value;
+            }
+            if ($ct !== null && $ct->isSingleStringLiteral()) {
+                return $ct->getSingleStringLiteral()->value;
+            }
+        }
+        return null;
+    }
+
     private function array(Expr\Array_ $e, RustType $t): Val
     {
         $casts = $this->body->casts;
@@ -201,6 +223,15 @@ final class ConstExprEmitter
         foreach ($e->items as $item) {
             if ($item->unpack) {
                 $has_spread = true;
+            }
+        }
+        if ($t->kind === RustType::OPTION || $t->kind === RustType::UNION) {
+            // `NodeAttributes|array $attributes = []`: the literal takes the array member of the target
+            foreach ($t->kind === RustType::OPTION ? [$t->inner()] : $t->params as $m) {
+                if (in_array($m->kind, [RustType::SHAPE, RustType::LIST, RustType::MAP, RustType::TUPLE], true)) {
+                    $v = $this->array($e, $m);
+                    return new Val($casts->convert($v->code, $m, $t), $t);
+                }
             }
         }
         if ($has_spread && ($t->kind === RustType::TUPLE || $t->kind === RustType::SHAPE)) {
@@ -221,7 +252,7 @@ final class ConstExprEmitter
             $seen = [];
             $next_int = 0;
             foreach ($e->items as $i => $item) {
-                $key = $item->key !== null ? $this->body->literalKey($item->key) : (string) $next_int;
+                $key = $item->key !== null ? $this->constKey($item->key) : (string) $next_int;
                 if ($key === null || !isset($t->fields[$key])) {
                     return $this->array($e, RustType::map(RustType::arrayKey(), RustType::mixed()));
                 }

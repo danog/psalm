@@ -988,7 +988,8 @@ trait LValueTrait
             return new Val('{ let ' . $tmp . ' = ' . $v->code . '; ' . $this->destructure($target, new Val($tmp . '.clone()', $v->type)) . ' ' . $tmp . ' }', $v->type);
         }
         $place = $this->place($target);
-        $rhs = $this->expr($e->expr);
+        // the value is shaped by its target (a literal takes the property's type), as in a statement assignment
+        $rhs = $this->expr($e->expr, self::isMixedLocal($place->type) ? null : $place->type);
         if ($target instanceof Expr\Variable && is_string($target->name) && self::isMixedLocal($place->type)) {
             $this->noteMixedAssign($target->name, $rhs->type);
         }

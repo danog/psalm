@@ -169,16 +169,27 @@ final class CrateEmitter
         }
         fwrite(STDERR, '[dyn] object protocol emitted for ' . $n_dyn . ' of ' . count($project_classes) . ' classes'
             . ($dyn['all'] !== null ? ' (everything: ' . $dyn['all'] . ' erased to Mixed)' : '') . "\n");
+        // `object` conversions per class, only when some emitted body names AnyObject
+        $any_used = false;
+        foreach ($this->modules as $mods) {
+            foreach ($mods as $mw) {
+                $any_used = $any_used || str_contains($mw->get(), 'AnyObject');
+            }
+        }
+        foreach ($tests_w as $tw) {
+            $any_used = $any_used || str_contains($tw->get(), 'AnyObject');
+        }
+        if ($any_used) {
+            foreach ($project_classes as $cls) {
+                $cast_emitter->emitAnyObjectImpls($cls, $this->classModule($cls));
+            }
+        }
         $keepers = $dyn['keepers'];
         usort($keepers, fn($a, $b) => strcmp(substr($a, strpos($a, ' @ ')), substr($b, strpos($b, ' @ '))));
         fwrite(STDERR, '[dyn] ' . count($keepers) . " erasures reach objects\n");
         foreach (array_slice($keepers, 0, 400) as $keeper) {
             fwrite(STDERR, "  [dyn-keeper] $keeper\n");
         }
-
-        // AnyObject newtype, init(), Throw
-        $any = new Writer();
-        $this->emitAnyObject($any);
 
         // generated unions and shapes (emission of casts may add more, so loop); every generated type and
         // impl lives in the crate of the highest-crate class it mentions
@@ -187,6 +198,35 @@ final class CrateEmitter
         for ($i = 0; $i < $n_crates; $i++) {
             $types_w[$i] = new Writer();
             $casts_w[$i] = new Writer();
+        }
+        // only the generated types some emitted code names are declared: a type mapped for a discarded
+        // pass, a dead branch or an unused member would otherwise keep its (Mixed-typed) shape alive
+        $referenced = [];
+        $scan = static function (string $text) use (&$referenced): void {
+            preg_match_all('/\b(?:U_|Shape_)[A-Za-z0-9_]+|\bMixed\b|AnyObject|\bphp_clone_mixed\b/', $text, $m);
+            foreach ($m[0] as $id) {
+                $referenced[$id] = true;
+            }
+        };
+        foreach ($this->modules as $mods) {
+            foreach ($mods as $w) {
+                $scan($w->get());
+            }
+        }
+        foreach ($tests_w as $w) {
+            $scan($w->get());
+        }
+        // the `object` newtype and the dynamic clone, only when some emitted body names them; init(), Throw
+        $this->any_object_used = isset($referenced['AnyObject']);
+        $this->clone_mixed_used = isset($referenced['php_clone_mixed']);
+        $any = new Writer();
+        $this->emitAnyObject($any, $this->any_object_used, $this->clone_mixed_used);
+        $scan($any->get());
+        if (!isset($referenced['Mixed'])) {
+            // no emitted body mentions Mixed: conversions recorded through it (by discarded emissions) are not
+            // demanded; an impl needing one later records it again during the rounds below
+            $this->casts->casts = array_filter($this->casts->casts, static fn(array $p) => $p[0]->kind !== RustType::MIXED && $p[1]->kind !== RustType::MIXED);
+            $this->casts->instance_checks = array_filter($this->casts->instance_checks, static fn(array $p) => $p[0]->kind !== RustType::MIXED);
         }
         $emitted = [];
         $select = function (RustType $from, RustType $to) use ($casts_w): ?Writer {
@@ -201,14 +241,14 @@ final class CrateEmitter
         for ($round = 0; $round < 10; $round++) {
             $new = false;
             foreach ($this->program->types->unions as $name => $u) {
-                if (!isset($emitted[$name])) {
+                if (!isset($emitted[$name]) && isset($referenced[$name])) {
                     $emitted[$name] = true;
                     $cast_emitter->emitUnion($u, $types_w[$this->program->typeCrate($u)]);
                     $new = true;
                 }
             }
             foreach ($this->program->types->shapes as $name => $s) {
-                if (!isset($emitted[$name])) {
+                if (!isset($emitted[$name]) && isset($referenced[$name])) {
                     $emitted[$name] = true;
                     $cast_emitter->emitShape($s, $types_w[$this->program->typeCrate($s)]);
                     $new = true;
@@ -216,6 +256,12 @@ final class CrateEmitter
             }
             $before = count($this->casts->casts) + count($this->casts->instance_checks);
             $cast_emitter->emitRecordedCasts($select);
+            foreach ($types_w as $w) {
+                $scan($w->get());
+            }
+            foreach ($casts_w as $w) {
+                $scan($w->get());
+            }
             if (!$new && $before === count($this->casts->casts) + count($this->casts->instance_checks)) {
                 break;
             }
@@ -394,8 +440,18 @@ final class CrateEmitter
         $w->line('}');
     }
 
-    private function emitAnyObject(Writer $w): void
+    private bool $any_object_used = true;
+    private bool $clone_mixed_used = true;
+
+    private function emitAnyObject(Writer $w, bool $with_any, bool $with_clone_mixed): void
     {
+        if ($with_clone_mixed) {
+            $w->line('pub fn php_clone_mixed(m: Mixed) -> Mixed { match m { Mixed::Obj(o) => Mixed::Obj(o.php_clone_dyn()), other => other } }');
+        }
+        if (!$with_any) {
+            $this->emitInit($w, 0);
+            return;
+        }
         // `object`-typed values: a newtype over the runtime's type-erased handle. Every class converts
         // into it directly (`AnyObject(Rc::new(own))`) and narrows out of it through its `TryDowncast`
         // (a class-id match over the target hierarchy), so no program-wide enum is needed.
@@ -430,7 +486,6 @@ final class CrateEmitter
         $w->line('impl php_rt::PhpCmp for AnyObject { fn php_cmp(&self, o: &Self) -> std::cmp::Ordering { Mixed::Obj(self.0.clone()).php_cmp(&Mixed::Obj(o.0.clone())) } }');
         $w->line('impl php_rt::ToStr for AnyObject { fn to_php_str(&self) -> Str { self.php_to_string().unwrap_or_else(|| Str::from_str(self.class_name())) } }');
         $w->line('impl std::fmt::Debug for AnyObject { fn fmt(&self, f: &mut std::fmt::Formatter<\'_>) -> std::fmt::Result { write!(f, "object({})", self.class_name()) } }');
-        $w->line('pub fn php_clone_mixed(m: Mixed) -> Mixed { match m { Mixed::Obj(o) => Mixed::Obj(o.php_clone_dyn()), other => other } }');
         $w->line('impl php_rt::PhpClone for AnyObject { fn php_clone(&self) -> Self { AnyObject(self.0.php_clone_dyn()) } }');
 
         $this->emitInit($w, 0);
@@ -595,7 +650,7 @@ final class CrateEmitter
             }
         }
         $w->line('impl From<RtError> for ' . $throwable->path() . ' { fn from(e: RtError) -> Self { match e.class { ' . implode(', ', $arms) . ($arms ? ', ' : '') . '_ => Self::error(e.message) } } }');
-        $w->line('impl From<DynError> for ' . $throwable->path() . ' { fn from(e: DynError) -> Self { match e { DynError::Rt(r) => Self::from(r), DynError::Obj(m) => cast::<Self>(m) } } }');
+        $w->line('impl From<DynError> for ' . $throwable->path() . ' { fn from(e: DynError) -> Self { match e { DynError::Rt(r) => Self::from(r) } } }');
         $w->line('impl std::fmt::Display for ' . $throwable->path() . ' { fn fmt(&self, f: &mut std::fmt::Formatter<\'_>) -> std::fmt::Result { write!(f, "{}: {}", self.class_name(), self.message()) } }');
         // Convert a runtime error (RRtError) into a PHP exception object and throw it via the panic-based
         // error model, so a surrounding PHP try/catch can catch runtime failures (division by zero, etc.).
@@ -621,7 +676,7 @@ final class CrateEmitter
         foreach ($upstream as $up) {
             $use .= "use ::$up::generated::*;\n";
         }
-        $use .= "use crate::generated::*;\nuse crate::Throw;\nuse crate::AnyObject;\nuse crate::{__throw_rt, __unwrap};\n";
+        $use .= "use crate::generated::*;\nuse crate::Throw;\n" . ($this->any_object_used ? "use crate::AnyObject;\n" : '') . "use crate::{__throw_rt, __unwrap};\n";
 
         // module tree
         $tree = [];
@@ -642,7 +697,7 @@ final class CrateEmitter
             $lib .= "use php_rt::prelude::*;\nuse crate::generated::*;\n" . $any->get();
         } else {
             $base = $this->transpiler->crateName(0);
-            $lib .= "pub use ::$base::{Throw, AnyObject, php_clone_mixed};\nuse php_rt::prelude::*;\n";
+            $lib .= "pub use ::$base::{Throw" . ($this->any_object_used ? ', AnyObject' : '') . ($this->clone_mixed_used ? ', php_clone_mixed' : '') . "};\nuse php_rt::prelude::*;\n";
             foreach ($upstream as $up) {
                 $lib .= "use ::$up::generated::*;\n";
             }

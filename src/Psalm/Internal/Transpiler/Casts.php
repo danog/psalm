@@ -39,7 +39,19 @@ final class Casts
             $this->warn($from->toRust() . ' => ' . $to->toRust());
             return;
         }
-        $this->casts[$from->toRust() . ' => ' . $to->toRust()] = [$from, $to];
+        if (!$this->record_erasures && ($from->kind === RustType::MIXED || $to->kind === RustType::MIXED)) {
+            // a dynamic arm built for a closed hierarchy is never emitted: its Mixed conversions are not demanded
+            return;
+        }
+        $key = $from->toRust() . ' => ' . $to->toRust();
+        if (getenv('DBG_NEED') && !isset($this->casts[$key]) && ($from->kind === RustType::MIXED || $to->kind === RustType::MIXED)) {
+            $frames = [];
+            foreach (array_slice(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 8), 1, 7) as $f) {
+                $frames[] = ($f['class'] ?? '') . '::' . $f['function'] . ':' . ($f['line'] ?? '?');
+            }
+            fwrite(STDERR, '[need-mixed] ' . $key . ' <= ' . implode(' < ', $frames) . "\n");
+        }
+        $this->casts[$key] = [$from, $to];
     }
 
     /** Types defined by the generated crate (eligible for trait impls). */
@@ -50,6 +62,9 @@ final class Casts
 
     public function needInstanceOf(RustType $subject, RustType $target): void
     {
+        if (!$this->record_erasures && $subject->kind === RustType::MIXED) {
+            return;
+        }
         $this->instance_checks[$subject->toRust() . ' => ' . $target->toRust()] = [$subject, $target];
     }
 
