@@ -372,6 +372,65 @@ pub fn to_int<T: ToInt>(v: T) -> i64 {
     v.to_php_int()
 }
 
+/// The arithmetic operand value of a typed PHP value (`to_num` without Mixed).
+pub trait ToNum {
+    fn to_php_num(&self) -> Num;
+}
+impl ToNum for i64 {
+    fn to_php_num(&self) -> Num {
+        Num::Int(*self)
+    }
+}
+impl ToNum for f64 {
+    fn to_php_num(&self) -> Num {
+        Num::Float(*self)
+    }
+}
+impl ToNum for bool {
+    fn to_php_num(&self) -> Num {
+        Num::Int(*self as i64)
+    }
+}
+impl ToNum for Str {
+    fn to_php_num(&self) -> Num {
+        match conv::parse_numeric_prefix(self.as_bytes()) {
+            Some((n, _)) => n,
+            None => Num::Int(0),
+        }
+    }
+}
+impl ToNum for () {
+    fn to_php_num(&self) -> Num {
+        Num::Int(0)
+    }
+}
+impl<T: ToNum> ToNum for Option<T> {
+    fn to_php_num(&self) -> Num {
+        match self {
+            None => Num::Int(0),
+            Some(v) => v.to_php_num(),
+        }
+    }
+}
+impl ToNum for ArrayKey {
+    fn to_php_num(&self) -> Num {
+        match self {
+            ArrayKey::Int(i) => Num::Int(*i),
+            ArrayKey::Str(s) => s.to_php_num(),
+        }
+    }
+}
+impl ToNum for Num {
+    fn to_php_num(&self) -> Num {
+        *self
+    }
+}
+impl ToNum for Mixed {
+    fn to_php_num(&self) -> Num {
+        crate::support::to_num(self)
+    }
+}
+
 pub trait ToFloat {
     fn to_php_float(&self) -> f64;
 }

@@ -593,11 +593,10 @@ impl std::fmt::Debug for StdClass {
 
 // ---------------------------------------------------------------- DynCallable
 
-/// Error raised through a dynamically-typed callable: either a runtime error or a PHP exception object.
+/// Error raised through a dynamically-typed callable (a runtime error; PHP exceptions unwind as panics).
 #[derive(Clone, Debug)]
 pub enum DynError {
     Rt(RtError),
-    Obj(Mixed),
 }
 impl From<RtError> for DynError {
     fn from(e: RtError) -> Self {
