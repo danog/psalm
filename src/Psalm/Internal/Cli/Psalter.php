@@ -543,6 +543,7 @@ final class Psalter
         assert($codeowners_file != false);
 
         $codeowner_lines = array_map(
+            /** @return array{string, list<string>} */
             static function (string $line): array {
                 $line_parts = preg_split('/\s+/', $line);
                 if ($line_parts === false) {

@@ -23,7 +23,7 @@ use const JSON_UNESCAPED_UNICODE;
  * @internal
  *
  * @psalm-type JsonScalar = scalar|null
- * @psalm-type JsonValue = JsonScalar|list<JsonScalar|list<JsonScalar|list<JsonScalar|array>|array<string, JsonScalar|array>>|array<string, JsonScalar|list<JsonScalar|array>|array<string, JsonScalar|array>>>|array<string, JsonScalar|list<JsonScalar|list<JsonScalar|array>|array<string, JsonScalar|array>>|array<string, JsonScalar|list<JsonScalar|array>|array<string, JsonScalar|array>>>
+ * @psalm-type JsonValue = JsonScalar|list<JsonScalar|list<JsonScalar>|array<string, JsonScalar>>|array<string, JsonScalar|list<JsonScalar>|array<string, JsonScalar>>
  */
 final class Json
 {
