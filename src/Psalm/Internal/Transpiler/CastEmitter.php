@@ -398,23 +398,45 @@ final class CastEmitter
             return null;
         }
         $subs = [];
+        $base = null;
         foreach ($to->params as $t) {
-            if ($t->kind === RustType::CLASS_ && ($tc = $this->program->classOf($t)) !== null && $tc->isSubclassOf($mc)) {
+            $c = $t->kind === RustType::OPTION ? $t->inner() : $t;
+            if ($c->kind !== RustType::CLASS_ || ($tc = $this->program->classOf($c)) === null) {
+                continue;
+            }
+            if ($tc->isSubclassOf($mc)) {
                 $subs[] = $t;
+            } elseif ($base === null && ($tc === $mc || $mc->isSubclassOf($tc))) {
+                // a member the whole hierarchy fits into (possibly nullable): the fallback for
+                // values that are none of the narrower members
+                $base = $t;
             }
         }
         if ($subs === []) {
-            return null;
+            return $base !== null && $base->kind === RustType::OPTION ? $this->wrapMember($code, $m, $to, $base) : null;
         }
-        if (count($subs) === 1) {
-            return $to->mangle() . '::' . $subs[0]->variantName() . '(' . $this->conv($code, $m, $subs[0]) . ')';
+        if (count($subs) === 1 && $base === null) {
+            return $this->wrapMember($code, $m, $to, $subs[0]);
         }
         $chain = [];
         foreach ($subs as $t) {
-            $this->casts->needInstanceOf($m, $t);
-            $chain[] = 'if is_instance::<' . $t->toRust() . '>(&' . $code . ') { ' . $to->mangle() . '::' . $t->variantName() . '(' . $this->conv($code, $m, $t) . ') }';
+            $c = $t->kind === RustType::OPTION ? $t->inner() : $t;
+            $this->casts->needInstanceOf($m, $c);
+            $chain[] = 'if is_instance::<' . $c->toRust() . '>(&' . $code . ') { ' . $this->wrapMember($code, $m, $to, $t) . ' }';
         }
-        return implode(' else ', $chain) . ' else { panic!(' . Names::rustStringLiteral('cannot narrow ' . $m->toRust() . ' into ' . $to->toRust()) . ') }';
+        $else = $base !== null
+            ? $this->wrapMember($code, $m, $to, $base)
+            : 'panic!(' . Names::rustStringLiteral('cannot narrow ' . $m->toRust() . ' into ' . $to->toRust()) . ')';
+        return implode(' else ', $chain) . ' else { ' . $else . ' }';
+    }
+
+    /** `$code` (of class type `$m`) as the `$member` variant of the union `$to`, wrapped in Some for Option members. */
+    private function wrapMember(string $code, RustType $m, RustType $to, RustType $member): string
+    {
+        if ($member->kind === RustType::OPTION) {
+            return $to->mangle() . '::' . $member->variantName() . '(Some(' . $this->conv($code, $m, $member->inner()) . '))';
+        }
+        return $to->mangle() . '::' . $member->variantName() . '(' . $this->conv($code, $m, $member) . ')';
     }
 
     private function unionCmpArms(RustType $u, string $name): string

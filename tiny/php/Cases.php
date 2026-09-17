@@ -821,9 +821,46 @@ function case_invoke_object(): string
     return $r;
 }
 
+abstract class TNode {}
+final class TName extends TNode { public function __construct(public string $n) {} }
+final class TNullable extends TNode {}
+final class TIdent extends TNode { public function __construct(public string $n) {} }
+
+/** @return null|TNode|TName|TNullable */
+function pick_node(TNode $n): TNode|null
+{
+    return $n;
+}
+
+/** @param null|TNode|TName|TNullable $t */
+function show_node(TNode|null $t): string
+{
+    if ($t === null) {
+        return 'null';
+    }
+    if ($t instanceof TName) {
+        return 'name:' . $t->n;
+    }
+    if ($t instanceof TNullable) {
+        return 'nullable';
+    }
+    return 'node';
+}
+
+function case_union_base_member(): string
+{
+    $nodes = [new TName('a'), new TIdent('b'), new TNullable()];
+    $out = '';
+    foreach ($nodes as $n) {
+        $out .= show_node(pick_node($n)) . '|';
+    }
+    return $out;
+}
+
 function run_all(): string
 {
-    return check('invoke_object', case_invoke_object(), 'sock3')
+    return check('union_base_member', case_union_base_member(), 'name:a|node|nullable|')
+        . check('invoke_object', case_invoke_object(), 'sock3')
         . check('declared_preg', case_declared_preg(), 'stdclass+')
         . check('nullable_union', case_nullable_union(), 'nullA7')
         . check('wildcard_const', case_wildcard_const(), 'set')
