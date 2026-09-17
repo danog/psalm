@@ -75,7 +75,6 @@ final class CrateEmitter
 
         // includable files: the data files listed on the command line (bodies may bind more, see below)
         $this->program->collectFiles();
-        $this->emitDataFiles($data_emitter);
 
         // classes
         $project_classes = [];
@@ -104,9 +103,6 @@ final class CrateEmitter
             $this->emitFunction($fn, $w);
         }
 
-        // data files bound by `include` expressions with compile-time paths
-        $this->emitDataFiles($data_emitter);
-
         fwrite(STDERR, "[transpiler] emitting tests\n");
         $tests_w = [];
         $n_tests = 0;
@@ -115,6 +111,9 @@ final class CrateEmitter
             $tests_w[$i] = new Writer();
             $n_tests += $test_emitter->emit($tests_w[$i], $i);
         }
+
+        // data files bound by `include` expressions with compile-time paths, in the types the sites declare
+        $this->emitDataFiles($data_emitter);
 
         // copies of upstream method bodies requested by `parent::m()` calls (their bodies may request more)
         $done_copies = [];
@@ -398,12 +397,20 @@ final class CrateEmitter
                 $this->module($file->crate, 'files')->line('use php_rt::data::{Data, DataKey};');
             }
             $w = $this->module($file->crate, 'files');
+            $demands = $this->program->data_demands[$rel] ?? [];
             try {
                 $table = $file->data !== null ? $data_emitter->emit($file->data) : $data_emitter->emitFile($file->abs_path);
-                $w->line('pub fn ' . $file->rustName() . '() -> Mixed { static D: Data = ' . $table . '; D.to_mixed() }');
+                $w->line('fn ' . $file->rustName() . '_table() -> &\'static Data { static D: Data = ' . $table . '; &D }');
             } catch (\RuntimeException $e) {
                 fwrite(STDERR, '  [transpiler] data file ' . $rel . ' not compiled: ' . $e->getMessage() . "\n");
-                $w->line('pub fn ' . $file->rustName() . '() -> Mixed { panic!(' . Names::rustStringLiteral('include(' . $rel . '): file could not be compiled: ' . $e->getMessage()) . ') }');
+                $w->line('fn ' . $file->rustName() . '_table() -> &\'static Data { panic!(' . Names::rustStringLiteral('include(' . $rel . '): file could not be compiled: ' . $e->getMessage()) . ') }');
+            }
+            foreach ($demands as $key => $t) {
+                if ($key === 'mixed') {
+                    $w->line('pub fn ' . $file->rustName() . '() -> Mixed { ' . $file->rustName() . '_table().to_mixed() }');
+                } else {
+                    $w->line('pub fn ' . $file->rustName() . '_' . $key . '() -> ' . $t->toRust() . ' { <' . $t->toRust() . ' as php_rt::data::FromData>::from_data(' . $file->rustName() . '_table()) }');
+                }
             }
         }
     }

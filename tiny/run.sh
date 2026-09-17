@@ -10,7 +10,7 @@ OUT="$(pwd)/rust/generated/tiny_repro"
 echo "=== TRANSPILE ==="
 rm -rf "$OUT/src"
 php -d memory_limit=4000M ../psalm -c psalm-tiny.xml --no-cache --no-progress \
-  --threads=1 --transpile-rust="$OUT" 2>&1 \
+  --threads=1 --transpile-rust="$OUT" --transpile-rust-data="php/data/*.php" 2>&1 \
   | grep -E "wrote |Transpiler crashed|Fatal error|Uncaught|\[mixed|Mixed roots|\[dyn|lazy-dispatch" || true
 echo "Mixed in generated: $(grep -rho "\bMixed\b" "$OUT/src" | wc -l)"
 

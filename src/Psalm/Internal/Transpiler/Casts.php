@@ -54,6 +54,27 @@ final class Casts
         $this->casts[$key] = [$from, $to];
     }
 
+    /** Demand the `FromData` impls a typed view of a data table needs (generated types nested in `$t`). */
+    public function needFromData(RustType $t): void
+    {
+        switch ($t->kind) {
+            case RustType::UNION:
+            case RustType::SHAPE:
+            case RustType::CLASS_:
+                $this->need(RustType::rtGeneric('Data', []), $t);
+                break;
+            case RustType::TUPLE:
+            case RustType::OPTION:
+            case RustType::LIST:
+            case RustType::MAP:
+                // runtime containers (tuples included) read their elements through php-rt's generic impls
+                foreach ($t->params as $p) {
+                    $this->needFromData($p);
+                }
+                break;
+        }
+    }
+
     /** Types defined by the generated crate (eligible for trait impls). */
     public static function isLocal(RustType $t): bool
     {

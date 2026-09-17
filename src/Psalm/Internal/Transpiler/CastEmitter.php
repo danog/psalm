@@ -544,6 +544,65 @@ final class CastEmitter
 
     // ------------------------------------------------------------------ class conversions
 
+    /** `php_rt::data::FromData` for a generated type: a data table read in the type an include site declares. */
+    private function emitFromData(RustType $to, Writer $w): void
+    {
+        $name = $to->toRust();
+        $conv = function (RustType $t, string $code): string {
+            $this->casts->needFromData($t);
+            return '<' . $t->toRust() . ' as php_rt::data::FromData>::from_data(' . $code . ')';
+        };
+        $panic = fn(string $what) => 'panic!(' . Names::rustStringLiteral('data: ' . $what . ' where ' . $name . ' was declared') . ')';
+        if ($to->kind === RustType::UNION) {
+            $m = $to->mangle();
+            $find = function (callable $pred) use ($to): ?RustType {
+                foreach ($to->params as $p) {
+                    if ($pred($p)) {
+                        return $p;
+                    }
+                }
+                return null;
+            };
+            $null = $find(fn(RustType $p) => $this->isUnit($p) && $this->unitName($p) === 'Null');
+            $bool = $find(fn(RustType $p) => $p->kind === RustType::BOOL);
+            $true = $find(fn(RustType $p) => $this->isUnit($p) && $this->unitName($p) === 'True');
+            $false = $find(fn(RustType $p) => $this->isUnit($p) && $this->unitName($p) === 'False');
+            $int = $find(fn(RustType $p) => $p->kind === RustType::INT);
+            $float = $find(fn(RustType $p) => $p->kind === RustType::FLOAT);
+            $str = $find(fn(RustType $p) => $p->kind === RustType::STR);
+            $arr = $find(fn(RustType $p) => in_array($p->kind, [RustType::LIST, RustType::MAP, RustType::SHAPE, RustType::TUPLE], true));
+            $arms = [];
+            $arms[] = 'Data::Null => ' . ($null !== null ? $m . '::Null' : $panic('null'));
+            $arms[] = 'Data::Bool(b) => ' . ($bool !== null ? $m . '::Bool(*b)' : ($true !== null && $false !== null ? 'if *b { ' . $m . '::True } else { ' . $m . '::False }' : $panic('a bool')));
+            $arms[] = 'Data::Int(i) => ' . ($int !== null ? $m . '::Int(*i)' : ($float !== null ? $m . '::Float(*i as f64)' : $panic('an int')));
+            $arms[] = 'Data::Float(f) => ' . ($float !== null ? $m . '::Float(*f)' : ($int !== null ? $m . '::Int(*f as i64)' : $panic('a float')));
+            $arms[] = 'Data::Str(_) | Data::Bytes(_) => ' . ($str !== null ? $m . '::Str(' . $conv(RustType::str(), 'd') . ')' : $panic('a string'));
+            $arms[] = 'Data::Arr(_) => ' . ($arr !== null ? $m . '::' . $arr->variantName() . '(' . $conv($arr, 'd') . ')' : $panic('an array'));
+            $w->line('impl php_rt::data::FromData for ' . $name . ' { fn from_data(d: &Data) -> Self { match d { ' . implode(', ', $arms) . ' } } }');
+            return;
+        }
+        if ($to->kind === RustType::SHAPE) {
+            $fields = [];
+            foreach ($to->fields as $k => [$ft, $opt]) {
+                $get = (string) (int) $k === (string) $k ? 'd.get_index(' . (int) $k . 'i64)' : 'd.get(' . Names::rustStringLiteral((string) $k) . ')';
+                $fields[] = Names::field((string) $k) . ': ' . ($opt
+                    ? $get . '.map(|v| ' . $conv($ft, 'v') . ')'
+                    : $conv($ft, $get . '.unwrap_or(&Data::Null)'));
+            }
+            $w->line('impl php_rt::data::FromData for ' . $name . ' { fn from_data(d: &Data) -> Self { ' . $to->mangle() . ' { ' . implode(', ', $fields) . ' } } }');
+            return;
+        }
+        if ($to->kind === RustType::TUPLE) {
+            $parts = [];
+            foreach ($to->params as $i => $pt) {
+                $parts[] = $conv($pt, 'd.get_index(' . $i . 'i64).unwrap_or(&Data::Null)');
+            }
+            $w->line('impl php_rt::data::FromData for ' . $name . ' { fn from_data(d: &Data) -> Self { (' . implode(', ', $parts) . (count($parts) === 1 ? ',' : '') . ') } }');
+            return;
+        }
+        $w->line('impl php_rt::data::FromData for ' . $name . ' { fn from_data(_d: &Data) -> Self { ' . $panic('a data value') . ' } }');
+    }
+
     /** The `object` (AnyObject) conversions of a class: emitted only when some body names AnyObject. */
     public function emitAnyObjectImpls(ClassModel $cls, Writer $w): void
     {
@@ -823,6 +882,10 @@ final class CastEmitter
 
     private function emitCast(RustType $from, RustType $to, Writer $w): void
     {
+        if ($from->kind === RustType::RT_GENERIC && $from->name === 'Data') {
+            $this->emitFromData($to, $w);
+            return;
+        }
         if ($this->isExternal($from) || $this->isExternal($to)) {
             return;
         }

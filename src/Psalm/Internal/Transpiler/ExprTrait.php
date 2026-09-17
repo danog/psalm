@@ -278,9 +278,18 @@ trait ExprTrait
                     // the value of a data file has ONE type: the type declared at the include site (the
                     // conversion from Mixed happens there), never the literal's own shape
                     if ($file->isData()) {
+                        if ($expected !== null && $expected->kind !== RustType::MIXED && !$expected->hasGeneric() && !$expected->containsMixed()) {
+                            // the table read in the declared type (`/** @var TCallMap */ $map = require ...`)
+                            $key = substr(md5($expected->toRust()), 0, 8);
+                            $this->program->data_demands[$file->rel_path][$key] = $expected;
+                            $this->casts->needFromData($expected);
+                            return new Val($file->path() . '_' . $key . '()', $expected);
+                        }
+                        $this->program->data_demands[$file->rel_path]['mixed'] = RustType::mixed();
                         return new Val($file->path() . '()', RustType::mixed());
                     }
-                    return new Val('Mixed::Int(1)', RustType::mixed());
+                    // a code file: its top-level code is not run again; `include` yields 1
+                    return new Val('1i64', RustType::int());
                 }
                 $this->warn('include of a file that is not compiled: ' . $static, $e);
                 return $this->dead('include of a file that is not compiled: ' . $static, $this->inferredOrMixed($e));

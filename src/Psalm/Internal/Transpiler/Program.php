@@ -2132,6 +2132,9 @@ final class Program
     /** @var array<string, array{ClassModel, MethodModel}> dispatch methods deferred to the post-pass */
     public array $pending_dispatch = [];
 
+    /** @var array<string, array<string, RustType>> data file (rel path) => demanded typed views (key => type; 'mixed' for the Mixed view) */
+    public array $data_demands = [];
+
     public function noteDispatch(ClassModel $class, string $lc_name): void
     {
         if (!$class->isLeaf()) {

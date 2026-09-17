@@ -835,3 +835,18 @@ function case_defined_constants(): string
     return implode(',', $out);
 }
 check('defined_constants', case_defined_constants(), 'size8,eall,eol,pi');
+
+// ---- feature: typed data files (require of a dictionary in the declared type, no Mixed) ----
+
+function case_data_file(): string
+{
+    /** @var array<string, array{int, string, float|null}> $table */
+    $table = require __DIR__ . '/data/table.php';
+    $out = [];
+    foreach ($table as $name => [$n, $s, $f]) {
+        $out[] = $name . $n . $s . ($f === null ? '-' : (string) $f);
+    }
+    $names = array_keys($table);
+    return implode(',', $out) . '|' . implode(',', $names);
+}
+check('data_file', case_data_file(), 'a1x-,b2y3.5|a,b');
