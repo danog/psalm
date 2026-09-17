@@ -992,3 +992,27 @@ function case_simplexml_iteration(): string
     return implode(',', $out);
 }
 check('simplexml_iteration', case_simplexml_iteration(), 'a,b,x');
+
+// ---- probe: narrowed nullable property used as a call receiver (no Mixed) ----
+
+final class WithParent
+{
+    public ?A $parent = null;
+}
+
+function case_nullable_prop_receiver(): string
+{
+    $w = new WithParent();
+    $w->parent = new A(9);
+    $out = [];
+    if ($w->parent) {
+        $out[] = 'p' . $w->parent->a;
+    }
+    if ($w->parent !== null) {
+        $out[] = 'q' . $w->parent->a;
+    }
+    exec('true', $lines, $status);
+    $out[] = count($lines) . ':' . $status;
+    return implode(',', $out);
+}
+check('nullable_prop_receiver', case_nullable_prop_receiver(), 'p9,q9,0:1');

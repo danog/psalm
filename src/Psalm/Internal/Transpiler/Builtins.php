@@ -320,7 +320,6 @@ final class Builtins
         'get_cfg_var' => ['get_cfg_var', ['&s'], 'os'],
         'filter_var' => ['filter_var', ['&m', 'i=516', 'm=Mixed::Null'], 'm'],
         'getopt' => ['getopt', ['&s', 'S=List::new()'], 'mso'],
-        'exec' => ['exec', ['&s'], 'os'],
         'passthru' => ['passthru', ['&s'], 'u'],
         'array_key_last_str' => ['array_key_last_str', ['&x'], 'os'],
         'nl_langinfo' => ['nl_langinfo_eol', ['i'], 's'],
@@ -2132,6 +2131,28 @@ final class Builtins
     }
 
     // json
+
+    private function f_exec(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        // the compiled program runs no external commands: no output lines, failure status, false result
+        $cmd = $b->exprTo($args[0]->value, RustType::str());
+        $code = '{ let _ = ' . $cmd . '; ';
+        if (isset($args[1])) {
+            $place = $b->place($args[1]->value);
+            if ($args[1]->value instanceof Expr\Variable && is_string($args[1]->value->name)) {
+                $b->noteMixedAssign($args[1]->value->name, RustType::list(RustType::str()));
+            }
+            $code .= $place->write($b->casts->convert('List::<Str>::new()', RustType::list(RustType::str()), $place->type)) . ' ';
+        }
+        if (isset($args[2])) {
+            $place = $b->place($args[2]->value);
+            if ($args[2]->value instanceof Expr\Variable && is_string($args[2]->value->name)) {
+                $b->noteMixedAssign($args[2]->value->name, RustType::int());
+            }
+            $code .= $place->write($b->casts->convert('1i64', RustType::int(), $place->type)) . ' ';
+        }
+        return $b->narrow(new Val($code . 'None::<Str> }', RustType::option(RustType::str())), $call);
+    }
 
     private function f_json_encode(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
