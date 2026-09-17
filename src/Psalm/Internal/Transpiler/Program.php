@@ -1928,7 +1928,10 @@ final class Program
         // Rust generics: an unbounded fn-level @template becomes a generic parameter for single-implementation
         // callees (free functions, static and private methods); dispatched methods keep the Mixed mapping.
         $generic_ok = !($storage instanceof MethodStorage) || $storage->is_static
-            || $storage->visibility === \Psalm\Internal\Analyzer\ClassLikeAnalyzer::VISIBILITY_PRIVATE;
+            || $storage->visibility === \Psalm\Internal\Analyzer\ClassLikeAnalyzer::VISIBILITY_PRIVATE
+            || $storage->final
+            || ($storage->defining_fqcln !== null && $this->codebase->classlike_storage_provider->has($storage->defining_fqcln)
+                && $this->codebase->classlike_storage_provider->get($storage->defining_fqcln)->final);
         $this->last_generics = $generic_ok ? TypeMapper::genericNamesOf($storage) : [];
         $this->types->generic_names = $this->last_generics;
         $param_types = [];

@@ -1016,3 +1016,33 @@ function case_nullable_prop_receiver(): string
     return implode(',', $out);
 }
 check('nullable_prop_receiver', case_nullable_prop_receiver(), 'p9,q9,0:1');
+
+// ---- feature: fn-level generics on final-class methods (callable(): T) ----
+
+final class Collector
+{
+    /** @var list<string> */
+    public array $seen = [];
+
+    /**
+     * @template T
+     * @param callable(): T $f
+     * @return T
+     */
+    public function runAndCollect(callable $f)
+    {
+        $this->seen[] = 'run';
+        $ret = $f();
+        $this->seen[] = 'done';
+        return $ret;
+    }
+}
+
+function case_generic_callable(): string
+{
+    $c = new Collector();
+    $n = $c->runAndCollect(static fn(): int => 41 + 1);
+    $list = $c->runAndCollect(/** @return list<string> */ static fn(): array => ['a', 'b']);
+    return $n . '|' . implode(',', $list) . '|' . implode(',', $c->seen);
+}
+check('generic_callable', case_generic_callable(), '42|a,b|run,done,run,done');
