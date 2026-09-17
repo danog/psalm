@@ -2100,6 +2100,10 @@ final class Program
     {
         $members = [];
         $nullable = false;
+        if ($types !== [] && count(array_filter($types, static fn(RustType $t) => $t->kind === RustType::NEVER)) === count($types)) {
+            // a local only ever assigned from an empty container's elements: unreachable, typed as such
+            return RustType::never();
+        }
         foreach ($types as $t) {
             if ($t->kind === RustType::OPTION) {
                 $nullable = true;

@@ -972,7 +972,13 @@ trait ExprTrait
             return new Val('(' . $left . ' && ' . $right . ')', RustType::bool());
         }
         if ($e instanceof BinaryOp\BooleanOr || $e instanceof BinaryOp\LogicalOr) {
-            return new Val('(' . $this->truthy($e->left) . ' || ' . $this->truthy($e->right) . ')', RustType::bool());
+            // the right side runs when the left is false: narrowings made inside the left do not hold there
+            $saved = $this->narrowings;
+            $left = $this->truthy($e->left);
+            $this->narrowings = $saved;
+            $right = $this->truthy($e->right);
+            $this->narrowings = $saved;
+            return new Val('(' . $left . ' || ' . $right . ')', RustType::bool());
         }
         if ($e instanceof BinaryOp\LogicalXor) {
             return new Val('(' . $this->truthy($e->left) . ' ^ ' . $this->truthy($e->right) . ')', RustType::bool());

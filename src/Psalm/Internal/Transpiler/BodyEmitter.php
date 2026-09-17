@@ -290,7 +290,9 @@ final class BodyEmitter
                 }
                 $joined = $this->types()->join($declared !== null ? [$declared, ...$types] : $types);
                 $rust = $this->types()->map($joined);
-                if ($rust->containsMixed() && !$params[$name]->containsMixed()) {
+                if (($rust->containsMixed() && !$params[$name]->containsMixed())
+                    || (str_contains($rust->toRust(), 'AnyObject') && !str_contains($params[$name]->toRust(), 'AnyObject'))
+                ) {
                     // the signature's (docblock-inherited) type is more precise than the body's native view
                     continue;
                 }

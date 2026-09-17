@@ -272,6 +272,12 @@ class ReflectionClass
  */
 abstract class ReflectionFunctionAbstract
 {
+    /** The port has no tentative (internal) return types. */
+    public function hasTentativeReturnType(): bool
+    {
+        return false;
+    }
+
     public string $name = '';
 
     public function getName(): string

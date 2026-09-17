@@ -845,6 +845,10 @@ final class Builtins
         $nt = $b->inferredOrMixed($args[0]->value);
         $nu = $nt->kind === RustType::OPTION ? $nt->inner() : $nt;
         $ht = $b->inferredOrMixed($args[1]->value);
+        if ($ht->kind === RustType::TUPLE && $ht->params !== [] && count(array_unique(array_map(static fn(RustType $p) => $p->toRust(), $ht->params))) === 1) {
+            // a constant list (`self::NAMES`) Psalm sees as a tuple of one element type
+            $ht = RustType::list($ht->params[0]);
+        }
         if ($strict && $nu->kind === RustType::UNION && $ht->kind === RustType::LIST && !$ht->inner()->containsMixed() && $ht->inner()->kind !== RustType::UNION) {
             $member = $b->casts->pickMember($nu, $ht->inner());
             if ($member !== null && $member->toRust() === $ht->inner()->toRust()) {
