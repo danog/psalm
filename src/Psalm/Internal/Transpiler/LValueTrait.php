@@ -164,6 +164,8 @@ trait LValueTrait
                             $ftypes[] = $mf->type;
                         } elseif (($vf = $this->program->variantField($mc, $name)) !== null) {
                             $ftypes[] = $vf[1];
+                        } elseif (($mg = $this->program->findMethod($mc, '__get')) !== null && $mg->node !== null) {
+                            $ftypes[] = $mg->return_type;
                         }
                     }
                     if ($ftypes !== []) {
@@ -722,6 +724,8 @@ trait LValueTrait
                         $ftypes[] = $mf->type;
                     } elseif (($vf = $this->program->variantField($mc, $name)) !== null) {
                         $ftypes[] = $vf[1];
+                    } elseif (($mg = $this->program->findMethod($mc, '__get')) !== null && $mg->node !== null) {
+                        $ftypes[] = $mg->return_type;
                     }
                 }
                 if ($ftypes !== []) {
@@ -959,6 +963,12 @@ trait LValueTrait
             return $this->destructure($target, $this->expr($e->expr));
         }
         $place = $this->place($target);
+        if ($target instanceof Expr\Variable && is_string($target->name) && $place->type->kind === RustType::MIXED) {
+            // a Psalm-mixed local: the value's static type is a retyping candidate (see BodyEmitter::emitBodyInner)
+            $rhs = $this->expr($e->expr);
+            $this->noteMixedAssign($target->name, $rhs->type);
+            return $place->write($this->casts->convert($rhs->code, $rhs->type, $place->type));
+        }
         $value = $this->exprTo($e->expr, $place->type);
         return $place->write($value);
     }
@@ -973,6 +983,9 @@ trait LValueTrait
         }
         $place = $this->place($target);
         $rhs = $this->expr($e->expr);
+        if ($target instanceof Expr\Variable && is_string($target->name) && $place->type->kind === RustType::MIXED) {
+            $this->noteMixedAssign($target->name, $rhs->type);
+        }
         if ($rhs->type->kind === RustType::OPTION && $place->type->kind !== RustType::OPTION && $place->type->kind !== RustType::MIXED
             && $rhs->type->inner()->toRust() === $place->type->toRust()
         ) {
