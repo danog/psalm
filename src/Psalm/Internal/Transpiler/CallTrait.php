@@ -323,7 +323,8 @@ trait CallTrait
         $this->warn('unknown function ' . $resolved, $e);
         // dead in the closed world: typed by what the site expects (a declared return, a parameter) when known
         $exp = $this->call_expected;
-        $dead_t = $exp !== null && !$exp->containsMixed() && !$exp->hasGeneric() ? $exp : $this->inferredOrMixed($e);
+        $inf = $this->inferredOrMixed($e);
+        $dead_t = $exp !== null && !$exp->containsMixed() && !$exp->hasGeneric() ? $exp : ($inf->containsMixed() ? RustType::unit() : $inf);
         return $this->dead('unknown function ' . $resolved . '', $dead_t);
     }
 

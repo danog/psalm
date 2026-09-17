@@ -283,6 +283,7 @@ final class Builtins
         'get_object_vars' => ['get_object_vars', ['&m'], 'mkm'],
         'is_callable' => ['is_callable', ['&m'], 'b'],
         'defined' => ['crate::names::constant_defined', ['&s'], 'b'],
+        'sapi_windows_cp_is_utf8' => ['sapi_windows_cp_is_utf8', [], 'b'],
 
         'fwrite' => ['fwrite', ['&r', '&s'], 'oi'],
         'fputs' => ['fwrite', ['&r', '&s'], 'oi'],
@@ -2064,6 +2065,9 @@ final class Builtins
             };
             $flag_arg = $fn === 'preg_match_groups_flags' ? ', ' . $b->exprTo($args[3]->value, RustType::int()) : '';
             $mt = RustType::map(RustType::arrayKey(), $vt);
+            if ($args[2]->value instanceof Expr\Variable && is_string($args[2]->value->name) && $pt->containsMixed()) {
+                $b->noteMixedAssign($args[2]->value->name, $mt);
+            }
             $store = $b->casts->convert($tmp, $mt, $pt);
             return new Val('{ let (__r, ' . $tmp . ') = ' . $fn . '(&' . $pat . ', &' . $s . $flag_arg . ', ' . $offset . ').unwrap_or_else(|__e| __throw_rt(__e)); ' . $place->write($store) . ' __r }', RustType::int());
         }
@@ -2436,6 +2440,11 @@ final class Builtins
         if ($fallback === 'var_export' && $scalar_fn !== null) {
             $ret = isset($args[1]) ? $b->exprTo($args[1]->value, RustType::bool()) : 'false';
             return new Val($scalar_fn . '(&' . $v->code . ', ' . $ret . ')', RustType::str());
+        }
+        if ($fallback === 'print_r' && $scalar_fn !== null) {
+            // print_r of a scalar is its string form (printed unless the return flag is set)
+            $ret = isset($args[1]) ? $b->exprTo($args[1]->value, RustType::bool()) : 'false';
+            return new Val('print_r_str(&' . $this->casts->convert($v->code, $v->type, RustType::str()) . ', ' . $ret . ')', RustType::str());
         }
         $typed = in_array($inner->kind, [RustType::GENERIC, RustType::CLASS_, RustType::ANY_OBJECT, RustType::SHAPE], true)
             || ($inner->kind === RustType::UNION && Casts::unionHasObject($inner));

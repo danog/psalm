@@ -334,6 +334,11 @@ class ReflectionMethod extends ReflectionFunctionAbstract
         throw new ReflectionException('Methods cannot be reflected in a compiled program');
     }
 
+    public static function createFromMethodName(string $method): static
+    {
+        throw new ReflectionException('Methods cannot be reflected in a compiled program');
+    }
+
     public function getDeclaringClass(): ReflectionClass
     {
         return new ReflectionClass($this->class);

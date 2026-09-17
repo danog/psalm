@@ -306,7 +306,7 @@ trait ExprTrait
                     return new Val('1i64', RustType::int());
                 }
                 $this->warn('include of a file that is not compiled: ' . $static, $e);
-                return $this->dead('include of a file that is not compiled: ' . $static, $this->inferredOrMixed($e));
+                return $this->dead('include of a file that is not compiled: ' . $static, $expected !== null && !$expected->containsMixed() ? $expected : RustType::unit());
             }
             $this->warn('include with a runtime path', $e);
             // dead in the closed world: typed by what the site expects (a declared return), else discarded
@@ -697,6 +697,14 @@ trait ExprTrait
 
     private function arrayLiteralValue(Expr\Array_ $e, ?RustType $expected): Val
     {
+        $has_spread_items = static function (Expr\Array_ $e): bool {
+            foreach ($e->items as $item) {
+                if ($item->unpack) {
+                    return true;
+                }
+            }
+            return false;
+        };
         $target = $expected;
         if ($target !== null && $target->kind === RustType::OPTION && in_array($target->inner()->kind, [RustType::LIST, RustType::MAP, RustType::TUPLE, RustType::SHAPE], true)) {
             $target = $target->inner();
@@ -717,8 +725,40 @@ trait ExprTrait
             $target = $pick;
         }
         $inf = $target === null || !in_array($target->kind, [RustType::LIST, RustType::MAP, RustType::TUPLE, RustType::SHAPE], true) ? $this->inferred($e) : null;
+        $from_inference = false;
         if ($target === null || !in_array($target->kind, [RustType::LIST, RustType::MAP, RustType::TUPLE, RustType::SHAPE], true)) {
             $target = $inf;
+            $from_inference = true;
+        }
+        if ($from_inference && $target !== null && $target->kind === RustType::SHAPE && !$has_spread_items($e)) {
+            // a shape Psalm typed with `mixed` fields (values of `require`d data files, unknown calls): the
+            // emitted values decide those fields' types
+            $refined = [];
+            $changed = false;
+            $next_int = 0;
+            foreach ($e->items as $item) {
+                $key = $item->key !== null ? $this->literalKey($item->key) : (string) $next_int;
+                if ($key === null || !isset($target->fields[$key])) {
+                    $changed = false;
+                    break;
+                }
+                if ((string) (int) $key === $key) {
+                    $next_int = max($next_int, (int) $key + 1);
+                }
+                [$ft, $opt] = $target->fields[$key];
+                if ($ft->kind === RustType::MIXED) {
+                    $vt = $this->expr($item->value)->type;
+                    if (!$vt->containsMixed() && !$vt->hasGeneric()) {
+                        $refined[$key] = [$vt, $opt];
+                        $changed = true;
+                        continue;
+                    }
+                }
+                $refined[$key] = [$ft, $opt];
+            }
+            if ($changed && count($refined) === count($target->fields)) {
+                $target = $this->types()->registerShape(RustType::shape($refined));
+            }
         }
         if ($target === null || $target->kind === RustType::MIXED) {
             $target = RustType::map(RustType::arrayKey(), RustType::mixed());
@@ -1095,6 +1135,29 @@ trait ExprTrait
             $target = $res->kind === RustType::MAP ? $res : RustType::map(RustType::arrayKey(), RustType::mixed());
             if ($res->kind !== RustType::MAP) {
                 $target = $lt->kind === RustType::MAP ? $lt : RustType::map(RustType::arrayKey(), RustType::mixed());
+            }
+            $elem_of = function (RustType $t): ?RustType {
+                return match ($t->kind) {
+                    RustType::LIST => $t->inner(),
+                    RustType::MAP => $t->params[1],
+                    RustType::TUPLE => $t->params === [] ? null : $this->types()->combine($t->params),
+                    RustType::SHAPE => $t->fields === [] ? null : $this->shapeValueType($t),
+                    default => null,
+                };
+            };
+            if ($target->params[1]->kind === RustType::MIXED && ($le = $elem_of($lt)) !== null && ($re = $elem_of($rt)) !== null) {
+                // `$list + [null, null]`: the union of both sides' elements, then the shape Psalm sees
+                $et = $this->types()->combine([$le, $re]);
+                if (!$et->containsMixed()) {
+                    $target = RustType::map(RustType::arrayKey(), $et);
+                    $l = $this->exprTo($e->left, $target);
+                    $r = $this->exprTo($e->right, $target);
+                    $code = 'array_union(&' . $l . ', &' . $r . ')';
+                    if (($res->kind === RustType::SHAPE || $res->kind === RustType::TUPLE) && !$res->containsMixed()) {
+                        return new Val($this->casts->convert($code, $target, $res), $res);
+                    }
+                    return new Val($code, $target);
+                }
             }
             $l = $this->exprTo($e->left, $target);
             $r = $this->exprTo($e->right, $target);
@@ -1476,6 +1539,14 @@ trait ExprTrait
             if ($b instanceof Expr\Array_ && !$a instanceof Expr\Array_) {
                 $va = $this->rawValue($a);
                 $containers = [RustType::LIST, RustType::MAP, RustType::SHAPE];
+                if (!in_array($va->type->kind, $containers, true) && $va->type->kind !== RustType::OPTION) {
+                    // a value declared as a union (`Name|Expr`) that Psalm narrowed to a container: only that form
+                    // can equal an array literal
+                    $narrowed = $this->expr($a);
+                    if (in_array($narrowed->type->kind, $containers, true)) {
+                        $va = $narrowed;
+                    }
+                }
                 if (in_array($va->type->kind, $containers, true)) {
                     return 'identical(' . Names::refOf($va->code) . ', ' . Names::refOf($this->exprTo($b, $va->type)) . ')';
                 }
