@@ -833,7 +833,8 @@ function run_all(): string
         . check('typed_builtins2', case_typed_builtins2(), "c1,r6,'a\\'b',42,nf,yes,null,1.5,pos")
         . check('elseif_narrowing', case_elseif_narrowing(), 'p,n,-')
         . check('filter_table', case_filter_table(), '257:1,2,9|min=1,d=0;259:1,9|d=0;516:3|d=0')
-        . check('element_retype', case_element_retype(), 'A=1x,B=2y|ab');
+        . check('element_retype', case_element_retype(), 'A=1x,B=2y|ab')
+        . check('narrow_reassign', case_narrow_reassign(), 'p,ri,ri,-,rr');
 }
 
 // ---- feature: typed constant table (get_defined_constants without Mixed) ----
@@ -1264,4 +1265,45 @@ function case_element_retype(): string
     }
     $parts = explode('-', 'a-b');
     return implode(',', $out) . '|' . pair_str(...$parts);
+}
+
+final class NStrLit extends NBase
+{
+    public function __construct(public string $value)
+    {
+    }
+}
+
+function narrow_reassign(NBase $left, NBase $right): string
+{
+    if ($left instanceof NStrLit) {
+        if (is_numeric($left->value)) {
+            $left = new NLit((int) $left->value);
+        }
+    }
+    if ($left instanceof NRange && $right instanceof NRange) {
+        return 'rr';
+    }
+    if (($left instanceof NRange && $right instanceof NMid) ||
+        ($left instanceof NMid && $right instanceof NRange)
+    ) {
+        return 'ri';
+    }
+    if ($left instanceof NMid && $right instanceof NMid) {
+        $positive = false;
+        if ($left instanceof NLit) {
+            $positive = $left->v > 0;
+        } elseif ($left instanceof NRange) {
+            $positive = $left->isPositive();
+        }
+        return $positive ? 'p' : 'n';
+    }
+    return '-';
+}
+
+function case_narrow_reassign(): string
+{
+    return narrow_reassign(new NStrLit('3'), new NMid()) . ',' . narrow_reassign(new NRange(2), new NLit(1)) . ','
+        . narrow_reassign(new NRange(-1), new NMid()) . ',' . narrow_reassign(new NStrLit('x'), new NMid()) . ','
+        . narrow_reassign(new NRange(1), new NRange(2));
 }
