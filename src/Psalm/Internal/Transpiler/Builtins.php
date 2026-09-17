@@ -398,7 +398,8 @@ final class Builtins
                     $scalar_kinds = [RustType::STR, RustType::INT, RustType::FLOAT, RustType::BOOL];
                     if ($a->unpack && ($v->type->kind === RustType::LIST || $v->type->kind === RustType::MAP)) {
                         $et = $v->type->kind === RustType::LIST ? $v->type->inner() : $v->type->params[1];
-                        $scalar_union = $et->kind === RustType::UNION && $et->params !== [] && count(array_filter($et->params, static fn(RustType $m) => !in_array($m->kind, $scalar_kinds, true))) === 0;
+                        $scalar_union = $et->kind === RustType::ARRAY_KEY
+                            || ($et->kind === RustType::UNION && $et->params !== [] && count(array_filter($et->params, static fn(RustType $m) => !in_array($m->kind, $scalar_kinds, true))) === 0);
                         if (in_array($et->kind, $scalar_kinds, true) || $scalar_union) {
                             // `...$values`: every element of the typed list is one format argument (a union of
                             // scalars through its string form, which the formatter converts per placeholder)

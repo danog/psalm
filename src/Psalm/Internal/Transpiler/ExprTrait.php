@@ -53,6 +53,9 @@ trait ExprTrait
     public function exprTo(Expr $e, RustType $to): string
     {
         if ($to->hasGeneric()) {
+            if ($this->isNullLiteral($e) && $to->kind === RustType::OPTION) {
+                return 'None'; // null into a generic optional slot
+            }
             if ($to->kind === RustType::GENERIC && $e instanceof Expr\Array_ && $e->items === []) {
                 // an empty literal for a generic slot: an empty list (no element type to infer)
                 return $this->expr($e, RustType::list(RustType::unit()))->code;

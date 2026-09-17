@@ -835,6 +835,7 @@ function run_all(): string
         . check('filter_table', case_filter_table(), '257:1,2,9|min=1,d=0;259:1,9|d=0;516:3|d=0')
         . check('element_retype', case_element_retype(), 'A=1x,B=2y|ab')
         . check('narrow_reassign', case_narrow_reassign(), 'p,ri,ri,-,rr')
+        . check('closure_param', case_closure_param(), 'a:1|none|x:1')
         . check('array_to_xml', case_array_to_xml(), "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item/>\n</report>\n|<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item>\n    <severity>error</severity>\n    <line_from>4</line_from>\n    <taint_trace/>\n    <refs>\n      <label>a &amp; b</label>\n    </refs>\n    <refs>\n      <label>c</label>\n    </refs>\n  </item>\n</report>\n");
 }
 
@@ -1317,4 +1318,55 @@ function case_array_to_xml(): string
     ];
     $full = \Spatie\ArrayToXml\ArrayToXml::convert(['item' => $items], 'report', true, 'UTF-8', '1.0', ['preserveWhiteSpace' => false, 'formatOutput' => true]);
     return $empty . '|' . $full;
+}
+
+/**
+ * @param null|Closure(string): array{id: int|null, count: int} $handler
+ */
+function handle_message(string $message, ?Closure $handler): string
+{
+    if ($handler === null) {
+        return 'none';
+    }
+    $reply = $handler($message);
+    return $message . ':' . $reply['count'];
+}
+
+function case_closure_param(): string
+{
+    $pool = new MsgPool();
+    $pool->run(['x'], static fn(string $d): int => strlen($d), null, /** @return array{id: int|null, count: int} */ static fn(string $m): array => ['id' => null, 'count' => strlen($m)]);
+    return handle_message('a', /** @return array{id: int|null, count: int} */ static fn(string $m): array => ['id' => null, 'count' => strlen($m)]) . '|' . handle_message('b', null) . '|' . $pool->last;
+}
+
+final class MsgPool
+{
+    public string $last = '';
+
+    /**
+     * @template TResult
+     * @param list<string> $items
+     * An array of task data items to be divided up among the
+     * workers. The size of this is the number of forked processes.
+     * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint
+     * @param Closure(string): TResult $task_factory Builds the task executed on each task data item.
+     *                                                                It must return an array (to be gathered).
+     *
+     * @param Closure(TResult $data):void $task_done_closure A closure to execute when a task is done
+     * @param null|Closure(string): array{id: int|null, count: int} $message_handler Handles a message sent by a worker over its task
+     *        channel and returns the reply. Used to answer requests a task makes mid-execution (e.g.
+     *        registering a custom taint in the parent process).
+     */
+    public function run(array $items, Closure $task_factory, ?Closure $task_done_closure = null, ?Closure $message_handler = null): void
+    {
+        foreach ($items as $item) {
+            $result = $task_factory($item);
+            if ($task_done_closure !== null) {
+                $task_done_closure($result);
+            }
+            if ($message_handler !== null) {
+                $this->last = $item . ':' . $message_handler($item)['count'];
+            }
+        }
+    }
 }

@@ -164,6 +164,9 @@ final class Casts
 
         // Rust generics: a value flows into/out of a generic parameter unchanged (rustc infers/checks T);
         // a generic narrowed by Psalm to a concrete type is downcast (Any) at the narrowing point.
+        if ($fk === RustType::UNIT && $tk === RustType::OPTION) {
+            return '{ let _ = ' . $code . '; None }'; // null into any optional slot (generic ones included)
+        }
         if ($to->hasGeneric() && !$from->hasGeneric()) {
             return $code; // a concrete value flowing into a generic slot: rustc infers T
         }
