@@ -834,7 +834,8 @@ function run_all(): string
         . check('elseif_narrowing', case_elseif_narrowing(), 'p,n,-')
         . check('filter_table', case_filter_table(), '257:1,2,9|min=1,d=0;259:1,9|d=0;516:3|d=0')
         . check('element_retype', case_element_retype(), 'A=1x,B=2y|ab')
-        . check('narrow_reassign', case_narrow_reassign(), 'p,ri,ri,-,rr');
+        . check('narrow_reassign', case_narrow_reassign(), 'p,ri,ri,-,rr')
+        . check('array_to_xml', case_array_to_xml(), "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item/>\n</report>\n|<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item>\n    <severity>error</severity>\n    <line_from>4</line_from>\n    <taint_trace/>\n    <refs>\n      <label>a &amp; b</label>\n    </refs>\n    <refs>\n      <label>c</label>\n    </refs>\n  </item>\n</report>\n");
 }
 
 // ---- feature: typed constant table (get_defined_constants without Mixed) ----
@@ -1306,4 +1307,14 @@ function case_narrow_reassign(): string
     return narrow_reassign(new NStrLit('3'), new NMid()) . ',' . narrow_reassign(new NRange(2), new NLit(1)) . ','
         . narrow_reassign(new NRange(-1), new NMid()) . ',' . narrow_reassign(new NStrLit('x'), new NMid()) . ','
         . narrow_reassign(new NRange(1), new NRange(2));
+}
+
+function case_array_to_xml(): string
+{
+    $empty = \Spatie\ArrayToXml\ArrayToXml::convert(['item' => []], 'report', true, 'UTF-8', '1.0', ['preserveWhiteSpace' => false, 'formatOutput' => true]);
+    $items = [
+        ['severity' => 'error', 'line_from' => 4, 'taint_trace' => '', 'refs' => [['label' => 'a & b'], ['label' => 'c']]],
+    ];
+    $full = \Spatie\ArrayToXml\ArrayToXml::convert(['item' => $items], 'report', true, 'UTF-8', '1.0', ['preserveWhiteSpace' => false, 'formatOutput' => true]);
+    return $empty . '|' . $full;
 }

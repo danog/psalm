@@ -384,9 +384,31 @@ final class TypeMapper
         $ev = $nullable ? $elem->inner() : $elem;
         // only for real nesting: the element union must contain a container itself
         if ($ev->kind !== RustType::UNION || !self::selfSimilar($ev, self::keys($leaves), $nullable, true, $lists !== [], $map_key)) {
+            // a shallower level of an alias already mapped recursively (`XmlScalar|list<XmlScalar>|...`, the
+            // element type of the recursive value's containers): the recursive enum holds it too
+            foreach ($this->unions as $u) {
+                if ($u->isRecursive() && self::selfSimilar($this->flattenLevel($members), self::keys($leaves), $nullable, false, $lists !== [], $map_key)
+                    && self::keys(self::splitContainers($u->params)[2]) === self::keys($leaves)
+                    && (count(self::splitContainers($u->params)[0]) > 0) === ($lists !== [])
+                    && (count(self::splitContainers($u->params)[1]) > 0) === ($map_key !== null)
+                    && ($map_key === null || self::splitContainers($u->params)[1][0]->params[0]->toRust() === $map_key->toRust())
+                ) {
+                    return $u;
+                }
+            }
             return null;
         }
         return RustType::recursiveUnion($leaves, $nullable, $lists !== [], $map_key);
+    }
+
+    /**
+     * A plain (non-recursive) union of the given members, for the self-similarity check of one level.
+     *
+     * @param list<RustType> $members
+     */
+    private static function flattenLevel(array $members): RustType
+    {
+        return RustType::union($members);
     }
 
     /**
