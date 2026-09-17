@@ -608,6 +608,13 @@ trait ExprTrait
         if ($v->type->kind === RustType::GENERIC && ($inf->kind === RustType::ANY_OBJECT || $inf->containsMixed())) {
             return $v;
         }
+        // a call returning the callee's own generic (`Future::await_<G_T>`): the result type binds it (a
+        // downcast could not, the generic being unconstrained otherwise)
+        if ($v->type->kind === RustType::GENERIC && !$inf->hasGeneric()
+            && ($e instanceof Expr\MethodCall || $e instanceof Expr\StaticCall || $e instanceof Expr\FuncCall || $e instanceof Expr\NullsafeMethodCall)
+        ) {
+            return new Val('{ let __g: ' . $inf->toRust() . ' = ' . $v->code . '; __g }', $inf);
+        }
         // a container read keeps its stored element types: a refinement Psalm made (`array<int, int>` for a
         // stored `array<array-key, int>`, `list<TLiteralInt>` for a stored `list<Atomic>`) would otherwise be
         // an element-wise conversion of the whole container on every read; elements narrow when they are read
