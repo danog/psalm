@@ -1507,19 +1507,19 @@ final class TypeParser
                 } else {
                     $property_key = $property_branch->value;
                 }
+                $literal_key_int = ArrayAnalyzer::getLiteralArrayKeyInt($property_key);
                 if ($is_list && (
-                        ArrayAnalyzer::getLiteralArrayKeyInt($property_key) === false
+                        $literal_key_int === false
                         || ($had_optional && !$property_maybe_undefined)
                         || $type === 'array'
                         || $type === 'callable-array'
-                        || !is_int($property_key)
-                        || $previous_property_key !== $property_key - 1
+                        || $previous_property_key !== $literal_key_int - 1
                     )
                 ) {
                     $is_list = false;
                 }
                 $had_explicit = true;
-                $previous_property_key = $property_key;
+                $previous_property_key = $literal_key_int === false ? -1 : $literal_key_int;
 
                 if ($property_key[0] === '\'' || $property_key[0] === '"') {
                     $property_key = stripslashes(substr($property_key, 1, -1));
