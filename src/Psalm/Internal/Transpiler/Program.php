@@ -1363,6 +1363,19 @@ final class Program
                 if ($assigned === null || !$assigned->isNullable()) {
                     continue;
                 }
+                $declared = $field->storage->type;
+                if ($declared !== null && !$assigned->isNull()) {
+                    // a narrowing assignment (a wide union stored into a specifically typed property, as a
+                    // generic setter does) converts at the assignment and fails on null there, like PHP's own
+                    // property type check would; only a value that differs from the property type by null
+                    // alone widens the field
+                    $builder = $assigned->getBuilder();
+                    $builder->removeType('null');
+                    $without_null = $builder->freeze();
+                    if (!\Psalm\Internal\Type\Comparator\UnionTypeComparator::isContainedBy($this->codebase, $without_null, $declared)) {
+                        continue;
+                    }
+                }
                 $model->fields[$name] = new FieldModel(
                     $field->name,
                     RustType::option($field->type),

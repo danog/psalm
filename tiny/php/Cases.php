@@ -857,9 +857,50 @@ function case_union_base_member(): string
     return $out;
 }
 
+final class ItemBox {
+    /** @var list<TName|null> Items (null for skipped elements) */
+    public array $items;
+    /** @param list<TName|null> $items */
+    public function __construct(array $items = []) {
+        $this->items = $items;
+    }
+}
+
+function case_nullable_list_prop(): string
+{
+    $b = new ItemBox([new TName('x'), null]);
+    $n = 0;
+    foreach ($b->items as $it) {
+        if ($it !== null) {
+            $n++;
+        }
+    }
+    return count($b->items) . ':' . $n;
+}
+
+function key_to_int(string|int $k): int|false
+{
+    if (is_int($k)) {
+        return $k;
+    }
+    return false;
+}
+
+function case_key_narrow(): string
+{
+    $out = '';
+    foreach ([3, 'x', 7] as $k) {
+        $r = key_to_int($k);
+        $out .= $r === false ? 'F' : (string) $r;
+    }
+    return $out;
+}
+
 function run_all(): string
 {
-    return check('union_base_member', case_union_base_member(), 'name:a|node|nullable|')
+    return check('key_narrow', case_key_narrow(), '3F7')
+        . check('nullable_list_prop', case_nullable_list_prop(), '2:1')
+        . check('union_base_member', case_union_base_member(), 'name:a|node|nullable|')
         . check('invoke_object', case_invoke_object(), 'sock3')
         . check('declared_preg', case_declared_preg(), 'stdclass+')
         . check('nullable_union', case_nullable_union(), 'nullA7')

@@ -1298,6 +1298,22 @@ final class CastEmitter
                 $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ' . $from->toRust() . ' { fn cast_to(self) -> ' . $to->toRust() . ' { match php_rt::ToNum::to_php_num(&self) { Num::Int(i) => ' . $to->mangle() . '::Int(i), Num::Float(f) => ' . $to->mangle() . '::Float(f) } } }');
                 return;
             }
+            if ($fk === RustType::ARRAY_KEY) {
+                // an array key (int|string) narrowed into a union: each variant takes its member, a missing one panics
+                $int_m = $str_m = null;
+                foreach ($to->params as $m) {
+                    if ($m->kind === RustType::INT && $int_m === null) {
+                        $int_m = $m;
+                    } elseif (($m->kind === RustType::STR || $m->kind === RustType::SYM) && $str_m === null) {
+                        $str_m = $m;
+                    }
+                }
+                $arms = [];
+                $arms[] = 'ArrayKey::Int(i) => ' . ($int_m !== null ? $to->mangle() . '::' . $int_m->variantName() . '(i)' : 'panic!(' . Names::rustStringLiteral('no member of ' . $to->toRust() . ' admits an int key') . ')');
+                $arms[] = 'ArrayKey::Str(s) => ' . ($str_m !== null ? $to->mangle() . '::' . $str_m->variantName() . '(' . $this->conv('s', RustType::str(), $str_m) . ')' : 'panic!(' . Names::rustStringLiteral('no member of ' . $to->toRust() . ' admits a string key') . ')');
+                $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ArrayKey { fn cast_to(self) -> ' . $to->toRust() . ' { match self { ' . implode(', ', $arms) . ' } } }');
+                return;
+            }
             if (!$this->casts->fits($from, $to)) {
                 $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ' . $from->toRust() . ' { fn cast_to(self) -> ' . $to->toRust() . ' { panic!(' . Names::rustStringLiteral('no member of ' . $to->toRust() . ' admits a ' . $from->toRust()) . ') } }');
                 return;
