@@ -186,6 +186,7 @@ final class Psalm
      * @param array<int,string> $argv
      * @psalm-suppress ComplexMethod Maybe some of the option handling could be moved to its own function...
      */
+    /** @param list<string> $argv */
     public static function run(array $argv): void
     {
         CliUtils::checkRuntimeRequirements();
@@ -1089,6 +1090,7 @@ final class Psalm
     /** @param array<int, string> $argv */
     /**
      * @param CliOptions $options
+     * @param list<string> $argv
      */
     private static function forwardCliCall(array $options, array $argv): void
     {

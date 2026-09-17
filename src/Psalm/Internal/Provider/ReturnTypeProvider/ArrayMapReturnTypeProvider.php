@@ -118,6 +118,7 @@ final class ArrayMapReturnTypeProvider implements FunctionReturnTypeProviderInte
             $array_arg_types = array_map(null, ...$array_arg_types);
             $array_arg_types = array_map(
                 /** @param non-empty-list<?Union> $sub */
+                /** @param list<Union|null> $sub */
                 static function (array $sub) use ($null) {
                     $sub = array_map(
                         static fn(?Union $t) => $t ?? $null,

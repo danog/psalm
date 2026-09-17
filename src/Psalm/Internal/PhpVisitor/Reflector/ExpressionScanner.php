@@ -69,9 +69,9 @@ final class ExpressionScanner
                 || $node instanceof PhpParser\Node\Expr\StaticPropertyFetch
                 || $node instanceof PhpParser\Node\Expr\ClassConstFetch
                 || $node instanceof PhpParser\Node\Expr\StaticCall)
-            && $node->class instanceof PhpParser\Node\Name
+            && ($class_name_node = $node->class) instanceof PhpParser\Node\Name
         ) {
-            $fq_classlike_name = ClassLikeAnalyzer::getFQCLNFromNameObject($node->class, $aliases);
+            $fq_classlike_name = ClassLikeAnalyzer::getFQCLNFromNameObject($class_name_node, $aliases);
 
             if (!in_array(strtolower($fq_classlike_name), ['self', 'static', 'parent'], true)) {
                 $codebase->scanner->queueClassLikeForScanning(

@@ -26,20 +26,17 @@ final class TableReport extends Report
     #[Override]
     public function create(): string
     {
-        /** @var BufferedOutput|null $buffer */
-        $buffer = null;
+        $buffer = new BufferedOutput();
+        $table = new Table($buffer);
+        $has_table = false;
 
-        /** @var Table|null $table */
-        $table = null;
-
-        /** @var string|null $current_file */
         $current_file = null;
 
         $output = [];
         foreach ($this->issues_data as $issue_data) {
             if ($current_file === null || $current_file !== $issue_data->file_name) {
                 // If we're processing a new file, then wrap up the last table and render it out.
-                if ($buffer !== null) {
+                if ($has_table) {
                     $table->render();
                     $output[] = $buffer->fetch();
                 }
@@ -49,6 +46,7 @@ final class TableReport extends Report
                 $buffer = new BufferedOutput();
                 $table = new Table($buffer);
                 $table->setHeaders(['SEVERITY', 'LINE', 'ISSUE', 'DESCRIPTION']);
+                $has_table = true;
             }
 
             $is_error = $issue_data->severity === Config::REPORT_ERROR;
@@ -75,7 +73,7 @@ final class TableReport extends Report
             $current_file = $issue_data->file_name;
         }
 
-        if ($buffer !== null) {
+        if ($has_table) {
             $table->render();
             $output[] = $buffer->fetch();
         }

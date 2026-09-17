@@ -30,24 +30,25 @@ final class JsonReport extends Report
         $issues_data = array_map(
             /** @return array<string, scalar|null|list<array<string, scalar|null>>> */
             static function (IssueData $issue_data): array {
-                $issue_data = $issue_data->toArray();
-                unset($issue_data['dupe_key']);
+                $data = $issue_data->toArray();
+                unset($data['dupe_key']);
 
-                if (null !== $issue_data['taint_trace']) {
-                    $issue_data['taint_trace'] = array_map(
+                if (null !== $data['taint_trace']) {
+                    $data['taint_trace'] = array_map(
+                        /** @param DataFlowNodeData|array{label: string, entry_path_type: string} $trace */
                         static fn(DataFlowNodeData|array $trace): array => $trace instanceof DataFlowNodeData ? $trace->toArray() : $trace,
-                        $issue_data['taint_trace'],
+                        $data['taint_trace'],
                     );
                 }
 
-                if (null !== $issue_data['other_references']) {
-                    $issue_data['other_references'] = array_map(
+                if (null !== $data['other_references']) {
+                    $data['other_references'] = array_map(
                         static fn(DataFlowNodeData $reference): array => $reference->toArray(),
-                        $issue_data['other_references'],
+                        $data['other_references'],
                     );
                 }
 
-                return $issue_data;
+                return $data;
             },
             $this->issues_data,
         );

@@ -474,13 +474,13 @@ final class DocumentationTest extends TestCase
             }
 
             #[Override]
-            protected function matches(mixed $other): bool
+            protected function matches(string $other): bool
             {
                 return $this->inner->matches($other);
             }
 
             #[Override]
-            protected function failureDescription(mixed $other): string
+            protected function failureDescription(string $other): string
             {
                 return $this->exporter()->shortenedExport($other) . ' ' . $this->toString();
             }
