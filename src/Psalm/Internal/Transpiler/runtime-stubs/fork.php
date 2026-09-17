@@ -128,10 +128,9 @@ namespace Psalm\Internal\Fork {
         }
 
         /**
-         * @template TResult
          * @param list<string> $process_task_data_iterator
-         * @param Closure(string): Task<TResult, void, void> $task_factory
-         * @param null|Closure(TResult):void $task_done_closure
+         * @param Closure(string): Task $task_factory
+         * @param null|Closure(int): void $task_done_closure the count of finished items
          * @param null|Closure(string): array{id: int|null, count: int} $message_handler
          */
         public function run(

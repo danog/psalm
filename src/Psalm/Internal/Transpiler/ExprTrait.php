@@ -56,6 +56,12 @@ trait ExprTrait
             if ($this->isNullLiteral($e) && $to->kind === RustType::OPTION) {
                 return 'None'; // null into a generic optional slot
             }
+            if ($to->kind === RustType::OPTION) {
+                $inner = $this->inferred($e);
+                if ($inner === null || $inner->kind !== RustType::OPTION) {
+                    return 'Some(' . $this->exprTo($e, $to->inner()) . ')'; // a value into a generic optional slot
+                }
+            }
             if ($to->kind === RustType::GENERIC && $e instanceof Expr\Array_ && $e->items === []) {
                 // an empty literal for a generic slot: an empty list (no element type to infer)
                 return $this->expr($e, RustType::list(RustType::unit()))->code;

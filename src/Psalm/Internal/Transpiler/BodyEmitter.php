@@ -783,6 +783,10 @@ final class BodyEmitter
             return new Val($this->this_expr . '.clone()', $this->this_type ?? RustType::anyObject());
         }
         if (isset(self::SUPERGLOBALS[$name])) {
+            if (in_array($name, ['_SERVER', '_ENV'], true)) {
+                // the environment's string entries (argv/argc are reached through their own globals)
+                return new Val('php_rt::superglobal_strings(' . Names::rustStringLiteral($name) . ')', RustType::map(RustType::str(), RustType::str()));
+            }
             return new Val('php_rt::superglobal(' . Names::rustStringLiteral($name) . ')', RustType::map(RustType::str(), RustType::mixed()));
         }
         if (!isset($this->vars[$name])) {

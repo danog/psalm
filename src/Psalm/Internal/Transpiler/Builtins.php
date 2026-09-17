@@ -351,6 +351,7 @@ final class Builtins
         'libxml_use_internal_errors' => ['libxml_use_internal_errors', ['b=false'], 'b'],
         'libxml_clear_errors' => ['libxml_clear_errors', [], 'u'],
         'libxml_get_errors' => ['libxml_get_errors', [], 'L'],
+        'token_get_all' => ['token_get_all', ['&s'], 'L'],
         'strncmp_ci' => ['strncasecmp', ['&s', '&s', 'i'], 'i'],
         'debug_zval_refcount' => ['debug_zval_refcount', ['&m'], 'i'],
         'is_iterable' => ['is_iterable_val', ['&m'], 'b'],
@@ -2570,6 +2571,87 @@ final class Builtins
         return new Val('{ let __m = stream_meta(&' . $b->exprTo($args[0]->value, RustType::resource()) . '); ' . $t->toRust() . ' { ' . implode(', ', $fields) . ' } }', $t);
     }
 
+    /** `error_get_last()` in the shape the stub declares (the runtime records no PHP errors: None). */
+    private function f_error_get_last(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        $t = $b->inferredOrMixed($call);
+        $shape = $t->kind === RustType::OPTION ? $t->inner() : $t;
+        $known = ['type' => '0', 'message' => '1', 'file' => '2', 'line' => '3'];
+        if ($shape->kind !== RustType::SHAPE || array_diff(array_keys($shape->fields), array_keys($known)) !== []) {
+            return $this->simple($b, $call, $args, self::SIMPLE['error_get_last']);
+        }
+        $fields = [];
+        foreach ($shape->fields as $k => [$ft, $opt]) {
+            $fields[] = Names::field((string) $k) . ': ' . ($opt ? 'Some(__e.' . $known[$k] . ')' : '__e.' . $known[$k]);
+        }
+        return new Val('error_get_last_typed().map(|__e| ' . $shape->toRust() . ' { ' . implode(', ', $fields) . ' })', RustType::option($shape));
+    }
+
+    /** `parse_url($url, PHP_URL_*)`: one component as a string (the port as an int), None when absent. */
+    private function f_parse_url(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        $component = isset($args[1]) ? $this->constInt($args[1]->value, [
+            'PHP_URL_SCHEME' => 0, 'PHP_URL_HOST' => 1, 'PHP_URL_PORT' => 2, 'PHP_URL_USER' => 3, 'PHP_URL_PASS' => 4,
+            'PHP_URL_PATH' => 5, 'PHP_URL_QUERY' => 6, 'PHP_URL_FRAGMENT' => 7,
+        ]) : null;
+        if ($component === null) {
+            return $this->simple($b, $call, $args, self::SIMPLE['parse_url']);
+        }
+        $url = $b->exprTo($args[0]->value, RustType::str());
+        if ($component === 2) {
+            return new Val('parse_url_port(&' . $url . ')', RustType::option(RustType::int()));
+        }
+        return new Val('parse_url_component(&' . $url . ', ' . $component . 'i64)', RustType::option(RustType::str()));
+    }
+
+    /** The int value of a constant expression (a literal or one of the named constants), else null. */
+    private function constInt(Expr $e, array $names): ?int
+    {
+        if ($e instanceof Scalar\Int_) {
+            return $e->value;
+        }
+        if ($e instanceof Expr\ConstFetch) {
+            return $names[strtoupper($e->name->toString())] ?? null;
+        }
+        return null;
+    }
+
+    /** `token_get_all()` as the list of `array{int, string, int}|string` items the stub declares. */
+    private function f_token_get_all(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        $t = $b->inferredOrMixed($call);
+        $u = $t->kind === RustType::LIST ? $t->inner() : null;
+        $shape = $str = null;
+        if ($u !== null && $u->kind === RustType::UNION) {
+            foreach ($u->params as $m) {
+                if ($m->kind === RustType::SHAPE && count($m->fields) === 3) {
+                    $shape = $m;
+                } elseif ($m->kind === RustType::STR) {
+                    $str = $m;
+                }
+            }
+        }
+        if ($u === null || $shape === null || $str === null) {
+            return $this->simple($b, $call, $args, self::SIMPLE['token_get_all']);
+        }
+        $keys = array_keys($shape->fields);
+        $mk = fn(int $i, string $v) => Names::field((string) $keys[$i]) . ': ' . $v;
+        $code = 'php_rt::__rt_tokenize(&' . $b->exprTo($args[0]->value, RustType::str()) . ').map_elems(|__t| if __t.0 < 256 { '
+            . $u->mangle() . '::' . $str->variantName() . '(__t.1) } else { ' . $u->mangle() . '::' . $shape->variantName() . '(' . $shape->toRust()
+            . ' { ' . $mk(0, '__t.0') . ', ' . $mk(1, '__t.1') . ', ' . $mk(2, '__t.2') . ' }) })';
+        return new Val($code, $t);
+    }
+
+    /** `libxml_get_errors()`: the runtime keeps no libxml error queue (an empty list of the declared type). */
+    private function f_libxml_get_errors(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        $t = $b->inferredOrMixed($call);
+        if ($t->kind !== RustType::LIST || $t->inner()->containsMixed()) {
+            return $this->simple($b, $call, $args, self::SIMPLE['libxml_get_errors']);
+        }
+        return new Val('List::<' . $t->inner()->toRust() . '>::new()', $t);
+    }
+
     private function f_set_error_handler(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
         // the runtime raises PHP errors as exceptions itself: there is no handler to install
@@ -2670,12 +2752,6 @@ final class Builtins
     {
         $s = $b->exprTo($args[0]->value, RustType::str());
         return new Val('__rt_tokenize(&' . $s . ')', RustType::list(RustType::tuple([RustType::int(), RustType::str(), RustType::int(), RustType::int()])));
-    }
-
-    private function f_token_get_all(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
-    {
-        $s = $b->exprTo($args[0]->value, RustType::str());
-        return $b->narrow(new Val('token_get_all(&' . $s . ')', RustType::list(RustType::mixed())), $call);
     }
 
     private function f_debug_backtrace(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
