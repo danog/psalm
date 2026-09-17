@@ -1,5 +1,7 @@
 //! json_encode / json_decode.
 
+use crate::key::MapKey;
+use crate::list::List;
 use crate::conv;
 use crate::error::RtError;
 use crate::key::ArrayKey;
@@ -430,3 +432,213 @@ pub fn json_decode(s: &Str, assoc: bool, depth: i64, flags: i64) -> Result<Mixed
         }
     }
 }
+
+// ---------------------------------------------------------------- typed encoding
+
+/// JSON encoding of a typed value (the generated crate implements it for its unions, shapes and classes).
+pub trait ToJson {
+    fn encode_json(&self, flags: i64, depth: usize, max_depth: i64, out: &mut Vec<u8>) -> Result<(), RtError>;
+}
+
+/// A typed map key as a JSON object key.
+pub trait JsonKey {
+    fn json_key(&self) -> Vec<u8>;
+}
+impl JsonKey for i64 {
+    fn json_key(&self) -> Vec<u8> {
+        self.to_string().into_bytes()
+    }
+}
+impl JsonKey for Str {
+    fn json_key(&self) -> Vec<u8> {
+        self.as_bytes().to_vec()
+    }
+}
+impl JsonKey for ArrayKey {
+    fn json_key(&self) -> Vec<u8> {
+        self.to_str().as_bytes().to_vec()
+    }
+}
+
+fn depth_check(depth: usize, max_depth: i64) -> Result<(), RtError> {
+    if depth as i64 > max_depth {
+        set_err(1, "Maximum stack depth exceeded");
+        return Err(RtError::new("JsonException", "Maximum stack depth exceeded"));
+    }
+    Ok(())
+}
+
+/// A JSON array of the items.
+pub fn encode_seq(items: &[&dyn ToJson], flags: i64, depth: usize, max_depth: i64, out: &mut Vec<u8>) -> Result<(), RtError> {
+    depth_check(depth, max_depth)?;
+    if flags & FORCE_OBJECT != 0 {
+        let keys: Vec<Vec<u8>> = (0..items.len()).map(|i| i.to_string().into_bytes()).collect();
+        let fields: Vec<(&[u8], &dyn ToJson)> = keys.iter().zip(items.iter()).map(|(k, v)| (k.as_slice(), *v)).collect();
+        return encode_fields(&fields, flags, depth, max_depth, out);
+    }
+    if items.is_empty() {
+        out.extend_from_slice(b"[]");
+        return Ok(());
+    }
+    out.push(b'[');
+    for (i, v) in items.iter().enumerate() {
+        if i > 0 {
+            out.push(b',');
+        }
+        indent(out, depth + 1, flags);
+        v.encode_json(flags, depth + 1, max_depth, out)?;
+    }
+    indent(out, depth, flags);
+    out.push(b']');
+    Ok(())
+}
+
+/// A JSON object of the named fields.
+pub fn encode_fields(fields: &[(&[u8], &dyn ToJson)], flags: i64, depth: usize, max_depth: i64, out: &mut Vec<u8>) -> Result<(), RtError> {
+    depth_check(depth, max_depth)?;
+    if fields.is_empty() {
+        out.extend_from_slice(b"{}");
+        return Ok(());
+    }
+    out.push(b'{');
+    for (i, (k, v)) in fields.iter().enumerate() {
+        if i > 0 {
+            out.push(b',');
+        }
+        indent(out, depth + 1, flags);
+        encode_str(k, flags, out)?;
+        out.push(b':');
+        if flags & PRETTY != 0 {
+            out.push(b' ');
+        }
+        v.encode_json(flags, depth + 1, max_depth, out)?;
+    }
+    indent(out, depth, flags);
+    out.push(b'}');
+    Ok(())
+}
+
+impl ToJson for Mixed {
+    fn encode_json(&self, flags: i64, depth: usize, max_depth: i64, out: &mut Vec<u8>) -> Result<(), RtError> {
+        encode(self, flags, depth, max_depth, out)
+    }
+}
+impl ToJson for () {
+    fn encode_json(&self, _flags: i64, _depth: usize, _max_depth: i64, out: &mut Vec<u8>) -> Result<(), RtError> {
+        out.extend_from_slice(b"null");
+        Ok(())
+    }
+}
+impl ToJson for bool {
+    fn encode_json(&self, _flags: i64, _depth: usize, _max_depth: i64, out: &mut Vec<u8>) -> Result<(), RtError> {
+        out.extend_from_slice(if *self { b"true" } else { b"false" });
+        Ok(())
+    }
+}
+impl ToJson for i64 {
+    fn encode_json(&self, _flags: i64, _depth: usize, _max_depth: i64, out: &mut Vec<u8>) -> Result<(), RtError> {
+        out.extend_from_slice(self.to_string().as_bytes());
+        Ok(())
+    }
+}
+impl ToJson for f64 {
+    fn encode_json(&self, flags: i64, depth: usize, max_depth: i64, out: &mut Vec<u8>) -> Result<(), RtError> {
+        encode(&Mixed::Float(*self), flags, depth, max_depth, out)
+    }
+}
+impl ToJson for Str {
+    fn encode_json(&self, flags: i64, _depth: usize, _max_depth: i64, out: &mut Vec<u8>) -> Result<(), RtError> {
+        encode_str(self.as_bytes(), flags, out)
+    }
+}
+impl ToJson for ArrayKey {
+    fn encode_json(&self, flags: i64, depth: usize, max_depth: i64, out: &mut Vec<u8>) -> Result<(), RtError> {
+        match self {
+            ArrayKey::Int(i) => i.encode_json(flags, depth, max_depth, out),
+            ArrayKey::Str(s) => s.encode_json(flags, depth, max_depth, out),
+        }
+    }
+}
+impl ToJson for crate::error::Never {
+    fn encode_json(&self, _flags: i64, _depth: usize, _max_depth: i64, _out: &mut Vec<u8>) -> Result<(), RtError> {
+        match *self {}
+    }
+}
+impl ToJson for crate::conv::Scalar {
+    fn encode_json(&self, flags: i64, depth: usize, max_depth: i64, out: &mut Vec<u8>) -> Result<(), RtError> {
+        encode(&self.clone().to_mixed(), flags, depth, max_depth, out)
+    }
+}
+impl ToJson for crate::conv::OptValue {
+    fn encode_json(&self, flags: i64, depth: usize, max_depth: i64, out: &mut Vec<u8>) -> Result<(), RtError> {
+        encode(&self.clone().to_mixed(), flags, depth, max_depth, out)
+    }
+}
+impl ToJson for crate::conv::Num {
+    fn encode_json(&self, flags: i64, depth: usize, max_depth: i64, out: &mut Vec<u8>) -> Result<(), RtError> {
+        encode(&self.to_mixed(), flags, depth, max_depth, out)
+    }
+}
+impl<T: ToJson> ToJson for Option<T> {
+    fn encode_json(&self, flags: i64, depth: usize, max_depth: i64, out: &mut Vec<u8>) -> Result<(), RtError> {
+        match self {
+            None => {
+                out.extend_from_slice(b"null");
+                Ok(())
+            }
+            Some(v) => v.encode_json(flags, depth, max_depth, out),
+        }
+    }
+}
+impl<T: ToJson + Clone> ToJson for List<T> {
+    fn encode_json(&self, flags: i64, depth: usize, max_depth: i64, out: &mut Vec<u8>) -> Result<(), RtError> {
+        let items: Vec<&dyn ToJson> = self.iter().map(|v| v as &dyn ToJson).collect();
+        encode_seq(&items, flags, depth, max_depth, out)
+    }
+}
+impl<K: JsonKey + MapKey, V: ToJson + Clone> ToJson for Map<K, V> {
+    fn encode_json(&self, flags: i64, depth: usize, max_depth: i64, out: &mut Vec<u8>) -> Result<(), RtError> {
+        if flags & FORCE_OBJECT == 0 && self.is_list() {
+            let items: Vec<&dyn ToJson> = self.iter().map(|(_, v)| v as &dyn ToJson).collect();
+            return encode_seq(&items, flags, depth, max_depth, out);
+        }
+        let keys: Vec<Vec<u8>> = self.iter().map(|(k, _)| k.json_key()).collect();
+        let fields: Vec<(&[u8], &dyn ToJson)> = keys.iter().zip(self.iter()).map(|(k, (_, v))| (k.as_slice(), v as &dyn ToJson)).collect();
+        encode_fields(&fields, flags, depth, max_depth, out)
+    }
+}
+
+/// `json_encode()` of a typed value.
+pub fn json_encode_typed<T: ToJson + ?Sized>(v: &T, flags: i64, depth: i64) -> Result<Option<Str>, RtError> {
+    set_err(0, "No error");
+    let mut out = Vec::new();
+    match v.encode_json(flags, 0, depth, &mut out) {
+        Ok(()) => Ok(Some(Str::from_vec(out))),
+        Err(e) => {
+            if flags & THROW != 0 {
+                Err(e)
+            } else {
+                Ok(None)
+            }
+        }
+    }
+}
+
+macro_rules! to_json_tuple {
+    ($($n:tt $t:ident),+) => {
+        impl<$($t: ToJson),+> ToJson for ($($t,)+) {
+            fn encode_json(&self, flags: i64, depth: usize, max_depth: i64, out: &mut Vec<u8>) -> Result<(), RtError> {
+                let items: Vec<&dyn ToJson> = vec![$(&self.$n as &dyn ToJson),+];
+                encode_seq(&items, flags, depth, max_depth, out)
+            }
+        }
+    };
+}
+to_json_tuple!(0 A);
+to_json_tuple!(0 A, 1 B);
+to_json_tuple!(0 A, 1 B, 2 C);
+to_json_tuple!(0 A, 1 B, 2 C, 3 D);
+to_json_tuple!(0 A, 1 B, 2 C, 3 D, 4 E);
+to_json_tuple!(0 A, 1 B, 2 C, 3 D, 4 E, 5 F);
+to_json_tuple!(0 A, 1 B, 2 C, 3 D, 4 E, 5 F, 6 G);
+to_json_tuple!(0 A, 1 B, 2 C, 3 D, 4 E, 5 F, 6 G, 7 H);
