@@ -134,7 +134,7 @@ class CodeLocation
      *
      * @see \Psalm\Storage\UnserializeMemoryUsageSuppressionTrait
      * @psalm-external-mutation-free
-     * @param array<string, mixed> $properties
+     * @param array<string, never> $properties objects are never unserialized in the compiled program
      */
     public function __unserialize(array $properties): void
     {

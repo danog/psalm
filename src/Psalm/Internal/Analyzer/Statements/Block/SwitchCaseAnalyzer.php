@@ -59,6 +59,7 @@ final class SwitchCaseAnalyzer
 {
     /**
      * @return null|false
+     * @param list<ScopeAnalyzer::ACTION_*> $case_actions
      */
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,

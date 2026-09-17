@@ -228,6 +228,9 @@ class TestCase extends BaseTestCase
      * @template TKey of array-key
      * @template TValue
      * @param array<TKey, TValue> $array
+     * @template TKey of array-key
+     * @template TValue
+     * @param array<TKey, TValue> $array
      */
     public static function assertArrayKeysAreStrings(array $array, string $message = ''): void
     {
@@ -236,6 +239,9 @@ class TestCase extends BaseTestCase
     }
 
     /**
+     * @template TKey of array-key
+     * @template TValue
+     * @param array<TKey, TValue> $array
      * @template TKey of array-key
      * @template TValue
      * @param array<TKey, TValue> $array
@@ -251,6 +257,9 @@ class TestCase extends BaseTestCase
      * @template TKey of array-key
      * @template TValue
      * @param array<TKey, TValue> $array
+     * @template TKey of array-key
+     * @template TValue
+     * @param array<TKey, TValue> $array
      */
     public static function assertArrayValuesAreArrays(array $array, string $message = ''): void
     {
@@ -259,6 +268,9 @@ class TestCase extends BaseTestCase
     }
 
     /**
+     * @template TKey of array-key
+     * @template TValue
+     * @param array<TKey, TValue> $array
      * @template TKey of array-key
      * @template TValue
      * @param array<TKey, TValue> $array

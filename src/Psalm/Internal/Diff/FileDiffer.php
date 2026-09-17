@@ -38,6 +38,17 @@ final class FileDiffer
     }
 
     /**
+     * One change of the diff: the removed range, the added range, the line delta and the added text.
+     *
+     * @return array{int, int, int, int, int, string}
+     * @psalm-pure
+     */
+    private static function change(int $a_start, int $a_end, int $b_start, int $b_end, int $line_diff, string $text): array
+    {
+        return [$a_start, $a_end, $b_start, $b_end, $line_diff, $text];
+    }
+
+    /**
      * @param list<string>    $a
      * @param list<string>    $b
      * @return array{0:non-empty-list<array<int, int>>, 1: int, 2: int}
@@ -146,7 +157,6 @@ final class FileDiffer
 
         $last_diff_type = null;
 
-        /** @var array{0:int, 1:int, 2:int, 3:int, 4:int, 5:string}|null */
         $last_change = null;
 
         $changes = [];
@@ -161,8 +171,9 @@ final class FileDiffer
             }
 
             if ($diff_type === DiffElem::TYPE_REMOVE) {
-                /** @var string $diff_elem->old */
-                $diff_text = $diff_elem->old . "\n";
+                $old_line = $diff_elem->old;
+                assert(is_string($old_line));
+                $diff_text = $old_line . "\n";
 
                 $text_length = strlen($diff_text);
 
@@ -170,31 +181,18 @@ final class FileDiffer
 
                 if ($last_change === null) {
                     ++$i;
-                    $last_change = [
-                        $a_offset,
-                        $a_offset + $text_length,
-                        $b_offset,
-                        $b_offset,
-                        $line_diff,
-                        '',
-                    ];
+                    $last_change = self::change($a_offset, $a_offset + $text_length, $b_offset, $b_offset, $line_diff, '');
                     $changes[$i - 1] = $last_change;
                 } else {
-                    $last_change = [
-                        $last_change[0],
-                        $last_change[1] + $text_length,
-                        $last_change[2],
-                        $last_change[3],
-                        $line_diff,
-                        $last_change[5],
-                    ];
+                    $last_change = self::change($last_change[0], $last_change[1] + $text_length, $last_change[2], $last_change[3], $line_diff, $last_change[5]);
                     $changes[$i - 1] = $last_change;
                 }
 
                 $a_offset += $text_length;
             } elseif ($diff_type === DiffElem::TYPE_ADD) {
-                /** @var string $diff_elem->new */
-                $diff_text = $diff_elem->new . "\n";
+                $new_line = $diff_elem->new;
+                assert(is_string($new_line));
+                $diff_text = $new_line . "\n";
 
                 $text_length = strlen($diff_text);
 
@@ -202,34 +200,20 @@ final class FileDiffer
 
                 if ($last_change === null) {
                     ++$i;
-                    $last_change = [
-                        $a_offset,
-                        $a_offset,
-                        $b_offset,
-                        $b_offset + $text_length,
-                        $line_diff,
-                        $diff_text,
-                    ];
+                    $last_change = self::change($a_offset, $a_offset, $b_offset, $b_offset + $text_length, $line_diff, $diff_text);
                     $changes[$i - 1] = $last_change;
                 } else {
-                    $last_change = [
-                        $last_change[0],
-                        $last_change[1],
-                        $last_change[2],
-                        $last_change[3] + $text_length,
-                        $line_diff,
-                        $last_change[5] . $diff_text,
-                    ];
+                    $last_change = self::change($last_change[0], $last_change[1], $last_change[2], $last_change[3] + $text_length, $line_diff, $last_change[5] . $diff_text);
                     $changes[$i - 1] = $last_change;
                 }
 
                 $b_offset += $text_length;
             } elseif ($diff_type === DiffElem::TYPE_REPLACE) {
-                /** @var string $diff_elem->old */
-                $old_diff_text = $diff_elem->old . "\n";
-
-                /** @var string $diff_elem->new */
-                $new_diff_text = $diff_elem->new . "\n";
+                $old_line = $diff_elem->old;
+                $new_line = $diff_elem->new;
+                assert(is_string($old_line) && is_string($new_line));
+                $old_diff_text = $old_line . "\n";
+                $new_diff_text = $new_line . "\n";
 
                 $old_text_length = strlen($old_diff_text);
                 $new_text_length = strlen($new_diff_text);
@@ -251,19 +235,10 @@ final class FileDiffer
 
                 if ($last_change === null || $j) {
                     ++$i;
-                    $last_change = [
-                        $a_offset,
-                        $a_offset + $old_text_length,
-                        $b_offset,
-                        $b_offset + $new_text_length,
-                        $line_diff,
-                        $new_diff_text,
-                    ];
+                    $last_change = self::change($a_offset, $a_offset + $old_text_length, $b_offset, $b_offset + $new_text_length, $line_diff, $new_diff_text);
                     $changes[$i - 1] = $last_change;
                 } else {
-                    $last_change[1] += $old_text_length;
-                    $last_change[3] += $new_text_length;
-                    $last_change[5] .= $new_diff_text;
+                    $last_change = self::change($last_change[0], $last_change[1] + $old_text_length, $last_change[2], $last_change[3] + $new_text_length, $last_change[4], $last_change[5] . $new_diff_text);
                     $changes[$i - 1] = $last_change;
                 }
 

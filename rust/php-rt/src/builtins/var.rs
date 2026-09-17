@@ -74,6 +74,13 @@ fn var_export_inner(m: &Mixed, indent: usize, out: &mut Vec<u8>) {
         Mixed::Closure(_) => out.extend_from_slice(b"\\Closure::__set_state(array(\n))"),
     }
 }
+pub fn print_r_str(s: &Str, ret: bool) -> Str {
+    if !ret {
+        crate::output::echo(s.as_bytes());
+        return Str::empty();
+    }
+    s.clone()
+}
 pub fn var_export_str(s: &Str, ret: bool) -> Str {
     var_export(&Mixed::Str(s.clone()), ret)
 }

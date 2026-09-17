@@ -376,6 +376,7 @@ final class Context
      *
      * @param  bool        $has_leaving_statements   whether or not the parent scope is abandoned between
      *                                               $start_context and $end_context
+     * @param  array<int, string>  $vars_to_update
      * @param  array<string, bool>  $updated_vars
      */
     public function update(

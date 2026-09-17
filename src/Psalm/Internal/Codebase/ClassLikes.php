@@ -2603,6 +2603,9 @@ final class ClassLikes
         }
     }
 
+    /**
+     * @param array<string, true> $visited_constant_ids
+     */
     private function getConstantType(
         ClassLikeStorage $class_like_storage,
         string $constant_name,

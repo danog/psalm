@@ -212,6 +212,10 @@ pub fn get_defined_functions(user_functions: &[&'static str]) -> Map<Str, List<S
     m.insert(Str::from_static("user"), user);
     m
 }
+/// `sapi_windows_cp_is_utf8()`: the runtime's console is UTF-8.
+pub fn sapi_windows_cp_is_utf8() -> bool {
+    true
+}
 pub fn opcache_get_status() -> Option<Mixed> {
     None
 }
