@@ -11,8 +11,6 @@ use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\StaticCall;
-use PhpParser\Node\Name;
-use PhpParser\Node\Stmt\Return_;
 use PhpParser\NodeAbstract;
 use Psalm\NodeTypeProvider;
 use Psalm\Storage\Assertion;
@@ -49,18 +47,12 @@ final class NodeDataProvider implements NodeTypeProvider
         $this->node_if_false_assertions = new SplObjectStorage();
     }
 
-    /**
-     * @param Expr|Name|Return_ $node
-     */
     #[Override]
     public function setType(NodeAbstract $node, Union $type): void
     {
         $this->node_types[$node] = $type;
     }
 
-    /**
-     * @param Expr|Name|Return_ $node
-     */
     #[Override]
     public function getType(NodeAbstract $node): ?Union
     {
