@@ -365,6 +365,8 @@ final class ConstantTypeResolver
 
     /**
      * Note: This takes an array, but any array should only contain other arrays and scalars.
+     *
+     * @param array<array-key, scalar|null|array<array-key, scalar|null|array<array-key, scalar|null>>>|string|int|float|bool|UnitEnum|null $value
      */
     public static function getLiteralTypeFromScalarValue(array|string|int|float|bool|UnitEnum|null $value): Atomic
     {

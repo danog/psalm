@@ -55,6 +55,7 @@
             <file name="src/Psalm/Internal/Cli/Plugin.php"/>
             <file name="src/Psalm/Internal/Cli/LanguageServer.php"/>
             <file name="src/Psalm/Internal/Cli/Refactor.php"/>
+            <file name="src/Psalm/Internal/Cli/Review.php"/>
             <directory name="vendor/amphp"/>
             <directory name="vendor/symfony"/>
             <file name="vendor/composer/autoload_classmap.php"/>

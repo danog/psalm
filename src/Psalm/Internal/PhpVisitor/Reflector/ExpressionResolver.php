@@ -525,11 +525,8 @@ final class ExpressionResolver
             && isset($function->getArgs()[0])
             && ($const_name_node = $function->getArgs()[0]->value) instanceof PhpParser\Node\Scalar\String_
         ) {
-            $predefined_constants = get_defined_constants(true);
-            if (isset($predefined_constants['user'])) {
-                unset($predefined_constants['user']);
-            }
-            $predefined_constants = array_merge(...array_values($predefined_constants));
+            // the runtime's own (non-user) constants
+            $predefined_constants = get_defined_constants();
 
             return isset($predefined_constants[$const_name_node->value]);
         }

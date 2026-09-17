@@ -304,6 +304,8 @@ final class DocblockParser
     }
 
     /**
+     * @template T
+     * @param array<array-key, T> $arr
      * @psalm-assert-if-true list<non-empty-string> $arr
      * @psalm-pure
      */

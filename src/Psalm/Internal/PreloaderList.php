@@ -704,7 +704,6 @@ final class PreloaderList {
         \Psalm\Internal\Cli\Plugin::class,
         \Psalm\Internal\Cli\Psalm::class,
         \Psalm\Internal\Cli\Psalter::class,
-        \Psalm\Internal\Cli\Review::class,
         \Psalm\Internal\Codebase\Analyzer::class,
         \Psalm\Internal\Codebase\AssertionsFromInheritanceResolver::class,
         \Psalm\Internal\Codebase\ClassConstantByWildcardResolver::class,
