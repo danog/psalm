@@ -1933,6 +1933,23 @@ final class Program
             || ($storage->defining_fqcln !== null && $this->codebase->classlike_storage_provider->has($storage->defining_fqcln)
                 && $this->codebase->classlike_storage_provider->get($storage->defining_fqcln)->final);
         $this->last_generics = $generic_ok ? TypeMapper::genericNamesOf($storage) : [];
+        if ($generic_ok && $storage instanceof MethodStorage && $storage->defining_fqcln !== null
+            && $this->codebase->classlike_storage_provider->has($storage->defining_fqcln)
+        ) {
+            // the class-level templates of a final class (no Rust struct generics exist for them) become generics
+            // of each method whose signature mentions them: `Future<T>::await(): T` returns a G_T the call site
+            // narrows to Psalm's resolved type
+            $class_storage = $this->codebase->classlike_storage_provider->get($storage->defining_fqcln);
+            if ($class_storage->final && !$class_storage->abstract) {
+                foreach ($class_storage->template_types ?? [] as $name => $defs) {
+                    foreach ($defs as $bound) {
+                        if ($bound->isMixed() && !isset($this->last_generics[$name])) {
+                            $this->last_generics[$name] = 'G_' . preg_replace('/[^A-Za-z0-9_]/', '_', $name);
+                        }
+                    }
+                }
+            }
+        }
         $this->types->generic_names = $this->last_generics;
         $param_types = [];
         $fn = ($storage instanceof \Psalm\Storage\MethodStorage && $storage->defining_fqcln !== null ? $storage->defining_fqcln . '::' : '') . ($storage->cased_name ?? '{closure}');
@@ -2025,6 +2042,24 @@ final class Program
                 }
             }
             $return_type = RustType::rtGeneric('Generator', [$key, $val]);
+        }
+        // a generic no parameter or the return mentions cannot be inferred at call sites: dropped
+        if ($this->last_generics !== []) {
+            $texts = array_map(static fn(RustType $t) => $t->toRust(), $param_types);
+            $texts[] = $return_type->toRust();
+            foreach ($this->last_generics as $name => $g) {
+                $used = false;
+                foreach ($texts as $text) {
+                    if (preg_match('/\b' . preg_quote($g, '/') . '\b/', $text)) {
+                        $used = true;
+                        break;
+                    }
+                }
+                if (!$used) {
+                    unset($this->last_generics[$name]);
+                }
+            }
+            $this->types->generic_names = $this->last_generics;
         }
     }
 
