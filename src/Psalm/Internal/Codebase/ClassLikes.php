@@ -1791,6 +1791,7 @@ final class ClassLikes
 
     /**
      * @param ReflectionProperty::IS_PUBLIC|ReflectionProperty::IS_PROTECTED|ReflectionProperty::IS_PRIVATE $visibility
+     * @param array<string, true> $visited_constant_ids
      */
     public function getClassConstantType(
         string $class_name,

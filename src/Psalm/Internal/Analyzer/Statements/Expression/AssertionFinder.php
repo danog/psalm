@@ -3242,7 +3242,7 @@ final class AssertionFinder
             $source,
         );
 
-        /** @var PhpParser\Node\Scalar\String_ $string_expr */
+        assert($string_expr instanceof PhpParser\Node\Scalar\String_);
         $var_type = $string_expr->value;
 
         if (!isset(ClassLikeAnalyzer::GETTYPE_TYPES[$var_type])) {

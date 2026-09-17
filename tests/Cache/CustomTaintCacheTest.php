@@ -191,6 +191,7 @@ final class CustomTaintCacheTest extends TestCase
      * Answer taint-registration requests on $channel through $registry's single registry, like Pool does.
      *
      * @param Channel<string, array{id: int|null, count: int}> $channel
+     * @return Future<null>
      */
     private function pumpTaintRequests(Channel $channel, Codebase $registry): Future
     {

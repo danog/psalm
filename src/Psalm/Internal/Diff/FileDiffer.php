@@ -180,8 +180,14 @@ final class FileDiffer
                     ];
                     $changes[$i - 1] = $last_change;
                 } else {
-                    $last_change[1] += $text_length;
-                    $last_change[4] = $line_diff;
+                    $last_change = [
+                        $last_change[0],
+                        $last_change[1] + $text_length,
+                        $last_change[2],
+                        $last_change[3],
+                        $line_diff,
+                        $last_change[5],
+                    ];
                     $changes[$i - 1] = $last_change;
                 }
 
@@ -206,10 +212,14 @@ final class FileDiffer
                     ];
                     $changes[$i - 1] = $last_change;
                 } else {
-                    $last_change[3] += $text_length;
-                    $last_change[4] = $line_diff;
-                    $last_change[5] .= $diff_text;
-
+                    $last_change = [
+                        $last_change[0],
+                        $last_change[1],
+                        $last_change[2],
+                        $last_change[3] + $text_length,
+                        $line_diff,
+                        $last_change[5] . $diff_text,
+                    ];
                     $changes[$i - 1] = $last_change;
                 }
 

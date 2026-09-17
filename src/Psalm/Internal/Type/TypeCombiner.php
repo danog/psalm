@@ -1356,18 +1356,15 @@ final class TypeCombiner
      */
     private static function getSharedTypes(TypeCombination $combination, Codebase $codebase): array
     {
-        /** @var array<string, bool>|null */
         $shared_classlikes = null;
 
         if ($combination->strings) {
             foreach ($combination->strings as $string_type) {
                 $classlikes = self::getClassLikes($codebase, $string_type->value);
 
-                if ($shared_classlikes === null) {
-                    $shared_classlikes = $classlikes;
-                } elseif ($shared_classlikes) {
-                    $shared_classlikes = array_intersect_key($shared_classlikes, $classlikes);
-                }
+                $shared_classlikes = $shared_classlikes === null
+                    ? $classlikes
+                    : self::intersectClassLikes($shared_classlikes, $classlikes);
             }
         }
 
@@ -1376,16 +1373,27 @@ final class TypeCombiner
                 if ($value_type instanceof TNamedObject) {
                     $classlikes = self::getClassLikes($codebase, $value_type->value);
 
-                    if ($shared_classlikes === null) {
-                        $shared_classlikes = $classlikes;
-                    } elseif ($shared_classlikes) {
-                        $shared_classlikes = array_intersect_key($shared_classlikes, $classlikes);
-                    }
+                    $shared_classlikes = $shared_classlikes === null
+                        ? $classlikes
+                        : self::intersectClassLikes($shared_classlikes, $classlikes);
                 }
             }
         }
 
         return $shared_classlikes ?: [];
+    }
+
+    /**
+     * The class-likes shared so far narrowed by another type's: an empty set stays empty.
+     *
+     * @param array<string, true> $shared
+     * @param array<string, true> $classlikes
+     * @return array<string, true>
+     * @psalm-pure
+     */
+    private static function intersectClassLikes(array $shared, array $classlikes): array
+    {
+        return $shared ? array_intersect_key($shared, $classlikes) : $shared;
     }
 
     /**
