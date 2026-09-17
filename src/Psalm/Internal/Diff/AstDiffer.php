@@ -93,7 +93,7 @@ abstract class AstDiffer
                 $prevK = $k - 1;
             }
 
-            $prevX = $v[$prevK];
+            $prevX = $v[$prevK] ?? 0;
             $prevY = $prevX - $prevK;
 
             while ($x > $prevX && $y > $prevY) {

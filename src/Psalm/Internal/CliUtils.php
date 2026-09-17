@@ -482,7 +482,7 @@ final class CliUtils
         file_put_contents($config_file, $amended_config_file_contents);
     }
 
-    /** @param array<string, bool|string|list<string|false>> $options 
+    /**
      * @param CliOptions $options
      */
     public static function getPathToConfig(array $options): ?string
@@ -520,7 +520,7 @@ final class CliUtils
         }
     }
 
-    /** @param array<string, bool|string|list<string|false>> $options 
+    /**
      * @param CliOptions $options
      */
     public static function initPhpVersion(array $options, Config $config, ProjectAnalyzer $project_analyzer): void

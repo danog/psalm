@@ -170,7 +170,7 @@ final class Config
     ];
 
     /**
-     * @var array
+     * @var list<string>
      */
     private const MIXED_ISSUES = [
         'MixedArgument',

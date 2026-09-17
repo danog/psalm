@@ -440,7 +440,7 @@ final class Psalm
     }
 
     /** @return int<1, max> */
-    /** @param array<string, bool|string|list<string|false>> $options 
+    /**
      * @param CliOptions $options
      */
     public static function getThreads(array $options, Config $config, bool $in_ci, bool $for_scan): int
@@ -478,10 +478,8 @@ final class Psalm
     }
 
     /**
-     * @psalm-pure
-     * @param array<string, bool|string|list<string|false>> $options
-     
      * @param CliOptions $options
+     * @psalm-pure
      */
     private static function initOutputFormat(array $options): string
     {
@@ -509,10 +507,8 @@ final class Psalm
     }
 
     /**
-     * @psalm-pure
-     * @param array<string, bool|string|list<string|false>> $options
-     
      * @param CliOptions $options
+     * @psalm-pure
      */
     private static function initShowInfo(array $options): bool
     {
@@ -521,7 +517,7 @@ final class Psalm
             : false;
     }
 
-    /** @param array<string, bool|string|list<string|false>> $options 
+    /**
      * @param CliOptions $options
      */
     /*private static function initIsDiff(array $options): bool
@@ -639,8 +635,9 @@ final class Psalm
         }
     }
 
-    /** @param list<ClassLoader> $autoloaders 
+    /**
      * @param CliOptions $options
+     * @param list<ClassLoader> $autoloaders
      */
     private static function loadConfig(
         ?string $path_to_config,
@@ -674,7 +671,7 @@ final class Psalm
         return $config;
     }
 
-    /** @param array<string, bool|string|list<string|false>> $options 
+    /**
      * @param CliOptions $options
      */
     private static function initProgress(array $options, Config $config, bool $in_ci): Progress
@@ -704,7 +701,7 @@ final class Psalm
         return $progress;
     }
 
-    /** @param array<string, bool|string|list<string|false>> $options 
+    /**
      * @param CliOptions $options
      */
     private static function initProviders(array $options, Config $config, string $current_dir): Providers
@@ -737,8 +734,6 @@ final class Psalm
     /**
      * @param CliOptions $options
      * @return array<string,array<string,array{o:int, s: list<string>}>>
-     
-     * @param CliOptions $options
      */
     private static function generateBaseline(
         array $options,
@@ -783,13 +778,11 @@ final class Psalm
     }
 
     /**
-     * @return array<string,array<string,array{o:int, s: list<string>}>>
-     * @param array<string, bool|string|list<string|false>> $options
-     
      * @param CliOptions $options
+     * @return array<string,array<string,array{o:int, s: list<string>}>>
      */
     /**
-     * @param array<string, string|false|list<string|false>> $options
+     * @param CliOptions $options
      * @return array<string, array<string, array{o: int, s: list<string>}>>
      */
     private static function updateBaseline(array $options, Config $config): array
@@ -905,7 +898,9 @@ final class Psalm
         exit('Config file created successfully. Please re-run psalm.' . PHP_EOL);
     }
 
-    /** @param CliOptions $options */
+    /**
+     * @param CliOptions $options
+     */
     private static function initStdoutReportOptions(
         array $options,
         bool $show_info,
@@ -966,7 +961,7 @@ final class Psalm
         exit;
     }
 
-    /** @param array<string, bool|string|list<string|false>> $options 
+    /**
      * @param CliOptions $options
      */
     private static function getCurrentDir(array $options): string
@@ -996,8 +991,12 @@ final class Psalm
         return $current_dir;
     }
 
-    /** @param CliOptions $options */
-    /** @param array<string, string|false|list<string|false>> $options */
+    /**
+     * @param CliOptions $options
+     */
+    /**
+     * @param CliOptions $options
+     */
     private static function restart(
         array $options,
         bool $force_jit,
@@ -1088,7 +1087,7 @@ final class Psalm
     }
 
     /** @param array<int, string> $argv */
-    /** @param array<string, bool|string|list<string|false>> $options 
+    /**
      * @param CliOptions $options
      */
     private static function forwardCliCall(array $options, array $argv): void
@@ -1120,7 +1119,7 @@ final class Psalm
     }
 
     /**
-     * @param array<string, false|list<string|false>|string> $options
+     * @param CliOptions $options
      * @param-out array<string, false|list<string|false>|string> $options
      */
     private static function syncShortOptions(array &$options): void
@@ -1151,11 +1150,10 @@ final class Psalm
     }
 
     /**
+     * @param CliOptions $options
      * @param array<int, string> $args
      * @param list<ClassLoader> $autoloaders
      * @return array{Config,?string}
-     
-     * @param CliOptions $options
      */
     private static function initConfig(
         string $current_dir,
@@ -1192,10 +1190,9 @@ final class Psalm
     }
 
     /**
+     * @param CliOptions $options
      * @param ?list<string> $paths_to_check
      * @return array<string,array<string,array{o:int, s: list<string>}>>
-     
-     * @param CliOptions $options
      */
     private static function initBaseline(
         array $options,
@@ -1261,7 +1258,7 @@ final class Psalm
         return $issue_baseline;
     }
 
-    /** @param array<string, bool|string|list<string|false>> $options 
+    /**
      * @param CliOptions $options
      */
     private static function storeFlowGraph(array $options, ProjectAnalyzer $project_analyzer): void
@@ -1281,11 +1278,9 @@ final class Psalm
     }
 
     /**
+     * @param CliOptions $options
      * @return false|'always'|'auto'
      * @psalm-mutation-free
-     * @param array<string, bool|string|list<string|false>> $options
-     
-     * @param CliOptions $options
      */
     private static function shouldFindUnusedCode(array $options, Config $config): bool|string
     {
@@ -1308,10 +1303,8 @@ final class Psalm
     }
 
     /**
-     * @psalm-pure
-     * @param array<string, bool|string|list<string|false>> $options
-     
      * @param CliOptions $options
+     * @psalm-pure
      */
     private static function shouldRunTaintAnalysis(array $options): bool
     {
@@ -1321,9 +1314,8 @@ final class Psalm
     }
 
     /**
-     * @param false|'always'|'auto' $find_unused_code
-     
      * @param CliOptions $options
+     * @param false|'always'|'auto' $find_unused_code
      */
     private static function configureProjectAnalyzer(
         array $options,
@@ -1374,11 +1366,11 @@ final class Psalm
         }
     }
 
-    /** @param array<string, bool|string|list<string|false>> $options 
+    /**
      * @param CliOptions $options
      */
     /**
-     * @param array<string, string|false|list<string|false>> $options
+     * @param CliOptions $options
      * @param list<string> $plugins
      */
     private static function configureShepherd(Config $config, array $options, array &$plugins): void
@@ -1403,7 +1395,9 @@ final class Psalm
         }
     }
 
-    /** @param CliOptions $options */
+    /**
+     * @param CliOptions $options
+     */
     private static function generateStubs(
         array $options,
         Providers $providers,
