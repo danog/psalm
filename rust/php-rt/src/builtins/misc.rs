@@ -311,7 +311,8 @@ pub fn filter_var(v: &Mixed, filter: i64, _options: Mixed) -> Mixed {
         _ => Mixed::Str(s),
     }
 }
-pub fn getopt(_short: &Str, _long: List<Mixed>) -> Map<ArrayKey, Mixed> {
+/// The compiled program takes no command-line options through `getopt()` (its arguments are passed as `$argv`).
+pub fn getopt(_short: &Str, _long: List<Str>) -> Map<Str, crate::conv::OptValue> {
     Map::new()
 }
 /// `hrtime()`: (seconds, nanoseconds) of a monotonic clock.

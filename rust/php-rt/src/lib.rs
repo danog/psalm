@@ -50,7 +50,7 @@ pub use ops::*;
 pub use cast::{CastTo, cast, PhpValue, gcast};
 pub use support::*;
 pub use containers::*;
-pub use conv::{Num, Scalar};
+pub use conv::{Num, OptValue, Scalar};
 pub use output::*;
 pub use builtins::*;
 

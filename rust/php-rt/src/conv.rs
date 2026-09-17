@@ -303,3 +303,69 @@ impl crate::traits::ToNum for Scalar {
         crate::support::to_num(&self.clone().to_mixed())
     }
 }
+
+/// A `getopt()` value: an option's argument, `false` for a flag, or the list of a repeated option.
+#[derive(Clone, Debug)]
+pub enum OptValue {
+    Str(crate::string::Str),
+    False,
+    List(crate::list::List<OptValue>),
+}
+impl OptValue {
+    pub fn to_mixed(self) -> crate::mixed::Mixed {
+        match self {
+            OptValue::Str(s) => crate::mixed::Mixed::Str(s),
+            OptValue::False => crate::mixed::Mixed::Bool(false),
+            OptValue::List(l) => {
+                let mut m: crate::map::Map<crate::key::ArrayKey, crate::mixed::Mixed> = crate::map::Map::new();
+                for (i, v) in l.into_iter().enumerate() {
+                    m.insert(crate::key::ArrayKey::Int(i as i64), v.to_mixed());
+                }
+                crate::mixed::Mixed::Arr(m)
+            }
+        }
+    }
+}
+impl crate::cast::CastTo<crate::mixed::Mixed> for OptValue {
+    fn cast_to(self) -> crate::mixed::Mixed {
+        self.to_mixed()
+    }
+}
+impl crate::traits::Identical for OptValue {
+    fn identical(&self, other: &Self) -> bool {
+        crate::traits::Identical::identical(&self.clone().to_mixed(), &other.clone().to_mixed())
+    }
+}
+impl crate::traits::PhpCmp for OptValue {
+    fn php_cmp(&self, other: &Self) -> std::cmp::Ordering {
+        crate::traits::PhpCmp::php_cmp(&self.clone().to_mixed(), &other.clone().to_mixed())
+    }
+}
+impl crate::traits::Truthy for OptValue {
+    fn truthy(&self) -> bool {
+        match self {
+            OptValue::Str(s) => crate::traits::Truthy::truthy(s),
+            OptValue::False => false,
+            OptValue::List(l) => l.len() > 0,
+        }
+    }
+}
+impl crate::traits::ToStr for OptValue {
+    fn to_php_str(&self) -> crate::string::Str {
+        crate::traits::ToStr::to_php_str(&self.clone().to_mixed())
+    }
+}
+impl crate::traits::PhpKind for OptValue {
+    fn php_kind(&self) -> crate::traits::Kind {
+        match self {
+            OptValue::Str(_) => crate::traits::Kind::Str,
+            OptValue::False => crate::traits::Kind::Bool,
+            OptValue::List(_) => crate::traits::Kind::Arr,
+        }
+    }
+}
+impl crate::traits::InstanceOfName for OptValue {
+    fn php_instance_of(&self, _name: &[u8]) -> bool {
+        false
+    }
+}
