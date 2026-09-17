@@ -371,7 +371,6 @@ pub trait PhpValue:
     + crate::traits::ToStr
     + crate::traits::PhpKind
     + crate::traits::InstanceOfName
-    + CastTo<crate::mixed::Mixed>
     + Send
     + Sync
     + 'static
@@ -386,7 +385,6 @@ impl<T> PhpValue for T where
         + crate::traits::ToStr
         + crate::traits::PhpKind
         + crate::traits::InstanceOfName
-        + CastTo<crate::mixed::Mixed>
         + Send
         + Sync
         + 'static
