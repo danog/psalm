@@ -921,8 +921,10 @@ trait LValueTrait
     /** A local whose storage type is Mixed or nullable Mixed (a retyping candidate). */
     private static function isMixedLocal(RustType $t): bool
     {
-        // a Mixed anywhere in the local's type (`list<mixed>` from a call on a mixed value) is a retyping candidate
-        return $t->containsMixed();
+        // a Mixed anywhere in the local's type (`list<mixed>` from a call on a mixed value) is a retyping
+        // candidate, and so is an empty container: Psalm keeps a property narrowed to `array<never, never>`
+        // across the call that fills it, so the local it is read into must be typed by what it is assigned
+        return $t->containsMixed() || $t->isEmptyIterable();
     }
 
     /**

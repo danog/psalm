@@ -907,9 +907,46 @@ function case_int_or_false_arith(): string
     return (string) $end;
 }
 
+/** @return class-string */
+function some_class(): string
+{
+    return \ItemBox::class;
+}
+
+function case_sym_str_funcs(): string
+{
+    $c = some_class();
+    $a = str_replace('Item', 'X', $c);
+    $b = (string) preg_replace('/^Item/', 'Y', $c, 1);
+    return $a . '|' . $b;
+}
+
+class MutCtx {
+    /** @var array<string, bool> */
+    public array $ids = [];
+}
+
+function fill_ctx(MutCtx $c): void
+{
+    $c->ids['a'] = true;
+}
+
+function case_prop_empty_narrow(): string
+{
+    $c = new MutCtx();
+    $c->ids = [];
+    fill_ctx($c);
+    $got = $c->ids;
+    $n = count($got);
+    $c->ids = $got;
+    return (string) $n . ':' . count($c->ids);
+}
+
 function run_all(): string
 {
-    return check('int_or_false_arith', case_int_or_false_arith(), '4')
+    return check('prop_empty_narrow', case_prop_empty_narrow(), '1:1')
+        . check('sym_str_funcs', case_sym_str_funcs(), 'XBox|YBox')
+        . check('int_or_false_arith', case_int_or_false_arith(), '4')
         . check('key_narrow', case_key_narrow(), '3F7')
         . check('nullable_list_prop', case_nullable_list_prop(), '2:1')
         . check('union_base_member', case_union_base_member(), 'name:a|node|nullable|')

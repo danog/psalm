@@ -1595,7 +1595,7 @@ final class Builtins
             // string or array subject decided at runtime
             return new Val('str_replace_m(&' . $b->casts->convert($search->code, $search->type, RustType::mixed()) . ', &' . $b->casts->convert($replace->code, $replace->type, RustType::mixed()) . ', &' . $subject->code . ')', RustType::mixed());
         }
-        if ($st->kind !== RustType::STR) {
+        if (in_array($st->kind, [RustType::LIST, RustType::MAP, RustType::SHAPE, RustType::TUPLE], true)) {
             // array subject: map over values
             $c = $this->container($b, $args[2]->value);
             $inner = new Expr\FuncCall($call->name, [$args[0], $args[1], new Arg(new Expr\Variable('__sr'))], $call->getAttributes());
@@ -1607,7 +1607,7 @@ final class Builtins
             }
             return new Val('array_map_m(&' . $b->casts->convert($c->code, $c->type, RustType::map($c->type->params[0], RustType::str())) . ', |__sr: Str| { ' . $v->code . ' })', RustType::map($c->type->params[0], RustType::str()));
         }
-        $s = $subject->code;
+        $s = $b->casts->convert($subject->code, $st, RustType::str());
         if (isset($args[3])) {
             $place = $b->place($args[3]->value);
             return new Val('{ let mut __c: i64 = 0; let __r = str_replace_count(&' . $b->casts->convert($search->code, $search->type, RustType::str()) . ', &' . $b->casts->convert($replace->code, $replace->type, RustType::str()) . ', &' . $s . ', &mut __c); ' . $place->write($b->casts->convert('__c', RustType::int(), $place->type)) . ' __r }', RustType::str());
