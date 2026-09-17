@@ -1806,7 +1806,14 @@ trait ExprTrait
         }
         $t = $res;
         if ($t->kind === RustType::MIXED) {
-            $t = $this->commonType($this->inferredOrMixed($e->if), $this->inferredOrMixed($e->else), false);
+            // Psalm lost the type: join the branches' static types
+            $iv = $this->expr($e->if);
+            $ev = $this->expr($e->else);
+            $t = $this->commonType($iv->type, $ev->type, false);
+            if ($t->kind === RustType::MIXED) {
+                $t = $this->program->unionOfRust([$iv->type, $ev->type]) ?? $t;
+            }
+            return new Val('(if ' . $this->truthy($e->cond) . ' { ' . $this->casts->convert($iv->code, $iv->type, $t) . ' } else { ' . $this->casts->convert($ev->code, $ev->type, $t) . ' })', $t);
         }
         return new Val('(if ' . $this->truthy($e->cond) . ' { ' . $this->exprTo($e->if, $t) . ' } else { ' . $this->exprTo($e->else, $t) . ' })', $t);
     }

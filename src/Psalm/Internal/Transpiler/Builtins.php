@@ -614,6 +614,11 @@ final class Builtins
     {
         $v = $b->expr($args[0]->value);
         $t = $v->type;
+        if ($t->kind === RustType::OPTION && in_array($t->inner()->kind, [RustType::LIST, RustType::MAP, RustType::UNION, RustType::SHAPE], true)) {
+            // count(null) is a TypeError: the value must be present
+            $v = new Val('(match ' . $v->code . ' { Some(__cv) => __cv, None => panic!("count(): Argument #1 ($value) must be of type Countable|array, null given") })', $t->inner());
+            $t = $v->type;
+        }
         if ($t->kind === RustType::LIST || $t->kind === RustType::MAP) {
             return new Val($v->code . '.count()', RustType::int());
         }
