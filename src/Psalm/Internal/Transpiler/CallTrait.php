@@ -466,7 +466,7 @@ trait CallTrait
             $m = $cls !== null ? $this->program->findMethod($cls, '__invoke') : null;
             if ($m !== null) {
                 $argc = $this->args($args, $m->storage, $m->param_types, $m->declaring, $m->name, $m->borrow_params);
-                return $this->bindGenericResult(new Val($this->finishCall($callee->code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')' . ($m->throws ? '?' : '')), $m->return_type), $e, $m->param_types);
+                return $this->bindGenericResult(new Val($this->finishCall($callee->code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')' . ($m->throws ? '?' : '')), $m->return_type), $site, $m->param_types);
             }
         }
         $this->warn('call of ' . $t->toRust(), $site);

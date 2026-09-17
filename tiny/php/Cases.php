@@ -792,9 +792,40 @@ function case_object_eq(): string
     return implode(',', $out);
 }
 
+function case_declared_preg(): string
+{
+    $out = '';
+    $n = 0;
+    foreach (get_declared_classes() as $predefined_class) {
+        $predefined_class = (string) preg_replace('/^\\\\/', '', $predefined_class, 1);
+        if ($predefined_class === 'stdClass') {
+            $out .= strtolower($predefined_class);
+        }
+        $n++;
+    }
+    return $out . ($n > 0 ? '+' : '-');
+}
+
+final class Invokable
+{
+    public function __invoke(string $socket, int $n): string
+    {
+        return $socket . $n;
+    }
+}
+
+function case_invoke_object(): string
+{
+    $plugin = new Invokable();
+    $r = $plugin('sock', 3);
+    return $r;
+}
+
 function run_all(): string
 {
-    return check('nullable_union', case_nullable_union(), 'nullA7')
+    return check('invoke_object', case_invoke_object(), 'sock3')
+        . check('declared_preg', case_declared_preg(), 'stdclass+')
+        . check('nullable_union', case_nullable_union(), 'nullA7')
         . check('wildcard_const', case_wildcard_const(), 'set')
         . check('value_of', case_value_of(), 'HS')
         . check('return_move', case_return_move(), '534')

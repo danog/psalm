@@ -2160,7 +2160,7 @@ final class Builtins
         $rep = $b->expr($args[1]->value);
         $subj = $b->expr($args[2]->value);
         $limit = isset($args[3]) ? $b->exprTo($args[3]->value, RustType::int()) : '-1';
-        if ($subj->type->kind !== RustType::STR && $subj->type->kind !== RustType::OPTION) {
+        if (in_array($subj->type->kind, [RustType::LIST, RustType::MAP, RustType::SHAPE, RustType::TUPLE], true)) {
             $c = $this->container($b, $args[2]->value);
             $vt = RustType::str();
             $lst = $b->casts->convert($c->code, $c->type, $c->type->kind === RustType::LIST ? RustType::list($vt) : RustType::map($c->type->params[0], $vt));
