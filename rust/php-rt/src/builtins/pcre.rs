@@ -253,6 +253,44 @@ pub fn preg_match_groups_flags(pattern: &Str, subject: &Str, flags: i64, offset:
     }
 }
 
+fn opt_str_of(m: &Mixed) -> Option<Str> {
+    match m {
+        Mixed::Null => None,
+        other => Some(str_of(other)),
+    }
+}
+
+fn opt_offset_of(m: &Mixed) -> (Option<Str>, i64) {
+    match m {
+        Mixed::Arr(pair) => (
+            pair.get(&ArrayKey::Int(0)).and_then(opt_str_of),
+            match pair.get(&ArrayKey::Int(1)) {
+                Some(Mixed::Int(i)) => *i,
+                _ => -1,
+            },
+        ),
+        other => (opt_str_of(other), -1),
+    }
+}
+
+/// `preg_match` with PREG_OFFSET_CAPTURE: each capture as (text, offset).
+pub fn preg_match_offsets(pattern: &Str, subject: &Str, offset: i64) -> Result<(i64, Map<ArrayKey, (Str, i64)>), RtError> {
+    let (n, m) = preg_match_groups_flags(pattern, subject, 256, offset)?;
+    Ok((n, m.iter().map(|(k, v)| (k.clone(), offset_of(v))).collect()))
+}
+
+/// `preg_match` with PREG_UNMATCHED_AS_NULL: unmatched captures as None.
+pub fn preg_match_groups_null(pattern: &Str, subject: &Str, offset: i64) -> Result<(i64, Map<ArrayKey, Option<Str>>), RtError> {
+    let (n, m) = preg_match_groups_flags(pattern, subject, 512, offset)?;
+    Ok((n, m.iter().map(|(k, v)| (k.clone(), opt_str_of(v))).collect()))
+}
+
+/// `preg_match` with PREG_OFFSET_CAPTURE | PREG_UNMATCHED_AS_NULL.
+pub fn preg_match_offsets_null(pattern: &Str, subject: &Str, offset: i64) -> Result<(i64, Map<ArrayKey, (Option<Str>, i64)>), RtError> {
+    let (n, m) = preg_match_groups_flags(pattern, subject, 768, offset)?;
+    Ok((n, m.iter().map(|(k, v)| (k.clone(), opt_offset_of(v))).collect()))
+}
+
 pub fn preg_match_all(pattern: &Str, subject: &Str, flags: i64) -> Result<(i64, Map<ArrayKey, Mixed>), RtError> {
     let c = compile(pattern)?;
     let set_order = flags & 2 != 0;

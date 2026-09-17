@@ -12,6 +12,9 @@ use function json_encode;
 use const JSON_THROW_ON_ERROR;
 
 /** @group PluginManager */
+/**
+ * @psalm-type Package = array{name: string, type?: string, extra?: array{psalm: array{pluginClass: string}}}
+ */
 final class ComposerLockTest extends TestCase
 {
     /**
@@ -199,6 +202,7 @@ final class ComposerLockTest extends TestCase
 
     /**
      * @psalm-pure
+     * @return Package
      */
     private function pluginEntry(string $package_name, string $package_class): array
     {
@@ -215,8 +219,8 @@ final class ComposerLockTest extends TestCase
 
     /**
      * @psalm-pure
+     * @param array{packages?: list<Package>, packages-dev?: list<Package>} $data
      */
-    /** @param array<array-key, mixed> $data */
     private function jsonFile(array $data): string
     {
         return 'data:application/json,' . json_encode($data, JSON_THROW_ON_ERROR);

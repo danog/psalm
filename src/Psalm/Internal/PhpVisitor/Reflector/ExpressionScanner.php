@@ -267,8 +267,10 @@ final class ExpressionScanner
                 && $first_arg->name instanceof PhpParser\Node\Identifier
                 && strtolower($first_arg->name->name) === 'class'
             ) {
-                /** @var string */
-                $first_arg_value = $first_arg->class->attrs()->resolvedName;
+                $first_resolved = $first_arg->class->attrs()->resolvedName;
+                $first_arg_value = $first_resolved instanceof PhpParser\Node\Name
+                    ? $first_resolved->toString()
+                    : $first_resolved;
             } else {
                 $first_arg_value = null;
             }
@@ -280,8 +282,10 @@ final class ExpressionScanner
                 && $second_arg->name instanceof PhpParser\Node\Identifier
                 && strtolower($second_arg->name->name) === 'class'
             ) {
-                /** @var string */
-                $second_arg_value = $second_arg->class->attrs()->resolvedName;
+                $second_resolved = $second_arg->class->attrs()->resolvedName;
+                $second_arg_value = $second_resolved instanceof PhpParser\Node\Name
+                    ? $second_resolved->toString()
+                    : $second_resolved;
             } else {
                 $second_arg_value = null;
             }

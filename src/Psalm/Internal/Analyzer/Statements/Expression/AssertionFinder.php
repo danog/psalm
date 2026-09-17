@@ -2513,7 +2513,7 @@ final class AssertionFinder
             throw new UnexpectedValueException('$gettype_position value');
         }
 
-        /** @var PhpParser\Node\Expr\FuncCall $gettype_expr */
+        assert($gettype_expr instanceof PhpParser\Node\Expr\FuncCall);
         $var_name = ExpressionIdentifier::getExtendedVarId(
             $gettype_expr->getArgs()[0]->value,
             $this_class_name,
@@ -2579,7 +2579,7 @@ final class AssertionFinder
             throw new UnexpectedValueException('$gettype_position value');
         }
 
-        /** @var PhpParser\Node\Expr\FuncCall $get_debug_type_expr */
+        assert($get_debug_type_expr instanceof PhpParser\Node\Expr\FuncCall);
         $var_name = ExpressionIdentifier::getExtendedVarId(
             $get_debug_type_expr->getArgs()[0]->value,
             $this_class_name,
@@ -3235,7 +3235,7 @@ final class AssertionFinder
             throw new UnexpectedValueException('$gettype_position value');
         }
 
-        /** @var PhpParser\Node\Expr\FuncCall $gettype_expr */
+        assert($gettype_expr instanceof PhpParser\Node\Expr\FuncCall);
         $var_name = ExpressionIdentifier::getExtendedVarId(
             $gettype_expr->getArgs()[0]->value,
             $this_class_name,
@@ -3297,7 +3297,7 @@ final class AssertionFinder
             throw new UnexpectedValueException('$gettype_position value');
         }
 
-        /** @var PhpParser\Node\Expr\FuncCall $get_debug_type_expr */
+        assert($get_debug_type_expr instanceof PhpParser\Node\Expr\FuncCall);
         $var_name = ExpressionIdentifier::getExtendedVarId(
             $get_debug_type_expr->getArgs()[0]->value,
             $this_class_name,
@@ -3899,7 +3899,7 @@ final class AssertionFinder
                 throw new UnexpectedValueException('$count_equality_position value');
             }
 
-            /** @var PhpParser\Node\Expr\FuncCall $counted_expr */
+            assert($counted_expr instanceof PhpParser\Node\Expr\FuncCall);
             $var_name = ExpressionIdentifier::getExtendedVarId(
                 $counted_expr->getArgs()[0]->value,
                 $this_class_name,

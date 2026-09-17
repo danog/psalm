@@ -244,6 +244,25 @@ pub fn superglobal_set(name: &str, m: Map<Str, Mixed>) {
 }
 
 /// `global $x`: the script-level variable `x` (`$argv`/`$argc` come from the process arguments).
+/// `$argv`: the command line as a list of strings.
+pub fn argv() -> List<Str> {
+    match global_get("argv") {
+        Mixed::Arr(a) => List::from_vec(a.values().map(|v| match v {
+            Mixed::Str(s) => s.clone(),
+            other => crate::traits::ToStr::to_php_str(other),
+        }).collect()),
+        _ => List::new(),
+    }
+}
+
+/// `$argc`: the number of command line arguments.
+pub fn argc() -> i64 {
+    match global_get("argc") {
+        Mixed::Int(i) => i,
+        _ => argv().len() as i64,
+    }
+}
+
 pub fn global_get(name: &str) -> Mixed {
     GLOBALS.with(|g| {
         if let Some(v) = g.borrow().get(name) {

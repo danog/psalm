@@ -41,6 +41,28 @@ final class TIterable extends Atomic
         return '';
     }
 
+    /** @param array<lowercase-string, string> $aliased_classes */
+    #[Override]
+    protected function getNamespacedBase(
+        ?string $namespace,
+        array $aliased_classes,
+        ?string $this_class,
+        bool $use_phpdoc_format,
+    ): string {
+        return $this->value;
+    }
+
+    /** @param array<lowercase-string, string> $aliased_classes */
+    #[Override]
+    protected function getIntersectionNamespacedString(
+        ?string $namespace,
+        array $aliased_classes,
+        ?string $this_class,
+    ): string {
+        // the namespaced string of an iterable/array never carries intersections (as before: only named objects did)
+        return '';
+    }
+
     /**
      * @var array{Union, Union}
      */

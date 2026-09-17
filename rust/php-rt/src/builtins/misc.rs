@@ -204,18 +204,12 @@ pub const BUILTIN_FUNCTION_NAMES: &[&str] = &[
 
 /// `get_defined_functions()`: the runtime's builtins as `internal`, the compiled program's functions
 /// (a static table generated per crate) as `user`.
-pub fn get_defined_functions(user_functions: &[&'static str]) -> Map<ArrayKey, Mixed> {
-    let mut internal: Map<ArrayKey, Mixed> = Map::new();
-    for n in BUILTIN_FUNCTION_NAMES {
-        internal.push(Mixed::Str(Str::from_static(n)));
-    }
-    let mut user: Map<ArrayKey, Mixed> = Map::new();
-    for n in user_functions {
-        user.push(Mixed::Str(Str::from_static(n)));
-    }
-    let mut m: Map<ArrayKey, Mixed> = Map::new();
-    m.insert(ArrayKey::from(Str::from_static("internal")), Mixed::Arr(internal));
-    m.insert(ArrayKey::from(Str::from_static("user")), Mixed::Arr(user));
+pub fn get_defined_functions(user_functions: &[&'static str]) -> Map<Str, List<Str>> {
+    let internal: List<Str> = List::from_vec(BUILTIN_FUNCTION_NAMES.iter().map(|n| Str::from_static(n)).collect());
+    let user: List<Str> = List::from_vec(user_functions.iter().map(|n| Str::from_static(n)).collect());
+    let mut m: Map<Str, List<Str>> = Map::new();
+    m.insert(Str::from_static("internal"), internal);
+    m.insert(Str::from_static("user"), user);
     m
 }
 pub fn opcache_get_status() -> Option<Mixed> {

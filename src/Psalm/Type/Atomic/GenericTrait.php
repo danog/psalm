@@ -32,6 +32,29 @@ trait GenericTrait
     abstract protected function getIntersectionId(bool $exact): string;
 
     /**
+     * The base of this type's namespaced string: the namespaced class name for objects, the keyword otherwise.
+     *
+     * @param  array<lowercase-string, string> $aliased_classes
+     */
+    abstract protected function getNamespacedBase(
+        ?string $namespace,
+        array $aliased_classes,
+        ?string $this_class,
+        bool $use_phpdoc_format,
+    ): string;
+
+    /**
+     * The `&Other` suffix of this type's namespaced string (see toNamespacedString).
+     *
+     * @param  array<lowercase-string, string> $aliased_classes
+     */
+    abstract protected function getIntersectionNamespacedString(
+        ?string $namespace,
+        array $aliased_classes,
+        ?string $this_class,
+    ): string;
+
+    /**
      * @param TTypeParams $type_params
      * @return static
      */
@@ -68,9 +91,7 @@ trait GenericTrait
         ?string $this_class,
         bool $use_phpdoc_format,
     ): string {
-        $base_value = $this instanceof TNamedObject
-            ? parent::toNamespacedString($namespace, $aliased_classes, $this_class, $use_phpdoc_format)
-            : $this->value;
+        $base_value = $this->getNamespacedBase($namespace, $aliased_classes, $this_class, $use_phpdoc_format);
 
         if ($base_value === 'non-empty-array') {
             $base_value = 'array';
@@ -122,18 +143,7 @@ trait GenericTrait
             return 'array';
         }
 
-        $extra_types = '';
-
-        if ($this instanceof TNamedObject && $this->extra_types) {
-            $extra_types = '&' . implode(
-                '&',
-                array_map(
-                    static fn(Atomic $extra_type): string =>
-                        $extra_type->toNamespacedString($namespace, $aliased_classes, $this_class, false),
-                    $this->extra_types,
-                ),
-            );
-        }
+        $extra_types = $this->getIntersectionNamespacedString($namespace, $aliased_classes, $this_class);
 
         return $base_value .
                 '<' .

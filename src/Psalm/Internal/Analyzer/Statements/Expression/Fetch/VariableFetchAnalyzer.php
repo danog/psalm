@@ -576,7 +576,7 @@ final class VariableFetchAnalyzer
     }
 
     /**
-     * @param value-of<self::SUPER_GLOBALS>|'$argv'|'$argc' $var_id
+     * @param non-empty-string $var_id a superglobal name, '$argv' or '$argc'
      */
     private static function getGlobalTypeInner(string $var_id, bool $files_full_path = false): Union
     {

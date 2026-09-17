@@ -810,11 +810,19 @@ final class ArithmeticOpAnalyzer
                 if ($parent instanceof PhpParser\Node\Expr\BinaryOp\Div) {
                     $result_type = new Union([new TInt(), new TFloat()]);
                 } else {
-                    $left_is_positive = ($left_type_part instanceof TLiteralInt && $left_type_part->value > 0)
-                        || ($left_type_part instanceof TIntRange && $left_type_part->isPositive());
+                    $left_is_positive = false;
+                    if ($left_type_part instanceof TLiteralInt) {
+                        $left_is_positive = $left_type_part->value > 0;
+                    } elseif ($left_type_part instanceof TIntRange) {
+                        $left_is_positive = $left_type_part->isPositive();
+                    }
 
-                    $right_is_positive = ($right_type_part instanceof TLiteralInt && $right_type_part->value > 0)
-                        || ($right_type_part instanceof TIntRange && $right_type_part->isPositive());
+                    $right_is_positive = false;
+                    if ($right_type_part instanceof TLiteralInt) {
+                        $right_is_positive = $right_type_part->value > 0;
+                    } elseif ($right_type_part instanceof TIntRange) {
+                        $right_is_positive = $right_type_part->isPositive();
+                    }
 
                     if ($parent instanceof PhpParser\Node\Expr\BinaryOp\Minus) {
                         $always_positive = false;

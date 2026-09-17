@@ -27,6 +27,17 @@ use function substr;
 final class FileDiffer
 {
     /**
+     * The Myers frontier before the first step: the furthest x reached on each diagonal k, seeded at k = 1.
+     *
+     * @return non-empty-array<int, int>
+     * @psalm-pure
+     */
+    private static function initialFrontier(): array
+    {
+        return [1 => 0];
+    }
+
+    /**
      * @param list<string>    $a
      * @param list<string>    $b
      * @return array{0:non-empty-list<array<int, int>>, 1: int, 2: int}
@@ -39,7 +50,7 @@ final class FileDiffer
         $n = count($a);
         $m = count($b);
         $max = $n + $m;
-        $v = array_fill(1, 1, 0);
+        $v = self::initialFrontier();
         $trace = [];
         for ($d = 0; $d <= $max; ++$d) {
             $trace[] = $v;

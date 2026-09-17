@@ -290,4 +290,15 @@ final class TGenericObject extends TNamedObject
             $intersection ?? $this->extra_types,
         );
     }
+
+    /** @param array<lowercase-string, string> $aliased_classes */
+    #[Override]
+    protected function getNamespacedBase(
+        ?string $namespace,
+        array $aliased_classes,
+        ?string $this_class,
+        bool $use_phpdoc_format,
+    ): string {
+        return parent::toNamespacedString($namespace, $aliased_classes, $this_class, $use_phpdoc_format);
+    }
 }

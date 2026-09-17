@@ -20,6 +20,30 @@ use function implode;
  */
 trait HasIntersectionTrait
 {
+    /**
+     * The `&Other` suffix of this type's namespaced string (see GenericTrait::toNamespacedString).
+     *
+     * @param array<lowercase-string, string> $aliased_classes
+     */
+    protected function getIntersectionNamespacedString(
+        ?string $namespace,
+        array $aliased_classes,
+        ?string $this_class,
+    ): string {
+        if (!$this->extra_types) {
+            return '';
+        }
+
+        return '&' . implode(
+            '&',
+            array_map(
+                static fn(Atomic $extra_type): string =>
+                    $extra_type->toNamespacedString($namespace, $aliased_classes, $this_class, false),
+                $this->extra_types,
+            ),
+        );
+    }
+
     /** The `&Other` suffix of this type's id (see GenericTrait::getId). */
     protected function getIntersectionId(bool $exact): string
     {
