@@ -392,11 +392,21 @@ final class Builtins
             if ($letter === 'V') {
                 // variadic FmtArg list
                 $parts = [];
+                $spread = null;
                 foreach (array_slice($positional, $i) as $a) {
                     $v = $b->expr($a->value);
+                    if ($a->unpack && $v->type->kind === RustType::LIST && in_array($v->type->inner()->kind, [RustType::STR, RustType::INT, RustType::FLOAT, RustType::BOOL], true)) {
+                        // `...$values`: every element of the typed list is one format argument
+                        $spread = $v->code;
+                        continue;
+                    }
                     $parts[] = 'FmtArg::from(' . $this->fmtArg($b, $v) . ')';
                 }
-                $codes[] = '&[' . implode(', ', $parts) . ']';
+                if ($spread !== null) {
+                    $codes[] = '&{ let mut __fa: Vec<FmtArg> = vec![' . implode(', ', $parts) . ']; for __v in ' . $spread . '.iter() { __fa.push(FmtArg::from(__v.clone())); } __fa }[..]';
+                } else {
+                    $codes[] = '&[' . implode(', ', $parts) . ']';
+                }
                 break;
             }
             $arg = $positional[$i] ?? null;
@@ -679,6 +689,11 @@ final class Builtins
     private function f_is_float(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
         return $this->typeCheck($b, $args[0]->value, 'is_float', [RustType::FLOAT]);
+    }
+
+    private function f_is_resource(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        return $this->typeCheck($b, $args[0]->value, 'is_resource', [RustType::RESOURCE]);
     }
 
     private function f_is_bool(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -2446,8 +2461,8 @@ final class Builtins
             $ret = isset($args[1]) ? $b->exprTo($args[1]->value, RustType::bool()) : 'false';
             return new Val('print_r_str(&' . $this->casts->convert($v->code, $v->type, RustType::str()) . ', ' . $ret . ')', RustType::str());
         }
-        $typed = in_array($inner->kind, [RustType::GENERIC, RustType::CLASS_, RustType::ANY_OBJECT, RustType::SHAPE], true)
-            || ($inner->kind === RustType::UNION && Casts::unionHasObject($inner));
+        $typed = in_array($inner->kind, [RustType::GENERIC, RustType::CLASS_, RustType::ANY_OBJECT, RustType::SHAPE, RustType::LIST, RustType::MAP, RustType::TUPLE], true)
+            || ($inner->kind === RustType::UNION && !$inner->containsMixed());
         if (!$typed) {
             return $this->simple($b, $call, $args, self::SIMPLE[$fallback]);
         }

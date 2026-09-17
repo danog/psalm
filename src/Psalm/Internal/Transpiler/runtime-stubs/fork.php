@@ -14,7 +14,7 @@ namespace Amp {
         public function throwIfRequested(): void;
     }
 
-    /** @template-covariant T */
+    /** @template T */
     final class Future
     {
         /** @return T */
@@ -49,16 +49,18 @@ namespace Amp\Future {
 
 namespace Amp\Sync {
     /**
-     * @template-covariant TReceive
-     * @template TSend
+     * Messages are arrays or strings (psalm's taint and progress messages).
+     *
+     * @template-covariant TReceive of array|string
+     * @template TSend of array|string
      */
     interface Channel
     {
         /** @return TReceive */
-        public function receive(?\Amp\Cancellation $cancellation = null): mixed;
+        public function receive(?\Amp\Cancellation $cancellation = null): array|string;
 
         /** @param TSend $data */
-        public function send(mixed $data): void;
+        public function send(array|string $data): void;
 
         public function close(): void;
 

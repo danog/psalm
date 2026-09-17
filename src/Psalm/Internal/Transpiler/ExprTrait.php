@@ -349,7 +349,7 @@ trait ExprTrait
     /** Emit a boolean condition from a PHP expression (applies truthiness). */
     public function truthy(Expr $e): string
     {
-        $v = $this->expr($e);
+        $v = $e instanceof Expr\Variable && is_string($e->name) ? $this->rawValue($e) : $this->expr($e);
         if ($v->type->kind === RustType::BOOL) {
             return $v->code;
         }
@@ -978,6 +978,10 @@ trait ExprTrait
             }
             if ($ft->kind === RustType::SYM) {
                 return 'to_key(&' . $v->code . '.to_str())';
+            }
+            if ($ft->kind === RustType::UNION && $ft->params !== [] && count(array_filter($ft->params, static fn(RustType $m) => !in_array($m->kind, [RustType::INT, RustType::FLOAT], true))) === 0) {
+                // `$k - 1` (int|float): a numeric key is its integer value
+                return 'ArrayKey::Int(php_rt::ToNum::to_php_num(&' . $v->code . ').to_i64())';
             }
             return 'to_key(&' . $this->casts->convert($v->code, $ft, RustType::mixed()) . ')';
         }
@@ -1752,7 +1756,7 @@ trait ExprTrait
                     return $this->flattenOption($code, $ft);
                 }
                 if ($key !== null) {
-                    return new Val('{ let _ = ' . $base->code . '; None::<Mixed> }', RustType::option(RustType::mixed()));
+                    return new Val('{ let _ = ' . $base->code . '; None::<()> }', RustType::option(RustType::unit()));
                 }
                 $mt = RustType::map(RustType::arrayKey(), $this->shapeValueType($bt));
                 $code = '{ let __k = ' . $this->keyExpr($dim, RustType::arrayKey()) . '; ' . $base->code . '.and_then(|__b| ' . $this->casts->convert('__b', $bt, $mt) . '.get(&__k).cloned()) }';
@@ -1764,7 +1768,7 @@ trait ExprTrait
                     $ft = $bt->params[(int) $key];
                     return $this->flattenOption($base->code . '.map(|__b| __b.' . (int) $key . ')', $ft);
                 }
-                return new Val('{ let _ = ' . $base->code . '; None::<Mixed> }', RustType::option(RustType::mixed()));
+                return new Val('{ let _ = ' . $base->code . '; None::<()> }', RustType::option(RustType::unit()));
             }
             if ($bt->kind === RustType::MIXED) {
                 $k = $this->expr($dim);
@@ -1792,7 +1796,7 @@ trait ExprTrait
                 }
             }
             if ($bt->kind === RustType::UNIT || $bt->kind === RustType::NEVER) {
-                return new Val('{ let _ = ' . $base->code . '; None::<Mixed> }', RustType::option(RustType::mixed()));
+                return new Val('{ let _ = ' . $base->code . '; None::<()> }', RustType::option(RustType::unit()));
             }
             if ($bt->kind === RustType::UNION || $bt->kind === RustType::ANY_OBJECT || $bt->kind === RustType::CLASS_ || $bt->kind === RustType::MAP || $bt->kind === RustType::LIST) {
                 // resolved dynamically (array forms and ArrayAccess objects alike)
@@ -1800,7 +1804,7 @@ trait ExprTrait
                 return new Val('{ let __k = ' . $this->keyFrom($k, RustType::arrayKey()) . '; ' . $base->code . '.and_then(|__b| mixed_get(&' . $this->casts->convert('__b', $bt, RustType::mixed()) . ', &__k)) }', RustType::option(RustType::mixed()));
             }
             $this->warn('isset on unsupported base type ' . $bt->toRust(), $e);
-            return new Val('{ let _ = ' . $base->code . '; None::<Mixed> }', RustType::option(RustType::mixed()));
+            return new Val('{ let _ = ' . $base->code . '; None::<()> }', RustType::option(RustType::unit()));
         }
         if ($e instanceof Expr\PropertyFetch || $e instanceof Expr\NullsafePropertyFetch) {
             if (!$e->name instanceof Identifier) {
@@ -1940,6 +1944,14 @@ trait ExprTrait
                 return new Val('{ let ' . $tmp . ' = ' . $place->read() . '.expect("null where a number expected"); let __n = ' . $step . '; ' . $place->write('Some(__n.clone())') . ' ' . ($is_pre ? 'Some(__n)' : 'Some(' . $tmp . ')') . ' }', $t);
             }
             return new Val('{ let ' . $tmp . ' = ' . $place->read() . '; let __n = ' . $step . '; ' . $place->write('__n.clone()') . ' ' . ($is_pre ? '__n' : $tmp) . ' }', $t);
+        }
+        if ($ut->kind === RustType::ARRAY_KEY) {
+            // an array key steps as an int or as a string (PHP's string increment), staying a key
+            $fn = $is_inc ? 'key_inc' : 'key_dec';
+            if ($t->kind === RustType::OPTION) {
+                return new Val('{ let ' . $tmp . ' = ' . $place->read() . '.expect("null where a key expected"); let __n = ' . $fn . '(&' . $tmp . '); ' . $place->write('Some(__n.clone())') . ' ' . ($is_pre ? '__n' : $tmp) . ' }', $ut);
+            }
+            return new Val('{ let ' . $tmp . ' = ' . $place->read() . '; let __n = ' . $fn . '(&' . $tmp . '); ' . $place->write('__n.clone()') . ' ' . ($is_pre ? '__n' : $tmp) . ' }', $t);
         }
         if ($t->kind !== RustType::NEVER && $t->kind !== RustType::UNIT) {
             // anything else (optional unions, ...): PHP's increment semantics on the Mixed form

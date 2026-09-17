@@ -184,7 +184,9 @@ trait StmtTrait
         } elseif ($v->type->kind === RustType::NEVER) {
             $w->line($v->code . ';');
         } else {
-            $w->line('let _: ' . $v->type->toRust() . ' = ' . $v->code . ';');
+            // a discarded value: annotated with its type for readability, except a Mixed one (no Mixed text
+            // for a value nothing reads)
+            $w->line($v->type->containsMixed() ? 'let _ = ' . $v->code . ';' : 'let _: ' . $v->type->toRust() . ' = ' . $v->code . ';');
         }
     }
 
