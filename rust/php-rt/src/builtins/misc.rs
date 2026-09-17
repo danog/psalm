@@ -74,6 +74,34 @@ pub fn trigger_error(msg: &Str, level: i64) -> Result<bool, RtError> {
     crate::output::eprint(b"\n");
     Ok(true)
 }
+/// `error_get_last()` as (type, message, file, line); the runtime raises PHP errors as exceptions, so None.
+pub fn error_get_last_typed() -> Option<(i64, Str, Str, i64)> {
+    LAST_ERROR.with(|e| e.borrow().clone().map(|m| (
+        m.get(&ArrayKey::from_static("type")).and_then(|v| if let Mixed::Int(i) = v { Some(*i) } else { None }).unwrap_or(0),
+        m.get(&ArrayKey::from_static("message")).map(|v| v.to_php_str()).unwrap_or_else(Str::empty),
+        m.get(&ArrayKey::from_static("file")).map(|v| v.to_php_str()).unwrap_or_else(Str::empty),
+        m.get(&ArrayKey::from_static("line")).and_then(|v| if let Mixed::Int(i) = v { Some(*i) } else { None }).unwrap_or(0),
+    )))
+}
+
+/// `parse_url($url, $component)` for a string component (None when the URL lacks it or is malformed).
+pub fn parse_url_component(url: &Str, component: i64) -> Option<Str> {
+    match parse_url(url, component) {
+        Mixed::Str(s) => Some(s),
+        Mixed::Int(i) => Some(Str::from_string(i.to_string())),
+        _ => None,
+    }
+}
+
+/// `parse_url($url, PHP_URL_PORT)`.
+pub fn parse_url_port(url: &Str) -> Option<i64> {
+    match parse_url(url, 2) {
+        Mixed::Int(i) => Some(i),
+        Mixed::Str(s) => s.to_string_lossy().parse().ok(),
+        _ => None,
+    }
+}
+
 pub fn error_get_last() -> Option<Mixed> {
     LAST_ERROR.with(|e| e.borrow().clone().map(Mixed::Arr))
 }

@@ -237,6 +237,17 @@ pub fn superglobal(name: &str) -> Map<Str, Mixed> {
     })
 }
 
+/// The string entries of a superglobal (`$_SERVER`, `$_ENV`): environment values are strings.
+pub fn superglobal_strings(name: &str) -> Map<Str, Str> {
+    let mut out: Map<Str, Str> = Map::new();
+    for (k, v) in superglobal(name).iter() {
+        if let Mixed::Str(s) = v {
+            out.insert(k.clone(), s.clone());
+        }
+    }
+    out
+}
+
 pub fn superglobal_set(name: &str, m: Map<Str, Mixed>) {
     SUPERGLOBALS.with(|s| {
         s.borrow_mut().insert(name.to_string(), m);
