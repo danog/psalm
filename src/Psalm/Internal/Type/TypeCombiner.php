@@ -809,8 +809,8 @@ final class TypeCombiner
 
         if ($type instanceof TTemplateParam) {
             if (isset($combination->value_types[$type_key])) {
-                /** @var TTemplateParam */
                 $existing_template_type = $combination->value_types[$type_key];
+                assert($existing_template_type instanceof TTemplateParam);
 
                 if (!$existing_template_type->as->equals($type->as)) {
                     $existing_template_type = $existing_template_type->replaceAs(Type::combineUnionTypes(
