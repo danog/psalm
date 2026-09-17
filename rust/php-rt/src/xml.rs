@@ -1,38 +1,32 @@
 //! Minimal XML parser backing the `SimpleXMLElement` / `DOMDocument` runtime stubs.
 //!
-//! `xml_parse` returns the document element as a PHP array tree:
-//! `['name' => string, 'attrs' => array<string, string>, 'children' => list<node>, 'text' => string]`
-//! where text children appear in `children` as `['name' => '#text', 'text' => ...]` nodes.
+//! `xml_parse` returns the document as a flat, typed node list in document order:
+//! `(name, text, is_text, attrs, parent index)` — the root at index 0 with parent -1, text nodes named
+//! `#text`; an element's `text` is its concatenated direct text content.
 
-use crate::key::ArrayKey;
+use crate::list::List;
 use crate::map::Map;
-use crate::mixed::Mixed;
 use crate::string::Str;
+
+/// One node of the flat document: name, text, is_text, attributes, parent index (-1 for the root).
+pub type XmlFlatNode = (Str, Str, bool, Map<Str, Str>, i64);
 
 struct P<'a> {
     s: &'a [u8],
     i: usize,
 }
 
-pub fn xml_parse(src: &Str) -> Option<Mixed> {
+pub fn xml_parse(src: &Str) -> Option<List<XmlFlatNode>> {
     let mut s = src.as_bytes();
     if s.starts_with(&[0xEF, 0xBB, 0xBF]) {
         s = &s[3..];
     }
     let mut p = P { s, i: 0 };
     p.skip_misc();
-    let root = p.element()?;
+    let mut out: Vec<XmlFlatNode> = Vec::new();
+    p.element(&mut out, -1)?;
     p.skip_misc();
-    Some(root)
-}
-
-fn node(name: &[u8], attrs: Map<ArrayKey, Mixed>, children: Map<ArrayKey, Mixed>, text: Vec<u8>) -> Mixed {
-    let mut m: Map<ArrayKey, Mixed> = Map::new();
-    m.insert(ArrayKey::from_str_val(Str::from_static("name")), Mixed::Str(Str::from_bytes(name)));
-    m.insert(ArrayKey::from_str_val(Str::from_static("attrs")), Mixed::Arr(attrs));
-    m.insert(ArrayKey::from_str_val(Str::from_static("children")), Mixed::Arr(children));
-    m.insert(ArrayKey::from_str_val(Str::from_static("text")), Mixed::Str(Str::from_vec(text)));
-    Mixed::Arr(m)
+    Some(List::from_vec(out))
 }
 
 fn is_name_char(c: u8) -> bool {
@@ -98,13 +92,15 @@ impl<'a> P<'a> {
         }
         if self.i == start { None } else { Some(&self.s[start..self.i]) }
     }
-    fn element(&mut self) -> Option<Mixed> {
+    fn element(&mut self, out: &mut Vec<XmlFlatNode>, parent: i64) -> Option<()> {
         if self.peek(0) != b'<' {
             return None;
         }
         self.i += 1;
-        let name = self.name()?;
-        let mut attrs: Map<ArrayKey, Mixed> = Map::new();
+        let name = self.name()?.to_vec();
+        let idx = out.len() as i64;
+        out.push((Str::from_bytes(&name), Str::empty(), false, Map::new(), parent));
+        let mut attrs: Map<Str, Str> = Map::new();
         loop {
             self.skip_ws();
             match self.peek(0) {
@@ -113,7 +109,8 @@ impl<'a> P<'a> {
                         return None;
                     }
                     self.i += 2;
-                    return Some(node(name, attrs, Map::new(), Vec::new()));
+                    out[idx as usize].3 = attrs;
+                    return Some(());
                 }
                 b'>' => {
                     self.i += 1;
@@ -121,7 +118,7 @@ impl<'a> P<'a> {
                 }
                 0 => return None,
                 _ => {
-                    let an = self.name()?;
+                    let an = self.name()?.to_vec();
                     self.skip_ws();
                     if self.peek(0) != b'=' {
                         return None;
@@ -142,18 +139,18 @@ impl<'a> P<'a> {
                     }
                     let raw = &self.s[start..self.i];
                     self.i += 1;
-                    attrs.insert(ArrayKey::from_str_val(Str::from_bytes(an)), Mixed::Str(Str::from_vec(decode_entities(raw))));
+                    attrs.insert(Str::from_bytes(&an), Str::from_vec(decode_entities(raw)));
                 }
             }
         }
+        out[idx as usize].3 = attrs;
         // content
-        let mut children: Map<ArrayKey, Mixed> = Map::new();
         let mut text: Vec<u8> = Vec::new();
         let mut pending: Vec<u8> = Vec::new();
-        let flush = |pending: &mut Vec<u8>, children: &mut Map<ArrayKey, Mixed>, text: &mut Vec<u8>| {
+        let flush = |pending: &mut Vec<u8>, out: &mut Vec<XmlFlatNode>, text: &mut Vec<u8>| {
             if !pending.is_empty() {
                 text.extend_from_slice(pending);
-                children.push(node(b"#text", Map::new(), Map::new(), std::mem::take(pending)));
+                out.push((Str::from_static("#text"), Str::from_vec(std::mem::take(pending)), true, Map::new(), idx));
             }
         };
         loop {
@@ -161,10 +158,10 @@ impl<'a> P<'a> {
                 return None;
             }
             if self.starts(b"</") {
-                flush(&mut pending, &mut children, &mut text);
+                flush(&mut pending, out, &mut text);
                 self.i += 2;
                 let end = self.name()?;
-                if end != name {
+                if end != &name[..] {
                     return None;
                 }
                 self.skip_ws();
@@ -172,7 +169,8 @@ impl<'a> P<'a> {
                     return None;
                 }
                 self.i += 1;
-                return Some(node(name, attrs, children, text));
+                out[idx as usize].1 = Str::from_vec(text);
+                return Some(());
             }
             if self.starts(b"<!--") {
                 if !self.skip_to(b"-->") {
@@ -196,9 +194,8 @@ impl<'a> P<'a> {
                 continue;
             }
             if self.peek(0) == b'<' {
-                flush(&mut pending, &mut children, &mut text);
-                let child = self.element()?;
-                children.push(child);
+                flush(&mut pending, out, &mut text);
+                self.element(out, idx)?;
                 continue;
             }
             let start = self.i;
