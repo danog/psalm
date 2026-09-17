@@ -203,7 +203,8 @@ final class CrateEmitter
         $referenced = [];
         $scan = static function (string $text) use (&$referenced): void {
             // runtime helpers producing a Mixed value (`.to_mixed()`, `mixed_get`) count as naming Mixed
-            preg_match_all('/\b(?:U_|Shape_)[A-Za-z0-9_]+|\bMixed\b|\bto_mixed\b|\bmixed_[a-z_]+|AnyObject|\bphp_clone_mixed\b/', $text, $m);
+            // (helper CALLS only: a module path such as `mixed_issue::MixedIssue` names a class, not Mixed)
+            preg_match_all('/\b(?:U_|Shape_)[A-Za-z0-9_]+|\bMixed\b|\bto_mixed\(|\bmixed_[a-z_]+\(|AnyObject|\bphp_clone_mixed\b/', $text, $m);
             foreach ($m[0] as $id) {
                 $referenced[str_starts_with($id, 'to_mixed') || str_starts_with($id, 'mixed_') ? 'Mixed' : $id] = true;
             }
