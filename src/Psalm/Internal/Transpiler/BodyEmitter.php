@@ -974,9 +974,19 @@ final class BodyEmitter
             ) {
                 continue;
             }
-            $u = $this->program->unionOfRust($types);
+            // `$x = null` assignments make the local nullable
+            $nullable = false;
+            $values = [];
+            foreach ($types as $t) {
+                if ($t->kind === RustType::UNIT) {
+                    $nullable = true;
+                } else {
+                    $values[] = $t;
+                }
+            }
+            $u = $values === [] ? null : $this->program->unionOfRust($values);
             if ($u !== null && !$u->containsMixed() && !$u->hasGeneric()) {
-                $retype[$name] = $u;
+                $retype[$name] = $nullable && $u->kind !== RustType::OPTION ? RustType::option($u) : $u;
             }
         }
         if ($retype === []) {
@@ -1021,8 +1031,11 @@ final class BodyEmitter
             } elseif ($n instanceof Expr\PreInc || $n instanceof Expr\PreDec || $n instanceof Expr\PostInc || $n instanceof Expr\PostDec) {
                 $mark($root($n->var));
             } elseif ($n instanceof Node\Stmt\Foreach_) {
-                $mark($root($n->valueVar));
-                if ($n->keyVar !== null) {
+                // the loop variables are assigned per iteration (a by-reference value is a reference)
+                if ($n->byRef || !($n->valueVar instanceof Expr\Variable)) {
+                    $mark($root($n->valueVar));
+                }
+                if ($n->keyVar !== null && !($n->keyVar instanceof Expr\Variable)) {
                     $mark($root($n->keyVar));
                 }
             } elseif ($n instanceof Node\Stmt\Global_) {

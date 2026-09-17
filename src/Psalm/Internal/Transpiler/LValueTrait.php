@@ -880,13 +880,19 @@ trait LValueTrait
     // ------------------------------------------------------------------ assignments
 
     /** Statement code for `$target = $value` where `$value` is already converted to the target's type. */
+    /** A local whose storage type is Mixed or nullable Mixed (a retyping candidate). */
+    private static function isMixedLocal(RustType $t): bool
+    {
+        return $t->kind === RustType::MIXED || ($t->kind === RustType::OPTION && $t->inner()->kind === RustType::MIXED);
+    }
+
     public function assignTo(Expr $target, Val $value): string
     {
         if ($target instanceof Expr\List_ || $target instanceof Expr\Array_) {
             return $this->destructure($target, $value);
         }
         $place = $this->place($target);
-        if ($target instanceof Expr\Variable && is_string($target->name) && $place->type->kind === RustType::MIXED) {
+        if ($target instanceof Expr\Variable && is_string($target->name) && self::isMixedLocal($place->type)) {
             $this->noteMixedAssign($target->name, $value->type);
         }
         return $place->write($this->casts->convert($value->code, $value->type, $place->type));
@@ -963,7 +969,7 @@ trait LValueTrait
             return $this->destructure($target, $this->expr($e->expr));
         }
         $place = $this->place($target);
-        if ($target instanceof Expr\Variable && is_string($target->name) && $place->type->kind === RustType::MIXED) {
+        if ($target instanceof Expr\Variable && is_string($target->name) && self::isMixedLocal($place->type)) {
             // a Psalm-mixed local: the value's static type is a retyping candidate (see BodyEmitter::emitBodyInner)
             $rhs = $this->expr($e->expr);
             $this->noteMixedAssign($target->name, $rhs->type);
@@ -983,7 +989,7 @@ trait LValueTrait
         }
         $place = $this->place($target);
         $rhs = $this->expr($e->expr);
-        if ($target instanceof Expr\Variable && is_string($target->name) && $place->type->kind === RustType::MIXED) {
+        if ($target instanceof Expr\Variable && is_string($target->name) && self::isMixedLocal($place->type)) {
             $this->noteMixedAssign($target->name, $rhs->type);
         }
         if ($rhs->type->kind === RustType::OPTION && $place->type->kind !== RustType::OPTION && $place->type->kind !== RustType::MIXED

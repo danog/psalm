@@ -825,6 +825,20 @@ final class Builtins
     private function f_in_array(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
         $strict = isset($args[2]) && $args[2]->value instanceof Expr\ConstFetch && strtolower($args[2]->value->name->toString()) === 'true';
+        // in_array(null, $array, true): whether some element is null
+        if ($b->isNullLiteral($args[0]->value)) {
+            $ht0 = $b->inferredOrMixed($args[1]->value);
+            if ($ht0->kind === RustType::LIST || $ht0->kind === RustType::MAP) {
+                $et = $ht0->kind === RustType::LIST ? $ht0->inner() : $ht0->params[1];
+                $hay = $b->exprTo($args[1]->value, $ht0);
+                if ($et->kind === RustType::OPTION) {
+                    return new Val('(' . $hay . ($ht0->kind === RustType::LIST ? '.iter()' : '.values()') . '.any(|__v| __v.is_none()))', RustType::bool());
+                }
+                if ($et->kind !== RustType::MIXED) {
+                    return new Val('{ let _ = ' . $hay . '; false }', RustType::bool());
+                }
+            }
+        }
         // a union (or nullable union) needle in a typed list: only the member of the element type can match
         $nt = $b->inferredOrMixed($args[0]->value);
         $nu = $nt->kind === RustType::OPTION ? $nt->inner() : $nt;

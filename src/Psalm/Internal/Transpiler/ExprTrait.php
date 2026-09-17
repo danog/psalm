@@ -1199,6 +1199,13 @@ trait ExprTrait
         ) {
             return $wrap(RustType::map(RustType::arrayKey(), $sa->params[1]));
         }
+        foreach ([[$sa, $sb], [$sb, $sa]] as [$tt, $mt]) {
+            if ($tt->kind === RustType::TUPLE && $mt->kind === RustType::MAP && in_array($mt->params[0]->kind, [RustType::INT, RustType::ARRAY_KEY], true)
+                && $this->tupleFitsList($tt, RustType::list($mt->params[1]))
+            ) {
+                return $wrap($mt);
+            }
+        }
         if ($sa->kind === RustType::TUPLE && $sb->kind === RustType::LIST && $this->tupleFitsList($sa, $sb)) {
             return $wrap($sb);
         }
@@ -1349,7 +1356,8 @@ trait ExprTrait
             if ($lit_kind === null) {
                 continue;
             }
-            $at = $this->inferredOrMixed($a);
+            $av = $this->rawValue($a);
+            $at = $av->type;
             $u = $at->kind === RustType::OPTION ? $at->inner() : $at;
             if ($u->kind !== RustType::UNION) {
                 continue;
@@ -1364,7 +1372,7 @@ trait ExprTrait
                 };
             }
             if (!$has) {
-                return '{ let _ = ' . $this->rawValue($a)->code . '; false }';
+                return '{ let _ = ' . $av->code . '; false }';
             }
         }
         // `$list === ['a', 'b']` / `$map === []`: the literal takes the container's type (no Mixed array)
@@ -1714,6 +1722,16 @@ trait ExprTrait
         if ($t->kind === RustType::OPTION && $t->inner()->kind === RustType::INT) {
             $op = $is_inc ? 'wrapping_add(1)' : 'wrapping_sub(1)';
             return new Val('{ let ' . $tmp . ' = ' . $place->read() . '.unwrap_or(0); ' . $place->write('Some(' . $tmp . '.' . $op . ')') . ' ' . ($is_pre ? $tmp . '.' . $op : $tmp) . ' }', RustType::int());
+        }
+        $ut = $t->kind === RustType::OPTION ? $t->inner() : $t;
+        if ($ut->kind === RustType::UNION && $this->casts->pickMember($ut, RustType::int()) !== null && $this->casts->pickMember($ut, RustType::int())->kind === RustType::INT) {
+            // a union holding an int: the int member steps, anything else is a type error
+            $op = $is_inc ? 'wrapping_add(1)' : 'wrapping_sub(1)';
+            $step = '(match ' . $tmp . '.clone() { ' . $ut->mangle() . '::Int(__i) => ' . $ut->mangle() . '::Int(__i.' . $op . '), _ => panic!("cannot increment/decrement a non-numeric value") })';
+            if ($t->kind === RustType::OPTION) {
+                return new Val('{ let ' . $tmp . ' = ' . $place->read() . '.expect("null where a number expected"); let __n = ' . $step . '; ' . $place->write('Some(__n.clone())') . ' ' . ($is_pre ? 'Some(__n)' : 'Some(' . $tmp . ')') . ' }', $t);
+            }
+            return new Val('{ let ' . $tmp . ' = ' . $place->read() . '; let __n = ' . $step . '; ' . $place->write('__n.clone()') . ' ' . ($is_pre ? '__n' : $tmp) . ' }', $t);
         }
         if ($t->kind !== RustType::NEVER && $t->kind !== RustType::UNIT) {
             // anything else (optional unions, ...): PHP's increment semantics on the Mixed form
