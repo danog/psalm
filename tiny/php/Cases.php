@@ -979,9 +979,28 @@ function case_union_prop_coalesce(): string
         . '|' . name_or_node(new EnumStmt(new SIdent('E')));
 }
 
+abstract class RecvBase { public function kind(): string { return 'base'; } }
+final class RecvA extends RecvBase { public function kind(): string { return 'a'; } }
+final class RecvB extends RecvBase { public function kind(): string { return 'b'; } }
+final class RecvC extends RecvBase {}
+
+function classify_node(RecvBase $n): string
+{
+    if ($n instanceof RecvA || $n instanceof RecvB) {
+        return 'x' . $n->kind();
+    }
+    return 'other:' . $n->kind();
+}
+
+function case_union_receiver_base_method(): string
+{
+    return classify_node(new RecvA()) . '|' . classify_node(new RecvB()) . '|' . classify_node(new RecvC());
+}
+
 function run_all(): string
 {
-    return check('union_prop_coalesce', case_union_prop_coalesce(), 'i:A|node|i:E')
+    return check('union_receiver_base_method', case_union_receiver_base_method(), 'xa|xb|other:base')
+        . check('union_prop_coalesce', case_union_prop_coalesce(), 'i:A|node|i:E')
         . check('union_tostring', case_union_tostring(), 'isa-named:X|isa-tmpl')
         . check('prop_empty_narrow', case_prop_empty_narrow(), '1:1')
         . check('sym_str_funcs', case_sym_str_funcs(), 'XBox|YBox')

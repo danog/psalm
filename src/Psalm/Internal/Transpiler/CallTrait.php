@@ -547,6 +547,19 @@ trait CallTrait
                 return new Val('(match ' . $recv->code . ' { Some(' . $tmp . ') => ' . $body . ', None => None })', $res);
             }
             $recv = new Val($recv->code . '.unwrap()', $rt->inner());
+            $rt = $recv->type;
+        }
+        if ($rt->kind === RustType::UNION) {
+            // Psalm narrowed the receiver to a set of subclasses: when the method is declared by the class the
+            // value is actually stored as, call it there. The narrowing can be wider than the flow allows
+            // (a value of another subclass would panic on the way into the union) and the base dispatches anyway.
+            $raw = $this->rawValue($e->var);
+            if ($raw->type->kind === RustType::CLASS_
+                && ($rc = $this->program->classOf($raw->type)) !== null
+                && $this->program->findMethod($rc, $lc) !== null
+            ) {
+                $recv = $raw;
+            }
         }
         return $this->methodCallOn($recv, $name, $e);
     }
