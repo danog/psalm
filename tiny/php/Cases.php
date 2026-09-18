@@ -1186,9 +1186,42 @@ function case_callee_narrowing(): string
     return run_plugin(new PlugOne()) . '|' . run_plugin(new PlugPlain());
 }
 
+function case_xml_config(): string
+{
+    $xml = new \SimpleXMLElement('<?xml version="1.0"?>
+                <psalm>
+                    <forbiddenFunctions>
+                        <function name="print" />
+                        <function name="var_export" />
+                    </forbiddenFunctions>
+                </psalm>');
+    $out = isset($xml->forbiddenFunctions) ? 'set' : 'unset';
+    $out .= isset($xml->forbiddenFunctions->function) ? '+fn' : '-fn';
+    $names = '';
+    foreach ($xml->forbiddenFunctions->function as $fn) {
+        $names .= (string) $fn['name'] . ',';
+    }
+    return $out . ':' . $names;
+}
+
+function case_semver_constraints(): string
+{
+    $parser = new \Composer\Semver\VersionParser();
+    $constraint = $parser->parseConstraints('^7.2.1|7.3,<8');
+    $out = '';
+    foreach (['5.4', '7.1', '7.2', '7.3', '8.0'] as $candidate) {
+        $hit = $constraint->matches(new \Composer\Semver\Constraint\Constraint('<=', $candidate . '.0.0-dev'))
+            || $constraint->matches(new \Composer\Semver\Constraint\Constraint('<=', $candidate . '.999'));
+        $out .= $hit ? '1' : '0';
+    }
+    return $out;
+}
+
 function run_all(): string
 {
-    return check('callee_narrowing', case_callee_narrowing(), 'one:x|skip')
+    return check('semver_constraints', case_semver_constraints(), '00111')
+        . check('xml_config', case_xml_config(), 'set+fn:print,var_export,')
+        . check('callee_narrowing', case_callee_narrowing(), 'one:x|skip')
         . check('narrow_only_receiver', case_narrow_only_receiver(), '5litother')
         . check('prop_no_downcast', case_prop_no_downcast(), 'litother')
         . check('variant_union_field', case_variant_union_field(), 'ab-?')

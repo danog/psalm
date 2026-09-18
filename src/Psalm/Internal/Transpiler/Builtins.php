@@ -853,6 +853,18 @@ final class Builtins
         return new Val('is_callable(&' . $b->casts->convert($v->code, $v->type, RustType::mixed()) . ')', RustType::bool());
     }
 
+    /** version_compare($a, $b) is the ordering; with a third argument it is the comparison itself. */
+    private function f_version_compare(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        $left = $b->exprTo($args[0]->value, RustType::str());
+        $right = $b->exprTo($args[1]->value, RustType::str());
+        if (!isset($args[2])) {
+            return new Val('version_compare(&' . $left . ', &' . $right . ')', RustType::int());
+        }
+        $op = $b->exprTo($args[2]->value, RustType::str());
+        return new Val('php_rt::builtins::string::version_compare_op(&' . $left . ', &' . $right . ', &' . $op . ')', RustType::bool());
+    }
+
     private function f_in_array(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
         $strict = isset($args[2]) && $args[2]->value instanceof Expr\ConstFetch && strtolower($args[2]->value->name->toString()) === 'true';
