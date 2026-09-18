@@ -76,12 +76,6 @@ final class Reflection
             // this is fine
         }
 
-        if (\defined('PSALM_COMPILED') && !$reflected_class->isUserDefined()) {
-            // a compiled program cannot reflect the classes the interpreter would provide: registering an
-            // empty storage for one would shadow the stub file that describes it
-            return;
-        }
-
         $reflected_parent_class = $reflected_class->getParentClass();
 
         $storage = $this->storage_provider->create($class_name);
