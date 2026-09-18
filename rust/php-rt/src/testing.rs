@@ -219,9 +219,9 @@ type JobRequest = (Job, std::sync::mpsc::Sender<Result<(), String>>);
 static POOL: std::sync::OnceLock<std::sync::Mutex<std::sync::mpsc::Sender<JobRequest>>> = std::sync::OnceLock::new();
 
 /// Number of warm worker threads: like PHPUnit processes, each keeps its PHP static state across the
-/// tests it runs (tests reset what they need in setUp), so nothing is re-scanned per test. Each worker
-/// holds its own copy of that state (~700 MB once the stubs are scanned), so the default trades cores for
-/// memory; `PSALM_TEST_WORKERS` overrides it.
+/// tests it runs (tests reset what they need in setUp), so nothing is re-scanned per test. One worker per
+/// core by default (each holds its own copy of that state, ~700 MB once the stubs are scanned);
+/// `PSALM_TEST_WORKERS` overrides it for a memory-constrained machine.
 fn pool_workers() -> usize {
     if let Ok(v) = std::env::var("PSALM_TEST_WORKERS") {
         if let Ok(n) = v.parse::<usize>() {
@@ -230,8 +230,7 @@ fn pool_workers() -> usize {
             }
         }
     }
-    let cores = std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4);
-    cores.clamp(1, 16)
+    std::thread::available_parallelism().map(|n| n.get()).unwrap_or(4)
 }
 
 fn pool() -> &'static std::sync::Mutex<std::sync::mpsc::Sender<JobRequest>> {
