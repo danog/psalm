@@ -24,7 +24,9 @@ pub const BUILTIN_CLASSES: &[&str] = &[
     "logicexception", "invalidargumentexception", "domainexception", "lengthexception", "outofrangeexception",
     "outofboundsexception", "rangeexception", "overflowexception", "underflowexception", "unexpectedvalueexception",
     "reflectionclass", "reflectionmethod", "reflectionproperty", "reflectionfunction", "reflectionnamedtype",
-    "simplexmlelement", "domdocument", "domelement", "domnode", "pdo", "mysqli", "curlhandle", "attribute",
+    "simplexmlelement", "domdocument", "domelement", "domnode", "pdo", "mysqli", "curlhandle",
+    // NB: "attribute" is deliberately absent: the runtime never instantiates it, and claiming it exists
+    // makes a compiled Psalm reflect an empty shell instead of reading its stub definition.
 ];
 pub const BUILTIN_INTERFACES: &[&str] = &[
     "traversable", "iterator", "iteratoraggregate", "arrayaccess", "countable", "stringable", "throwable",
