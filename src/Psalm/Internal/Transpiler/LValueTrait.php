@@ -531,7 +531,9 @@ trait LValueTrait
             $this->warn('read of $a[]', $e);
             return $this->dead('read of $a[]', RustType::never());
         }
-        $base = $this->expr($e->var);
+        // the base of `$x[...]` is a receiver position: an ArrayAccess object needs the class Psalm
+        // narrowed it to (the one that declares offsetGet)
+        $base = $this->receiver($e->var);
         $bt = $base->type;
         if ($bt->kind === RustType::OPTION) {
             $ov = $this->optionalValue($e);

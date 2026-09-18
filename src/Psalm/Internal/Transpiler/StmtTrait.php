@@ -290,7 +290,9 @@ trait StmtTrait
     private function foreachStmt(Stmt\Foreach_ $s): void
     {
         $w = $this->w;
-        $subject = $this->expr($s->expr);
+        // the subject of foreach is a receiver position: a Traversable object needs the class Psalm
+        // narrowed it to (the one that declares getIterator/current)
+        $subject = $this->receiver($s->expr);
         $st = $subject->type;
         if ($st->kind === RustType::OPTION) {
             $subject = new Val($subject->code . '.unwrap_or_default()', $st->inner());
