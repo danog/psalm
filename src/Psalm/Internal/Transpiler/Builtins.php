@@ -1419,6 +1419,12 @@ final class Builtins
         $code = '';
         $is_arr = $pt->kind === RustType::LIST || $pt->kind === RustType::MAP;
         for ($i = 1; $i < count($args); $i++) {
+            if ($args[$i]->unpack) {
+                // `array_push($a, ...$rest)` appends every element of $rest, one at a time
+                $rest = $b->exprTo($args[$i]->value, RustType::list($vt));
+                $code .= '{ for __v in ' . $rest . '.into_iter() { ' . $place->modify(fn(string $p) => $is_arr ? $p . '.push(__v);' : 'mixed_set(&mut ' . $p . ', None, __v);') . ' } } ';
+                continue;
+            }
             $code .= '{ let __v = ' . $b->exprTo($args[$i]->value, $vt) . '; ' . $place->modify(fn(string $p) => $is_arr ? $p . '.push(__v);' : 'mixed_set(&mut ' . $p . ', None, __v);') . ' } ';
         }
         return new Val('{ ' . $code . ($is_arr ? $place->read() . '.count()' : 'count(&' . $place->read() . ')') . ' }', RustType::int());
@@ -1431,6 +1437,12 @@ final class Builtins
         $vt = $pt->kind === RustType::LIST ? $pt->inner() : ($pt->kind === RustType::MAP ? $pt->params[1] : RustType::mixed());
         $code = '';
         for ($i = count($args) - 1; $i >= 1; $i--) {
+            if ($args[$i]->unpack) {
+                // `array_unshift($a, ...$rest)` prepends $rest in order, so unshift it back to front
+                $rest = $b->exprTo($args[$i]->value, RustType::list($vt));
+                $code .= '{ let mut __r = ' . $rest . '; while let Some(__v) = __r.pop() { ' . $place->modify(fn(string $p) => $p . '.unshift(__v);') . ' } } ';
+                continue;
+            }
             $code .= '{ let __v = ' . $b->exprTo($args[$i]->value, $vt) . '; ' . $place->modify(fn(string $p) => $p . '.unshift(__v);') . ' } ';
         }
         return new Val('{ ' . $code . $place->read() . '.count() }', RustType::int());

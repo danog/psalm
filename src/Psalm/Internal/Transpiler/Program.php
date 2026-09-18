@@ -1998,6 +1998,11 @@ final class Program
                     }
                 }
             }
+            if ($param->by_ref && $param->out_type !== null && $ptype !== null) {
+                // the caller sees whatever `@param-out` says the call leaves behind, so the reference
+                // has to hold that too: a narrower declared type would reject the assignment
+                $ptype = \Psalm\Type::combineUnionTypes($ptype, $param->out_type, $this->codebase);
+            }
             $t = $this->types->map($ptype);
             if ($param->is_variadic) {
                 $t = RustType::list($t);

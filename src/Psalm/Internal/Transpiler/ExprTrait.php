@@ -644,10 +644,17 @@ trait ExprTrait
         // a class value narrowed to one of its subclasses keeps its own class unless it is about to be used
         // as a receiver: Psalm's flow narrowing can be wider than the flow allows, and the downcast would
         // panic on a sibling subclass. Member access needs the narrowing, so receivers still downcast.
-        if (!$this->in_receiver && $v->type->kind === RustType::CLASS_ && $inf->kind === RustType::CLASS_) {
+        if (!$this->in_receiver && $v->type->kind === RustType::CLASS_) {
             $vc = $this->program->classOf($v->type);
-            $ic = $this->program->classOf($inf);
-            if ($vc !== null && $ic !== null && $ic !== $vc && $ic->isSubclassOf($vc)) {
+            // the same holds for a union of subclasses: `Atomic` narrowed to `TArray|TKeyedArray` is
+            // still a downcast, and a sibling atomic reaching it would panic
+            $members = $inf->kind === RustType::UNION ? $inf->params : ($inf->kind === RustType::CLASS_ ? [$inf] : []);
+            $all_subclasses = $members !== [] && $vc !== null;
+            foreach ($members as $m) {
+                $mc = $m->kind === RustType::CLASS_ ? $this->program->classOf($m) : null;
+                $all_subclasses = $all_subclasses && $mc !== null && $mc !== $vc && $mc->isSubclassOf($vc);
+            }
+            if ($all_subclasses) {
                 return $v;
             }
         }
