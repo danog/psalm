@@ -1279,20 +1279,76 @@ pub fn sprintf(format: &Str, args: &[FmtArg]) -> Result<Str, RtError> {
                 _ => break,
             }
         }
+        // `*` takes the width or the precision from an argument, `*n$` from the n-th one
+        macro_rules! star_arg {
+            () => {{
+                let mut star_num: Option<usize> = None;
+                {
+                    let mut j = i;
+                    let mut n = 0usize;
+                    while j < f.len() && f[j].is_ascii_digit() {
+                        n = n * 10 + (f[j] - b'0') as usize;
+                        j += 1;
+                    }
+                    if j > i && j < f.len() && f[j] == b'$' {
+                        if n == 0 {
+                            return Err(RtError::value_error("Argument number specifier must be greater than zero and less than 2147483647"));
+                        }
+                        star_num = Some(n - 1);
+                        i = j + 1;
+                    }
+                }
+                let sidx = match star_num {
+                    Some(n) => n,
+                    None => {
+                        let n = argi;
+                        argi += 1;
+                        n
+                    }
+                };
+                match args.get(sidx) {
+                    Some(a) => a.as_int(),
+                    None => {
+                        return Err(RtError::new(
+                            "ArgumentCountError",
+                            crate::sfmt!("{} arguments are required, {} given", sidx + 2, args.len() + 1),
+                        ))
+                    }
+                }
+            }};
+        }
         let mut width = 0usize;
-        while i < f.len() && f[i].is_ascii_digit() {
-            width = width * 10 + (f[i] - b'0') as usize;
+        if i < f.len() && f[i] == b'*' {
             i += 1;
+            let v = star_arg!();
+            if v < 0 || v > 2147483647 {
+                return Err(RtError::value_error("Width must be between 0 and 2147483647"));
+            }
+            width = v as usize;
+        } else {
+            while i < f.len() && f[i].is_ascii_digit() {
+                width = width * 10 + (f[i] - b'0') as usize;
+                i += 1;
+            }
         }
         let mut precision: Option<usize> = None;
         if i < f.len() && f[i] == b'.' {
             i += 1;
-            let mut p = 0usize;
-            while i < f.len() && f[i].is_ascii_digit() {
-                p = p * 10 + (f[i] - b'0') as usize;
+            if i < f.len() && f[i] == b'*' {
                 i += 1;
+                let v = star_arg!();
+                if v < 0 || v > 2147483647 {
+                    return Err(RtError::value_error("Precision must be between 0 and 2147483647"));
+                }
+                precision = Some(v as usize);
+            } else {
+                let mut p = 0usize;
+                while i < f.len() && f[i].is_ascii_digit() {
+                    p = p * 10 + (f[i] - b'0') as usize;
+                    i += 1;
+                }
+                precision = Some(p);
             }
-            precision = Some(p);
         }
         // length modifier (ignored)
         while i < f.len() && matches!(f[i], b'l' | b'h') {
@@ -1414,4 +1470,39 @@ pub fn vsprintf<T: Clone + Into<FmtArg>>(format: &Str, args: &List<T>) -> Result
 #[macro_export]
 macro_rules! sprintf {
     ($fmt:expr $(, $arg:expr)* $(,)?) => { $crate::builtins::string::sprintf(&$fmt, &[$($crate::builtins::string::FmtArg::from($arg)),*]) };
+}
+
+#[cfg(test)]
+mod sprintf_tests {
+    use super::{sprintf, FmtArg};
+    use crate::string::Str;
+
+    fn fmt(f: &str, args: &[FmtArg]) -> String {
+        String::from_utf8(sprintf(&Str::from_str(f), args).unwrap().as_bytes().to_vec()).unwrap()
+    }
+
+    #[test]
+    fn star_takes_the_width_and_the_precision_from_an_argument() {
+        assert_eq!(fmt("%*d|", &[FmtArg::Int(5), FmtArg::Int(42)]), "   42|");
+        assert_eq!(fmt("%.*f|", &[FmtArg::Int(3), FmtArg::Float(1.23456)]), "1.235|");
+        assert_eq!(fmt("%*.*f|", &[FmtArg::Int(10), FmtArg::Int(2), FmtArg::Float(1.23456)]), "      1.23|");
+    }
+
+    #[test]
+    fn a_star_can_name_its_argument_by_position() {
+        assert_eq!(fmt("%.*2$f|", &[FmtArg::Float(1.23456), FmtArg::Int(2)]), "1.23|");
+        assert_eq!(fmt("%2$*1$d|", &[FmtArg::Int(6), FmtArg::Int(42)]), "    42|");
+    }
+
+    #[test]
+    fn a_negative_star_width_is_rejected() {
+        let e = sprintf(&Str::from_str("%*d"), &[FmtArg::Int(-5), FmtArg::Int(42)]).unwrap_err();
+        assert!(e.message.to_string().contains("Width must be between"), "{}", e.message.to_string());
+    }
+
+    #[test]
+    fn a_star_without_its_argument_reports_the_arity() {
+        let e = sprintf(&Str::from_str("%.*f"), &[FmtArg::Int(1)]).unwrap_err();
+        assert!(e.message.to_string().contains("arguments are required"), "{}", e.message.to_string());
+    }
 }

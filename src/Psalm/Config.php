@@ -2294,6 +2294,30 @@ final class Config
 
         $core_generic_files = [];
 
+        // Likewise for the classes PHP provides at every version: a compiled program cannot reflect
+        // them either, and until they are registered anything that names one (DatePeriod implements
+        // IteratorAggregate, say) resolves it through the interpreter instead -- which, for a compiled
+        // program, means its own transpiled shim rather than the stub that describes the real class.
+        if (\defined('PSALM_COMPILED')) {
+            $core_stubs_dir = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'stubs' . DIRECTORY_SEPARATOR;
+
+            foreach ([
+                'CoreGenericClasses.phpstub',
+                'CoreGenericIterators.phpstub',
+                'CoreImmutableClasses.phpstub',
+                'SPL.phpstub',
+                'Reflection.phpstub',
+            ] as $core_stub) {
+                $core_stub_path = $core_stubs_dir . $core_stub;
+
+                if (!file_exists($core_stub_path)) {
+                    throw new UnexpectedValueException('Cannot locate ' . $core_stub_path);
+                }
+
+                $core_generic_files[] = $core_stub_path;
+            }
+        }
+
         // a compiled program has no reflection of the running PHP's own classes: the version stubs
         // are the only source for them, whatever version the runtime reports
         if ((\defined('PSALM_COMPILED') || PHP_VERSION_ID < 8_00_00) && $codebase->analysis_php_version_id >= 8_00_00) {

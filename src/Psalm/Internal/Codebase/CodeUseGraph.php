@@ -540,10 +540,9 @@ final class CodeUseGraph
     /**
      * Records the mutations performed by an analysed function-like.
      *
-     * @param MutationInfo $info
      * @psalm-external-mutation-free
      */
-    public function addMutationInfo(string $node_id, array $info): void
+    public function addMutationInfo(string $node_id, MutationInfo $info): void
     {
         $this->mutation_info[$node_id] = $info;
     }

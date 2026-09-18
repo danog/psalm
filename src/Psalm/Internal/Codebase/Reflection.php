@@ -367,8 +367,9 @@ final class Reflection
     public function registerFunction(string $function_id): ?bool
     {
         if (\defined('PSALM_COMPILED')) {
-            // no reflection of internal functions in a compiled program: only the call map is known
-            return false;
+            // a compiled program cannot reflect the interpreter's own functions, so the call map is
+            // the only description of them there is
+            return $this->registerFunctionFromCallMap($function_id);
         }
         try {
             $reflection_function = new ReflectionFunction($function_id);
@@ -427,6 +428,50 @@ final class Reflection
         } catch (ReflectionException) {
             return false;
         }
+
+        return null;
+    }
+
+    /**
+     * Describes an internal function from the call map alone, for a program that cannot reflect one.
+     *
+     * @param  callable-string $function_id
+     * @return false|null
+     */
+    private function registerFunctionFromCallMap(string $function_id): ?bool
+    {
+        if (isset(self::$builtin_functions[$function_id])) {
+            return null;
+        }
+
+        if (!InternalCallMapHandler::inCallMap($function_id)) {
+            return false;
+        }
+
+        $callmap_callable = InternalCallMapHandler::getCallableFromCallMapById(
+            $this->codebase,
+            $function_id,
+            [],
+            null,
+        );
+
+        if ($callmap_callable->params === null || $callmap_callable->return_type === null) {
+            return false;
+        }
+
+        $storage = self::$builtin_functions[$function_id] = new FunctionStorage();
+        $storage->setParams($callmap_callable->params);
+        $storage->return_type = $callmap_callable->return_type;
+        $storage->allowed_mutations = Mutations::LEVEL_NONE;
+        $storage->required_param_count = 0;
+
+        foreach ($storage->params as $i => $param) {
+            if (!$param->is_optional && !$param->is_variadic) {
+                $storage->required_param_count = $i + 1;
+            }
+        }
+
+        $storage->cased_name = $function_id;
 
         return null;
     }
