@@ -1168,9 +1168,28 @@ function case_narrow_only_receiver(): string
     return $out;
 }
 
+interface PlugBase {}
+interface PlugEntry extends PlugBase { public function __invoke(string $arg): string; }
+final class PlugOne implements PlugEntry { public function __invoke(string $arg): string { return 'one:' . $arg; } }
+final class PlugPlain implements PlugBase {}
+
+function run_plugin(PlugBase $p): string
+{
+    if (!$p instanceof PlugEntry) {
+        return 'skip';
+    }
+    return $p('x');
+}
+
+function case_callee_narrowing(): string
+{
+    return run_plugin(new PlugOne()) . '|' . run_plugin(new PlugPlain());
+}
+
 function run_all(): string
 {
-    return check('narrow_only_receiver', case_narrow_only_receiver(), '5litother')
+    return check('callee_narrowing', case_callee_narrowing(), 'one:x|skip')
+        . check('narrow_only_receiver', case_narrow_only_receiver(), '5litother')
         . check('prop_no_downcast', case_prop_no_downcast(), 'litother')
         . check('variant_union_field', case_variant_union_field(), 'ab-?')
         . check('rt_truthy', case_rt_truthy(), 'F-')

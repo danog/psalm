@@ -427,7 +427,15 @@ trait CallTrait
     /** `$callable(...)` */
     private function dynamicCall(Expr\FuncCall $e): Val
     {
-        $callee = $this->expr($e->name);
+        // the callee is a receiver position: `$plugin($socket)` needs the class Psalm narrowed it to
+        // (the one that declares __invoke), not the class the value is stored as
+        $saved_receiver = $this->in_receiver;
+        $this->in_receiver = true;
+        try {
+            $callee = $this->expr($e->name);
+        } finally {
+            $this->in_receiver = $saved_receiver;
+        }
         return $this->callValue($callee, $e->getArgs(), $e);
     }
 
