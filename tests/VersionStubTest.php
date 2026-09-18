@@ -52,4 +52,23 @@ final class VersionStubTest extends TestCase
             'the stub declares Attribute::__construct',
         );
     }
+
+    /**
+     * IteratorAggregate::getIterator is declared without a native return type, so a class implementing it
+     * without one (ArrayObject) must not be reported as a signature mismatch.
+     */
+    public function testIteratorAggregateHasNoSignatureReturnType(): void
+    {
+        $this->project_analyzer->setPhpVersion('8.0', 'tests');
+
+        $codebase = $this->project_analyzer->getCodebase();
+        $codebase->config->visitPreloadedStubFiles($codebase);
+
+        $storage = $codebase->classlike_storage_provider->get('IteratorAggregate');
+
+        $this->assertNull(
+            $storage->methods['getiterator']->signature_return_type,
+            'the stub declares getIterator() without a native return type',
+        );
+    }
 }
