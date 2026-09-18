@@ -1146,9 +1146,32 @@ function case_prop_no_downcast(): string
     return $out;
 }
 
+/** @return list<ArgBase> */
+function mk_narrow_bases(): array
+{
+    return [new ArgLit(5), new ArgOther()];
+}
+
+function case_narrow_only_receiver(): string
+{
+    $out = '';
+    foreach (mk_narrow_bases() as $n) {
+        if ($n instanceof ArgLit) {
+            // a member only the subclass has: the receiver still downcasts
+            $out .= (string) $n->v;
+            // a plain value use keeps the stored class
+            $out .= takes_arg_base($n);
+        } else {
+            $out .= takes_arg_base($n);
+        }
+    }
+    return $out;
+}
+
 function run_all(): string
 {
-    return check('prop_no_downcast', case_prop_no_downcast(), 'litother')
+    return check('narrow_only_receiver', case_narrow_only_receiver(), '5litother')
+        . check('prop_no_downcast', case_prop_no_downcast(), 'litother')
         . check('variant_union_field', case_variant_union_field(), 'ab-?')
         . check('rt_truthy', case_rt_truthy(), 'F-')
         . check('prop_empty_unset', case_prop_empty_unset(), '1:0')

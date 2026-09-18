@@ -641,6 +641,16 @@ trait ExprTrait
         if ($this->isWidening($v->type, $inf)) {
             return $v;
         }
+        // a class value narrowed to one of its subclasses keeps its own class unless it is about to be used
+        // as a receiver: Psalm's flow narrowing can be wider than the flow allows, and the downcast would
+        // panic on a sibling subclass. Member access needs the narrowing, so receivers still downcast.
+        if (!$this->in_receiver && $v->type->kind === RustType::CLASS_ && $inf->kind === RustType::CLASS_) {
+            $vc = $this->program->classOf($v->type);
+            $ic = $this->program->classOf($inf);
+            if ($vc !== null && $ic !== null && $ic !== $vc && $ic->isSubclassOf($vc)) {
+                return $v;
+            }
+        }
         // a generic value narrowed to `object`/mixed stays generic (its class name is reachable through PhpKind)
         if ($v->type->kind === RustType::GENERIC && ($inf->kind === RustType::ANY_OBJECT || $inf->containsMixed())) {
             return $v;

@@ -617,8 +617,22 @@ final class BodyEmitter
         }
     }
 
+    /** True while emitting a receiver: a downcast to Psalm's narrower class resolves members there. */
+    public bool $in_receiver = false;
+
     /** Emit an expression used as a receiver (no clone for `$this`). */
     public function receiver(Expr $e): Val
+    {
+        $saved_receiver = $this->in_receiver;
+        $this->in_receiver = true;
+        try {
+            return $this->receiverInner($e);
+        } finally {
+            $this->in_receiver = $saved_receiver;
+        }
+    }
+
+    private function receiverInner(Expr $e): Val
     {
         if ($e instanceof Expr\Variable && $e->name === 'this' && $this->this_type !== null) {
             // Honor Psalm's narrowing of `$this` to a subclass (`if ($this instanceof Sub) { $this->subMethod(); }`):
