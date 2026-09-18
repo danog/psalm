@@ -7,6 +7,7 @@ namespace Psalm\Tests\Config\Plugin\EventHandler\AddTaints;
 use Override;
 use Psalm\Config;
 use Psalm\Context;
+use Psalm\Example\Plugin\TaintActiveRecords;
 use Psalm\Exception\CodeException;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\IncludeCollector;
@@ -89,6 +90,10 @@ final class AddTaintsInterfaceTest extends TestCase
 
     private function setupProjectAnalyzerWithActiveRecordPlugin(): void
     {
+        Config::registerPluginFactory(
+            TaintActiveRecords::class,
+            static fn(): TaintActiveRecords => new TaintActiveRecords(),
+        );
         $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
             TestConfig::loadFromXML(
                 dirname(__DIR__, 5) . DIRECTORY_SEPARATOR,

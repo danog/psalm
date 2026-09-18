@@ -7,6 +7,7 @@ namespace Psalm\Tests\Config\Plugin\EventHandler\RemoveTaints;
 use Override;
 use Psalm\Config;
 use Psalm\Context;
+use Psalm\Example\Plugin\SafeArrayKeyChecker;
 use Psalm\Exception\CodeException;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\IncludeCollector;
@@ -113,6 +114,10 @@ final class RemoveTaintsInterfaceTest extends TestCase
 
     public function testRemoveTaintsSafeArrayKeyChecker(): void
     {
+        Config::registerPluginFactory(
+            SafeArrayKeyChecker::class,
+            static fn(): SafeArrayKeyChecker => new SafeArrayKeyChecker(),
+        );
         $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
             TestConfig::loadFromXML(
                 dirname(__DIR__, 5) . DIRECTORY_SEPARATOR,

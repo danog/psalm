@@ -7,6 +7,11 @@ namespace Psalm\Tests\Config;
 use InvalidArgumentException;
 use Override;
 use Psalm\Config;
+use Psalm\Example\Plugin\ComposerBased\EchoChecker;
+use Psalm\Example\Plugin\PreventFloatAssignmentChecker;
+use Psalm\Example\Plugin\SafeArrayKeyChecker;
+use Psalm\Example\Plugin\StringChecker;
+use Psalm\Example\Plugin\TaintActiveRecords;
 use Psalm\Context;
 use Psalm\Exception\CodeException;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
@@ -60,6 +65,22 @@ final class PluginTest extends TestCase
         Config::registerPluginFactory(FunctionPlugin::class, static fn(): FunctionPlugin => new FunctionPlugin());
         Config::registerPluginFactory(AfterAnalysisPlugin::class, static fn(): AfterAnalysisPlugin => new AfterAnalysisPlugin());
         Config::registerPluginFactory(StoragePlugin::class, static fn(): StoragePlugin => new StoragePlugin());
+        // the example plugins the config files below load by filename: a compiled program instantiates a
+        // plugin class only through a registered factory
+        Config::registerPluginFactory(StringChecker::class, static fn(): StringChecker => new StringChecker());
+        Config::registerPluginFactory(
+            PreventFloatAssignmentChecker::class,
+            static fn(): PreventFloatAssignmentChecker => new PreventFloatAssignmentChecker(),
+        );
+        Config::registerPluginFactory(EchoChecker::class, static fn(): EchoChecker => new EchoChecker());
+        Config::registerPluginFactory(
+            TaintActiveRecords::class,
+            static fn(): TaintActiveRecords => new TaintActiveRecords(),
+        );
+        Config::registerPluginFactory(
+            SafeArrayKeyChecker::class,
+            static fn(): SafeArrayKeyChecker => new SafeArrayKeyChecker(),
+        );
 
         new TestConfig();
     }
