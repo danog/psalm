@@ -1204,6 +1204,30 @@ function case_xml_config(): string
     return $out . ':' . $names;
 }
 
+function case_dom_config(): string
+{
+    $dom = new \DOMDocument();
+    $dom->loadXML('<?xml version="1.0"?>
+                <psalm>
+                    <forbiddenFunctions>
+                        <function name="eval" />
+                        <function name="print" />
+                    </forbiddenFunctions>
+                </psalm>', LIBXML_NONET);
+    $dom->xinclude(LIBXML_NOWARNING | LIBXML_NONET);
+    $xml = \simplexml_import_dom($dom);
+    if ($xml === null) {
+        return 'null';
+    }
+    $out = isset($xml->forbiddenFunctions) ? 'set' : 'unset';
+    $out .= isset($xml->forbiddenFunctions->function) ? '+fn' : '-fn';
+    $names = '';
+    foreach ($xml->forbiddenFunctions->function as $fn) {
+        $names .= (string) $fn['name'] . ',';
+    }
+    return $out . ':' . $names;
+}
+
 function case_semver_constraints(): string
 {
     $parser = new \Composer\Semver\VersionParser();
@@ -1219,7 +1243,8 @@ function case_semver_constraints(): string
 
 function run_all(): string
 {
-    return check('semver_constraints', case_semver_constraints(), '00111')
+    return check('dom_config', case_dom_config(), 'set+fn:eval,print,')
+        . check('semver_constraints', case_semver_constraints(), '00111')
         . check('xml_config', case_xml_config(), 'set+fn:print,var_export,')
         . check('callee_narrowing', case_callee_narrowing(), 'one:x|skip')
         . check('narrow_only_receiver', case_narrow_only_receiver(), '5litother')
