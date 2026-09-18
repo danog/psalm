@@ -53,11 +53,11 @@ trait ExprTrait
             ) {
                 $raw = $this->readVar($e->name);
             } elseif ($e instanceof Expr\PropertyFetch && $e->name instanceof Identifier
-                && $e->var instanceof Expr\Variable && is_string($e->var->name) && $e->var->name !== 'this'
+                && $e->var instanceof Expr\Variable && is_string($e->var->name)
                 && !isset($this->narrowings[$e->var->name])
             ) {
                 // only a DECLARED field: a magic property would be read through the dynamic protocol here
-                $bt = $this->varType($e->var->name);
+                $bt = $e->var->name === 'this' ? ($this->this_type ?? RustType::mixed()) : $this->varType($e->var->name);
                 $bc = $bt->kind === RustType::OPTION ? $bt->inner() : $bt;
                 $cls = $bc->kind === RustType::CLASS_ ? $this->program->classOf($bc) : null;
                 if ($cls !== null && isset($cls->fields[$e->name->name])) {
