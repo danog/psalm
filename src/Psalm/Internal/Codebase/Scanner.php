@@ -582,6 +582,12 @@ final class Scanner
                         // a class of the analyzed code is not overridden by a stub (as in the stub's traversal)
                         continue;
                     }
+                    if ($replaced->stubbed) {
+                        // another stub file already defines this class: its traversal merged the definitions
+                        // into one storage (`$is_classlike_overridden`), which re-exhuming would undo
+                        $this->codebase->exhumeClassLikeStorage($fq_classlike_name, $file_path);
+                        continue;
+                    }
                     // a stub replaces whatever else was registered before it, typically an internal class
                     // reflected while scanning the analyzed files; as the stub's traversal would, whatever was
                     // populated from the replaced definition is populated again
