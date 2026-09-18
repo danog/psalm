@@ -126,6 +126,32 @@ interface ArrayAccess {
 }
 
 /**
+ * PHP 8 provides this class whatever version the analyzed code targets (reflection would report it), so it
+ * belongs with the classes that are always registered rather than with the version-specific stubs.
+ */
+/** @psalm-immutable */
+class Attribute
+{
+    public int $flags;
+
+    public const TARGET_CLASS = 1;
+    public const TARGET_FUNCTION = 2;
+    public const TARGET_METHOD = 4;
+    public const TARGET_PROPERTY = 8;
+    public const TARGET_CLASS_CONSTANT = 16;
+    public const TARGET_PARAMETER = 32;
+    public const TARGET_ALL = 63;
+    public const IS_REPEATABLE = 64;
+
+    /**
+     * @param int-mask-of<self::*> $flags
+     */
+    public function __construct(int $flags = self::TARGET_ALL)
+    {
+    }
+}
+
+/**
  * This class allows objects to work as arrays.
  * @link http://php.net/manual/en/class.arrayobject.php
  *
