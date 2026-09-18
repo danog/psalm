@@ -2294,9 +2294,13 @@ final class Config
 
         $core_generic_files = [];
 
-        // a compiled program has no reflection of the running PHP's own classes: the version stubs
-        // are the only source for them, whatever version the runtime reports
-        if ((\defined('PSALM_COMPILED') || PHP_VERSION_ID < 8_00_00) && $codebase->analysis_php_version_id >= 8_00_00) {
+        // a compiled program has no reflection of the running PHP's own classes, so the version stubs
+        // stand in for them whenever the RUNTIME provides those classes -- as reflection would,
+        // whatever version the analyzed code targets
+        if (\defined('PSALM_COMPILED')
+            ? PHP_VERSION_ID >= 8_00_00
+            : (PHP_VERSION_ID < 8_00_00 && $codebase->analysis_php_version_id >= 8_00_00)
+        ) {
             $stringable_path = dirname(__DIR__, 2) . '/stubs/Php80.phpstub';
 
             if (!file_exists($stringable_path)) {
@@ -2306,9 +2310,13 @@ final class Config
             $core_generic_files[] = $stringable_path;
         }
 
-        // a compiled program has no reflection of the running PHP's own classes: the version stubs
-        // are the only source for them, whatever version the runtime reports
-        if ((\defined('PSALM_COMPILED') || PHP_VERSION_ID < 8_01_00) && $codebase->analysis_php_version_id >= 8_01_00) {
+        // a compiled program has no reflection of the running PHP's own classes, so the version stubs
+        // stand in for them whenever the RUNTIME provides those classes -- as reflection would,
+        // whatever version the analyzed code targets
+        if (\defined('PSALM_COMPILED')
+            ? PHP_VERSION_ID >= 8_01_00
+            : (PHP_VERSION_ID < 8_01_00 && $codebase->analysis_php_version_id >= 8_01_00)
+        ) {
             $stringable_path = dirname(__DIR__, 2) . '/stubs/Php81.phpstub';
 
             if (!file_exists($stringable_path)) {
@@ -2318,9 +2326,13 @@ final class Config
             $core_generic_files[] = $stringable_path;
         }
 
-        // a compiled program has no reflection of the running PHP's own classes: the version stubs
-        // are the only source for them, whatever version the runtime reports
-        if ((\defined('PSALM_COMPILED') || PHP_VERSION_ID < 8_02_00) && $codebase->analysis_php_version_id >= 8_02_00) {
+        // a compiled program has no reflection of the running PHP's own classes, so the version stubs
+        // stand in for them whenever the RUNTIME provides those classes -- as reflection would,
+        // whatever version the analyzed code targets
+        if (\defined('PSALM_COMPILED')
+            ? PHP_VERSION_ID >= 8_02_00
+            : (PHP_VERSION_ID < 8_02_00 && $codebase->analysis_php_version_id >= 8_02_00)
+        ) {
             $stringable_path = dirname(__DIR__, 2) . '/stubs/Php82.phpstub';
 
             if (!file_exists($stringable_path)) {
@@ -2330,9 +2342,13 @@ final class Config
             $core_generic_files[] = $stringable_path;
         }
 
-        // a compiled program has no reflection of the running PHP's own classes: the version stubs
-        // are the only source for them, whatever version the runtime reports
-        if ((\defined('PSALM_COMPILED') || PHP_VERSION_ID < 8_04_00) && $codebase->analysis_php_version_id >= 8_04_00) {
+        // a compiled program has no reflection of the running PHP's own classes, so the version stubs
+        // stand in for them whenever the RUNTIME provides those classes -- as reflection would,
+        // whatever version the analyzed code targets
+        if (\defined('PSALM_COMPILED')
+            ? PHP_VERSION_ID >= 8_04_00
+            : (PHP_VERSION_ID < 8_04_00 && $codebase->analysis_php_version_id >= 8_04_00)
+        ) {
             $stringable_path = dirname(__DIR__, 2) . '/stubs/Php84.phpstub';
 
             if (!file_exists($stringable_path)) {
@@ -2342,9 +2358,13 @@ final class Config
             $core_generic_files[] = $stringable_path;
         }
 
-        // a compiled program has no reflection of the running PHP's own classes: the version stubs
-        // are the only source for them, whatever version the runtime reports
-        if ((\defined('PSALM_COMPILED') || PHP_VERSION_ID < 8_05_00) && $codebase->analysis_php_version_id >= 8_05_00) {
+        // a compiled program has no reflection of the running PHP's own classes, so the version stubs
+        // stand in for them whenever the RUNTIME provides those classes -- as reflection would,
+        // whatever version the analyzed code targets
+        if (\defined('PSALM_COMPILED')
+            ? PHP_VERSION_ID >= 8_05_00
+            : (PHP_VERSION_ID < 8_05_00 && $codebase->analysis_php_version_id >= 8_05_00)
+        ) {
             $stringable_path = dirname(__DIR__, 2) . '/stubs/Php85.phpstub';
 
             if (!file_exists($stringable_path)) {
