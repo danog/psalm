@@ -42,7 +42,7 @@ final class ClassStatementsDiffer extends AstDiffer
                 PhpParser\Node\Stmt $b,
                 string $a_code,
                 string $b_code,
-                bool &$body_change = false,
+                BodyChange $body_change = new BodyChange(),
             ) use (&$diff_map): bool {
                 if ($a::class !== $b::class) {
                     return false;
@@ -63,7 +63,7 @@ final class ClassStatementsDiffer extends AstDiffer
                 $b_comments = $b->getComments();
 
                 $signature_change = false;
-                $body_change = false;
+                $body_change->changed = false;
 
                 if ($a_comments) {
                     if (!$b_comments) {
@@ -132,7 +132,7 @@ final class ClassStatementsDiffer extends AstDiffer
                     $a_body_size = $a_end - $a_stmts_start;
                     $b_body_size = $b_end - $b_stmts_start;
 
-                    $body_change = $a_body_size !== $b_body_size
+                    $body_change->changed = $a_body_size !== $b_body_size
                         || substr($a_code, $a_stmts_start, $a_end - $a_stmts_start)
                             !== substr($b_code, $b_stmts_start, $b_end - $b_stmts_start);
 
@@ -176,13 +176,13 @@ final class ClassStatementsDiffer extends AstDiffer
                         }
                     }
 
-                    $body_change = substr($a_code, $a_comments_end, $a_end - $a_comments_end)
+                    $body_change->changed = substr($a_code, $a_comments_end, $a_end - $a_comments_end)
                         !== substr($b_code, $b_comments_end, $b_end - $b_comments_end);
                 } else {
                     $signature_change = true;
                 }
 
-                if (!$signature_change && !$body_change) {
+                if (!$signature_change && !$body_change->changed) {
                     $diff_map[] = [$a_start, $a_end, $b_start - $a_start, $b->getLine() - $a->getLine()];
                 }
 

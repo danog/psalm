@@ -35,7 +35,7 @@ abstract class AstDiffer
     }
 
     /**
-     * @param Closure(Stmt, Stmt, string, string, bool=): bool $is_equal
+     * @param Closure(Stmt, Stmt, string, string, BodyChange=): bool $is_equal
      * @param array<int, Stmt> $a
      * @param array<int, Stmt> $b
      * @return array{0:non-empty-list<array<int, int>>, 1: int, 2: int, 3: array<int, bool>}
@@ -64,14 +64,14 @@ abstract class AstDiffer
 
                 $y = $x - $k;
 
-                $body_change = false;
+                $body_change = new BodyChange();
 
                 while ($x < $n && $y < $m && ($is_equal)($a[$x], $b[$y], $a_code, $b_code, $body_change)) {
-                    $bc[$x] = $body_change;
+                    $bc[$x] = $body_change->changed;
                     ++$x;
                     ++$y;
 
-                    $body_change = false;
+                    $body_change = new BodyChange();
                 }
 
                 $v[$k] = $x;
