@@ -58,6 +58,20 @@ final class SharedStubFileStorageCacheProvider extends FileStorageCacheProvider
         }
         $key = strtolower($file_path);
 
-        return isset($this->shared[$key]) && $this->shared[$key][0] === $this->php_version_id . ':' . hash('xxh128', $file_contents) ? $this->shared[$key][1] : null;
+        if (!isset($this->shared[$key]) || $this->shared[$key][0] !== $this->php_version_id . ':' . hash('xxh128', $file_contents)) {
+            return null;
+        }
+
+        $storage = $this->shared[$key][1];
+
+        // the file storage is only usable while every class of the file can still be exhumed from the class
+        // cache: report a miss (so the file is scanned again) rather than let the exhume fail
+        foreach ($storage->classlikes_in_file as $fq_classlike_name_lc => $_) {
+            if (!$this->classlike_cache->hasStorage($file_path, (string) $fq_classlike_name_lc, $file_contents)) {
+                return null;
+            }
+        }
+
+        return $storage;
     }
 }
