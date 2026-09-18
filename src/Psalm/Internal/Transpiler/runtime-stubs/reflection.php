@@ -8,10 +8,8 @@ declare(strict_types=1);
 /**
  * Minimal ReflectionFunction: internal functions are the runtime's builtins, user functions the compiled ones.
  */
-class ReflectionFunction
+class ReflectionFunction extends ReflectionFunctionAbstract
 {
-    public string $name;
-
     /** @param \Closure|string $function */
     public function __construct($function)
     {
@@ -22,11 +20,6 @@ class ReflectionFunction
             throw new ReflectionException('Function ' . $function . '() does not exist');
         }
         $this->name = ltrim($function, '\\');
-    }
-
-    public function getName(): string
-    {
-        return $this->name;
     }
 
     public function isInternal(): bool
@@ -45,38 +38,6 @@ class ReflectionFunction
         return false;
     }
 
-    public function getNumberOfParameters(): int
-    {
-        return 0;
-    }
-
-    /** @return list<never> */
-    /** @return list<ReflectionParameter> */
-    public function getParameters(): array
-    {
-        return [];
-    }
-
-    /** No return type information exists for functions in a compiled program. */
-    public function getReturnType(): ?ReflectionType
-    {
-        return null;
-    }
-
-    public function hasTentativeReturnType(): bool
-    {
-        return false;
-    }
-
-    public function getTentativeReturnType(): ?ReflectionType
-    {
-        return null;
-    }
-
-    public function hasReturnType(): bool
-    {
-        return false;
-    }
 }
 
 abstract class ReflectionType
