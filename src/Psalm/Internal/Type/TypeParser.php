@@ -1764,7 +1764,7 @@ final class TypeParser
      * Merges the keyed arrays of an intersection (an unsealed `array` at either end is dropped, other
      * members are ignored: the caller has checked that only keyed arrays remain).
      *
-     * @param non-empty-array<int, Atomic> $intersection_types
+     * @param non-empty-array<string, Atomic> $intersection_types
      */
     private static function getTypeFromKeyedArrays(
         Codebase $codebase,
