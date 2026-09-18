@@ -7,6 +7,9 @@ namespace Psalm\Tests;
 use Psalm\Context;
 use Psalm\Internal\MethodIdentifier;
 
+use function array_keys;
+use function implode;
+
 /**
  * The classes PHP itself provides come from the version stubs in a compiled build (there is no reflection
  * of the interpreter's own classes), so a class declared only in Php80.phpstub must be registered with its
@@ -148,5 +151,30 @@ final class VersionStubTest extends TestCase
             (string) $stringable->return_type,
             'its docblock @return is still read',
         );
+    }
+
+    /**
+     * A compiled program carries its own shims for the reflection classes, and they describe far less
+     * than Psalm's stub does. The stub is the description the analyzer must use.
+     */
+    public function testReflectionClassesComeFromPsalmsOwnStub(): void
+    {
+        $this->project_analyzer->setPhpVersion('8.0', 'tests');
+
+        $codebase = $this->project_analyzer->getCodebase();
+        $codebase->config->visitPreloadedStubFiles($codebase);
+        $codebase->config->visitStubFiles($codebase);
+
+        foreach (['ReflectionClass', 'ReflectionFunction', 'ReflectionMethod', 'ReflectionProperty'] as $name) {
+            $storage = $codebase->classlike_storage_provider->get($name);
+
+            $this->assertTrue(
+                $codebase->methods->methodExists($codebase, new MethodIdentifier($name, 'getattributes')),
+                $name . '::getAttributes() is declared by stubs/Reflection.phpstub;'
+                . ' storage file=' . ($storage->location?->file_path ?? 'none')
+                . ' parent=' . ($storage->parent_class ?? 'none')
+                . ' methods=' . implode(',', array_keys($storage->methods)),
+            );
+        }
     }
 }

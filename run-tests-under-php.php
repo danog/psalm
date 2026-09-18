@@ -127,6 +127,9 @@ foreach ($classes as $class) {
                     }
                 } else {
                     $failure = get_class($e) . ': ' . $e->getMessage();
+                    if (getenv('PSALM_TEST_TRACE')) {
+                        $failure .= "\n" . $e->getTraceAsString();
+                    }
                     for ($p = $e->getPrevious(); $p !== null; $p = $p->getPrevious()) {
                         $failure .= ' <- ' . get_class($p) . ': ' . $p->getMessage();
                     }

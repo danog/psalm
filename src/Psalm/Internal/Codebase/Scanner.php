@@ -476,10 +476,12 @@ final class Scanner
             }
             $changed = true;
             $stub->properties[$property_name] = $property_storage;
+            $property_id = $stub->name . '::$' . $property_name;
+            // the declaring map holds the class, the other two hold the property id
             $stub->declaring_property_ids[$property_name] ??= $stub->name;
-            $stub->appearing_property_ids[$property_name] ??= $stub->name;
+            $stub->appearing_property_ids[$property_name] ??= $property_id;
             if ($property_storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PRIVATE) {
-                $stub->inheritable_property_ids[$property_name] ??= $stub->name;
+                $stub->inheritable_property_ids[$property_name] ??= $property_id;
             }
         }
         foreach ($reflected->constants as $const_name => $const_storage) {
