@@ -268,10 +268,11 @@ final class ArrayFetchAnalyzer
 
                 if ($array_type instanceof TArray) {
                     $const_array_key_type = $array_type->type_params[0];
-                } else {
-                    // a constant array is a list, a keyed array or an array<K, V>, never a class-string map
-                    assert($array_type instanceof TKeyedArray);
+                } elseif ($array_type instanceof TKeyedArray) {
                     $const_array_key_type = $array_type->getGenericKeyType();
+                } else {
+                    // a class-string map: its keys are class strings
+                    $const_array_key_type = Type::getString();
                 }
 
                 if ($dim_var_id
