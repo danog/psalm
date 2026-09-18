@@ -30,4 +30,26 @@ final class VersionStubTest extends TestCase
             'the stub declares Attribute::__construct',
         );
     }
+
+    /** The analysis tests preload the stubs in server mode, as the traits do. */
+    public function testAttributeClassComesFromTheVersionStubInServerMode(): void
+    {
+        $this->project_analyzer->setPhpVersion('8.0', 'tests');
+
+        $codebase = $this->project_analyzer->getCodebase();
+        $codebase->enterServerMode();
+        $codebase->config->visitPreloadedStubFiles($codebase);
+
+        $this->assertTrue(
+            $codebase->classlikes->classExists('Attribute'),
+            'Attribute is declared by stubs/Php80.phpstub',
+        );
+
+        $storage = $codebase->classlike_storage_provider->get('Attribute');
+
+        $this->assertTrue(
+            isset($storage->methods['__construct']),
+            'the stub declares Attribute::__construct',
+        );
+    }
 }
