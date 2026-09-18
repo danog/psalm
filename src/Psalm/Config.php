@@ -750,9 +750,30 @@ final class Config
             $current_dir = $base_dir;
         }
 
+        return self::loadFromXMLInto(new self(), $base_dir, $file_contents, $current_dir, $file_path);
+    }
+
+    /**
+     * Fills a config that the caller built, so a subclass gets its own defaults applied first
+     * (`new static()` would depend on which class name the call was written with).
+     *
+     * @param non-empty-string $file_contents
+     * @throws ConfigException
+     */
+    public static function loadFromXMLInto(
+        Config $config,
+        string $base_dir,
+        string $file_contents,
+        ?string $current_dir = null,
+        ?string $file_path = null,
+    ): Config {
+        if ($current_dir === null) {
+            $current_dir = $base_dir;
+        }
+
         self::validateXmlConfig($base_dir, $file_contents);
 
-        return self::fromXmlAndPaths($base_dir, $file_contents, $current_dir, $file_path);
+        return self::fromXmlAndPaths($config, $base_dir, $file_contents, $current_dir, $file_path);
     }
 
     /**
@@ -955,13 +976,12 @@ final class Config
      * @throws ConfigException
      */
     private static function fromXmlAndPaths(
+        Config $config,
         string $base_dir,
         string $file_contents,
         string $current_dir,
         ?string $config_path,
     ): self {
-        $config = new static();
-
         $dom_document = self::loadDomDocument($base_dir, $file_contents);
 
         if (null !== $config_path) {
@@ -1752,6 +1772,19 @@ final class Config
     }
 
     /**
+     * True for one of Psalm's own stub files: its description of a class PHP provides is the one to
+     * keep, whatever else on disk happens to declare a class of that name.
+     *
+     * @psalm-mutation-free
+     */
+    public static function isOwnStubFile(string $file_path): bool
+    {
+        $stubs_dir = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'stubs' . DIRECTORY_SEPARATOR;
+
+        return str_starts_with($file_path, $stubs_dir);
+    }
+
+    /**
      * @psalm-mutation-free
      */
     private static function requirePath(string $path): void
@@ -2306,7 +2339,6 @@ final class Config
                 'CoreGenericIterators.phpstub',
                 'CoreImmutableClasses.phpstub',
                 'SPL.phpstub',
-                'Reflection.phpstub',
             ] as $core_stub) {
                 $core_stub_path = $core_stubs_dir . $core_stub;
 

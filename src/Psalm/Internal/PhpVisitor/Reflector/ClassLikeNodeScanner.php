@@ -168,6 +168,17 @@ final class ClassLikeNodeScanner
             if ($this->codebase->classlike_storage_provider->has($fq_classlike_name_lc)) {
                 $duplicate_storage = $this->codebase->classlike_storage_provider->get($fq_classlike_name_lc);
 
+                // Psalm's own stubs describe the classes PHP itself provides; another file declaring a
+                // class of the same name does not get to replace that description (a compiled program
+                // carries shims for those classes, and its own source would otherwise win)
+                if ($duplicate_storage->location !== null
+                    && $duplicate_storage->location->file_path !== $this->file_path
+                    && Config::isOwnStubFile($duplicate_storage->location->file_path)
+                    && !Config::isOwnStubFile($this->file_path)
+                ) {
+                    return false;
+                }
+
                 // don't override data from files that are getting analyzed with data from stubs
                 // if the stubs contain the same class
                 if (!$duplicate_storage->stubbed
