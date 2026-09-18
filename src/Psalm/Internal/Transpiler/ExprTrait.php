@@ -53,11 +53,17 @@ trait ExprTrait
             ) {
                 $raw = $this->readVar($e->name);
             } elseif ($e instanceof Expr\PropertyFetch && $e->name instanceof Identifier
-                && $e->var instanceof Expr\Variable && is_string($e->var->name)
+                && $e->var instanceof Expr\Variable && is_string($e->var->name) && $e->var->name !== 'this'
                 && !isset($this->narrowings[$e->var->name])
             ) {
-                $p = $this->place($e);
-                $raw = new Val($p->read(), $p->type);
+                // only a DECLARED field: a magic property would be read through the dynamic protocol here
+                $bt = $this->varType($e->var->name);
+                $bc = $bt->kind === RustType::OPTION ? $bt->inner() : $bt;
+                $cls = $bc->kind === RustType::CLASS_ ? $this->program->classOf($bc) : null;
+                if ($cls !== null && isset($cls->fields[$e->name->name])) {
+                    $p = $this->place($e);
+                    $raw = new Val($p->read(), $p->type);
+                }
             }
             if ($raw !== null && $raw->type->kind === RustType::CLASS_ && $this->classFitsInto($raw->type, $expected)) {
                 return new Val($this->casts->convert($raw->code, $raw->type, $expected), $expected);
