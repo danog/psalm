@@ -706,16 +706,7 @@ final class ArithmeticOpAnalyzer
             || $parent instanceof PhpParser\Node\Expr\BinaryOp\Mod
             || $parent instanceof PhpParser\Node\Expr\BinaryOp\Pow
         ) {
-            $non_decimal_type = null;
-            if ($left_type_part instanceof TNamedObject
-                && strtolower($left_type_part->value) === "decimal\\decimal"
-            ) {
-                $non_decimal_type = $right_type_part;
-            } elseif ($right_type_part instanceof TNamedObject
-                && strtolower($right_type_part->value) === "decimal\\decimal"
-            ) {
-                $non_decimal_type = $left_type_part;
-            }
+            $non_decimal_type = self::otherOperandOfDecimal($left_type_part, $right_type_part);
             if ($non_decimal_type !== null) {
                 if ($non_decimal_type instanceof TInt
                     || $non_decimal_type instanceof TNumericString
@@ -1483,5 +1474,25 @@ final class ArithmeticOpAnalyzer
             $new_result_type,
             $result_type,
         );
+    }
+
+    /**
+     * The operand paired with a Decimal\Decimal, or null when neither side is one.
+     */
+    private static function otherOperandOfDecimal(Atomic $left_type_part, Atomic $right_type_part): ?Atomic
+    {
+        if ($left_type_part instanceof TNamedObject
+            && strtolower($left_type_part->value) === "decimal\\decimal"
+        ) {
+            return $right_type_part;
+        }
+
+        if ($right_type_part instanceof TNamedObject
+            && strtolower($right_type_part->value) === "decimal\\decimal"
+        ) {
+            return $left_type_part;
+        }
+
+        return null;
     }
 }

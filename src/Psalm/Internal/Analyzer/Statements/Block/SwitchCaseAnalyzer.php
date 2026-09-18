@@ -44,6 +44,7 @@ use Psalm\Type\Reconciler;
 
 use function array_diff_key;
 use function array_intersect_key;
+use function assert;
 use function array_merge;
 use function count;
 use function in_array;
@@ -126,8 +127,9 @@ final class SwitchCaseAnalyzer
                 ),
             );
 
-            /** @var PhpParser\Node\Expr */
-            $switch_condition = $traverser->traverse([$switch_condition])[0];
+            $cloned_switch_condition = $traverser->traverse([$switch_condition])[0];
+            assert($cloned_switch_condition instanceof PhpParser\Node\Expr);
+            $switch_condition = $cloned_switch_condition;
 
             if ($fake_switch_condition) {
                 $statements_analyzer->node_data->setType(

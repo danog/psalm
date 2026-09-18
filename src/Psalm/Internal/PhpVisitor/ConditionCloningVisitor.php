@@ -6,7 +6,6 @@ namespace Psalm\Internal\PhpVisitor;
 
 use Override;
 use PhpParser\Node;
-use PhpParser\Node\Expr;
 use PhpParser\NodeVisitorAbstract;
 use Psalm\Internal\Provider\NodeDataProvider;
 
@@ -24,12 +23,12 @@ final class ConditionCloningVisitor extends NodeVisitorAbstract
     }
 
     /**
-     * @return Node\Expr
+     * A visitor sees every node of the subtree, not just the expression at its root, so this
+     * returns the same kind of node it was given.
      */
     #[Override]
     public function enterNode(Node $node): Node
     {
-        /** @var Expr $node */
         $origNode = $node;
 
         $node = clone $node;

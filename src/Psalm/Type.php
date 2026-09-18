@@ -1006,9 +1006,10 @@ abstract class Type
                     . ' Did you forget to assign one of the variables?',
                 );
             }
-            if (!self::mayHaveIntersection($intersection_atomic, $codebase)
-                || !self::mayHaveIntersection($wider_type, $codebase)
-            ) {
+            $intersectable = self::asIntersectable($intersection_atomic, $codebase);
+            $wider_intersectable = self::asIntersectable($wider_type, $codebase);
+
+            if ($intersectable === null || $wider_intersectable === null) {
                 throw new LogicException(
                     '$intersection_atomic and $wider_type should be both support intersection.'
                     . ' Check the preceding code for errors.',
@@ -1017,21 +1018,21 @@ abstract class Type
 
             $intersection_performed = true;
 
-            $wider_type_clone = $wider_type->setIntersectionTypes([]);
+            $wider_type_clone = $wider_intersectable->setIntersectionTypes([]);
 
             $final_intersection = array_merge(
                 [$wider_type_clone->getKey() => $wider_type_clone],
-                $intersection_atomic->getIntersectionTypes(),
+                $intersectable->getIntersectionTypes(),
             );
 
-            $wider_type_intersection_types = $wider_type->getIntersectionTypes();
+            $wider_type_intersection_types = $wider_intersectable->getIntersectionTypes();
 
             foreach ($wider_type_intersection_types as $wider_type_intersection_type) {
                 $final_intersection[$wider_type_intersection_type->getKey()]
                     = $wider_type_intersection_type;
             }
 
-            return $intersection_atomic->setIntersectionTypes($final_intersection);
+            return $intersectable->setIntersectionTypes($final_intersection);
         }
 
         return $intersection_atomic;
@@ -1043,22 +1044,34 @@ abstract class Type
      */
     private static function mayHaveIntersection(Atomic $type, Codebase $codebase): bool
     {
+        return self::asIntersectable($type, $codebase) !== null;
+    }
+
+    /**
+     * The same type seen as one that can carry intersections, or null when it cannot carry any.
+     *
+     * @psalm-mutation-free
+     */
+    private static function asIntersectable(
+        Atomic $type,
+        Codebase $codebase,
+    ): TIterable|TNamedObject|TTemplateParam|TObjectWithProperties|null {
         if ($type instanceof TIterable
             || $type instanceof TTemplateParam
             || $type instanceof TObjectWithProperties
         ) {
-            return true;
+            return $type;
         }
         if (!$type instanceof TNamedObject) {
-            return false;
+            return null;
         }
         try {
             $storage = $codebase->classlike_storage_provider->get($type->value);
         } catch (InvalidArgumentException) {
             // Ignore non-existing classes during initial scan
-            return true;
+            return $type;
         }
-        return !$storage->final;
+        return $storage->final ? null : $type;
     }
 
     /**
@@ -1066,7 +1079,23 @@ abstract class Type
      */
     private static function hasIntersection(Atomic $type): bool
     {
-        return self::isIntersectionType($type) && $type->extra_types;
+        // each branch names one class, so the property read has a definite receiver
+        if ($type instanceof TNamedObject) {
+            return $type->extra_types !== [];
+        }
+        if ($type instanceof TTemplateParam) {
+            return $type->extra_types !== [];
+        }
+        if ($type instanceof TIterable) {
+            return $type->extra_types !== [];
+        }
+        if ($type instanceof TObjectWithProperties) {
+            return $type->extra_types !== [];
+        }
+        if ($type instanceof TCallableObject) {
+            return $type->extra_types !== [];
+        }
+        return false;
     }
 
     /**
