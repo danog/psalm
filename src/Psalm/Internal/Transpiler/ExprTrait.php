@@ -1513,6 +1513,10 @@ trait ExprTrait
             if ($h !== null) {
                 return 'matches!(&' . $v->code . ', ' . $h . '::Other__(Mixed::Null))';
             }
+            if ($v->type->kind === RustType::GENERIC) {
+                // a template parameter can be instantiated with a nullable type: ask the value
+                return 'php_rt::is_php_null(&' . $v->code . ')';
+            }
             return '{ let _ = ' . $v->code . '; false }';
         }
         // comparisons with bool literals against unions holding True/False variants
@@ -2016,6 +2020,10 @@ trait ExprTrait
         }
         if ($v->type->kind === RustType::MIXED) {
             return '(!' . $v->code . '.is_null())';
+        }
+        if ($v->type->kind === RustType::GENERIC) {
+            // a template parameter can be instantiated with a nullable type: ask the value
+            return '(!php_rt::is_php_null(&' . $v->code . '))';
         }
         return '{ let _ = ' . $v->code . '; true }';
     }

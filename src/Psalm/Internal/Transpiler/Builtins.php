@@ -727,6 +727,10 @@ final class Builtins
         if ($v->type->kind === RustType::UNIT) {
             return new Val('{ let _ = ' . $v->code . '; true }', RustType::bool());
         }
+        if ($v->type->kind === RustType::GENERIC) {
+            // a template parameter can be instantiated with a nullable type: ask the value
+            return new Val('php_rt::is_php_null(&' . $v->code . ')', RustType::bool());
+        }
         return new Val('{ let _ = ' . $v->code . '; false }', RustType::bool());
     }
 
