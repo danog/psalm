@@ -1,9 +1,81 @@
 <?php
 
-interface Reflector extends Stringable
+interface Reflector
 {
     public function __toString(): string;
 }
+
+class ReflectionException extends Exception
+{
+}
+
+class ReflectionExtension implements Reflector
+{
+    /**
+     * @var non-empty-string
+     * @readonly
+     */
+    public $name;
+
+    /** @return non-empty-string */
+    public function getName(): string {}
+
+    /** @return non-empty-string */
+    public function __toString(): string {}
+}
+
+/**
+ * @template TClass as object
+ */
+class ReflectionAttribute
+{
+    const IS_INSTANCEOF = 2;
+
+    private function __construct()
+    {
+    }
+
+    /**
+     * @return non-empty-string
+     *
+     * @psalm-pure
+     */
+    public function getName() : string
+    {
+    }
+
+    /**
+     * @psalm-pure
+     * @return Attribute::TARGET_*
+     */
+    public function getTarget() : int
+    {
+    }
+
+    /** @psalm-pure */
+    public function isRepeated() : bool
+    {
+    }
+
+    public function getArguments() : array
+    {
+    }
+
+    /**
+     * @return TClass
+     */
+    public function newInstance() : object
+    {
+    }
+
+    /**
+     * @return never-return
+     */
+    private function __clone()
+    {
+    }
+}
+
 
 /**
  * @template-covariant T as object
