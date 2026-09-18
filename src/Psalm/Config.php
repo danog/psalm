@@ -2348,6 +2348,18 @@ final class Config
 
                 $core_generic_files[] = $core_stub_path;
             }
+
+            // and the extensions' classes, for the same reason: a class named by the code under
+            // analysis is looked up while it is being scanned, long before the stub files are visited
+            $ext_stubs_dir = $core_stubs_dir . 'extensions' . DIRECTORY_SEPARATOR;
+
+            foreach ($this->php_extensions as $ext => $enabled) {
+                $ext_stub_path = $ext_stubs_dir . $ext . '.phpstub';
+
+                if ($enabled && file_exists($ext_stub_path)) {
+                    $core_generic_files[] = $ext_stub_path;
+                }
+            }
         }
 
         // a compiled program has no reflection of the running PHP's own classes: the version stubs

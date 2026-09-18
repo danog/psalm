@@ -32,6 +32,8 @@ use Psalm\Test\Config\Plugin\FilePlugin;
 use Psalm\Test\Config\Plugin\FunctionPlugin;
 use Psalm\Test\Config\Plugin\MethodPlugin;
 use Psalm\Test\Config\Plugin\PropertyPlugin;
+use Psalm\Tests\Config\Plugin\ExtendingPlugin;
+use Psalm\Tests\Config\Plugin\ExtendingPluginRegistration;
 use Psalm\Tests\Config\Plugin\StoragePlugin;
 use Psalm\Tests\Internal\Provider\FakeParserCacheProvider;
 use Psalm\Tests\TestCase;
@@ -59,6 +61,10 @@ final class PluginTest extends TestCase
         $argv = [];
 
         // plugin classes named in the config files below (the program is compiled: registered explicitly)
+        Config::registerPluginFactory(
+            ExtendingPluginRegistration::class,
+            static fn(): ExtendingPluginRegistration => new ExtendingPluginRegistration(),
+        );
         Config::registerPluginFactory(FilePlugin::class, static fn(): FilePlugin => new FilePlugin());
         Config::registerPluginFactory(PropertyPlugin::class, static fn(): PropertyPlugin => new PropertyPlugin());
         Config::registerPluginFactory(MethodPlugin::class, static fn(): MethodPlugin => new MethodPlugin());
@@ -496,8 +502,6 @@ final class PluginTest extends TestCase
 
     public function testInheritedHookHandlersAreCalled(): void
     {
-        require_once dirname(__DIR__) . '/fixtures/stubs/extending_plugin_entrypoint.phpstub';
-
         $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
             TestConfig::loadFromXML(
                 dirname(__DIR__, 2) . DIRECTORY_SEPARATOR,
@@ -509,17 +513,18 @@ final class PluginTest extends TestCase
                         <directory name="src" />
                     </projectFiles>
                     <plugins>
-                        <pluginClass class="ExtendingPluginRegistration" />
+                        <pluginClass class="Psalm\\Tests\\Config\\Plugin\\ExtendingPluginRegistration" />
                     </plugins>
                 </psalm>',
             ),
         );
 
         $this->project_analyzer->getCodebase()->config->initializePlugins($this->project_analyzer);
-        $this->assertContains(
-            'ExtendingPlugin',
-            $this->project_analyzer->getCodebase()->config->eventDispatcher->after_function_checks,
-        );
+
+        $handlers = $this->project_analyzer->getCodebase()->config->eventDispatcher->after_function_checks;
+
+        $this->assertCount(1, $handlers);
+        $this->assertInstanceOf(ExtendingPlugin::class, $handlers[0]);
     }
 
     public function testAfterCodebasePopulatedHookIsLoaded(): void
@@ -938,7 +943,7 @@ final class PluginTest extends TestCase
         };
 
         $this->project_analyzer->getCodebase()->config->initializePlugins($this->project_analyzer);
-        $this->project_analyzer->getCodebase()->config->eventDispatcher->after_every_function_checks[] = get_class($plugin);
+        $this->project_analyzer->getCodebase()->config->eventDispatcher->after_every_function_checks[] = $plugin;
 
         $file_path = (string) getcwd() . '/src/somefile.php';
 
