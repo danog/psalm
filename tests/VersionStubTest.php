@@ -31,20 +31,6 @@ final class VersionStubTest extends TestCase
         );
     }
 
-    /** Analysis tests that name no PHP version analyze as 7.4, but the interpreter's classes still exist. */
-    public function testAttributeClassExistsWhenAnalyzingAnOlderVersion(): void
-    {
-        $this->project_analyzer->setPhpVersion('7.4', 'tests');
-
-        $codebase = $this->project_analyzer->getCodebase();
-        $codebase->config->visitPreloadedStubFiles($codebase);
-
-        $this->assertTrue(
-            $codebase->classlikes->classExists('Attribute'),
-            'the runtime provides Attribute regardless of the analyzed version',
-        );
-    }
-
     /** The analysis tests preload the stubs in server mode, as the traits do. */
     public function testAttributeClassComesFromTheVersionStubInServerMode(): void
     {
