@@ -222,6 +222,15 @@ final class CastEmitter
                     }
                 }
             }
+            if ($m->kind === RustType::LIST) {
+                // a tuple is a list of known length: extracting the list member from a tuple member
+                // converts it rather than failing
+                foreach ($u->params as $o) {
+                    if ($o !== $m && $o->kind === RustType::TUPLE && $this->convertible($o, $m)) {
+                        $extra .= $name . '::' . $o->variantName() . '(v) => ' . $this->conv('v', $o, $m) . ', ';
+                    }
+                }
+            }
             if ($m->kind === RustType::STR) {
                 // `(string) $x` on the other members: scalars and objects with __toString
                 foreach ($u->params as $o) {
