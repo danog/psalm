@@ -23,6 +23,53 @@ final class TypeVariableTest extends TestCase
     public function providerValidCodeParse(): iterable
     {
         return [
+            'unboundTemplateSolvesToClosureParam' => [
+                // an unbound `new Box()` never gets a lower bound, so the
+                // closure parameter only constrains the variable from above
+                // (`T <: Item`); that is satisfiable, so no error — as Hack
+                // reports (it solves the variable)
+                'code' => '<?php
+                    class Item {
+                        public int $id = 0;
+                    }
+
+                    /** @template T */
+                    class Box {
+                        public function __construct() {}
+
+                        /** @param callable(T): mixed $cb */
+                        public function each($cb): void {}
+                    }
+
+                    function process(): void {
+                        $box = new Box();
+                        $box->each(static function (Item $item): int {
+                            return $item->id;
+                        });
+                    }',
+            ],
+            'untypedClosureParamResolvesInferredObjectElement' => [
+                'code' => '<?php
+                    /** @template TValue */
+                    class Collection {
+                        /** @param iterable<TValue> $data */
+                        public function __construct(iterable $data) {}
+
+                        /** @param callable(TValue): string $cb */
+                        public function each($cb): void {}
+                    }
+
+                    class Item {
+                        public int $id = 0;
+                    }
+
+                    function process(): void {
+                        $c = new Collection([new Item()]);
+                        $c->each(static function ($item): string {
+                            return (string) $item->id;
+                        });
+                    }',
+            ],
             'unboundConstructorTemplate' => [
                 'code' => '<?php
                     /** @template T of int|string */
@@ -68,6 +115,24 @@ final class TypeVariableTest extends TestCase
                         return $box;
                     }',
             ],
+            'earlierInvariantArgumentPinStaysSilent' => [
+                'code' => '<?php
+                    /** @template T */
+                    final class Box {
+                        /** @param T $value */
+                        public function __construct(public mixed $value) {}
+                    }
+
+                    /** @param Box<int> $box */
+                    function takesIntBox(Box $box): int {
+                        return $box->value;
+                    }
+
+                    function inspect(): void {
+                        $box = new Box(1);
+                        takesIntBox($box);
+                    }',
+            ],
             'boundViolationSuppressed' => [
                 'code' => '<?php
                     /** @template T of int */
@@ -94,6 +159,64 @@ final class TypeVariableTest extends TestCase
     public function providerInvalidCodeParse(): iterable
     {
         return [
+            'mixedConstructorInferenceCoercesClosureParam' => [
+                // the constructor infers TValue as mixed (lower bound mixed); the
+                // closure parameter constrains it from above (TValue <: Item),
+                // and mixed does not coerce to Item, so MixedArgumentTypeCoercion
+                // is reported at reconciliation — as it is for a non-`new`
+                // Table<mixed>, and as Hack reports ("Expected Item but got mixed")
+                'code' => '<?php
+                    class Item {
+                        public int $id = 0;
+                    }
+
+                    /** @template TValue */
+                    class Table {
+                        /** @param iterable<array-key, TValue> $data */
+                        public function __construct(iterable $data) {}
+
+                        /** @param callable(TValue): mixed $content */
+                        public function column($content): void {}
+                    }
+
+                    /** @param iterable<array-key, mixed> $items */
+                    function prepareTable(iterable $items): void {
+                        $table = new Table($items);
+                        $table->column(static function (Item $item): int {
+                            return $item->id;
+                        });
+                    }',
+                'error_message' => 'MixedArgumentTypeCoercion',
+            ],
+            'constructorBoundThenClosureParamConflict' => [
+                // an unbound variable gains a lower bound (int, via set) and an
+                // upper bound (Item, via the closure parameter); they cannot
+                // hold together, as Hack reports ("Expected Item but got int")
+                'code' => '<?php
+                    class Item {
+                        public int $id = 0;
+                    }
+
+                    /** @template T */
+                    class Box {
+                        public function __construct() {}
+
+                        /** @param T $v */
+                        public function set($v): void {}
+
+                        /** @param callable(T): mixed $cb */
+                        public function each($cb): void {}
+                    }
+
+                    function process(): void {
+                        $box = new Box();
+                        $box->set(5);
+                        $box->each(static function (Item $item): int {
+                            return $item->id;
+                        });
+                    }',
+                'error_message' => 'IncompatibleTypeParameters',
+            ],
             'typeVariableBoundViolation' => [
                 'code' => '<?php
                     /** @template T of int */
@@ -154,6 +277,58 @@ final class TypeVariableTest extends TestCase
                     }',
                 'error_message' => 'IncompatibleTypeParameters - src' . DIRECTORY_SEPARATOR
                     . "somefile.php:16:35 - Type DateTime should be a subtype of int|string",
+            ],
+            'laterInvariantArgumentPinDoesNotBlameEarlierValidCall' => [
+                // vimeo/psalm#11937: the invalid takesStringBox call is reported
+                // at its call site; the valid takesIntBox call stays silent.
+                'code' => '<?php
+                    /** @template T */
+                    final class Box {
+                        /** @param T $value */
+                        public function __construct(public mixed $value) {}
+                    }
+
+                    /** @param Box<int> $box */
+                    function takesIntBox(Box $box): int {
+                        return $box->value;
+                    }
+
+                    /** @param Box<string> $box */
+                    function takesStringBox(Box $box): string {
+                        return $box->value;
+                    }
+
+                    function inspect(): void {
+                        $box = new Box(1);
+                        takesIntBox($box);
+                        takesStringBox($box);
+                    }',
+                'error_message' => 'IncompatibleTypeParameters - src' . DIRECTORY_SEPARATOR
+                    . 'somefile.php:21:40 - Type 1 should be a subtype of string',
+            ],
+            'unboundVariablePassedToConflictingInvariantParams' => [
+                // with no content, two incompatible invariant requirements are
+                // still caught (mirror bounds stand in).
+                'code' => '<?php
+                    /** @template T */
+                    class Box {
+                        public function __construct() {}
+                        /** @param T $v */
+                        public function set($v): void {}
+                    }
+
+                    /** @param Box<int> $b */
+                    function takesInt(Box $b): void {}
+
+                    /** @param Box<string> $b */
+                    function takesStr(Box $b): void {}
+
+                    function f(): void {
+                        $box = new Box();
+                        takesInt($box);
+                        takesStr($box);
+                    }',
+                'error_message' => 'IncompatibleTypeParameters',
             ],
             'globalScopeBoundViolation' => [
                 'code' => '<?php
