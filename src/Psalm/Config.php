@@ -2339,6 +2339,7 @@ final class Config
                 'CoreGenericIterators.phpstub',
                 'CoreImmutableClasses.phpstub',
                 'SPL.phpstub',
+                'Reflection.phpstub',
             ] as $core_stub) {
                 $core_stub_path = $core_stubs_dir . $core_stub;
 
