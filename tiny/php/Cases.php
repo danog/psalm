@@ -1102,9 +1102,35 @@ function case_rt_truthy(): string
     return ($full ? 'F' : '-') . ($empty ? 'E' : '-');
 }
 
+abstract class VNode {}
+final class VVar extends VNode { /** @param string|VNode $name */ public function __construct(public $name) {} }
+final class VIdent extends VNode { public function __construct(public string $name) {} }
+final class VNop extends VNode {}
+
+/** @param list<VNode> $nodes */
+function read_names(array $nodes): string
+{
+    $out = '';
+    foreach ($nodes as $n) {
+        if ($n instanceof VNop) {
+            $out .= '-';
+            continue;
+        }
+        $name = $n->name;
+        $out .= is_string($name) ? $name : '?';
+    }
+    return $out;
+}
+
+function case_variant_union_field(): string
+{
+    return read_names([new VVar('a'), new VIdent('b'), new VNop(), new VVar(new VIdent('c'))]);
+}
+
 function run_all(): string
 {
-    return check('rt_truthy', case_rt_truthy(), 'F-')
+    return check('variant_union_field', case_variant_union_field(), 'ab-?')
+        . check('rt_truthy', case_rt_truthy(), 'F-')
         . check('prop_empty_unset', case_prop_empty_unset(), '1:0')
         . check('variant_isset', case_variant_isset(), '4:1')
         . check('arg_no_downcast', case_arg_no_downcast(), 'litother')

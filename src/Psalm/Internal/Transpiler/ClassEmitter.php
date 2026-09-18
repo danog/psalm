@@ -769,7 +769,12 @@ final class ClassEmitter
             // would raise downstream, not a wrong-variant access), so it must not be left out of the match
             $narrowing = static fn(RustType $a, RustType $b): bool => $a->kind === RustType::OPTION
                 && $a->inner()->toRust() === $b->toRust();
-            if ($this->casts->fits($cf->type, $ft) || $narrowing($cf->type, $ft)) {
+            // a variant whose field is a UNION (or whose requested type is one) still answers the read: the
+            // conversion narrows it, and only a value no member admits fails — dropping the variant instead
+            // made every read of it an "on wrong variant" panic
+            if ($this->casts->fits($cf->type, $ft) || $narrowing($cf->type, $ft)
+                || $cf->type->kind === RustType::UNION || $ft->kind === RustType::UNION
+            ) {
                 $get[] = $h . '::' . $c->variant() . '(__h) => ' . $this->casts->convert('__h.' . $cf->acc() . '_get()', $cf->type, $ft);
             }
             if ($this->casts->fits($ft, $cf->type) || $this->casts->fits($cf->type, $ft) || $narrowing($ft, $cf->type)) {
