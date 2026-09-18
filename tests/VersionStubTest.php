@@ -159,9 +159,25 @@ final class VersionStubTest extends TestCase
      */
     public function testReflectionClassesComeFromPsalmsOwnStub(): void
     {
-        $this->project_analyzer->setPhpVersion('8.0', 'tests');
+        $this->assertReflectionClassesAreStubbed('8.0', false);
+    }
+
+    /** The analysis tests read the stubs in server mode, at the default analysis version. */
+    public function testReflectionClassesComeFromPsalmsOwnStubInServerMode(): void
+    {
+        $this->assertReflectionClassesAreStubbed('7.4', true);
+    }
+
+    private function assertReflectionClassesAreStubbed(string $php_version, bool $server_mode): void
+    {
+        $this->project_analyzer->setPhpVersion($php_version, 'tests');
 
         $codebase = $this->project_analyzer->getCodebase();
+
+        if ($server_mode) {
+            $codebase->enterServerMode();
+        }
+
         $codebase->config->visitPreloadedStubFiles($codebase);
         $codebase->config->visitStubFiles($codebase);
 
