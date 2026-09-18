@@ -67,7 +67,6 @@ use function array_map;
 use function array_values;
 use function count;
 use function in_array;
-use function md5;
 use function preg_match;
 use function reset;
 use function strtolower;
@@ -104,22 +103,22 @@ final class NewAnalyzer extends CallAnalyzer
             if (!in_array(strtolower($stmt->class->getFirst()), ['self', 'static', 'parent'], true)) {
                 $aliases = $statements_analyzer->getAliases();
 
-                if ($context->calling_method_id
-                    && !$stmt->class instanceof PhpParser\Node\Name\FullyQualified
-                ) {
-                    $codebase->file_reference_provider->addMethodReferenceToClassMember(
-                        $context->calling_method_id,
-                        'use:' . $stmt->class->getFirst() . ':' . md5($statements_analyzer->getFilePath()),
-                        false,
-                    );
-                }
-
                 $fq_class_name = ClassLikeAnalyzer::getFQCLNFromNameObject(
                     $stmt->class,
                     $aliases,
                 );
 
                 $fq_class_name = $codebase->classlikes->getUnAliasedName($fq_class_name);
+
+                if ($context->calling_method_id
+                    && !$stmt->class instanceof PhpParser\Node\Name\FullyQualified
+                ) {
+                    $codebase->addReferenceToUseAlias(
+                        $stmt->class->getFirst(),
+                        $statements_analyzer->getFilePath(),
+                        $context,
+                    );
+                }
             } elseif ($context->self !== null) {
                 switch ($stmt->class->getFirst()) {
                     case 'self':
@@ -289,7 +288,7 @@ final class NewAnalyzer extends CallAnalyzer
                     $context,
                 );
 
-                if ($codebase->classlikes->enumExists($fq_class_name)) {
+                if ($codebase->classlikes->enumExists($fq_class_name, null, $context)) {
                     IssueBuffer::maybeAdd(new UndefinedClass(
                         'Enums cannot be instantiated',
                         new CodeLocation($statements_analyzer, $stmt),
@@ -471,6 +470,8 @@ final class NewAnalyzer extends CallAnalyzer
                         null,
                         false,
                         $method_storage,
+                        // the constructor only mutates the new object
+                        true,
                     );
                 }
 
@@ -758,20 +759,22 @@ final class NewAnalyzer extends CallAnalyzer
                 $method_storage = $codebase->methods->getStorage($declaring_method_id);
             }
 
-            if ($storage->isExternalMutationFree()
-                || ($method_storage && $method_storage->specialize_call)
-            ) {
-                $method_source = DataFlowNode::getForMethodReturn(
-                    (string)$method_id,
+            if (!$method_storage) {
+                $method_source = DataFlowNode::getForCallableReturn(
+                    'builtin',
                     $fq_class_name . '::__construct',
-                    $storage->location,
+                    $storage->isExternalMutationFree() ? $code_location : null,
+                );
+            } elseif ($storage->isExternalMutationFree() || $method_storage->specialize_call) {
+                $method_source = DataFlowNode::getForMethodReturn(
+                    $fq_class_name . '::__construct',
+                    $method_storage,
                     $code_location,
                 );
             } else {
                 $method_source = DataFlowNode::getForMethodReturn(
-                    (string)$method_id,
                     $fq_class_name . '::__construct',
-                    $storage->location,
+                    $method_storage,
                 );
             }
 
@@ -823,11 +826,10 @@ final class NewAnalyzer extends CallAnalyzer
             ) {
                 $arg_location = new CodeLocation($statements_analyzer->getSource(), $stmt_class);
 
-                $custom_call_sink = DataFlowNode::getForMethodArgument(
-                    'variable-call',
+                $custom_call_sink = DataFlowNode::getForCallableArg(
+                    'dynamic-instantiation',
                     'variable-call',
                     0,
-                    $arg_location,
                     $arg_location,
                     TaintKind::INPUT_CALLABLE,
                 );
@@ -1110,6 +1112,8 @@ final class NewAnalyzer extends CallAnalyzer
      * Whether the constructor binds the given template through a `class-string<T>`
      * (`T::class`) parameter position, which names the template's type exactly
      * rather than providing a value of it.
+     *
+     * @psalm-mutation-free
      */
     private static function templateBoundThroughClassString(
         MethodStorage $method_storage,
@@ -1139,6 +1143,7 @@ final class NewAnalyzer extends CallAnalyzer
      * only have been fixed at the construction site.
      *
      * @return array<string, true>
+     * @psalm-mutation-free
      */
     private static function getUnconstrainableTemplates(ClassLikeStorage $storage): array
     {
