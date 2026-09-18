@@ -622,9 +622,15 @@ final class Scanner
                     try {
                         $this->codebase->exhumeClassLikeStorage($fq_classlike_name, $file_path);
                     } catch (UnexpectedValueException) {
-                        // no cached storage for this class (a worker that never scanned this stub itself):
-                        // leave the class as it is rather than re-queueing the file, which would loop
-                        continue;
+                        // no cached storage for this class, so the cached file storage describes classes
+                        // this worker never scanned: drop it and scan the file for real (dropping it is what
+                        // keeps this from looping, since the file would otherwise look cached again)
+                        $this->file_storage_provider->remove($file_path);
+                        unset($this->scanned_files[$file_path]);
+                        $this->files_to_scan[$file_path] = $file_path;
+                        $this->files_to_deep_scan[$file_path] = $file_path;
+
+                        return;
                     }
                 }
             }
