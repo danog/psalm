@@ -43,15 +43,23 @@ trait ExprTrait
     /** Emit an expression; if `$expected` is given, the result is converted to that type. */
     public function expr(Expr $e, ?RustType $expected = null): Val
     {
-        if ($expected !== null && $expected->kind === RustType::CLASS_
-            && $e instanceof Expr\Variable && is_string($e->name) && $e->name !== 'this'
-            && !isset($this->narrowings[$e->name])
-        ) {
+        if ($expected !== null && $expected->kind === RustType::CLASS_) {
             // the stored value already satisfies the target class: read it as it is stored instead of
             // downcasting to the class Psalm narrowed it to (that narrowing can be wider than the flow
             // allows, and the downcast would panic on a sibling subclass)
-            $raw = $this->readVar($e->name);
-            if ($raw->type->kind === RustType::CLASS_ && $this->classFitsInto($raw->type, $expected)) {
+            $raw = null;
+            if ($e instanceof Expr\Variable && is_string($e->name) && $e->name !== 'this'
+                && !isset($this->narrowings[$e->name])
+            ) {
+                $raw = $this->readVar($e->name);
+            } elseif ($e instanceof Expr\PropertyFetch && $e->name instanceof Identifier
+                && $e->var instanceof Expr\Variable && is_string($e->var->name)
+                && !isset($this->narrowings[$e->var->name])
+            ) {
+                $p = $this->place($e);
+                $raw = new Val($p->read(), $p->type);
+            }
+            if ($raw !== null && $raw->type->kind === RustType::CLASS_ && $this->classFitsInto($raw->type, $expected)) {
                 return new Val($this->casts->convert($raw->code, $raw->type, $expected), $expected);
             }
         }

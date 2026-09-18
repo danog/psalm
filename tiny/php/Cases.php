@@ -1127,9 +1127,29 @@ function case_variant_union_field(): string
     return read_names([new VVar('a'), new VIdent('b'), new VNop(), new VVar(new VIdent('c'))]);
 }
 
+final class ArgHolder
+{
+    public function __construct(public ArgBase $node) {}
+}
+
+function case_prop_no_downcast(): string
+{
+    $out = '';
+    foreach ([new ArgLit(2), new ArgOther()] as $n) {
+        $h = new ArgHolder($n);
+        if ($h->node instanceof ArgLit) {
+            $out .= takes_arg_base($h->node);
+        } else {
+            $out .= takes_arg_base($h->node);
+        }
+    }
+    return $out;
+}
+
 function run_all(): string
 {
-    return check('variant_union_field', case_variant_union_field(), 'ab-?')
+    return check('prop_no_downcast', case_prop_no_downcast(), 'litother')
+        . check('variant_union_field', case_variant_union_field(), 'ab-?')
         . check('rt_truthy', case_rt_truthy(), 'F-')
         . check('prop_empty_unset', case_prop_empty_unset(), '1:0')
         . check('variant_isset', case_variant_isset(), '4:1')
