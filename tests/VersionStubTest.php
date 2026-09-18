@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
+use Psalm\Context;
+use Psalm\Internal\MethodIdentifier;
+
 /**
  * The classes PHP itself provides come from the version stubs in a compiled build (there is no reflection
  * of the interpreter's own classes), so a class declared only in Php80.phpstub must be registered with its
@@ -17,10 +20,11 @@ final class VersionStubTest extends TestCase
 
         $codebase = $this->project_analyzer->getCodebase();
         $codebase->config->visitPreloadedStubFiles($codebase);
+        $codebase->config->visitStubFiles($codebase);
 
         $this->assertTrue(
             $codebase->classlikes->classExists('Attribute'),
-            'Attribute is declared by stubs/Php80.phpstub',
+            'Attribute is declared by stubs/CoreGenericClasses.phpstub',
         );
 
         $storage = $codebase->classlike_storage_provider->get('Attribute');
@@ -39,10 +43,11 @@ final class VersionStubTest extends TestCase
         $codebase = $this->project_analyzer->getCodebase();
         $codebase->enterServerMode();
         $codebase->config->visitPreloadedStubFiles($codebase);
+        $codebase->config->visitStubFiles($codebase);
 
         $this->assertTrue(
             $codebase->classlikes->classExists('Attribute'),
-            'Attribute is declared by stubs/Php80.phpstub',
+            'Attribute is declared by stubs/CoreGenericClasses.phpstub',
         );
 
         $storage = $codebase->classlike_storage_provider->get('Attribute');
@@ -63,12 +68,85 @@ final class VersionStubTest extends TestCase
 
         $codebase = $this->project_analyzer->getCodebase();
         $codebase->config->visitPreloadedStubFiles($codebase);
+        $codebase->config->visitStubFiles($codebase);
 
         $storage = $codebase->classlike_storage_provider->get('IteratorAggregate');
 
+        $method = $storage->methods['getiterator'] ?? null;
+
         $this->assertNull(
-            $storage->methods['getiterator']->signature_return_type,
-            'the stub declares getIterator() without a native return type',
+            $method?->signature_return_type,
+            'the stub declares getIterator() without a native return type;'
+            . ' storage name=' . $storage->name
+            . ' interface=' . var_export($storage->is_interface, true)
+            . ' file=' . ($storage->location?->file_path ?? 'none')
+            . ' methods=' . implode(',', array_keys($storage->methods))
+            . ' defining=' . ($method?->defining_fqcln ?? 'none')
+            . ' method_file=' . ($method?->location?->file_path ?? 'none')
+            . ' signature=' . ($method?->signature_return_type === null ? 'null' : (string) $method->signature_return_type)
+            . ' return=' . ($method?->return_type === null ? 'null' : (string) $method->return_type),
+        );
+    }
+
+    /**
+     * A method declared without a native return type has no signature return type, whatever its
+     * docblock says: `Stringable::__toString()` in the version stub carries only `@return string`,
+     * and a class whose own `__toString()` is untyped must not be reported as a signature mismatch.
+     */
+    public function testDocblockOnlyReturnLeavesTheSignatureReturnTypeUnset(): void
+    {
+        $this->project_analyzer->setPhpVersion('8.0', 'tests');
+
+        $file_path = self::$src_dir_path . 'somefile.php';
+
+        $this->addFile(
+            $file_path,
+            '<?php
+                interface LocalStringable {
+                    /** @return string */
+                    public function render();
+                }
+
+                final class Renderer implements LocalStringable {
+                    public function render() {
+                        return "x";
+                    }
+
+                    public function __toString() {
+                        return "x";
+                    }
+                }',
+        );
+
+        $this->analyzeFile($file_path, new Context());
+
+        $codebase = $this->project_analyzer->getCodebase();
+
+        $local = $codebase->methods->getStorage(new MethodIdentifier('LocalStringable', 'render'));
+
+        $this->assertNull(
+            $local->signature_return_type,
+            'a docblock @return does not give the method a signature return type',
+        );
+
+        $stringable = $codebase->methods->getStorage(new MethodIdentifier('Stringable', '__tostring'));
+
+        $stringable_storage = $codebase->classlike_storage_provider->get('Stringable');
+
+        $this->assertNull(
+            $stringable->signature_return_type,
+            'Stringable::__toString in the version stub has no native return type;'
+            . ' storage file=' . ($stringable_storage->location?->file_path ?? 'none')
+            . ' methods=' . implode(',', array_keys($stringable_storage->methods))
+            . ' defining=' . ($stringable->defining_fqcln ?? 'none')
+            . ' method_file=' . ($stringable->location?->file_path ?? 'none')
+            . ' signature=' . (string) $stringable->signature_return_type,
+        );
+
+        $this->assertSame(
+            'string',
+            (string) $stringable->return_type,
+            'its docblock @return is still read',
         );
     }
 }

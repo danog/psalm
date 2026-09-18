@@ -29,6 +29,11 @@ pub trait PhpKind {
         None
     }
 }
+/// `$v === null` on a value whose static type is not known to the transpiler (a generic
+/// parameter): the only way to tell a PHP null from a value is to ask the value itself.
+pub fn is_php_null<T: PhpKind + ?Sized>(v: &T) -> bool {
+    matches!(v.php_kind(), Kind::Null)
+}
 /// `gettype()` of a kind.
 pub fn kind_name(k: Kind) -> Str {
     Str::from_static(match k {
