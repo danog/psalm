@@ -401,6 +401,13 @@ final class Casts
             if ($k1->toRust() === $k2->toRust()) {
                 return $code . '.map_values(|v| ' . $this->convert('v', $v1, $v2) . ')';
             }
+            if (($k1->kind === RustType::STR || $k1->kind === RustType::SYM || $k1->kind === RustType::ARRAY_KEY)
+                && $k2->kind === RustType::INT
+            ) {
+                // every non-numeric key would collapse onto 0: the declared key type disagrees with the
+                // keys the code actually writes (the map is keyed by name, not by position)
+                $this->warn('map key narrowed from ' . $k1->toRust() . ' to i64');
+            }
             return $code . '.map_entries(|k, v| (' . $this->convert('k', $k1, $k2) . ', ' . $this->convert('v', $v1, $v2) . '))';
         }
         if ($fk === RustType::LIST && $tk === RustType::MAP) {
