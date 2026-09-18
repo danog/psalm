@@ -592,7 +592,17 @@ final class Scanner
                     // reflected while scanning the analyzed files; as the stub's traversal would, whatever was
                     // populated from the replaced definition is populated again
                     $provider->remove($fq_classlike_name);
-                    $this->codebase->exhumeClassLikeStorage($fq_classlike_name, $file_path);
+
+                    try {
+                        $this->codebase->exhumeClassLikeStorage($fq_classlike_name, $file_path);
+                    } catch (UnexpectedValueException) {
+                        // the class was scanned while another cache was in place, so the stub's own storage
+                        // cannot be read back: put the replaced one back rather than losing the class
+                        $provider->addMore([strtolower($fq_classlike_name) => $replaced]);
+
+                        continue;
+                    }
+
                     $stub_storage = $provider->get($fq_classlike_name);
                     if ($stub_storage !== $replaced && $this->mergeReflectedMembers($stub_storage, $replaced)) {
                         // the stub storage and everything populated from it inherit the new members
@@ -609,7 +619,15 @@ final class Scanner
                 if ($provider->has($fq_classlike_name) || $provider->cache !== null) {
                     // in memory already, or re-readable from the cache; with neither there is nothing to
                     // exhume and the class stays as the scan of this file left it
-                    $this->codebase->exhumeClassLikeStorage($fq_classlike_name, $file_path);
+                    try {
+                        $this->codebase->exhumeClassLikeStorage($fq_classlike_name, $file_path);
+                    } catch (UnexpectedValueException) {
+                        // no cached storage for this class: the file storage is stale, so scan it again
+                        $this->files_to_scan[$file_path] = $file_path;
+                        $this->files_to_deep_scan[$file_path] = $file_path;
+                        unset($this->scanned_files[$file_path]);
+                        break;
+                    }
                 }
             }
 
