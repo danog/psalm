@@ -1438,7 +1438,7 @@ trait UnionTrait
     }
 
     /**
-     * @param  array<int, string>    $suppressed_issues
+     * @param  array<array-key, string>    $suppressed_issues
      * @param  array<string, bool> $phantom_classes
      */
     public function check(

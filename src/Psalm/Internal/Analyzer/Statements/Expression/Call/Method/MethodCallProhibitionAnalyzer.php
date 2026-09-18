@@ -20,7 +20,7 @@ use Psalm\IssueBuffer;
 final class MethodCallProhibitionAnalyzer
 {
     /**
-     * @param  array<int, string>     $suppressed_issues
+     * @param  array<array-key, string>     $suppressed_issues
      */
     public static function analyze(
         Codebase $codebase,

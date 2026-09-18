@@ -58,7 +58,7 @@ interface StatementsSource extends FileSource
     /**
      * Get a list of suppressed issues
      *
-     * @return array<int, string>
+     * @return array<array-key, string>
      */
     public function getSuppressedIssues(): array;
 

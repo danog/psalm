@@ -22,7 +22,7 @@ final class MutationInfo
      * @param Mutations::LEVEL_*  $intrinsic
      * @param Mutations::LEVEL_*  $allowed
      * @param array<string, bool> $callees
-     * @param array<int, string>  $suppressed_issues
+     * @param array<array-key, string>  $suppressed_issues
      */
     public function __construct(
         public int $intrinsic,

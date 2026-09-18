@@ -110,7 +110,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
     protected Codebase $codebase;
 
     /**
-     * @var array<int, string>
+     * @var array<array-key, string>
      */
     protected array $suppressed_issues;
 
@@ -1875,7 +1875,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
     /**
      * Get a list of suppressed issues
      *
-     * @return array<int, string>
+     * @return array<array-key, string>
      */
     #[Override]
     public function getSuppressedIssues(): array

@@ -25,7 +25,7 @@ use function strtolower;
 final class MethodVisibilityAnalyzer
 {
     /**
-     * @param  array<int, string>         $suppressed_issues
+     * @param  array<array-key, string>         $suppressed_issues
      * @return false|null
      */
     public static function analyze(

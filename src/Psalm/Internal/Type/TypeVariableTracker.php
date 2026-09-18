@@ -132,7 +132,7 @@ final class TypeVariableTracker
      * Reconciles every accumulated bound set, then clears the map so a
      * re-analysis of the same function-like starts fresh.
      *
-     * @param array<int, string> $suppressed_issues
+     * @param array<array-key, string> $suppressed_issues
      */
     public function reconcile(
         Codebase $codebase,
@@ -172,7 +172,7 @@ final class TypeVariableTracker
      *
      * @param list<TemplateBound> $lower_bounds
      * @param list<TemplateBound> $upper_bounds
-     * @param array<int, string> $suppressed_issues
+     * @param array<array-key, string> $suppressed_issues
      */
     private static function reconcileLowerBoundsWithUpperBounds(
         Codebase $codebase,

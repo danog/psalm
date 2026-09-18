@@ -52,7 +52,7 @@ use function strtolower;
 final class MethodComparator
 {
     /**
-     * @param  array<int, string>         $suppressed_issues
+     * @param  array<array-key, string>         $suppressed_issues
      * @return false|null
      */
     public static function compare(
@@ -291,7 +291,7 @@ final class MethodComparator
     }
 
     /**
-     * @param  array<int, string>         $suppressed_issues
+     * @param  array<array-key, string>         $suppressed_issues
      */
     private static function checkForObviousMethodMismatches(
         Codebase $codebase,
@@ -397,7 +397,7 @@ final class MethodComparator
     }
 
     /**
-     * @param  array<int, string>         $suppressed_issues
+     * @param  array<array-key, string>         $suppressed_issues
      */
     private static function compareMethodParams(
         Codebase $codebase,
@@ -615,7 +615,7 @@ final class MethodComparator
     }
 
     /**
-     * @param  array<int, string>         $suppressed_issues
+     * @param  array<array-key, string>         $suppressed_issues
      */
     private static function compareMethodSignatureParams(
         Codebase $codebase,
@@ -778,7 +778,7 @@ final class MethodComparator
     }
 
     /**
-     * @param  array<int, string>         $suppressed_issues
+     * @param  array<array-key, string>         $suppressed_issues
      */
     private static function compareMethodDocblockParams(
         Codebase $codebase,
@@ -958,7 +958,7 @@ final class MethodComparator
     }
 
     /**
-     * @param  array<int, string>         $suppressed_issues
+     * @param  array<array-key, string>         $suppressed_issues
      */
     private static function compareMethodSignatureReturnTypes(
         Codebase $codebase,
@@ -1051,7 +1051,7 @@ final class MethodComparator
     }
 
     /**
-     * @param  array<int, string>         $suppressed_issues
+     * @param  array<array-key, string>         $suppressed_issues
      */
     private static function compareMethodDocblockReturnTypes(
         Codebase $codebase,

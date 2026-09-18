@@ -241,7 +241,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
     }
 
     /**
-     * @param  array<int, string>    $suppressed_issues
+     * @param  array<array-key, string>    $suppressed_issues
      */
     public static function checkFullyQualifiedClassLikeName(
         StatementsSource $statements_source,
@@ -571,7 +571,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
     }
 
     /**
-     * @param  array<int, string>         $suppressed_issues
+     * @param  array<array-key, string>         $suppressed_issues
      */
     public static function checkPropertyVisibility(
         string $property_id,

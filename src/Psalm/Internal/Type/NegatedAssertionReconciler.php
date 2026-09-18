@@ -46,7 +46,7 @@ use function strtolower;
 final class NegatedAssertionReconciler extends Reconciler
 {
     /**
-     * @param  array<int, string>   $suppressed_issues
+     * @param  array<array-key, string>   $suppressed_issues
      * @param  Reconciler::RECONCILIATION_*      $failed_reconciliation
      */
     public static function reconcile(
@@ -334,7 +334,7 @@ final class NegatedAssertionReconciler extends Reconciler
 
     /**
      * @param  TLiteralInt|TLiteralString|TLiteralFloat|TEnumCase $assertion_type
-     * @param  array<int, string>   $suppressed_issues
+     * @param  array<array-key, string>   $suppressed_issues
      */
     private static function handleLiteralNegatedEquality(
         StatementsAnalyzer $statements_analyzer,

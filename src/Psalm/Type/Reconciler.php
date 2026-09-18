@@ -996,7 +996,7 @@ class Reconciler
     }
 
     /**
-     * @param  array<int, string>     $suppressed_issues
+     * @param  array<array-key, string>     $suppressed_issues
      */
     protected static function triggerIssueForImpossible(
         Union|MutableUnion $existing_var_type,

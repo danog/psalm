@@ -98,7 +98,7 @@ use function strtolower;
 final class SimpleAssertionReconciler extends Reconciler
 {
     /**
-     * @param   array<int, string>  $suppressed_issues
+     * @param   array<array-key, string>  $suppressed_issues
      * @param Reconciler::RECONCILIATION_* $failed_reconciliation
      */
     public static function reconcile(
@@ -541,7 +541,7 @@ final class SimpleAssertionReconciler extends Reconciler
     }
 
     /**
-     * @param   array<int, string>  $suppressed_issues
+     * @param   array<array-key, string>  $suppressed_issues
      * @param Reconciler::RECONCILIATION_* $failed_reconciliation
      */
     private static function reconcileIsset(
@@ -611,7 +611,7 @@ final class SimpleAssertionReconciler extends Reconciler
 
     /**
      * @param NonEmptyCountable|HasAtLeastCount $assertion
-     * @param   array<int, string>  $suppressed_issues
+     * @param   array<array-key, string>  $suppressed_issues
      */
     private static function reconcileNonEmptyCountable(
         Assertion $assertion,
@@ -746,7 +746,7 @@ final class SimpleAssertionReconciler extends Reconciler
     }
 
     /**
-     * @param array<int, string> $suppressed_issues
+     * @param array<array-key, string> $suppressed_issues
      */
     private static function reconcileExactlyCountable(
         Union $existing_var_type,
@@ -865,7 +865,7 @@ final class SimpleAssertionReconciler extends Reconciler
     }
 
     /**
-     * @param   array<int, string>  $suppressed_issues
+     * @param   array<array-key, string>  $suppressed_issues
      * @param Reconciler::RECONCILIATION_* $failed_reconciliation
      */
     private static function reconcileHasMethod(
@@ -976,7 +976,7 @@ final class SimpleAssertionReconciler extends Reconciler
     }
 
     /**
-     * @param   array<int, string>  $suppressed_issues
+     * @param   array<array-key, string>  $suppressed_issues
      * @param Reconciler::RECONCILIATION_* $failed_reconciliation
      */
     private static function reconcileString(
@@ -1069,7 +1069,7 @@ final class SimpleAssertionReconciler extends Reconciler
     }
 
     /**
-     * @param   array<int, string>  $suppressed_issues
+     * @param   array<array-key, string>  $suppressed_issues
      * @param Reconciler::RECONCILIATION_* $failed_reconciliation
      */
     private static function reconcileInt(
@@ -1161,7 +1161,7 @@ final class SimpleAssertionReconciler extends Reconciler
     }
 
     /**
-     * @param   array<int, string>  $suppressed_issues
+     * @param   array<array-key, string>  $suppressed_issues
      * @param Reconciler::RECONCILIATION_* $failed_reconciliation
      */
     private static function reconcileBool(
@@ -1238,7 +1238,7 @@ final class SimpleAssertionReconciler extends Reconciler
     }
 
     /**
-     * @param array<int, string> $suppressed_issues
+     * @param array<array-key, string> $suppressed_issues
      * @param Reconciler::RECONCILIATION_* $failed_reconciliation
      */
     private static function reconcileFalse(
@@ -1321,7 +1321,7 @@ final class SimpleAssertionReconciler extends Reconciler
     }
 
     /**
-     * @param array<int, string> $suppressed_issues
+     * @param array<array-key, string> $suppressed_issues
      * @param Reconciler::RECONCILIATION_* $failed_reconciliation
      */
     private static function reconcileTrue(
@@ -1404,7 +1404,7 @@ final class SimpleAssertionReconciler extends Reconciler
     }
 
     /**
-     * @param   array<int, string>  $suppressed_issues
+     * @param   array<array-key, string>  $suppressed_issues
      * @param Reconciler::RECONCILIATION_* $failed_reconciliation
      */
     private static function reconcileScalar(
@@ -1477,7 +1477,7 @@ final class SimpleAssertionReconciler extends Reconciler
     }
 
     /**
-     * @param   array<int, string>  $suppressed_issues
+     * @param   array<array-key, string>  $suppressed_issues
      * @param Reconciler::RECONCILIATION_* $failed_reconciliation
      */
     private static function reconcileNumeric(
@@ -1568,7 +1568,7 @@ final class SimpleAssertionReconciler extends Reconciler
     }
 
     /**
-     * @param   array<int, string>  $suppressed_issues
+     * @param   array<array-key, string>  $suppressed_issues
      * @param Reconciler::RECONCILIATION_* $failed_reconciliation
      */
     private static function reconcileObject(
@@ -1686,7 +1686,7 @@ final class SimpleAssertionReconciler extends Reconciler
     }
 
     /**
-     * @param   array<int, string>  $suppressed_issues
+     * @param   array<array-key, string>  $suppressed_issues
      * @param Reconciler::RECONCILIATION_* $failed_reconciliation
      */
     private static function reconcileResource(
@@ -1742,7 +1742,7 @@ final class SimpleAssertionReconciler extends Reconciler
     }
 
     /**
-     * @param   array<int, string>  $suppressed_issues
+     * @param   array<array-key, string>  $suppressed_issues
      * @param Reconciler::RECONCILIATION_* $failed_reconciliation
      */
     private static function reconcileCountable(
@@ -1812,7 +1812,7 @@ final class SimpleAssertionReconciler extends Reconciler
     }
 
     /**
-     * @param   array<int, string>  $suppressed_issues
+     * @param   array<array-key, string>  $suppressed_issues
      * @param Reconciler::RECONCILIATION_* $failed_reconciliation
      */
     private static function reconcileIterable(
@@ -1873,7 +1873,7 @@ final class SimpleAssertionReconciler extends Reconciler
     }
 
     /**
-     * @param   array<int, string>  $suppressed_issues
+     * @param   array<array-key, string>  $suppressed_issues
      * @param Reconciler::RECONCILIATION_* $failed_reconciliation
      */
     private static function reconcileInArray(
@@ -1947,7 +1947,7 @@ final class SimpleAssertionReconciler extends Reconciler
     }
 
     /**
-     * @param array<int, string> $suppressed_issues
+     * @param array<array-key, string> $suppressed_issues
      */
     private static function reconcileIsGreaterThan(
         IsGreaterThan $assertion,
@@ -2056,7 +2056,7 @@ final class SimpleAssertionReconciler extends Reconciler
     }
 
     /**
-     * @param array<int, string> $suppressed_issues
+     * @param array<array-key, string> $suppressed_issues
      */
     private static function reconcileIsLessThan(
         IsLessThan    $assertion,
@@ -2162,7 +2162,7 @@ final class SimpleAssertionReconciler extends Reconciler
     }
 
     /**
-     * @param   array<int, string>  $suppressed_issues
+     * @param   array<array-key, string>  $suppressed_issues
      * @param Reconciler::RECONCILIATION_* $failed_reconciliation
      */
     private static function reconcileTraversable(
@@ -2231,7 +2231,7 @@ final class SimpleAssertionReconciler extends Reconciler
     }
 
     /**
-     * @param   array<int, string>  $suppressed_issues
+     * @param   array<array-key, string>  $suppressed_issues
      * @param Reconciler::RECONCILIATION_* $failed_reconciliation
      */
     private static function reconcileArray(
@@ -2341,7 +2341,7 @@ final class SimpleAssertionReconciler extends Reconciler
     }
 
     /**
-     * @param   array<int, string>  $suppressed_issues
+     * @param   array<array-key, string>  $suppressed_issues
      * @param Reconciler::RECONCILIATION_* $failed_reconciliation
      */
     private static function reconcileList(
@@ -2446,7 +2446,7 @@ final class SimpleAssertionReconciler extends Reconciler
     }
 
     /**
-     * @param   array<int, string>  $suppressed_issues
+     * @param   array<array-key, string>  $suppressed_issues
      * @param Reconciler::RECONCILIATION_* $failed_reconciliation
      */
     private static function reconcileStringArrayAccess(
@@ -2514,7 +2514,7 @@ final class SimpleAssertionReconciler extends Reconciler
     }
 
     /**
-     * @param   array<int, string>  $suppressed_issues
+     * @param   array<array-key, string>  $suppressed_issues
      * @param Reconciler::RECONCILIATION_* $failed_reconciliation
      */
     private static function reconcileIntArrayAccess(
@@ -2575,7 +2575,7 @@ final class SimpleAssertionReconciler extends Reconciler
     }
 
     /**
-     * @param   array<int, string>  $suppressed_issues
+     * @param   array<array-key, string>  $suppressed_issues
      * @param Reconciler::RECONCILIATION_* $failed_reconciliation
      */
     private static function reconcileCallable(
@@ -2686,7 +2686,7 @@ final class SimpleAssertionReconciler extends Reconciler
 
     /**
      * @param   Truthy|NonEmpty $assertion
-     * @param   array<int, string>  $suppressed_issues
+     * @param   array<array-key, string>  $suppressed_issues
      * @param Reconciler::RECONCILIATION_* $failed_reconciliation
      */
     private static function reconcileTruthyOrNonEmpty(
