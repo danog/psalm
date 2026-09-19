@@ -361,12 +361,49 @@ pub fn key_dec(k: &ArrayKey) -> ArrayKey {
     }
 }
 
+/// `FILTER_VALIDATE_INT`: whitespace, an optional sign and decimal digits without a leading zero
+/// (`"01"` is not an integer to the filter, which is what keeps it a string array key).
+fn validate_int(b: &[u8]) -> Option<i64> {
+    let t = {
+        let mut a = 0;
+        let mut z = b.len();
+        while a < z && b[a].is_ascii_whitespace() {
+            a += 1;
+        }
+        while z > a && b[z - 1].is_ascii_whitespace() {
+            z -= 1;
+        }
+        &b[a..z]
+    };
+    if t.is_empty() {
+        return None;
+    }
+    let (neg, digits) = match t[0] {
+        b'-' => (true, &t[1..]),
+        b'+' => (false, &t[1..]),
+        _ => (false, t),
+    };
+    if digits.is_empty() || !digits.iter().all(|c| c.is_ascii_digit()) {
+        return None;
+    }
+    if digits.len() > 1 && digits[0] == b'0' {
+        return None;
+    }
+    let mut v: i64 = 0;
+    for &c in digits {
+        v = v.checked_mul(10)?;
+        let d = (c - b'0') as i64;
+        v = if neg { v.checked_sub(d)? } else { v.checked_add(d)? };
+    }
+    Some(v)
+}
+
 pub fn filter_var(v: &Mixed, filter: i64, _options: Mixed) -> Mixed {
     let s = v.to_php_str();
     match filter {
-        257 => match crate::conv::parse_numeric(s.as_bytes()) {
-            Some(crate::conv::Num::Int(i)) => Mixed::Int(i),
-            _ => Mixed::Bool(false),
+        257 => match validate_int(s.as_bytes()) {
+            Some(i) => Mixed::Int(i),
+            None => Mixed::Bool(false),
         },
         259 => match crate::conv::parse_numeric(s.as_bytes()) {
             Some(n) => Mixed::Float(n.to_f64()),
