@@ -623,6 +623,14 @@ final class Casts
             return 'cast::<' . $to->toRust() . '>(' . $code . ')';
         }
         if ($fk === RustType::UNION) {
+            // a union used as a number is converted as PHP converts it (`$float % $int` casts both to
+            // int), not narrowed to one member -- which would panic on the others
+            if ($tk === RustType::INT) {
+                return 'php_rt::ToInt::to_php_int(&' . $code . ')';
+            }
+            if ($tk === RustType::FLOAT) {
+                return 'php_rt::ToFloat::to_php_float(&' . $code . ')';
+            }
             if ($tk === RustType::BOOL && ($this->hasUnit($from, 'True') || $this->hasUnit($from, 'False'))) {
                 $this->need($from, $to);
                 return 'cast::<bool>(' . $code . ')';

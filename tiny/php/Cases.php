@@ -1385,9 +1385,23 @@ function case_union_tuple_isset(): string
         . ':' . atom_param(new ArrAtom(new A(1), new B(2)), 5);
 }
 
+// ---- feature: a numeric union converted, not narrowed, by an int operation ----
+
+/** @param int|float $a */
+function mod_of(int|float $a, int|float $b): int
+{
+    return $a % $b;
+}
+
+function case_union_modulo(): string
+{
+    return mod_of(25, 2) . ':' . mod_of(25.4, 2) . ':' . mod_of(25, 2.5) . ':' . mod_of(25.5, 2.5);
+}
+
 function run_all(): string
 {
-    return check('union_tuple_isset', case_union_tuple_isset(), 'arr:obj:none:none')
+    return check('union_modulo', case_union_modulo(), '1:1:1:1')
+        . check('union_tuple_isset', case_union_tuple_isset(), 'arr:obj:none:none')
         . check('dom_node_value', case_dom_node_value(), "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <failure type=\"X\">line1\nline2</failure>\n</report>|line1\nline2")
         . check('union_tuple_index', case_union_tuple_index(), '3:4:9:2')
         . check('static_const', case_static_const(), '24:-1|138:1|')
