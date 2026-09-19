@@ -23,6 +23,234 @@ final class TypeVariableTest extends TestCase
     public function providerValidCodeParse(): iterable
     {
         return [
+            'possiblyEmptyArray' => [
+                'code' => '<?php
+                    /**
+                     * @template TTKey as array-key
+                     * @template TTValue
+                     */
+                    final class XIteratorOnArray {
+                        /** @param array<TTKey, TTValue> $array */
+                        public function __construct(array $array = []) {}
+                        /** @param callable(TTValue, TTKey): mixed $func */
+                        public function sortBy(callable $func): void {}
+                    }
+
+                    class Foo {}
+
+                    /**
+                     * @param array<Foo> $users
+                     * @return XIteratorOnArray<array-key, Foo>|XIteratorOnArray<never, never>
+                     */
+                    function filter(array $users): XIteratorOnArray {
+                        return new XIteratorOnArray($users);
+                    }',
+            ],
+            'methodCallOnIteratorElement' => [
+                'code' => '<?php
+                    final class User {
+                        public function getId(): ?int { return null; }
+                    }
+
+                    /** @template TTValue */
+                    final class XIteratorOnArray {
+                        /** @param array<TTValue> $array */
+                        public function __construct(array $array = []) {}
+                        /** @param callable(TTValue, TTValue): mixed $func */
+                        public function sortBy(callable $func): void {}
+                        /** @return list<TTValue> */
+                        public function toArray(): array { throw new \Exception("stub"); }
+                    }
+
+                    /** @param array<User> $users */
+                    function prepareData(array $users): void {
+                        $users = (new XIteratorOnArray($users))->toArray();
+                        foreach ($users as $user) {
+                            $user->getId();
+                        }
+                    }',
+            ],
+            'arrayAccess' => [
+                'code' => '<?php
+                    /** @template TTValue */
+                    final class a {
+                        /** @param non-empty-array<TTValue> $array */
+                        public function __construct(array $array = [0]) {}
+                        /** @param callable(TTValue, TTValue): mixed $func */
+                        public function sortBy(callable $func): void {}
+                        /** @return non-empty-list<TTValue> */
+                        public function toArray(): array { throw new \Exception("stub"); }
+                    }
+
+                    function match2(): void {
+                        $r = (new a([[1, 2]]))->toArray();
+                        echo (string) $r[0][0];
+                    }',
+            ],
+            'arrayAccessOnNestedTypeVariableElement' => [
+                // a type variable whose bound is itself another type variable
+                // (the element of a `list<TValue>` whose TValue was inferred
+                // from an `array<string, TValue>` that already held a variable)
+                // must resolve through the whole chain to its concrete array
+                // bound, not stop one level short and be rejected as a non-array
+                // (InvalidArrayAccess).
+                'code' => '<?php
+                    /** @template TValue */
+                    final class XIter {
+                        /** @param array<TValue> $array */
+                        public function __construct(array $array = []) {}
+                        /** @param callable(TValue, TValue): mixed $func */
+                        public function sortBy(callable $func): void {}
+                        /** @return array<string, TValue> */
+                        public function toAssoc(): array { throw new \Exception("stub"); }
+                        /** @return list<TValue> */
+                        public function toList(): array { throw new \Exception("stub"); }
+                    }
+
+                    /** @param array<array{id: int}> $rows */
+                    function run(array $rows): void {
+                        $assoc = (new XIter($rows))->toAssoc();
+                        $list = (new XIter($assoc))->toList();
+                        foreach ($list as $row) {
+                            echo $row["id"];
+                        }
+                    }',
+            ],
+            'methodCallOnTypeVariableArrayElement' => [
+                // a type variable that surfaces as an array value (here through
+                // a conditional `@return`) and is then read out and used as a
+                // method-call receiver must resolve to its object bound rather
+                // than crash the nullability-stripping that follows a call on a
+                // from-docblock receiver ("We must have some types here!").
+                'code' => '<?php
+                    /** @template TValue */
+                    final class XIter {
+                        /** @param array<TValue> $array */
+                        public function __construct(array $array = []) {}
+                        /**
+                         * @template TCallback as (callable(TValue): mixed)|null
+                         * @param TCallback $callback
+                         * @return array<string, (TCallback is null ? TValue : mixed)>
+                         */
+                        public function toAssocArray(?callable $callback = null): array {
+                            throw new \Exception("stub");
+                        }
+                    }
+
+                    final class OrgFilter {
+                        public function getIdStr(): string { return ""; }
+                    }
+
+                    /**
+                     * @param array<OrgFilter> $orgs
+                     * @return array<string, list<OrgFilter>>
+                     */
+                    function groupThem(array $orgs): array { throw new \Exception("stub"); }
+
+                    /**
+                     * @param array<OrgFilter> $orgs
+                     * @return list<string>
+                     */
+                    function run(array $orgs): array {
+                        $byType = groupThem($orgs);
+                        foreach ($byType as $type => $grp) {
+                            $byType[$type] = (new XIter($grp))->toAssocArray();
+                        }
+                        $out = [];
+                        foreach ($byType as $inFilter) {
+                            if (array_key_exists("x", $inFilter)) {
+                                $out[] = $inFilter["x"]->getIdStr();
+                            }
+                        }
+                        return $out;
+                    }',
+            ],
+            'castTypeVariableToString' => [
+                // a type variable read out of a `list<TValue>` element is
+                // castable through the bound its construction inferred;
+                // `(string) $var` must resolve it rather than reject the bare
+                // variable (InvalidCast "`_N cannot be cast to string").
+                'code' => '<?php
+                    /** @template TValue */
+                    final class XIter {
+                        /** @param array<TValue> $array */
+                        public function __construct(array $array) {}
+                        /** @param callable(TValue, TValue): mixed $func */
+                        public function sortBy(callable $func): void {}
+                        /** @return list<TValue> */
+                        public function toArray(): array { throw new \Exception("stub"); }
+                    }
+
+                    function run(): void {
+                        foreach ((new XIter([1]))->toArray() as $v) {
+                            echo (string) $v;
+                        }
+                    }',
+            ],
+            'propertyFetchThenMethodCallOnElement' => [
+                // a type variable reached through a property fetch is the object
+                // it was inferred to be; the method call resolves through its
+                // bounds (Hack: no errors).
+                'code' => '<?php
+                    final class User { public function getId(): int { return 0; } }
+
+                    /** @template T */
+                    final class Box {
+                        /** @param T $value */
+                        public function __construct(public $value) {}
+                        /** @param callable(T, T): mixed $func */
+                        public function sortBy(callable $func): void {}
+                    }
+
+                    function pchain(): void {
+                        $b = new Box(new User());
+                        echo $b->value->getId();
+                    }',
+            ],
+            'nestedConstructionElementArithmetic' => [
+                // nested `new Box(new Box(5))`: the inner element resolves to int
+                // and supports arithmetic (Hack: no errors).
+                'code' => '<?php
+                    /** @template T */
+                    final class Box {
+                        /** @param T $value */
+                        public function __construct(public $value) {}
+                        /** @param callable(T, T): mixed $func */
+                        public function sortBy(callable $func): void {}
+                    }
+
+                    function nested(): void {
+                        $bb = new Box(new Box(5));
+                        $inner = $bb->value;
+                        echo $inner->value + 1;
+                    }',
+            ],
+            'propertyFetchOnTypeVariableIteratorElement' => [
+                // reading an element out of a `list<TValue>` return yields a
+                // bare type variable; used as a property-fetch receiver it must
+                // resolve through its object bound — as a method call already
+                // does — rather than being rejected as a non-object.
+                'code' => '<?php
+                    final class User { public int $id = 0; }
+
+                    /** @template TValue */
+                    final class XIter {
+                        /** @param array<TValue> $array */
+                        public function __construct(array $array = []) {}
+                        /** @param callable(TValue, TValue): mixed $func */
+                        public function sortBy(callable $func): void {}
+                        /** @return list<TValue> */
+                        public function toArray(): array { throw new \Exception("stub"); }
+                    }
+
+                    /** @param array<User> $users */
+                    function run(array $users): void {
+                        $items = (new XIter($users))->toArray();
+                        foreach ($items as $user) {
+                            echo $user->id;
+                        }
+                    }',
+            ],
             'unboundTemplateSolvesToClosureParam' => [
                 // an unbound `new Box()` never gets a lower bound, so the
                 // closure parameter only constrains the variable from above
@@ -159,6 +387,27 @@ final class TypeVariableTest extends TestCase
     public function providerInvalidCodeParse(): iterable
     {
         return [
+            'inhabitedVariableNotContainedByNeverReturn' => [
+                // returning `a<int>` where `@return a<never>` is declared is still
+                // rejected: an inhabited type variable is not a subtype of `never`,
+                // so the containment fails (Hack reports the invariant `nothing`
+                // mismatch: "Expected nothing ... But got int"). Guards the
+                // UnionTypeComparator never-arm fix against hiding this — the
+                // single-arm case must error even though the union arm in
+                // `possiblyEmptyArray` is allowed to fall through to its other arm.
+                'code' => '<?php
+                    /** @template T */
+                    final class a {
+                        /** @param T $t */
+                        public function __construct(public $t) {}
+                        /** @param callable(T, T): mixed $func */
+                        public function sortBy(callable $func): void {}
+                    }
+
+                    /** @return a<never> */
+                    function f(): a { return new a(5); }',
+                'error_message' => 'InvalidReturnStatement',
+            ],
             'mixedConstructorInferenceCoercesClosureParam' => [
                 // the constructor infers TValue as mixed (lower bound mixed); the
                 // closure parameter constrains it from above (TValue <: Item),
