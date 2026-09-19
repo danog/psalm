@@ -1534,6 +1534,7 @@ function run_all(): string
         . check('static_via_object', case_static_via_object(), 'no|yes|7')
         . check('byref_override_arg', case_byref_override_arg(), 'a:stop/no|b:go/yes')
         . check('php_shifts', case_php_shifts(), '0|1|0|-1|2|0|4611686018427387904')
+        . check('builtin_arity', case_builtin_arity(), 'ok')
         . check('array_to_xml', case_array_to_xml(), "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item/>\n</report>\n|<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item>\n    <severity>error</severity>\n    <line_from>4</line_from>\n    <taint_trace/>\n    <refs>\n      <label>a &amp; b</label>\n    </refs>\n    <refs>\n      <label>c</label>\n    </refs>\n  </item>\n</report>\n");
 }
 
@@ -2334,4 +2335,24 @@ function case_php_shifts(): string
     $out[] = (string) ($one << 65);
     $out[] = (string) ($one << 62);
     return implode('|', $out);
+}
+
+// ---- feature: every builtin mapping takes the arguments PHP passes it ----
+
+function case_builtin_arity(): string
+{
+    // a mapping that declares fewer parameters than the call passes only fails when the generated
+    // crate is compiled, so every widened mapping is called here with all of them
+    $dir = sys_get_temp_dir();
+    $file = $dir . '/tiny_builtin_arity.txt';
+    $ok = touch($file, 1000000000)
+        && count(scandir($dir, 1)) > 0
+        && htmlspecialchars("a'b\"c", ENT_QUOTES) === 'a&#039;b&quot;c'
+        && round(2.5, 0, PHP_ROUND_HALF_DOWN) === 2.0
+        && str_starts_with(uniqid('p', true), 'p')
+        && class_exists('Rt\\Missing', false) === false
+        && count(get_loaded_extensions(false)) > 0;
+    clearstatcache(true);
+    @unlink($file);
+    return $ok ? 'ok' : 'bad';
 }
