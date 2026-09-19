@@ -1530,6 +1530,8 @@ function run_all(): string
         . check('assert_if_false_key', case_assert_if_false_key(), 's:Foo|i:15')
         . check('substr_count_window', case_substr_count_window(), '5|1|2|3|0|2')
         . check('static_false_compare', case_static_false_compare(), 'called:1|caught')
+        . check('coalesce_nullable', case_coalesce_nullable(), 'none|a')
+        . check('static_via_object', case_static_via_object(), 'no|yes|7')
         . check('array_to_xml', case_array_to_xml(), "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item/>\n</report>\n|<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item>\n    <severity>error</severity>\n    <line_from>4</line_from>\n    <taint_trace/>\n    <refs>\n      <label>a &amp; b</label>\n    </refs>\n    <refs>\n      <label>c</label>\n    </refs>\n  </item>\n</report>\n");
 }
 
@@ -2227,4 +2229,48 @@ function case_static_false_compare(): string
         $out[] = 'caught';
     }
     return implode('|', $out);
+}
+
+// ---- feature: `??=` keeps a nullable right-hand side nullable ----
+
+final class CNArm
+{
+    public function __construct(public readonly string $name)
+    {
+    }
+}
+
+/** @param list<CNArm> $arms */
+function cn_pick(array $arms): string
+{
+    $last = null;
+    $last ??= array_shift($arms);
+    return $last === null ? 'none' : $last->name;
+}
+
+function case_coalesce_nullable(): string
+{
+    return cn_pick([]) . '|' . cn_pick([new CNArm('a'), new CNArm('b')]);
+}
+
+// ---- feature: a static read through an object names that object's class ----
+
+final class SVOHook
+{
+    public static bool $called = false;
+
+    public static int $count = 7;
+
+    public static function fire(): void
+    {
+        self::$called = true;
+    }
+}
+
+function case_static_via_object(): string
+{
+    $hook = new SVOHook();
+    $out = $hook::$called ? 'yes' : 'no';
+    SVOHook::fire();
+    return $out . '|' . ($hook::$called ? 'yes' : 'no') . '|' . $hook::$count;
 }

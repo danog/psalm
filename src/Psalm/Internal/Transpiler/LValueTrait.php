@@ -231,11 +231,15 @@ trait LValueTrait
             $this->warn('dynamic property name', $e);
             return $this->deadPlace($this->inferredOrMixed($e));
         }
-        if ($e instanceof Expr\StaticPropertyFetch && $e->name instanceof Node\VarLikeIdentifier && $e->class instanceof Name) {
-            $fqcn = $this->resolveClassName($e->class);
-            $cls = $fqcn !== null ? $this->program->getClass($fqcn) : null;
-            $field = $this->findStaticField($cls, $e->name->name);
-            if ($field !== null) {
+        if ($e instanceof Expr\StaticPropertyFetch) {
+            $resolved = $this->staticFieldOf($e);
+            if ($resolved !== null) {
+                [$field, $prefix] = $resolved;
+                if ($prefix !== '') {
+                    // the target is written, so the base cannot simply be evaluated and dropped
+                    $this->warn('static property through a computed class', $e);
+                    return $this->deadPlace($this->inferredOrMixed($e));
+                }
                 $path = $field->declaring->path();
                 $rn = $field->rustName();
                 return new Place(
@@ -824,20 +828,47 @@ trait LValueTrait
         return $this->dead('property read on ' . $bt->toRust() . '', $this->inferredOrMixed($e));
     }
 
+    /**
+     * The static field `Cls::$name` names, and the code to evaluate first. `$obj::$name` reads the
+     * static of the object's own class, so the object is only evaluated for its side effects.
+     *
+     * @return array{FieldModel, string}|null
+     */
+    private function staticFieldOf(Expr\StaticPropertyFetch $e): ?array
+    {
+        if (!$e->name instanceof Node\VarLikeIdentifier) {
+            return null;
+        }
+        if ($e->class instanceof Name) {
+            $fqcn = $this->resolveClassName($e->class);
+            $field = $this->findStaticField($fqcn !== null ? $this->program->getClass($fqcn) : null, $e->name->name);
+            return $field === null ? null : [$field, ''];
+        }
+        if (!$e->class instanceof Expr) {
+            return null;
+        }
+        $base = $this->expr($e->class);
+        if ($base->type->kind !== RustType::CLASS_) {
+            return null;
+        }
+        $field = $this->findStaticField($this->program->classOf($base->type), $e->name->name);
+        if ($field === null) {
+            return null;
+        }
+        // a plain variable has nothing to evaluate; anything else still has to run
+        return [$field, $e->class instanceof Expr\Variable ? '' : 'let _ = ' . $base->code . '; '];
+    }
+
     private function staticPropertyFetch(Expr\StaticPropertyFetch $e): Val
     {
-        if (!$e->class instanceof Name || !$e->name instanceof Node\VarLikeIdentifier) {
+        $resolved = $this->staticFieldOf($e);
+        if ($resolved === null) {
             $this->warn('dynamic static property', $e);
             return $this->dead('dynamic static property', $this->inferredOrMixed($e));
         }
-        $fqcn = $this->resolveClassName($e->class);
-        $cls = $fqcn !== null ? $this->program->getClass($fqcn) : null;
-        $field = $this->findStaticField($cls, $e->name->name);
-        if ($field === null) {
-            $this->warn('unknown static property ' . $e->name->name, $e);
-            return $this->dead('unknown static property', $this->inferredOrMixed($e));
-        }
-        return $this->narrow(new Val($field->declaring->path() . '::st_' . $field->rustName() . '()', $field->type), $e);
+        [$field, $prefix] = $resolved;
+        $read = $field->declaring->path() . '::st_' . $field->rustName() . '()';
+        return $this->narrow(new Val($prefix === '' ? $read : '{ ' . $prefix . $read . ' }', $field->type), $e);
     }
 
     private function classConstFetch(Expr\ClassConstFetch $e): Val
@@ -1182,8 +1213,15 @@ trait LValueTrait
         if ($e instanceof Expr\AssignOp\Coalesce) {
             $ov = $this->optionalValue($e->var);
             $inner = $t->kind === RustType::OPTION ? $t->inner() : $t;
-            $rhs = $this->exprTo($e->expr, $inner);
-            $store = $t->kind === RustType::OPTION ? 'Some(' . $rhs . ')' : $rhs;
+            $raw = $t->kind === RustType::OPTION ? $this->expr($e->expr) : null;
+            if ($raw !== null && $raw->type->kind === RustType::OPTION && $raw->type->inner()->toRust() === $inner->toRust()) {
+                // `$x ??= f()` where f may itself answer null: the null is the value, not a mistake
+                $store = $raw->code;
+                $rhs = $raw->code;
+            } else {
+                $rhs = $this->exprTo($e->expr, $inner);
+                $store = $t->kind === RustType::OPTION ? 'Some(' . $rhs . ')' : $rhs;
+            }
             if ($ov !== null) {
                 return 'if ' . $ov->code . '.is_none() { ' . $place->write($store) . ' }';
             }
