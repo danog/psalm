@@ -187,11 +187,12 @@ pub fn array_splice_l<T: Clone>(l: &mut List<T>, offset: i64, length: Option<i64
     let (a, b) = slice_bounds(l.len(), offset, length);
     l.splice_replace(a, b - a, repl)
 }
-pub fn array_splice_m<K: MapKey, V: Clone>(m: &mut Map<K, V>, offset: i64, length: Option<i64>, repl: Vec<V>) -> List<V> {
+/// The extracted elements keep their string keys, as PHP's does; only integer keys are renumbered.
+pub fn array_splice_m<K: MapKey, V: Clone>(m: &mut Map<K, V>, offset: i64, length: Option<i64>, repl: Vec<V>) -> Map<K, V> {
     let (a, b) = slice_bounds(m.len(), offset, length);
     let pairs = m.to_pairs();
     let mut out = Map::new();
-    let mut removed = Vec::new();
+    let mut removed: Map<K, V> = Map::new();
     for (i, (k, v)) in pairs.into_iter().enumerate() {
         if i == a {
             for r in repl.iter() {
@@ -199,7 +200,11 @@ pub fn array_splice_m<K: MapKey, V: Clone>(m: &mut Map<K, V>, offset: i64, lengt
             }
         }
         if i >= a && i < b {
-            removed.push(v);
+            if k.int_value().is_some() {
+                removed.push(v);
+            } else {
+                removed.insert(k, v);
+            }
         } else if k.int_value().is_some() {
             out.push(v);
         } else {
@@ -212,7 +217,7 @@ pub fn array_splice_m<K: MapKey, V: Clone>(m: &mut Map<K, V>, offset: i64, lengt
         }
     }
     *m = out;
-    List::from_vec(removed)
+    removed
 }
 pub fn array_map_l<T: Clone, U, F: FnMut(T) -> U>(l: &List<T>, mut f: F) -> List<U> {
     let mut out = Vec::with_capacity(l.len());
