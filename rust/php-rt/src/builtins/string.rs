@@ -1373,6 +1373,12 @@ pub fn sprintf(format: &Str, args: &[FmtArg]) -> Result<Str, RtError> {
         }
         let spec = f[i];
         i += 1;
+        if spec == b'%' {
+            // a `%` conversion writes a literal `%`, taking no argument and no padding, however
+            // the specifier was written: `%5%` and `%1$%` are both just `%`
+            out.push(b'%');
+            continue;
+        }
         let idx = match argnum {
             Some(n) => n,
             None => {
