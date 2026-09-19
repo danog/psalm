@@ -8,6 +8,7 @@ use Psalm\Context;
 use Psalm\Internal\MethodIdentifier;
 
 use function array_keys;
+use function var_export;
 use function implode;
 
 /**
@@ -226,6 +227,42 @@ final class VersionStubTest extends TestCase
         $this->assertTrue(
             isset($storage->methods['getattributes']),
             'while keeping what stubs/Reflection.phpstub declared',
+        );
+    }
+
+    /**
+     * A file naming a class PHP itself provides gets it reflected while it is scanned (a compiled
+     * program reflects its own shim, which describes far less than the stub). Visiting the stub files
+     * afterwards -- the order every analysis test uses -- must leave the stub's description in place.
+     */
+    public function testStringableSurvivesBeingReflectedFirst(): void
+    {
+        $this->project_analyzer->setPhpVersion('8.0', 'tests');
+
+        $codebase = $this->project_analyzer->getCodebase();
+
+        $codebase->scanner->queueClassLikeForScanning('Stringable');
+        $codebase->scanFiles();
+
+        $reflected = $codebase->classlike_storage_provider->get('Stringable');
+        $reflected_file = $reflected->location?->file_path ?? 'none';
+        $reflected_signature = ($reflected->methods['__tostring'] ?? null)?->signature_return_type;
+
+        $codebase->config->visitStubFiles($codebase);
+
+        $storage = $codebase->classlike_storage_provider->get('Stringable');
+        $method = $storage->methods['__tostring'] ?? null;
+
+        $this->assertNull(
+            $method?->signature_return_type,
+            'the stub declares __toString() without a native return type;'
+            . ' before=' . $reflected_file . '/' . ($reflected_signature === null ? 'null' : (string) $reflected_signature)
+            . ' stubbed=' . var_export($reflected->stubbed, true)
+            . ' after=' . ($storage->location?->file_path ?? 'none')
+            . ' after_stubbed=' . var_export($storage->stubbed, true)
+            . ' methods=' . implode(',', array_keys($storage->methods))
+            . ' method_file=' . ($method?->location?->file_path ?? 'none')
+            . ' signature=' . (string) $method?->signature_return_type,
         );
     }
 }
