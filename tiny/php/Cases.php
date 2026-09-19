@@ -1536,6 +1536,7 @@ function run_all(): string
         . check('php_shifts', case_php_shifts(), '0|1|0|-1|2|0|4611686018427387904')
         . check('builtin_arity', case_builtin_arity(), 'ok')
         . check('sprintf_percent', case_sprintf_percent(), '%|%|%|%|%a|%b|a%c')
+        . check('provided_builtins', case_provided_builtins(), 'sort:1|in_array:1|usort:1|file_exists:1|go:0|nonesuch_xyz:0')
         . check('htmlspecialchars_flags', case_htmlspecialchars_flags(), 'a&quot;b&#039;c&lt;&amp;&gt;|a&quot;b&apos;c&lt;&amp;&gt;|a&quot;b&apos;c&lt;&amp;&gt;|a&quot;b\'c&lt;&amp;&gt;|a"b\'c&lt;&amp;&gt;')
         . check('round_modes', case_round_modes(), '3,2,2,3,3,2,2,3,4,3,4,3,4,3,3,4,-3,-2,-2,-3,-2,-3,-2,-3,1.5,1.4,1.4,1.5,1.5,1.4,1.4,1.5,1.6,1.5,1.6,1.5,1.6,1.5,1.5,1.6,2,2,2,2,3,2,2,3,-2,-2,-2,-2,-2,-3,-2,-3,1,1,1,1,1,1,1,1,-2,-1,-2,-1,-1,-2,-1,-2')
         . check('array_to_xml', case_array_to_xml(), "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item/>\n</report>\n|<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item>\n    <severity>error</severity>\n    <line_from>4</line_from>\n    <taint_trace/>\n    <refs>\n      <label>a &amp; b</label>\n    </refs>\n    <refs>\n      <label>c</label>\n    </refs>\n  </item>\n</report>\n");
@@ -2397,6 +2398,17 @@ function case_htmlspecialchars_flags(): string
     $out = [];
     foreach ([ENT_QUOTES, ENT_QUOTES | ENT_XML1, ENT_QUOTES | ENT_HTML5, ENT_COMPAT, ENT_NOQUOTES] as $f) {
         $out[] = htmlspecialchars("a\"b'c<&>", $f);
+    }
+    return implode('|', $out);
+}
+
+// ---- feature: function_exists knows every builtin the program provides ----
+
+function case_provided_builtins(): string
+{
+    $out = [];
+    foreach (['sort', 'in_array', 'usort', 'file_exists', 'go', 'nonesuch_xyz'] as $name) {
+        $out[] = $name . ':' . (function_exists($name) ? '1' : '0');
     }
     return implode('|', $out);
 }

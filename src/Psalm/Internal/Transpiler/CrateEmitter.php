@@ -595,7 +595,12 @@ final class CrateEmitter
         ksort($fns);
         $w->line('static FUNCTIONS: &[&[u8]] = &[' . implode(', ', array_map(fn($n) => Names::byteStrLiteral($n), array_keys($fns))) . '];');
         $w->line('pub static USER_FUNCTIONS: &[&str] = &[' . implode(', ', $all_functions) . '];');
-        $w->line('pub fn function_exists(name: &Str) -> bool { let lc = php_rt::names::norm(name); FUNCTIONS.binary_search(&lc.as_slice()).is_ok() || ' . ($up !== null ? $up . 'function_exists(name)' : 'php_rt::builtins::misc::builtin_function_exists(&lc)') . ' }');
+        // the functions the emitter itself provides: most are never callable by name at runtime, so
+        // php-rt's own registry does not know them, but the program does provide them
+        $provided = Builtins::providedNames();
+        sort($provided);
+        $w->line('static PROVIDED_BUILTINS: &[&[u8]] = &[' . implode(', ', array_map(fn($n) => Names::byteStrLiteral($n), $provided)) . '];');
+        $w->line('pub fn function_exists(name: &Str) -> bool { let lc = php_rt::names::norm(name); FUNCTIONS.binary_search(&lc.as_slice()).is_ok() || PROVIDED_BUILTINS.binary_search(&lc.as_slice()).is_ok() || ' . ($up !== null ? $up . 'function_exists(name)' : 'php_rt::builtins::misc::builtin_function_exists(&lc)') . ' }');
         // constants: `defined()` checks names; `constant()` (dynamic lookup) only when some body calls it
         $names = [];
         foreach ($this->program->constants as $c) {

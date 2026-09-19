@@ -75,6 +75,27 @@ final class Builtins
      *
      * @param list<Arg> $args
      */
+    /**
+     * Every function name this emitter handles: the compiled program provides these, so its
+     * function_exists must say so even though most are never callable by name at runtime.
+     *
+     * @return list<string>
+     */
+    public static function providedNames(): array
+    {
+        $names = array_keys(self::SIMPLE);
+
+        foreach (get_class_methods(self::class) as $method) {
+            if (str_starts_with($method, 'f_')) {
+                $names[] = substr($method, 2);
+            }
+        }
+
+        sort($names);
+
+        return array_values(array_unique($names));
+    }
+
     public function emit(BodyEmitter $b, Expr\FuncCall $call, string $name, array $args): ?Val
     {
         $method = 'f_' . $name;
