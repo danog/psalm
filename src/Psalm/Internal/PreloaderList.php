@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace Psalm\Internal;
 
-/** @internal */
+/**
+ * @internal
+ *
+ * @psalm-pure
+ */
 final class PreloaderList {
     public const CLASSES = [
         \AdvancedJsonRpc\Dispatcher::class,
@@ -99,6 +103,8 @@ final class PreloaderList {
         \Amp\Parallel\Context\ContextFactory::class,
         \Amp\Parallel\Context\ContextPanicError::class,
         \Amp\Parallel\Context\DefaultContextFactory::class,
+        \Amp\Parallel\Context\ForkContext::class,
+        \Amp\Parallel\Context\ForkContextFactory::class,
         \Amp\Parallel\Context\Internal\AbstractContext::class,
         \Amp\Parallel\Context\Internal\ContextChannel::class,
         \Amp\Parallel\Context\Internal\ContextException::class,
@@ -346,6 +352,7 @@ final class PreloaderList {
         \PhpParser\Lexer\TokenEmulator\AttributeEmulator::class,
         \PhpParser\Lexer\TokenEmulator\EnumTokenEmulator::class,
         \PhpParser\Lexer\TokenEmulator\ExplicitOctalEmulator::class,
+        \PhpParser\Lexer\TokenEmulator\FnTokenEmulator::class,
         \PhpParser\Lexer\TokenEmulator\KeywordEmulator::class,
         \PhpParser\Lexer\TokenEmulator\MatchTokenEmulator::class,
         \PhpParser\Lexer\TokenEmulator\NullsafeTokenEmulator::class,
@@ -374,6 +381,7 @@ final class PreloaderList {
         \PhpParser\NodeVisitor\NodeConnectingVisitor::class,
         \PhpParser\NodeVisitor\ParentConnectingVisitor::class,
         \PhpParser\Node\Arg::class,
+        \PhpParser\Node\ArgPlaceholder::class,
         \PhpParser\Node\ArrayItem::class,
         \PhpParser\Node\Attribute::class,
         \PhpParser\Node\AttributeGroup::class,
