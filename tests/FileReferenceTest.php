@@ -66,7 +66,15 @@ final class FileReferenceTest extends TestCase
         $found_references = $this->project_analyzer->getCodebase()->findReferencesToSymbol($symbol);
         $found_references = array_values($found_references);
 
-        $this->assertSame(count($found_references), count($expected_locations));
+        $this->assertSame(
+            count($found_references),
+            count($expected_locations),
+            'found ' . implode(', ', array_map(
+                static fn(CodeLocation $loc): string => $loc->getLineNumber() . ':' . $loc->getColumn()
+                    . ':' . $loc->getSelectedText(),
+                $found_references,
+            )),
+        );
 
         // a new list rather than a by-reference rewrite: the elements change type, which the
         // reference's write-back cannot express
