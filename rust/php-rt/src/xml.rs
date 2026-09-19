@@ -1,15 +1,15 @@
 //! Minimal XML parser backing the `SimpleXMLElement` / `DOMDocument` runtime stubs.
 //!
 //! `xml_parse` returns the document as a flat, typed node list in document order:
-//! `(name, text, is_text, attrs, parent index)` — the root at index 0 with parent -1, text nodes named
-//! `#text`; an element's `text` is its concatenated direct text content.
+//! `(name, text, is_text, attrs, parent index, line)` — the root at index 0 with parent -1, text nodes
+//! named `#text`; an element's `text` is its concatenated direct text content.
 
 use crate::list::List;
 use crate::map::Map;
 use crate::string::Str;
 
-/// One node of the flat document: name, text, is_text, attributes, parent index (-1 for the root).
-pub type XmlFlatNode = (Str, Str, bool, Map<Str, Str>, i64);
+/// One node: name, text, is_text, attributes, parent index (-1 for the root), 1-based source line.
+pub type XmlFlatNode = (Str, Str, bool, Map<Str, Str>, i64, i64);
 
 struct P<'a> {
     s: &'a [u8],
@@ -39,6 +39,10 @@ impl<'a> P<'a> {
     }
     fn starts(&self, pat: &[u8]) -> bool {
         self.s[self.i..].starts_with(pat)
+    }
+    /// The 1-based line the byte at `at` is on.
+    fn line_at(&self, at: usize) -> i64 {
+        1 + self.s[..at.min(self.s.len())].iter().filter(|&&c| c == b'\n').count() as i64
     }
     fn skip_ws(&mut self) {
         while self.i < self.s.len() && self.s[self.i].is_ascii_whitespace() {
@@ -97,9 +101,10 @@ impl<'a> P<'a> {
             return None;
         }
         self.i += 1;
+        let line = self.line_at(self.i);
         let name = self.name()?.to_vec();
         let idx = out.len() as i64;
-        out.push((Str::from_bytes(&name), Str::empty(), false, Map::new(), parent));
+        out.push((Str::from_bytes(&name), Str::empty(), false, Map::new(), parent, line));
         let mut attrs: Map<Str, Str> = Map::new();
         loop {
             self.skip_ws();
@@ -150,7 +155,7 @@ impl<'a> P<'a> {
         let flush = |pending: &mut Vec<u8>, out: &mut Vec<XmlFlatNode>, text: &mut Vec<u8>| {
             if !pending.is_empty() {
                 text.extend_from_slice(pending);
-                out.push((Str::from_static("#text"), Str::from_vec(std::mem::take(pending)), true, Map::new(), idx));
+                out.push((Str::from_static("#text"), Str::from_vec(std::mem::take(pending)), true, Map::new(), idx, 0));
             }
         };
         loop {
