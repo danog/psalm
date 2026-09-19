@@ -755,3 +755,28 @@ class ReflectionNamedType extends ReflectionType
     /** @return non-empty-string */
     public function __toString(): string {}
 }
+
+/**
+ * The class PHP provides for a suspended generator; a compiled program has no reflection of it, so
+ * it is described here rather than read off the running interpreter.
+ */
+class ReflectionGenerator
+{
+    public function __construct(Generator $generator) {}
+
+    public function getExecutingLine(): int {}
+
+    public function getExecutingFile(): string {}
+
+    /**
+     * @param int-mask-of<DEBUG_BACKTRACE_*> $options
+     * @return list<array<string, mixed>>
+     */
+    public function getTrace(int $options = DEBUG_BACKTRACE_PROVIDE_OBJECT): array {}
+
+    public function getFunction(): ReflectionFunctionAbstract {}
+
+    public function getThis(): ?object {}
+
+    public function getExecutingGenerator(): Generator {}
+}
