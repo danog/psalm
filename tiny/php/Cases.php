@@ -1526,6 +1526,7 @@ function run_all(): string
         . check('narrow_reassign', case_narrow_reassign(), 'p,ri,ri,-,rr')
         . check('closure_param', case_closure_param(), 'a:1|none|x:1')
         . check('generic_binding', case_generic_binding(), 'ok')
+        . check('destructure_null', case_destructure_null(), 'a=1,b=x|a=,b=|a=2,b=y')
         . check('array_to_xml', case_array_to_xml(), "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item/>\n</report>\n|<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item>\n    <severity>error</severity>\n    <line_from>4</line_from>\n    <taint_trace/>\n    <refs>\n      <label>a &amp; b</label>\n    </refs>\n    <refs>\n      <label>c</label>\n    </refs>\n  </item>\n</report>\n");
 }
 
@@ -2092,4 +2093,47 @@ function case_generic_binding(): string
         && GBind::same('n', maybe_name(1))
         && GBind::same([['T', 'of', 'string', false]], [['T', 'of', 'string', false]]);
     return $ok ? 'ok' : 'bad';
+}
+
+// ---- feature: a list destructure of null clears its targets ----
+
+final class DNPair
+{
+    public function __construct(public readonly int $n, public readonly string $s)
+    {
+    }
+}
+
+final class DNTable
+{
+    /** @var array<string, DNPair> */
+    private array $rows;
+
+    public function __construct()
+    {
+        $this->rows = ['one' => new DNPair(1, 'x'), 'two' => new DNPair(2, 'y')];
+    }
+
+    /** @return array{0: int, 1: string}|null */
+    public function find(string $key): ?array
+    {
+        $row = $this->rows[$key] ?? null;
+        if ($row === null) {
+            return null;
+        }
+        return [$row->n, $row->s];
+    }
+}
+
+function case_destructure_null(): string
+{
+    $table = new DNTable();
+    $out = [];
+    foreach (['one', 'missing', 'two'] as $key) {
+        $n = null;
+        $s = null;
+        [$n, $s] = $table->find($key);
+        $out[] = 'a=' . ($n === null ? '' : (string) $n) . ',b=' . ($s === null ? '' : $s);
+    }
+    return implode('|', $out);
 }

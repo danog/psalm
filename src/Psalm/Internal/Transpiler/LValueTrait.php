@@ -1150,7 +1150,22 @@ trait LValueTrait
             }
             $code .= $this->assignTo($item->value, $elem) . ' ';
         }
-        return $optional ? $code . '}' : $code;
+        if (!$optional) {
+            return $code;
+        }
+        // `[$a, $b] = null` assigns null to every target: without this the targets keep whatever
+        // they held before, which leaks a previous loop iteration's values into this one
+        $none = '';
+        foreach ($target->items as $item) {
+            if ($item === null || $item->value instanceof Expr\List_ || $item->value instanceof Expr\Array_) {
+                continue;
+            }
+            $place = $this->place($item->value);
+            if ($place->type->kind === RustType::OPTION) {
+                $none .= $place->write('None') . ' ';
+            }
+        }
+        return $code . '}' . ($none === '' ? '' : ' else { ' . $none . '}');
     }
 
     private function assignOpExpr(Expr\AssignOp $e): Val
