@@ -162,10 +162,11 @@ final class VersionStubTest extends TestCase
         $this->assertReflectionClassesAreStubbed('8.0', false);
     }
 
-    /** The analysis tests read the stubs in server mode, at the default analysis version. */
+    /** The analysis tests read the stubs in server mode. */
     public function testReflectionClassesComeFromPsalmsOwnStubInServerMode(): void
     {
-        $this->assertReflectionClassesAreStubbed('7.4', true);
+        // getAttributes() is @since 8.0, so the stub only declares it from that version on
+        $this->assertReflectionClassesAreStubbed('8.0', true);
     }
 
     private function assertReflectionClassesAreStubbed(string $php_version, bool $server_mode): void
@@ -192,5 +193,39 @@ final class VersionStubTest extends TestCase
                 . ' methods=' . implode(',', array_keys($storage->methods)),
             );
         }
+    }
+
+    /**
+     * The version stubs add methods to classes Reflection.phpstub already describes. Analysing at
+     * 8.4 must see both halves, and the template the class was declared with.
+     */
+    public function testReflectionClassKeepsWhatEveryStubAddsToIt(): void
+    {
+        $this->project_analyzer->setPhpVersion('8.4', 'tests');
+
+        $codebase = $this->project_analyzer->getCodebase();
+        $codebase->config->visitPreloadedStubFiles($codebase);
+        $codebase->config->visitStubFiles($codebase);
+
+        $storage = $codebase->classlike_storage_provider->get('ReflectionClass');
+
+        $this->assertTrue(
+            isset($storage->methods['newlazyghost']),
+            'stubs/Php84.phpstub adds newLazyGhost();'
+            . ' file=' . ($storage->location?->file_path ?? 'none')
+            . ' templates=' . implode(',', array_keys($storage->template_types ?? []))
+            . ' methods=' . implode(',', array_keys($storage->methods)),
+        );
+
+        $this->assertSame(
+            ['T'],
+            array_keys($storage->template_types ?? []),
+            'and the class keeps the template every stub declares it with',
+        );
+
+        $this->assertTrue(
+            isset($storage->methods['getattributes']),
+            'while keeping what stubs/Reflection.phpstub declared',
+        );
     }
 }
