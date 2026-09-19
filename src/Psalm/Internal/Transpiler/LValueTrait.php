@@ -849,20 +849,24 @@ trait LValueTrait
                 return new Val($cls->path() . '::' . Names::typeIdent($name), RustType::class($cls->fqcn));
             }
             $const = $this->findConstant($cls, $name);
-            if ($const === null && strtolower($e->class->toString()) === 'static' && $this->this_type !== null && $this->class !== null && !$this->class->isLeaf()) {
-                // late static binding: the constant is declared in subclasses
+            if (strtolower($e->class->toString()) === 'static' && $this->this_type !== null && $this->class !== null && !$this->class->isLeaf()) {
+                // late static binding: whichever class the object is answers with its own declaration,
+                // the base's only where the subclass does not redeclare it (`CodeIssue::SHORTCODE`)
                 $arms = [];
                 $res = null;
+                $declarations = [];
                 foreach ($this->class->concrete as $c) {
-                    $cc = $this->findConstant($c, $name);
+                    $cc = $this->findConstant($c, $name) ?? $const;
                     if ($cc === null) {
                         $arms[] = $this->class->path() . '::' . $c->variant() . '(_) => unreachable!("undefined constant ' . $name . '")';
                         continue;
                     }
                     $res ??= $cc->type;
+                    $declarations[$cc->declaring->path() . '::' . $cc->rustName()] = true;
                     $arms[] = $this->class->path() . '::' . $c->variant() . '(_) => ' . $this->casts->convert($cc->declaring->path() . '::' . $cc->rustName() . '()', $cc->type, $res);
                 }
-                if ($res !== null) {
+                // one declaration for every subclass is the declaration itself: no need for the match
+                if ($res !== null && count($declarations) > 1) {
                     return $this->narrow(new Val('(match ' . $this->this_expr . ' { ' . implode(', ', $arms) . ', _ => unreachable!() })', $res), $e);
                 }
             }

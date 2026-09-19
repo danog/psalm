@@ -1321,8 +1321,11 @@ final class Builtins
                 $repl = 'vec![' . $b->casts->convert($r->code, $r->type, $vt) . ']';
             }
         }
-        $fn = $pt->kind === RustType::LIST ? 'array_splice_l' : 'array_splice_m';
-        return new Val('{ let __off = ' . $offset . '; let __len = ' . $len . '; let __repl = ' . $repl . '; let __r = ' . $place->modifyValue(fn(string $p) => $fn . '(&mut ' . $p . ', __off, __len, __repl)') . '; __r }', RustType::list($vt));
+        // the extracted elements keep their string keys, as PHP's array_splice does
+        $is_map = $pt->kind === RustType::MAP;
+        $fn = $is_map ? 'array_splice_m' : 'array_splice_l';
+        $rt = $is_map ? RustType::map($pt->params[0], $vt) : RustType::list($vt);
+        return new Val('{ let __off = ' . $offset . '; let __len = ' . $len . '; let __repl = ' . $repl . '; let __r = ' . $place->modifyValue(fn(string $p) => $fn . '(&mut ' . $p . ', __off, __len, __repl)') . '; __r }', $rt);
     }
 
     private function f_array_pop(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
