@@ -2684,13 +2684,11 @@ final class Config
             // as they might be autoloadable once we require the autoloader below
             $codebase->classlikes->forgetMissingClassLikes();
 
-            if (\defined('PSALM_COMPILED')) {
-                // a compiled program cannot require PHP source: what the autoloader would have
-                // brought in is scanned from the autoloader's own file instead
-                $this->include_collector->addIncludedFile($this->autoloader);
-            } else {
-                $this->include_collector->runAndCollect($this->requireAutoloader(...));
-            }
+            $this->include_collector->runAndCollect($this->requireAutoloader(...));
+
+            // a compiled program cannot require PHP source; naming the autoloader here is how its
+            // contents are scanned either way (requiring it reports the same file)
+            $this->include_collector->addIncludedFile($this->autoloader);
         }
 
         $this->collectPredefinedConstants();
