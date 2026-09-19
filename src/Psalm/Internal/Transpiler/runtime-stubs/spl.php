@@ -283,6 +283,10 @@ class RecursiveDirectoryIterator extends FilesystemIterator implements Recursive
         if ($this->isDot()) {
             return false;
         }
+        // a symlinked directory is a leaf unless links are followed, so that a walk can see it as one
+        if (!$allowLinks && ($this->flags & FilesystemIterator::FOLLOW_SYMLINKS) === 0 && is_link($this->getPathname())) {
+            return false;
+        }
         return is_dir($this->getPathname());
     }
 
@@ -460,6 +464,21 @@ class RecursiveIteratorIterator extends RecursiveDirectoryIterator
     public function getSubPathname(): string
     {
         return $this->getFilename();
+    }
+
+    public function isLink(): bool
+    {
+        return is_link($this->getPathname());
+    }
+
+    public function isDir(): bool
+    {
+        return is_dir($this->getPathname());
+    }
+
+    public function isFile(): bool
+    {
+        return is_file($this->getPathname());
     }
 
     public function current(): SplFileInfo|string
