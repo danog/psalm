@@ -746,7 +746,7 @@ final class LoopAnalyzer
         Context $outer_context,
         bool $is_do,
     ): array {
-        $pre_referenced_var_ids = $loop_context->cond_referenced_var_ids;
+        $pre_referenced_var_ids = $loop_context->getCondReferencedVarIds();
         $loop_context->cond_referenced_var_ids = [];
 
         $was_inside_conditional = $loop_context->inside_conditional;
@@ -761,7 +761,7 @@ final class LoopAnalyzer
 
         $loop_context->inside_conditional = $was_inside_conditional;
 
-        $new_referenced_var_ids = $loop_context->cond_referenced_var_ids;
+        $new_referenced_var_ids = $loop_context->getCondReferencedVarIds();
         $loop_context->cond_referenced_var_ids = array_merge($pre_referenced_var_ids, $new_referenced_var_ids);
 
         $always_assigned_before_loop_body_vars = Context::getNewOrUpdatedVarIds($outer_context, $loop_context);

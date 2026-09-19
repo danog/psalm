@@ -177,8 +177,8 @@ final class IfElseAnalyzer
             ? Algebra::simplifyCNF([...$entry_clauses, ...$if_clauses])
             : $if_clauses;
 
-        if ($if_context->reconciled_expression_clauses) {
-            $reconciled_expression_clauses = $if_context->reconciled_expression_clauses;
+        if ($if_context->getReconciledExpressionClauses()) {
+            $reconciled_expression_clauses = $if_context->getReconciledExpressionClauses();
 
             $if_context->clauses = array_values(
                 array_filter(

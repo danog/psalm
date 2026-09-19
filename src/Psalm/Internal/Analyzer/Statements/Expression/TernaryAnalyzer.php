@@ -134,8 +134,8 @@ final class TernaryAnalyzer
             ? Algebra::simplifyCNF([...$entry_clauses, ...$if_clauses])
             : $if_clauses;
 
-        if ($if_context->reconciled_expression_clauses) {
-            $reconciled_expression_clauses = $if_context->reconciled_expression_clauses;
+        if ($if_context->getReconciledExpressionClauses()) {
+            $reconciled_expression_clauses = $if_context->getReconciledExpressionClauses();
 
             $ternary_context_clauses = array_values(
                 array_filter(
@@ -211,8 +211,8 @@ final class TernaryAnalyzer
             }
 
             $context->cond_referenced_var_ids = [
-                ...$context->cond_referenced_var_ids,
-                ...$if_context->cond_referenced_var_ids,
+                ...$context->getCondReferencedVarIds(),
+                ...$if_context->getCondReferencedVarIds(),
             ];
         }
 
@@ -296,8 +296,8 @@ final class TernaryAnalyzer
         ];
 
         $context->cond_referenced_var_ids = [
-            ...$context->cond_referenced_var_ids,
-            ...$t_else_context->cond_referenced_var_ids,
+            ...$context->getCondReferencedVarIds(),
+            ...$t_else_context->getCondReferencedVarIds(),
         ];
 
         $lhs_type = null;

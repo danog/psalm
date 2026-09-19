@@ -279,6 +279,28 @@ final class Context
     }
 
     /**
+     * The vars referenced in conditionals since the list was last reset.
+     *
+     * @return array<string, bool>
+     * @psalm-mutation-free
+     */
+    public function getCondReferencedVarIds(): array
+    {
+        return $this->cond_referenced_var_ids;
+    }
+
+    /**
+     * The hashed clauses already factored in, as recorded so far.
+     *
+     * @return list<string|int>
+     * @psalm-mutation-free
+     */
+    public function getReconciledExpressionClauses(): array
+    {
+        return $this->reconciled_expression_clauses;
+    }
+
+    /**
      * A list of classes or interfaces that may have been thrown
      *
      * @var array<string, array<string, CodeLocation>>

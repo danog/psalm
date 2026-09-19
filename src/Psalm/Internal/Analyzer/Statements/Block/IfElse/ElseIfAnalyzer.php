@@ -149,8 +149,8 @@ final class ElseIfAnalyzer
             ? Algebra::simplifyCNF([...$entry_clauses, ...$elseif_clauses])
             : $elseif_clauses;
 
-        if ($elseif_context->reconciled_expression_clauses) {
-            $reconciled_expression_clauses = $elseif_context->reconciled_expression_clauses;
+        if ($elseif_context->getReconciledExpressionClauses()) {
+            $reconciled_expression_clauses = $elseif_context->getReconciledExpressionClauses();
 
             $elseif_context->clauses = array_values(
                 array_filter(
