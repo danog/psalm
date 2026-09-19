@@ -1,5 +1,18 @@
 <?php
 
+/** The error PHP's date functions raise since 8.3; before that they returned false. */
+class DateError extends Error
+{
+}
+
+class DateException extends Exception
+{
+}
+
+class DateMalformedStringException extends DateException
+{
+}
+
 /**
  * The interface PHP's date classes share. Psalm's own stubs name it (DateTimeImmutable implements it)
  * without declaring it: in PHP it is reflected, and a compiled program has no reflection of it.
@@ -72,7 +85,7 @@ class DateInterval
 
     public function format(string $format): string
     {
-        return $format;
+        return '';
     }
 }
 
@@ -85,7 +98,7 @@ class DateTime implements DateTimeInterface
 {
     public function format(string $format): string
     {
-        return $format;
+        return '';
     }
 
     public function getTimestamp(): int
@@ -147,27 +160,45 @@ class DateTime implements DateTimeInterface
     {
     }
 
+    /** Since PHP 8.3 an unparseable modifier is an exception, not a false return. */
+    public function modify(string $modifier): static
+    {
+        $offset = $this->unparseableAt($modifier);
+        if ($offset !== null) {
+            $at = substr(trim($modifier), $offset, 1);
+            throw new DateMalformedStringException(
+                static::class . '::modify(): Failed to parse time string (' . $modifier . ') at position '
+                    . $offset . ' (' . ($at === '' ? ' ' : $at) . ')',
+            );
+        }
+        return $this;
+    }
+
     /**
-     * @return DateTime|false
+     * The offset where parsing gives up, or null when the whole string parses. PHP counts the offset
+     * from the first non-blank character, as its own messages show.
      */
-    public function modify(string $modifier): DateTime|false
+    private function unparseableAt(string $modifier): ?int
     {
         $m = strtolower(trim($modifier));
         if ($m === '') {
-            return false;
+            return 0;
         }
         $unit = '(sec|second|min|minute|hour|day|week|fortnight|month|year|weekday|msec|millisecond|usec|microsecond)s?';
         $weekday = '(mon|tue|wed|thu|fri|sat|sun)[a-z]*';
         $keywords = ['now', 'today', 'tomorrow', 'yesterday', 'midnight', 'noon', 'first day of this month', 'last day of this month',
             'first day of next month', 'last day of next month', 'first day of last month', 'last day of last month'];
         if (in_array($m, $keywords, true)) {
-            return $this;
+            return null;
         }
         $parts = preg_split('/\s*,\s*|\s+(?=[+-]?\d)/', $m) ?: [];
+        $seen = 0;
         foreach ($parts as $part) {
             if ($part === '') {
                 continue;
             }
+            $at = strpos($m, $part, $seen);
+            $seen = $at === false ? $seen : $at + strlen($part);
             if (preg_match('/^[+-]?\d+\s*' . $unit . '(\s+ago)?$/', $part) === 1
                 || preg_match('/^(next|last|this|previous)\s+(' . $unit . '|' . $weekday . ')$/', $part) === 1
                 || preg_match('/^' . $weekday . '(\s+(next|last|this)\s+week)?$/', $part) === 1
@@ -178,13 +209,8 @@ class DateTime implements DateTimeInterface
             ) {
                 continue;
             }
-            return false;
+            return $at === false ? 0 : $at;
         }
-        return $this;
-    }
-
-    public function format(string $format): string
-    {
-        return '';
+        return null;
     }
 }

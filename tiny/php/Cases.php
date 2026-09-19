@@ -1529,6 +1529,7 @@ function run_all(): string
         . check('destructure_null', case_destructure_null(), 'a=1,b=x|a=,b=|a=2,b=y')
         . check('assert_if_false_key', case_assert_if_false_key(), 's:Foo|i:15')
         . check('substr_count_window', case_substr_count_window(), '5|1|2|3|0|2')
+        . check('static_false_compare', case_static_false_compare(), 'called:1|caught')
         . check('array_to_xml', case_array_to_xml(), "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item/>\n</report>\n|<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item>\n    <severity>error</severity>\n    <line_from>4</line_from>\n    <taint_trace/>\n    <refs>\n      <label>a &amp; b</label>\n    </refs>\n    <refs>\n      <label>c</label>\n    </refs>\n  </item>\n</report>\n");
 }
 
@@ -2189,5 +2190,41 @@ function case_substr_count_window(): string
     $out[] = (string) substr_count($doc, "\n", 0, 52);
     $out[] = (string) substr_count($doc, "\n", 4, 20);
     $out[] = (string) substr_count($doc, "\n", -12);
+    return implode('|', $out);
+}
+
+// ---- feature: a comparison the types settle still evaluates its operand ----
+
+final class SFCounter
+{
+    public static int $calls = 0;
+}
+
+final class SFThing
+{
+    public function touch(string $key): SFThing
+    {
+        SFCounter::$calls++;
+        if ($key === 'bad') {
+            throw new \RuntimeException('bad key');
+        }
+        return $this;
+    }
+}
+
+function case_static_false_compare(): string
+{
+    $out = [];
+    $thing = new SFThing();
+    if ((new SFThing())->touch('ok') === false) {
+        $out[] = 'false';
+    }
+    $out[] = 'called:' . SFCounter::$calls;
+    try {
+        $thing->touch('bad');
+        $out[] = 'no-throw';
+    } catch (\RuntimeException $e) {
+        $out[] = 'caught';
+    }
     return implode('|', $out);
 }
