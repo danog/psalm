@@ -1535,7 +1535,9 @@ function run_all(): string
         . check('byref_override_arg', case_byref_override_arg(), 'a:stop/no|b:go/yes')
         . check('php_shifts', case_php_shifts(), '0|1|0|-1|2|0|4611686018427387904')
         . check('builtin_arity', case_builtin_arity(), 'ok')
-        . check('sprintf_percent', case_sprintf_percent(), '%|%|%|%|%a')
+        . check('sprintf_percent', case_sprintf_percent(), '%|%|%|%|%a|%b|a%c')
+        . check('htmlspecialchars_flags', case_htmlspecialchars_flags(), 'a&quot;b&#039;c&lt;&amp;&gt;|a&quot;b&apos;c&lt;&amp;&gt;|a&quot;b&apos;c&lt;&amp;&gt;|a&quot;b\'c&lt;&amp;&gt;|a"b\'c&lt;&amp;&gt;')
+        . check('round_modes', case_round_modes(), '3,2,2,3,3,2,2,3,4,3,4,3,4,3,3,4,-3,-2,-2,-3,-2,-3,-2,-3,1.5,1.4,1.4,1.5,1.5,1.4,1.4,1.5,1.6,1.5,1.6,1.5,1.6,1.5,1.5,1.6,2,2,2,2,3,2,2,3,-2,-2,-2,-2,-2,-3,-2,-3,1,1,1,1,1,1,1,1,-2,-1,-2,-1,-1,-2,-1,-2')
         . check('array_to_xml', case_array_to_xml(), "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item/>\n</report>\n|<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item>\n    <severity>error</severity>\n    <line_from>4</line_from>\n    <taint_trace/>\n    <refs>\n      <label>a &amp; b</label>\n    </refs>\n    <refs>\n      <label>c</label>\n    </refs>\n  </item>\n</report>\n");
 }
 
@@ -2368,5 +2370,33 @@ function case_sprintf_percent(): string
         sprintf('%5%', 7),
         sprintf('%-5%', 7),
         sprintf('%1$%a', 7),
+        // a `%` conversion still takes an argument slot, so the next one moves on
+        sprintf('%5%%s', 'a', 'b'),
+        sprintf('%s%5%%s', 'a', 'b', 'c'),
     ]);
+}
+
+// ---- feature: every rounding mode PHP has ----
+
+function case_round_modes(): string
+{
+    $cases = [[2.5, 0], [3.5, 0], [-2.5, 0], [1.45, 1], [1.55, 1], [2.4, 0], [-2.4, 0], [1.0, 0], [-1.5, 0]];
+    $out = [];
+    foreach ($cases as [$v, $p]) {
+        foreach ([1, 2, 3, 4, 5, 6, 7, 8] as $m) {
+            $out[] = rtrim(rtrim(number_format(round($v, $p, $m), 2, '.', ''), '0'), '.');
+        }
+    }
+    return implode(',', $out);
+}
+
+// ---- feature: the quote flags and the doctype a report asks for ----
+
+function case_htmlspecialchars_flags(): string
+{
+    $out = [];
+    foreach ([ENT_QUOTES, ENT_QUOTES | ENT_XML1, ENT_QUOTES | ENT_HTML5, ENT_COMPAT, ENT_NOQUOTES] as $f) {
+        $out[] = htmlspecialchars("a\"b'c<&>", $f);
+    }
+    return implode('|', $out);
 }
