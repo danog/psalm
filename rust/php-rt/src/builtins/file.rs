@@ -71,12 +71,22 @@ pub fn rename(a: &Str, b: &Str) -> bool {
 pub fn copy(a: &Str, b: &Str) -> bool {
     std::fs::copy(path(a), path(b)).is_ok()
 }
-pub fn touch(p: &Str) -> bool {
+pub fn touch(p: &Str, mtime: Option<i64>) -> bool {
     let pb = path(p);
-    if pb.exists() {
+    let ok = if pb.exists() {
         std::fs::OpenOptions::new().append(true).open(&pb).is_ok()
     } else {
         std::fs::write(&pb, b"").is_ok()
+    };
+    match (ok, mtime) {
+        (true, Some(t)) => {
+            let when = std::time::UNIX_EPOCH + std::time::Duration::from_secs(t.max(0) as u64);
+            match std::fs::File::options().write(true).open(&pb) {
+                Ok(f) => f.set_modified(when).is_ok(),
+                Err(_) => false,
+            }
+        }
+        _ => ok,
     }
 }
 pub fn filemtime(p: &Str) -> Option<i64> {
@@ -107,14 +117,19 @@ pub fn symlink(target: &Str, link: &Str) -> bool {
         false
     }
 }
-pub fn scandir(p: &Str) -> List<Str> {
+/// `sorting_order`: SCANDIR_SORT_ASCENDING (0), SCANDIR_SORT_DESCENDING (1), SCANDIR_SORT_NONE (2).
+pub fn scandir(p: &Str, sorting_order: i64) -> List<Str> {
     let mut names: Vec<Str> = vec![Str::from_static("."), Str::from_static("..")];
     if let Ok(rd) = std::fs::read_dir(path(p)) {
         for e in rd.flatten() {
             names.push(Str::from_string(e.file_name().to_string_lossy().into_owned()));
         }
     }
-    names.sort();
+    match sorting_order {
+        2 => {}
+        1 => names.sort_by(|a, b| b.cmp(a)),
+        _ => names.sort(),
+    }
     List::from_vec(names)
 }
 pub fn file_lines(p: &Str, flags: i64) -> List<Str> {
@@ -563,4 +578,4 @@ pub fn lz4_compress(_s: &Str) -> Option<Str> {
 pub fn lz4_uncompress(_s: &Str) -> Option<Str> {
     None
 }
-pub fn clearstatcache() {}
+pub fn clearstatcache(_clear_realpath_cache: bool) {}

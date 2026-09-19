@@ -641,15 +641,19 @@ pub fn addcslashes(s: &Str, chars: &Str) -> Str {
     }
     Str::from_vec(out)
 }
-pub fn htmlspecialchars(s: &Str) -> Str {
+/// `flags`: ENT_QUOTES is ENT_COMPAT (2) | ENT_HTML401's single-quote bit (1); either bit alone
+/// converts only that kind of quote, as PHP's own table says.
+pub fn htmlspecialchars(s: &Str, flags: i64) -> Str {
+    let doubles = flags & 2 != 0;
+    let singles = flags & 1 != 0;
     let mut out = Vec::with_capacity(s.len());
     for &c in s.as_bytes() {
         match c {
             b'&' => out.extend_from_slice(b"&amp;"),
             b'<' => out.extend_from_slice(b"&lt;"),
             b'>' => out.extend_from_slice(b"&gt;"),
-            b'"' => out.extend_from_slice(b"&quot;"),
-            b'\'' => out.extend_from_slice(b"&#039;"),
+            b'"' if doubles => out.extend_from_slice(b"&quot;"),
+            b'\'' if singles => out.extend_from_slice(b"&#039;"),
             _ => out.push(c),
         }
     }
@@ -736,7 +740,7 @@ pub fn base_convert(s: &Str, from: i64, to: i64) -> Str {
 }
 pub fn number_format(n: f64, decimals: i64, dec_point: &Str, thousands: &Str) -> Str {
     let decimals = decimals.max(0) as usize;
-    let rounded = crate::builtins::math::round(n, decimals as i64);
+    let rounded = crate::builtins::math::round(n, decimals as i64, 1);
     let s = format!("{:.*}", decimals, rounded.abs());
     let (int_part, frac) = match s.split_once('.') {
         Some((a, b)) => (a.to_string(), Some(b.to_string())),
@@ -798,9 +802,11 @@ pub fn ctype_xdigit(s: &Str) -> bool {
 pub fn is_numeric(s: &Str) -> bool {
     conv::parse_numeric(s.as_bytes()).is_some()
 }
-pub fn uniqid() -> Str {
+pub fn uniqid(prefix: &Str, more_entropy: bool) -> Str {
     let t = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap();
-    Str::from_string(format!("{:08x}{:05x}", t.as_secs(), t.subsec_micros()))
+    let id = format!("{:08x}{:05x}", t.as_secs(), t.subsec_micros());
+    let tail = if more_entropy { format!(".{:08}", t.subsec_nanos() % 100_000_000) } else { String::new() };
+    Str::from_string(format!("{}{}{}", prefix.as_str(), id, tail))
 }
 pub fn strtok(s: &Str, token: &Str) -> Option<Str> {
     let b = s.as_bytes();
@@ -1406,7 +1412,7 @@ pub fn sprintf(format: &Str, args: &[FmtArg]) -> Result<Str, RtError> {
             b'f' | b'F' => {
                 let v = arg.as_float();
                 let p = precision.unwrap_or(6);
-                let mut s = format!("{:.*}", p, crate::builtins::math::round(v, p as i64).abs());
+                let mut s = format!("{:.*}", p, crate::builtins::math::round(v, p as i64, 1).abs());
                 if v.is_infinite() {
                     s = if v < 0.0 { "-inf".into() } else { "inf".into() };
                 } else if v.is_nan() {

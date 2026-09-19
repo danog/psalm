@@ -183,7 +183,7 @@ pub fn strtotime(_s: &Str) -> Option<i64> {
 pub fn checkdate(m: i64, d: i64, y: i64) -> bool {
     m >= 1 && m <= 12 && d >= 1 && d <= 31 && y >= 1
 }
-pub fn debug_print_backtrace() {}
+pub fn debug_print_backtrace(_options: i64, _limit: i64) {}
 pub fn debug_zval_refcount(_m: &Mixed) -> i64 {
     1
 }

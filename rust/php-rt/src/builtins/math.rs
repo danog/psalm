@@ -16,7 +16,8 @@ pub fn floor(f: f64) -> f64 {
     f.floor()
 }
 /// PHP round(): half away from zero with pre-rounding fuzz.
-pub fn round(value: f64, places: i64) -> f64 {
+/// `mode` is one of PHP's PHP_ROUND_HALF_* constants: UP (1), DOWN (2), EVEN (3), ODD (4).
+pub fn round(value: f64, places: i64, mode: i64) -> f64 {
     if !value.is_finite() || value == 0.0 {
         return value;
     }
@@ -30,8 +31,15 @@ pub fn round(value: f64, places: i64) -> f64 {
     let r = tmp.round();
     let diff = (tmp - tmp.trunc()).abs();
     let rounded = if (diff - 0.5).abs() < 1e-9 * tmp.abs().max(1.0) {
-        // exactly half after fuzz: away from zero
-        if tmp >= 0.0 { tmp.trunc() + 1.0 } else { tmp.trunc() - 1.0 }
+        // exactly half after fuzz: the mode says which way
+        let down = tmp.trunc();
+        let up = if tmp >= 0.0 { down + 1.0 } else { down - 1.0 };
+        match mode {
+            2 => down,
+            3 => if (down / 2.0).fract() == 0.0 { down } else { up },
+            4 => if (down / 2.0).fract() == 0.0 { up } else { down },
+            _ => up,
+        }
     } else {
         r
     };
@@ -40,8 +48,8 @@ pub fn round(value: f64, places: i64) -> f64 {
     let s = format!("{:.*}", places.max(0) as usize, res);
     s.parse::<f64>().unwrap_or(res)
 }
-pub fn round_i(value: i64, places: i64) -> f64 {
-    round(value as f64, places)
+pub fn round_i(value: i64, places: i64, mode: i64) -> f64 {
+    round(value as f64, places, mode)
 }
 pub fn sqrt(f: f64) -> f64 {
     f.sqrt()
