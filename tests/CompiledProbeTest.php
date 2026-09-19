@@ -6,6 +6,10 @@ namespace Psalm\Tests;
 
 use Psalm\Context;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
+use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Type\Comparator\CallableTypeComparator;
+use Psalm\Type\Atomic\TClassString;
+use Psalm\Type\Atomic\TLiteralString;
 use Psalm\IssueBuffer;
 
 use function json_encode;
@@ -288,6 +292,58 @@ final class CompiledProbeTest extends TestCase
             ],
             $actual,
             json_encode($actual, JSON_THROW_ON_ERROR),
+        );
+    }
+    /**
+     * Three descriptions a compiled build has been getting wrong, measured directly rather than
+     * through the issue a test happens to report.
+     */
+    public function testDescriptionsOfThingsPhpProvides(): void
+    {
+        $file_path = self::$src_dir_path . 'somefile6.php';
+
+        $this->project_analyzer->setPhpVersion('8.0', 'tests');
+
+        $this->addFile(
+            $file_path,
+            '<?php
+                /** @param class-string<object&callable(string):void> $className */
+                function takesCallableObject(string $className): void {}
+
+                $filtered = array_filter(["a", ""], "strlen");',
+        );
+
+        $context = new Context();
+        $this->project_analyzer->getConfig()->throw_exception = false;
+        $this->analyzeFile($file_path, $context);
+
+        $codebase = $this->project_analyzer->getCodebase();
+
+        $strlen = CallableTypeComparator::getCallableFromAtomic($codebase, new TLiteralString('strlen'));
+        $create = $codebase->methods->getStorage(new MethodIdentifier('DateTime', 'createfrominterface'));
+        $param = $codebase->file_storage_provider->get($file_path)
+            ->functions['takescallableobject']->params[0]->type;
+        $class_string = $param?->getSingleAtomic();
+        $as_type = $class_string instanceof TClassString ? $class_string->as_type : null;
+
+        $this->assertSame(
+            [
+                'strlen_mutations' => 0,
+                'createFromInterface' => 'static',
+                // PHP keeps the intersection elsewhere than as_type; what matters is that a
+                // compiled build says the same thing
+                'class_string_as' => 'absent',
+            ],
+            [
+                'strlen_mutations' => $strlen?->allowed_mutations ?? -1,
+                'createFromInterface' => (string) $create->return_type,
+                'class_string_as' => $as_type === null ? 'absent' : $as_type->getId(),
+            ],
+            json_encode([
+                'strlen_mutations' => $strlen?->allowed_mutations ?? -1,
+                'createFromInterface' => (string) $create->return_type,
+                'class_string_as' => $as_type === null ? 'absent' : $as_type->getId(),
+            ], JSON_THROW_ON_ERROR),
         );
     }
 }
