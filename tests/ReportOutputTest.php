@@ -106,7 +106,8 @@ final class ReportOutputTest extends TestCase
     }
 
     /**
-     * @return array<string, scalar|null|array<string, scalar|null|array<string, scalar|null|list<scalar|null>>>>
+     * @psalm-import-type JsonValue from \Psalm\Internal\Json\Json
+     * @return array<string, JsonValue>
      */
     private static function decodeSarifFixture(): array
     {
