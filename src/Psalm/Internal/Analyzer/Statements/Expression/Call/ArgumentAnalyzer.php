@@ -1762,7 +1762,7 @@ final class ArgumentAnalyzer
             ]);
         }
 
-        if ($context->inside_conditional && !isset($context->assigned_var_ids[$var_id])) {
+        if ($context->inside_conditional && !isset($context->getAssignedVarIds()[$var_id])) {
             $context->assigned_var_ids[$var_id] = 0;
         }
 

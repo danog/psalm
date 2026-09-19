@@ -104,7 +104,7 @@ final class IfConditionalAnalyzer
         $referenced_var_ids = $outer_context->cond_referenced_var_ids;
         $outer_context->cond_referenced_var_ids = [];
 
-        $pre_assigned_var_ids = $outer_context->assigned_var_ids;
+        $pre_assigned_var_ids = $outer_context->getAssignedVarIds();
         $outer_context->assigned_var_ids = [];
 
         $if_context = null;
@@ -125,7 +125,7 @@ final class IfConditionalAnalyzer
             throw new ScopeAnalysisException();
         }
 
-        $first_cond_assigned_var_ids = $outer_context->assigned_var_ids;
+        $first_cond_assigned_var_ids = $outer_context->getAssignedVarIds();
         $outer_context->assigned_var_ids = array_merge(
             $pre_assigned_var_ids,
             $first_cond_assigned_var_ids,
@@ -189,7 +189,7 @@ final class IfConditionalAnalyzer
             );
 
             /** @var array<string, int> */
-            $more_cond_assigned_var_ids = $if_conditional_context->assigned_var_ids;
+            $more_cond_assigned_var_ids = $if_conditional_context->getAssignedVarIds();
             $if_conditional_context->assigned_var_ids = array_merge(
                 $more_cond_assigned_var_ids,
                 $assigned_var_ids,

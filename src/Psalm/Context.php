@@ -254,6 +254,31 @@ final class Context
     public array $possibly_assigned_var_ids = [];
 
     /**
+     * The vars assigned to since the list was last reset, and where each was assigned.
+     *
+     * Read through this rather than the property: assigning `[]` narrows the property to the empty
+     * array, and the analysis calls that fill it again do not widen it back.
+     *
+     * @return array<string, int>
+     * @psalm-mutation-free
+     */
+    public function getAssignedVarIds(): array
+    {
+        return $this->assigned_var_ids;
+    }
+
+    /**
+     * The vars that may have been assigned to since the list was last reset.
+     *
+     * @return array<string, bool>
+     * @psalm-mutation-free
+     */
+    public function getPossiblyAssignedVarIds(): array
+    {
+        return $this->possibly_assigned_var_ids;
+    }
+
+    /**
      * A list of classes or interfaces that may have been thrown
      *
      * @var array<string, array<string, CodeLocation>>

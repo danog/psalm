@@ -40,6 +40,29 @@ final class IfScope
     public array $possibly_assigned_var_ids = [];
 
     /**
+     * The vars the if body assigned, as recorded so far.
+     *
+     * Read through this rather than the property: assigning `[]` narrows the property to the empty
+     * array, and what fills it again does not widen it back.
+     *
+     * @return array<string, int>|null
+     * @psalm-mutation-free
+     */
+    public function getAssignedVarIds(): ?array
+    {
+        return $this->assigned_var_ids;
+    }
+
+    /**
+     * @return array<string, bool>
+     * @psalm-mutation-free
+     */
+    public function getPossiblyAssignedVarIds(): array
+    {
+        return $this->possibly_assigned_var_ids;
+    }
+
+    /**
      * @var array<string, Union>
      */
     public array $possibly_redefined_vars = [];

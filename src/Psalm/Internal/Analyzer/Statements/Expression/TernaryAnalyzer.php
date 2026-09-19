@@ -243,8 +243,8 @@ final class TernaryAnalyzer
             return false;
         }
 
-        $assign_var_ifs = $if_context->assigned_var_ids;
-        $assign_var_else = $t_else_context->assigned_var_ids;
+        $assign_var_ifs = $if_context->getAssignedVarIds();
+        $assign_var_else = $t_else_context->getAssignedVarIds();
         $assign_all = array_intersect_key($assign_var_ifs, $assign_var_else);
 
         //if the same var was assigned in both branches

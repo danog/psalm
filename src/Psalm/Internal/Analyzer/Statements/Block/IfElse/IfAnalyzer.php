@@ -153,8 +153,8 @@ final class IfAnalyzer
 
         $codebase = $statements_analyzer->getCodebase();
 
-        $assigned_var_ids = $if_context->assigned_var_ids;
-        $possibly_assigned_var_ids = $if_context->possibly_assigned_var_ids;
+        $assigned_var_ids = $if_context->getAssignedVarIds();
+        $possibly_assigned_var_ids = $if_context->getPossiblyAssignedVarIds();
         $if_context->assigned_var_ids = [];
         $if_context->possibly_assigned_var_ids = [];
 
@@ -188,9 +188,9 @@ final class IfAnalyzer
         $if_scope->final_actions = $final_actions;
 
         /** @var array<string, int> */
-        $new_assigned_var_ids = $if_context->assigned_var_ids;
+        $new_assigned_var_ids = $if_context->getAssignedVarIds();
         /** @var array<string, bool> */
-        $new_possibly_assigned_var_ids = $if_context->possibly_assigned_var_ids;
+        $new_possibly_assigned_var_ids = $if_context->getPossiblyAssignedVarIds();
 
         $if_context->assigned_var_ids = array_merge($assigned_var_ids, $new_assigned_var_ids);
         $if_context->possibly_assigned_var_ids = array_merge(
@@ -459,10 +459,10 @@ final class IfAnalyzer
             }
         }
 
-        if ($if_scope->assigned_var_ids === null) {
+        if ($if_scope->getAssignedVarIds() === null) {
             $if_scope->assigned_var_ids = $assigned_var_ids;
         } else {
-            $if_scope->assigned_var_ids = array_intersect_key($assigned_var_ids, $if_scope->assigned_var_ids);
+            $if_scope->assigned_var_ids = array_intersect_key($assigned_var_ids, $if_scope->getAssignedVarIds());
         }
 
         $if_scope->possibly_assigned_var_ids += $possibly_assigned_var_ids;

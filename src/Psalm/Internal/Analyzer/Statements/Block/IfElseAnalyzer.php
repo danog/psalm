@@ -367,14 +367,14 @@ final class IfElseAnalyzer
         ];
 
         $context->possibly_assigned_var_ids = [
-            ...$context->possibly_assigned_var_ids,
-            ...$if_scope->possibly_assigned_var_ids ?: [],
+            ...$context->getPossiblyAssignedVarIds(),
+            ...$if_scope->getPossiblyAssignedVarIds() ?: [],
         ];
 
         // vars can only be defined/redefined if there was an else (defined in every block)
         $context->assigned_var_ids = array_merge(
-            $context->assigned_var_ids,
-            $if_scope->assigned_var_ids ?: [],
+            $context->getAssignedVarIds(),
+            $if_scope->getAssignedVarIds() ?: [],
         );
 
         if ($if_scope->new_vars) {

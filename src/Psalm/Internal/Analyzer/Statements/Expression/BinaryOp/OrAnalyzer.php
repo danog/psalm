@@ -99,7 +99,7 @@ final class OrAnalyzer
             $pre_referenced_var_ids = $context->cond_referenced_var_ids;
             $context->cond_referenced_var_ids = [];
 
-            $pre_assigned_var_ids = $context->assigned_var_ids;
+            $pre_assigned_var_ids = $context->getAssignedVarIds();
 
             $post_leaving_if_context = clone $context;
 
@@ -117,9 +117,11 @@ final class OrAnalyzer
 
             IfConditionalAnalyzer::handleParadoxicalCondition($statements_analyzer, $stmt->left);
 
+            $left_context_assigned_var_ids = $left_context->getAssignedVarIds();
+
             foreach ($left_context->vars_in_scope as $var_id => $type) {
                 if (!isset($context->vars_in_scope[$var_id])) {
-                    if (isset($left_context->assigned_var_ids[$var_id])) {
+                    if (isset($left_context_assigned_var_ids[$var_id])) {
                         $context->vars_in_scope[$var_id] = $type;
                     }
                 } else {
@@ -137,10 +139,10 @@ final class OrAnalyzer
                 ...$left_referenced_var_ids,
             ];
 
-            $left_assigned_var_ids = array_diff_key($left_context->assigned_var_ids, $pre_assigned_var_ids);
+            $left_assigned_var_ids = array_diff_key($left_context->getAssignedVarIds(), $pre_assigned_var_ids);
             $left_context->assigned_var_ids = [
                 ...$pre_assigned_var_ids,
-                ...$left_context->assigned_var_ids,
+                ...$left_context->getAssignedVarIds(),
             ];
 
             $left_referenced_var_ids = array_diff_key($left_referenced_var_ids, $left_assigned_var_ids);
@@ -265,7 +267,7 @@ final class OrAnalyzer
         $pre_referenced_var_ids = $right_context->cond_referenced_var_ids;
         $right_context->cond_referenced_var_ids = [];
 
-        $pre_assigned_var_ids = $right_context->assigned_var_ids;
+        $pre_assigned_var_ids = $right_context->getAssignedVarIds();
         $right_context->assigned_var_ids = [];
 
         if (ExpressionAnalyzer::analyze($statements_analyzer, $stmt->right, $right_context) === false) {
@@ -277,7 +279,7 @@ final class OrAnalyzer
         $right_referenced_var_ids = $right_context->cond_referenced_var_ids;
         $right_context->cond_referenced_var_ids = array_merge($pre_referenced_var_ids, $right_referenced_var_ids);
 
-        $right_assigned_var_ids = $right_context->assigned_var_ids;
+        $right_assigned_var_ids = $right_context->getAssignedVarIds();
         $right_context->assigned_var_ids = array_merge($pre_assigned_var_ids, $right_assigned_var_ids);
 
         $right_cond_id = spl_object_id($stmt->right);
@@ -365,7 +367,7 @@ final class OrAnalyzer
             ...$context->cond_referenced_var_ids,
         ];
 
-        $context->assigned_var_ids = [...$context->assigned_var_ids, ...$right_context->assigned_var_ids];
+        $context->assigned_var_ids = [...$context->getAssignedVarIds(), ...$right_context->getAssignedVarIds()];
 
         if ($context->if_body_context) {
             $if_body_context = $context->if_body_context;
@@ -392,8 +394,8 @@ final class OrAnalyzer
             ];
 
             $if_body_context->assigned_var_ids = [
-                ...$context->assigned_var_ids,
-                ...$if_body_context->assigned_var_ids,
+                ...$context->getAssignedVarIds(),
+                ...$if_body_context->getAssignedVarIds(),
             ];
 
             $if_body_context->updateChecks($context);

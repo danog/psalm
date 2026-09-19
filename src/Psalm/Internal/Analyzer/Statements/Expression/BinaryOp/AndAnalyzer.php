@@ -56,7 +56,7 @@ final class AndAnalyzer
 
         $pre_referenced_var_ids = $context->cond_referenced_var_ids;
 
-        $pre_assigned_var_ids = $context->assigned_var_ids;
+        $pre_assigned_var_ids = $context->getAssignedVarIds();
 
         $left_context = clone $context;
 
@@ -85,8 +85,10 @@ final class AndAnalyzer
             $codebase,
         );
 
+        $left_assigned_var_ids = $left_context->getAssignedVarIds();
+
         foreach ($left_context->vars_in_scope as $var_id => $type) {
-            if (isset($left_context->assigned_var_ids[$var_id])) {
+            if (isset($left_assigned_var_ids[$var_id])) {
                 $context->vars_in_scope[$var_id] = $type;
             }
         }
@@ -95,7 +97,7 @@ final class AndAnalyzer
         $left_referenced_var_ids = $left_context->cond_referenced_var_ids;
         $context->cond_referenced_var_ids = array_merge($pre_referenced_var_ids, $left_referenced_var_ids);
 
-        $left_assigned_var_ids = array_diff_key($left_context->assigned_var_ids, $pre_assigned_var_ids);
+        $left_assigned_var_ids = array_diff_key($left_context->getAssignedVarIds(), $pre_assigned_var_ids);
 
         $left_referenced_var_ids = array_diff_key($left_referenced_var_ids, $left_assigned_var_ids);
 
@@ -180,8 +182,8 @@ final class AndAnalyzer
             );
 
             $context->assigned_var_ids = array_merge(
-                $left_context->assigned_var_ids,
-                $right_context->assigned_var_ids,
+                $left_context->getAssignedVarIds(),
+                $right_context->getAssignedVarIds(),
             );
         }
 
@@ -199,8 +201,8 @@ final class AndAnalyzer
             ];
 
             $if_body_context->assigned_var_ids = [
-                ...$if_body_context->assigned_var_ids,
-                ...$context->assigned_var_ids,
+                ...$if_body_context->getAssignedVarIds(),
+                ...$context->getAssignedVarIds(),
             ];
 
             $if_body_context->reconciled_expression_clauses = [

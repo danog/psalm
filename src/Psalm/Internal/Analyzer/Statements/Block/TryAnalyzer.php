@@ -74,7 +74,7 @@ final class TryAnalyzer
             $try_context->finally_scope = new FinallyScope($try_context->vars_in_scope);
         }
 
-        $assigned_var_ids = $try_context->assigned_var_ids;
+        $assigned_var_ids = $try_context->getAssignedVarIds();
         $context->assigned_var_ids = [];
 
         $was_inside_try = $context->inside_try;
@@ -93,7 +93,7 @@ final class TryAnalyzer
         );
 
         /** @var array<string, int> */
-        $newly_assigned_var_ids = $context->assigned_var_ids;
+        $newly_assigned_var_ids = $context->getAssignedVarIds();
 
         $context->assigned_var_ids = array_merge(
             $assigned_var_ids,
@@ -324,7 +324,7 @@ final class TryAnalyzer
                 }
             }
 
-            $old_catch_assigned_var_ids = $catch_context->assigned_var_ids;
+            $old_catch_assigned_var_ids = $catch_context->getAssignedVarIds();
 
             $catch_context->assigned_var_ids = [];
 
@@ -344,7 +344,7 @@ final class TryAnalyzer
             }
 
             /** @var array<string, bool> */
-            $new_catch_assigned_var_ids = $catch_context->assigned_var_ids;
+            $new_catch_assigned_var_ids = $catch_context->getAssignedVarIds();
 
             $catch_context->assigned_var_ids += $old_catch_assigned_var_ids;
 
@@ -429,7 +429,7 @@ final class TryAnalyzer
                 $finally_has_returned = $finally_context->has_returned;
 
                 /** @var string $var_id */
-                foreach ($finally_context->assigned_var_ids as $var_id => $_) {
+                foreach ($finally_context->getAssignedVarIds() as $var_id => $_) {
                     if (isset($context->vars_in_scope[$var_id])
                         && isset($finally_context->vars_in_scope[$var_id])
                     ) {

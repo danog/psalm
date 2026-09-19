@@ -25,7 +25,7 @@ final class ForAnalyzer
         PhpParser\Node\Stmt\For_ $stmt,
         Context $context,
     ): ?bool {
-        $pre_assigned_var_ids = $context->assigned_var_ids;
+        $pre_assigned_var_ids = $context->getAssignedVarIds();
         $context->assigned_var_ids = [];
 
         $init_var_types = [];
@@ -44,7 +44,7 @@ final class ForAnalyzer
             }
         }
 
-        $assigned_var_ids = $context->assigned_var_ids;
+        $assigned_var_ids = $context->getAssignedVarIds();
 
         $context->assigned_var_ids = array_merge(
             $pre_assigned_var_ids,
