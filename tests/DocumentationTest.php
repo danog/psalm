@@ -473,14 +473,22 @@ final class DocumentationTest extends TestCase
                 return $this->inner->toString();
             }
 
+            /**
+             * @param mixed $other
+             * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
+             */
             #[Override]
-            protected function matches(string $other): bool
+            protected function matches($other): bool
             {
                 return $this->inner->matches($other);
             }
 
+            /**
+             * @param mixed $other
+             * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
+             */
             #[Override]
-            protected function failureDescription(string $other): string
+            protected function failureDescription($other): string
             {
                 return self::export($other) . ' ' . $this->toString();
             }
