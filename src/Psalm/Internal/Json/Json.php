@@ -6,8 +6,8 @@ namespace Psalm\Internal\Json;
 
 use RuntimeException;
 
-use function array_walk_recursive;
 use function bin2hex;
+use function is_array;
 use function is_string;
 use function json_encode;
 use function json_last_error_msg;
@@ -83,30 +83,42 @@ final class Json
     }
 
     /**
+     * A scrubbed copy: the elements change as they are copied rather than through a by-reference
+     * walk, whose callback parameter has no type a generated program can express.
+     *
      * @param list<JsonValue>|array<string, JsonValue> $data
      * @return list<JsonValue>|array<string, JsonValue>
      * @psalm-pure
      */
     private static function scrub(array $data): array
     {
+        $scrubbed = [];
+
+        foreach ($data as $key => $value) {
+            if (is_string($value)) {
+                $scrubbed[$key] = self::scrubString($value);
+            } elseif (is_array($value)) {
+                $scrubbed[$key] = self::scrub($value);
+            } else {
+                $scrubbed[$key] = $value;
+            }
+        }
+
+        return $scrubbed;
+    }
+
+    /**
+     * The string with every byte that is not valid UTF-8 spelled out, so that it can be encoded.
+     *
+     * @psalm-pure
+     */
+    private static function scrubString(string $value): string
+    {
         /** @psalm-suppress ImpureFunctionCall */
-        array_walk_recursive(
-            $data,
-            /**
-             * @psalm-pure
-             * @param JsonValue $value
-             */
-            function (mixed &$value): void {
-                if (is_string($value)) {
-                    $value = preg_replace_callback(
-                        self::INVALID_UTF_REGEXP,
-                        static fn(array $matches): string => '<Invalid UTF-8: 0x' . bin2hex($matches[0] ?? '') . '>',
-                        $value,
-                    );
-                }
-            },
-        );
-        /** @var list<JsonValue>|array<string, JsonValue> $data */
-        return $data;
+        return preg_replace_callback(
+            self::INVALID_UTF_REGEXP,
+            static fn(array $matches): string => '<Invalid UTF-8: 0x' . bin2hex((string) ($matches[0] ?? '')) . '>',
+            $value,
+        ) ?? $value;
     }
 }
