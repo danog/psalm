@@ -111,7 +111,13 @@ final class ReportOutputTest extends TestCase
         $json = file_get_contents(__DIR__ . '/sarif.json');
         assert($json !== false);
 
-        return json_decode($json, true, flags: JSON_THROW_ON_ERROR);
+        $fixture = json_decode($json, true, flags: JSON_THROW_ON_ERROR);
+
+        // the report carries the running Psalm's version, which depends on the checkout rather than
+        // on anything this test is about
+        $fixture['runs'][0]['tool']['driver']['version'] = PSALM_VERSION;
+
+        return $fixture;
     }
 
     public function testSarifReport(): void

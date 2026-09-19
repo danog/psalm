@@ -20,11 +20,11 @@ use function assert;
 use function count;
 use function hash;
 use function implode;
+use function is_int;
 use function ksort;
 use function reset;
-use function json_encode;
+use function strlen;
 use function substr;
-use const JSON_THROW_ON_ERROR;
 
 /**
  * @internal
@@ -102,8 +102,21 @@ final class Clause implements Stringable
                 $possibility_strings[$i] = array_keys($v);
             }
 
-            // the identity of the possibility set: its JSON form (typed, unlike serialize())
-            $data = json_encode($possibility_strings, JSON_THROW_ON_ERROR);
+            // The identity of the possibility set. Assertions carry literal strings out of the
+            // analysed code, which need not be valid UTF-8, so the key bytes go in length-prefixed
+            // rather than through an encoding that would reject or mangle them.
+            $data = '';
+
+            foreach ($possibility_strings as $i => $keys) {
+                $data .= is_int($i) ? 'i' . $i . ';' : 's' . strlen($i) . ':' . $i . ';';
+
+                foreach ($keys as $key) {
+                    $data .= is_int($key) ? 'I' . $key . ';' : 'S' . strlen($key) . ':' . $key . ';';
+                }
+
+                $data .= '|';
+            }
+
             $this->hash = hash('xxh128', $data);
         }
 

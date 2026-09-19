@@ -82,7 +82,10 @@ final class IssueData
      */
     public function toArray(): array
     {
+        // `link` is declared before the promoted properties, and that is the order the reports
+        // have always serialised it in
         return [
+            'link' => $this->link,
             'severity' => $this->severity,
             'line_from' => $this->line_from,
             'line_to' => $this->line_to,
@@ -103,7 +106,6 @@ final class IssueData
             'taint_trace' => $this->taint_trace,
             'other_references' => $this->other_references,
             'dupe_key' => $this->dupe_key,
-            'link' => $this->link,
         ];
     }
 }
