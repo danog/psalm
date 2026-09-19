@@ -7,6 +7,23 @@
  */
 class DateTime
 {
+    // the format constants PHP's own DateTimeInterface carries: a compiled program has no constant
+    // reflection, so they have to be declared to be seen
+    public const ATOM = 'Y-m-d\\TH:i:sP';
+    public const COOKIE = 'l, d-M-Y H:i:s T';
+    public const ISO8601 = 'Y-m-d\\TH:i:sO';
+    public const ISO8601_EXPANDED = 'X-m-d\\TH:i:sP';
+    public const RFC822 = 'D, d M y H:i:s O';
+    public const RFC850 = 'l, d-M-y H:i:s T';
+    public const RFC1036 = 'D, d M y H:i:s O';
+    public const RFC1123 = 'D, d M Y H:i:s O';
+    public const RFC7231 = 'D, d M Y H:i:s \\G\\M\\T';
+    public const RFC2822 = 'D, d M Y H:i:s O';
+    public const RFC3339 = 'Y-m-d\\TH:i:sP';
+    public const RFC3339_EXTENDED = 'Y-m-d\\TH:i:s.vP';
+    public const RSS = 'D, d M Y H:i:s O';
+    public const W3C = 'Y-m-d\\TH:i:sP';
+
     public function __construct(string $datetime = 'now')
     {
     }
