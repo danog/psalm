@@ -1792,7 +1792,11 @@ final class Config
      */
     public function isStubFile(string $file_path): bool
     {
-        return in_array($file_path, $this->internal_stubs, true)
+        // Psalm's own stubs are stub files whether or not the lists have been built yet: preloading
+        // happens before visitStubFiles() fills internal_stubs, and the version stubs add members to
+        // classes the core stubs describe
+        return self::isOwnStubFile($file_path)
+            || in_array($file_path, $this->internal_stubs, true)
             || in_array($file_path, $this->stub_files, true)
             || in_array($file_path, $this->preloaded_stub_files, true);
     }
