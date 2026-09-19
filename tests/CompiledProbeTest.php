@@ -63,4 +63,47 @@ final class CompiledProbeTest extends TestCase
             $actual,
         );
     }
+    public function testIntersectionAndStubbedClasses(): void
+    {
+        $file_path = self::$src_dir_path . 'somefile2.php';
+
+        $this->addFile(
+            $file_path,
+            '<?php
+                interface IA {}
+                interface IB { public function foo(): void; }
+
+                function make(): IA { throw new RuntimeException("x"); }
+
+                $a = make();
+                $narrowed = null;
+
+                if ($a instanceof IB) {
+                    $narrowed = $a;
+                }
+
+                $iso = DateTime::ISO8601;
+                $countable = new ArrayObject([1, 2]);',
+        );
+
+        $context = new Context();
+        $this->analyzeFile($file_path, $context);
+
+        $actual = [];
+
+        foreach (['$narrowed', '$iso', '$countable'] as $var_id) {
+            $actual[$var_id] = isset($context->vars_in_scope[$var_id])
+                ? (string) $context->vars_in_scope[$var_id]
+                : 'absent';
+        }
+
+        $this->assertSame(
+            [
+                '$narrowed' => 'IA&IB|null',
+                '$iso' => 'string',
+                '$countable' => 'ArrayObject<int<0, 1>, int>',
+            ],
+            $actual,
+        );
+    }
 }
