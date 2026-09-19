@@ -8,6 +8,17 @@ declare(strict_types=1);
  *
  * Usage: php run-tests-under-php.php 'Psalm\Tests\TaintTest' ['Psalm\Tests\ClassTest' ...]
  */
+if (ini_get('zend.assertions') !== '1') {
+    // zend.assertions is not settable at runtime, and the suite expects assertions to be active
+    $command = escapeshellarg(PHP_BINARY) . ' -d zend.assertions=1 -d assert.exception=1 '
+        . escapeshellarg(__FILE__);
+    foreach (array_slice($argv, 1) as $argument) {
+        $command .= ' ' . escapeshellarg($argument);
+    }
+    passthru($command, $status);
+    exit($status);
+}
+
 require __DIR__ . '/vendor/autoload.php';
 \DG\BypassFinals::enable();
 \DG\BypassFinals::denyPaths(['*tests/fixtures/DummyProject*']);
@@ -31,6 +42,40 @@ spl_autoload_register(static function (string $class): void {
         }
     }
 });
+
+/** The reason this test cannot run here, or null when it can. */
+function unmetRequirement(ReflectionMethod $m): ?string
+{
+    $doc = (string) $m->getDocComment() . (string) $m->getDeclaringClass()->getDocComment();
+
+    if (preg_match_all('/@requires\s+extension\s+(\S+)/', $doc, $matches)) {
+        foreach ($matches[1] as $extension) {
+            if (!extension_loaded($extension)) {
+                return 'extension ' . $extension;
+            }
+        }
+    }
+
+    if (preg_match_all('/@requires\s+function\s+(\S+)/', $doc, $matches)) {
+        foreach ($matches[1] as $function) {
+            if (!function_exists($function)) {
+                return 'function ' . $function;
+            }
+        }
+    }
+
+    return null;
+}
+
+/** @return list<string> the tests whose return values this one is given */
+function dependenciesOf(ReflectionMethod $m): array
+{
+    if (!preg_match_all('/@depends\s+(\w+)/', (string) $m->getDocComment(), $matches)) {
+        return [];
+    }
+
+    return $matches[1];
+}
 
 /** @return list<array{string, list<mixed>}> */
 function dataSetsFor(ReflectionMethod $m, string $class): array
@@ -97,8 +142,28 @@ foreach ($classes as $class) {
         continue;
     }
     $class::setUpBeforeClass();
+    $returned = [];
     foreach ($rc->getMethods(ReflectionMethod::IS_PUBLIC) as $m) {
         if (!str_starts_with($m->getName(), 'test') || $m->isStatic() || $m->getDeclaringClass()->isInterface()) {
+            continue;
+        }
+        if (($unmet = unmetRequirement($m)) !== null) {
+            echo 'SKIP ', $class, '::', $m->getName(), ': needs ', $unmet, "\n";
+            continue;
+        }
+        // a test declared with @depends is handed what the tests it names returned, after any
+        // data-set row, which is the order PHPUnit passes them in
+        $handed_down = [];
+        $missing_dependency = false;
+        foreach (dependenciesOf($m) as $dependency) {
+            if (!array_key_exists($dependency, $returned)) {
+                $missing_dependency = true;
+                break;
+            }
+            $handed_down[] = $returned[$dependency];
+        }
+        if ($missing_dependency) {
+            echo 'SKIP ', $class, '::', $m->getName(), ": a test it depends on did not pass\n";
             continue;
         }
         foreach (dataSetsFor($m, $class) as [$data_name, $args]) {
@@ -111,7 +176,7 @@ foreach ($classes as $class) {
             $failure = null;
             try {
                 $test->runSetUp();
-                $m->invokeArgs($test, $args);
+                $returned[$m->getName()] = $m->invokeArgs($test, [...$args, ...$handed_down]);
                 if ($test->expectsException()) {
                     $failure = 'expected exception ' . $test->expectedExceptionDescription() . ' was not thrown';
                 }
