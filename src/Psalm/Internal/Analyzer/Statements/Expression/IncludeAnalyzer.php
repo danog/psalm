@@ -382,7 +382,15 @@ final class IncludeAnalyzer
         } elseif ($stmt instanceof PhpParser\Node\Expr\ConstFetch) {
             $const_name = implode('', $stmt->name->getParts());
 
-            // a builtin constant of the analyzer's runtime (user constants of the analyzed project are unknown here)
+            // a constant the analyzed project defines, as scanning it recorded the value: the
+            // analyzer's own runtime has it only when the project's file happened to be executed
+            $stubbed_type = $statements_analyzer?->getCodebase()->getStubbedConstantType($const_name);
+
+            if ($stubbed_type?->isSingleStringLiteral()) {
+                return $stubbed_type->getSingleStringLiteral()->value;
+            }
+
+            // a builtin constant of the analyzer's runtime
             $constant_value = get_defined_constants()[$const_name] ?? null;
 
             if (is_string($constant_value)) {

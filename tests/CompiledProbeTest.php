@@ -5,7 +5,12 @@ declare(strict_types=1);
 namespace Psalm\Tests;
 
 use Psalm\Context;
+use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\IssueBuffer;
+
+use function json_encode;
+
+use const JSON_THROW_ON_ERROR;
 
 
 /**
@@ -254,6 +259,35 @@ final class CompiledProbeTest extends TestCase
                 '$b' => 'false|int',
             ],
             $actual,
+        );
+    }
+    /**
+     * The call map follows the analysis PHP version: get_headers took an int `format` until 8.0 and
+     * a bool `associative` from 8.0 on, so which one a test sees says which map was loaded.
+     */
+    public function testTheCallMapFollowsTheAnalysisVersion(): void
+    {
+        $actual = [];
+
+        foreach (['7.4', '8.0'] as $version) {
+            $this->project_analyzer->setPhpVersion($version, 'tests');
+
+            $codebase = $this->project_analyzer->getCodebase();
+            $callable = InternalCallMapHandler::getCallableFromCallMapById($codebase, 'get_headers', [], null);
+            $second = ($callable->params ?? [])[1] ?? null;
+
+            $actual[$version] = $codebase->getMajorAnalysisPhpVersion()
+                . '.' . $codebase->getMinorAnalysisPhpVersion()
+                . ' => ' . ($second === null ? 'absent' : $second->name . ':' . $second->type);
+        }
+
+        $this->assertSame(
+            [
+                '7.4' => '7.4 => format:int',
+                '8.0' => '8.0 => associative:bool',
+            ],
+            $actual,
+            json_encode($actual, JSON_THROW_ON_ERROR),
         );
     }
 }

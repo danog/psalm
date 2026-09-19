@@ -221,11 +221,13 @@ final class InternalCallMapHandler
     {
         $call_map_key = strtolower($function_id);
 
+        // ask for the map first: a change of analysis version reloads it and drops the callables
+        // derived from the previous one, which describe the previous version's signatures
+        $call_map = self::getCallMap();
+
         if (isset(self::$call_map_callables[$call_map_key])) {
             return self::$call_map_callables[$call_map_key];
         }
-
-        $call_map = self::getCallMap();
 
         if (!isset($call_map[$call_map_key])) {
             return null;
@@ -373,6 +375,8 @@ final class InternalCallMapHandler
         };
 
         self::$call_map = $call_map;
+        // the callables derived from the previous map describe the previous version's signatures
+        self::$call_map_callables = [];
 
         assert(!empty(self::$call_map));
 
