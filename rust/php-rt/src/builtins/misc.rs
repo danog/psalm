@@ -202,7 +202,11 @@ pub fn get_include_path() -> Str {
 pub fn get_included_files() -> List<Str> {
     INCLUDED.with(|i| i.borrow().clone().into())
 }
-pub fn get_loaded_extensions() -> List<Str> {
+/// `zend_extensions`: the runtime loads none, so asking for them lists nothing.
+pub fn get_loaded_extensions(zend_extensions: bool) -> List<Str> {
+    if zend_extensions {
+        return List::new();
+    }
     crate::list![Str::from_static("Core"), Str::from_static("json"), Str::from_static("tokenizer"), Str::from_static("mbstring"), Str::from_static("ctype"), Str::from_static("pcre"), Str::from_static("SPL")]
 }
 pub fn get_defined_constants(_categorize: bool) -> Map<Str, crate::conv::Scalar> {
