@@ -144,6 +144,20 @@ final class TestEmitter
         return $this->reflection_users[$cls->fqcn] = $users;
     }
 
+    /**
+     * The extensions the test's `@requires` lines name.
+     *
+     * @return list<string>
+     */
+    private function requiredExtensions(MethodModel $m): array
+    {
+        $doc = $m->node->getDocComment();
+        if ($doc === null || !preg_match_all('/@requires\s+extension\s+([A-Za-z0-9_]+)/', $doc->getText(), $mm)) {
+            return [];
+        }
+        return $mm[1];
+    }
+
     private function unsupportedMechanism(MethodModel $m): ?string
     {
         if ($m->node->stmts === null) {
@@ -235,6 +249,14 @@ final class TestEmitter
         $has_teardown_class = $this->program->findMethod($cls, 'teardownafterclass') !== null;
 
         $w->open('fn ' . $fn_name . '(trials: &mut Vec<libtest_mimic::Trial>) {');
+        foreach ($this->requiredExtensions($m) as $ext) {
+            // `@requires extension X`: PHPUnit skips the test where the extension is missing, and a
+            // compiled program carries only the handful php-rt implements
+            $w->open('if (!php_rt::builtins::misc::extension_loaded(&Str::from_static(' . Names::rustStringLiteral($ext) . '))) {');
+            $w->line('trials.push(libtest_mimic::Trial::test(' . $name . '.to_string(), move || { eprintln!("[skipped] {}: requires ext-' . $ext . '", ' . $name . '); Ok(()) }));');
+            $w->line('return;');
+            $w->close();
+        }
         $unsupported = $this->unsupportedMechanism($m);
         if ($unsupported !== null) {
             // mocks and closure rebinding need runtime code generation: the test is reported as skipped
