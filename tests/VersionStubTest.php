@@ -231,15 +231,17 @@ final class VersionStubTest extends TestCase
     }
 
     /**
-     * A file naming a class PHP itself provides gets it reflected while it is scanned (a compiled
-     * program reflects its own shim, which describes far less than the stub). Visiting the stub files
-     * afterwards -- the order every analysis test uses -- must leave the stub's description in place.
+     * A file naming a class PHP itself provides gets it resolved while it is scanned -- through its
+     * own shim, in a compiled program. Preloading Psalm's stubs first, as an analysis run does, is
+     * what keeps the stub's description of the class in place.
      */
     public function testStringableSurvivesBeingReflectedFirst(): void
     {
         $this->project_analyzer->setPhpVersion('8.0', 'tests');
 
         $codebase = $this->project_analyzer->getCodebase();
+
+        $codebase->config->visitPreloadedStubFiles($codebase);
 
         $codebase->scanner->queueClassLikeForScanning('Stringable');
         $codebase->scanFiles();

@@ -164,11 +164,12 @@ class TestCase extends BaseTestCase
             $this->project_analyzer->trackTaintedInputs();
         }
 
-        $codebase->addFilesToAnalyze([$file_path => $file_path]);
-
         // as an analysis run does: the classes PHP itself provides are described by Psalm's own stubs
-        // before anything scanned names one, or a compiled program resolves it through its own shim
+        // before anything scanned names one, or a compiled program resolves it through its own shim.
+        // Before the files to analyze are queued, or this scan would register them as stub files.
         $codebase->config->visitPreloadedStubFiles($codebase);
+
+        $codebase->addFilesToAnalyze([$file_path => $file_path]);
 
         $codebase->scanFiles();
 
