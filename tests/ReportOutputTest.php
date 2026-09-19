@@ -22,9 +22,11 @@ use UnexpectedValueException;
 
 use function file_get_contents;
 use function json_decode;
+use function json_encode;
 use function ob_end_clean;
 use function ob_start;
 use function preg_replace;
+use function str_replace;
 use function unlink;
 
 use const JSON_THROW_ON_ERROR;
@@ -111,13 +113,15 @@ final class ReportOutputTest extends TestCase
         $json = file_get_contents(__DIR__ . '/sarif.json');
         assert($json !== false);
 
-        $fixture = json_decode($json, true, flags: JSON_THROW_ON_ERROR);
+        // the report carries the running Psalm's version, which depends on the checkout rather
+        // than on anything this test is about
+        $json = str_replace(
+            '"version": "dev-master@",',
+            '"version": ' . json_encode(PSALM_VERSION, JSON_THROW_ON_ERROR) . ',',
+            $json,
+        );
 
-        // the report carries the running Psalm's version, which depends on the checkout rather than
-        // on anything this test is about
-        $fixture['runs'][0]['tool']['driver']['version'] = PSALM_VERSION;
-
-        return $fixture;
+        return json_decode($json, true, flags: JSON_THROW_ON_ERROR);
     }
 
     public function testSarifReport(): void

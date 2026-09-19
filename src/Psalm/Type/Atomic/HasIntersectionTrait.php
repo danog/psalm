@@ -47,24 +47,17 @@ trait HasIntersectionTrait
     /** The `&Other` suffix of this type's id (see GenericTrait::getId). */
     protected function getIntersectionId(bool $exact): string
     {
-        $suffix = '';
-
-        if ($this->extra_types) {
-            $suffix = '&' . implode(
-                '&',
-                array_map(
-                    static fn(Atomic $type): string => $type->getId($exact, true),
-                    $this->extra_types,
-                ),
-            );
+        if (!$this->extra_types) {
+            return '';
         }
 
-        // a generic object standing in for `static` says so, as the non-generic one does
-        if ($this instanceof TNamedObject && $this->is_static) {
-            $suffix .= '&static';
-        }
-
-        return $suffix;
+        return '&' . implode(
+            '&',
+            array_map(
+                static fn(Atomic $type): string => $type->getId($exact, true),
+                $this->extra_types,
+            ),
+        );
     }
 
     /**

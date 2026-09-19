@@ -119,7 +119,32 @@ class TNamedObject extends Atomic
         return $this->value;
     }
 
-    #[Override]
+    /**
+     * The `&Other` suffix of this type's id, with the `&static` a generic object would otherwise
+     * lose (the non-generic id below spells it out itself). Declared here rather than in
+     * HasIntersectionTrait so the trait never reads a property only this class has.
+     */
+    protected function getIntersectionId(bool $exact): string
+    {
+        $suffix = '';
+
+        if ($this->extra_types) {
+            $suffix = '&' . implode(
+                '&',
+                array_map(
+                    static fn(Atomic $type): string => $type->getId($exact, true),
+                    $this->extra_types,
+                ),
+            );
+        }
+
+        if ($this->is_static) {
+            $suffix .= '&static';
+        }
+
+        return $suffix;
+    }
+
     public function getId(bool $exact = true, bool $nested = false): string
     {
         if ($this->extra_types) {
