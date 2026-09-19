@@ -166,6 +166,10 @@ class TestCase extends BaseTestCase
 
         $codebase->addFilesToAnalyze([$file_path => $file_path]);
 
+        // as an analysis run does: the classes PHP itself provides are described by Psalm's own stubs
+        // before anything scanned names one, or a compiled program resolves it through its own shim
+        $codebase->config->visitPreloadedStubFiles($codebase);
+
         $codebase->scanFiles();
 
         $codebase->config->visitStubFiles($codebase);
