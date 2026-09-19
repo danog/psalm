@@ -133,13 +133,15 @@ final class ConstExprEmitter
         ) {
             $l = $this->emit($e->left, RustType::int());
             $r = $this->emit($e->right, RustType::int());
+            if ($e instanceof BinaryOp\ShiftLeft) {
+                return new Val('php_rt::shl(' . $l . ', ' . $r . ')', RustType::int());
+            }
             $op = match (true) {
                 $e instanceof BinaryOp\BitwiseOr => '|',
                 $e instanceof BinaryOp\BitwiseAnd => '&',
                 $e instanceof BinaryOp\Plus => '+',
                 $e instanceof BinaryOp\Minus => '-',
-                $e instanceof BinaryOp\Mul => '*',
-                default => '<<',
+                default => '*',
             };
             return new Val('(' . $l . ' ' . $op . ' ' . $r . ')', RustType::int());
         }

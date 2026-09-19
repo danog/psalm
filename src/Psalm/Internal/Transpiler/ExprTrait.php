@@ -1157,8 +1157,8 @@ trait ExprTrait
                 $e instanceof BinaryOp\BitwiseAnd => '(' . $l . ' & ' . $r . ')',
                 $e instanceof BinaryOp\BitwiseOr => '(' . $l . ' | ' . $r . ')',
                 $e instanceof BinaryOp\BitwiseXor => '(' . $l . ' ^ ' . $r . ')',
-                $e instanceof BinaryOp\ShiftLeft => '(' . $l . ').wrapping_shl((' . $r . ') as u32)',
-                default => '(' . $l . ').wrapping_shr((' . $r . ') as u32)',
+                $e instanceof BinaryOp\ShiftLeft => 'php_rt::shl(' . $l . ', ' . $r . ')',
+                default => 'php_rt::shr(' . $l . ', ' . $r . ')',
             };
             return new Val($code, RustType::int());
         }

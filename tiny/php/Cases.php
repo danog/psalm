@@ -1533,6 +1533,7 @@ function run_all(): string
         . check('coalesce_nullable', case_coalesce_nullable(), 'none|a')
         . check('static_via_object', case_static_via_object(), 'no|yes|7')
         . check('byref_override_arg', case_byref_override_arg(), 'a:stop/no|b:go/yes')
+        . check('php_shifts', case_php_shifts(), '0|1|0|-1|2|0|4611686018427387904')
         . check('array_to_xml', case_array_to_xml(), "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item/>\n</report>\n|<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item>\n    <severity>error</severity>\n    <line_from>4</line_from>\n    <taint_trace/>\n    <refs>\n      <label>a &amp; b</label>\n    </refs>\n    <refs>\n      <label>c</label>\n    </refs>\n  </item>\n</report>\n");
 }
 
@@ -2315,4 +2316,22 @@ function br_run(array $rows): string
 function case_byref_override_arg(): string
 {
     return br_run([['a', new BRStopper()], ['b', new BRPlain()]]);
+}
+
+// ---- feature: shifting past the word width empties the value, as PHP does ----
+
+function case_php_shifts(): string
+{
+    $one = 1;
+    $sixtyfour = 64;
+    $neg = -8;
+    $out = [];
+    $out[] = (string) ($one << $sixtyfour);
+    $out[] = (string) ($one >> 0);
+    $out[] = (string) ($one >> $sixtyfour);
+    $out[] = (string) ($neg >> $sixtyfour);
+    $out[] = (string) ($one << 1);
+    $out[] = (string) ($one << 65);
+    $out[] = (string) ($one << 62);
+    return implode('|', $out);
 }

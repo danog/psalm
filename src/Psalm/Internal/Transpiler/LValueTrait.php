@@ -1305,7 +1305,7 @@ trait LValueTrait
             $rhs = $this->exprTo($e->expr, RustType::int());
             $cur = $this->casts->convert($place->read(), $t, RustType::int());
             $expr = $op === '<<' || $op === '>>'
-                ? '(' . $cur . ').wrapping_' . ($op === '<<' ? 'shl' : 'shr') . '((' . $tmp . ') as u32)'
+                ? 'php_rt::' . ($op === '<<' ? 'shl' : 'shr') . '(' . $cur . ', ' . $tmp . ')'
                 : '(' . $cur . ' ' . $op . ' ' . $tmp . ')';
             return '{ let ' . $tmp . ' = ' . $rhs . '; ' . $place->write($this->casts->convert($expr, RustType::int(), $t)) . ' }';
         }
