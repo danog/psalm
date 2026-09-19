@@ -754,9 +754,11 @@ final class Context
             $statements_analyzer,
         );
 
-        foreach ($this->vars_in_scope as $var_id => &$type) {
+        foreach ($this->vars_in_scope as $var_id => $type) {
             if (preg_match('/' . preg_quote($remove_var_id, '/') . '[\]\[\-]/', $var_id)) {
+                // gone: the dependent atomics below have nothing left to replace
                 $this->remove($var_id, false);
+                continue;
             }
 
             $builder = null;
@@ -774,7 +776,7 @@ final class Context
                 }
             }
             if ($builder) {
-                $type = $builder->freeze();
+                $this->vars_in_scope[$var_id] = $builder->freeze();
             }
         }
     }

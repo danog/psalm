@@ -165,6 +165,13 @@ impl<T: Clone> List<T> {
             panic!("List index {} out of range (len {})", i, n);
         }
     }
+    /// Write through a by-reference element: a reference to an element that has since been removed
+    /// writes nowhere, as PHP's does.
+    pub fn replace(&mut self, i: i64, v: T) {
+        if i >= 0 && (i as usize) < self.0.len() {
+            self.make_mut()[i as usize] = v;
+        }
+    }
     #[inline]
     pub fn get_mut(&mut self, i: i64) -> Option<&mut T> {
         if i < 0 {

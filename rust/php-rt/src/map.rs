@@ -461,6 +461,14 @@ impl<K: MapKey, V: Clone> Map<K, V> {
     pub fn set(&mut self, key: K, value: V) {
         self.insert(key, value);
     }
+    /// Write through a by-reference element: a reference to an element that has since been removed
+    /// writes nowhere, as PHP's does.
+    pub fn replace(&mut self, key: K, value: V) {
+        let d = self.data();
+        if let Some(idx) = d.find(&key) {
+            d.entries[idx].as_mut().unwrap().1 = value;
+        }
+    }
     /// `$a[] = $v`
     pub fn push(&mut self, value: V) {
         let d = self.data();
