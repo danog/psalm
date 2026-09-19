@@ -261,7 +261,7 @@ final class Builtins
         'phpversion' => ['phpversion', ['?&s'], 'os'],
         'php_sapi_name' => ['php_sapi_name', [], 's'],
         'error_get_last' => ['error_get_last', [], 'om'],
-        'clearstatcache' => ['clearstatcache', ['b=false'], 'u'],
+        'clearstatcache' => ['clearstatcache', ['b=false', '&s'], 'u'],
         'spl_autoload_register' => ['spl_autoload_register', ['?&m'], 'b'],
         'setlocale' => ['setlocale', ['i', '&s'], 'os'],
         'date' => ['date', ['&s', '?i'], 's'],

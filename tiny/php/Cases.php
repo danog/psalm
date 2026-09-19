@@ -2353,7 +2353,7 @@ function case_builtin_arity(): string
         && str_starts_with(uniqid('p', true), 'p')
         && class_exists('Rt\\Missing', false) === false
         && count(get_loaded_extensions(false)) > 0;
-    clearstatcache(true);
+    clearstatcache(true, $file);
     @unlink($file);
     return $ok ? 'ok' : 'bad';
 }

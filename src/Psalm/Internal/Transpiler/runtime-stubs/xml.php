@@ -121,7 +121,11 @@ final class XmlNode
         return $out;
     }
 
-    /** The same walk by local name: `xs:complexType` answers to `complexType`, whatever its prefix. */
+    /**
+     * The same walk by local name: `xs:complexType` answers to `complexType`, whatever its prefix.
+     *
+     * @return list<XmlNode>
+     */
     public function descendantsWithLocalName(string $local): array
     {
         $out = [];
