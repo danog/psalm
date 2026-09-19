@@ -83,13 +83,21 @@ pub fn substr_eq(s: &Str, offset: i64, length: Option<i64>, lit: &str) -> bool {
         None => lit.is_empty(),
     }
 }
-pub fn substr_count(hay: &Str, needle: &Str) -> i64 {
+pub fn substr_count(hay: &Str, needle: &Str, offset: i64, length: Option<i64>) -> i64 {
     if needle.is_empty() {
         return 0;
     }
+    // PHP counts within the same window substr() would cut
+    let (start, end) = match resolve_range(hay.len(), offset, length) {
+        Some(r) => r,
+        None => return 0,
+    };
     let mut n = 0;
-    let mut pos = 0;
+    let mut pos = start;
     while let Some(p) = find_bytes(hay, needle, pos) {
+        if p + needle.len() > end {
+            break;
+        }
         n += 1;
         pos = p + needle.len();
     }
