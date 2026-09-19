@@ -20,6 +20,7 @@ use Psalm\Config\IssueHandler;
 use Psalm\Config\ProjectFileFilter;
 use Psalm\Config\TaintAnalysisFileFilter;
 use Psalm\Exception\ConfigException;
+use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Exception\ConfigNotFoundException;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\FileAnalyzer;
@@ -2640,6 +2641,14 @@ final class Config
         }
         foreach ($defined_functions['internal'] as $function_name) {
             $this->predefined_functions[$function_name] = true;
+        }
+
+        if (\defined('PSALM_COMPILED')) {
+            // a compiled program's runtime provides only the functions it can call by name: the
+            // functions PHP itself provides are the ones the call map describes
+            foreach (InternalCallMapHandler::getCallMap() as $function_name => $_) {
+                $this->predefined_functions[$function_name] = true;
+            }
         }
     }
 

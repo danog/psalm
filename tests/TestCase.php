@@ -7,6 +7,7 @@ namespace Psalm\Tests;
 use Override;
 use PHPUnit\Framework\TestCase as BaseTestCase;
 use Psalm\Config;
+use Psalm\Codebase;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\FileAnalyzer;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
@@ -60,6 +61,9 @@ class TestCase extends BaseTestCase
 
     private static ?SharedStubClassLikeStorageCacheProvider $shared_classlike_storage_cache = null;
 
+    /** The codebase the stubs were preloaded into, so each one is preloaded once and early. */
+    private static ?Codebase $stubs_preloaded_for = null;
+
     /**
      * @psalm-suppress PropertyNotSetInConstructor
      */
@@ -93,6 +97,8 @@ class TestCase extends BaseTestCase
         parent::setUp();
 
         RuntimeCaches::clearAll();
+
+        self::$stubs_preloaded_for = null;
 
         $this->file_provider = new FakeFileProvider();
 
@@ -133,8 +139,29 @@ class TestCase extends BaseTestCase
      */
     public function addFile(string $file_path, string $contents): void
     {
+        $this->preloadStubFiles();
         $this->file_provider->registerFile($file_path, $contents);
         $this->project_analyzer->getCodebase()->scanner->addFileToShallowScan($file_path);
+    }
+
+    /**
+     * As an analysis run does: the classes PHP itself provides are described by Psalm's own stubs
+     * before anything scanned names one, or a compiled program resolves one through its own shim.
+     *
+     * Before any file of the test is queued: this scan registers whatever the scanner already holds,
+     * and it registers it as a stub.
+     */
+    private function preloadStubFiles(): void
+    {
+        $codebase = $this->project_analyzer->getCodebase();
+
+        if (self::$stubs_preloaded_for === $codebase) {
+            return;
+        }
+
+        self::$stubs_preloaded_for = $codebase;
+
+        $codebase->config->visitPreloadedStubFiles($codebase);
     }
 
     /**
@@ -142,6 +169,7 @@ class TestCase extends BaseTestCase
      */
     public function addStubFile(string $file_path, string $contents): void
     {
+        $this->preloadStubFiles();
         $this->file_provider->registerFile($file_path, $contents);
         $this->project_analyzer->getConfig()->addStubFile($file_path);
     }
@@ -164,10 +192,7 @@ class TestCase extends BaseTestCase
             $this->project_analyzer->trackTaintedInputs();
         }
 
-        // as an analysis run does: the classes PHP itself provides are described by Psalm's own stubs
-        // before anything scanned names one, or a compiled program resolves it through its own shim.
-        // Before the files to analyze are queued, or this scan would register them as stub files.
-        $codebase->config->visitPreloadedStubFiles($codebase);
+        $this->preloadStubFiles();
 
         $codebase->addFilesToAnalyze([$file_path => $file_path]);
 
