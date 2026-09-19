@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Tests;
 
 use Override;
+use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\Codebase\CodeUseGraph;
@@ -13,6 +14,7 @@ use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\RuntimeCaches;
 use Psalm\Tests\Internal\Provider\FakeParserCacheProvider;
 
+use function array_map;
 use function array_values;
 use function count;
 use function is_array;
@@ -66,12 +68,15 @@ final class FileReferenceTest extends TestCase
 
         $this->assertSame(count($found_references), count($expected_locations));
 
-        foreach ($found_references as &$loc) {
-            $loc = $loc->getLineNumber() . ':' . $loc->getColumn()
-                    . ':' . $loc->getSelectedText();
-        } unset($loc);
+        // a new list rather than a by-reference rewrite: the elements change type, which the
+        // reference's write-back cannot express
+        $described_references = array_map(
+            static fn(CodeLocation $loc): string => $loc->getLineNumber() . ':' . $loc->getColumn()
+                . ':' . $loc->getSelectedText(),
+            $found_references,
+        );
 
-        $this->assertEquals($expected_locations, $found_references);
+        $this->assertEquals($expected_locations, $described_references);
     }
 
     public function testReferenceLocationsAreRemovedWithTheirSourceNode(): void
