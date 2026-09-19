@@ -174,7 +174,7 @@ final class ClassLikeNodeScanner
                 if ($duplicate_storage->location !== null
                     && $duplicate_storage->location->file_path !== $this->file_path
                     && Config::isOwnStubFile($duplicate_storage->location->file_path)
-                    && !Config::isOwnStubFile($this->file_path)
+                    && !$this->config->isStubFile($this->file_path)
                 ) {
                     return false;
                 }

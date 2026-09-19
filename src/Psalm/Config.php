@@ -1785,6 +1785,19 @@ final class Config
     }
 
     /**
+     * True for a file this config reads as a stub: Psalm's own, an extension's, or one the project
+     * asked for. A class declared in one of these is a description, not code to analyse.
+     *
+     * @psalm-mutation-free
+     */
+    public function isStubFile(string $file_path): bool
+    {
+        return in_array($file_path, $this->internal_stubs, true)
+            || in_array($file_path, $this->stub_files, true)
+            || in_array($file_path, $this->preloaded_stub_files, true);
+    }
+
+    /**
      * @psalm-mutation-free
      */
     private static function requirePath(string $path): void
