@@ -49,3 +49,11 @@ interface BackedEnum extends UnitEnum
 
     public static function tryFrom(int|string $value): ?static;
 }
+
+/**
+ * The base class PHP gives a userland stream filter. A compiled program has no reflection of it and
+ * Psalm has no stub for it, so it is declared here; the call map describes its methods.
+ */
+class php_user_filter
+{
+}
