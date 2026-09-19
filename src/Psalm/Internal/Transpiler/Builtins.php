@@ -104,7 +104,7 @@ final class Builtins
         'substr' => ['substr', ['&s', 'i', '?i'], 's'],
         'mb_substr' => ['mb_substr', ['&s', 'i', '?i'], 's'],
         'mb_strcut' => ['mb_strcut', ['&s', 'i', '?i'], 's'],
-        'substr_count' => ['substr_count', ['&s', '&s'], 'i'],
+        'substr_count' => ['substr_count', ['&s', '&s', 'i=0', '?i'], 'i'],
         'strpos' => ['strpos', ['&s', '&s', 'i=0'], 'oi'],
         'stripos' => ['stripos', ['&s', '&s', 'i=0'], 'oi'],
         'strrpos' => ['strrpos', ['&s', '&s', 'i=0'], 'oi'],
@@ -450,6 +450,10 @@ final class Builtins
             } else {
                 $codes[] = ($byref ? '&' : '') . $code;
             }
+        }
+        if (count($positional) > count($params) && !in_array('V', $params, true)) {
+            // the mapping takes fewer arguments than the call passes: the rest would be dropped silently
+            $b->warn('builtin ' . $fn . ' drops argument ' . (count($params) + 1), $call);
         }
         $code = $fn . '(' . implode(', ', $codes) . ')';
         if ($ret[0] === 'S') {

@@ -1528,6 +1528,7 @@ function run_all(): string
         . check('generic_binding', case_generic_binding(), 'ok')
         . check('destructure_null', case_destructure_null(), 'a=1,b=x|a=,b=|a=2,b=y')
         . check('assert_if_false_key', case_assert_if_false_key(), 's:Foo|i:15')
+        . check('substr_count_window', case_substr_count_window(), '5|1|2|3|0|2')
         . check('array_to_xml', case_array_to_xml(), "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item/>\n</report>\n|<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item>\n    <severity>error</severity>\n    <line_from>4</line_from>\n    <taint_trace/>\n    <refs>\n      <label>a &amp; b</label>\n    </refs>\n    <refs>\n      <label>c</label>\n    </refs>\n  </item>\n</report>\n");
 }
 
@@ -2173,5 +2174,20 @@ function case_assert_if_false_key(): string
         $key_value = $string_to_int === false ? $literal->value : $string_to_int;
         $out[] = is_string($key_value) ? 's:' . $key_value : 'i:' . $key_value;
     }
+    return implode('|', $out);
+}
+
+// ---- feature: substr_count counts only inside its offset/length window ----
+
+function case_substr_count_window(): string
+{
+    $doc = "/**\n * @psalm-import-type abcd\n * @var int $p\n * @psalm-consistent-constructor\n */\n";
+    $out = [];
+    $out[] = (string) substr_count($doc, "\n");
+    $out[] = (string) substr_count($doc, "\n", 0, 10);
+    $out[] = (string) substr_count($doc, "\n", 0, 35);
+    $out[] = (string) substr_count($doc, "\n", 0, 52);
+    $out[] = (string) substr_count($doc, "\n", 4, 20);
+    $out[] = (string) substr_count($doc, "\n", -12);
     return implode('|', $out);
 }
