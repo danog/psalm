@@ -788,8 +788,13 @@ final class Builtins
             }
             return new Val('(' . $code . ')', RustType::bool());
         }
-        if ($t->kind === RustType::ARRAY_KEY && ($pred === 'is_int' || $pred === 'is_string')) {
-            return new Val($v->code . '.' . ($pred === 'is_int' ? 'is_int()' : 'is_str()'), RustType::bool());
+        if ($inner->kind === RustType::ARRAY_KEY && ($pred === 'is_int' || $pred === 'is_string')) {
+            // an array key carries which of the two it is at runtime
+            $m = $pred === 'is_int' ? 'is_int()' : 'is_str()';
+            if ($t->kind === RustType::OPTION) {
+                return new Val('(match &' . $v->code . ' { Some(__k) => __k.' . $m . ', None => false })', RustType::bool());
+            }
+            return new Val($v->code . '.' . $m, RustType::bool());
         }
         if (($t->kind === RustType::CLASS_ || ($t->kind === RustType::OPTION && $inner->kind === RustType::CLASS_))
             && in_array($pred, ['is_null', 'is_int', 'is_float', 'is_string', 'is_bool', 'is_array', 'is_object', 'is_scalar'], true)

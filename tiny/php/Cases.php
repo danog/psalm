@@ -1527,6 +1527,7 @@ function run_all(): string
         . check('closure_param', case_closure_param(), 'a:1|none|x:1')
         . check('generic_binding', case_generic_binding(), 'ok')
         . check('destructure_null', case_destructure_null(), 'a=1,b=x|a=,b=|a=2,b=y')
+        . check('assert_if_false_key', case_assert_if_false_key(), 's:Foo|i:15')
         . check('array_to_xml', case_array_to_xml(), "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item/>\n</report>\n|<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item>\n    <severity>error</severity>\n    <line_from>4</line_from>\n    <taint_trace/>\n    <refs>\n      <label>a &amp; b</label>\n    </refs>\n    <refs>\n      <label>c</label>\n    </refs>\n  </item>\n</report>\n");
 }
 
@@ -2134,6 +2135,43 @@ function case_destructure_null(): string
         $s = null;
         [$n, $s] = $table->find($key);
         $out[] = 'a=' . ($n === null ? '' : (string) $n) . ',b=' . ($s === null ? '' : $s);
+    }
+    return implode('|', $out);
+}
+
+// ---- feature: assert-if-false does not collapse a ternary's other arm ----
+
+final class AIFLiteral
+{
+    public function __construct(public readonly string $value)
+    {
+    }
+}
+
+/**
+ * @psalm-assert-if-false !numeric $literal_array_key
+ * @psalm-pure
+ */
+function aif_key_int(string|int $literal_array_key): false|int
+{
+    if (is_int($literal_array_key)) {
+        return $literal_array_key;
+    }
+    if (!is_numeric($literal_array_key)) {
+        return false;
+    }
+    return (int) $literal_array_key;
+}
+
+function case_assert_if_false_key(): string
+{
+    $out = [];
+    foreach (['Foo', '15'] as $raw) {
+        $literal = new AIFLiteral($raw);
+        $key_value = null;
+        $string_to_int = aif_key_int($literal->value);
+        $key_value = $string_to_int === false ? $literal->value : $string_to_int;
+        $out[] = is_string($key_value) ? 's:' . $key_value : 'i:' . $key_value;
     }
     return implode('|', $out);
 }
