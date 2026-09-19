@@ -229,6 +229,13 @@ final class Functions
             return true;
         }
 
+        if (\defined('PSALM_COMPILED') && InternalCallMapHandler::inCallMap($function_id)) {
+            // a compiled program's runtime provides only the functions it can call by name, so
+            // get_defined_functions() lists far fewer than PHP does: the functions PHP itself
+            // provides are the ones the call map describes
+            return true;
+        }
+
         return false;
     }
 
