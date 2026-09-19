@@ -27,6 +27,24 @@ pub fn imod(a: i64, b: i64) -> i64 {
     }
     a % b
 }
+/// `$a << $b`: PHP shifts out entirely past the word rather than wrapping the count round.
+pub fn shl(a: i64, b: i64) -> i64 {
+    if b < 0 {
+        panic!("Uncaught exception: ArithmeticError: Bit shift by negative number");
+    }
+    if b >= 64 { 0 } else { ((a as u64) << b) as i64 }
+}
+/// `$a >> $b`: an arithmetic shift, so a negative value shifted out entirely stays -1.
+pub fn shr(a: i64, b: i64) -> i64 {
+    if b < 0 {
+        panic!("Uncaught exception: ArithmeticError: Bit shift by negative number");
+    }
+    if b >= 64 {
+        if a < 0 { -1 } else { 0 }
+    } else {
+        a >> b
+    }
+}
 pub fn intdiv(a: i64, b: i64) -> i64 {
     if b == 0 {
         panic!("Uncaught exception: DivisionByZeroError: Division by zero");

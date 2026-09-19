@@ -1608,11 +1608,20 @@ final class AssertAnnotationTest extends TestCase
                     }',
             ],
             'reflectionNameTypeClassStringIfNotBuiltin' => [
+                // isBuiltin() asserts class-string|'self'|'static', and a declared `self` or `static`
+                // is not a class name, so the keywords have to be excluded to get a class-string
                 'code' => '<?php
                     /** @return class-string|null */
                     function getPropertyType(\ReflectionProperty $reflectionItem): ?string {
                         $type = $reflectionItem->getType();
-                        return ($type instanceof \ReflectionNamedType) && !$type->isBuiltin() ? $type->getName() : null;
+
+                        if (!$type instanceof \ReflectionNamedType || $type->isBuiltin()) {
+                            return null;
+                        }
+
+                        $name = $type->getName();
+
+                        return $name === "self" || $name === "static" ? null : $name;
                     }',
                 'assertions' => [],
                 'ignored_issues' => [],
