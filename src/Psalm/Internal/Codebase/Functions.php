@@ -111,7 +111,10 @@ final class Functions
         }
 
         if (!$root_file_path || !$checked_file_path) {
-            if ($this->registerIfProvidedByPhp($function_id)) {
+            // deliberately NOT registering from the call map here: a caller with no file to name is
+            // asking about a callable it knows the shape of (CallableTypeComparator), and the throw
+            // is what sends it to the call-map overload that matches that shape
+            if ($this->reflection->hasFunction($function_id)) {
                 return $this->reflection->getFunctionStorage($function_id);
             }
 

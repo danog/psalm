@@ -493,11 +493,13 @@ pub fn preg_split_offsets(pattern: &Str, subject: &Str, limit: i64, flags: i64) 
     Ok(List::from_vec(out))
 }
 
-pub fn preg_grep<K: crate::key::MapKey>(pattern: &Str, input: &Map<K, Str>) -> Result<Map<K, Str>, RtError> {
+/// `flags`: PREG_GREP_INVERT (1) keeps the entries that do NOT match.
+pub fn preg_grep<K: crate::key::MapKey>(pattern: &Str, input: &Map<K, Str>, flags: i64) -> Result<Map<K, Str>, RtError> {
     let c = compile(pattern)?;
+    let invert = flags & 1 != 0;
     let mut out = Map::new();
     for (k, v) in input.iter() {
-        if c.re.is_match(v).unwrap_or(false) {
+        if c.re.is_match(v).unwrap_or(false) != invert {
             out.insert(k.clone(), v.clone());
         }
     }
