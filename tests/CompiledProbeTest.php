@@ -106,4 +106,54 @@ final class CompiledProbeTest extends TestCase
             $actual,
         );
     }
+    /**
+     * A variable the try block definitely assigns is defined afterwards: the analyzer clears the
+     * `possibly undefined from try` flag once it knows every catch leaves or the body completed.
+     */
+    public function testTryBlockAssignmentsAreDefinedAfterwards(): void
+    {
+        $file_path = self::$src_dir_path . 'somefile3.php';
+
+        $this->addFile(
+            $file_path,
+            '<?php
+                try {
+                    $withFinally = "a";
+                } finally {
+                }
+
+                try {
+                    $withLeavingCatch = "b";
+                } catch (Exception $e) {
+                    throw new RuntimeException("x");
+                }
+
+                try {
+                    $plain = "c";
+                } catch (Exception $e) {
+                }',
+        );
+
+        $context = new Context();
+        $this->analyzeFile($file_path, $context);
+
+        $actual = [];
+
+        foreach (['$withFinally', '$withLeavingCatch', '$plain'] as $var_id) {
+            $type = $context->vars_in_scope[$var_id] ?? null;
+            $actual[$var_id] = $type === null
+                ? 'absent'
+                : ($type->possibly_undefined ? 'maybe' : 'defined')
+                    . '/' . ($type->possibly_undefined_from_try ? 'from-try' : 'not-from-try');
+        }
+
+        $this->assertSame(
+            [
+                '$withFinally' => 'defined/not-from-try',
+                '$withLeavingCatch' => 'defined/not-from-try',
+                '$plain' => 'maybe/from-try',
+            ],
+            $actual,
+        );
+    }
 }
