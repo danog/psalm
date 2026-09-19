@@ -2257,7 +2257,8 @@ final class Builtins
         $c = $this->container($b, $args[1]->value);
         $m = $b->casts->convert($c->code, $c->type, $c->type->kind === RustType::LIST ? RustType::map(RustType::int(), RustType::str()) : RustType::map($c->type->params[0], RustType::str()));
         $kt = $c->type->kind === RustType::LIST ? RustType::int() : $c->type->params[0];
-        return new Val('preg_grep(&' . $pat . ', &' . $m . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::map($kt, RustType::str()));
+        $flags = isset($args[2]) ? $b->exprTo($args[2]->value, RustType::int()) : '0';
+        return new Val('preg_grep(&' . $pat . ', &' . $m . ', ' . $flags . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::map($kt, RustType::str()));
     }
 
     // json

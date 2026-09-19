@@ -809,21 +809,22 @@ class DOMDocument extends DOMNode
         }
         $before = count(__RtLibXmlErrors::$errors);
         assert($root !== null);
-        $this->checkAgainstType($root, $this->typeOf($declared, $types), $types);
+        $this->checkAgainstType($root, $this->typeOf($declared, $types), $types, $elements);
         return count(__RtLibXmlErrors::$errors) === $before;
     }
 
     /**
      * @param array<string, XmlNode> $types
+     * @param array<string, XmlNode> $elements top-level element declarations, which `ref` names
      */
-    private function checkAgainstType(XmlNode $node, ?XmlNode $type, array $types): void
+    private function checkAgainstType(XmlNode $node, ?XmlNode $type, array $types, array $elements): void
     {
         if ($type === null || __rt_xml_local($type->name) !== 'complexType') {
             return;
         }
         $allowed = [];
         $open = false;
-        $this->collectParticles($type, $types, $allowed, $open);
+        $this->collectParticles($type, $types, $elements, $allowed, $open);
         $attributes = [];
         $any_attribute = false;
         foreach ($type->elementChildren() as $child) {
@@ -855,7 +856,7 @@ class DOMDocument extends DOMNode
                 }
                 continue;
             }
-            $this->checkAgainstType($child, $this->typeOf($allowed[$child->name], $types), $types);
+            $this->checkAgainstType($child, $this->typeOf($allowed[$child->name], $types), $types, $elements);
         }
     }
 
@@ -879,24 +880,33 @@ class DOMDocument extends DOMNode
      * The element names a complex type's content model admits, and whether it admits anything else.
      *
      * @param array<string, XmlNode> $types
+     * @param array<string, XmlNode> $elements
      * @param array<string, XmlNode> $allowed
      */
-    private function collectParticles(XmlNode $node, array $types, array &$allowed, bool &$open): void
+    private function collectParticles(XmlNode $node, array $types, array $elements, array &$allowed, bool &$open): void
     {
         foreach ($node->elementChildren() as $child) {
             $local = __rt_xml_local($child->name);
             if ($local === 'element' && isset($child->attrs['name'])) {
                 $allowed[$child->attrs['name']] = $child;
+            } elseif ($local === 'element' && isset($child->attrs['ref'])) {
+                // a particle written as a reference to a top-level declaration
+                $ref = $child->attrs['ref'];
+                if (isset($elements[$ref])) {
+                    $allowed[$ref] = $elements[$ref];
+                } else {
+                    $open = true; // an unresolvable reference is not something to judge on
+                }
             } elseif ($local === 'any') {
                 $open = true;
             } elseif ($local === 'sequence' || $local === 'choice' || $local === 'all' || $local === 'group') {
-                $this->collectParticles($child, $types, $allowed, $open);
+                $this->collectParticles($child, $types, $elements, $allowed, $open);
             } elseif ($local === 'complexContent' || $local === 'extension' || $local === 'restriction') {
                 $base = $child->attrs['base'] ?? '';
                 if (isset($types[$base])) {
-                    $this->collectParticles($types[$base], $types, $allowed, $open);
+                    $this->collectParticles($types[$base], $types, $elements, $allowed, $open);
                 }
-                $this->collectParticles($child, $types, $allowed, $open);
+                $this->collectParticles($child, $types, $elements, $allowed, $open);
             }
         }
     }
