@@ -106,8 +106,12 @@ final class ReportOutputTest extends TestCase
     }
 
     /**
-     * @psalm-import-type JsonValue from \Psalm\Internal\Json\Json
-     * @return array<string, JsonValue>
+     * The document is fourteen levels deep, so the type has to be self-similar: written this way the
+     * levels collapse into one recursive type that holds any depth.
+     *
+     * @return array<string, scalar|null
+     *     |list<scalar|null|list<scalar|null>|array<string, scalar|null>>
+     *     |array<string, scalar|null|list<scalar|null>|array<string, scalar|null>>>
      */
     private static function decodeSarifFixture(): array
     {
