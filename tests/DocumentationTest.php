@@ -474,7 +474,10 @@ final class DocumentationTest extends TestCase
             }
 
             /**
-             * @param mixed $other
+             * Untyped, as the parameter of the method it overrides is: a narrower one would not be
+             * a compatible signature.
+             *
+             * @param string $other
              * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
              */
             #[Override]
@@ -484,7 +487,7 @@ final class DocumentationTest extends TestCase
             }
 
             /**
-             * @param mixed $other
+             * @param string $other
              * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
              */
             #[Override]
