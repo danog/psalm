@@ -480,8 +480,15 @@ class DOMNode
     public function __set(string $name, string $value): void
     {
         if ($name === 'nodeValue' || $name === 'textContent') {
+            // the node's text is a text child, which is what serialize() writes out: a node with no
+            // children serializes as `<name/>`, however its own text field reads
             $this->xml->children = [];
             $this->xml->text = $value;
+            if ($value !== '') {
+                $text = new XmlNode('#text', $value, true);
+                $text->parent = $this->xml;
+                $this->xml->children[] = $text;
+            }
             return;
         }
         throw new \LogicException('DOMNode::$' . $name . ' is not writable');

@@ -1314,9 +1314,26 @@ function case_union_tuple_index(): string
     return $pair->params[0]->a . ':' . $pair->params[1]->b . ':' . $dflt->params[0]->a;
 }
 
+// ---- feature: a node's text written through nodeValue is serialized ------
+
+function case_dom_node_value(): string
+{
+    $doc = new \DOMDocument('1.0', 'UTF-8');
+    $doc->formatOutput = true;
+    $root = $doc->createElement('report');
+    $doc->appendChild($root);
+    $item = $doc->createElement('failure');
+    $item->setAttribute('type', 'X');
+    $item->nodeValue = "line1\nline2";
+    $root->appendChild($item);
+
+    return trim($doc->saveXML()) . '|' . (string) $item->nodeValue;
+}
+
 function run_all(): string
 {
-    return check('union_tuple_index', case_union_tuple_index(), '3:4:9')
+    return check('dom_node_value', case_dom_node_value(), "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <failure type=\"X\">line1\nline2</failure>\n</report>|line1\nline2")
+        . check('union_tuple_index', case_union_tuple_index(), '3:4:9')
         . check('static_const', case_static_const(), '24:-1|138:1|')
         . check('splice_keys', case_splice_keys(), 'foo\\bar:baz')
         . check('dom_config', case_dom_config(), 'set+fn:eval,print,')
