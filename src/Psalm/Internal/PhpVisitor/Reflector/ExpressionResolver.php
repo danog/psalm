@@ -12,6 +12,7 @@ use PhpParser\Node\Expr\ConstFetch;
 use Psalm\Aliases;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
+use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\Scanner\UnresolvedConstant\ArrayOffsetFetch;
 use Psalm\Internal\Scanner\UnresolvedConstant\ArraySpread;
 use Psalm\Internal\Scanner\UnresolvedConstant\ArrayValue;
@@ -416,9 +417,14 @@ final class ExpressionResolver
             && isset($function->getArgs()[0])
             && ($function_name_node = $function->getArgs()[0]->value) instanceof PhpParser\Node\Scalar\String_
         ) {
-            // a compiled program answers both of these from the runtime: function_exists knows the
-            // functions it provides, and their reflection reports itself internal
-            if (function_exists($function_name_node->value)) {
+            // `if (!function_exists('random_bytes'))` asks what the ANALYSED code's PHP provides,
+            // not what this one does: a compiled program provides far less than PHP, and the call
+            // map is its description of PHP's own functions
+            if (\defined('PSALM_COMPILED')) {
+                if (InternalCallMapHandler::inCallMap($function_name_node->value)) {
+                    return true;
+                }
+            } elseif (function_exists($function_name_node->value)) {
                 return (new ReflectionFunction($function_name_node->value))->isInternal();
             }
         }
