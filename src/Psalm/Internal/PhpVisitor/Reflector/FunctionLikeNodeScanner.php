@@ -27,6 +27,7 @@ use Psalm\Internal\Analyzer\CommentAnalyzer;
 use Psalm\Internal\Analyzer\NamespaceAnalyzer;
 use Psalm\Internal\Analyzer\ScopeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\SimpleTypeInferer;
+use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\Scanner\FileScanner;
@@ -1047,18 +1048,24 @@ final class FunctionLikeNodeScanner
                     return [$function_id, $storage, null, null, null, null, false, null, true];
                 }
 
-                if (isset($this->config->getPredefinedFunctions()[$function_id])) {
+                if (\defined('PSALM_COMPILED')) {
+                    // a compiled program lists only its own functions in get_defined_functions() and
+                    // cannot reflect where PHP defines its own: the call map is what PHP provides,
+                    // and none of it is defined in the file being scanned
+                    $redefines_a_core_function = InternalCallMapHandler::inCallMap($function_id);
+                } else {
                     /** @psalm-suppress ArgumentTypeCoercion */
-                    $reflection_function = new ReflectionFunction($function_id);
+                    $redefines_a_core_function = isset($this->config->getPredefinedFunctions()[$function_id])
+                        && (new ReflectionFunction($function_id))->getFileName() !== $this->file_path;
+                }
 
-                    if ($reflection_function->getFileName() !== $this->file_path) {
-                        IssueBuffer::maybeAdd(
-                            new DuplicateFunction(
-                                'Method ' . $function_id . ' has already been defined as a core function',
-                                new CodeLocation($this->file_scanner, $stmt, null, true),
-                            ),
-                        );
-                    }
+                if ($redefines_a_core_function) {
+                    IssueBuffer::maybeAdd(
+                        new DuplicateFunction(
+                            'Method ' . $function_id . ' has already been defined as a core function',
+                            new CodeLocation($this->file_scanner, $stmt, null, true),
+                        ),
+                    );
                 }
             }
         } elseif ($stmt instanceof PhpParser\Node\Stmt\ClassMethod) {
