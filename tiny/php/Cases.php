@@ -1535,6 +1535,7 @@ function run_all(): string
         . check('byref_override_arg', case_byref_override_arg(), 'a:stop/no|b:go/yes')
         . check('php_shifts', case_php_shifts(), '0|1|0|-1|2|0|4611686018427387904')
         . check('builtin_arity', case_builtin_arity(), 'ok')
+        . check('sprintf_percent', case_sprintf_percent(), '%|%|%|%|%a')
         . check('array_to_xml', case_array_to_xml(), "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item/>\n</report>\n|<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item>\n    <severity>error</severity>\n    <line_from>4</line_from>\n    <taint_trace/>\n    <refs>\n      <label>a &amp; b</label>\n    </refs>\n    <refs>\n      <label>c</label>\n    </refs>\n  </item>\n</report>\n");
 }
 
@@ -2355,4 +2356,17 @@ function case_builtin_arity(): string
     clearstatcache(true);
     @unlink($file);
     return $ok ? 'ok' : 'bad';
+}
+
+// ---- feature: a `%` conversion writes a literal percent, whatever precedes it ----
+
+function case_sprintf_percent(): string
+{
+    return implode('|', [
+        sprintf('%%'),
+        sprintf('%1$%', 7),
+        sprintf('%5%', 7),
+        sprintf('%-5%', 7),
+        sprintf('%1$%a', 7),
+    ]);
 }
