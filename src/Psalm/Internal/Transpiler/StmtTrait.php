@@ -455,15 +455,19 @@ trait StmtTrait
         }
         // the value variable is a plain local; each iteration copies in and writes back
         $val_place = $this->place($s->valueVar);
-        $elem_read = $is_list ? $place->read() . '.idx(' . $kv . ').clone()' : $place->read() . '.idx(&' . $kv . ').clone()';
+        $elem = $this->tmp('__el');
+        $elem_get = $is_list ? $place->read() . '.get(' . $kv . ').cloned()' : $place->read() . '.get(&' . $kv . ').cloned()';
+        // a reference to an element the body has removed writes nowhere, as PHP's does
         $store_back = $place->modify(fn(string $p) => $is_list
-            ? $p . '.set(' . $kv . ', ' . $this->casts->convert($val_place->read(), $val_place->type, $vt) . ');'
-            : $p . '.insert(' . $kv . '.clone(), ' . $this->casts->convert($val_place->read(), $val_place->type, $vt) . ');');
+            ? $p . '.replace(' . $kv . ', ' . $this->casts->convert($val_place->read(), $val_place->type, $vt) . ');'
+            : $p . '.replace(' . $kv . '.clone(), ' . $this->casts->convert($val_place->read(), $val_place->type, $vt) . ');');
         $w->open($label . ': for ' . $kv . ' in ' . $keys . ' {');
+        // an element removed by an earlier iteration is no longer iterated, as in PHP
+        $w->line('let ' . $elem . ' = match ' . $elem_get . ' { Some(__v) => __v, None => continue ' . $label . ' };');
         if ($s->keyVar !== null) {
             $w->line($this->assignTo($s->keyVar, new Val($kv . '.clone()', $kt)));
         }
-        $w->line($val_place->write($this->casts->convert($elem_read, $vt, $val_place->type)));
+        $w->line($val_place->write($this->casts->convert($elem, $vt, $val_place->type)));
         $this->pushLoop($label, $label, false, $store_back);
         $this->block($s->stmts);
         $this->popLoop();

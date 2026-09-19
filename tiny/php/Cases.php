@@ -1398,9 +1398,39 @@ function case_union_modulo(): string
     return mod_of(25, 2) . ':' . mod_of(25.4, 2) . ':' . mod_of(25, 2.5) . ':' . mod_of(25.5, 2.5);
 }
 
+// ---- feature: a by-reference foreach follows removals, as PHP does ------
+
+/** @return array<string, int> */
+function ref_map(): array
+{
+    $m = [];
+    foreach (['a', 'b', 'c'] as $i => $name) {
+        $m[$name] = $i + 1;
+    }
+
+    return $m;
+}
+
+function case_foreach_ref_unset(): string
+{
+    $m = ref_map();
+
+    foreach ($m as $k => &$v) {
+        if ($k === 'b') {
+            unset($m[$k]);
+        }
+        $v = $v * 10;
+    }
+    unset($v);
+
+    // by key, not by iteration order: what this pins is the write-through, not the ordering
+    return ($m['a'] ?? 0) . ':' . (isset($m['b']) ? 'b' : '-') . ':' . ($m['c'] ?? 0);
+}
+
 function run_all(): string
 {
-    return check('union_modulo', case_union_modulo(), '1:1:1:1')
+    return check('foreach_ref_unset', case_foreach_ref_unset(), '10:-:30')
+        . check('union_modulo', case_union_modulo(), '1:1:1:1')
         . check('union_tuple_isset', case_union_tuple_isset(), 'arr:obj:none:none')
         . check('dom_node_value', case_dom_node_value(), "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <failure type=\"X\">line1\nline2</failure>\n</report>|line1\nline2")
         . check('union_tuple_index', case_union_tuple_index(), '3:4:9:2')
