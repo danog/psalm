@@ -232,7 +232,13 @@ final class Functions
         if (\defined('PSALM_COMPILED') && InternalCallMapHandler::inCallMap($function_id)) {
             // a compiled program's runtime provides only the functions it can call by name, so
             // get_defined_functions() lists far fewer than PHP does: the functions PHP itself
-            // provides are the ones the call map describes
+            // provides are the ones the call map describes. Register it as the predefined branch
+            // above does, so that its storage can be fetched later.
+            /** @psalm-suppress ArgumentTypeCoercion */
+            if ($this->reflection->registerFunction($function_id) === false) {
+                return false;
+            }
+
             return true;
         }
 
