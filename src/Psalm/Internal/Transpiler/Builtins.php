@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Transpiler;
 
+use Psalm\Internal\Codebase\InternalCallMapHandler;
+
 use PhpParser\Node\Arg;
 use PhpParser\Node;
 use PhpParser\Node\Expr;
@@ -11,6 +13,13 @@ use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Scalar;
 
+use function array_filter;
+use function array_keys;
+use function array_unique;
+use function array_values;
+use function get_class_methods;
+use function str_starts_with;
+use function substr;
 use function array_map;
 use function is_numeric;
 use function count;
@@ -76,8 +85,10 @@ final class Builtins
      * @param list<Arg> $args
      */
     /**
-     * Every function name this emitter handles: the compiled program provides these, so its
+     * The PHP functions this emitter handles: the compiled program provides these, so its
      * function_exists must say so even though most are never callable by name at runtime.
+     * Names the call map does not know are not PHP functions -- they are the emitter's own
+     * helpers, the runtime hooks, and the `unset` construct -- so they are left out.
      *
      * @return list<string>
      */
@@ -91,9 +102,15 @@ final class Builtins
             }
         }
 
+        $names = array_values(array_unique(array_filter(
+            $names,
+            // `unset` has a call-map entry but is a language construct, not a function
+            static fn(string $name): bool => $name !== 'unset' && InternalCallMapHandler::inCallMap($name),
+        )));
+
         sort($names);
 
-        return array_values(array_unique($names));
+        return $names;
     }
 
     public function emit(BodyEmitter $b, Expr\FuncCall $call, string $name, array $args): ?Val
