@@ -23,13 +23,19 @@ interface DateTimeInterface
     public const RSS = 'D, d M Y H:i:s O';
     public const W3C = 'Y-m-d\\TH:i:sP';
 
-    public function format(string $format): string;
+    // without native return types, as Psalm's own stub of DateTimeImmutable declares them: a native
+    // one here would be a signature mismatch against that stub
+    /** @return string */
+    public function format(string $format);
 
-    public function getTimestamp(): int;
+    /** @return int */
+    public function getTimestamp();
 
-    public function getOffset(): int;
+    /** @return int */
+    public function getOffset();
 
-    public function diff(DateTimeInterface $targetObject, bool $absolute = false): DateInterval;
+    /** @return DateInterval */
+    public function diff(DateTimeInterface $targetObject, bool $absolute = false);
 }
 
 /** A timezone; Psalm's own stub describes it, and a compiled program needs the class to exist. */
