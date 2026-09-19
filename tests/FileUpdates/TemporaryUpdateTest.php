@@ -30,6 +30,9 @@ final class TemporaryUpdateTest extends TestCase
 {
     protected Codebase $codebase;
 
+    /** The version the next set of stages is analysed at; a stage may need a newer one. */
+    private string $php_version = '7.3';
+
     #[Override]
     public function setUp(): void
     {
@@ -62,7 +65,7 @@ final class TemporaryUpdateTest extends TestCase
             $this->codebase,
         );
 
-        $this->project_analyzer->setPhpVersion('7.3', 'tests');
+        $this->project_analyzer->setPhpVersion($this->php_version, 'tests');
     }
 
     /**
@@ -77,7 +80,11 @@ final class TemporaryUpdateTest extends TestCase
         array $ignored_issues = [],
         bool $test_save = true,
         bool $check_unused_code = false,
+        string $php_version = '7.3',
     ): void {
+        $this->php_version = $php_version;
+        $this->project_analyzer->setPhpVersion($php_version, 'tests');
+
         $codebase = $this->codebase;
         $codebase->diff_methods = true;
 
@@ -601,6 +608,7 @@ final class TemporaryUpdateTest extends TestCase
                     ],
                 ],
                 'error_positions' => [[], [197]],
+                'php_version' => '8.0',
             ],
             'removeGroupUseShouldInvalidate' => [
                 [
@@ -628,6 +636,7 @@ final class TemporaryUpdateTest extends TestCase
                     ],
                 ],
                 'error_positions' => [[], [197]],
+                'php_version' => '8.0',
             ],
             'removeUseWithAliasShouldInvalidate' => [
                 [
@@ -655,6 +664,7 @@ final class TemporaryUpdateTest extends TestCase
                     ],
                 ],
                 'error_positions' => [[], [197]],
+                'php_version' => '8.0',
             ],
             'removeGroupUseWithAliasShouldInvalidate' => [
                 [
@@ -682,6 +692,7 @@ final class TemporaryUpdateTest extends TestCase
                     ],
                 ],
                 'error_positions' => [[], [197]],
+                'php_version' => '8.0',
             ],
             'removeUseShouldInvalidateNoNamespace' => [
                 [
@@ -705,6 +716,7 @@ final class TemporaryUpdateTest extends TestCase
                     ],
                 ],
                 'error_positions' => [[], [147]],
+                'php_version' => '8.0',
             ],
             'removeGroupUseShouldInvalidateNoNamespace' => [
                 [
@@ -732,6 +744,7 @@ final class TemporaryUpdateTest extends TestCase
                     ],
                 ],
                 'error_positions' => [[], [197]],
+                'php_version' => '8.0',
             ],
             'removeUseWithAliasShouldInvalidateNoNamespace' => [
                 [
@@ -780,6 +793,7 @@ final class TemporaryUpdateTest extends TestCase
                     ],
                 ],
                 'error_positions' => [[], [197]],
+                'php_version' => '8.0',
             ],
             'addUseShouldValidate' => [
                 [

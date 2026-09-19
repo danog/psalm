@@ -193,6 +193,11 @@ foreach ($classes as $class) {
                 } else {
                     $failure = get_class($e) . ': ' . $e->getMessage();
                     if (getenv('PSALM_TEST_TRACE')) {
+                        if ($e instanceof PHPUnit\Framework\ExpectationFailedException
+                            && $e->getComparisonFailure() !== null
+                        ) {
+                            $failure .= "\n" . $e->getComparisonFailure()->getDiff();
+                        }
                         $failure .= "\n" . $e->getTraceAsString();
                     }
                     for ($p = $e->getPrevious(); $p !== null; $p = $p->getPrevious()) {

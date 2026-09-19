@@ -595,6 +595,10 @@ final class TypeExpander
             && $return_type::class === TNamedObject::class
             && !$return_type->extra_types
             && $codebase->classOrInterfaceExists($return_type->value)
+            // a class can exist without having been scanned, and then there is nothing to expand
+            && $codebase->classlike_storage_provider->has(
+                $codebase->classlikes->getUnAliasedName($return_type->value),
+            )
         ) {
             $value = $codebase->classlikes->getUnAliasedName($return_type->value);
             $container_class_storage = $codebase->classlike_storage_provider->get(
