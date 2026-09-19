@@ -571,7 +571,8 @@ final class CrateEmitter
         $w->line('static CLASSES: &[(&[u8], ClassInfo)] = &[' . implode(', ', $rows) . '];');
         $w->line('pub fn class_info(name: &Str) -> Option<&\'static ClassInfo> { class_info_lc(&php_rt::names::norm(name)) }');
         $w->line('pub fn class_info_lc(lc: &[u8]) -> Option<&\'static ClassInfo> { match CLASSES.binary_search_by(|(k, _)| (*k).cmp(lc)) { Ok(i) => Some(&CLASSES[i].1), Err(_) => ' . ($up !== null ? $up . 'class_info_lc(lc)' : 'None') . ' } }');
-        $w->line('pub fn class_exists(name: &Str) -> bool { let lc = php_rt::names::norm(name); match class_info_lc(&lc) { Some(i) => i.kind == 0 || i.kind == 3, None => php_rt::names::builtin_class_exists(&lc) } }');
+        $w->line('/// `autoload` is accepted and ignored: a compiled program has nothing to autoload.');
+        $w->line('pub fn class_exists(name: &Str, _autoload: bool) -> bool { let lc = php_rt::names::norm(name); match class_info_lc(&lc) { Some(i) => i.kind == 0 || i.kind == 3, None => php_rt::names::builtin_class_exists(&lc) } }');
         $w->line('pub fn interface_exists(name: &Str) -> bool { let lc = php_rt::names::norm(name); match class_info_lc(&lc) { Some(i) => i.kind == 1, None => php_rt::names::builtin_interface_exists(&lc) } }');
         $w->line('pub fn trait_exists(name: &Str) -> bool { class_info(name).map_or(false, |i| i.kind == 2) }');
         $w->line('pub fn enum_exists(name: &Str) -> bool { class_info(name).map_or(false, |i| i.kind == 3) }');
