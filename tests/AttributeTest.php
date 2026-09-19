@@ -451,13 +451,16 @@ final class AttributeTest extends TestCase
             ],
             'invalidAttributeDoesntCrash' => [
                 'code' => '<?php
-                    /** @psalm-suppress InvalidScalarArgument */
+                    /** @psalm-suppress InvalidArgument */
                     #[Attribute("foobar")]
                     class Foo {}
 
                     #[Foo]
                     class Bar {}
                 ',
+                'assertions' => [],
+                'ignored_issues' => [],
+                'php_version' => '8.0',
             ],
             'dontCrashWhenRedefiningStubbedMethodWithFewerParams' => [
                 'code' => '<?php
