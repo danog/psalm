@@ -215,4 +215,44 @@ final class CompiledProbeTest extends TestCase
 
         $this->assertSame([], $issues);
     }
+    /**
+     * The description of a class PHP itself provides comes from the call map, not from whatever the
+     * runtime happens to reflect: at analysis PHP 7.4 DateTime::format still returns `false|string`.
+     */
+    public function testInternalClassesAreDescribedByTheCallMap(): void
+    {
+        $file_path = self::$src_dir_path . 'somefile5.php';
+
+        $this->addFile(
+            $file_path,
+            '<?php
+                $datetime = new DateTime();
+                $a = $datetime->format("Y-m-d");
+                $b = $datetime->getTimestamp();',
+        );
+
+        $context = new Context();
+        $this->analyzeFile($file_path, $context);
+
+        $storage = $this->project_analyzer->getCodebase()->classlike_storage_provider->get('datetime');
+
+        $actual = [
+            'user_defined' => $storage->user_defined ? 'yes' : 'no',
+            'format' => (string) ($storage->methods['format']->return_type ?? null),
+            'getTimestamp' => (string) ($storage->methods['gettimestamp']->return_type ?? null),
+            '$a' => (string) ($context->vars_in_scope['$a'] ?? null),
+            '$b' => (string) ($context->vars_in_scope['$b'] ?? null),
+        ];
+
+        $this->assertSame(
+            [
+                'user_defined' => 'no',
+                'format' => 'false|string',
+                'getTimestamp' => 'false|int',
+                '$a' => 'false|string',
+                '$b' => 'false|int',
+            ],
+            $actual,
+        );
+    }
 }
