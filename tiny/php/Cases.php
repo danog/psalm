@@ -1292,9 +1292,32 @@ function case_splice_keys(): string
     return (string) key($taken) . ':' . implode(',', array_keys($dependencies));
 }
 
+// ---- feature: indexing a union of a tuple and a list by a constant -------
+
+final class TypeParams
+{
+    /** @var array{A, B}|array<never, never> */
+    public array $params;
+
+    /** @param array{A, B}|array<never, never> $params */
+    public function __construct(array $params = [])
+    {
+        $this->params = isset($params[0], $params[1]) ? $params : [new A(9), new B(9)];
+    }
+}
+
+function case_union_tuple_index(): string
+{
+    $pair = new TypeParams([new A(3), new B(4)]);
+    $dflt = new TypeParams();
+
+    return $pair->params[0]->a . ':' . $pair->params[1]->b . ':' . $dflt->params[0]->a;
+}
+
 function run_all(): string
 {
-    return check('static_const', case_static_const(), '24:-1|138:1|')
+    return check('union_tuple_index', case_union_tuple_index(), '3:4:9')
+        . check('static_const', case_static_const(), '24:-1|138:1|')
         . check('splice_keys', case_splice_keys(), 'foo\\bar:baz')
         . check('dom_config', case_dom_config(), 'set+fn:eval,print,')
         . check('semver_constraints', case_semver_constraints(), '00111')

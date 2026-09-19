@@ -565,13 +565,7 @@ final class CrateEmitter
                 $names[] = Names::rustStringLiteral(strtolower($a->fqcn));
             }
             $kind = $cls->isInterface() ? 1 : ($cls->isTrait() ? 2 : ($cls->isEnum() ? 3 : 0));
-            // the runtime stubs stand in for classes PHP itself provides: a compiled program must
-            // report them as internal (no file), or anything reflecting one -- Psalm scanning
-            // `Stringable`, say -- reads the stub's source as if it were the program's own
             $file = $this->transpiler->classes[$lc]->file_path ?? '';
-            if ($file !== '' && str_contains(str_replace('\\', '/', $file), '/Transpiler/runtime-stubs/')) {
-                $file = '';
-            }
             $rows[] = '(' . Names::byteStrLiteral($lc) . ', ClassInfo { name: ' . Names::rustStringLiteral($cls->fqcn) . ', ancestors: &[' . implode(', ', $names) . '], kind: ' . $kind . ', file: ' . Names::rustStringLiteral($file) . ' })';
         }
         $w->line('static CLASSES: &[(&[u8], ClassInfo)] = &[' . implode(', ', $rows) . '];');

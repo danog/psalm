@@ -11,6 +11,7 @@ use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Scalar;
 
+use function ctype_digit;
 use function preg_match;
 use function count;
 use function array_map;
@@ -639,6 +640,11 @@ trait LValueTrait
                 $elems[] = $m->params[1];
             } elseif ($m->kind === RustType::SHAPE && $literal_key !== null && isset($m->fields[$literal_key])) {
                 $elems[] = $m->fields[$literal_key][0];
+            } elseif ($m->kind === RustType::TUPLE && $literal_key !== null && ctype_digit($literal_key)
+                && isset($m->params[(int) $literal_key])
+            ) {
+                // `array{Union, Union}|list<Union>` indexed by a constant: the tuple answers from its field
+                $elems[] = $m->params[(int) $literal_key];
             }
         }
         if ($elems === []) {
@@ -658,6 +664,10 @@ trait LValueTrait
                 [$ft, $opt] = $m->fields[$literal_key];
                 $read = $opt ? '__s.' . Names::field($literal_key) : 'Some(__s.' . Names::field($literal_key) . ')';
                 $arms[] = $u->mangle() . '::' . $m->variantName() . '(__s) => ' . $read . '.map(|__v| ' . $this->casts->convert('__v', $ft, $et) . ')';
+            } elseif ($m->kind === RustType::TUPLE && $literal_key !== null && ctype_digit($literal_key)
+                && isset($m->params[(int) $literal_key])
+            ) {
+                $arms[] = $u->mangle() . '::' . $m->variantName() . '(__t) => Some(' . $this->casts->convert('__t.' . (int) $literal_key, $m->params[(int) $literal_key], $et) . ')';
             }
         }
         return ['{ let __k = ' . $key . '; match ' . $base . ' { ' . implode(', ', $arms) . ', _ => None } }', $et];
