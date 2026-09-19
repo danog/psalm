@@ -32,6 +32,19 @@ interface DateTimeInterface
     public function diff(DateTimeInterface $targetObject, bool $absolute = false): DateInterval;
 }
 
+/** A timezone; Psalm's own stub describes it, and a compiled program needs the class to exist. */
+class DateTimeZone
+{
+    public function __construct(private string $timezone = 'UTC')
+    {
+    }
+
+    public function getName(): string
+    {
+        return $this->timezone;
+    }
+}
+
 /** The difference between two dates; a compiled analyzer only needs its shape. */
 class DateInterval
 {
@@ -84,7 +97,47 @@ class DateTime implements DateTimeInterface
         return new DateInterval();
     }
 
-    public function __construct(string $datetime = 'now')
+    public function getTimezone(): DateTimeZone
+    {
+        return new DateTimeZone();
+    }
+
+    public function setTimezone(DateTimeZone $timezone): DateTime
+    {
+        return $this;
+    }
+
+    public function add(DateInterval $interval): DateTime
+    {
+        return $this;
+    }
+
+    public function sub(DateInterval $interval): DateTime
+    {
+        return $this;
+    }
+
+    public function setTimestamp(int $timestamp): DateTime
+    {
+        return $this;
+    }
+
+    public function setDate(int $year, int $month, int $day): DateTime
+    {
+        return $this;
+    }
+
+    public function setTime(int $hour, int $minute, int $second = 0, int $microsecond = 0): DateTime
+    {
+        return $this;
+    }
+
+    public static function createFromInterface(DateTimeInterface $object): DateTime
+    {
+        return new DateTime();
+    }
+
+    public function __construct(string $datetime = 'now', ?DateTimeZone $timezone = null)
     {
     }
 

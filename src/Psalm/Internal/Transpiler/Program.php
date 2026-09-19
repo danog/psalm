@@ -1314,8 +1314,13 @@ final class Program
             if (($probe = getenv('TRANSPILE_PROP_PROBE')) !== false && $probe !== ''
                 && stripos($model->fqcn . '::$' . $name, $probe) !== false
             ) {
+                $aliases = $model->storage->aliases;
                 fwrite(STDERR, '[prop-probe] ' . $model->fqcn . '::$' . $name . ' = '
                     . ($prop_storage->type === null ? 'null' : $prop_storage->type->getId())
+                    . ' signature=' . ($prop_storage->signature_type === null ? 'null' : $prop_storage->signature_type->getId())
+                    . ' type_at=' . ($prop_storage->type_location?->file_path ?? 'none')
+                    . ':' . ($prop_storage->type_location?->getLineNumber() ?? 0)
+                    . ' uses=' . implode(',', $aliases?->uses ?? [])
                     . ' @ ' . ($prop_storage->location?->file_path ?? 'none') . "\n");
             }
             $field = new FieldModel(
