@@ -7,6 +7,7 @@ namespace Psalm\Tests;
 use Psalm\Context;
 use Psalm\IssueBuffer;
 
+
 /**
  * Narrow probes for inference a compiled build gets wrong: each one names the single thing it
  * measures, and the whole set is reported at once so one run tells the whole story.
