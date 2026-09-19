@@ -16,7 +16,8 @@ pub fn floor(f: f64) -> f64 {
     f.floor()
 }
 /// PHP round(): half away from zero with pre-rounding fuzz.
-/// `mode` is one of PHP's PHP_ROUND_HALF_* constants: UP (1), DOWN (2), EVEN (3), ODD (4).
+/// `mode` is one of PHP's rounding modes: HALF_UP (1), HALF_DOWN (2), HALF_EVEN (3),
+/// HALF_ODD (4), CEILING (5), FLOOR (6), TOWARD_ZERO (7), AWAY_FROM_ZERO (8).
 pub fn round(value: f64, places: i64, mode: i64) -> f64 {
     if !value.is_finite() || value == 0.0 {
         return value;
@@ -27,21 +28,24 @@ pub fn round(value: f64, places: i64, mode: i64) -> f64 {
     if tmp.abs() >= 1e15 {
         return value;
     }
-    // round half away from zero, with a small correction for representation error
-    let r = tmp.round();
-    let diff = (tmp - tmp.trunc()).abs();
-    let rounded = if (diff - 0.5).abs() < 1e-9 * tmp.abs().max(1.0) {
-        // exactly half after fuzz: the mode says which way
-        let down = tmp.trunc();
-        let up = if tmp >= 0.0 { down + 1.0 } else { down - 1.0 };
-        match mode {
-            2 => down,
-            3 => if (down / 2.0).fract() == 0.0 { down } else { up },
-            4 => if (down / 2.0).fract() == 0.0 { up } else { down },
-            _ => up,
-        }
-    } else {
-        r
+    // php_round_helper: the integral part is the value truncated towards zero, and the mode
+    // decides whether to step one away from zero
+    let down = tmp.trunc();
+    let up = if tmp >= 0.0 { down + 1.0 } else { down - 1.0 };
+    let has_fraction = tmp != down;
+    let diff = (tmp - down).abs();
+    let is_half = (diff - 0.5).abs() < 1e-9 * tmp.abs().max(1.0);
+    let rounded = match mode {
+        // the modes that do not look at halves at all
+        5 => if tmp > 0.0 && has_fraction { up } else { down }, // CEILING
+        6 => if tmp < 0.0 && has_fraction { up } else { down }, // FLOOR
+        7 => down,                                             // TOWARD_ZERO
+        8 => if has_fraction { up } else { down },             // AWAY_FROM_ZERO
+        _ if !is_half => tmp.round(),
+        2 => down,                                                      // HALF_DOWN
+        3 => if (down / 2.0).fract() == 0.0 { down } else { up },       // HALF_EVEN
+        4 => if (down / 2.0).fract() == 0.0 { up } else { down },       // HALF_ODD
+        _ => up,                                                        // HALF_UP
     };
     let res = if places >= 0 { rounded / f1 } else { rounded * f1 };
     // use string round-trip to kill representation noise like 1.0049999999

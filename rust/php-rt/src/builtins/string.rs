@@ -641,11 +641,13 @@ pub fn addcslashes(s: &Str, chars: &Str) -> Str {
     }
     Str::from_vec(out)
 }
-/// `flags`: ENT_QUOTES is ENT_COMPAT (2) | ENT_HTML401's single-quote bit (1); either bit alone
-/// converts only that kind of quote, as PHP's own table says.
+/// `flags`: ENT_HTML_QUOTE_SINGLE is 1 and ENT_HTML_QUOTE_DOUBLE is 2, so ENT_QUOTES is both and
+/// either bit alone converts only that kind of quote. The doctype bits (16|32) decide the entity a
+/// single quote becomes: HTML 4.01, which is the default, has no `&apos;`.
 pub fn htmlspecialchars(s: &Str, flags: i64) -> Str {
     let doubles = flags & 2 != 0;
     let singles = flags & 1 != 0;
+    let apos: &[u8] = if flags & (16 | 32) == 0 { b"&#039;" } else { b"&apos;" };
     let mut out = Vec::with_capacity(s.len());
     for &c in s.as_bytes() {
         match c {
@@ -653,7 +655,7 @@ pub fn htmlspecialchars(s: &Str, flags: i64) -> Str {
             b'<' => out.extend_from_slice(b"&lt;"),
             b'>' => out.extend_from_slice(b"&gt;"),
             b'"' if doubles => out.extend_from_slice(b"&quot;"),
-            b'\'' if singles => out.extend_from_slice(b"&#039;"),
+            b'\'' if singles => out.extend_from_slice(apos),
             _ => out.push(c),
         }
     }
@@ -1374,8 +1376,23 @@ pub fn sprintf(format: &Str, args: &[FmtArg]) -> Result<Str, RtError> {
         let spec = f[i];
         i += 1;
         if spec == b'%' {
-            // a `%` conversion writes a literal `%`, taking no argument and no padding, however
-            // the specifier was written: `%5%` and `%1$%` are both just `%`
+            // php_formatted_print: a `%` conversion writes a literal `%` ignoring width and
+            // padding, but still takes an argument slot -- `sprintf("%5%%s", "a", "b")` is "%b".
+            // `%%` never gets here; it is handled before any specifier is parsed.
+            let idx = match argnum {
+                Some(n) => n,
+                None => {
+                    let n = argi;
+                    argi += 1;
+                    n
+                }
+            };
+            if idx >= args.len() {
+                return Err(RtError::new(
+                    "ArgumentCountError",
+                    crate::sfmt!("{} arguments are required, {} given", idx + 2, args.len() + 1),
+                ));
+            }
             out.push(b'%');
             continue;
         }
