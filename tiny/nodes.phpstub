@@ -1,0 +1,22 @@
+<?php declare(strict_types=1);
+
+namespace Tiny\Node\Expr;
+
+use Tiny\Node\Expr;
+
+abstract class CallLike extends Expr {
+    /**
+     * @return list<Expr>
+     */
+    abstract public function getRawArgs(): array;
+}
+
+
+namespace Tiny\Node;
+
+class Name extends NodeAbstract {
+    /**
+     * @param string|string[]|self $name
+     */
+    public function __construct($name) {}
+}

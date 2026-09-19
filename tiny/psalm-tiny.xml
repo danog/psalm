@@ -15,6 +15,7 @@
 >
     <stubs>
         <file name="../src/Psalm/Internal/Transpiler/runtime-stubs/rt.phpstub"/>
+        <file name="nodes.phpstub"/>
     </stubs>
     <projectFiles>
         <directory name="../src/Psalm/Internal/Transpiler/runtime-stubs"/>

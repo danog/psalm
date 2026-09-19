@@ -1427,9 +1427,32 @@ function case_foreach_ref_unset(): string
     return ($m['a'] ?? 0) . ':' . (isset($m['b']) ? 'b' : '-') . ':' . ($m['c'] ?? 0);
 }
 
+// ---- feature: two classes declaring the same union property type keep both members ----
+
+function case_node_parts(): string
+{
+    $part = new \Tiny\Node\InterpolatedStringPart('a');
+    $var = new \Tiny\Node\Expr\Variable('v');
+
+    $shell = new \Tiny\Node\Expr\ShellExec([$part, $var]);
+    $interp = new \Tiny\Node\Scalar\InterpolatedString([$part, $var]);
+
+    $out = '';
+    foreach ($shell->parts as $p) {
+        $out .= $p instanceof \Tiny\Node\InterpolatedStringPart ? 'P' : 'E';
+    }
+    $out .= ':';
+    foreach ($interp->parts as $p) {
+        $out .= $p instanceof \Tiny\Node\InterpolatedStringPart ? 'P' : 'E';
+    }
+
+    return $out;
+}
+
 function run_all(): string
 {
-    return check('foreach_ref_unset', case_foreach_ref_unset(), '10:-:30')
+    return check('node_parts', case_node_parts(), 'PE:PE')
+        . check('foreach_ref_unset', case_foreach_ref_unset(), '10:-:30')
         . check('union_modulo', case_union_modulo(), '1:1:1:1')
         . check('union_tuple_isset', case_union_tuple_isset(), 'arr:obj:none:none')
         . check('dom_node_value', case_dom_node_value(), "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <failure type=\"X\">line1\nline2</failure>\n</report>|line1\nline2")
