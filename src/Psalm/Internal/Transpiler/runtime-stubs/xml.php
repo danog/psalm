@@ -9,6 +9,13 @@ declare(strict_types=1);
  */
 
 /** @internal */
+/** The part of a tag name after its namespace prefix: `xs:complexType` is `complexType`. */
+function __rt_xml_local(string $name): string
+{
+    $colon = strrpos($name, ':');
+    return $colon === false ? $name : substr($name, $colon + 1);
+}
+
 final class XmlNode
 {
     /** @var array<string, string> */
@@ -18,6 +25,9 @@ final class XmlNode
     public array $children = [];
 
     public ?XmlNode $parent = null;
+
+    /** The 1-based source line the element opened on; 0 for a node the parser did not place. */
+    public int $line = 0;
 
     public function __construct(
         public string $name,
@@ -33,9 +43,10 @@ final class XmlNode
             return null;
         }
         $nodes = [];
-        foreach ($flat as [$name, $text, $is_text, $attrs, $parent_index]) {
+        foreach ($flat as [$name, $text, $is_text, $attrs, $parent_index, $line]) {
             $node = new XmlNode($name, $text, $is_text);
             $node->attrs = $attrs;
+            $node->line = $line;
             if ($parent_index >= 0) {
                 $parent = $nodes[$parent_index];
                 $node->parent = $parent;
@@ -104,6 +115,26 @@ final class XmlNode
                 $out[] = $child;
             }
             foreach ($child->descendantsNamed($name) as $d) {
+                $out[] = $d;
+            }
+        }
+        return $out;
+    }
+
+    /** The same walk by local name: `xs:complexType` answers to `complexType`, whatever its prefix. */
+    public function descendantsWithLocalName(string $local): array
+    {
+        $out = [];
+        foreach ($this->children as $child) {
+            if ($child->is_text) {
+                continue;
+            }
+            $colon = strrpos($child->name, ':');
+            $child_local = $colon === false ? $child->name : substr($child->name, $colon + 1);
+            if ($local === '*' || $child_local === $local) {
+                $out[] = $child;
+            }
+            foreach ($child->descendantsWithLocalName($local) as $d) {
                 $out[] = $d;
             }
         }
@@ -680,37 +711,221 @@ class DOMDocument extends DOMNode
         return $this->loadXML($contents, $options);
     }
 
-    /** Replaces `<xi:include href="..."/>` elements with the root element of the referenced file (relative to the cwd). */
+    /**
+     * Replaces `<xi:include href="..."/>` with the root element of the referenced file (relative to the
+     * cwd). A file that cannot be read is replaced by the children of its `<xi:fallback>`; with no
+     * fallback the failure is reported the way libxml reports it.
+     */
     public function xinclude(int $options = 0): int
     {
         $count = 0;
         foreach ($this->xml->descendantsNamed('xi:include') as $inc) {
             $href = $inc->attrs['href'] ?? '';
             $parent = $inc->parent;
-            if ($href === '' || $parent === null) {
+            if ($parent === null) {
                 continue;
             }
-            $contents = file_get_contents($href);
-            $root = $contents === false ? null : XmlNode::parse($contents);
-            if ($root === null) {
-                continue;
-            }
-            foreach ($parent->children as $i => $child) {
-                if ($child === $inc) {
-                    $root->parent = $parent;
-                    $parent->children[$i] = $root;
-                    $inc->parent = null;
-                    break;
+            $contents = $href === '' ? false : @file_get_contents($href);
+            $replacement = [];
+            if ($contents !== false) {
+                $root = XmlNode::parse($contents);
+                if ($root !== null) {
+                    $replacement = [$root];
                 }
             }
+            if ($replacement === []) {
+                $fallback = null;
+                foreach ($inc->children as $child) {
+                    if (!$child->is_text && $child->name === 'xi:fallback') {
+                        $fallback = $child;
+                    }
+                }
+                if ($fallback === null) {
+                    __RtLibXmlErrors::push(
+                        2,
+                        'XInclude: could not load ' . $href . ', and no fallback was found',
+                        $inc->line,
+                    );
+                    continue;
+                }
+                foreach ($fallback->children as $child) {
+                    if (!$child->is_text) {
+                        $replacement[] = $child;
+                    }
+                }
+            }
+            $children = [];
+            foreach ($parent->children as $child) {
+                if ($child !== $inc) {
+                    $children[] = $child;
+                    continue;
+                }
+                foreach ($replacement as $node) {
+                    $node->parent = $parent;
+                    $children[] = $node;
+                }
+                $inc->parent = null;
+            }
+            $parent->children = $children;
             $count++;
         }
         return $count;
     }
 
+    /**
+     * Checks the document against the schema, reporting what it is sure about: an element a complex
+     * type does not list, and an attribute value outside its enumeration. Anything the subset of XSD
+     * understood here cannot decide passes, so a valid document is never rejected.
+     */
     public function schemaValidate(string $filename, int $flags = 0): bool
     {
-        return true;
+        $contents = file_get_contents($filename);
+        $schema = $contents === false ? null : XmlNode::parse($contents);
+        if ($schema === null) {
+            return true;
+        }
+        $types = [];
+        $elements = [];
+        foreach ($schema->elementChildren() as $top) {
+            $name = $top->attrs['name'] ?? '';
+            $local = __rt_xml_local($top->name);
+            if ($name === '') {
+                continue;
+            }
+            if ($local === 'complexType' || $local === 'simpleType') {
+                $types[$name] = $top;
+            } elseif ($local === 'element') {
+                $elements[$name] = $top;
+            }
+        }
+        $root = $this->xml->elementChildren()[0] ?? null;
+        $declared = $root === null ? null : ($elements[$root->name] ?? null);
+        if ($declared === null) {
+            return true;
+        }
+        $before = count(__RtLibXmlErrors::$errors);
+        assert($root !== null);
+        $this->checkAgainstType($root, $this->typeOf($declared, $types), $types);
+        return count(__RtLibXmlErrors::$errors) === $before;
+    }
+
+    /**
+     * @param array<string, XmlNode> $types
+     */
+    private function checkAgainstType(XmlNode $node, ?XmlNode $type, array $types): void
+    {
+        if ($type === null || __rt_xml_local($type->name) !== 'complexType') {
+            return;
+        }
+        $allowed = [];
+        $open = false;
+        $this->collectParticles($type, $types, $allowed, $open);
+        $attributes = [];
+        $any_attribute = false;
+        foreach ($type->elementChildren() as $child) {
+            $local = __rt_xml_local($child->name);
+            if ($local === 'anyAttribute') {
+                $any_attribute = true;
+            } elseif ($local === 'attribute' && isset($child->attrs['name'])) {
+                $attributes[$child->attrs['name']] = $child;
+            }
+        }
+        if (!$any_attribute) {
+            foreach ($node->attrs as $name => $value) {
+                if (isset($attributes[$name])) {
+                    $this->checkEnumeration($node, $name, $value, $attributes[$name], $types);
+                }
+            }
+        }
+        foreach ($node->elementChildren() as $child) {
+            if (str_contains($child->name, ':')) {
+                continue; // a foreign-namespace element (an unresolved XInclude, say) is not ours to judge
+            }
+            if (!isset($allowed[$child->name])) {
+                if (!$open) {
+                    __RtLibXmlErrors::push(
+                        2,
+                        "Element '" . $child->name . "': This element is not expected.",
+                        $child->line,
+                    );
+                }
+                continue;
+            }
+            $this->checkAgainstType($child, $this->typeOf($allowed[$child->name], $types), $types);
+        }
+    }
+
+    /**
+     * The complex or simple type an element declaration names, or the one written inside it.
+     *
+     * @param array<string, XmlNode> $types
+     */
+    private function typeOf(XmlNode $declared, array $types): ?XmlNode
+    {
+        foreach ($declared->elementChildren() as $child) {
+            $local = __rt_xml_local($child->name);
+            if ($local === 'complexType' || $local === 'simpleType') {
+                return $child;
+            }
+        }
+        return $types[$declared->attrs['type'] ?? ''] ?? null;
+    }
+
+    /**
+     * The element names a complex type's content model admits, and whether it admits anything else.
+     *
+     * @param array<string, XmlNode> $types
+     * @param array<string, XmlNode> $allowed
+     */
+    private function collectParticles(XmlNode $node, array $types, array &$allowed, bool &$open): void
+    {
+        foreach ($node->elementChildren() as $child) {
+            $local = __rt_xml_local($child->name);
+            if ($local === 'element' && isset($child->attrs['name'])) {
+                $allowed[$child->attrs['name']] = $child;
+            } elseif ($local === 'any') {
+                $open = true;
+            } elseif ($local === 'sequence' || $local === 'choice' || $local === 'all' || $local === 'group') {
+                $this->collectParticles($child, $types, $allowed, $open);
+            } elseif ($local === 'complexContent' || $local === 'extension' || $local === 'restriction') {
+                $base = $child->attrs['base'] ?? '';
+                if (isset($types[$base])) {
+                    $this->collectParticles($types[$base], $types, $allowed, $open);
+                }
+                $this->collectParticles($child, $types, $allowed, $open);
+            }
+        }
+    }
+
+    /**
+     * @param array<string, XmlNode> $types
+     */
+    private function checkEnumeration(XmlNode $node, string $name, string $value, XmlNode $declared, array $types): void
+    {
+        $simple = $this->typeOf($declared, $types);
+        if ($simple === null || __rt_xml_local($simple->name) !== 'simpleType') {
+            return;
+        }
+        $values = [];
+        foreach ($simple->elementChildren() as $restriction) {
+            if (__rt_xml_local($restriction->name) !== 'restriction') {
+                continue;
+            }
+            foreach ($restriction->elementChildren() as $enumeration) {
+                if (__rt_xml_local($enumeration->name) === 'enumeration' && isset($enumeration->attrs['value'])) {
+                    $values[] = $enumeration->attrs['value'];
+                }
+            }
+        }
+        if ($values === [] || in_array($value, $values, true)) {
+            return;
+        }
+        __RtLibXmlErrors::push(
+            2,
+            "Element '" . $node->name . "', attribute '" . $name . "': '" . $value
+                . "' is not an element of the set {'" . implode("', '", $values) . "'}.",
+            $node->line,
+        );
     }
 
     /** @return string|false */
@@ -749,10 +964,14 @@ class DOMDocument extends DOMNode
         return new DOMCdataSection(new XmlNode('#text', $data, true), $this);
     }
 
-    /** Namespace-qualified lookup: the port's XML model keeps local names only, so the namespace is ignored. */
+    /** Namespace-qualified lookup: the model carries no namespace URIs, so only the local name is matched. */
     public function getElementsByTagNameNS(?string $namespace, string $localName): DOMNodeList
     {
-        return $this->getElementsByTagName($localName);
+        $nodes = [];
+        foreach ($this->xml->descendantsWithLocalName($localName) as $n) {
+            $nodes[] = DOMNode::wrap($n, $this);
+        }
+        return new DOMNodeList($nodes);
     }
 
     public function getElementsByTagName(string $qualifiedName): DOMNodeList
@@ -830,6 +1049,42 @@ class LibXMLError
     public string $message = '';
     public string $file = '';
     public int $line = 0;
+}
+
+/** The libxml error queue: what a parse or a validation reported, until something reads it. */
+final class __RtLibXmlErrors
+{
+    /** @var list<LibXMLError> */
+    public static array $errors = [];
+
+    public static bool $internal = false;
+
+    public static function push(int $level, string $message, int $line = 0): void
+    {
+        $error = new LibXMLError();
+        $error->level = $level;
+        $error->message = $message;
+        $error->line = $line;
+        self::$errors[] = $error;
+    }
+}
+
+function libxml_use_internal_errors(bool $use_errors = false): bool
+{
+    $previous = __RtLibXmlErrors::$internal;
+    __RtLibXmlErrors::$internal = $use_errors;
+    return $previous;
+}
+
+/** @return list<LibXMLError> */
+function libxml_get_errors(): array
+{
+    return __RtLibXmlErrors::$errors;
+}
+
+function libxml_clear_errors(): void
+{
+    __RtLibXmlErrors::$errors = [];
 }
 
 function simplexml_import_dom(DOMNode $node): ?SimpleXMLElement

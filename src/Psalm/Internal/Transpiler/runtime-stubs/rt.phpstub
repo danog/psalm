@@ -8,8 +8,7 @@
 /** @return list<array{int, string, int, int}> */
 function __rt_tokenize(string $code): array {}
 
-/** @return mixed */
-/** @return list<array{string, string, bool, array<string, string>, int}>|null name, text, is text node, attributes, parent index (-1: root) */
+/** @return list<array{string, string, bool, array<string, string>, int, int}>|null name, text, is text node, attributes, parent index (-1: root), source line */
 function __rt_xml_parse(string $xml): ?array {}
 
 function __rt_xml_escape(string $text, bool $attribute = false): string {}
