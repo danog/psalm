@@ -27,7 +27,6 @@ use Psalm\Internal\Analyzer\CommentAnalyzer;
 use Psalm\Internal\Analyzer\NamespaceAnalyzer;
 use Psalm\Internal\Analyzer\ScopeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\SimpleTypeInferer;
-use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\Scanner\FileScanner;
@@ -61,6 +60,7 @@ use function array_keys;
 use function array_pop;
 use function array_search;
 use function count;
+use function function_exists;
 use function end;
 use function explode;
 use function in_array;
@@ -1048,18 +1048,15 @@ final class FunctionLikeNodeScanner
                     return [$function_id, $storage, null, null, null, null, false, null, true];
                 }
 
-                if (\defined('PSALM_COMPILED')) {
-                    // a compiled program lists only its own functions in get_defined_functions() and
-                    // cannot reflect where PHP defines its own: the call map is what PHP provides,
-                    // and none of it is defined in the file being scanned
-                    $redefines_a_core_function = InternalCallMapHandler::inCallMap($function_id);
-                } else {
-                    /** @psalm-suppress ArgumentTypeCoercion */
-                    $redefines_a_core_function = isset($this->config->getPredefinedFunctions()[$function_id])
-                        && (new ReflectionFunction($function_id))->getFileName() !== $this->file_path;
-                }
+                // get_defined_functions() lists only the compiled program's own functions, so a
+                // compiled program asks the runtime which ones it provides instead. The call map is
+                // not the question: it describes extensions that may not be loaded at all.
+                $already_defined = \defined('PSALM_COMPILED')
+                    ? function_exists($function_id)
+                    : isset($this->config->getPredefinedFunctions()[$function_id]);
 
-                if ($redefines_a_core_function) {
+                /** @psalm-suppress ArgumentTypeCoercion */
+                if ($already_defined && (new ReflectionFunction($function_id))->getFileName() !== $this->file_path) {
                     IssueBuffer::maybeAdd(
                         new DuplicateFunction(
                             'Method ' . $function_id . ' has already been defined as a core function',

@@ -111,9 +111,9 @@ final class Functions
         }
 
         if (!$root_file_path || !$checked_file_path) {
-            // deliberately NOT registering from the call map here: a caller with no file to name is
-            // asking about a callable it knows the shape of (CallableTypeComparator), and the throw
-            // is what sends it to the call-map overload that matches that shape
+            // deliberately NOT registering a call-map function here, nor at the lookup below: a
+            // caller asking about a callable knows the shape it wants, and the throw is what sends
+            // it to the call-map overload matching that shape rather than the map's first entry
             if ($this->reflection->hasFunction($function_id)) {
                 return $this->reflection->getFunctionStorage($function_id);
             }
@@ -123,7 +123,7 @@ final class Functions
             );
         }
 
-        if ($this->registerIfProvidedByPhp($function_id)) {
+        if ($this->reflection->hasFunction($function_id)) {
             return $this->reflection->getFunctionStorage($function_id);
         }
 
@@ -557,21 +557,6 @@ final class Functions
         }
 
         return $mutations;
-    }
-
-    /**
-     * Whether reflection describes this function, registering it from the call map first when a
-     * compiled program asks: there it is the only description of the functions PHP itself provides,
-     * and nothing reflects them until something asks.
-     */
-    private function registerIfProvidedByPhp(string $function_id): bool
-    {
-        if (!$this->reflection->hasFunction($function_id) && \defined('PSALM_COMPILED')) {
-            /** @psalm-suppress ArgumentTypeCoercion */
-            $this->reflection->registerFunction($function_id);
-        }
-
-        return $this->reflection->hasFunction($function_id);
     }
 
     /**
