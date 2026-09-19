@@ -640,11 +640,12 @@ trait LValueTrait
                 $elems[] = $m->params[1];
             } elseif ($m->kind === RustType::SHAPE && $literal_key !== null && isset($m->fields[$literal_key])) {
                 $elems[] = $m->fields[$literal_key][0];
-            } elseif ($m->kind === RustType::TUPLE && $literal_key !== null && ctype_digit($literal_key)
-                && isset($m->params[(int) $literal_key])
-            ) {
-                // `array{Union, Union}|list<Union>` indexed by a constant: the tuple answers from its field
-                $elems[] = $m->params[(int) $literal_key];
+            } elseif ($m->kind === RustType::TUPLE) {
+                // `array{Union, Union}|array<never, never>`: the tuple answers from the field a constant
+                // names, and otherwise as the list it is (`$t->type_params[$offset]`)
+                $elems[] = $literal_key !== null && ctype_digit($literal_key) && isset($m->params[(int) $literal_key])
+                    ? $m->params[(int) $literal_key]
+                    : $this->types()->combine($m->params);
             }
         }
         if ($elems === []) {
@@ -664,10 +665,14 @@ trait LValueTrait
                 [$ft, $opt] = $m->fields[$literal_key];
                 $read = $opt ? '__s.' . Names::field($literal_key) : 'Some(__s.' . Names::field($literal_key) . ')';
                 $arms[] = $u->mangle() . '::' . $m->variantName() . '(__s) => ' . $read . '.map(|__v| ' . $this->casts->convert('__v', $ft, $et) . ')';
-            } elseif ($m->kind === RustType::TUPLE && $literal_key !== null && ctype_digit($literal_key)
-                && isset($m->params[(int) $literal_key])
-            ) {
-                $arms[] = $u->mangle() . '::' . $m->variantName() . '(__t) => Some(' . $this->casts->convert('__t.' . (int) $literal_key, $m->params[(int) $literal_key], $et) . ')';
+            } elseif ($m->kind === RustType::TUPLE) {
+                if ($literal_key !== null && ctype_digit($literal_key) && isset($m->params[(int) $literal_key])) {
+                    $arms[] = $u->mangle() . '::' . $m->variantName() . '(__t) => Some(' . $this->casts->convert('__t.' . (int) $literal_key, $m->params[(int) $literal_key], $et) . ')';
+                } else {
+                    $lt = RustType::list($this->types()->combine($m->params));
+                    $arms[] = $u->mangle() . '::' . $m->variantName() . '(__t) => ' . $this->casts->convert('__t', $m, $lt)
+                        . '.get(php_rt::ToInt::to_php_int(&__k)).cloned().map(|__v| ' . $this->casts->convert('__v', $lt->inner(), $et) . ')';
+                }
             }
         }
         return ['{ let __k = ' . $key . '; match ' . $base . ' { ' . implode(', ', $arms) . ', _ => None } }', $et];

@@ -1847,7 +1847,14 @@ trait ExprTrait
                     $ft = $bt->params[(int) $key];
                     return $this->flattenOption($base->code . '.map(|__b| __b.' . (int) $key . ')', $ft);
                 }
-                return new Val('{ let _ = ' . $base->code . '; None::<()> }', RustType::option(RustType::unit()));
+                if ($key !== null) {
+                    return new Val('{ let _ = ' . $base->code . '; None::<()> }', RustType::option(RustType::unit()));
+                }
+                // a variable offset (`$type_params[$offset]`): the tuple answers as the list it is
+                $lt = RustType::list($this->types()->combine($bt->params));
+                $code = '{ let __k = ' . $this->exprTo($dim, RustType::int()) . '; ' . $base->code
+                    . '.and_then(|__b| ' . $this->casts->convert('__b', $bt, $lt) . '.get(__k).cloned()) }';
+                return $this->flattenOption($code, $lt->inner());
             }
             if ($bt->kind === RustType::MIXED) {
                 $k = $this->expr($dim);

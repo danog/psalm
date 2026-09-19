@@ -1311,7 +1311,15 @@ function case_union_tuple_index(): string
     $pair = new TypeParams([new A(3), new B(4)]);
     $dflt = new TypeParams();
 
-    return $pair->params[0]->a . ':' . $pair->params[1]->b . ':' . $dflt->params[0]->a;
+    // a variable offset, as `$input_type->type_params[$offset]` uses
+    $set = 0;
+    foreach ([0, 1, 2] as $offset) {
+        if (isset($pair->params[$offset])) {
+            $set++;
+        }
+    }
+
+    return $pair->params[0]->a . ':' . $pair->params[1]->b . ':' . $dflt->params[0]->a . ':' . $set;
 }
 
 // ---- feature: a node's text written through nodeValue is serialized ------
@@ -1330,10 +1338,58 @@ function case_dom_node_value(): string
     return trim($doc->saveXML()) . '|' . (string) $item->nodeValue;
 }
 
+abstract class Atom
+{
+}
+
+final class ArrAtom extends Atom
+{
+    /** @var array{A, B} */
+    public array $tp;
+
+    public function __construct(A $a, B $b)
+    {
+        $this->tp = [$a, $b];
+    }
+}
+
+final class ObjAtom extends Atom
+{
+    /** @var list<A> */
+    public array $tp;
+
+    /** @param list<A> $tp */
+    public function __construct(array $tp)
+    {
+        $this->tp = $tp;
+    }
+}
+
+/** The shape of `$input_type->type_params[$offset]`: the guard reads through the base enum. */
+function atom_param(Atom $atom, int $offset): string
+{
+    if ($atom instanceof ArrAtom && isset($atom->tp[$offset])) {
+        return 'arr';
+    }
+    if ($atom instanceof ObjAtom && isset($atom->tp[$offset])) {
+        return 'obj';
+    }
+    return 'none';
+}
+
+function case_union_tuple_isset(): string
+{
+    return atom_param(new ArrAtom(new A(1), new B(2)), 1)
+        . ':' . atom_param(new ObjAtom([new A(1)]), 0)
+        . ':' . atom_param(new ObjAtom([]), 0)
+        . ':' . atom_param(new ArrAtom(new A(1), new B(2)), 5);
+}
+
 function run_all(): string
 {
-    return check('dom_node_value', case_dom_node_value(), "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <failure type=\"X\">line1\nline2</failure>\n</report>|line1\nline2")
-        . check('union_tuple_index', case_union_tuple_index(), '3:4:9')
+    return check('union_tuple_isset', case_union_tuple_isset(), 'arr:obj:none:none')
+        . check('dom_node_value', case_dom_node_value(), "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <failure type=\"X\">line1\nline2</failure>\n</report>|line1\nline2")
+        . check('union_tuple_index', case_union_tuple_index(), '3:4:9:2')
         . check('static_const', case_static_const(), '24:-1|138:1|')
         . check('splice_keys', case_splice_keys(), 'foo\\bar:baz')
         . check('dom_config', case_dom_config(), 'set+fn:eval,print,')
