@@ -1311,6 +1311,13 @@ final class Program
                 continue;
             }
             $this->types->context = $model->fqcn . '::$' . $name;
+            if (($probe = getenv('TRANSPILE_PROP_PROBE')) !== false && $probe !== ''
+                && stripos($model->fqcn . '::$' . $name, $probe) !== false
+            ) {
+                fwrite(STDERR, '[prop-probe] ' . $model->fqcn . '::$' . $name . ' = '
+                    . ($prop_storage->type === null ? 'null' : $prop_storage->type->getId())
+                    . ' @ ' . ($prop_storage->location?->file_path ?? 'none') . "\n");
+            }
             $field = new FieldModel(
                 $name,
                 $this->types->map($prop_storage->type),
