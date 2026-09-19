@@ -6,8 +6,10 @@ namespace Psalm\Tests;
 
 use Psalm\Context;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
+use Psalm\Internal\Codebase\Methods;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\Comparator\CallableTypeComparator;
+use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TClassString;
 use Psalm\Type\Atomic\TLiteralString;
 use Psalm\IssueBuffer;
@@ -343,6 +345,54 @@ final class CompiledProbeTest extends TestCase
                 'strlen_mutations' => $strlen?->allowed_mutations ?? -1,
                 'createFromInterface' => (string) $create->return_type,
                 'class_string_as' => $as_type === null ? 'absent' : $as_type->getId(),
+            ], JSON_THROW_ON_ERROR),
+        );
+    }
+    /**
+     * Localizing a template parameter REPLACES it with what the child class bound it to; a union of
+     * the two means the removal did not take.
+     */
+    public function testLocalizingATemplateParamReplacesIt(): void
+    {
+        $file_path = self::$src_dir_path . 'somefile7.php';
+
+        $this->addFile(
+            $file_path,
+            '<?php
+                interface I {}
+                class Impl implements I {}
+
+                /** @template T of I */
+                abstract class C {
+                    /** @var array<string, T> */
+                    protected $items = [];
+                }
+
+                /** @template-extends C<Impl> */
+                class Test extends C {}',
+        );
+
+        $this->project_analyzer->getConfig()->throw_exception = false;
+        $this->analyzeFile($file_path, new Context());
+
+        $codebase = $this->project_analyzer->getCodebase();
+        $c = $codebase->classlike_storage_provider->get('C');
+        $item = $c->properties['items']->type?->getSingleAtomic();
+        $value = $item instanceof TArray ? $item->type_params[1] : null;
+
+        $this->assertSame(
+            ['property' => 'array<string, T:C as I>', 'localized' => 'Impl'],
+            [
+                'property' => $c->properties['items']->type?->getId() ?? 'absent',
+                'localized' => $value === null
+                    ? 'absent'
+                    : Methods::localizeType($codebase, $value, 'Test', 'C')->getId(),
+            ],
+            json_encode([
+                'property' => $c->properties['items']->type?->getId() ?? 'absent',
+                'localized' => $value === null
+                    ? 'absent'
+                    : Methods::localizeType($codebase, $value, 'Test', 'C')->getId(),
             ], JSON_THROW_ON_ERROR),
         );
     }
