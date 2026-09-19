@@ -1241,9 +1241,62 @@ function case_semver_constraints(): string
     return $out;
 }
 
+// ---- feature: late static binding for class constants -------------------
+
+abstract class Issue
+{
+    public const SHORTCODE = 0;
+    public const LEVEL = -1;
+
+    public function code(): int
+    {
+        return static::SHORTCODE;
+    }
+
+    public function level(): int
+    {
+        return static::LEVEL;
+    }
+}
+
+final class UndefinedThing extends Issue
+{
+    public const SHORTCODE = 24;
+}
+
+final class MixedThing extends Issue
+{
+    public const SHORTCODE = 138;
+    public const LEVEL = 1;
+}
+
+function case_static_const(): string
+{
+    $issues = [new UndefinedThing(), new MixedThing()];
+    $out = '';
+    foreach ($issues as $issue) {
+        $out .= $issue->code() . ':' . $issue->level() . '|';
+    }
+    return $out;
+}
+
+// ---- feature: array_splice keeps the string keys it extracts -------------
+
+function case_splice_keys(): string
+{
+    $dependencies = [];
+    foreach (['foo\\bar', 'baz'] as $name) {
+        $dependencies[$name] = true;
+    }
+    $taken = array_splice($dependencies, 0, 1);
+    return (string) key($taken) . ':' . implode(',', array_keys($dependencies));
+}
+
 function run_all(): string
 {
-    return check('dom_config', case_dom_config(), 'set+fn:eval,print,')
+    return check('static_const', case_static_const(), '24:-1|138:1|')
+        . check('splice_keys', case_splice_keys(), 'foo\\bar:baz')
+        . check('dom_config', case_dom_config(), 'set+fn:eval,print,')
         . check('semver_constraints', case_semver_constraints(), '00111')
         . check('xml_config', case_xml_config(), 'set+fn:print,var_export,')
         . check('callee_narrowing', case_callee_narrowing(), 'one:x|skip')
