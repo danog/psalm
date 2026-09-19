@@ -188,7 +188,18 @@ final class ClassLikeNodeScanner
                     return false;
                 }
 
-                if (!$this->codebase->register_stub_files) {
+                // a compiled program's own sources are how it provides the classes PHP provides: code
+                // being analysed that declares one of them (`interface Stringable` on PHP 7.4) is not
+                // redeclaring anything the interpreter would have had, so its declaration stands
+                if (\defined('PSALM_COMPILED')
+                    && !$this->codebase->register_stub_files
+                    && $duplicate_storage->location !== null
+                    && $duplicate_storage->location->file_path !== $this->file_path
+                    && !$this->config->isInProjectDirs($duplicate_storage->location->file_path)
+                    && $this->config->isInProjectDirs($this->file_path)
+                ) {
+                    $this->codebase->classlike_storage_provider->remove($fq_classlike_name_lc);
+                } elseif (!$this->codebase->register_stub_files) {
                     if (!$duplicate_storage->stmt_location
                         || $duplicate_storage->stmt_location->file_path !== $this->file_path
                         || $class_location->getHash() !== $duplicate_storage->stmt_location->getHash()
