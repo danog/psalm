@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Tests;
 
 use Psalm\Context;
+use Psalm\IssueBuffer;
 
 /**
  * Narrow probes for inference a compiled build gets wrong: each one names the single thing it
@@ -155,5 +156,62 @@ final class CompiledProbeTest extends TestCase
             ],
             $actual,
         );
+    }
+    /**
+     * A method reached through an intersection (`Type&FooType`) exists as surely as one on the class
+     * itself: the analyzer looks the call up on every member of the intersection.
+     */
+    public function testIntersectionMethodsAreFound(): void
+    {
+        $file_path = self::$src_dir_path . 'somefile4.php';
+
+        $this->addFile(
+            $file_path,
+            '<?php
+                class Base {
+                    /** @psalm-assert FooType $this */
+                    public function assertFoo(): void {
+                        if (!$this instanceof FooType) { throw new RuntimeException("x"); }
+                    }
+
+                    /** @psalm-assert BarType $this */
+                    public function assertBar(): void {
+                        if (!$this instanceof BarType) { throw new RuntimeException("x"); }
+                    }
+                }
+
+                interface FooType { public function foo(): void; }
+                interface BarType { public function bar(): void; }
+
+                function takesBase(Base $t): void {
+                    $t->assertFoo();
+                    $t->assertBar();
+                    $t->foo();
+                    $t->bar();
+                }
+
+                interface Plain {}
+                interface WithMethod { public function baz(): int; }
+
+                function takesPlain(Plain $p): void {
+                    if ($p instanceof WithMethod) {
+                        $p->baz();
+                    }
+                }',
+        );
+
+        $this->project_analyzer->getConfig()->throw_exception = false;
+
+        $this->analyzeFile($file_path, new Context());
+
+        $issues = [];
+
+        foreach (IssueBuffer::getIssuesData() as $file_issues) {
+            foreach ($file_issues as $issue) {
+                $issues[] = $issue->type . ': ' . $issue->message;
+            }
+        }
+
+        $this->assertSame([], $issues);
     }
 }
