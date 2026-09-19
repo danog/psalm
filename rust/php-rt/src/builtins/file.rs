@@ -578,4 +578,4 @@ pub fn lz4_compress(_s: &Str) -> Option<Str> {
 pub fn lz4_uncompress(_s: &Str) -> Option<Str> {
     None
 }
-pub fn clearstatcache(_clear_realpath_cache: bool) {}
+pub fn clearstatcache(_clear_realpath_cache: bool, _filename: &Str) {}
