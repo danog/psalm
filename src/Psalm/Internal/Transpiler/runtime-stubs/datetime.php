@@ -93,15 +93,20 @@ class DateInterval
  * A minimal DateTime for the compiled analyzer: it only has to tell whether a modifier string is one PHP's
  * date parser accepts (DateTimeModifyReturnTypeProvider infers `DateTime|false` from that). Absolute dates are
  * not modelled; the recognised relative formats are the common ones ("+1 day", "next monday", "midnight", ...).
+ *
+ * A compiled program also reads this declaration as the description of the class, so every signature
+ * here says what the call map says (`datetime::*`), not what the running PHP declares.
  */
 class DateTime implements DateTimeInterface
 {
-    public function format(string $format): string
+    /** @return string|false */
+    public function format(string $format)
     {
         return '';
     }
 
-    public function getTimestamp(): int
+    /** @return int|false */
+    public function getTimestamp()
     {
         return 0;
     }
@@ -116,52 +121,65 @@ class DateTime implements DateTimeInterface
         return new DateInterval();
     }
 
-    public function getTimezone(): DateTimeZone
+    /** @return DateTimeZone|false */
+    public function getTimezone()
     {
         return new DateTimeZone();
     }
 
-    public function setTimezone(DateTimeZone $timezone): DateTime
+    /** @return static */
+    public function setTimezone(DateTimeZone $timezone): self
     {
         return $this;
     }
 
-    public function add(DateInterval $interval): DateTime
+    /** @return static */
+    public function add(DateInterval $interval): self
     {
         return $this;
     }
 
-    public function sub(DateInterval $interval): DateTime
+    /** @return static */
+    public function sub(DateInterval $interval): self
     {
         return $this;
     }
 
-    public function setTimestamp(int $timestamp): DateTime
+    /** @return static */
+    public function setTimestamp(int $timestamp): self
     {
         return $this;
     }
 
-    public function setDate(int $year, int $month, int $day): DateTime
+    /** @return static */
+    public function setDate(int $year, int $month, int $day): self
     {
         return $this;
     }
 
-    public function setTime(int $hour, int $minute, int $second = 0, int $microsecond = 0): DateTime
+    /** @return static */
+    public function setTime(int $hour, int $minute, int $second = 0, int $microsecond = 0): self
     {
         return $this;
     }
 
-    public static function createFromInterface(DateTimeInterface $object): DateTime
+    /** @return static */
+    public static function createFromInterface(DateTimeInterface $object): self
     {
-        return new DateTime();
+        return new static();
     }
 
     public function __construct(string $datetime = 'now', ?DateTimeZone $timezone = null)
     {
     }
 
-    /** Since PHP 8.3 an unparseable modifier is an exception, not a false return. */
-    public function modify(string $modifier): static
+    /**
+     * Since PHP 8.3 an unparseable modifier raises rather than returning false, but the call map
+     * still describes the return as `false|static`, so that is what this declares.
+     *
+     * @return static|false
+     */
+    public function modify(string $modifier)
     {
         $offset = $this->unparseableAt($modifier);
         if ($offset !== null) {
