@@ -239,6 +239,17 @@ abstract class ReflectionFunctionAbstract
         return false;
     }
 
+    /** Everything a compiled program can reflect is part of the program itself. */
+    public function isUserDefined(): bool
+    {
+        return true;
+    }
+
+    public function isInternal(): bool
+    {
+        return false;
+    }
+
     public string $name = '';
 
     public function getName(): string
