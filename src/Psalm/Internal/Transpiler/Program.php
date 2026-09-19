@@ -1716,7 +1716,13 @@ final class Program
      * (a bodyless interface/abstract method receives the group's decision). Ungrouped methods (private,
      * leaf-own non-overriding) form singleton groups and simply keep their local analysis.
      */
-    private function computeBorrowAgreement(): void
+    /**
+     * The dispatch groups: instance methods that a virtual call may route to one another, so that a
+     * decision about a signature can be taken for the whole group at once.
+     *
+     * @return list<list<MethodModel>>
+     */
+    private function dispatchGroups(): array
     {
         $parent = [];
         $models = [];
@@ -1769,6 +1775,54 @@ final class Program
         foreach ($models as $id => $m) {
             $groups[$find($id)][] = $m;
         }
+        return array_values($groups);
+    }
+
+    /**
+     * A method whose override takes an extra by-reference parameter has to declare it too: dispatch
+     * forwards a fresh default for a parameter the base does not have, so what the override writes
+     * through the reference is written into a temporary and lost.
+     *
+     * @param list<list<MethodModel>> $groups
+     */
+    private function computeArityAgreement(array $groups): void
+    {
+        foreach ($groups as $group) {
+            $widest = null;
+            foreach ($group as $m) {
+                $count = count($m->storage->params);
+                if ($widest === null || $count > count($widest->storage->params)) {
+                    $widest = $m;
+                }
+            }
+            if ($widest === null) {
+                continue;
+            }
+            $extra = array_values($widest->storage->params);
+            $by_ref = false;
+            foreach ($group as $m) {
+                for ($i = count($m->storage->params); $i < count($extra); $i++) {
+                    if ($extra[$i]->by_ref) {
+                        $by_ref = true;
+                    }
+                }
+            }
+            if (!$by_ref) {
+                continue; // a parameter passed by value is as safe to drop here as PHP makes it
+            }
+            foreach ($group as $m) {
+                for ($i = count($m->storage->params); $i < count($extra); $i++) {
+                    $m->storage->params[$i] = clone $extra[$i];
+                    $m->param_types[$i] = $widest->param_types[$i] ?? RustType::mixed();
+                }
+            }
+        }
+    }
+
+    private function computeBorrowAgreement(): void
+    {
+        $groups = $this->dispatchGroups();
+        $this->computeArityAgreement($groups);
         foreach ($groups as $group) {
             $agreed = null;
             $has_body = false;

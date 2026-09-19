@@ -1532,6 +1532,7 @@ function run_all(): string
         . check('static_false_compare', case_static_false_compare(), 'called:1|caught')
         . check('coalesce_nullable', case_coalesce_nullable(), 'none|a')
         . check('static_via_object', case_static_via_object(), 'no|yes|7')
+        . check('byref_override_arg', case_byref_override_arg(), 'a:stop/no|b:go/yes')
         . check('array_to_xml', case_array_to_xml(), "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item/>\n</report>\n|<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item>\n    <severity>error</severity>\n    <line_from>4</line_from>\n    <taint_trace/>\n    <refs>\n      <label>a &amp; b</label>\n    </refs>\n    <refs>\n      <label>c</label>\n    </refs>\n  </item>\n</report>\n");
 }
 
@@ -2273,4 +2274,45 @@ function case_static_via_object(): string
     $out = $hook::$called ? 'yes' : 'no';
     SVOHook::fire();
     return $out . '|' . ($hook::$called ? 'yes' : 'no') . '|' . $hook::$count;
+}
+
+// ---- feature: an override's extra by-reference parameter reaches the caller ----
+
+interface BRVisitor
+{
+    public function visit(string $name): string;
+}
+
+final class BRPlain implements BRVisitor
+{
+    public function visit(string $name): string
+    {
+        return $name . ':go';
+    }
+}
+
+final class BRStopper implements BRVisitor
+{
+    public function visit(string $name, bool &$descend = true): string
+    {
+        $descend = false;
+        return $name . ':stop';
+    }
+}
+
+/** @param list<array{string, BRVisitor}> $rows */
+function br_run(array $rows): string
+{
+    $out = [];
+    foreach ($rows as [$name, $visitor]) {
+        $descend = true;
+        $label = $visitor->visit($name, $descend);
+        $out[] = $label . '/' . ($descend ? 'yes' : 'no');
+    }
+    return implode('|', $out);
+}
+
+function case_byref_override_arg(): string
+{
+    return br_run([['a', new BRStopper()], ['b', new BRPlain()]]);
 }
