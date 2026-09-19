@@ -183,7 +183,11 @@ final class FileDiffTest extends TestCase
             $this->assertSame(
                 $a_stmt->attrs()->startFilePos,
                 $b_stmt->attrs()->startFilePos,
-                'start of ' . get_class($a_stmt) . ' on line ' . $a_stmt->getLine() . '; changes ' . $context,
+                'start of ' . get_class($a_stmt) . ' on line ' . $a_stmt->getLine()
+                    . ' [' . $a_stmt->attrs()->startFilePos . '..' . $a_stmt->attrs()->endFilePos . ']'
+                    . '; partial is ' . get_class($b_stmt) . ' on line ' . $b_stmt->getLine()
+                    . ' [' . $b_stmt->attrs()->startFilePos . '..' . $b_stmt->attrs()->endFilePos . ']'
+                    . '; changes ' . $context,
             );
             $this->assertSame(
                 $a_stmt->attrs()->endFilePos,
@@ -191,7 +195,11 @@ final class FileDiffTest extends TestCase
                 'end of ' . ($a_stmt instanceof PhpParser\Node\Stmt\Expression
                     ? get_class($a_stmt->expr)
                     : get_class($a_stmt))
-                    . ' on line ' . $a_stmt->getLine() . '; changes ' . $context,
+                    . ' on line ' . $a_stmt->getLine()
+                    . ' [' . $a_stmt->attrs()->startFilePos . '..' . $a_stmt->attrs()->endFilePos . ']'
+                    . '; partial is on line ' . $b_stmt->getLine()
+                    . ' [' . $b_stmt->attrs()->startFilePos . '..' . $b_stmt->attrs()->endFilePos . ']'
+                    . '; changes ' . $context,
             );
             $this->assertSame($a_stmt->getLine(), $b_stmt->getLine());
 
