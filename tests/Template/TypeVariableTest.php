@@ -40,10 +40,68 @@ final class TypeVariableTest extends TestCase
 
                     /**
                      * @param array<Foo> $users
-                     * @return XIteratorOnArray<array-key, Foo>|XIteratorOnArray<never, never>
+                     * @return XIteratorOnArray<array-key, Foo>
                      */
                     function filter(array $users): XIteratorOnArray {
                         return new XIteratorOnArray($users);
+                    }',
+            ],
+            'multipleReturnTypes' => [
+                'code' => '<?php
+                    /** @template-covariant TKey */
+                    class It {
+                        /** @param array<TKey, mixed> $array */
+                        public function __construct(array $array = []) {}
+                        /**
+                         * @param callable(TKey): mixed $func
+                         * @psalm-suppress InvalidTemplateParam
+                         */
+                        public function sortBy(callable $func): void {}
+                    }
+
+                    /** @return It<string>|It<int> */
+                    function takeNew(): It {
+                        return random_int(0, 1) === 0 ? new It([0]) : new It(["hello"]);
+                    }',
+            ],
+            'multipleReturnTypesNotCovariant' => [
+                'code' => '<?php
+                    /** @template TKey */
+                    class It {
+                        /** @param array<TKey, mixed> $array */
+                        public function __construct(array $array = []) {}
+                        /**
+                         * @param callable(TKey): mixed $func
+                         */
+                        public function sortBy(callable $func): void {}
+                    }
+
+                    /** @return It<string>|It<int> */
+                    function takeNew(): It {
+                        return random_int(0, 1) === 0 ? new It([0]) : new It(["hello"]);
+                    }',
+            ],
+            'emptyConstructionAgainstUnionKeyReturn' => [
+                // an empty `new It()` returned where the declared type is a
+                // union of two key instantiations (It<string>|It<int>). Hack
+                // accepts this: it localizes the declared union to
+                // It<string|int> (covariant), so the variable only gains an
+                // upper bound.
+                'code' => '<?php
+                    /** @template-covariant TKey */
+                    class It {
+                        /** @param array<TKey, mixed> $array */
+                        public function __construct(array $array = []) {}
+                        /**
+                         * @param callable(TKey): mixed $func
+                         * @psalm-suppress InvalidTemplateParam
+                         */
+                        public function sortBy(callable $func): void {}
+                    }
+
+                    /** @return It<string>|It<int> */
+                    function takeNew(): It {
+                        return new It();
                     }',
             ],
             'methodCallOnIteratorElement' => [
@@ -298,6 +356,53 @@ final class TypeVariableTest extends TestCase
                         });
                     }',
             ],
+            'typedClosureParamAgainstEmptyConstruction' => [
+                // an empty `new ArrayCollection()` assigned to a
+                // `ArrayCollection<int, DateTime>` property, then given a closure
+                // whose param is typed `DateTime`: the typed param constrains the
+                // variable from above (`_0 <: DateTime`), it is not overwritten by
+                // the `never` the empty construction inferred (which reported
+                // ParadoxicalCondition / InvalidScalarArgument). Hack accepts it.
+                'code' => '<?php
+                    class Test
+                    {
+                        /** @var ArrayCollection<int, DateTime> */
+                        private $c;
+
+                        public function __construct()
+                        {
+                            $this->c = new ArrayCollection();
+                            $this->c->filter(function (DateTime $dt): bool {
+                                return $dt === $dt;
+                            });
+                        }
+                    }
+
+                    /**
+                     * @psalm-template TKey of array-key
+                     * @psalm-template T
+                     */
+                    class ArrayCollection
+                    {
+                        /** @var array<TKey, T> */
+                        private $elements = [];
+
+                        /** @psalm-param array<TKey,T> $elements */
+                        public function __construct(array $elements = [])
+                        {
+                            $this->elements = $elements;
+                        }
+
+                        /**
+                         * @param Closure(T): bool $p
+                         * @return ArrayCollection<TKey, T>
+                         */
+                        public function filter(Closure $p)
+                        {
+                            return new self(array_filter($this->elements, $p));
+                        }
+                    }',
+            ],
             'unboundConstructorTemplate' => [
                 'code' => '<?php
                     /** @template T of int|string */
@@ -388,13 +493,11 @@ final class TypeVariableTest extends TestCase
     {
         return [
             'inhabitedVariableNotContainedByNeverReturn' => [
-                // returning `a<int>` where `@return a<never>` is declared is still
-                // rejected: an inhabited type variable is not a subtype of `never`,
-                // so the containment fails (Hack reports the invariant `nothing`
-                // mismatch: "Expected nothing ... But got int"). Guards the
-                // UnionTypeComparator never-arm fix against hiding this — the
-                // single-arm case must error even though the union arm in
-                // `possiblyEmptyArray` is allowed to fall through to its other arm.
+                // returning `a<int>` where `@return a<never>` is declared must be
+                // rejected: an inhabited type variable is not a subtype of `never`
+                // (Hack reports the invariant `nothing` mismatch, "Expected nothing
+                // ... But got int"). The exact Psalm issue is not important — this
+                // guards only that it stays an error, not silently accepted.
                 'code' => '<?php
                     /** @template T */
                     final class a {
@@ -406,7 +509,7 @@ final class TypeVariableTest extends TestCase
 
                     /** @return a<never> */
                     function f(): a { return new a(5); }',
-                'error_message' => 'InvalidReturnStatement',
+                'error_message' => 'IncompatibleTypeParameters',
             ],
             'mixedConstructorInferenceCoercesClosureParam' => [
                 // the constructor infers TValue as mixed (lower bound mixed); the
