@@ -10,7 +10,7 @@ use crate::traits::*;
 use std::cell::RefCell;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use crate::support::RwCell;
-use std::sync::{Arc as Rc, Weak};
+use std::rc::{Rc, Weak};
 
 // ---------------------------------------------------------------- Generator (eagerly evaluated)
 
@@ -97,7 +97,7 @@ impl<K: Clone, V: Clone> Len for Generator<K, V> {
         self.count()
     }
 }
-impl<K: Clone + crate::cast::CastTo<Mixed> + Send + Sync + 'static, V: Clone + crate::cast::CastTo<Mixed> + Send + Sync + 'static> PhpObject for Generator<K, V> {
+impl<K: Clone + crate::cast::CastTo<Mixed> + 'static, V: Clone + crate::cast::CastTo<Mixed> + 'static> PhpObject for Generator<K, V> {
     fn class_name(&self) -> &'static str {
         "Generator"
     }
@@ -111,7 +111,7 @@ impl<K: Clone + crate::cast::CastTo<Mixed> + Send + Sync + 'static, V: Clone + c
         self
     }
 }
-impl<K: Clone + crate::cast::CastTo<Mixed> + Send + Sync + 'static, V: Clone + crate::cast::CastTo<Mixed> + Send + Sync + 'static> crate::cast::CastTo<Mixed> for Generator<K, V> {
+impl<K: Clone + crate::cast::CastTo<Mixed> + 'static, V: Clone + crate::cast::CastTo<Mixed> + 'static> crate::cast::CastTo<Mixed> for Generator<K, V> {
     fn cast_to(self) -> Mixed {
         Mixed::Obj(Rc::new(self))
     }
@@ -231,7 +231,7 @@ impl<K: MapKey, V: Clone> Len for ArrayObject<K, V> {
         self.count()
     }
 }
-impl<K: MapKey + Send + Sync + 'static, V: Clone + Send + Sync + 'static> PhpObject for ArrayObject<K, V> {
+impl<K: MapKey + 'static, V: Clone + 'static> PhpObject for ArrayObject<K, V> {
     fn class_name(&self) -> &'static str {
         "ArrayObject"
     }
@@ -245,12 +245,12 @@ impl<K: MapKey + Send + Sync + 'static, V: Clone + Send + Sync + 'static> PhpObj
         self
     }
 }
-impl<K: MapKey + Send + Sync + 'static, V: Clone + Send + Sync + 'static> crate::cast::CastTo<Mixed> for ArrayObject<K, V> {
+impl<K: MapKey + 'static, V: Clone + 'static> crate::cast::CastTo<Mixed> for ArrayObject<K, V> {
     fn cast_to(self) -> Mixed {
         Mixed::Obj(Rc::new(self))
     }
 }
-impl<K: MapKey + Send + Sync + 'static, V: Clone + Send + Sync + 'static> crate::cast::CastTo<ArrayObject<K, V>> for Mixed {
+impl<K: MapKey + 'static, V: Clone + 'static> crate::cast::CastTo<ArrayObject<K, V>> for Mixed {
     fn cast_to(self) -> ArrayObject<K, V> {
         if let Mixed::Obj(o) = &self {
             if let Some(g) = o.as_any().downcast_ref::<ArrayObject<K, V>>() {
@@ -346,7 +346,7 @@ impl<K, V> Len for SplObjectStorage<K, V> {
 impl<K, V> PhpObject for SplObjectStorage<K, V>
 where
     K: PhpObject + Clone + 'static,
-    V: Clone + crate::cast::CastTo<Mixed> + Send + Sync + 'static,
+    V: Clone + crate::cast::CastTo<Mixed> + 'static,
     Mixed: crate::cast::CastTo<K> + crate::cast::CastTo<V>,
 {
     fn class_name(&self) -> &'static str {
@@ -398,7 +398,7 @@ where
 impl<K, V> crate::cast::CastTo<Mixed> for SplObjectStorage<K, V>
 where
     K: PhpObject + Clone + 'static,
-    V: Clone + crate::cast::CastTo<Mixed> + Send + Sync + 'static,
+    V: Clone + crate::cast::CastTo<Mixed> + 'static,
     Mixed: crate::cast::CastTo<K> + crate::cast::CastTo<V>,
 {
     fn cast_to(self) -> Mixed {
@@ -408,7 +408,7 @@ where
 impl<K, V> crate::cast::CastTo<SplObjectStorage<K, V>> for Mixed
 where
     K: PhpObject + Clone + 'static,
-    V: Clone + crate::cast::CastTo<Mixed> + Send + Sync + 'static,
+    V: Clone + crate::cast::CastTo<Mixed> + 'static,
     Mixed: crate::cast::CastTo<K> + crate::cast::CastTo<V>,
 {
     fn cast_to(self) -> SplObjectStorage<K, V> {
@@ -470,7 +470,7 @@ impl<T> std::fmt::Debug for WeakReference<T> {
         write!(f, "WeakReference")
     }
 }
-impl<T: Clone + crate::cast::CastTo<Mixed> + Send + Sync + 'static> PhpObject for WeakReference<T> {
+impl<T: Clone + crate::cast::CastTo<Mixed> + 'static> PhpObject for WeakReference<T> {
     fn class_name(&self) -> &'static str {
         "WeakReference"
     }
@@ -493,12 +493,12 @@ impl<T: Clone + crate::cast::CastTo<Mixed> + Send + Sync + 'static> PhpObject fo
         }
     }
 }
-impl<T: Clone + crate::cast::CastTo<Mixed> + Send + Sync + 'static> crate::cast::CastTo<Mixed> for WeakReference<T> {
+impl<T: Clone + crate::cast::CastTo<Mixed> + 'static> crate::cast::CastTo<Mixed> for WeakReference<T> {
     fn cast_to(self) -> Mixed {
         Mixed::Obj(Rc::new(self))
     }
 }
-impl<T: Clone + crate::cast::CastTo<Mixed> + Send + Sync + 'static> crate::cast::CastTo<WeakReference<T>> for Mixed {
+impl<T: Clone + crate::cast::CastTo<Mixed> + 'static> crate::cast::CastTo<WeakReference<T>> for Mixed {
     fn cast_to(self) -> WeakReference<T> {
         if let Mixed::Obj(o) = &self {
             if let Some(w) = o.as_any().downcast_ref::<WeakReference<T>>() {
@@ -604,7 +604,7 @@ impl From<RtError> for DynError {
     }
 }
 
-type DynFn = dyn Fn(Vec<Mixed>) -> Mixed + Send + Sync;
+type DynFn = dyn Fn(Vec<Mixed>) -> Mixed;
 
 /// A callable of unknown signature: arguments and result travel as Mixed.
 #[derive(Clone)]
@@ -614,10 +614,10 @@ pub struct DynCallable {
     is_null: bool,
 }
 impl DynCallable {
-    pub fn new<F: Fn(Vec<Mixed>) -> Mixed + Send + Sync + 'static>(arity: usize, f: F) -> Self {
+    pub fn new<F: Fn(Vec<Mixed>) -> Mixed + 'static>(arity: usize, f: F) -> Self {
         DynCallable { arity, f: Rc::new(f), is_null: false }
     }
-    pub fn from_rt<F: Fn(Vec<Mixed>) -> Result<Mixed, RtError> + Send + Sync + 'static>(arity: usize, f: F) -> Self {
+    pub fn from_rt<F: Fn(Vec<Mixed>) -> Result<Mixed, RtError> + 'static>(arity: usize, f: F) -> Self {
         DynCallable { arity, f: Rc::new(move |a| f(a).unwrap_or_else(|__e| panic!("Uncaught exception: {}", __e))), is_null: false }
     }
     /// A `null` stored where a callable is expected (docblocks like `callable[]` holding nulls):

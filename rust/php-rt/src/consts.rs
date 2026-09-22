@@ -3,7 +3,7 @@
 use crate::containers::Resource;
 use crate::mixed::Mixed;
 use crate::string::Str;
-use std::sync::Arc as Rc;
+use std::rc::Rc;
 
 pub const PHP_EOL: Str = Str::from_static("\n");
 pub const DIRECTORY_SEPARATOR: Str = Str::from_static("/");

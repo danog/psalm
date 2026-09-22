@@ -102,10 +102,14 @@ pub fn uncaught<E: std::fmt::Display>(e: E) -> ! {
 /// the thrown exception object (the program's `Throw` type — a closed enum over its Throwable classes) as the
 /// panic payload; `try` boundaries catch_unwind and call take_thrown::<Throw>(). Nothing is dynamically typed:
 /// the payload is downcast back to the one static type the program throws.
-pub struct PhpThrow(pub Box<dyn std::any::Any + Send>);
+pub struct PhpThrow(pub Box<dyn std::any::Any>);
+// The thrown value is caught on the thread that threw it (a `try` boundary, or the thread's own
+// entry point, which turns it into a message before joining); it never travels between threads,
+// so the reference counts it may hold are only ever touched by their own thread.
+unsafe impl Send for PhpThrow {}
 
 /// The typed exception interface the generated `Throw` type implements (used by the test harness).
-pub trait PhpThrowable: std::any::Any + Send + 'static {
+pub trait PhpThrowable: std::any::Any + 'static {
     fn class_name(&self) -> &'static str;
     /// Lower-cased fully qualified names of the class and all its ancestors/interfaces.
     fn class_ancestors(&self) -> &'static [&'static str];
@@ -113,7 +117,7 @@ pub trait PhpThrowable: std::any::Any + Send + 'static {
 }
 
 /// Execute a PHP `throw`: unwind with the exception object as the payload. Returns `!` (fits any position).
-pub fn do_throw<T: std::any::Any + Send>(e: T) -> ! {
+pub fn do_throw<T: std::any::Any>(e: T) -> ! {
     std::panic::panic_any(PhpThrow(Box::new(e)))
 }
 

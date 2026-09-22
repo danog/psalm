@@ -595,7 +595,7 @@ impl crate::mixed::PhpObject for HashContext {
     }
 }
 pub fn hash_init(algo: &Str) -> Mixed {
-    Mixed::Obj(std::sync::Arc::new(HashContext { algo: algo.clone(), data: crate::support::RwCell::new(Vec::new()) }))
+    Mixed::Obj(std::rc::Rc::new(HashContext { algo: algo.clone(), data: crate::support::RwCell::new(Vec::new()) }))
 }
 pub fn hash_update(ctx: &Mixed, data: &Str) -> bool {
     if let Mixed::Obj(o) = ctx {

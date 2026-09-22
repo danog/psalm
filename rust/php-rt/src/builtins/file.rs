@@ -5,7 +5,7 @@ use crate::error::RtError;
 use crate::list::List;
 use crate::string::Str;
 use std::io::{Read, Seek, SeekFrom, Write};
-use std::sync::Arc as Rc;
+use std::rc::Rc;
 
 fn path(s: &Str) -> std::path::PathBuf {
     std::path::PathBuf::from(std::ffi::OsStr::new(&*s.to_string_lossy()))

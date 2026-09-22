@@ -11,7 +11,7 @@
 
 use crate::string::Str;
 use std::collections::HashMap;
-use std::sync::{OnceLock, RwLock};
+use std::cell::RefCell;
 
 /// An interned identifier: a small copyable handle whose equality/hash are integer operations.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -24,36 +24,28 @@ struct Interner {
     map: HashMap<&'static [u8], u32, foldhash::fast::FixedState>,
 }
 
-fn interner() -> &'static RwLock<Interner> {
-    static INTERNER: OnceLock<RwLock<Interner>> = OnceLock::new();
-    INTERNER.get_or_init(|| {
-        RwLock::new(Interner {
-            ids: Vec::new(),
-            map: HashMap::with_hasher(foldhash::fast::FixedState::with_seed(0x5eed_1234_abcd_9876)),
-        })
-    })
+thread_local! {
+    // one interner per thread: a Sym never crosses threads, and the table is uncontended
+    static INTERNER: RefCell<Interner> = RefCell::new(Interner {
+        ids: Vec::new(),
+        map: HashMap::with_hasher(foldhash::fast::FixedState::with_seed(0x5eed_1234_abcd_9876)),
+    });
 }
 
 impl Sym {
     /// Intern `bytes`, returning its stable [`Sym`]. Idempotent: equal bytes always yield the same `Sym`.
     pub fn intern(bytes: &[u8]) -> Sym {
-        // fast path: a shared read lock is enough for the common (already-interned) case
-        {
-            let g = interner().read().expect("sym interner poisoned");
+        INTERNER.with(|i| {
+            let mut g = i.borrow_mut();
             if let Some(&id) = g.map.get(bytes) {
                 return Sym(id);
             }
-        }
-        let mut g = interner().write().expect("sym interner poisoned");
-        // re-check under the write lock (another thread may have inserted it meanwhile)
-        if let Some(&id) = g.map.get(bytes) {
-            return Sym(id);
-        }
-        let leaked: &'static [u8] = Box::leak(bytes.to_vec().into_boxed_slice());
-        let id = g.ids.len() as u32;
-        g.ids.push(leaked);
-        g.map.insert(leaked, id);
-        Sym(id)
+            let leaked: &'static [u8] = Box::leak(bytes.to_vec().into_boxed_slice());
+            let id = g.ids.len() as u32;
+            g.ids.push(leaked);
+            g.map.insert(leaked, id);
+            Sym(id)
+        })
     }
 
     #[inline]
@@ -70,8 +62,7 @@ impl Sym {
     /// The interned bytes (`'static`, since the interner never frees).
     #[inline]
     pub fn as_bytes(self) -> &'static [u8] {
-        let g = interner().read().expect("sym interner poisoned");
-        g.ids[self.0 as usize]
+        INTERNER.with(|i| i.borrow().ids[self.0 as usize])
     }
 
     /// A zero-allocation [`Str`] view of this symbol (the bytes are `'static`).

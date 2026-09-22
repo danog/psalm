@@ -6,10 +6,10 @@ use crate::map::Map;
 use crate::string::Str;
 use std::any::Any;
 use std::fmt;
-use std::sync::Arc as Rc;
+use std::rc::Rc;
 
 /// Implemented (by generated code) for every class handle type.
-pub trait PhpObject: Any + Send + Sync {
+pub trait PhpObject: Any {
     fn class_name(&self) -> &'static str;
     /// Lower-cased fully qualified names of the class and all its ancestors/interfaces.
     fn class_ancestors(&self) -> &'static [&'static str];
@@ -97,7 +97,7 @@ pub enum Mixed {
     Str(Str),
     Arr(Map<ArrayKey, Mixed>),
     Obj(AnyObj),
-    Closure(Rc<dyn Any + Send + Sync>),
+    Closure(Rc<dyn Any>),
 }
 
 impl Default for Mixed {

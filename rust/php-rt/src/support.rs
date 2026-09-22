@@ -9,7 +9,7 @@ use crate::mixed::{AnyObj, Mixed, PhpObject};
 use crate::string::Str;
 use crate::traits::*;
 use std::cell::RefCell;
-use std::sync::Arc as Rc;
+use std::rc::Rc;
 
 // ---------------------------------------------------------------- instanceof / downcasts
 
@@ -170,7 +170,7 @@ macro_rules! impl_enum_handle {
         }
         impl $crate::CastTo<$crate::Mixed> for $name {
             fn cast_to(self) -> $crate::Mixed {
-                $crate::Mixed::Obj(std::sync::Arc::new(self))
+                $crate::Mixed::Obj(std::rc::Rc::new(self))
             }
         }
         impl $crate::CastTo<$name> for $crate::Mixed {
@@ -745,28 +745,29 @@ pub fn iterate_object<K, V>(_o: impl PhpObject) -> Result<std::vec::IntoIter<(K,
 
 // ---------------------------------------------------------------- dynamic property access
 
-/// Axis-7: a Sync interior-mutability cell (Arc<RwCell<T>> is Send+Sync so shared object storage can be
-/// shared across scan/analyze threads). Drop-in for RefCell: `.borrow()`/`.borrow_mut()` keep RefCell's
-/// fail-fast semantics via try_read/try_write (panic on contention, not deadlock), and the guards are
-/// parking_lot MAPPED guards so `Ref::map`/`RefMut::map` in generated accessors keep working. The prelude
-/// aliases RefCell->RwCell, Ref->CellRef, RefMut->CellRefMut, so generated code converts transparently.
-pub type CellRef<'a, T> = parking_lot::MappedRwLockReadGuard<'a, T>;
-pub type CellRefMut<'a, T> = parking_lot::MappedRwLockWriteGuard<'a, T>;
-/// A `Cell<T>` usable across threads: a mutex-guarded Copy value with the Cell API (per-field interior
-/// mutability of immutable classes).
-pub struct SyncCell<T>(parking_lot::Mutex<T>);
+/// Interior mutability for object storage. The program is single-threaded, so these are
+/// `RefCell` and `Cell` behind the names the generated code uses (the prelude aliases
+/// RefCell->RwCell, Ref->CellRef, RefMut->CellRefMut); `Ref::map`/`RefMut::map` keep working.
+pub type CellRef<'a, T> = std::cell::Ref<'a, T>;
+pub type CellRefMut<'a, T> = std::cell::RefMut<'a, T>;
+/// A `Cell<T>` (per-field interior mutability of immutable classes).
+pub struct SyncCell<T>(std::cell::Cell<T>);
 impl<T: Copy> SyncCell<T> {
+    #[inline]
     pub fn new(v: T) -> Self {
-        SyncCell(parking_lot::Mutex::new(v))
+        SyncCell(std::cell::Cell::new(v))
     }
+    #[inline]
     pub fn get(&self) -> T {
-        *self.0.lock()
+        self.0.get()
     }
+    #[inline]
     pub fn set(&self, v: T) {
-        *self.0.lock() = v;
+        self.0.set(v)
     }
+    #[inline]
     pub fn replace(&self, v: T) -> T {
-        std::mem::replace(&mut *self.0.lock(), v)
+        self.0.replace(v)
     }
     pub fn get_mut(&mut self) -> &mut T {
         self.0.get_mut()
@@ -791,20 +792,19 @@ impl<T: Copy + std::fmt::Debug> std::fmt::Debug for SyncCell<T> {
     }
 }
 
-pub struct RwCell<T>(parking_lot::RwLock<T>);
+pub struct RwCell<T>(std::cell::RefCell<T>);
 impl<T> RwCell<T> {
+    #[inline]
     pub fn new(v: T) -> Self {
-        RwCell(parking_lot::RwLock::new(v))
+        RwCell(std::cell::RefCell::new(v))
     }
+    #[inline]
     pub fn borrow(&self) -> CellRef<'_, T> {
-        // Blocking read: concurrent readers proceed; blocks only while a writer holds the lock. (Generated
-        // code is structured to avoid same-thread reentrant borrow-across-borrow_mut, so no self-deadlock.)
-        parking_lot::RwLockReadGuard::map(self.0.read(), |x| x)
+        self.0.borrow()
     }
+    #[inline]
     pub fn borrow_mut(&self) -> CellRefMut<'_, T> {
-        // Blocking write: supports real concurrent mutation across threads (waits for contention instead of
-        // panicking, which is what the multithreaded scan/analyze model needs).
-        parking_lot::RwLockWriteGuard::map(self.0.write(), |x| x)
+        self.0.borrow_mut()
     }
     pub fn get_mut(&mut self) -> &mut T {
         self.0.get_mut()

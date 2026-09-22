@@ -72,6 +72,6 @@ pub mod prelude {
     pub use crate::builtins::*;
     pub use crate::consts;
     pub use crate::names;
-    pub use std::sync::Arc as Rc;
+    pub use std::rc::Rc;
     pub use crate::support::{RwCell as RefCell, CellRef as Ref, CellRefMut as RefMut};
 }

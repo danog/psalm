@@ -318,7 +318,7 @@ impl<T: Clone> CastTo<Map<i64, T>> for Map<Str, T> {
 // tables) is wrapped into / unwrapped from a `DynCallable`.
 macro_rules! closure_casts {
     ($n:expr $(, $a:ident)*) => {
-        impl<R, E $(, $a)*> CastTo<Mixed> for std::sync::Arc<dyn Fn($($a),*) -> Result<R, E> + Send + Sync>
+        impl<R, E $(, $a)*> CastTo<Mixed> for std::rc::Rc<dyn Fn($($a),*) -> Result<R, E>>
         where
             R: CastTo<Mixed> + 'static,
             E: CastTo<Mixed> + 'static,
@@ -334,16 +334,16 @@ macro_rules! closure_casts {
                 .cast_to()
             }
         }
-        impl<R, E $(, $a)*> CastTo<std::sync::Arc<dyn Fn($($a),*) -> Result<R, E> + Send + Sync>> for Mixed
+        impl<R, E $(, $a)*> CastTo<std::rc::Rc<dyn Fn($($a),*) -> Result<R, E>>> for Mixed
         where
             R: 'static,
             Mixed: CastTo<R>,
             E: From<crate::containers::DynError> + 'static,
             $($a: CastTo<Mixed> + 'static,)*
         {
-            fn cast_to(self) -> std::sync::Arc<dyn Fn($($a),*) -> Result<R, E> + Send + Sync> {
+            fn cast_to(self) -> std::rc::Rc<dyn Fn($($a),*) -> Result<R, E>> {
                 let c = crate::containers::to_callable(&self);
-                std::sync::Arc::new(move |$($a: $a),*| -> Result<R, E> {
+                std::rc::Rc::new(move |$($a: $a),*| -> Result<R, E> {
                     Ok(cast::<R>(c.call(vec![$(cast::<Mixed>($a)),*])))
                 })
             }
@@ -371,8 +371,6 @@ pub trait PhpValue:
     + crate::traits::ToStr
     + crate::traits::PhpKind
     + crate::traits::InstanceOfName
-    + Send
-    + Sync
     + 'static
 {
 }
@@ -385,8 +383,6 @@ impl<T> PhpValue for T where
         + crate::traits::ToStr
         + crate::traits::PhpKind
         + crate::traits::InstanceOfName
-        + Send
-        + Sync
         + 'static
 {
 }
