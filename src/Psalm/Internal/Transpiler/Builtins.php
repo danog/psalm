@@ -1538,6 +1538,7 @@ final class Builtins
             return new Val('array_key_exists_l(' . $b->exprTo($args[0]->value, RustType::int()) . ', ' . $c->borrow() . ')', RustType::bool());
         }
         $kt = $c->type->params[0];
+        $c = $b->unguardedUnlessPure($c, $args[0]->value);
         return new Val($c->applyOwned('.contains_key(' . Names::refOf($b->keyExpr($args[0]->value, $kt)) . ')'), RustType::bool());
     }
 

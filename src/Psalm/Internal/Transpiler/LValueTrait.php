@@ -550,6 +550,7 @@ trait LValueTrait
         }
         $dim = $e->dim;
         $pu = $this->possiblyUndefined($e);
+        $base = $this->unguardedUnlessPure($base, $dim);
         if ($bt->kind === RustType::LIST) {
             $vt = $bt->inner();
             $idx = $this->exprTo($dim, RustType::int());

@@ -879,6 +879,42 @@ final class BodyEmitter
         return new Val($code, $ft);
     }
 
+    /**
+     * A guarded value (a RefCell borrow held for the whole expression) whose operation also evaluates `$arg`
+     * keeps its guard only when `$arg` cannot run code that writes an object: a guard held across
+     * `$this->tokens[$this->tokenPos++]` would panic on the write to `$this`. Otherwise the value is read owned.
+     */
+    public function unguardedUnlessPure(Val $v, ?Expr $arg): Val
+    {
+        if ($v->guard === null || $arg === null || self::isPureRead($arg)) {
+            return $v;
+        }
+        return new Val($v->code, $v->type, $v->place, null, null, $v->temp);
+    }
+
+    /** An expression that only reads: variables, literals, constants, property/element reads of those. */
+    public static function isPureRead(Expr $e): bool
+    {
+        if ($e instanceof Expr\Variable || $e instanceof \PhpParser\Node\Scalar || $e instanceof Expr\ConstFetch
+            || $e instanceof Expr\ClassConstFetch
+        ) {
+            return !$e instanceof \PhpParser\Node\Scalar\InterpolatedString;
+        }
+        if ($e instanceof Expr\PropertyFetch && $e->name instanceof \PhpParser\Node\Identifier) {
+            return self::isPureRead($e->var);
+        }
+        if ($e instanceof Expr\ArrayDimFetch) {
+            return self::isPureRead($e->var) && ($e->dim === null || self::isPureRead($e->dim));
+        }
+        if ($e instanceof Expr\Cast\Int_ || $e instanceof Expr\Cast\String_ || $e instanceof Expr\UnaryMinus) {
+            return self::isPureRead($e->expr);
+        }
+        if ($e instanceof Expr\BinaryOp\Plus || $e instanceof Expr\BinaryOp\Minus || $e instanceof Expr\BinaryOp\Concat) {
+            return self::isPureRead($e->left) && self::isPureRead($e->right);
+        }
+        return false;
+    }
+
     /** `$v.unwrap()` for a non-null read of an Option value (the place, if any, moves inside the Option). */
     public function unwrapVal(Val $v): Val
     {

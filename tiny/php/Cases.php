@@ -1452,6 +1452,7 @@ function case_node_parts(): string
 function run_all(): string
 {
     return check('node_parts', case_node_parts(), 'PE:PE')
+        . check('guard_key_writes', case_guard_key_writes(), 'ab4')
         . check('shape_dyn_key', case_shape_dyn_key(), 'int,-,zero,string,')
         . check('foreach_ref_unset', case_foreach_ref_unset(), '10:-:30')
         . check('union_modulo', case_union_modulo(), '1:1:1:1')
@@ -2602,4 +2603,28 @@ function case_shape_dyn_key(): string
         $out .= ',';
     }
     return $out;
+}
+
+final class TokenCursor
+{
+    /** @var list<string> */
+    public array $tokens = ['a', 'b', 'c'];
+    public int $pos = -1;
+
+    public function next(): string
+    {
+        return $this->tokens[++$this->pos];
+    }
+
+    public function count(): int
+    {
+        return count($this->tokens) + (isset($this->tokens[$this->pos]) ? 1 : 0);
+    }
+}
+
+/** An element read whose key writes the same object: no borrow of the object may span the key. */
+function case_guard_key_writes(): string
+{
+    $c = new TokenCursor();
+    return $c->next() . $c->next() . $c->count();
 }
