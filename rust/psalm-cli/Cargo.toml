@@ -1,0 +1,12 @@
+[package]
+name = "psalm-cli"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "psalm-rs"
+path = "src/main.rs"
+
+[dependencies]
+php-rt = { path = "../php-rt" }
+psalm_mono = { path = "../generated/psalm_mono" }

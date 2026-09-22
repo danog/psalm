@@ -438,8 +438,127 @@ pub fn filter_var(v: &Mixed, filter: i64, _options: Mixed) -> Mixed {
     }
 }
 /// The compiled program takes no command-line options through `getopt()` (its arguments are passed as `$argv`).
-pub fn getopt(_short: &Str, _long: List<Str>) -> Map<Str, crate::conv::OptValue> {
-    Map::new()
+/// `getopt()`, as php-src's ext/standard implements it over main/getopt.c: short options are the
+/// characters of `short` (`:` after one requires a value, `::` makes it optional), long options are
+/// the entries of `long` with the same suffixes. Parsing starts at `argv[1]` and stops at the first
+/// argument that is not an option or at `--`; unknown options are skipped. A value comes from
+/// `--name=value`, `--name value` (required values only), `-cvalue`, `-c=value` or `-c value`. An
+/// option given more than once collects its values in a list; one without a value is `false`.
+pub fn getopt(short: &Str, long: List<Str>) -> Map<Str, crate::conv::OptValue> {
+    use crate::conv::OptValue;
+
+    // (name, needs: 0 = flag, 1 = required value, 2 = optional value)
+    let mut specs: Vec<(Vec<u8>, u8)> = Vec::new();
+    let sb = short.as_bytes();
+    let mut i = 0;
+    while i < sb.len() {
+        let c = sb[i];
+        i += 1;
+        if c == b':' {
+            continue;
+        }
+        let mut needs = 0u8;
+        while i < sb.len() && sb[i] == b':' && needs < 2 {
+            needs += 1;
+            i += 1;
+        }
+        specs.push((vec![c], needs));
+    }
+    for l in long.iter() {
+        let mut name = l.as_bytes().to_vec();
+        let mut needs = 0u8;
+        while name.last() == Some(&b':') && needs < 2 {
+            name.pop();
+            needs += 1;
+        }
+        if !name.is_empty() {
+            specs.push((name, needs));
+        }
+    }
+
+    let argv: Vec<Vec<u8>> = crate::support::argv().iter().map(|a| a.as_bytes().to_vec()).collect();
+    let mut out: Map<Str, OptValue> = Map::new();
+    let mut push = |out: &mut Map<Str, OptValue>, name: &[u8], value: Option<&[u8]>| {
+        let v = match value {
+            Some(b) => OptValue::Str(Str::from_bytes(b)),
+            None => OptValue::False,
+        };
+        let key = Str::from_bytes(name);
+        let merged = match out.get(&key).cloned() {
+            None => v,
+            Some(OptValue::List(l)) => {
+                let mut l = l;
+                l.push(v);
+                OptValue::List(l)
+            }
+            Some(prev) => OptValue::List(List::from_vec(vec![prev, v])),
+        };
+        out.insert(key, merged);
+    };
+
+    let mut ind = 1;
+    while ind < argv.len() {
+        let arg = &argv[ind];
+        if arg.first() != Some(&b'-') || arg.len() == 1 {
+            break;
+        }
+        if arg.starts_with(b"--") {
+            if arg.len() == 2 {
+                break;
+            }
+            let body = &arg[2..];
+            let (name, inline) = match body.iter().position(|&b| b == b'=') {
+                Some(p) => (&body[..p], Some(&body[p + 1..])),
+                None => (body, None),
+            };
+            ind += 1;
+            let Some((_, needs)) = specs.iter().find(|(n, _)| n.len() > 1 && n.as_slice() == name) else {
+                continue;
+            };
+            match (*needs, inline) {
+                (0, _) => push(&mut out, name, None),
+                (_, Some(v)) => push(&mut out, name, Some(v)),
+                (1, None) => {
+                    if ind < argv.len() {
+                        push(&mut out, name, Some(&argv[ind]));
+                        ind += 1;
+                    }
+                    // a required value that is missing is an error PHP reports; the option is dropped
+                }
+                (_, None) => push(&mut out, name, None),
+            }
+            continue;
+        }
+        // a cluster of short options: -abc, -cvalue, -c=value, -c value
+        let mut pos = 1;
+        ind += 1;
+        while pos < arg.len() {
+            let c = arg[pos];
+            pos += 1;
+            let Some((_, needs)) = specs.iter().find(|(n, _)| n.len() == 1 && n[0] == c) else {
+                continue;
+            };
+            let name = [c];
+            if *needs == 0 {
+                push(&mut out, &name, None);
+                continue;
+            }
+            let rest = &arg[pos..];
+            if !rest.is_empty() {
+                let v = if rest[0] == b'=' { &rest[1..] } else { rest };
+                push(&mut out, &name, Some(v));
+            } else if *needs == 1 {
+                if ind < argv.len() {
+                    push(&mut out, &name, Some(&argv[ind]));
+                    ind += 1;
+                }
+            } else {
+                push(&mut out, &name, None);
+            }
+            break;
+        }
+    }
+    out
 }
 /// `hrtime()`: (seconds, nanoseconds) of a monotonic clock.
 pub fn hrtime_parts() -> (i64, i64) {

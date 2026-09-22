@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["php-rt"]
+members = ["php-rt", "psalm-cli"]
 
 # Iteration builds: no optimization, no LTO, many codegen units, line tables only for backtraces.
 [profile.dev]
@@ -37,3 +37,13 @@ opt-level = 0
 
 [profile.fast.package.php-rt]
 opt-level = 3
+
+# The measurement build: what a release of the port would ship as. Kept separate from `fast`
+# (opt-level 1 on the generated crate) so iteration builds stay short.
+[profile.bench]
+inherits = "release"
+opt-level = 3
+codegen-units = 16
+lto = "thin"
+debug = 1
+panic = "unwind"
