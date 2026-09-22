@@ -7,6 +7,9 @@
 //! are found. The project under analysis is simply the working directory, as with the
 //! interpreted CLI.
 
+// Proving the generated exception type `Send` walks the whole object graph the program declares.
+#![recursion_limit = "1024"]
+
 use php_rt::error::PhpThrowable;
 
 fn main() {
