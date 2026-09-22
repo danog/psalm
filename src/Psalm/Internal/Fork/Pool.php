@@ -95,15 +95,17 @@ final class Pool
 
     /**
      * @template TResult
-     * @param array<string, string> $process_task_data_iterator
+     * @template TReceive
+     * @template TSend
+     * @param array<string> $process_task_data_iterator
      * An array of task data items to be divided up among the
      * workers. The size of this is the number of forked processes.
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint
-     * @param Closure(string): Task<TResult, void, void> $task_factory Builds the task executed on each task data item.
-     *                                                                It must return an array (to be gathered).
+     * @param Closure(string): Task<TResult, TReceive, TSend> $task_factory Builds the task executed on each task
+     *                                                                 data item (no dynamic `new $class`).
      *
      * @param Closure(TResult $data):void $task_done_closure A closure to execute when a task is done
-     * @param null|Closure(string): array{id: int|null, count: int} $message_handler Handles a message sent by a worker over its task
+     * @param null|Closure(TSend):TReceive $message_handler Handles a message sent by a worker over its task
      *        channel and returns the reply. Used to answer requests a task makes mid-execution (e.g.
      *        registering a custom taint in the parent process).
      */
@@ -120,7 +122,11 @@ final class Pool
 
         $results = [];
         foreach ($process_task_data_iterator as $file) {
-            $results []= $f = $this->pool->submit($task_factory($file))->getFuture();
+            $execution = $this->pool->submit($task_factory($file));
+            $results []= $f = $execution->getFuture();
+            if ($message_handler !== null) {
+                $results []= $this->pumpMessages($execution, $f, $message_handler);
+            }
             if ($task_done_closure) {
                 $f->map($task_done_closure);
             }

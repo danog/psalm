@@ -979,9 +979,9 @@ final class Codebase
     }
 
     /**
-     * @return list<CodeLocation>
-     * @psalm-return array<int, CodeLocation>
-     * @psalm-external-mutation-free
+     * @return CodeLocation[]
+     * @psalm-return array<string, CodeLocation>
+     * @psalm-mutation-free
      */
     public function findReferencesToClassLike(string $fq_class_name): array
     {
