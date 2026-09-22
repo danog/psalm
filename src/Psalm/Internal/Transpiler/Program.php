@@ -1428,9 +1428,18 @@ final class Program
         }
     }
 
+    /** Methods only PHP's serializer invokes. */
+    private const SERIALIZATION_HOOKS = ['__serialize' => true, '__unserialize' => true, '__sleep' => true, '__wakeup' => true];
+
     private function buildMethods(ClassModel $model): void
     {
         foreach ($model->storage->declaring_method_ids as $lc_name => $declaring_id) {
+            if (isset(self::SERIALIZATION_HOOKS[$lc_name])) {
+                // only PHP's own (un)serializer calls these, and the compiled program has none: the bodies
+                // (dynamic `$this->$key = $value` restores, upstream's memory-usage workaround) are not code
+                // the program can reach
+                continue;
+            }
             $method = $this->methodFor($model, $lc_name, $declaring_id);
             if ($method !== null) {
                 $model->methods[$lc_name] = $method;
