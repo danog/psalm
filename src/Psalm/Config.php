@@ -26,6 +26,7 @@ use Psalm\Internal\Analyzer\FileAnalyzer;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\CliUtils;
 use Psalm\Internal\Composer;
+use Psalm\Internal\Composer\AutoloadMap;
 use Psalm\Internal\EventDispatcher;
 use Psalm\Internal\IncludeCollector;
 use Psalm\Internal\Provider\AddRemoveTaints\HtmlFunctionTainter;
@@ -467,6 +468,13 @@ final class Config
 
     /** @var list<ClassLoader> $autoloaders */
     private array $autoloaders = [];
+
+    /**
+     * Composer's autoload rules, read from the project's metadata rather than from a registered
+     * ClassLoader, so that the compiled analyzer -- which cannot require() vendor/autoload.php --
+     * resolves a dependency's classes to the same files the interpreted one does.
+     */
+    private ?AutoloadMap $autoload_map = null;
 
     public string $hash = '';
 
@@ -1535,6 +1543,22 @@ final class Config
     public function setComposerClassLoader(array $autoloaders): void
     {
         $this->autoloaders = $autoloaders;
+    }
+
+    /** @psalm-external-mutation-free */
+    public function setComposerAutoloadMap(?AutoloadMap $autoload_map): void
+    {
+        $this->autoload_map = $autoload_map;
+    }
+
+    /**
+     * The files Composer loads unconditionally: where a dependency's functions and constants live.
+     *
+     * @return list<string>
+     */
+    public function getComposerAutoloadedFiles(): array
+    {
+        return $this->autoload_map?->getAutoloadedFiles() ?? [];
     }
 
     /** @return array<string, IssueHandler> */
@@ -2675,6 +2699,22 @@ final class Config
             );
         }
 
+        // Requiring vendor/autoload.php is what normally puts Composer's always-loaded files in
+        // get_included_files(); a compiled analyzer never ran it, so name them from the metadata.
+        $already_included = [];
+
+        foreach ($this->include_collector->getIncludedFiles() as $included_file) {
+            $already_included[$included_file] = true;
+        }
+
+        foreach ($this->getComposerAutoloadedFiles() as $autoload_file) {
+            $real_path = realpath($autoload_file);
+
+            if ($real_path !== false && !isset($already_included[$real_path])) {
+                $this->include_collector->addIncludedFile($real_path);
+            }
+        }
+
         $codebase = $project_analyzer->getCodebase();
 
         $this->collectPredefinedFunctions();
@@ -2716,6 +2756,10 @@ final class Config
     /** @return string|false */
     public function getComposerFilePathForClassLike(string $fq_classlike_name): string|bool
     {
+        if ($this->autoload_map !== null) {
+            return $this->autoload_map->findFile($fq_classlike_name);
+        }
+
         foreach ($this->autoloaders as $autoloader) {
             $f = $autoloader->findFile($fq_classlike_name);
             if ($f !== false) {
@@ -2727,11 +2771,13 @@ final class Config
 
     public function getPotentialComposerFilePathForClassLike(string $class): ?string
     {
-        if (!$this->autoloaders) {
+        if ($this->autoload_map !== null) {
+            $psr4_prefixes = $this->autoload_map->getPrefixesPsr4();
+        } elseif ($this->autoloaders) {
+            $psr4_prefixes = reset($this->autoloaders)->getPrefixesPsr4();
+        } else {
             return null;
         }
-
-        $psr4_prefixes = reset($this->autoloaders)->getPrefixesPsr4();
 
         // PSR-4 lookup
         $logicalPathPsr4 = str_replace('\\', DIRECTORY_SEPARATOR, $class) . '.php';

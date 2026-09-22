@@ -16,6 +16,7 @@ use Psalm\Internal\CliUtils;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\Codebase\ReferenceMapGenerator;
 use Psalm\Internal\Composer;
+use Psalm\Internal\Composer\AutoloadMap;
 use Psalm\Internal\ErrorHandler;
 use Psalm\Internal\Fork\PsalmRestarter;
 use Psalm\Internal\IncludeCollector;
@@ -1178,6 +1179,7 @@ final class Psalm
             Creator::createBareConfig($current_dir, $init_source_dir, $vendor_dir);
             $config = Config::getInstance();
             $config->setComposerClassLoader($autoloaders);
+            $config->setComposerAutoloadMap(AutoloadMap::fromProject($current_dir, $vendor_dir));
         } else {
             $config = self::loadConfig(
                 $path_to_config,

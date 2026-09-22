@@ -14,6 +14,7 @@ use Psalm\Config\Creator;
 use Psalm\Exception\ConfigException;
 use Psalm\Exception\ConfigNotFoundException;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
+use Psalm\Internal\Composer\AutoloadMap;
 use Psalm\Report;
 use RuntimeException;
 use UnexpectedValueException;
@@ -422,6 +423,7 @@ final class CliUtils
         }
 
         $config->setComposerClassLoader($autoloaders);
+        $config->setComposerAutoloadMap(AutoloadMap::fromProject($current_dir, self::getVendorDir($current_dir)));
 
         return $config;
     }
