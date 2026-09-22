@@ -405,17 +405,38 @@ impl Str {
     }
     pub fn to_lowercase(&self) -> Str {
         let b = self.as_bytes();
-        if !b.iter().any(|c| c.is_ascii_uppercase()) {
-            return self.clone();
+        match b.iter().position(|c| c.is_ascii_uppercase()) {
+            None => self.clone(),
+            Some(first) => Str::mapped_from(b, first, |c| c.to_ascii_lowercase()),
         }
-        Str::from_vec(b.to_ascii_lowercase())
+    }
+    /// `b` with every byte from `from` on passed through `f`, in one allocation (the prefix is copied as is).
+    fn mapped_from(b: &[u8], from: usize, f: impl Fn(u8) -> u8) -> Str {
+        if b.len() <= INLINE_CAP {
+            let mut data = [0u8; INLINE_CAP];
+            data[..b.len()].copy_from_slice(b);
+            for c in &mut data[from..b.len()] {
+                *c = f(*c);
+            }
+            return Str::inline(&data[..b.len()]);
+        }
+        let h = HeapStr::with_capacity(b.len());
+        unsafe {
+            let dst = std::slice::from_raw_parts_mut(h.data_ptr(), b.len());
+            dst[..from].copy_from_slice(&b[..from]);
+            for (d, s) in dst[from..].iter_mut().zip(&b[from..]) {
+                *d = f(*s);
+            }
+            h.hdr().len.set(b.len());
+        }
+        Str::from_heap(h)
     }
     pub fn to_uppercase(&self) -> Str {
         let b = self.as_bytes();
-        if !b.iter().any(|c| c.is_ascii_lowercase()) {
-            return self.clone();
+        match b.iter().position(|c| c.is_ascii_lowercase()) {
+            None => self.clone(),
+            Some(first) => Str::mapped_from(b, first, |c| c.to_ascii_uppercase()),
         }
-        Str::from_vec(b.to_ascii_uppercase())
     }
 }
 
@@ -721,5 +742,20 @@ mod tests {
         i.push_bytes(b"defghijklmnop");
         assert!(i.is_heap());
         assert_eq!(i.as_bytes(), b"abcdefghijklmnop");
+    }
+}
+
+#[cfg(test)]
+mod case_tests {
+    use super::*;
+    #[test]
+    fn lower_upper() {
+        let long = Str::from_bytes(b"Psalm\\Internal\\Codebase\\ClassLikes");
+        assert_eq!(long.to_lowercase().as_bytes(), b"psalm\\internal\\codebase\\classlikes");
+        assert_eq!(Str::from_bytes(b"abcD").to_lowercase().as_bytes(), b"abcd");
+        assert_eq!(Str::from_bytes(b"abc").to_uppercase().as_bytes(), b"ABC");
+        let already = Str::from_bytes(b"already lowercase and long enough");
+        assert_eq!(already.to_lowercase().as_bytes(), already.as_bytes());
+        assert_eq!(long.to_uppercase().as_bytes(), b"PSALM\\INTERNAL\\CODEBASE\\CLASSLIKES");
     }
 }
