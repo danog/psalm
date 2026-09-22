@@ -430,10 +430,10 @@ trait ExprTrait
             return new Val($e->getStartLine() . 'i64', RustType::int());
         }
         if ($e instanceof Scalar\MagicConst\Dir) {
-            return new Val('src_dir(' . Names::strLit($this->relativeDir()) . ')', RustType::str());
+            return new Val('src_dir(' . Names::rustStringLiteral($this->relativeDir()) . ')', RustType::str());
         }
         if ($e instanceof Scalar\MagicConst\File) {
-            return new Val('src_file(' . Names::strLit($this->relativeFile()) . ')', RustType::str());
+            return new Val('src_file(' . Names::rustStringLiteral($this->relativeFile()) . ')', RustType::str());
         }
         if ($e instanceof Scalar\MagicConst\Class_) {
             return new Val(Names::strLit(($this->self_class ?? $this->class)?->fqcn ?? ''), RustType::str());

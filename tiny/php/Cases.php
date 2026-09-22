@@ -1537,6 +1537,7 @@ function run_all(): string
         . check('builtin_arity', case_builtin_arity(), 'ok')
         . check('sprintf_percent', case_sprintf_percent(), '%|%|%|%|%a|%b|a%c')
         . check('dynamic_new_dead', case_dynamic_new_dead(), 'named')
+        . check('dir_const', case_dir_const(), 'php/fixtures')
         . check('array_map_void', case_array_map_void(), 'A,B,C')
         . check('provided_builtins', case_provided_builtins(), 'sort:1|in_array:1|usort:1|file_exists:1|go:0|nonesuch_xyz:0')
         . check('htmlspecialchars_flags', case_htmlspecialchars_flags(), 'a&quot;b&#039;c&lt;&amp;&gt;|a&quot;b&apos;c&lt;&amp;&gt;|a&quot;b&apos;c&lt;&amp;&gt;|a&quot;b\'c&lt;&amp;&gt;|a"b\'c&lt;&amp;&gt;')
@@ -2461,4 +2462,16 @@ function make_by_name(string $name): NamedPlugin
 function case_dynamic_new_dead(): string
 {
     return make_by_name(NamedPlugin::class)->tag();
+}
+
+// ---- feature: __DIR__ inside a class constant ----
+
+final class DirConst
+{
+    public const FIXTURES = __DIR__ . '/fixtures';
+}
+
+function case_dir_const(): string
+{
+    return basename(dirname(DirConst::FIXTURES)) . '/' . basename(DirConst::FIXTURES);
 }

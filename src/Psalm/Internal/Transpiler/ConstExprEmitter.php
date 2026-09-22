@@ -56,10 +56,10 @@ final class ConstExprEmitter
             return new Val(Names::strLit($e->value), RustType::str());
         }
         if ($e instanceof Scalar\MagicConst\Dir) {
-            return new Val('src_dir(' . Names::strLit(dirname($this->relativeFile())) . ')', RustType::str());
+            return new Val('src_dir(' . Names::rustStringLiteral(dirname($this->relativeFile())) . ')', RustType::str());
         }
         if ($e instanceof Scalar\MagicConst\File) {
-            return new Val('src_file(' . Names::strLit($this->relativeFile()) . ')', RustType::str());
+            return new Val('src_file(' . Names::rustStringLiteral($this->relativeFile()) . ')', RustType::str());
         }
         if ($e instanceof Scalar\MagicConst\Class_) {
             return new Val(Names::strLit($this->body->class?->fqcn ?? ''), RustType::str());
