@@ -524,7 +524,7 @@ trait CallTrait
         foreach ($inf->params as $i => $p) {
             $decls[] = 'let __fcc' . $i . ' = __p' . $i . ';';
         }
-        $code = '{ ' . $capt . 'Rc::new(move |' . implode(', ', $params) . '| -> ' . $inf->ret->toRust() . ' { ' . implode(' ', $decls) . ' ' . str_replace('self.', 'this.', $v->code) . ' }) as ' . $inf->toRust() . ' }';
+        $code = '{ ' . $capt . 'Rc::new(move |' . implode(', ', $params) . '| -> ' . $inf->ret->toRust() . ' { ' . implode(' ', $decls) . ' ' . str_replace(['(*self)', 'self.'], ['this', 'this.'], $v->code) . ' }) as ' . $inf->toRust() . ' }';
         return new Val($code, $inf);
     }
 

@@ -166,7 +166,7 @@ final class Casts
         $code = $this->convert($v->code, $from, $to);
         if ($from->kind === RustType::OPTION && $code === $v->code . '.unwrap()') {
             if ($v->place !== null) {
-                return new Val($code, $to, '(*' . $v->place . '.as_ref().unwrap())');
+                return new Val($code, $to, '(*' . $v->place . '.as_ref().unwrap())', null, null, $v->temp);
             }
             if ($v->guard !== null) {
                 return new Val($code, $to, null, $v->guard, '(*' . $v->gplace . '.as_ref().unwrap())');

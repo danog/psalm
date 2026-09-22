@@ -856,18 +856,18 @@ final class BodyEmitter
         $get = '.' . $acc . '()';
         if ($kind === 'ref') {
             if ($base->place !== null) {
-                return new Val($code, $ft, '(*' . $base->place . $get . ')');
+                return new Val($code, $ft, '(*' . $base->place . $get . ')', null, null, $base->temp);
             }
             if ($base->guard !== null) {
                 return new Val($code, $ft, null, $base->guard, '(*' . $base->gplace . $get . ')');
             }
             // a temporary base lives to the end of the enclosing statement: a place through it is still valid
             // wherever a place is used (an argument, a receiver, the subject of a loop)
-            return new Val($code, $ft, '(*' . $base->code . $get . ')');
+            return new Val($code, $ft, '(*' . $base->code . $get . ')', null, null, true);
         }
         if ($kind === 'guard') {
             $g = $this->tmp('__g');
-            if ($base->place !== null) {
+            if ($base->place !== null && !$base->temp) {
                 return new Val($code, $ft, null, 'let ' . $g . ' = ' . $base->place . $get . ';', '(*' . $g . ')');
             }
             if ($base->guard !== null) {

@@ -468,15 +468,22 @@ trait StmtTrait
         if ($subject->place === null) {
             return null;
         }
+        // the local the subject is rooted in (`$x`, `$x[$i]`, `$x->items`): the body must not write it
         $e = $s->expr;
-        if ($e instanceof Expr\Variable && is_string($e->name)) {
+        while ($e instanceof Expr\ArrayDimFetch || $e instanceof Expr\PropertyFetch) {
+            $e = $e->var;
+        }
+        if ($e instanceof Expr\Variable && is_string($e->name) && $e->name !== 'this') {
             $name = $e->name;
-            if ($name === 'this' || !empty($this->move_captured[$name]) || !empty($this->cells[$name])
+            if (!empty($this->move_captured[$name]) || !empty($this->cells[$name])
                 || !empty($this->refvars[$name]) || !empty($this->globals[$name])
             ) {
                 return null;
             }
             return $this->varWrittenIn($name, $s->stmts, $s->keyVar, $s->valueVar) ? null : $subject->place;
+        }
+        if (!$e instanceof Expr\Variable) {
+            return $subject->temp ? $subject->place : null; // a temporary lives for the loop; anything else is snapshotted
         }
         // a field place: the borrow of `self` it holds across the loop conflicts with a `&mut self` receiver
         if ($this->class !== null && $this->record->method_name !== null

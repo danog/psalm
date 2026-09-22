@@ -706,7 +706,7 @@ trait LValueTrait
     private function elemVal(Val $base, string $access, RustType $vt): Val
     {
         if ($base->place !== null) {
-            return new Val($base->place . $access . '.clone()', $vt, '(*' . $base->place . $access . ')');
+            return new Val($base->place . $access . '.clone()', $vt, '(*' . $base->place . $access . ')', null, null, $base->temp);
         }
         if ($base->guard !== null) {
             return new Val($base->applyOwned($access . '.clone()'), $vt, null, $base->guard, '(*' . $base->gplace . $access . ')');
@@ -719,7 +719,7 @@ trait LValueTrait
     {
         $clone = $ft->isCopy() ? '' : '.clone()';
         if ($base->place !== null) {
-            return new Val($base->place . $access . $clone, $ft, $base->place . $access);
+            return new Val($base->place . $access . $clone, $ft, $base->place . $access, null, null, $base->temp);
         }
         if ($base->guard !== null) {
             return new Val($base->applyOwned($access . $clone), $ft, null, $base->guard, $base->gplace . $access);

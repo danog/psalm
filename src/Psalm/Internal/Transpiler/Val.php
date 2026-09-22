@@ -28,6 +28,8 @@ final class Val
      * @param ?string $place  borrowable place of type `$type`, or null when the value is a temporary
      * @param ?string $guard  `let` statements binding a borrow guard, when the value is only reachable through one
      * @param ?string $gplace the place inside `$guard` (requires `$guard`)
+     * @param bool    $temp   the place runs through a temporary of the enclosing expression: usable as an
+     *                        argument, a receiver or a loop subject, but not bound by a `let` (dropped at its `;`)
      */
     public function __construct(
         public readonly string $code,
@@ -35,6 +37,7 @@ final class Val
         public readonly ?string $place = null,
         public readonly ?string $guard = null,
         public readonly ?string $gplace = null,
+        public readonly bool $temp = false,
     ) {
     }
 
