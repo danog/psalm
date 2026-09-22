@@ -153,6 +153,28 @@ final class Casts
     }
 
     /** Emit code converting `$code` (a value of type `$from`) into a value of type `$to`. */
+    /**
+     * `convert()` for a value that may live in a borrowable place: an identity conversion keeps the place, and
+     * unwrapping an Option keeps it too (the value lives inside the Option: `(*x.as_ref().unwrap())`).
+     */
+    public function convertVal(Val $v, RustType $to): Val
+    {
+        $from = $v->type;
+        if ($from === $to || $from->toRust() === $to->toRust()) {
+            return $v;
+        }
+        $code = $this->convert($v->code, $from, $to);
+        if ($from->kind === RustType::OPTION && $code === $v->code . '.unwrap()') {
+            if ($v->place !== null) {
+                return new Val($code, $to, '(*' . $v->place . '.as_ref().unwrap())');
+            }
+            if ($v->guard !== null) {
+                return new Val($code, $to, null, $v->guard, '(*' . $v->gplace . '.as_ref().unwrap())');
+            }
+        }
+        return new Val($code, $to);
+    }
+
     public function convert(string $code, RustType $from, RustType $to): string
     {
         if ($from === $to || $from->toRust() === $to->toRust()) {
@@ -202,10 +224,10 @@ final class Casts
                 return 'cast::<' . $to->toRust() . '>(' . $code . ')';
             }
             if ($tk === RustType::STR) {
-                return 'php_rt::ToStr::to_php_str(&' . $code . ')';
+                return 'php_rt::ToStr::to_php_str(' . Names::refOf($code) . ')';
             }
             if ($tk === RustType::BOOL) {
-                return 'truthy(&' . $code . ')';
+                return 'truthy(' . Names::refOf($code) . ')';
             }
         }
         if ($fk === RustType::RT_GENERIC && $from->name === 'Scalar') {
@@ -221,16 +243,16 @@ final class Casts
                 return 'cast::<' . $to->toRust() . '>(' . $code . ')';
             }
             if ($tk === RustType::STR) {
-                return 'php_rt::ToStr::to_php_str(&' . $code . ')';
+                return 'php_rt::ToStr::to_php_str(' . Names::refOf($code) . ')';
             }
             if ($tk === RustType::INT) {
-                return 'php_rt::ToInt::to_php_int(&' . $code . ')';
+                return 'php_rt::ToInt::to_php_int(' . Names::refOf($code) . ')';
             }
             if ($tk === RustType::FLOAT) {
-                return 'php_rt::ToFloat::to_php_float(&' . $code . ')';
+                return 'php_rt::ToFloat::to_php_float(' . Names::refOf($code) . ')';
             }
             if ($tk === RustType::BOOL) {
-                return 'truthy(&' . $code . ')';
+                return 'truthy(' . Names::refOf($code) . ')';
             }
         }
         if ($tk === RustType::UNIT) {
@@ -382,10 +404,10 @@ final class Casts
                 return '{ let ' . $t . ' = cast::<List<Mixed>>(' . $code . '); (' . implode(', ', $parts) . (count($parts) === 1 ? ',' : '') . ') }';
             }
             if ($tk === RustType::CLOSURE) {
-                return $this->convert('to_callable(&' . $code . ')', RustType::dynCallable(), $to);
+                return $this->convert('to_callable(' . Names::refOf($code) . ')', RustType::dynCallable(), $to);
             }
             if ($tk === RustType::DYN_CALLABLE) {
-                return 'to_callable(&' . $code . ')';
+                return 'to_callable(' . Names::refOf($code) . ')';
             }
             $this->needMixedTo($to);
             return 'cast::<' . $to->toRust() . '>(' . $code . ')';
@@ -626,10 +648,10 @@ final class Casts
             // a union used as a number is converted as PHP converts it (`$float % $int` casts both to
             // int), not narrowed to one member -- which would panic on the others
             if ($tk === RustType::INT) {
-                return 'php_rt::ToInt::to_php_int(&' . $code . ')';
+                return 'php_rt::ToInt::to_php_int(' . Names::refOf($code) . ')';
             }
             if ($tk === RustType::FLOAT) {
-                return 'php_rt::ToFloat::to_php_float(&' . $code . ')';
+                return 'php_rt::ToFloat::to_php_float(' . Names::refOf($code) . ')';
             }
             if ($tk === RustType::BOOL && ($this->hasUnit($from, 'True') || $this->hasUnit($from, 'False'))) {
                 $this->need($from, $to);
@@ -991,14 +1013,14 @@ final class Casts
             return $inner;
         }
         if ($t->kind === RustType::CLASS_ || $t->kind === RustType::ANY_OBJECT) {
-            return 'Str::from_static(php_rt::PhpObject::class_name(&' . $code . '))';
+            return 'Str::from_static(php_rt::PhpObject::class_name(' . Names::refOf($code) . '))';
         }
         if ($t->kind === RustType::UNION && self::unionHasObject($t)) {
             return 'Str::from_static(' . $code . '.class_name())';
         }
         if ($t->kind === RustType::GENERIC) {
             // a generic value narrowed to an object by Psalm: its class name through the PhpKind bound
-            return 'Str::from_static(php_rt::PhpKind::php_class_name(&' . $code . ').unwrap_or_else(|| panic!("get_class(): not an object")))';
+            return 'Str::from_static(php_rt::PhpKind::php_class_name(' . Names::refOf($code) . ').unwrap_or_else(|| panic!("get_class(): not an object")))';
         }
         return null;
     }
@@ -1010,7 +1032,7 @@ final class Casts
             return $this->objIdOf($code . '.clone().expect("null where object expected")', $t->inner());
         }
         if ($t->kind === RustType::CLASS_ || $t->kind === RustType::ANY_OBJECT) {
-            return '(php_rt::PhpObject::obj_id(&' . $code . ') as i64)';
+            return '(php_rt::PhpObject::obj_id(' . Names::refOf($code) . ') as i64)';
         }
         if ($t->kind === RustType::UNION && self::unionHasObject($t)) {
             return '(' . $code . '.obj_id() as i64)';
@@ -1025,7 +1047,7 @@ final class Casts
         if ($inner->kind === RustType::CLASS_ || $inner->kind === RustType::ANY_OBJECT || $inner->kind === RustType::GENERIC
             || ($inner->kind === RustType::UNION && self::unionHasObject($inner))
         ) {
-            return 'php_rt::InstanceOfName::php_instance_of(&' . $code . ', ' . $name . '.as_bytes())';
+            return 'php_rt::InstanceOfName::php_instance_of(' . Names::refOf($code) . ', ' . $name . '.as_bytes())';
         }
         return 'instance_of_name(&' . $this->convert($code, $t, RustType::mixed()) . ', &' . $name . ')';
     }

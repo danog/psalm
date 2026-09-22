@@ -319,7 +319,7 @@ trait CallTrait
                 return '&' . $rn; // plain local: borrow in place, no clone
             }
         }
-        return '&' . $this->exprTo($e, $t);
+        return $this->exprToVal($e, $t)->borrow();
     }
 
     /** The default value expression of a parameter, evaluated in the callee's scope. */
@@ -444,7 +444,7 @@ trait CallTrait
     {
         $t = $callee->type;
         if ($t->kind === RustType::OPTION) {
-            $callee = new Val($callee->code . '.unwrap()', $t->inner());
+            $callee = $this->unwrapVal($callee);
             $t = $t->inner();
         }
         if ($t->kind === RustType::CLOSURE) {
@@ -554,7 +554,7 @@ trait CallTrait
                 $body = $inner_call->type->kind === RustType::OPTION ? $inner_call->code : 'Some(' . $inner_call->code . ')';
                 return new Val('(match ' . $recv->code . ' { Some(' . $tmp . ') => ' . $body . ', None => None })', $res);
             }
-            $recv = new Val($recv->code . '.unwrap()', $rt->inner());
+            $recv = $this->unwrapVal($recv);
             $rt = $recv->type;
         }
         if ($rt->kind === RustType::UNION) {
@@ -595,18 +595,8 @@ trait CallTrait
                 // borrow is confined to the call. Only for &self (not immutable construction methods, which are &mut
                 // self and must own a fresh value); &self allows any number of concurrent borrows so args can't conflict.
                 $recv_code = $recv->code;
-                if ($e instanceof Expr\MethodCall && $e->var instanceof Expr\Variable && is_string($e->var->name)
-                    && $e->var->name !== 'this'
-                    && !($m->declaring->immutable() && isset($m->declaring->constructionMethods()[$m->lc()]))
-                ) {
-                    $bind = Names::var($e->var->name);
-                    if ($recv_code === $bind . '.clone()') {
-                        // plain local: `x.clone().m()` -> `x.m()`
-                        $recv_code = $bind;
-                    } elseif ($recv_code === $bind . '.get().clone()') {
-                        // Late local: `x.get().clone().m()` -> `x.get().m()` (borrow the stored value)
-                        $recv_code = $bind . '.get()';
-                    }
+                if (!($m->declaring->immutable() && isset($m->declaring->constructionMethods()[$m->lc()]))) {
+                    $recv_code = $recv->recv();
                 }
                 return $this->bindGenericResult(new Val($this->finishCall($recv_code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')' . ($m->throws ? '?' : '')), $m->return_type), $e, $m->param_types);
             }
@@ -834,7 +824,10 @@ trait CallTrait
             $recv = $this->casts->convert($this->this_expr . '.clone()', $this_t, RustType::class($root->fqcn));
             return new Val($this->finishCall($recv . '.' . $copy . '(' . implode(', ', $argc) . ')' . ($m->throws ? '?' : '')), $m->return_type);
         }
-        $recv = $this->casts->convert($this->this_expr . '.clone()', $this_t, RustType::class($decl->fqcn));
+        // the declaring class' own type needs no conversion: call on the borrowed receiver, no Rc clone
+        $recv = $this_t->toRust() === RustType::class($decl->fqcn)->toRust()
+            ? $this->this_expr
+            : $this->casts->convert($this->this_expr . '.clone()', $this_t, RustType::class($decl->fqcn));
         $impl = $decl->isLeaf() ? $m->rustName() : $m->rustName() . '__impl';
         if ($m->isAbstract()) {
             $impl = $m->rustName();

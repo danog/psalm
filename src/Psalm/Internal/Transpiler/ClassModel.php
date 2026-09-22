@@ -572,6 +572,21 @@ final class ClassModel
             && $this->noHelperConstructionWrites();
     }
 
+    /**
+     * How a field of this class is stored when the class is an `Rc<T>` (immutable) wrapper: '' for a plain field
+     * (read as `&T`), 'Cell' for a Copy field written after construction, 'RefCell' for any other such field.
+     * A RefCell class (the default) stores every field behind the object's own RefCell.
+     */
+    public function cellKind(FieldModel $f): string
+    {
+        if (!$this->immutable() || !isset($this->interiorMutFields()[$f->name])) {
+            return '';
+        }
+        // A Late field (no default -> deferred init) can't be a Cell: Cell<T> requires T: Copy and Late<T> never is.
+        // Use RefCell for Late (and for any non-Copy field); Cell only for a plain Copy field.
+        return (!$f->isLate() && $f->type->isCopy()) ? 'Cell' : 'RefCell';
+    }
+
     public function immutable(): bool
     {
         // @psalm-immutable == LEVEL_INTERNAL_READ (no internal writes post-construction, safe for Rc<T>);

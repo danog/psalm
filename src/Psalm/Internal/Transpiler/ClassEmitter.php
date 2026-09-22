@@ -146,12 +146,7 @@ final class ClassEmitter
     /** 'Cell'/'RefCell'/'' — a field of an immutable class that is mutated through &self needs per-field interior mut. */
     private function cellKind(ClassModel $cls, FieldModel $f): string
     {
-        if (!$cls->immutable() || !isset($cls->interiorMutFields()[$f->name])) {
-            return '';
-        }
-        // A Late field (no default -> deferred init) can't be a Cell: Cell<T> requires T: Copy and Late<T> never is.
-        // Use RefCell for Late (and for any non-Copy field); Cell only for a plain Copy field.
-        return (!$f->isLate() && $f->type->isCopy()) ? 'Cell' : 'RefCell';
+        return $cls->cellKind($f);
     }
 
     private function emitAccessors(FieldModel $f, Writer $w, bool $immut = false, string $cell = ''): void

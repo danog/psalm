@@ -385,7 +385,7 @@ trait LValueTrait
                 : fn() => '(*' . $parent->mut() . '.idx_mut(&' . $key() . '))');
             return new Place(
                 $vt,
-                fn() => $parent->read() . '.idx(&' . $key() . ').clone()',
+                fn() => $parent->read() . '.idx(' . Names::refOf($key()) . ').clone()',
                 fn(string $v) => $this->hoisted([$key(), $v], fn(string $k, string $v) => $parent->modify(fn(string $p) => $p . '.insert(' . $k . ', ' . $v . ');')),
                 $mut,
                 $wrap,
@@ -514,7 +514,7 @@ trait LValueTrait
             $key = fn() => $this->exprTo($dim, $kt);
             return new Place(
                 $vt,
-                fn() => $parent->read() . '.idx(&' . $key() . ')',
+                fn() => $parent->read() . '.idx(' . Names::refOf($key()) . ')',
                 fn(string $v) => $this->hoisted([$key(), $v], fn(string $k, string $v) => $parent->read() . '.' . $setter . '(' . $k . ', ' . $v . ');'),
             );
         }
@@ -545,7 +545,7 @@ trait LValueTrait
             if ($ov !== null) {
                 return $this->narrowOptional($ov, $e);
             }
-            $base = new Val($base->code . '.unwrap()', $bt->inner());
+            $base = $this->unwrapVal($base);
             $bt = $bt->inner();
         }
         $dim = $e->dim;
@@ -554,22 +554,22 @@ trait LValueTrait
             $vt = $bt->inner();
             $idx = $this->exprTo($dim, RustType::int());
             if ($pu) {
-                return $this->narrowOptional(new Val($base->code . '.get(' . $idx . ').cloned()', RustType::option($vt)), $e);
+                return $this->narrowOptional(new Val($base->applyOwned('.get(' . $idx . ').cloned()'), RustType::option($vt)), $e);
             }
-            return $this->narrow(new Val($base->code . '.idx(' . $idx . ').clone()', $vt), $e);
+            return $this->narrow($this->elemVal($base, '.idx(' . $idx . ')', $vt), $e);
         }
         if ($bt->kind === RustType::MAP) {
             [$kt, $vt] = $bt->params;
             $key = $this->keyExpr($dim, $kt);
             if ($pu) {
-                return $this->narrowOptional(new Val($base->code . '.get(&' . $key . ').cloned()', RustType::option($vt)), $e);
+                return $this->narrowOptional(new Val($base->applyOwned('.get(' . Names::refOf($key) . ').cloned()'), RustType::option($vt)), $e);
             }
-            return $this->narrow(new Val($base->code . '.idx(&' . $key . ').clone()', $vt), $e);
+            return $this->narrow($this->elemVal($base, '.idx(' . Names::refOf($key) . ')', $vt), $e);
         }
         if ($bt->kind === RustType::TUPLE) {
             $k = $this->literalKey($dim);
             if ($k !== null && isset($bt->params[(int) $k])) {
-                return $this->narrow(new Val($base->code . '.' . (int) $k, $bt->params[(int) $k]), $e);
+                return $this->narrow($this->memberVal($base, '.' . (int) $k, $bt->params[(int) $k]), $e);
             }
             $lt = RustType::list($this->types()->combine($bt->params));
             $conv = $this->casts->convert($base->code, $bt, $lt);
@@ -581,9 +581,9 @@ trait LValueTrait
                 [$ft, $opt] = $bt->fields[$k];
                 $rn = Names::field($k);
                 if ($opt) {
-                    return $this->narrowOptional(new Val($base->code . '.' . $rn, RustType::shapeField($ft, true)), $e);
+                    return $this->narrowOptional($this->memberVal($base, '.' . $rn, RustType::shapeField($ft, true)), $e);
                 }
-                return $this->narrow(new Val($base->code . '.' . $rn, $ft), $e);
+                return $this->narrow($this->memberVal($base, '.' . $rn, $ft), $e);
             }
             if ($k !== null) {
                 $this->warn('read of unknown shape key ' . $k, $e);
@@ -591,14 +591,14 @@ trait LValueTrait
             }
             $mt = RustType::map(RustType::arrayKey(), $this->shapeValueType($bt));
             $conv = $this->casts->convert($base->code, $bt, $mt);
-            return $this->narrow(new Val($conv . '.idx(&' . $this->keyExpr($dim, RustType::arrayKey()) . ').clone()', $mt->params[1]), $e);
+            return $this->narrow(new Val($conv . '.idx(' . Names::refOf($this->keyExpr($dim, RustType::arrayKey())) . ').clone()', $mt->params[1]), $e);
         }
         if ($bt->kind === RustType::STR) {
-            return new Val('str_index(&' . $base->code . ', ' . $this->exprTo($dim, RustType::int()) . ')', RustType::str());
+            return new Val('str_index(' . $base->borrow() . ', ' . $this->exprTo($dim, RustType::int()) . ')', RustType::str());
         }
         if ($bt->kind === RustType::MIXED) {
             $k = $this->expr($dim);
-            $code = 'mixed_get(&' . $base->code . ', &' . $this->keyFrom($k, RustType::arrayKey()) . ')';
+            $code = 'mixed_get(' . $base->borrow() . ', &' . $this->keyFrom($k, RustType::arrayKey()) . ')';
             return $this->narrowOptional(new Val($code, RustType::option(RustType::mixed())), $e);
         }
         if ($bt->kind === RustType::CLASS_) {
@@ -699,12 +699,40 @@ trait LValueTrait
         return new Val($this->casts->convert($v->code, $v->type, $inf), $inf);
     }
 
+    /**
+     * An element of a container value (`$access` = `.idx(&k)`, yielding `&V`): the element is a place through the
+     * container's place; a guarded container scopes the guard around the clone.
+     */
+    private function elemVal(Val $base, string $access, RustType $vt): Val
+    {
+        if ($base->place !== null) {
+            return new Val($base->place . $access . '.clone()', $vt, '(*' . $base->place . $access . ')');
+        }
+        if ($base->guard !== null) {
+            return new Val($base->applyOwned($access . '.clone()'), $vt, null, $base->guard, '(*' . $base->gplace . $access . ')');
+        }
+        return new Val($base->code . $access . '.clone()', $vt);
+    }
+
+    /** A field of a tuple/shape value (`$access` = `.0` / `.name`): a place through the value's place. */
+    private function memberVal(Val $base, string $access, RustType $ft): Val
+    {
+        $clone = $ft->isCopy() ? '' : '.clone()';
+        if ($base->place !== null) {
+            return new Val($base->place . $access . $clone, $ft, $base->place . $access);
+        }
+        if ($base->guard !== null) {
+            return new Val($base->applyOwned($access . $clone), $ft, null, $base->guard, $base->gplace . $access);
+        }
+        return new Val($base->code . $access, $ft);
+    }
+
     private function propertyFetch(Expr\PropertyFetch|Expr\NullsafePropertyFetch $e, bool $nullsafe): Val
     {
         if (!$e->name instanceof Identifier) {
             $base = $this->receiver($e->var);
             $name = $this->exprTo($e->name, RustType::str());
-            $code = 'mixed_prop(&' . $this->casts->convert($base->code, $base->type, RustType::mixed()) . ', &' . $name . ')';
+            $code = 'mixed_prop(' . $this->casts->convertVal($base, RustType::mixed())->borrow() . ', &' . $name . ')';
             return $this->narrowOptional(new Val($code, RustType::option(RustType::mixed())), $e);
         }
         $name = $e->name->name;
@@ -737,17 +765,17 @@ trait LValueTrait
                     return $this->narrow(new Val('(match ' . $base->code . ' { Some(__b) => Some(__b.' . $field->acc() . '_get()), None => None })', RustType::option($ft)), $e);
                 }
             }
-            $base = new Val($base->code . '.unwrap()', $bt->inner());
+            $base = $this->unwrapVal($base);
             $bt = $bt->inner();
         }
         if ($bt->kind === RustType::CLASS_) {
             $cls = $this->program->classOf($bt);
             $field = $cls?->fields[$name] ?? null;
             if ($field !== null) {
-                return $this->narrow(new Val($base->code . '.' . $field->acc() . '_get()', $field->type), $e);
+                return $this->narrow($this->fieldVal($base, $cls, $field, $field->type), $e);
             }
             if ($cls !== null && ($vf = $this->program->variantField($cls, $name)) !== null) {
-                return $this->narrow(new Val($base->code . '.' . $vf[0]->acc() . '_get()', $vf[1]), $e);
+                return $this->narrow(new Val($base->applyOwned('.' . $vf[0]->acc() . '_get()'), $vf[1]), $e);
             }
             $enum_iface = in_array(strtolower($cls->fqcn ?? ''), ['unitenum', 'backedenum'], true);
             if ($cls !== null && ($name === 'name' || $name === 'value') && ($cls->isEnum() || $enum_iface || ($cls->concrete !== [] && !array_filter($cls->concrete, static fn(ClassModel $c) => !$c->isEnum())))) {
@@ -933,7 +961,7 @@ trait LValueTrait
         // $obj::class / $obj::CONST
         $base = $this->expr($e->class);
         if ($name === 'class') {
-            return new Val($this->casts->classNameOf($base->code, $base->type) ?? 'class_name_of(&' . $this->casts->convert($base->code, $base->type, RustType::mixed()) . ')', RustType::str());
+            return new Val($this->casts->classNameOf($base->code, $base->type) ?? 'class_name_of(' . $this->casts->convertVal($base, RustType::mixed())->borrow() . ')', RustType::str());
         }
         $res = $this->inferredOrMixed($e);
         $bt = $base->type->kind === RustType::OPTION ? $base->type->inner() : $base->type;
@@ -1164,7 +1192,7 @@ trait LValueTrait
             } elseif ($vt->kind === RustType::MAP) {
                 [$kt, $vtt] = $vt->params;
                 $kcode = $item->key !== null ? $this->keyExpr($item->key, $kt) : $this->keyFrom(new Val($key . 'i64', RustType::int()), $kt);
-                $elem = new Val($tmp . '.idx(&' . $kcode . ').clone()', $vtt);
+                $elem = new Val($tmp . '.idx(' . Names::refOf($kcode) . ').clone()', $vtt);
             } elseif ($vt->kind === RustType::UNION && ($ui = $this->unionIndex($tmp . '.clone()', $vt, $item->key !== null ? $this->keyExpr($item->key, RustType::arrayKey()) : 'ArrayKey::Int(' . (int) $key . ')')) !== null) {
                 // a union holding an array (the parser's semantic values): the array member is read, typed
                 [$ucode, $et] = $ui;

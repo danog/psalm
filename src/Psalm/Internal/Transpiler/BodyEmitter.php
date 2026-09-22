@@ -649,7 +649,7 @@ final class BodyEmitter
                     return new Val($this->casts->convert($this->this_expr . '.clone()', $this->this_type, $inf), $inf);
                 }
             }
-            return new Val($this->this_expr, $this->this_type);
+            return new Val($this->this_expr, $this->this_type, $this->thisPlace());
         }
         return $this->expr($e);
     }
@@ -794,7 +794,7 @@ final class BodyEmitter
     public function readVar(string $name): Val
     {
         if ($name === 'this') {
-            return new Val($this->this_expr . '.clone()', $this->this_type ?? RustType::anyObject());
+            return new Val($this->this_expr . '.clone()', $this->this_type ?? RustType::anyObject(), $this->thisPlace());
         }
         if (isset(self::SUPERGLOBALS[$name])) {
             if (in_array($name, ['_SERVER', '_ENV'], true)) {
@@ -821,20 +821,83 @@ final class BodyEmitter
             return new Val($rn . '.get()', $t);
         }
         if (!empty($this->byref[$name])) {
-            return new Val('(*' . $rn . ').clone()', $t);
+            return new Val('(*' . $rn . ').clone()', $t, '(*' . $rn . ')');
         }
         if (!empty($this->borrow[$name])) {
             // `&T` param (borrow-safe): every use is a read (method receiver / property fetch), which works on
             // the borrow directly -- no Rc clone. `$rn` is already `&T`; Rust auto-refs for `.m()`/`.prop_get()`.
-            return new Val($rn, $t);
+            return new Val($rn, $t, '(*' . $rn . ')');
         }
         if (!empty($this->late[$name])) {
-            return new Val($rn . '.get().clone()', $t);
+            return new Val($rn . '.get().clone()', $t, '(*' . $rn . '.get())');
         }
         if ($t->isCopy()) {
-            return new Val($rn, $t);
+            return new Val($rn, $t, $rn);
         }
-        return new Val($rn . '.clone()', $t);
+        return new Val($rn . '.clone()', $t, $rn);
+    }
+
+    /**
+     * Read a declared field of a class-typed base, keeping the value borrowable when the class stores it so:
+     * a plain field of an `Rc<T>` (immutable) leaf reads as `&T` (a place through the base), a RefCell field
+     * (the object's own RefCell, a per-field RefCell, or a hierarchy enum's PropRef) only through a guard.
+     */
+    public function fieldVal(Val $base, ClassModel $cls, FieldModel $field, RustType $ft): Val
+    {
+        $acc = $field->acc();
+        $code = $base->applyOwned('.' . $acc . '_get()');
+        $kind = 'guard';
+        if ($cls->isLeaf() && $cls->immutable()) {
+            $cell = $cls->cellKind($field);
+            $kind = $cell === '' ? 'ref' : ($cell === 'Cell' ? 'owned' : 'guard');
+        } elseif (!$cls->isLeaf() && $cls->allConcreteImmutable()) {
+            $kind = 'owned'; // the enum getter hands back a copy (PropRef::Owned): nothing to borrow
+        }
+        $get = '.' . $acc . '()';
+        if ($kind === 'ref') {
+            if ($base->place !== null) {
+                return new Val($code, $ft, '(*' . $base->place . $get . ')');
+            }
+            if ($base->guard !== null) {
+                return new Val($code, $ft, null, $base->guard, '(*' . $base->gplace . $get . ')');
+            }
+            // a temporary base lives to the end of the enclosing statement: a place through it is still valid
+            // wherever a place is used (an argument, a receiver, the subject of a loop)
+            return new Val($code, $ft, '(*' . $base->code . $get . ')');
+        }
+        if ($kind === 'guard') {
+            $g = $this->tmp('__g');
+            if ($base->place !== null) {
+                return new Val($code, $ft, null, 'let ' . $g . ' = ' . $base->place . $get . ';', '(*' . $g . ')');
+            }
+            if ($base->guard !== null) {
+                return new Val($code, $ft, null, $base->guard . ' let ' . $g . ' = ' . $base->gplace . $get . ';', '(*' . $g . ')');
+            }
+            $o = $this->tmp('__o');
+            return new Val($code, $ft, null, 'let ' . $o . ' = ' . $base->code . '; let ' . $g . ' = ' . $o . $get . ';', '(*' . $g . ')');
+        }
+        return new Val($code, $ft);
+    }
+
+    /** `$v.unwrap()` for a non-null read of an Option value (the place, if any, moves inside the Option). */
+    public function unwrapVal(Val $v): Val
+    {
+        return $this->casts->convertVal($v, $v->type->inner());
+    }
+
+    /** `exprTo()` as a Val: the converted value keeps its place when the conversion is the identity. */
+    public function exprToVal(Expr $e, RustType $to): Val
+    {
+        if ($to->hasGeneric()) {
+            return new Val($this->exprTo($e, $to), $to);
+        }
+        return $this->expr($e, $to);
+    }
+
+    /** The place `$this` lives in: the `&self` receiver, or the owned `this` local a closure captured. */
+    public function thisPlace(): string
+    {
+        return $this->this_expr === 'self' ? '(*self)' : $this->this_expr;
     }
 
     /**

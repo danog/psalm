@@ -298,6 +298,7 @@ trait StmtTrait
             $subject = new Val($subject->code . '.unwrap_or_default()', $st->inner());
             $st = $st->inner();
         }
+        $w_pre = null; // a statement binding the iterated container before the loop
         // a container whose elements are never is always empty: the body never runs
         if ($st->isEmptyIterable()) {
             $w->line('let _ = ' . $subject->code . ';');
@@ -315,14 +316,27 @@ trait StmtTrait
         $key_t = RustType::int();
         $val_t = RustType::mixed();
         $iter = null;
+        $by_ref = false; // the loop yields `&K`/`&V` into the container (no copy of the entries)
         switch ($st->kind) {
             case RustType::LIST:
-                $val_t = $st->inner();
-                $iter = $subject->code . '.into_iter().enumerate().map(|(__i, __v)| (__i as i64, __v))';
-                break;
             case RustType::MAP:
-                [$key_t, $val_t] = $st->params;
-                $iter = $subject->code . '.into_iter()';
+                // Iterate the container IN PLACE: `into_iter()` on a shared Rc container copies every entry into a
+                // fresh Vec first. A borrowable subject (a local the body never writes, a field of an Rc<T> class)
+                // is iterated directly; anything else is snapshotted into a local handle (one Rc clone, which is
+                // also what makes the body's writes to the original copy-on-write, as PHP's foreach-over-a-copy).
+                $by_ref = true;
+                $src = $this->borrowableLoopSubject($s, $subject);
+                if ($src === null) {
+                    $src = $this->tmp('__s');
+                    $w_pre = 'let ' . $src . ' = ' . $subject->code . ';';
+                }
+                if ($st->kind === RustType::LIST) {
+                    $val_t = $st->inner();
+                    $iter = $src . '.iter().enumerate().map(|(__i, __v)| (__i as i64, __v))';
+                } else {
+                    [$key_t, $val_t] = $st->params;
+                    $iter = $src . '.iter()';
+                }
                 break;
             case RustType::TUPLE:
                 $lt = RustType::list($this->types()->combine($st->params));
@@ -375,18 +389,134 @@ trait StmtTrait
             $key_t = RustType::int();
             $val_t = RustType::mixed();
         }
+        if ($w_pre !== null) {
+            $w->line($w_pre);
+        }
         $w->open($label . ': for ' . $kv . ' in ' . $iter . ' {');
         if ($key_var !== null) {
-            $w->line($this->assignTo($key_var, new Val($kv . '.0', $key_t)));
+            $key_val = $by_ref && $st->kind === RustType::MAP
+                ? new Val($kv . '.0.clone()', $key_t, '(*' . $kv . '.0)')
+                : new Val($kv . '.0', $key_t);
+            $w->line($this->assignTo($key_var, $key_val));
         }
         if (!($val_var instanceof Expr\Variable && $val_var->name === '_')) {
             // `$_` is the conventional discard: no binding (it never takes a type)
-            $w->line($this->assignTo($val_var, new Val($kv . '.1', $val_t)));
+            $val_val = $by_ref ? new Val($kv . '.1.clone()', $val_t, '(*' . $kv . '.1)') : new Val($kv . '.1', $val_t);
+            $w->line($this->assignTo($val_var, $val_val));
         }
         $this->pushLoop($label, $label, false);
         $this->block($s->stmts);
         $this->popLoop();
         $w->close();
+    }
+
+    /**
+     * The place to iterate a foreach subject in without copying it, or null when it must be snapshotted: a plain
+     * local the body never writes (nor captures into a closure, nor passes to a call that might take it by
+     * reference), or a borrowable non-local place (a field of an Rc<T> class) outside a `&mut self` method.
+     */
+    private function borrowableLoopSubject(Stmt\Foreach_ $s, Val $subject): ?string
+    {
+        if ($subject->place === null) {
+            return null;
+        }
+        $e = $s->expr;
+        if ($e instanceof Expr\Variable && is_string($e->name)) {
+            $name = $e->name;
+            if ($name === 'this' || !empty($this->move_captured[$name]) || !empty($this->cells[$name])
+                || !empty($this->refvars[$name]) || !empty($this->globals[$name])
+            ) {
+                return null;
+            }
+            return $this->varWrittenIn($name, $s->stmts, $s->keyVar, $s->valueVar) ? null : $subject->place;
+        }
+        // a field place: the borrow of `self` it holds across the loop conflicts with a `&mut self` receiver
+        if ($this->class !== null && $this->record->method_name !== null
+            && $this->class->isImmutableCtorMethod(strtolower($this->record->method_name))
+        ) {
+            return null;
+        }
+        return $subject->place;
+    }
+
+    /**
+     * Whether `$name` may be written by the statements: assigned (directly, destructured, as a loop variable, by
+     * `unset`, through an element/property write rooted at it), referenced, captured by a closure, or passed
+     * directly to a call (which may take it by reference).
+     *
+     * @param list<Stmt> $stmts
+     */
+    private function varWrittenIn(string $name, array $stmts, ?Expr ...$extra): bool
+    {
+        $finder = new \PhpParser\NodeFinder();
+        $nodes = array_merge($stmts, array_values(array_filter($extra)));
+        $root = static function (Expr $t): ?Expr {
+            while ($t instanceof Expr\ArrayDimFetch || $t instanceof Expr\PropertyFetch || $t instanceof Expr\NullsafePropertyFetch) {
+                $t = $t->var;
+            }
+            return $t;
+        };
+        $names = static function (Expr $t) use (&$names, $root): array {
+            if ($t instanceof Expr\List_ || $t instanceof Expr\Array_) {
+                $out = [];
+                foreach ($t->items as $item) {
+                    if ($item !== null) {
+                        $out = array_merge($out, $names($item->value));
+                    }
+                }
+                return $out;
+            }
+            $r = $root($t);
+            return $r instanceof Expr\Variable && is_string($r->name) ? [$r->name] : [];
+        };
+        $writes = [];
+        foreach ($finder->find($nodes, static fn(\PhpParser\Node $n) => $n instanceof Expr\Assign || $n instanceof Expr\AssignOp
+            || $n instanceof Expr\AssignRef || $n instanceof Expr\PreInc || $n instanceof Expr\PreDec
+            || $n instanceof Expr\PostInc || $n instanceof Expr\PostDec) as $n
+        ) {
+            $writes = array_merge($writes, $names($n->var));
+            if ($n instanceof Expr\AssignRef) {
+                $writes = array_merge($writes, $names($n->expr));
+            }
+        }
+        foreach ($finder->findInstanceOf($nodes, Stmt\Unset_::class) as $n) {
+            foreach ($n->vars as $v) {
+                $writes = array_merge($writes, $names($v));
+            }
+        }
+        foreach ($finder->findInstanceOf($nodes, Stmt\Foreach_::class) as $n) {
+            $writes = array_merge($writes, $names($n->valueVar), $n->keyVar !== null ? $names($n->keyVar) : []);
+            if ($n->byRef) {
+                $writes = array_merge($writes, $names($n->expr));
+            }
+        }
+        foreach ($finder->findInstanceOf($nodes, \PhpParser\Node\Arg::class) as $a) {
+            if ($a->value instanceof Expr\Variable && is_string($a->value->name)) {
+                $writes[] = $a->value->name;
+            }
+        }
+        foreach ($finder->find($nodes, static fn(\PhpParser\Node $n) => $n instanceof Expr\Closure || $n instanceof Expr\ArrowFunction) as $c) {
+            foreach ($finder->findInstanceOf([$c], Expr\Variable::class) as $v) {
+                if (is_string($v->name)) {
+                    $writes[] = $v->name;
+                }
+            }
+        }
+        foreach ($finder->findInstanceOf($nodes, Stmt\Global_::class) as $g) {
+            foreach ($g->vars as $v) {
+                $writes = array_merge($writes, $names($v));
+            }
+        }
+        foreach ($finder->findInstanceOf($nodes, Stmt\Static_::class) as $st) {
+            foreach ($st->vars as $v) {
+                $writes = array_merge($writes, $names($v->var));
+            }
+        }
+        // extra targets passed by the caller (the loop's own key/value variables)
+        foreach (array_filter($extra) as $t) {
+            $writes = array_merge($writes, $names($t));
+        }
+        return in_array($name, $writes, true);
     }
 
     /** `foreach ($mixed as $k => &$v)`: keys from the array view, values written back through `mixed_set`. */
@@ -508,9 +638,9 @@ trait StmtTrait
             }
             $cv = $this->expr($case->cond);
             $ct = $this->commonType($subject->type, $cv->type, true);
-            $l = $this->casts->convert($tmp . '.clone()', $subject->type, $ct);
-            $r = $this->casts->convert($cv->code, $cv->type, $ct);
-            $conds[] = [$i, 'loose_eq(&' . $l . ', &' . $r . ')'];
+            $l = $this->casts->convertVal(new Val($tmp . '.clone()', $subject->type, $tmp), $ct);
+            $r = $this->casts->convertVal($cv, $ct);
+            $conds[] = [$i, 'loose_eq(' . $l->borrow() . ', ' . $r->borrow() . ')'];
         }
         $idx = $this->tmp('__idx');
         $code = 'let ' . $idx . ': usize = ';
@@ -668,7 +798,7 @@ trait StmtTrait
                 $parent = new Place($pt, fn() => $p->read() . '.unwrap_or_default()', fn(string $v) => $p->write('Some(' . $v . ')'), $p->hasMut() ? fn() => '(*' . $p->mut() . '.get_or_insert_with(Default::default))' : null, fn(string $s) => $p->wrap($s));
             }
             if ($pt->kind === RustType::MAP) {
-                $w->line($parent->wrap($parent->mut() . '.remove(&' . $this->keyExpr($e->dim, $pt->params[0]) . ');'));
+                $w->line($parent->wrap($parent->mut() . '.remove(' . Names::refOf($this->keyExpr($e->dim, $pt->params[0])) . ');'));
                 return;
             }
             if ($pt->kind === RustType::LIST) {
@@ -697,7 +827,7 @@ trait StmtTrait
             }
             if ($pt->kind === RustType::RT_GENERIC && in_array($pt->name, ['ArrayObject', 'ArrayIterator', 'SplObjectStorage', 'WeakMap'], true)) {
                 $remover = $pt->name === 'SplObjectStorage' || $pt->name === 'WeakMap' ? 'detach' : 'remove';
-                $w->line($parent->read() . '.' . $remover . '(&' . $this->exprTo($e->dim, $pt->params[0]) . ');');
+                $w->line($parent->read() . '.' . $remover . '(' . $this->exprToVal($e->dim, $pt->params[0])->borrow() . ');');
                 return;
             }
             $this->warn('unset on ' . $pt->toRust(), $e);

@@ -481,13 +481,16 @@ final class Builtins
                 // a Mixed argument takes the value with its declared type: no narrowing unwrap can fail
                 $rv = $b->rawValue($arg->value);
                 $code = $b->casts->convert($rv->code, $rv->type, RustType::mixed());
+                $ref = '&' . $code;
             } else {
-                $code = $b->exprTo($arg->value, $t);
+                $av = $b->exprToVal($arg->value, $t);
+                $code = $av->code;
+                $ref = $av->borrow(); // a borrowed argument reads the value in place: no clone
             }
             if ($optional) {
-                $codes[] = 'Some(' . ($byref ? '&' : '') . $code . ')';
+                $codes[] = 'Some(' . ($byref ? $ref : $code) . ')';
             } else {
-                $codes[] = ($byref ? '&' : '') . $code;
+                $codes[] = $byref ? $ref : $code;
             }
         }
         if (count($positional) > count($params) && !in_array('V', $params, true)) {
@@ -514,7 +517,7 @@ final class Builtins
     {
         $k = $v->type->kind;
         if ($k === RustType::CLASS_ || $k === RustType::ANY_OBJECT || $k === RustType::GENERIC || ($k === RustType::UNION && Casts::unionHasObject($v->type))) {
-            return 'php_rt::ToStr::to_php_str(&' . $v->code . ')';
+            return 'php_rt::ToStr::to_php_str(' . $v->borrow() . ')';
         }
         return match ($k) {
             RustType::INT, RustType::FLOAT, RustType::STR, RustType::BOOL, RustType::ARRAY_KEY, RustType::MIXED => $v->code,
@@ -685,14 +688,14 @@ final class Builtins
             $t = $v->type;
         }
         if ($t->kind === RustType::LIST || $t->kind === RustType::MAP) {
-            return new Val($v->code . '.count()', RustType::int());
+            return new Val($v->applyOwned('.count()'), RustType::int());
         }
         if ($t->kind === RustType::TUPLE) {
             return new Val('{ let _ = ' . $v->code . '; ' . count($t->params) . 'i64 }', RustType::int());
         }
         if ($t->kind === RustType::SHAPE) {
             $c = $this->container($b, $args[0]->value);
-            return new Val($c->code . '.count()', RustType::int());
+            return new Val($c->applyOwned('.count()'), RustType::int());
         }
         if ($t->kind === RustType::CLASS_) {
             $cls = $b->program->classOf($t);
@@ -713,7 +716,7 @@ final class Builtins
             }
         }
         if ($t->kind === RustType::RT_GENERIC) {
-            return new Val($v->code . '.count()', RustType::int());
+            return new Val($v->applyOwned('.count()'), RustType::int());
         }
         return new Val('count(&' . $b->casts->convert($v->code, $t, RustType::mixed()) . ')', RustType::int());
     }
@@ -762,7 +765,7 @@ final class Builtins
     {
         $v = $b->expr($args[0]->value);
         if ($v->type->kind === RustType::OPTION) {
-            return new Val($v->code . '.is_none()', RustType::bool());
+            return new Val($v->applyOwned('.is_none()'), RustType::bool());
         }
         if ($v->type->kind === RustType::MIXED) {
             return new Val($v->code . '.is_null()', RustType::bool());
@@ -772,7 +775,7 @@ final class Builtins
         }
         if ($v->type->kind === RustType::GENERIC) {
             // a template parameter can be instantiated with a nullable type: ask the value
-            return new Val('php_rt::is_php_null(&' . $v->code . ')', RustType::bool());
+            return new Val('php_rt::is_php_null(' . $v->borrow() . ')', RustType::bool());
         }
         return new Val('{ let _ = ' . $v->code . '; false }', RustType::bool());
     }
@@ -805,7 +808,7 @@ final class Builtins
             ];
             if (isset($kinds_of[$pred])) {
                 $pat = implode(' | ', array_map(fn($k) => 'php_rt::Kind::' . $k, $kinds_of[$pred]));
-                return new Val('matches!(php_rt::PhpKind::php_kind(&' . $v->code . '), ' . $pat . ')', RustType::bool());
+                return new Val('matches!(php_rt::PhpKind::php_kind(' . $v->borrow() . '), ' . $pat . ')', RustType::bool());
             }
         }
         if ($t->kind === RustType::UNION || ($t->kind === RustType::OPTION && $inner->kind === RustType::UNION)) {
@@ -858,7 +861,7 @@ final class Builtins
                 if ($t->kind === RustType::OPTION) {
                     return new Val('(match &' . $v->code . ' { None => ' . ($pred === 'is_null' ? 'true' : 'false') . ', Some(_) => ' . $static . ' })', RustType::bool());
                 }
-                return new Val('{ let _ = &' . $v->code . '; ' . $static . ' }', RustType::bool());
+                return new Val('{ let _ = ' . $v->borrow() . '; ' . $static . ' }', RustType::bool());
             }
         }
         if ($t->kind === RustType::OPTION) {
@@ -874,14 +877,14 @@ final class Builtins
         $v = $b->expr($args[0]->value);
         $t = $v->type;
         if ($t->kind === RustType::STR) {
-            return new Val('is_numeric(&' . $v->code . ')', RustType::bool());
+            return new Val('is_numeric(' . $v->borrow() . ')', RustType::bool());
         }
         if ($t->kind === RustType::INT || $t->kind === RustType::FLOAT) {
             return new Val('{ let _ = ' . $v->code . '; true }', RustType::bool());
         }
         if (!$t->containsMixed()) {
             // any typed value answers through its runtime kind: numbers are numeric, strings by their text
-            return new Val('{ let __v = &' . $v->code . '; match php_rt::PhpKind::php_kind(__v) { php_rt::Kind::Int | php_rt::Kind::Float => true, php_rt::Kind::Str => is_numeric(&php_rt::ToStr::to_php_str(__v)), _ => false } }', RustType::bool());
+            return new Val('{ let __v = ' . $v->borrow() . '; match php_rt::PhpKind::php_kind(__v) { php_rt::Kind::Int | php_rt::Kind::Float => true, php_rt::Kind::Str => is_numeric(&php_rt::ToStr::to_php_str(__v)), _ => false } }', RustType::bool());
         }
         return new Val($b->casts->convert($v->code, $t, RustType::mixed()) . '.is_numeric()', RustType::bool());
     }
@@ -902,7 +905,7 @@ final class Builtins
         if ($v->type->kind === RustType::CLOSURE || $v->type->kind === RustType::DYN_CALLABLE) {
             return new Val('{ let _ = ' . $v->code . '; true }', RustType::bool());
         }
-        return new Val('is_callable(&' . $b->casts->convert($v->code, $v->type, RustType::mixed()) . ')', RustType::bool());
+        return new Val('is_callable(' . $b->casts->convertVal($v, RustType::mixed())->borrow() . ')', RustType::bool());
     }
 
     /** version_compare($a, $b) is the ordering; with a third argument it is the comparison itself. */
@@ -955,14 +958,14 @@ final class Builtins
                 $hay = $b->exprTo($args[1]->value, $ht);
                 return new Val($needle->type->kind === RustType::OPTION
                     ? '(match &' . $needle->code . ' { Some(__n) => in_array_l(__n, &' . $hay . '), None => false })'
-                    : 'in_array_l(&' . $needle->code . ', &' . $hay . ')', RustType::bool());
+                    : 'in_array_l(' . $needle->borrow() . ', &' . $hay . ')', RustType::bool());
             }
             if ($member !== null && $member->toRust() === $ht->inner()->toRust() && $ninner->kind === RustType::UNION) {
                 $hay = $b->exprTo($args[1]->value, $ht);
                 $arm = 'match __n { ' . $nu->mangle() . '::' . $member->variantName() . '(__m) => in_array_l(__m, &' . $hay . '), _ => false }';
                 $code = $needle->type->kind === RustType::OPTION
                     ? '(match &' . $needle->code . ' { Some(__n) => ' . $arm . ', None => false })'
-                    : '{ let __n = &' . $needle->code . '; ' . $arm . ' }';
+                    : '{ let __n = ' . $needle->borrow() . '; ' . $arm . ' }';
                 return new Val($code, RustType::bool());
             }
         }
@@ -988,7 +991,7 @@ final class Builtins
             }
             $needle = $lits !== null ? $b->expr($args[0]->value) : null;
             if ($needle !== null && $kind === 'str' && $needle->type->kind === RustType::STR) {
-                return new Val('{ let __n: &Str = ' . Names::refOf($needle->code) . '; ' . implode(' || ', array_map(static fn(string $l) => '__n.as_bytes() == ' . $l . '.as_bytes()', $lits)) . ' }', RustType::bool());
+                return new Val('{ let __n: &Str = ' . $needle->borrow() . '; ' . implode(' || ', array_map(static fn(string $l) => '__n.as_bytes() == ' . $l . '.as_bytes()', $lits)) . ' }', RustType::bool());
             }
             if ($needle !== null && $kind === 'int' && $needle->type->kind === RustType::INT) {
                 return new Val('{ let __n: i64 = ' . $needle->code . '; ' . implode(' || ', array_map(static fn(string $l) => '__n == ' . $l, $lits)) . ' }', RustType::bool());
@@ -1004,7 +1007,7 @@ final class Builtins
         }
         $n = $b->casts->convert($needle->code, $needle->type, $ct);
         $fn = ($strict ? 'in_array' : 'in_array_loose') . ($hay->type->kind === RustType::LIST ? '_l' : '_m');
-        return new Val($fn . '(&' . $n . ', &' . $hay->code . ')', RustType::bool());
+        return new Val($fn . '(&' . $n . ', ' . $hay->borrow() . ')', RustType::bool());
     }
 
     private function commonElem(BodyEmitter $b, RustType $needle, RustType $elem): RustType
@@ -1058,9 +1061,9 @@ final class Builtins
         }
         $n = $b->casts->convert($needle->code, $needle->type, $ct);
         if ($hay->type->kind === RustType::LIST) {
-            return $b->narrow(new Val('array_search_l(&' . $n . ', &' . $hay->code . ')', RustType::option(RustType::int())), $call);
+            return $b->narrow(new Val('array_search_l(&' . $n . ', ' . $hay->borrow() . ')', RustType::option(RustType::int())), $call);
         }
-        return $b->narrow(new Val('array_search_m(&' . $n . ', &' . $hay->code . ')', RustType::option($hay->type->params[0])), $call);
+        return $b->narrow(new Val('array_search_m(&' . $n . ', ' . $hay->borrow() . ')', RustType::option($hay->type->params[0])), $call);
     }
 
     private function f_array_keys(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1074,9 +1077,9 @@ final class Builtins
             return new Val('array_keys_search_m(&' . $m . ', &' . $needle . ')', RustType::list($kt));
         }
         if ($c->type->kind === RustType::LIST) {
-            return new Val('array_keys_l(&' . $c->code . ')', RustType::list(RustType::int()));
+            return new Val('array_keys_l(' . $c->borrow() . ')', RustType::list(RustType::int()));
         }
-        return new Val('array_keys_m(&' . $c->code . ')', RustType::list($c->type->params[0]));
+        return new Val('array_keys_m(' . $c->borrow() . ')', RustType::list($c->type->params[0]));
     }
 
     private function f_array_values(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1085,7 +1088,7 @@ final class Builtins
         if ($c->type->kind === RustType::LIST) {
             return new Val($c->code, $c->type);
         }
-        return new Val('array_values_m(&' . $c->code . ')', RustType::list($c->type->params[1]));
+        return new Val('array_values_m(' . $c->borrow() . ')', RustType::list($c->type->params[1]));
     }
 
     private function f_array_merge(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1110,7 +1113,7 @@ final class Builtins
                 }
                 $b->warn('array_merge with unpacking', $call);
                 $mm = RustType::map(RustType::arrayKey(), RustType::map(RustType::arrayKey(), RustType::mixed()));
-                $vals[] = new Val('array_merge_m(&' . $b->casts->convert($c->code, $c->type, $mm) . '.values().map(|__x| __x.clone()).collect::<Vec<_>>().iter().collect::<Vec<_>>())', RustType::map(RustType::arrayKey(), RustType::mixed()));
+                $vals[] = new Val('array_merge_m(' . $b->casts->convertVal($c, $mm)->borrow() . '.values().map(|__x| __x.clone()).collect::<Vec<_>>().iter().collect::<Vec<_>>())', RustType::map(RustType::arrayKey(), RustType::mixed()));
                 continue;
             }
             $c = $this->container($b, $a->value);
@@ -1127,7 +1130,7 @@ final class Builtins
                 : $b->types()->combine(array_map(fn(Val $v) => $v->type->inner(), $vals));
             $parts = [];
             foreach ($vals as $v) {
-                $parts[] = '&' . $b->casts->convert($v->code, $v->type, RustType::list($elem));
+                $parts[] = $b->casts->convertVal($v, RustType::list($elem))->borrow();
             }
             return new Val('array_merge_l(&[' . implode(', ', $parts) . '])', RustType::list($elem));
         }
@@ -1152,7 +1155,7 @@ final class Builtins
         }
         $parts = [];
         foreach ($vals as $v) {
-            $parts[] = '&' . $b->casts->convert($v->code, $v->type, $target);
+            $parts[] = $b->casts->convertVal($v, $target)->borrow();
         }
         return new Val('array_merge_m(&[' . implode(', ', $parts) . '])', $target);
     }
@@ -1165,7 +1168,7 @@ final class Builtins
         $code = $b->casts->convert($a->code, $a->type, $target);
         for ($i = 1; $i < count($args); $i++) {
             $c = $this->container($b, $args[$i]->value);
-            $code = 'array_replace_m(&' . $code . ', &' . $b->casts->convert($c->code, $c->type, $target) . ')';
+            $code = 'array_replace_m(&' . $code . ', ' . $b->casts->convertVal($c, $target)->borrow() . ')';
         }
         return new Val($code, $target);
     }
@@ -1198,7 +1201,7 @@ final class Builtins
             $ct = $c->type->kind === RustType::LIST ? $c->type : RustType::list($c->type->params[1]);
             $ret = $this->mappedElem($b, $args[0]->value, $res->kind === RustType::LIST ? $res->inner() : ($res->kind === RustType::MAP ? $res->params[1] : RustType::mixed()));
             $cb = $this->cb($b, $args[0]->value, [$at->inner(), $ct->inner()], $ret);
-            return new Val('array_map2_l(&' . $b->casts->convert($a->code, $a->type, $at) . ', &' . $b->casts->convert($c->code, $c->type, $ct) . ', ' . $cb . ')', RustType::list($ret));
+            return new Val('array_map2_l(' . $b->casts->convertVal($a, $at)->borrow() . ', ' . $b->casts->convertVal($c, $ct)->borrow() . ', ' . $cb . ')', RustType::list($ret));
         }
         $a = $this->container($b, $args[1]->value);
         if ($b->isNullLiteral($args[0]->value)) {
@@ -1213,9 +1216,9 @@ final class Builtins
         $ret = $this->mappedElem($b, $args[0]->value, $ret);
         $cb = $this->cb($b, $args[0]->value, [$elem], $ret);
         if ($a->type->kind === RustType::LIST) {
-            return new Val('array_map_l(&' . $a->code . ', ' . $cb . ')', RustType::list($ret));
+            return new Val('array_map_l(' . $a->borrow() . ', ' . $cb . ')', RustType::list($ret));
         }
-        return new Val('array_map_m(&' . $a->code . ', ' . $cb . ')', RustType::map($a->type->params[0], $ret));
+        return new Val('array_map_m(' . $a->borrow() . ', ' . $cb . ')', RustType::map($a->type->params[0], $ret));
     }
 
     /**
@@ -1289,7 +1292,7 @@ final class Builtins
         $suffix = $is_list ? '_l' : '_m';
         $res_t = RustType::map($kt, $vt);
         if (!isset($args[1]) || $b->isNullLiteral($args[1]->value)) {
-            return new Val('array_filter' . $suffix . '(&' . $a->code . ')', $res_t);
+            return new Val('array_filter' . $suffix . '(' . $a->borrow() . ')', $res_t);
         }
         $mode = 0;
         if (isset($args[2])) {
@@ -1300,14 +1303,14 @@ final class Builtins
         }
         if ($mode === 1) {
             $cb = $this->cb($b, $args[1]->value, [$kt], RustType::bool());
-            return new Val('array_filter_key' . $suffix . '(&' . $a->code . ', ' . $cb . ')', $res_t);
+            return new Val('array_filter_key' . $suffix . '(' . $a->borrow() . ', ' . $cb . ')', $res_t);
         }
         if ($mode === 2) {
             $cb = $this->cb($b, $args[1]->value, [$vt, $kt], RustType::bool());
-            return new Val('array_filter_both' . $suffix . '(&' . $a->code . ', ' . $cb . ')', $res_t);
+            return new Val('array_filter_both' . $suffix . '(' . $a->borrow() . ', ' . $cb . ')', $res_t);
         }
         $cb = $this->cb($b, $args[1]->value, [$vt], RustType::bool());
-        return new Val('array_filter_cb' . $suffix . '(&' . $a->code . ', ' . $cb . ')', $res_t);
+        return new Val('array_filter_cb' . $suffix . '(' . $a->borrow() . ', ' . $cb . ')', $res_t);
     }
 
     private function f_array_reduce(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1318,7 +1321,7 @@ final class Builtins
         $init = isset($args[2]) ? $b->expr($args[2]->value, $res) : new Val($b->casts->convert('()', RustType::unit(), $res), $res);
         $cb = $this->cb($b, $args[1]->value, [$res, $vt], $res);
         $fn = $a->type->kind === RustType::LIST ? 'array_reduce_l' : 'array_reduce_m';
-        return new Val($fn . '(&' . $a->code . ', ' . $init->code . ', ' . $cb . ')', $res);
+        return new Val($fn . '(' . $a->borrow() . ', ' . $init->code . ', ' . $cb . ')', $res);
     }
 
     private function f_array_walk(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1334,9 +1337,9 @@ final class Builtins
         $vt = $is_list ? $a->type->inner() : $a->type->params[1];
         $kt = $is_list ? RustType::int() : $a->type->params[0];
         if ($vt->kind === RustType::STR) {
-            return new Val('array_unique_str' . ($is_list ? '_l' : '') . '(&' . $a->code . ')', RustType::map($kt, $vt));
+            return new Val('array_unique_str' . ($is_list ? '_l' : '') . '(' . $a->borrow() . ')', RustType::map($kt, $vt));
         }
-        return new Val('array_unique' . ($is_list ? '_l' : '_m') . '(&' . $a->code . ')', RustType::map($kt, $vt));
+        return new Val('array_unique' . ($is_list ? '_l' : '_m') . '(' . $a->borrow() . ')', RustType::map($kt, $vt));
     }
 
     private function f_array_reverse(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1344,13 +1347,13 @@ final class Builtins
         $a = $this->container($b, $args[0]->value);
         $preserve = isset($args[1]) && $b->truthy($args[1]->value) === 'true';
         if ($a->type->kind === RustType::LIST && !$preserve) {
-            return new Val('array_reverse_l(&' . $a->code . ')', $a->type);
+            return new Val('array_reverse_l(' . $a->borrow() . ')', $a->type);
         }
         if ($a->type->kind === RustType::LIST) {
             $mt = RustType::map(RustType::int(), $a->type->inner());
-            return new Val('array_reverse_m(&' . $b->casts->convert($a->code, $a->type, $mt) . ', true)', $mt);
+            return new Val('array_reverse_m(' . $b->casts->convertVal($a, $mt)->borrow() . ', true)', $mt);
         }
-        return new Val('array_reverse_m(&' . $a->code . ', ' . ($preserve ? 'true' : 'false') . ')', $a->type);
+        return new Val('array_reverse_m(' . $a->borrow() . ', ' . ($preserve ? 'true' : 'false') . ')', $a->type);
     }
 
     private function f_array_slice(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1362,11 +1365,11 @@ final class Builtins
         if ($a->type->kind === RustType::LIST) {
             if ($preserve !== 'false') {
                 $mt = RustType::map(RustType::int(), $a->type->inner());
-                return new Val('array_slice_m(&' . $b->casts->convert($a->code, $a->type, $mt) . ', ' . $offset . ', ' . $len . ', ' . $preserve . ')', $mt);
+                return new Val('array_slice_m(' . $b->casts->convertVal($a, $mt)->borrow() . ', ' . $offset . ', ' . $len . ', ' . $preserve . ')', $mt);
             }
-            return new Val('array_slice_l(&' . $a->code . ', ' . $offset . ', ' . $len . ')', $a->type);
+            return new Val('array_slice_l(' . $a->borrow() . ', ' . $offset . ', ' . $len . ')', $a->type);
         }
-        return new Val('array_slice_m(&' . $a->code . ', ' . $offset . ', ' . $len . ', ' . $preserve . ')', $a->type);
+        return new Val('array_slice_m(' . $a->borrow() . ', ' . $offset . ', ' . $len . ', ' . $preserve . ')', $a->type);
     }
 
     private function f_array_splice(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1532,10 +1535,10 @@ final class Builtins
         }
         $c = $this->container($b, $args[1]->value);
         if ($c->type->kind === RustType::LIST) {
-            return new Val('array_key_exists_l(' . $b->exprTo($args[0]->value, RustType::int()) . ', &' . $c->code . ')', RustType::bool());
+            return new Val('array_key_exists_l(' . $b->exprTo($args[0]->value, RustType::int()) . ', ' . $c->borrow() . ')', RustType::bool());
         }
         $kt = $c->type->params[0];
-        return new Val($c->code . '.contains_key(&' . $b->keyExpr($args[0]->value, $kt) . ')', RustType::bool());
+        return new Val($c->applyOwned('.contains_key(' . Names::refOf($b->keyExpr($args[0]->value, $kt)) . ')'), RustType::bool());
     }
 
     private function f_key_exists(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1547,18 +1550,18 @@ final class Builtins
     {
         $c = $this->container($b, $args[0]->value);
         if ($c->type->kind === RustType::LIST) {
-            return $b->narrow(new Val('array_key_first_l(&' . $c->code . ')', RustType::option(RustType::int())), $call);
+            return $b->narrow(new Val('array_key_first_l(' . $c->borrow() . ')', RustType::option(RustType::int())), $call);
         }
-        return $b->narrow(new Val('array_key_first_m(&' . $c->code . ')', RustType::option($c->type->params[0])), $call);
+        return $b->narrow(new Val('array_key_first_m(' . $c->borrow() . ')', RustType::option($c->type->params[0])), $call);
     }
 
     private function f_array_key_last(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
         $c = $this->container($b, $args[0]->value);
         if ($c->type->kind === RustType::LIST) {
-            return $b->narrow(new Val('array_key_last_l(&' . $c->code . ')', RustType::option(RustType::int())), $call);
+            return $b->narrow(new Val('array_key_last_l(' . $c->borrow() . ')', RustType::option(RustType::int())), $call);
         }
-        return $b->narrow(new Val('array_key_last_m(&' . $c->code . ')', RustType::option($c->type->params[0])), $call);
+        return $b->narrow(new Val('array_key_last_m(' . $c->borrow() . ')', RustType::option($c->type->params[0])), $call);
     }
 
     /** `current($a)`, `key($a)`: reads at the internal array pointer */
@@ -1650,9 +1653,9 @@ final class Builtins
             $c = $this->container($b, $args[1]->value);
         }
         if ($c->type->kind === RustType::LIST) {
-            return new Val('implode(&' . $sep . ', &' . $c->code . ')', RustType::str());
+            return new Val('implode(&' . $sep . ', ' . $c->borrow() . ')', RustType::str());
         }
-        return new Val('implode_m(&' . $sep . ', &' . $c->code . ')', RustType::str());
+        return new Val('implode_m(&' . $sep . ', ' . $c->borrow() . ')', RustType::str());
     }
 
     private function f_join(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1695,7 +1698,7 @@ final class Builtins
         $st = $subject->type;
         if ($st->kind === RustType::MIXED && !isset($args[3])) {
             // string or array subject decided at runtime
-            return new Val('str_replace_m(&' . $b->casts->convert($search->code, $search->type, RustType::mixed()) . ', &' . $b->casts->convert($replace->code, $replace->type, RustType::mixed()) . ', &' . $subject->code . ')', RustType::mixed());
+            return new Val('str_replace_m(' . $b->casts->convertVal($search, RustType::mixed())->borrow() . ', ' . $b->casts->convertVal($replace, RustType::mixed())->borrow() . ', ' . $subject->borrow() . ')', RustType::mixed());
         }
         if (in_array($st->kind, [RustType::LIST, RustType::MAP, RustType::SHAPE, RustType::TUPLE], true)) {
             // array subject: map over values
@@ -1705,21 +1708,21 @@ final class Builtins
             $b->late['__sr'] = false;
             $v = $this->f_str_replace($b, $inner, $inner->getArgs());
             if ($c->type->kind === RustType::LIST) {
-                return new Val('array_map_l(&' . $b->casts->convert($c->code, $c->type, RustType::list(RustType::str())) . ', |__sr: Str| { ' . $v->code . ' })', RustType::list(RustType::str()));
+                return new Val('array_map_l(' . $b->casts->convertVal($c, RustType::list(RustType::str()))->borrow() . ', |__sr: Str| { ' . $v->code . ' })', RustType::list(RustType::str()));
             }
-            return new Val('array_map_m(&' . $b->casts->convert($c->code, $c->type, RustType::map($c->type->params[0], RustType::str())) . ', |__sr: Str| { ' . $v->code . ' })', RustType::map($c->type->params[0], RustType::str()));
+            return new Val('array_map_m(' . $b->casts->convertVal($c, RustType::map($c->type->params[0], RustType::str()))->borrow() . ', |__sr: Str| { ' . $v->code . ' })', RustType::map($c->type->params[0], RustType::str()));
         }
         $s = $b->casts->convert($subject->code, $st, RustType::str());
         if (isset($args[3])) {
             $place = $b->place($args[3]->value);
-            return new Val('{ let mut __c: i64 = 0; let __r = str_replace_count(&' . $b->casts->convert($search->code, $search->type, RustType::str()) . ', &' . $b->casts->convert($replace->code, $replace->type, RustType::str()) . ', &' . $s . ', &mut __c); ' . $place->write($b->casts->convert('__c', RustType::int(), $place->type)) . ' __r }', RustType::str());
+            return new Val('{ let mut __c: i64 = 0; let __r = str_replace_count(' . $b->casts->convertVal($search, RustType::str())->borrow() . ', ' . $b->casts->convertVal($replace, RustType::str())->borrow() . ', &' . $s . ', &mut __c); ' . $place->write($b->casts->convert('__c', RustType::int(), $place->type)) . ' __r }', RustType::str());
         }
         if ($search->type->kind === RustType::STR) {
-            return new Val('str_replace(&' . $search->code . ', &' . $b->casts->convert($replace->code, $replace->type, RustType::str()) . ', &' . $s . ')', RustType::str());
+            return new Val('str_replace(' . $search->borrow() . ', ' . $b->casts->convertVal($replace, RustType::str())->borrow() . ', &' . $s . ')', RustType::str());
         }
         $sl = $b->casts->convert($search->code, $search->type, RustType::list(RustType::str()));
         if ($replace->type->kind === RustType::STR) {
-            return new Val('str_replace_arr_s(&' . $sl . ', &' . $replace->code . ', &' . $s . ')', RustType::str());
+            return new Val('str_replace_arr_s(&' . $sl . ', ' . $replace->borrow() . ', &' . $s . ')', RustType::str());
         }
         $rl = $b->casts->convert($replace->code, $replace->type, RustType::list(RustType::str()));
         return new Val('str_replace_arr(&' . $sl . ', &' . $rl . ', &' . $s . ')', RustType::str());
@@ -1738,7 +1741,7 @@ final class Builtins
     {
         $s = $b->exprTo($args[0]->value, RustType::str());
         if (count($args) === 3) {
-            return new Val('strtr(&' . $s . ', &' . $b->exprTo($args[1]->value, RustType::str()) . ', &' . $b->exprTo($args[2]->value, RustType::str()) . ')', RustType::str());
+            return new Val('strtr(&' . $s . ', ' . $b->exprToVal($args[1]->value, RustType::str())->borrow() . ', ' . $b->exprToVal($args[2]->value, RustType::str())->borrow() . ')', RustType::str());
         }
         $pairs = $b->exprTo($args[1]->value, RustType::map(RustType::str(), RustType::str()));
         return new Val('strtr_pairs(&' . $s . ', &' . $pairs . ')', RustType::str());
@@ -1760,7 +1763,7 @@ final class Builtins
         if (count($args) === 1) {
             $c = $this->container($b, $args[0]->value);
             $vt = $c->type->kind === RustType::LIST ? $c->type->inner() : $c->type->params[1];
-            return new Val($fn . ($c->type->kind === RustType::LIST ? '_l' : '_m') . '(&' . $c->code . ').unwrap_or_else(|__e| __throw_rt(__e))', $vt);
+            return new Val($fn . ($c->type->kind === RustType::LIST ? '_l' : '_m') . '(' . $c->borrow() . ').unwrap_or_else(|__e| __throw_rt(__e))', $vt);
         }
         $vals = array_map(fn(Arg $a) => $b->expr($a->value), $args);
         $t = $res->kind !== RustType::MIXED && $res->kind !== RustType::UNION ? $res : $vals[0]->type;
@@ -1829,9 +1832,9 @@ final class Builtins
         $vt = $res->kind === RustType::MAP ? $res->params[1] : $v->type;
         $vc = $b->casts->convert($v->code, $v->type, $vt);
         if ($keys->type->kind === RustType::LIST) {
-            return new Val('array_fill_keys(&' . $b->casts->convert($keys->code, $keys->type, RustType::list($kk)) . ', ' . $vc . ')', RustType::map($kk, $vt));
+            return new Val('array_fill_keys(' . $b->casts->convertVal($keys, RustType::list($kk))->borrow() . ', ' . $vc . ')', RustType::map($kk, $vt));
         }
-        return new Val('array_fill_keys_m(&' . $b->casts->convert($keys->code, $keys->type, RustType::map($keys->type->params[0], $kk)) . ', ' . $vc . ')', RustType::map($kk, $vt));
+        return new Val('array_fill_keys_m(' . $b->casts->convertVal($keys, RustType::map($keys->type->params[0], $kk))->borrow() . ', ' . $vc . ')', RustType::map($kk, $vt));
     }
 
     private function f_array_combine(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1841,7 +1844,7 @@ final class Builtins
         $kt = $keys->type->kind === RustType::LIST ? $keys->type->inner() : $keys->type->params[1];
         $kk = $kt->kind === RustType::INT ? RustType::int() : ($kt->kind === RustType::STR ? RustType::str() : RustType::arrayKey());
         $vt = $vals->type->kind === RustType::LIST ? $vals->type->inner() : $vals->type->params[1];
-        return new Val('array_combine(&' . $b->casts->convert($keys->code, $keys->type, RustType::list($kk)) . ', &' . $b->casts->convert($vals->code, $vals->type, RustType::list($vt)) . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::map($kk, $vt));
+        return new Val('array_combine(' . $b->casts->convertVal($keys, RustType::list($kk))->borrow() . ', ' . $b->casts->convertVal($vals, RustType::list($vt))->borrow() . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::map($kk, $vt));
     }
 
     private function f_array_diff(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1855,7 +1858,7 @@ final class Builtins
         for ($i = 1; $i < count($args); $i++) {
             $c = $this->container($b, $args[$i]->value);
             if ($is_list && $vt->kind === RustType::STR && $c->type->kind === RustType::LIST) {
-                $code = 'array_diff_str_l(&' . $b->casts->convert($code, $cur_t, RustType::list(RustType::str())) . ', &' . $b->casts->convert($c->code, $c->type, RustType::list(RustType::str())) . ')';
+                $code = 'array_diff_str_l(&' . $b->casts->convert($code, $cur_t, RustType::list(RustType::str())) . ', ' . $b->casts->convertVal($c, RustType::list(RustType::str()))->borrow() . ')';
                 $cur_t = RustType::map(RustType::int(), RustType::str());
                 $is_list = false;
                 continue;
@@ -1917,11 +1920,11 @@ final class Builtins
         $ct = $c->type->kind === RustType::LIST ? RustType::list($vt) : RustType::map($c->type->params[0], $vt);
         $cc = $b->casts->convert($c->code, $c->type, $ct);
         if ($a->type->kind === RustType::LIST && $ct->kind === RustType::LIST) {
-            return new Val('array_intersect_l(&' . $a->code . ', &' . $cc . ')', RustType::map(RustType::int(), $vt));
+            return new Val('array_intersect_l(' . $a->borrow() . ', &' . $cc . ')', RustType::map(RustType::int(), $vt));
         }
         $mt = $a->type->kind === RustType::LIST ? RustType::map(RustType::int(), $vt) : $a->type;
         $cm = $ct->kind === RustType::LIST ? $b->casts->convert($cc, $ct, RustType::map(RustType::int(), $vt)) : $cc;
-        return new Val('array_intersect_m(&' . $b->casts->convert($a->code, $a->type, $mt) . ', &' . $cm . ')', $mt);
+        return new Val('array_intersect_m(' . $b->casts->convertVal($a, $mt)->borrow() . ', &' . $cm . ')', $mt);
     }
 
     private function f_array_column(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1997,7 +2000,7 @@ final class Builtins
         $kt = $is_list ? RustType::int() : $c->type->params[0];
         $vt = $is_list ? $c->type->inner() : $c->type->params[1];
         $cb = $this->cbFlexible($b, $args[1]->value, [$vt, $kt], RustType::bool());
-        return new Val($fn . ($is_list ? '_l' : '_m') . '(&' . $c->code . ', ' . $cb . ')', RustType::bool());
+        return new Val($fn . ($is_list ? '_l' : '_m') . '(' . $c->borrow() . ', ' . $cb . ')', RustType::bool());
     }
 
     /** Callback that may declare fewer params than provided (extra args dropped). */
@@ -2022,7 +2025,7 @@ final class Builtins
         $kt = $is_list ? RustType::int() : $c->type->params[0];
         $vt = $is_list ? $c->type->inner() : $c->type->params[1];
         $cb = $this->cbFlexible($b, $args[1]->value, [$vt, $kt], RustType::bool());
-        return $b->narrow(new Val('array_find' . ($is_list ? '_l' : '_m') . '(&' . $c->code . ', ' . $cb . ')', RustType::option($vt)), $call);
+        return $b->narrow(new Val('array_find' . ($is_list ? '_l' : '_m') . '(' . $c->borrow() . ', ' . $cb . ')', RustType::option($vt)), $call);
     }
 
     private function f_array_find_key(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -2050,9 +2053,9 @@ final class Builtins
         $vt = $c->type->kind === RustType::LIST ? $c->type->inner() : $c->type->params[1];
         $kk = $vt->kind === RustType::INT ? RustType::int() : ($vt->kind === RustType::STR ? RustType::str() : RustType::arrayKey());
         if ($c->type->kind === RustType::LIST) {
-            return new Val('array_count_values_l(&' . $b->casts->convert($c->code, $c->type, RustType::list($kk)) . ')', RustType::map($kk, RustType::int()));
+            return new Val('array_count_values_l(' . $b->casts->convertVal($c, RustType::list($kk))->borrow() . ')', RustType::map($kk, RustType::int()));
         }
-        return new Val('array_count_values(&' . $b->casts->convert($c->code, $c->type, RustType::map($c->type->params[0], $kk)) . ')', RustType::map($kk, RustType::int()));
+        return new Val('array_count_values(' . $b->casts->convertVal($c, RustType::map($c->type->params[0], $kk))->borrow() . ')', RustType::map($kk, RustType::int()));
     }
 
     private function f_array_replace_recursive(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -2274,11 +2277,11 @@ final class Builtins
         $s = $b->casts->convert($subj->code, $subj->type, RustType::str());
         if ($pat->type->kind === RustType::STR) {
             $r = $b->casts->convert($rep->code, $rep->type, RustType::str());
-            return $b->narrow(new Val('preg_replace(&' . $pat->code . ', &' . $r . ', &' . $s . ', ' . $limit . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::str()), $call);
+            return $b->narrow(new Val('preg_replace(' . $pat->borrow() . ', &' . $r . ', &' . $s . ', ' . $limit . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::str()), $call);
         }
         $pl = $b->casts->convert($pat->code, $pat->type, RustType::list(RustType::str()));
         if ($rep->type->kind === RustType::STR) {
-            return $b->narrow(new Val('preg_replace_arr_s(&' . $pl . ', &' . $rep->code . ', &' . $s . ', ' . $limit . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::str()), $call);
+            return $b->narrow(new Val('preg_replace_arr_s(&' . $pl . ', ' . $rep->borrow() . ', &' . $s . ', ' . $limit . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::str()), $call);
         }
         $rl = $b->casts->convert($rep->code, $rep->type, RustType::list(RustType::str()));
         return $b->narrow(new Val('preg_replace_arr(&' . $pl . ', &' . $rl . ', &' . $s . ', ' . $limit . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::str()), $call);
@@ -2351,7 +2354,7 @@ final class Builtins
         if (!$tv->type->containsMixed() && !$tv->type->hasGeneric() && $tv->type->kind !== RustType::RT_GENERIC) {
             // a typed value encodes through its ToJson impl (generated for unions, shapes and classes)
             $b->casts->needToJson($tv->type);
-            return $b->narrow(new Val('php_rt::json::json_encode_typed(&' . $tv->code . ', ' . $flags . ', ' . $depth . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::option(RustType::str())), $call);
+            return $b->narrow(new Val('php_rt::json::json_encode_typed(' . $tv->borrow() . ', ' . $flags . ', ' . $depth . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::option(RustType::str())), $call);
         }
         $v = $b->casts->convert($tv->code, $tv->type, RustType::mixed());
         return $b->narrow(new Val('json_encode(&' . $v . ', ' . $flags . ', ' . $depth . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::option(RustType::str())), $call);
@@ -2507,7 +2510,7 @@ final class Builtins
                 sort($names);
                 return $names === [] ? '{ let _ = ' . $s_code . '; false }' : 'matches!(php_rt::names::norm(&' . $s_code . ').as_slice(), ' . implode(' | ', $names) . ')';
             }
-            return 'crate::names::is_subclass(&' . $s_code . ', &' . $b->exprTo($target, RustType::str()) . ', ' . ($is_a ? 'true' : 'false') . ')';
+            return 'crate::names::is_subclass(&' . $s_code . ', ' . $b->exprToVal($target, RustType::str())->borrow() . ', ' . ($is_a ? 'true' : 'false') . ')';
         };
         if (in_array($inner->kind, [RustType::STR, RustType::ARRAY_KEY], true)) {
             $s = $b->casts->convert($v->code, $t, RustType::str());
@@ -2571,7 +2574,7 @@ final class Builtins
         if (count($answers) !== 1) {
             return null;
         }
-        return new Val('{ let _ = &' . $v->code . '; ' . array_key_first($answers) . ' }', RustType::bool());
+        return new Val('{ let _ = ' . $v->borrow() . '; ' . array_key_first($answers) . ' }', RustType::bool());
     }
 
     private function f_get_class(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -2584,9 +2587,9 @@ final class Builtins
             return new Val($typed, RustType::str());
         }
         if ($v->type->kind === RustType::CLASS_ || $v->type->kind === RustType::UNION || $v->type->kind === RustType::ANY_OBJECT) {
-            return new Val('class_name_of(&' . $b->casts->convert($v->code, $v->type, RustType::mixed()) . ')', RustType::str());
+            return new Val('class_name_of(' . $b->casts->convertVal($v, RustType::mixed())->borrow() . ')', RustType::str());
         }
-        return new Val('get_class(&' . $b->casts->convert($v->code, $v->type, RustType::mixed()) . ')', RustType::str());
+        return new Val('get_class(' . $b->casts->convertVal($v, RustType::mixed())->borrow() . ')', RustType::str());
     }
 
     /** var_export/print_r/var_dump of a typed object/generic value: its Debug rendering (no Mixed round trip). */
@@ -2603,7 +2606,7 @@ final class Builtins
         };
         if ($fallback === 'var_export' && $scalar_fn !== null) {
             $ret = isset($args[1]) ? $b->exprTo($args[1]->value, RustType::bool()) : 'false';
-            return new Val($scalar_fn . '(&' . $v->code . ', ' . $ret . ')', RustType::str());
+            return new Val($scalar_fn . '(' . $v->borrow() . ', ' . $ret . ')', RustType::str());
         }
         if ($fallback === 'print_r' && $scalar_fn !== null) {
             // print_r of a scalar is its string form (printed unless the return flag is set)
@@ -2619,7 +2622,7 @@ final class Builtins
         if ($fallback === 'var_dump') {
             $ret = 'false';
         }
-        return new Val('php_rt::debug_export(&' . $v->code . ', ' . $ret . ')', RustType::str());
+        return new Val('php_rt::debug_export(' . $v->borrow() . ', ' . $ret . ')', RustType::str());
     }
 
     /** The value of a FILTER_* constant expression, null when not constant. */
@@ -2700,7 +2703,7 @@ final class Builtins
         foreach ($t->fields as $k => [$ft, $opt]) {
             $fields[] = Names::field((string) $k) . ': ' . ($opt ? 'Some(__m.' . $k . ')' : '__m.' . $k);
         }
-        return new Val('{ let __m = stream_meta(&' . $b->exprTo($args[0]->value, RustType::resource()) . '); ' . $t->toRust() . ' { ' . implode(', ', $fields) . ' } }', $t);
+        return new Val('{ let __m = stream_meta(' . $b->exprToVal($args[0]->value, RustType::resource())->borrow() . '); ' . $t->toRust() . ' { ' . implode(', ', $fields) . ' } }', $t);
     }
 
     /** `error_get_last()` in the shape the stub declares (the runtime records no PHP errors: None). */
@@ -2768,7 +2771,7 @@ final class Builtins
         }
         $keys = array_keys($shape->fields);
         $mk = fn(int $i, string $v) => Names::field((string) $keys[$i]) . ': ' . $v;
-        $code = 'php_rt::__rt_tokenize(&' . $b->exprTo($args[0]->value, RustType::str()) . ').map_elems(|__t| if __t.0 < 256 { '
+        $code = 'php_rt::__rt_tokenize(' . $b->exprToVal($args[0]->value, RustType::str())->borrow() . ').map_elems(|__t| if __t.0 < 256 { '
             . $u->mangle() . '::' . $str->variantName() . '(__t.1) } else { ' . $u->mangle() . '::' . $shape->variantName() . '(' . $shape->toRust()
             . ' { ' . $mk(0, '__t.0') . ', ' . $mk(1, '__t.1') . ', ' . $mk(2, '__t.2') . ' }) })';
         return new Val($code, $t);
@@ -2799,7 +2802,7 @@ final class Builtins
     private function f_constant(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
         $b->program->uses_constant_fn = true;
-        return new Val('crate::names::constant(&' . $b->exprTo($args[0]->value, RustType::str()) . ')', RustType::mixed());
+        return new Val('crate::names::constant(' . $b->exprToVal($args[0]->value, RustType::str())->borrow() . ')', RustType::mixed());
     }
 
     private function f_gettype(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -2811,7 +2814,7 @@ final class Builtins
         if ($v->type->kind === RustType::MIXED) {
             return $this->simple($b, $call, $args, self::SIMPLE['gettype']);
         }
-        return new Val('php_rt::kind_name(php_rt::PhpKind::php_kind(&' . $v->code . '))', RustType::str());
+        return new Val('php_rt::kind_name(php_rt::PhpKind::php_kind(' . $v->borrow() . '))', RustType::str());
     }
 
     private function f_var_export(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -2838,7 +2841,7 @@ final class Builtins
         if (($typed = $b->casts->objIdOf($v->code, $v->type)) !== null) {
             return new Val($typed, RustType::int());
         }
-        return new Val('spl_object_id(&' . $b->casts->convert($v->code, $v->type, RustType::mixed()) . ')', RustType::int());
+        return new Val('spl_object_id(' . $b->casts->convertVal($v, RustType::mixed())->borrow() . ')', RustType::int());
     }
 
     private function f_array_walk_keys(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -2855,13 +2858,13 @@ final class Builtins
     private function f___rt_xml_parse(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
         $t = $b->inferredOrMixed($call);
-        return new Val('php_rt::xml::xml_parse(&' . $b->exprTo($args[0]->value, RustType::str()) . ')', $t);
+        return new Val('php_rt::xml::xml_parse(' . $b->exprToVal($args[0]->value, RustType::str())->borrow() . ')', $t);
     }
 
     /** runtime hook: XML-escaped text (attribute context when the flag is set) */
     private function f___rt_xml_escape(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
-        return new Val('php_rt::xml::xml_escape(&' . $b->exprTo($args[0]->value, RustType::str()) . ', ' . (isset($args[1]) ? $b->exprTo($args[1]->value, RustType::bool()) : 'false') . ')', RustType::str());
+        return new Val('php_rt::xml::xml_escape(' . $b->exprToVal($args[0]->value, RustType::str())->borrow() . ', ' . (isset($args[1]) ? $b->exprTo($args[1]->value, RustType::bool()) : 'false') . ')', RustType::str());
     }
 
     private function f_extract(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -2959,14 +2962,14 @@ final class Builtins
             case 'SplObjectStorage::detach':
             case 'SplObjectStorage::offsetunset':
             case 'WeakMap::offsetunset':
-                return new Val('{ ' . $recv->code . '.detach(&' . $b->exprTo($args[0]->value, $params[0]) . '); }', RustType::unit());
+                return new Val('{ ' . $recv->code . '.detach(' . $b->exprToVal($args[0]->value, $params[0])->borrow() . '); }', RustType::unit());
             case 'SplObjectStorage::contains':
             case 'SplObjectStorage::offsetexists':
             case 'WeakMap::offsetexists':
-                return new Val($recv->code . '.contains(&' . $b->exprTo($args[0]->value, $params[0]) . ')', RustType::bool());
+                return new Val($recv->code . '.contains(' . $b->exprToVal($args[0]->value, $params[0])->borrow() . ')', RustType::bool());
             case 'SplObjectStorage::offsetget':
             case 'WeakMap::offsetget':
-                return $b->narrow(new Val($recv->code . '.idx(&' . $b->exprTo($args[0]->value, $params[0]) . ')', $params[1]), $site);
+                return $b->narrow(new Val($recv->code . '.idx(' . $b->exprToVal($args[0]->value, $params[0])->borrow() . ')', $params[1]), $site);
             case 'SplObjectStorage::offsetset':
                 $k = $b->exprTo($args[0]->value, $params[0]);
                 // attach($object) without data stores null
@@ -2976,11 +2979,11 @@ final class Builtins
             case 'ArrayObject::count':
             case 'ArrayIterator::count':
             case 'WeakMap::count':
-                return new Val($recv->code . '.count()', RustType::int());
+                return new Val($recv->applyOwned('.count()'), RustType::int());
             case 'SplObjectStorage::getinfo':
                 return new Val($recv->code . '.get_info()', $params[1]);
             case 'SplObjectStorage::addall':
-                return new Val('{ ' . $recv->code . '.add_all(&' . $b->exprTo($args[0]->value, $t) . '); }', RustType::unit());
+                return new Val('{ ' . $recv->code . '.add_all(' . $b->exprToVal($args[0]->value, $t)->borrow() . '); }', RustType::unit());
             case 'ArrayObject::getarraycopy':
             case 'ArrayIterator::getarraycopy':
                 return new Val($recv->code . '.get_array_copy()', RustType::map($params[0]->kind === RustType::INT ? RustType::int() : ($params[0]->kind === RustType::STR ? RustType::str() : RustType::arrayKey()), $params[1]));
@@ -2991,13 +2994,13 @@ final class Builtins
                 return new Val('{ ' . $recv->code . '.set(' . $k . ', ' . $v . '); }', RustType::unit());
             case 'ArrayObject::offsetget':
             case 'ArrayIterator::offsetget':
-                return $b->narrow(new Val($recv->code . '.idx(&' . $b->exprTo($args[0]->value, $params[0]) . ')', $params[1]), $site);
+                return $b->narrow(new Val($recv->code . '.idx(' . $b->exprToVal($args[0]->value, $params[0])->borrow() . ')', $params[1]), $site);
             case 'ArrayObject::offsetexists':
             case 'ArrayIterator::offsetexists':
-                return new Val($recv->code . '.contains(&' . $b->exprTo($args[0]->value, $params[0]) . ')', RustType::bool());
+                return new Val($recv->code . '.contains(' . $b->exprToVal($args[0]->value, $params[0])->borrow() . ')', RustType::bool());
             case 'ArrayObject::offsetunset':
             case 'ArrayIterator::offsetunset':
-                return new Val('{ ' . $recv->code . '.remove(&' . $b->exprTo($args[0]->value, $params[0]) . '); }', RustType::unit());
+                return new Val('{ ' . $recv->code . '.remove(' . $b->exprToVal($args[0]->value, $params[0])->borrow() . '); }', RustType::unit());
             case 'ArrayObject::append':
                 return new Val('{ ' . $recv->code . '.append(' . $b->exprTo($args[0]->value, $params[1]) . '); }', RustType::unit());
             case 'ArrayObject::getiterator':

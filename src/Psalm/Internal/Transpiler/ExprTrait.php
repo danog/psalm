@@ -349,7 +349,7 @@ trait ExprTrait
         }
         if ($e instanceof Expr\Eval_) {
             // only constant expressions (`return "\t";`) are supported by the runtime evaluator
-            return $this->narrow(new Val('php_eval(&' . $this->exprTo($e->expr, RustType::str()) . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::mixed()), $e);
+            return $this->narrow(new Val('php_eval(' . $this->exprToVal($e->expr, RustType::str())->borrow() . ').unwrap_or_else(|__e| __throw_rt(__e))', RustType::mixed()), $e);
         }
         if ($e instanceof Expr\Yield_) {
             return $this->yieldExpr($e);
@@ -391,7 +391,7 @@ trait ExprTrait
         if ($v->type->kind === RustType::NEVER) {
             return '{ ' . $v->code . '; false }';
         }
-        return 'truthy(' . Names::refOf($v->code) . ')';
+        return 'truthy(' . $v->borrow() . ')';
     }
 
     /** Truthiness of an expression that may be undefined (empty()). */
@@ -401,7 +401,7 @@ trait ExprTrait
         if ($v === null) {
             return $this->truthy($e);
         }
-        return 'truthy(' . Names::refOf($v->code) . ')';
+        return 'truthy(' . $v->borrow() . ')';
     }
 
     private function interpolated(array $parts): Val
@@ -676,7 +676,7 @@ trait ExprTrait
         if (in_array($v->type->kind, $containers, true) && in_array($inf->kind, $containers, true)) {
             return $v;
         }
-        return new Val($this->casts->convert($v->code, $v->type, $inf), $inf);
+        return $this->casts->convertVal($v, $inf);
     }
 
     /** True when converting from => to only adds information (Option wrapping, union wrapping, upcast). */
@@ -1041,29 +1041,29 @@ trait ExprTrait
                 return 'ArrayKey::from_static("' . $m[1] . '")';
             }
             if ($ft->kind === RustType::INT || $ft->kind === RustType::STR || $ft->kind === RustType::BOOL || $ft->kind === RustType::FLOAT) {
-                return 'to_key(&' . $v->code . ')';
+                return 'to_key(' . $v->borrow() . ')';
             }
             if ($ft->kind === RustType::OPTION) {
-                return 'to_key(&' . $v->code . ')';
+                return 'to_key(' . $v->borrow() . ')';
             }
             if ($ft->kind === RustType::SYM) {
-                return 'to_key(&' . $v->code . '.to_str())';
+                return 'to_key(' . $v->borrow() . '.to_str())';
             }
             if ($ft->kind === RustType::UNION && $ft->params !== [] && count(array_filter($ft->params, static fn(RustType $m) => !in_array($m->kind, [RustType::INT, RustType::FLOAT], true))) === 0) {
                 // `$k - 1` (int|float): a numeric key is its integer value
-                return 'ArrayKey::Int(php_rt::ToNum::to_php_num(&' . $v->code . ').to_i64())';
+                return 'ArrayKey::Int(php_rt::ToNum::to_php_num(' . $v->borrow() . ').to_i64())';
             }
             return 'to_key(&' . $this->casts->convert($v->code, $ft, RustType::mixed()) . ')';
         }
         if ($kt->kind === RustType::INT) {
             if ($ft->kind === RustType::ARRAY_KEY || $ft->kind === RustType::STR || $ft->kind === RustType::FLOAT || $ft->kind === RustType::BOOL) {
-                return 'to_int(&' . $v->code . ')';
+                return 'to_int(' . $v->borrow() . ')';
             }
             return $this->casts->convert($v->code, $ft, $kt);
         }
         if ($kt->kind === RustType::STR) {
             if ($ft->kind === RustType::ARRAY_KEY || $ft->kind === RustType::INT) {
-                return 'to_str(&' . $v->code . ')';
+                return 'to_str(' . $v->borrow() . ')';
             }
             return $this->casts->convert($v->code, $ft, $kt);
         }
@@ -1149,7 +1149,7 @@ trait ExprTrait
             $lt = $this->inferredOrMixed($e->left);
             if (($e instanceof BinaryOp\BitwiseAnd || $e instanceof BinaryOp\BitwiseOr || $e instanceof BinaryOp\BitwiseXor) && $lt->kind === RustType::STR) {
                 $fn = $e instanceof BinaryOp\BitwiseAnd ? 'str_bit_and' : ($e instanceof BinaryOp\BitwiseOr ? 'str_bit_or' : 'str_bit_xor');
-                return new Val($fn . '(&' . $this->exprTo($e->left, RustType::str()) . ', &' . $this->exprTo($e->right, RustType::str()) . ')', RustType::str());
+                return new Val($fn . '(' . $this->exprToVal($e->left, RustType::str())->borrow() . ', ' . $this->exprToVal($e->right, RustType::str())->borrow() . ')', RustType::str());
             }
             $l = $this->exprTo($e->left, RustType::int());
             $r = $this->exprTo($e->right, RustType::int());
@@ -1308,7 +1308,7 @@ trait ExprTrait
             RustType::INT => 'Num::Int(' . $code . ')',
             RustType::FLOAT => 'Num::Float(' . $code . ')',
             RustType::BOOL => 'Num::Int(' . $code . ' as i64)',
-            RustType::STR, RustType::UNIT, RustType::ARRAY_KEY, RustType::OPTION, RustType::UNION => 'php_rt::ToNum::to_php_num(&' . $code . ')',
+            RustType::STR, RustType::UNIT, RustType::ARRAY_KEY, RustType::OPTION, RustType::UNION => 'php_rt::ToNum::to_php_num(' . Names::refOf($code) . ')',
             default => 'to_num(&' . $this->casts->convert($code, $t, RustType::mixed()) . ')',
         };
     }
@@ -1341,11 +1341,18 @@ trait ExprTrait
      */
     private function commonOperands(Expr $left, Expr $right, bool $numeric): array
     {
+        [$l, $r, $t] = $this->commonOperandVals($left, $right, $numeric);
+        return [$l->code, $r->code, $t];
+    }
+
+    /** @return array{Val, Val, RustType} both operands converted to their common type, places kept */
+    private function commonOperandVals(Expr $left, Expr $right, bool $numeric): array
+    {
         // declared (not narrowed) types: a value contradicting Psalm's narrowing must still compare, not unwrap
         $l = $this->rawValue($left);
         $r = $this->rawValue($right);
         $t = $this->commonType($l->type, $r->type, $numeric);
-        return [$this->casts->convert($l->code, $l->type, $t), $this->casts->convert($r->code, $r->type, $t), $t];
+        return [$this->casts->convertVal($l, $t), $this->casts->convertVal($r, $t), $t];
     }
 
     private function commonType(RustType $a, RustType $b, bool $numeric): RustType
@@ -1504,11 +1511,11 @@ trait ExprTrait
             };
             if ($ov !== null) {
                 $h = $escaped($ov->type->inner());
-                return $h !== null ? 'matches!(&' . $ov->code . ', None | Some(' . $h . '::Other__(Mixed::Null)))' : $ov->code . '.is_none()';
+                return $h !== null ? 'matches!(' . $ov->borrow() . ', None | Some(' . $h . '::Other__(Mixed::Null)))' : $ov->applyOwned('.is_none()');
             }
             if ($v->type->kind === RustType::OPTION) {
                 $h = $escaped($v->type->inner());
-                return $h !== null ? 'matches!(&' . $v->code . ', None | Some(' . $h . '::Other__(Mixed::Null)))' : $v->code . '.is_none()';
+                return $h !== null ? 'matches!(' . $v->borrow() . ', None | Some(' . $h . '::Other__(Mixed::Null)))' : $v->applyOwned('.is_none()');
             }
             if ($v->type->kind === RustType::UNIT) {
                 return '{ let _ = ' . $v->code . '; true }';
@@ -1518,11 +1525,11 @@ trait ExprTrait
             }
             $h = $escaped($v->type);
             if ($h !== null) {
-                return 'matches!(&' . $v->code . ', ' . $h . '::Other__(Mixed::Null))';
+                return 'matches!(' . $v->borrow() . ', ' . $h . '::Other__(Mixed::Null))';
             }
             if ($v->type->kind === RustType::GENERIC) {
                 // a template parameter can be instantiated with a nullable type: ask the value
-                return 'php_rt::is_php_null(&' . $v->code . ')';
+                return 'php_rt::is_php_null(' . $v->borrow() . ')';
             }
             return '{ let _ = ' . $v->code . '; false }';
         }
@@ -1548,7 +1555,7 @@ trait ExprTrait
                 }
                 if ($t->kind === RustType::OPTION && $inner->kind !== RustType::MIXED && $inner->kind !== RustType::UNION) {
                     // `T|false` results (e.g. strpos) are represented as Option<T>: `None` is the `false`
-                    return $lit ? '{ let _ = ' . $v->code . '; false }' : $v->code . '.is_none()';
+                    return $lit ? '{ let _ = ' . $v->code . '; false }' : $v->applyOwned('.is_none()');
                 }
                 if ($t->kind === RustType::MIXED) {
                     return 'matches!(' . $v->code . ', Mixed::Bool(' . ($lit ? 'true' : 'false') . '))';
@@ -1561,7 +1568,7 @@ trait ExprTrait
                 && strtolower($a->name->toString()) === 'substr' && !$a->isFirstClassCallable() && count($a->getArgs()) === 3
             ) {
                 $sa = $a->getArgs();
-                return 'substr_eq(' . Names::refOf($this->exprTo($sa[0]->value, RustType::str())) . ', ' . $this->exprTo($sa[1]->value, RustType::int())
+                return 'substr_eq(' . $this->exprToVal($sa[0]->value, RustType::str())->borrow() . ', ' . $this->exprTo($sa[1]->value, RustType::int())
                     . ', Some(' . $this->exprTo($sa[2]->value, RustType::int()) . '), ' . Names::rustStringLiteral($b->value) . ')';
             }
         }
@@ -1597,7 +1604,7 @@ trait ExprTrait
                 };
                 $kind = match ($lit_kind) { 'bool' => 'Bool', 'str' => 'Str', 'int' => 'Int', default => 'Float' };
                 if ($lit_code !== null) {
-                    return '{ let __g = &' . $av->code . '; php_rt::PhpKind::php_kind(__g) == php_rt::Kind::' . $kind . ' && ' . $lit_code . ' }';
+                    return '{ let __g = ' . $av->borrow() . '; php_rt::PhpKind::php_kind(__g) == php_rt::Kind::' . $kind . ' && ' . $lit_code . ' }';
                 }
             }
             $u = $at->kind === RustType::OPTION ? $at->inner() : $at;
@@ -1631,10 +1638,10 @@ trait ExprTrait
                     }
                 }
                 if (in_array($va->type->kind, $containers, true)) {
-                    return 'identical(' . Names::refOf($va->code) . ', ' . Names::refOf($this->exprTo($b, $va->type)) . ')';
+                    return 'identical(' . $va->borrow() . ', ' . $this->exprToVal($b, $va->type)->borrow() . ')';
                 }
                 if ($va->type->kind === RustType::OPTION && in_array($va->type->inner()->kind, $containers, true)) {
-                    return 'identical(' . Names::refOf($va->code) . ', &Some(' . $this->exprTo($b, $va->type->inner()) . '))';
+                    return 'identical(' . $va->borrow() . ', &Some(' . $this->exprTo($b, $va->type->inner()) . '))';
                 }
                 $u = $va->type->kind === RustType::OPTION ? $va->type->inner() : $va->type;
                 if ($u->kind === RustType::UNION) {
@@ -1644,7 +1651,7 @@ trait ExprTrait
                             if ($va->type->kind === RustType::OPTION) {
                                 $lit = 'Some(' . $lit . ')';
                             }
-                            return 'identical(' . Names::refOf($va->code) . ', &' . $lit . ')';
+                            return 'identical(' . $va->borrow() . ', &' . $lit . ')';
                         }
                     }
                 }
@@ -1660,11 +1667,11 @@ trait ExprTrait
                 }
             }
         }
-        [$l, $r, $t] = $this->commonOperands($left, $right, false);
+        [$l, $r, $t] = $this->commonOperandVals($left, $right, false);
         if ($t->isCopy() && $t->kind !== RustType::OPTION) {
-            return '(' . $l . ' == ' . $r . ')';
+            return '(' . $l->code . ' == ' . $r->code . ')';
         }
-        return 'identical(' . Names::refOf($l) . ', ' . Names::refOf($r) . ')';
+        return 'identical(' . $l->borrow() . ', ' . $r->borrow() . ')';
     }
 
     /** A variable or property read: evaluating it has no side effect, so a dead comparison may skip it. */
@@ -1751,15 +1758,15 @@ trait ExprTrait
                 $ov = $this->rawValue($oe);
                 $sv = $this->exprTo($se, RustType::str());
                 $to_s = $oi->kind === RustType::CLASS_ ? 'php_rt::PhpObject::php_to_string(__o)' : '__o.php_to_string()';
-                $subject = $ov->type->kind === RustType::OPTION ? $ov->code . '.as_ref().and_then(|__o| ' . $to_s . ')' : '{ let __o = &' . $ov->code . '; ' . $to_s . ' }';
+                $subject = $ov->type->kind === RustType::OPTION ? $ov->code . '.as_ref().and_then(|__o| ' . $to_s . ')' : '{ let __o = ' . $ov->borrow() . '; ' . $to_s . ' }';
                 return '(match ' . $subject . ' { Some(__s) => loose_eq(&__s, &' . $sv . '), None => false })';
             }
         }
-        [$l, $r, $t] = $this->commonOperands($left, $right, true);
+        [$l, $r, $t] = $this->commonOperandVals($left, $right, true);
         if ($t->kind === RustType::INT || $t->kind === RustType::FLOAT || $t->kind === RustType::BOOL) {
-            return '(' . $l . ' == ' . $r . ')';
+            return '(' . $l->code . ' == ' . $r->code . ')';
         }
-        return 'loose_eq(&' . $l . ', &' . $r . ')';
+        return 'loose_eq(' . $l->borrow() . ', ' . $r->borrow() . ')';
     }
 
     public function isNullLiteral(Expr $e): bool
@@ -1816,6 +1823,7 @@ trait ExprTrait
             $base = $this->optionalValue($e->var)
                 ?? $this->asOption($e->var instanceof Expr\Variable && is_string($e->var->name) ? $this->readVar($e->var->name) : $this->expr($e->var));
             $bt = $base->type->inner();
+            $base = $this->chainBase($base, $bt->kind === RustType::LIST || $bt->kind === RustType::MAP);
             $dim = $e->dim;
             if ($bt->kind === RustType::LIST) {
                 $inner = $bt->inner();
@@ -1898,6 +1906,7 @@ trait ExprTrait
             }
             $base = $this->optionalValue($e->var) ?? $this->asOption($this->expr($e->var));
             $bt = $base->type->inner();
+            $base = $this->chainBase($base, $bt->kind === RustType::CLASS_);
             $name = $e->name->name;
             if ($bt->kind === RustType::CLASS_) {
                 $cls = $this->program->classOf($bt);
@@ -1998,6 +2007,30 @@ trait ExprTrait
         return null;
     }
 
+    /**
+     * The base of an optional chain step (`isset($b[$k])`, `$b->f ?? x`): an `Option<T>` whose `.and_then(|__b| ..)`
+     * closure inspects `__b`. When the step only READS through `__b` (an element lookup, a field getter: auto-ref'd
+     * methods that work on `&T` as well) and the base has a place, hand the closure `Option<&T>` instead of a
+     * clone of the whole base: `x.as_ref()` / `Some(&x)`. Steps that move `__b` (a tuple/shape field, a
+     * conversion, a dynamic lookup) keep the owned base.
+     */
+    private function chainBase(Val $base, bool $reads_only): Val
+    {
+        if (!$reads_only) {
+            return $base;
+        }
+        if ($base->place !== null) {
+            return new Val($base->place . '.as_ref()', $base->type);
+        }
+        if ($base->guard === null && preg_match('/^Some\((.*)\)$/s', $base->code, $m)) {
+            $ref = Names::refOf($m[1]);
+            if ($ref !== '&' . $m[1]) {
+                return new Val('Some(' . $ref . ')', $base->type); // `Some(x.clone())` -> `Some(&x)`
+            }
+        }
+        return $base;
+    }
+
     private function asOption(Val $v): Val
     {
         if ($v->type->kind === RustType::OPTION) {
@@ -2037,7 +2070,7 @@ trait ExprTrait
         }
         if ($v->type->kind === RustType::GENERIC) {
             // a template parameter can be instantiated with a nullable type: ask the value
-            return '(!php_rt::is_php_null(&' . $v->code . '))';
+            return '(!php_rt::is_php_null(' . $v->borrow() . '))';
         }
         return '{ let _ = ' . $v->code . '; true }';
     }
@@ -2099,19 +2132,19 @@ trait ExprTrait
             if ($t->kind === RustType::INT) {
                 return $v;
             }
-            return new Val('to_int(&' . $v->code . ')', RustType::int());
+            return new Val('to_int(' . $v->borrow() . ')', RustType::int());
         }
         if ($e instanceof Expr\Cast\Double) {
             if ($t->kind === RustType::FLOAT) {
                 return $v;
             }
-            return new Val('to_float(&' . $v->code . ')', RustType::float());
+            return new Val('to_float(' . $v->borrow() . ')', RustType::float());
         }
         if ($e instanceof Expr\Cast\Bool_) {
             if ($t->kind === RustType::BOOL) {
                 return $v;
             }
-            return new Val('truthy(&' . $v->code . ')', RustType::bool());
+            return new Val('truthy(' . $v->borrow() . ')', RustType::bool());
         }
         if ($e instanceof Expr\Cast\String_) {
             if ($t->kind === RustType::STR) {
@@ -2120,7 +2153,7 @@ trait ExprTrait
             if ($t->kind === RustType::CLASS_ || $t->kind === RustType::UNION || $t->kind === RustType::ANY_OBJECT) {
                 return new Val($v->code . '.to_php_string()', RustType::str());
             }
-            return new Val('to_str(&' . $v->code . ')', RustType::str());
+            return new Val('to_str(' . $v->borrow() . ')', RustType::str());
         }
         if ($e instanceof Expr\Cast\Array_) {
             $res = $this->inferredOrMixed($e);
@@ -2225,7 +2258,7 @@ trait ExprTrait
             foreach ($arm->conds as $c) {
                 $cv = $this->expr($c);
                 $ct = $this->commonType($subj->type, $cv->type, false);
-                $conds[] = 'identical(&' . $this->casts->convert($tmp . '.clone()', $subj->type, $ct) . ', &' . $this->casts->convert($cv->code, $cv->type, $ct) . ')';
+                $conds[] = 'identical(&' . $this->casts->convert($tmp . '.clone()', $subj->type, $ct) . ', ' . $this->casts->convertVal($cv, $ct)->borrow() . ')';
             }
             $code .= ($first ? 'if ' : 'else if ') . implode(' || ', $conds) . ' { ' . $this->exprTo($arm->body, $res) . ' } ';
             $first = false;
@@ -2275,15 +2308,15 @@ trait ExprTrait
                 return new Val('{ let _ = ' . $v->code . '; false }', RustType::bool());
             }
             $this->casts->needInstanceOf($t, $target);
-            return new Val('is_instance::<' . $target->toRust() . '>(&' . $v->code . ')', RustType::bool());
+            return new Val('is_instance::<' . $target->toRust() . '>(' . $v->borrow() . ')', RustType::bool());
         }
         // dynamic class name
         $cls = $this->expr($e->class);
         $name = match (true) {
             $cls->type->kind === RustType::STR => $cls->code,
-            $cls->type->kind === RustType::SYM => 'php_rt::ToStr::to_php_str(&' . $cls->code . ')',
-            $cls->type->kind === RustType::OPTION && in_array($cls->type->inner()->kind, [RustType::STR, RustType::SYM], true) => 'php_rt::ToStr::to_php_str(&' . $cls->code . '.expect("null class name"))',
-            default => $this->casts->classNameOf($cls->code, $cls->type) ?? 'class_name_of(&' . $this->casts->convert($cls->code, $cls->type, RustType::mixed()) . ')',
+            $cls->type->kind === RustType::SYM => 'php_rt::ToStr::to_php_str(' . $cls->borrow() . ')',
+            $cls->type->kind === RustType::OPTION && in_array($cls->type->inner()->kind, [RustType::STR, RustType::SYM], true) => 'php_rt::ToStr::to_php_str(' . $cls->borrow() . '.expect("null class name"))',
+            default => $this->casts->classNameOf($cls->code, $cls->type) ?? 'class_name_of(' . $this->casts->convertVal($cls, RustType::mixed())->borrow() . ')',
         };
         return new Val($this->casts->instanceOfName($v->code, $v->type, $name), RustType::bool());
     }
