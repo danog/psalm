@@ -30,7 +30,6 @@
         <ignoreFiles>
             <file name="src/Psalm/Internal/PluginInstantiator.php"/>
             <directory name="vendor/psalm/plugin-mockery/stubs"/>
-            <directory name="vendor/psalm/plugin-mockery/tests"/>
             <file name="vendor/composer/semver/src/CompilingMatcher.php"/>
             <file name="../php-parser/lib/PhpParser/JsonDecoder.php"/>
             <directory name="tests/fixtures"/>
