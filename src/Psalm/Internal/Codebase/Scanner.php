@@ -341,7 +341,7 @@ final class Scanner
             await($pool->runAll(new InitScannerTask));
             $pool->run(
                 $files_to_scan,
-                static fn(string $file): ScannerTask => new ScannerTask($file),
+                ScannerTask::class,
                 function (): void {
                     $this->progress->taskDone(0);
                 },

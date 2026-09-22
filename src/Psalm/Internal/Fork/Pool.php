@@ -101,7 +101,7 @@ final class Pool
      * An array of task data items to be divided up among the
      * workers. The size of this is the number of forked processes.
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint
-     * @param Closure(string): Task<TResult, TReceive, TSend> $task_factory Builds the task executed on each task data item.
+     * @param class-string<Task<TResult, TReceive, TSend>> $main_task A task to execute on each task data.
      *                                                                It must return an array (to be gathered).
      *
      * @param Closure(TResult $data):void $task_done_closure A closure to execute when a task is done
@@ -111,7 +111,7 @@ final class Pool
      */
     public function run(
         array $process_task_data_iterator,
-        Closure $task_factory,
+        string $main_task,
         ?Closure $task_done_closure = null,
         ?Closure $message_handler = null,
     ): void {
@@ -122,7 +122,7 @@ final class Pool
 
         $results = [];
         foreach ($process_task_data_iterator as $file) {
-            $execution = $this->pool->submit($task_factory($file));
+            $execution = $this->pool->submit(new $main_task($file));
             $results []= $f = $execution->getFuture();
             if ($message_handler !== null) {
                 $results []= $this->pumpMessages($execution, $f, $message_handler);
