@@ -1,10 +1,10 @@
-//! PHP byte string: cheap static literals, copy-on-write heap storage.
+//! PHP byte string: inline when short, cheap static literals, copy-on-write heap storage.
 //!
 //! Heap strings use a single allocation (like Zend's `zend_string`): one thin, non-atomically
 //! reference-counted block holding the refcount, a cached hash, the length/capacity, and the bytes
-//! inline. This keeps [`Str`] at 16 bytes (so [`crate::Mixed`] stays 24) via the null-pointer niche
-//! of the `Static` variant, halves the allocations of the old `Rc<Vec<u8>>` layout, and lets a
-//! string's hash be computed once and reused across map lookups.
+//! inline. [`Str`] itself is 16 bytes (so [`crate::Mixed`] stays 24): a tag byte tells an inline
+//! string of up to 15 bytes (no allocation, cloned by copy) from a static literal and from a heap
+//! buffer, whose hash is computed once and reused across map lookups.
 
 use std::alloc::{alloc, dealloc, handle_alloc_error, Layout};
 use std::cell::Cell;
@@ -158,42 +158,109 @@ impl Drop for HeapStr {
     }
 }
 
-#[derive(Clone)]
-pub enum Str {
-    Static(&'static [u8]),
-    Heap(HeapStr),
+/// Bytes an inline string holds without an allocation (the 16-byte value minus the tag byte).
+pub const INLINE_CAP: usize = 15;
+const TAG_HEAP: u8 = 0xFE;
+const TAG_STATIC: u8 = 0xFF;
+
+/// The three layouts share the last byte as a tag: `0..=INLINE_CAP` is an inline string of that
+/// length (bytes at the front), `TAG_STATIC` a `&'static [u8]` (pointer, then a u32 length),
+/// `TAG_HEAP` a `HeapStr` pointer. Static and inline values are plain bytes: cloning them is a copy.
+#[repr(C, align(8))]
+#[derive(Clone, Copy)]
+struct Inline {
+    data: [u8; INLINE_CAP],
+    tag: u8,
+}
+#[repr(C, align(8))]
+#[derive(Clone, Copy)]
+struct StaticRef {
+    ptr: *const u8,
+    len: u32,
+    _pad: [u8; 3],
+    tag: u8,
+}
+#[repr(C, align(8))]
+struct HeapRef {
+    ptr: std::mem::ManuallyDrop<HeapStr>,
+    _pad: [u8; 7],
+    tag: u8,
+}
+#[repr(C)]
+union Repr {
+    inline: Inline,
+    stat: StaticRef,
+    heap: std::mem::ManuallyDrop<HeapRef>,
+}
+
+/// PHP byte string: an inline value up to [`INLINE_CAP`] bytes, a static literal, or a
+/// reference-counted heap buffer -- 16 bytes in every case.
+pub struct Str {
+    r: Repr,
 }
 
 impl Str {
     #[inline]
+    fn tag(&self) -> u8 {
+        // every layout keeps its tag in the last byte, so the inline view reads it
+        unsafe { self.r.inline.tag }
+    }
+    #[inline]
+    fn heap(&self) -> Option<&HeapStr> {
+        if self.tag() == TAG_HEAP { Some(unsafe { &self.r.heap.ptr }) } else { None }
+    }
+    #[inline]
+    fn heap_mut(&mut self) -> &mut HeapStr {
+        debug_assert!(self.tag() == TAG_HEAP);
+        // an explicit deref: the compiler will not reach through a ManuallyDrop union field itself
+        unsafe { &mut *std::ops::DerefMut::deref_mut(&mut self.r.heap).ptr }
+    }
+    #[inline]
+    fn from_heap(h: HeapStr) -> Str {
+        Str { r: Repr { heap: std::mem::ManuallyDrop::new(HeapRef { ptr: std::mem::ManuallyDrop::new(h), _pad: [0; 7], tag: TAG_HEAP }) } }
+    }
+    #[inline]
+    fn inline(b: &[u8]) -> Str {
+        debug_assert!(b.len() <= INLINE_CAP);
+        let mut data = [0u8; INLINE_CAP];
+        data[..b.len()].copy_from_slice(b);
+        Str { r: Repr { inline: Inline { data, tag: b.len() as u8 } } }
+    }
+    pub fn is_inline(&self) -> bool {
+        self.tag() as usize <= INLINE_CAP
+    }
+    pub fn is_static(&self) -> bool {
+        self.tag() == TAG_STATIC
+    }
+    pub fn is_heap(&self) -> bool {
+        self.tag() == TAG_HEAP
+    }
+    #[inline]
     pub const fn from_static(s: &'static str) -> Str {
-        Str::Static(s.as_bytes())
+        Str::from_static_bytes(s.as_bytes())
     }
     #[inline]
     pub const fn from_static_bytes(s: &'static [u8]) -> Str {
-        Str::Static(s)
+        Str { r: Repr { stat: StaticRef { ptr: s.as_ptr(), len: s.len() as u32, _pad: [0; 3], tag: TAG_STATIC } } }
     }
     #[inline]
     pub fn empty() -> Str {
-        Str::Static(b"")
+        Str::inline(b"")
     }
     #[inline]
     pub fn from_vec(v: Vec<u8>) -> Str {
-        if v.is_empty() {
-            return Str::empty();
-        }
-        Str::Heap(HeapStr::from_slice(&v))
+        Str::from_bytes(&v)
     }
     #[inline]
     pub fn from_bytes(v: &[u8]) -> Str {
-        if v.is_empty() {
-            return Str::empty();
+        if v.len() <= INLINE_CAP {
+            return Str::inline(v);
         }
-        Str::Heap(HeapStr::from_slice(v))
+        Str::from_heap(HeapStr::from_slice(v))
     }
     #[inline]
     pub fn from_string(s: String) -> Str {
-        Str::from_vec(s.into_bytes())
+        Str::from_bytes(s.as_bytes())
     }
     #[inline]
     pub fn from_str(s: &str) -> Str {
@@ -201,18 +268,25 @@ impl Str {
     }
     #[inline]
     pub fn as_bytes(&self) -> &[u8] {
-        match self {
-            Str::Static(s) => s,
-            Str::Heap(v) => v.as_bytes(),
+        let tag = self.tag();
+        unsafe {
+            if tag as usize <= INLINE_CAP {
+                &self.r.inline.data[..tag as usize]
+            } else if tag == TAG_STATIC {
+                std::slice::from_raw_parts(self.r.stat.ptr, self.r.stat.len as usize)
+            } else {
+                self.r.heap.ptr.as_bytes()
+            }
         }
     }
-    /// Hash of the bytes, cached in the heap allocation (recomputed only after a mutation). Static
-    /// strings recompute each call (they have nowhere to cache). Used by map lookups keyed on strings.
+    /// Hash of the bytes, cached in a heap allocation (recomputed only after a mutation); inline
+    /// and static strings recompute each call (they have nowhere to cache, and inline ones are
+    /// short). Used by map lookups keyed on strings.
     #[inline]
     pub fn hash_cached(&self, f: impl FnOnce(&[u8]) -> u64) -> u64 {
-        match self {
-            Str::Heap(h) => h.cached_hash(f),
-            Str::Static(s) => f(s),
+        match self.heap() {
+            Some(h) => h.cached_hash(f),
+            None => f(self.as_bytes()),
         }
     }
     /// Lossy UTF-8 view.
@@ -233,29 +307,38 @@ impl Str {
         self.as_bytes().to_vec()
     }
     pub fn into_vec(self) -> Vec<u8> {
-        match self {
-            Str::Static(s) => s.to_vec(),
-            Str::Heap(v) => v.to_vec(),
-        }
+        self.as_bytes().to_vec()
     }
     /// Copy-on-write append.
     pub fn push_bytes(&mut self, b: &[u8]) {
         if b.is_empty() {
             return;
         }
-        match self {
-            Str::Heap(h) => h.push_slice(b),
-            Str::Static(s) => {
-                if s.is_empty() {
-                    *self = Str::Heap(HeapStr::from_slice(b));
-                } else {
-                    let mut h = HeapStr::with_capacity(s.len() + b.len());
-                    h.push_slice(s);
-                    h.push_slice(b);
-                    *self = Str::Heap(h);
+        let tag = self.tag();
+        if tag as usize <= INLINE_CAP {
+            let len = tag as usize;
+            if len + b.len() <= INLINE_CAP {
+                unsafe {
+                    self.r.inline.data[len..len + b.len()].copy_from_slice(b);
+                    self.r.inline.tag = (len + b.len()) as u8;
                 }
+                return;
             }
+            let mut h = HeapStr::with_capacity(len + b.len());
+            h.push_slice(self.as_bytes());
+            h.push_slice(b);
+            *self = Str::from_heap(h);
+            return;
         }
+        if tag == TAG_STATIC {
+            let s = self.as_bytes();
+            let mut h = HeapStr::with_capacity(s.len() + b.len());
+            h.push_slice(s);
+            h.push_slice(b);
+            *self = Str::from_heap(h);
+            return;
+        }
+        self.heap_mut().push_slice(b);
     }
     /// `$s[$i] = $c`: set a byte, growing with spaces (copy-on-write).
     pub fn set_index(&mut self, idx: usize, c: u8) {
@@ -267,12 +350,17 @@ impl Str {
             self.push_bytes(&pad);
             return;
         }
-        if let Str::Static(s) = self {
-            *self = Str::Heap(HeapStr::from_slice(s));
+        let tag = self.tag();
+        if tag as usize <= INLINE_CAP {
+            unsafe {
+                self.r.inline.data[idx] = c;
+            }
+            return;
         }
-        if let Str::Heap(h) = self {
-            h.set_byte(idx, c);
+        if tag == TAG_STATIC {
+            *self = Str::from_heap(HeapStr::from_slice(self.as_bytes()));
         }
+        self.heap_mut().set_byte(idx, c);
     }
     #[inline]
     pub fn len(&self) -> usize {
@@ -295,6 +383,30 @@ impl Str {
             return self.clone();
         }
         Str::from_vec(b.to_ascii_uppercase())
+    }
+}
+
+impl Clone for Str {
+    #[inline]
+    fn clone(&self) -> Str {
+        if self.tag() == TAG_HEAP {
+            // a shared buffer: bump the count; the 16 bytes are then the same
+            let h: HeapStr = unsafe { (*self.r.heap.ptr).clone() };
+            std::mem::forget(h);
+        }
+        Str { r: Repr { inline: unsafe { self.r.inline } } }
+    }
+}
+
+impl Drop for Str {
+    #[inline]
+    fn drop(&mut self) {
+        if self.tag() == TAG_HEAP {
+            unsafe {
+                let heap = std::ops::DerefMut::deref_mut(&mut self.r.heap);
+                std::mem::ManuallyDrop::drop(&mut heap.ptr);
+            }
+        }
     }
 }
 
@@ -389,10 +501,11 @@ impl Str {
         if end - start == 1 {
             return crate::ops::single_byte_str(b[start]);
         }
-        match self {
-            Str::Static(s) => Str::Static(&s[start..end]),
-            _ => Str::from_bytes(&b[start..end]),
+        if self.is_static() && end - start > INLINE_CAP {
+            // a long slice of a static literal stays a static reference
+            return unsafe { Str::from_static_bytes(std::slice::from_raw_parts(b.as_ptr().add(start), end - start)) };
         }
+        Str::from_bytes(&b[start..end])
     }
     pub fn find(&self, needle: &[u8]) -> Option<usize> {
         find_bytes(self.as_bytes(), needle, 0)
@@ -469,12 +582,16 @@ mod tests {
         // Str must stay 16 bytes (niche-packed) so Mixed stays 24.
         assert_eq!(std::mem::size_of::<Str>(), 16);
         assert_eq!(std::mem::size_of::<HeapStr>(), 8);
+        assert!(Str::from_bytes(b"short").is_inline());
+        assert!(Str::from_bytes(b"exactly fifteen").is_inline());
+        assert!(Str::from_bytes(b"sixteen bytes!!!").is_heap());
+        assert!(Str::from_static("literal").is_static());
     }
 
     #[test]
     fn roundtrip_and_empty() {
         assert_eq!(Str::from_bytes(b"").as_bytes(), b"");
-        assert!(matches!(Str::from_bytes(b""), Str::Static(_)));
+        assert!(Str::from_bytes(b"").is_inline());
         let s = Str::from_bytes(b"hello");
         assert_eq!(s.as_bytes(), b"hello");
         assert_eq!(s.len(), 5);
@@ -530,14 +647,14 @@ mod tests {
 
     #[test]
     fn cached_hash_is_stable_and_shared() {
-        let s = Str::from_bytes(b"typename");
-        if let Str::Heap(h) = &s {
+        let s = Str::from_bytes(b"a type name longer than fifteen");
+        if let Some(h) = s.heap() {
             let a = h.cached_hash(|b| super::super::string::tests::fnv(b));
             let b = h.cached_hash(|_| 0xdead_beef); // ignored: already cached
             assert_eq!(a, b);
             // the cache travels with clones (same allocation)
             let c = s.clone();
-            if let Str::Heap(hc) = &c {
+            if let Some(hc) = c.heap() {
                 assert_eq!(hc.cached_hash(|_| 0), a);
             }
         } else {
@@ -557,14 +674,19 @@ mod tests {
 
     #[test]
     fn mutation_clears_cached_hash() {
-        let mut s = Str::from_bytes(b"aaa");
-        if let Str::Heap(h) = &s {
+        let mut s = Str::from_bytes(b"aaaaaaaaaaaaaaaaaaaa");
+        if let Some(h) = s.heap() {
             let _ = h.cached_hash(|b| fnv(b));
         }
         s.push_bytes(b"bbb");
         // after mutation the hash must be recomputed from the new bytes
-        if let Str::Heap(h) = &s {
-            assert_eq!(h.cached_hash(|b| fnv(b)), fnv(b"aaabbb"));
+        if let Some(h) = s.heap() {
+            assert_eq!(h.cached_hash(|b| fnv(b)), fnv(b"aaaaaaaaaaaaaaaaaaaabbb"));
         }
+        // an inline string grows in place until it spills to the heap, keeping its bytes
+        let mut i = Str::from_bytes(b"abc");
+        i.push_bytes(b"defghijklmnop");
+        assert!(i.is_heap());
+        assert_eq!(i.as_bytes(), b"abcdefghijklmnop");
     }
 }
