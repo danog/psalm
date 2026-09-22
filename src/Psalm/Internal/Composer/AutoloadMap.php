@@ -65,7 +65,6 @@ use const T_TRAIT;
  * @psalm-type RootComposerJson = array{autoload?: AutoloadSection, 'autoload-dev'?: AutoloadSection}
  * @psalm-type InstalledPackage = array{name: string, 'install-path'?: string, autoload?: AutoloadSection}
  * @psalm-type InstalledJson = array{packages: list<InstalledPackage>}
- *
  * @internal
  */
 final class AutoloadMap
@@ -313,7 +312,11 @@ final class AutoloadMap
     {
         $contents = is_file($path) ? file_get_contents($path) : false;
 
-        return $contents === false ? null : json_decode($contents, true);
+        if ($contents === false) {
+            return null;
+        }
+
+        return json_decode($contents, true);
     }
 
     /**
@@ -325,7 +328,11 @@ final class AutoloadMap
     {
         $contents = is_file($path) ? file_get_contents($path) : false;
 
-        return $contents === false ? null : json_decode($contents, true);
+        if ($contents === false) {
+            return null;
+        }
+
+        return json_decode($contents, true);
     }
 
     /**
