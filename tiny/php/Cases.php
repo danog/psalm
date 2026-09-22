@@ -1537,6 +1537,7 @@ function run_all(): string
         . check('builtin_arity', case_builtin_arity(), 'ok')
         . check('sprintf_percent', case_sprintf_percent(), '%|%|%|%|%a|%b|a%c')
         . check('dynamic_new_dead', case_dynamic_new_dead(), 'named')
+        . check('class_string_or_object', case_class_string_or_object(), 'name:Tiny\\HookA|obj:A|name:Other')
         . check('dir_const', case_dir_const(), 'php/fixtures')
         . check('array_map_void', case_array_map_void(), 'A,B,C')
         . check('provided_builtins', case_provided_builtins(), 'sort:1|in_array:1|usort:1|file_exists:1|go:0|nonesuch_xyz:0')
@@ -2474,4 +2475,35 @@ final class DirConst
 function case_dir_const(): string
 {
     return basename(dirname(DirConst::FIXTURES)) . '/' . basename(DirConst::FIXTURES);
+}
+
+// ---- feature: a class-string passed where an object or a class name is accepted ----
+
+interface Hookish
+{
+    public function tag(): string;
+}
+
+final class HookA implements Hookish
+{
+    public function tag(): string
+    {
+        return 'A';
+    }
+}
+
+/**
+ * @param Hookish|class-string<Hookish> $handler
+ */
+function hook_tag(Hookish|string $handler): string
+{
+    if (is_string($handler)) {
+        return 'name:' . $handler;
+    }
+    return 'obj:' . $handler->tag();
+}
+
+function case_class_string_or_object(): string
+{
+    return hook_tag(HookA::class) . '|' . hook_tag(new HookA()) . '|' . hook_tag('Other');
 }

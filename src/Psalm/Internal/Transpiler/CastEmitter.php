@@ -1199,9 +1199,10 @@ final class CastEmitter
             $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ArrayKey { fn cast_to(self) -> ' . $to->toRust() . ' { match self { ArrayKey::Int(__i) => ' . $this->conv('__i', RustType::int(), $to) . ', ArrayKey::Str(__s) => ' . $this->conv('__s', RustType::str(), $to) . ' } } }');
             return;
         }
-        if ($tk === RustType::UNION && $fk === RustType::STR && $this->casts->pickMember($to, RustType::str()) === null && $this->casts->pickMember($to, RustType::sym()) !== null) {
-            // a string into a union holding an interned name
-            $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for Str { fn cast_to(self) -> ' . $to->toRust() . ' { ' . $this->conv($this->conv('self', RustType::str(), RustType::sym()), RustType::sym(), $to) . ' } }');
+        if ($tk === RustType::UNION && $fk === RustType::STR && $this->casts->pickMember($to, RustType::str()) === null && ($sym_member = $this->casts->pickMember($to, RustType::sym())) !== null) {
+            // a string into a union holding an interned name: intern it and wrap that member directly
+            // (converting the Sym "into the union" would route back through Str and recurse forever)
+            $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for Str { fn cast_to(self) -> ' . $to->toRust() . ' { ' . $to->mangle() . '::' . $sym_member->variantName() . '(' . $this->conv('self', RustType::str(), RustType::sym()) . ') } }');
             return;
         }
         if ($tk === RustType::UNION) {

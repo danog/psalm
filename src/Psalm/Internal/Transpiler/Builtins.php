@@ -724,7 +724,7 @@ final class Builtins
 
     private function f_is_string(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
-        return $this->typeCheck($b, $args[0]->value, 'is_string', [RustType::STR]);
+        return $this->typeCheck($b, $args[0]->value, 'is_string', [RustType::STR, RustType::SYM]);
     }
 
     private function f_is_int(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -887,7 +887,7 @@ final class Builtins
 
     private function f_is_scalar(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
-        return $this->typeCheck($b, $args[0]->value, 'is_scalar', [RustType::INT, RustType::FLOAT, RustType::STR, RustType::BOOL, RustType::ARRAY_KEY]);
+        return $this->typeCheck($b, $args[0]->value, 'is_scalar', [RustType::INT, RustType::FLOAT, RustType::STR, RustType::SYM, RustType::BOOL, RustType::ARRAY_KEY]);
     }
 
     private function f_is_iterable(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
