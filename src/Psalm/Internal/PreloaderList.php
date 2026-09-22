@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal;
 
-/**
- * @internal
- *
- * @psalm-immutable
+/** 
+ * @psalm-pure
+ * 
+ * @internal 
  */
 final class PreloaderList {
     public const CLASSES = [
@@ -79,6 +79,7 @@ final class PreloaderList {
         \PhpParser\Lexer\TokenEmulator\AttributeEmulator::class,
         \PhpParser\Lexer\TokenEmulator\EnumTokenEmulator::class,
         \PhpParser\Lexer\TokenEmulator\ExplicitOctalEmulator::class,
+        \PhpParser\Lexer\TokenEmulator\FnTokenEmulator::class,
         \PhpParser\Lexer\TokenEmulator\KeywordEmulator::class,
         \PhpParser\Lexer\TokenEmulator\MatchTokenEmulator::class,
         \PhpParser\Lexer\TokenEmulator\NullsafeTokenEmulator::class,
@@ -107,6 +108,7 @@ final class PreloaderList {
         \PhpParser\NodeVisitor\NodeConnectingVisitor::class,
         \PhpParser\NodeVisitor\ParentConnectingVisitor::class,
         \PhpParser\Node\Arg::class,
+        \PhpParser\Node\ArgPlaceholder::class,
         \PhpParser\Node\ArrayItem::class,
         \PhpParser\Node\Attribute::class,
         \PhpParser\Node\AttributeGroup::class,
@@ -429,6 +431,7 @@ final class PreloaderList {
         \Psalm\Internal\Analyzer\Statements\Expression\Call\Method\MissingMethodCallHandler::class,
         \Psalm\Internal\Analyzer\Statements\Expression\Call\NamedFunctionCallHandler::class,
         \Psalm\Internal\Analyzer\Statements\Expression\Call\NewAnalyzer::class,
+        \Psalm\Internal\Analyzer\Statements\Expression\Call\NoDiscardAnalyzer::class,
         \Psalm\Internal\Analyzer\Statements\Expression\Call\StaticCallAnalyzer::class,
         \Psalm\Internal\Analyzer\Statements\Expression\Call\StaticMethod\AtomicStaticCallAnalyzer::class,
         \Psalm\Internal\Analyzer\Statements\Expression\Call\StaticMethod\ExistingAtomicStaticCallAnalyzer::class,
@@ -477,6 +480,7 @@ final class PreloaderList {
         \Psalm\Internal\Codebase\AssertionsFromInheritanceResolver::class,
         \Psalm\Internal\Codebase\ClassConstantByWildcardResolver::class,
         \Psalm\Internal\Codebase\ClassLikes::class,
+        \Psalm\Internal\Codebase\CodeUseGraph::class,
         \Psalm\Internal\Codebase\CombinedFlowGraph::class,
         \Psalm\Internal\Codebase\ConstantTypeResolver::class,
         \Psalm\Internal\Codebase\DataFlowGraph::class,
@@ -484,6 +488,7 @@ final class PreloaderList {
         \Psalm\Internal\Codebase\ImpureFunctionsList::class,
         \Psalm\Internal\Codebase\InternalCallMapHandler::class,
         \Psalm\Internal\Codebase\Methods::class,
+        \Psalm\Internal\Codebase\MutationLevelResolver::class,
         \Psalm\Internal\Codebase\Populator::class,
         \Psalm\Internal\Codebase\Properties::class,
         \Psalm\Internal\Codebase\PropertyMap::class,
@@ -706,6 +711,7 @@ final class PreloaderList {
         \Psalm\Internal\TypeVisitor\TypeChecker::class,
         \Psalm\Internal\TypeVisitor\TypeLocalizer::class,
         \Psalm\Internal\TypeVisitor\TypeScanner::class,
+        \Psalm\Internal\TypeVisitor\TypeVariableResolver::class,
         \Psalm\Internal\Type\ArrayType::class,
         \Psalm\Internal\Type\AssertionReconciler::class,
         \Psalm\Internal\Type\ClosedInheritanceToUnion::class,
@@ -806,12 +812,14 @@ final class PreloaderList {
         \Psalm\Issue\ForbiddenCode::class,
         \Psalm\Issue\FunctionIssue::class,
         \Psalm\Issue\IfThisIsMismatch::class,
+        \Psalm\Issue\ImmutableDependency::class,
         \Psalm\Issue\ImplementationRequirementViolation::class,
         \Psalm\Issue\ImplementedParamTypeMismatch::class,
         \Psalm\Issue\ImplementedReturnTypeMismatch::class,
         \Psalm\Issue\ImplicitToStringCast::class,
         \Psalm\Issue\ImpureByReferenceAssignment::class,
         \Psalm\Issue\ImpureFunctionCall::class,
+        \Psalm\Issue\ImpureGlobalVariable::class,
         \Psalm\Issue\ImpureMethodCall::class,
         \Psalm\Issue\ImpurePropertyAssignment::class,
         \Psalm\Issue\ImpurePropertyFetch::class,
@@ -885,6 +893,7 @@ final class PreloaderList {
         \Psalm\Issue\MismatchingDocblockParamType::class,
         \Psalm\Issue\MismatchingDocblockPropertyType::class,
         \Psalm\Issue\MismatchingDocblockReturnType::class,
+        \Psalm\Issue\MissingAbstractPureAnnotation::class,
         \Psalm\Issue\MissingClassConstType::class,
         \Psalm\Issue\MissingClosureParamType::class,
         \Psalm\Issue\MissingClosureReturnType::class,
@@ -893,6 +902,7 @@ final class PreloaderList {
         \Psalm\Issue\MissingDocblockType::class,
         \Psalm\Issue\MissingFile::class,
         \Psalm\Issue\MissingImmutableAnnotation::class,
+        \Psalm\Issue\MissingInterfaceImmutableAnnotation::class,
         \Psalm\Issue\MissingOverrideAttribute::class,
         \Psalm\Issue\MissingParamType::class,
         \Psalm\Issue\MissingPropertyType::class,
@@ -1022,6 +1032,8 @@ final class PreloaderList {
         \Psalm\Issue\TaintedInclude::class,
         \Psalm\Issue\TaintedInput::class,
         \Psalm\Issue\TaintedLdap::class,
+        \Psalm\Issue\TaintedLlmPrompt::class,
+        \Psalm\Issue\TaintedNosql::class,
         \Psalm\Issue\TaintedSSRF::class,
         \Psalm\Issue\TaintedShell::class,
         \Psalm\Issue\TaintedSleep::class,
@@ -1408,7 +1420,9 @@ final class PreloaderList {
         \Psalm\Storage\HasAttributesInterface::class,
         \Psalm\Storage\ImmutableNonCloneableTrait::class,
         \Psalm\Storage\MethodStorage::class,
+        \Psalm\Storage\Mutations::class,
         \Psalm\Storage\Possibilities::class,
+        \Psalm\Storage\PropertyHookStorage::class,
         \Psalm\Storage\PropertyStorage::class,
         \Psalm\Type::class,
         \Psalm\Type\Atomic::class,

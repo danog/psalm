@@ -29,6 +29,7 @@ use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
 use Psalm\Internal\Type\TypeExpander;
+use Psalm\Internal\TypeVisitor\TypeVariableResolver;
 use Psalm\Issue\InvalidNamedArgument;
 use Psalm\Issue\InvalidPassByReference;
 use Psalm\Issue\PossiblyUndefinedVariable;
@@ -487,6 +488,9 @@ final class ArgumentsAnalyzer
                     ) {
                         if (isset($replaced_type_part->params[$closure_param_offset]->type)) {
                             $replaced_param_type = $replaced_type_part->params[$closure_param_offset]->type;
+
+                            $type_variable_resolver = new TypeVariableResolver($codebase);
+                            $type_variable_resolver->traverse($replaced_param_type);
 
                             if ($replaced_param_type->hasTemplate()) {
                                 $replaced_param_type = TypeExpander::expandUnion(
