@@ -2850,6 +2850,13 @@ final class Builtins
         return $this->f_array_key_exists($b, $call, $args);
     }
 
+    /** The table of compiled-in plugin classes the crate emitter generates (`names::instantiate_plugin`). */
+    private function f___rt_instantiate_plugin(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        $s = $b->exprTo($args[0]->value, RustType::str());
+        return new Val('crate::names::instantiate_plugin(&' . $s . ')', $b->inferredOrMixed($call));
+    }
+
     private function f___rt_tokenize(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
         $s = $b->exprTo($args[0]->value, RustType::str());

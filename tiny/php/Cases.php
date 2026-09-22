@@ -1536,6 +1536,7 @@ function run_all(): string
         . check('php_shifts', case_php_shifts(), '0|1|0|-1|2|0|4611686018427387904')
         . check('builtin_arity', case_builtin_arity(), 'ok')
         . check('sprintf_percent', case_sprintf_percent(), '%|%|%|%|%a|%b|a%c')
+        . check('dynamic_new_dead', case_dynamic_new_dead(), 'named')
         . check('array_map_void', case_array_map_void(), 'A,B,C')
         . check('provided_builtins', case_provided_builtins(), 'sort:1|in_array:1|usort:1|file_exists:1|go:0|nonesuch_xyz:0')
         . check('htmlspecialchars_flags', case_htmlspecialchars_flags(), 'a&quot;b&#039;c&lt;&amp;&gt;|a&quot;b&apos;c&lt;&amp;&gt;|a&quot;b&apos;c&lt;&amp;&gt;|a&quot;b\'c&lt;&amp;&gt;|a"b\'c&lt;&amp;&gt;')
@@ -2434,4 +2435,30 @@ function case_array_map_void(): string
         amv_args(),
     );
     return implode(',', $seen);
+}
+
+// ---- feature: an interpreted-only branch may instantiate a class by name ----
+
+final class NamedPlugin
+{
+    public function tag(): string
+    {
+        return 'named';
+    }
+}
+
+/**
+ * @param class-string<NamedPlugin> $name
+ */
+function make_by_name(string $name): NamedPlugin
+{
+    if (!\defined('PSALM_COMPILED')) {
+        return new $name();
+    }
+    return new NamedPlugin();
+}
+
+function case_dynamic_new_dead(): string
+{
+    return make_by_name(NamedPlugin::class)->tag();
 }

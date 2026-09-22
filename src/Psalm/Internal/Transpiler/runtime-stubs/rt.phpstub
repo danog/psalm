@@ -19,3 +19,6 @@ function __rt_function_is_builtin(string $name): bool {}
 
 function __rt_class_is_trait(string $class): bool {}
 
+/** A plugin class compiled into the program, built from its name; null for a name the program does not know (a table the crate emitter generates). */
+function __rt_instantiate_plugin(string $class): \Psalm\Plugin\PluginInterface|\Psalm\Plugin\HookInterface|null {}
+

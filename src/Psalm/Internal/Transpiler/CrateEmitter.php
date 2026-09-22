@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Internal\Transpiler;
 
 use Psalm\Codebase;
+use Psalm\Type;
 
 use function array_fill;
 use function array_keys;
@@ -534,6 +535,44 @@ final class CrateEmitter
     }
 
     /**
+     * `instantiate_plugin`: builds a plugin from its class name, for the runtime stub of
+     * `Psalm\Internal\PluginInstantiator`. Lists every concrete class compiled in that implements a
+     * plugin interface and takes no constructor arguments; a name the program does not know is None.
+     * Emitted only for a program that has Psalm's plugin interfaces.
+     *
+     * @param array<string, ClassModel> $classes this crate's project classes by lowercased name
+     */
+    private function emitPluginTable(Writer $w, array $classes, ?string $up): void
+    {
+        $plugin_iface = $this->program->getClass('Psalm\Plugin\PluginInterface');
+        $hook_iface = $this->program->getClass('Psalm\Plugin\HookInterface');
+        if ($plugin_iface === null || $hook_iface === null) {
+            return;
+        }
+        $ret = $this->program->types->map(
+            Type::parseString('Psalm\Plugin\PluginInterface|Psalm\Plugin\HookInterface|null'),
+        );
+        if ($ret->kind !== RustType::OPTION) {
+            fwrite(STDERR, "[transpiler] plugin table: expected an optional union, got " . $ret->toRust() . "\n");
+            return;
+        }
+        $arms = [];
+        foreach ($classes as $lc => $cls) {
+            if (!$cls->isConcrete() || !($cls->isSubclassOf($plugin_iface) || $cls->isSubclassOf($hook_iface))) {
+                continue;
+            }
+            $ctor = $this->program->findMethod($cls, '__construct');
+            if ($ctor !== null && $ctor->storage->params !== []) {
+                continue;
+            }
+            $arms[] = Names::byteStrLiteral($lc) . ' => Some('
+                . $this->casts->convert($cls->path() . '::new()', RustType::class($cls->fqcn), $ret->inner()) . ')';
+        }
+        $w->line('pub fn instantiate_plugin(name: &Str) -> ' . $ret->toRust() . ' { let lc = php_rt::names::norm(name); match lc.as_slice() { '
+            . implode(', ', $arms) . ($arms ? ', ' : '') . '_ => ' . ($up !== null ? $up . 'instantiate_plugin(name)' : 'None') . ' } }');
+    }
+
+    /**
      * `names`: static tables of the crate's classes, functions and constants for the name-based builtins
      * (`class_exists`, `is_subclass_of` on class names, `defined`, `constant`, `get_declared_classes`, ...).
      * Each crate's tables fall back to the upstream crate's, the main crate to the runtime's builtin tables.
@@ -578,6 +617,7 @@ final class CrateEmitter
         $w->line('pub fn enum_exists(name: &Str) -> bool { class_info(name).map_or(false, |i| i.kind == 3) }');
         $w->line('pub fn class_is_trait(name: &Str) -> bool { trait_exists(name) }');
         $w->line('pub fn class_file(name: &Str) -> Option<Str> { class_info(name).and_then(|i| if i.file.is_empty() { None } else { Some(Str::from_static(i.file)) }) }');
+        $this->emitPluginTable($w, $classes, $up);
         $w->line('/// `is_subclass_of($sub, $parent)` / `is_a($sub, $parent, true)` on two class names.');
         $w->line('pub fn is_subclass(sub: &Str, parent: &Str, allow_same: bool) -> bool { let s = php_rt::names::norm(sub); let p = php_rt::names::norm(parent); if s == p { return allow_same; } class_info_lc(&s).map_or(false, |i| i.ancestors.iter().any(|a| a.as_bytes() == p.as_slice())) }');
         $w->line('pub fn declared_classlikes(interfaces: bool) -> List<Str> { let mut out: List<Str> = ' . ($up !== null ? $up . 'declared_classlikes(interfaces)' : 'php_rt::names::builtin_declared(interfaces)') . '; for (_, i) in CLASSES { if (interfaces && i.kind == 1) || (!interfaces && (i.kind == 0 || i.kind == 3)) { out.push(Str::from_static(i.name)); } } out }');
