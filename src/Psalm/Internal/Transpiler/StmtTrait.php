@@ -546,8 +546,11 @@ trait StmtTrait
             }
         }
         foreach ($finder->findInstanceOf($nodes, \PhpParser\Node\Arg::class) as $a) {
-            if ($a->value instanceof Expr\Variable && is_string($a->value->name)) {
-                $writes[] = $a->value->name;
+            // a by-reference parameter may take the variable or any element/property rooted in it (`sort($x['s'])`)
+            if ($a->value instanceof Expr\Variable || $a->value instanceof Expr\ArrayDimFetch
+                || $a->value instanceof Expr\PropertyFetch
+            ) {
+                $writes = array_merge($writes, $names($a->value));
             }
         }
         foreach ($finder->find($nodes, static fn(\PhpParser\Node $n) => $n instanceof Expr\Closure || $n instanceof Expr\ArrowFunction) as $c) {
