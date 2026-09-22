@@ -1909,7 +1909,10 @@ trait ExprTrait
                 $key = $this->literalKey($dim);
                 if ($key !== null && isset($bt->fields[$key])) {
                     [$ft, $opt] = $bt->fields[$key];
-                    $code = $base->code . '.and_then(|__b| ' . ($opt ? '__b.' . Names::field($key) : 'Some(__b.' . Names::field($key) . ')') . ')';
+                    // a borrowed base clones only the field, not the whole shape
+                    $bb = $this->chainBase($base, true);
+                    $clone = $bb !== $base ? '.clone()' : '';
+                    $code = $bb->code . '.and_then(|__b| ' . ($opt ? '__b.' . Names::field($key) . $clone : 'Some(__b.' . Names::field($key) . $clone . ')') . ')';
                     return $this->flattenOption($code, $ft);
                 }
                 if ($key !== null) {

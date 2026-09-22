@@ -1530,7 +1530,10 @@ final class Builtins
             if (!isset($st->fields[$key])) {
                 return new Val('{ let _ = ' . $sv->code . '; false }', RustType::bool());
             }
-            $acc = $sv->type->kind === RustType::OPTION ? $sv->code . '.map_or(false, |__s| __s.' . Names::field($key) . '.is_some())' : $sv->code . '.' . Names::field($key) . '.is_some()';
+            // the shape is only looked at: read the field through its place, not a clone of the whole shape
+            $acc = $sv->type->kind === RustType::OPTION
+                ? ($sv->place !== null ? $sv->place . '.as_ref()' : $sv->code) . '.map_or(false, |__s| __s.' . Names::field($key) . '.is_some())'
+                : $sv->applyOwned('.' . Names::field($key) . '.is_some()');
             return new Val($st->fields[$key][1] ? $acc : '{ let _ = ' . $sv->code . '; true }', RustType::bool());
         }
         $c = $this->container($b, $args[1]->value);
