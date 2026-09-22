@@ -123,8 +123,18 @@ pub fn sleep(s: i64) -> i64 {
     std::thread::sleep(std::time::Duration::from_secs(s.max(0) as u64));
     0
 }
+/// The extensions the runtime implements, spelled as PHP's own module entries spell them
+/// (`ext/reflection/php_reflection.c` registers `Reflection`, `ext/spl/php_spl.c` `SPL`, ...).
+/// One table answers both `extension_loaded()` and `get_loaded_extensions()`, so the two agree.
+pub const LOADED_EXTENSIONS: &[&str] = &[
+    "Core", "date", "standard", "json", "tokenizer", "mbstring", "ctype", "pcre", "SPL", "SimpleXML", "dom",
+    "libxml", "filter", "hash", "random", "Reflection",
+];
+
+/// PHP matches the name case-insensitively (`zend_hash_str_find` over the lowercased name).
 pub fn extension_loaded(name: &Str) -> bool {
-    matches!(name.as_bytes(), b"json" | b"tokenizer" | b"mbstring" | b"ctype" | b"pcre" | b"spl" | b"simplexml" | b"dom" | b"libxml" | b"filter" | b"hash" | b"random")
+    let want = name.to_string_lossy().to_ascii_lowercase();
+    LOADED_EXTENSIONS.iter().any(|e| e.eq_ignore_ascii_case(&want))
 }
 pub fn phpversion(ext: Option<&Str>) -> Option<Str> {
     match ext {
@@ -207,7 +217,7 @@ pub fn get_loaded_extensions(zend_extensions: bool) -> List<Str> {
     if zend_extensions {
         return List::new();
     }
-    crate::list![Str::from_static("Core"), Str::from_static("json"), Str::from_static("tokenizer"), Str::from_static("mbstring"), Str::from_static("ctype"), Str::from_static("pcre"), Str::from_static("SPL")]
+    LOADED_EXTENSIONS.iter().map(|e| Str::from_static(*e)).collect::<Vec<_>>().into()
 }
 pub fn get_defined_constants(_categorize: bool) -> Map<Str, crate::conv::Scalar> {
     // the compiled program's constants: PHP's builtin table plus the runtime's own (PHP_EOL, PSALM_COMPILED, ...);
