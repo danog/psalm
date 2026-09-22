@@ -1452,6 +1452,7 @@ function case_node_parts(): string
 function run_all(): string
 {
     return check('node_parts', case_node_parts(), 'PE:PE')
+        . check('shape_dyn_key', case_shape_dyn_key(), 'int,-,zero,string,')
         . check('foreach_ref_unset', case_foreach_ref_unset(), '10:-:30')
         . check('union_modulo', case_union_modulo(), '1:1:1:1')
         . check('union_tuple_isset', case_union_tuple_isset(), 'arr:obj:none:none')
@@ -2585,4 +2586,20 @@ function case_method_exists(): string
 {
     $o = new HasMethods();
     return (method_exists($o, 'known') ? 'y' : 'n') . (method_exists($o, 'nope') ? 'y' : 'n');
+}
+
+final class ShapeConsts
+{
+    public const SPECIAL = ['int' => 'int', 'string' => 'string', '0' => 'zero'];
+}
+
+/** A constant shape read with a variable key: a key match, not a map rebuilt per read. */
+function case_shape_dyn_key(): string
+{
+    $out = '';
+    foreach (['int', 'nope', '0', 'string'] as $k) {
+        $out .= isset(ShapeConsts::SPECIAL[$k]) ? ShapeConsts::SPECIAL[$k] : '-';
+        $out .= ',';
+    }
+    return $out;
 }

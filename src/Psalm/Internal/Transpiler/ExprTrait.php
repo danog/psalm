@@ -979,6 +979,32 @@ trait ExprTrait
         return strpos($stripped ?? $code, '?') !== false;
     }
 
+    /**
+     * `Option<V>` code reading field `$key` (an ArrayKey place) of the shape struct `$b`: a match on the key
+     * instead of converting the whole shape into a Map first (a class-constant shape probed with a variable
+     * key, `isset(self::SPECIAL_TYPES[$name])`, rebuilt its map on every call).
+     */
+    public function shapeDynGet(string $b, string $key, RustType $shape, RustType $vt): string
+    {
+        $str_arms = [];
+        $int_arms = [];
+        foreach ($shape->fields as $k => [$ft, $opt]) {
+            $f = $b . '.' . Names::field((string) $k);
+            $val = $opt
+                ? $f . '.clone().map(|__v| ' . $this->casts->convert('__v', $ft, $vt) . ')'
+                : 'Some(' . $this->casts->convert($f . '.clone()', $ft, $vt) . ')';
+            if (preg_match('/^(0|-?[1-9][0-9]{0,18})$/', (string) $k)) {
+                $int_arms[] = $k . ' => ' . $val;
+            } else {
+                $str_arms[] = Names::byteStrLiteral((string) $k) . ' => ' . $val;
+            }
+        }
+        $str_arms[] = '_ => None';
+        $int_arms[] = '_ => None';
+        return '(match &' . $key . ' { ArrayKey::Str(__s) => match __s.as_bytes() { ' . implode(', ', $str_arms)
+            . ' }, ArrayKey::Int(__i) => match *__i { ' . implode(', ', $int_arms) . ' } })';
+    }
+
     private function shapeValueType(RustType $shape): RustType
     {
         $types = [];
@@ -1845,9 +1871,9 @@ trait ExprTrait
                 if ($key !== null) {
                     return new Val('{ let _ = ' . $base->code . '; None::<()> }', RustType::option(RustType::unit()));
                 }
-                $mt = RustType::map(RustType::arrayKey(), $this->shapeValueType($bt));
-                $code = '{ let __k = ' . $this->keyExpr($dim, RustType::arrayKey()) . '; ' . $base->code . '.and_then(|__b| ' . $this->casts->convert('__b', $bt, $mt) . '.get(&__k).cloned()) }';
-                return $this->flattenOption($code, $mt->params[1]);
+                $vt = $this->shapeValueType($bt);
+                $code = '{ let __k = ' . $this->keyExpr($dim, RustType::arrayKey()) . '; ' . $base->code . '.and_then(|__b| ' . $this->shapeDynGet('__b', '__k', $bt, $vt) . ') }';
+                return $this->flattenOption($code, $vt);
             }
             if ($bt->kind === RustType::TUPLE) {
                 $key = $this->literalKey($dim);

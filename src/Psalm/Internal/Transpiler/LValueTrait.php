@@ -589,9 +589,11 @@ trait LValueTrait
                 $this->warn('read of unknown shape key ' . $k, $e);
                 return $this->dead('unknown key', $this->inferredOrMixed($e));
             }
-            $mt = RustType::map(RustType::arrayKey(), $this->shapeValueType($bt));
-            $conv = $this->casts->convert($base->code, $bt, $mt);
-            return $this->narrow(new Val($conv . '.idx(' . Names::refOf($this->keyExpr($dim, RustType::arrayKey())) . ').clone()', $mt->params[1]), $e);
+            $vt = $this->shapeValueType($bt);
+            $b = $this->tmp('__b');
+            $code = '{ let __k = ' . $this->keyExpr($dim, RustType::arrayKey()) . '; let ' . $b . ' = ' . ($base->place !== null ? '&' . $base->place : '&' . $base->code) . '; '
+                . $this->shapeDynGet($b, '__k', $bt, $vt) . '.unwrap_or_else(|| panic!("Undefined array key {:?}", __k)) }';
+            return $this->narrow(new Val($code, $vt), $e);
         }
         if ($bt->kind === RustType::STR) {
             return new Val('str_index(' . $base->borrow() . ', ' . $this->exprTo($dim, RustType::int()) . ')', RustType::str());
