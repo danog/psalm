@@ -55,6 +55,11 @@ fn main() {
                     std::process::exit(status as i32);
                 }
                 eprintln!("Uncaught {}: {}", thrown.class_name(), thrown.message().to_string_lossy());
+                let mut previous = thrown.getPrevious();
+                while let Some(cause) = previous {
+                    eprintln!("  caused by {}: {}", cause.class_name(), cause.message().to_string_lossy());
+                    previous = cause.getPrevious();
+                }
                 std::process::exit(255);
             }
             Err(panic) => {
