@@ -248,6 +248,39 @@ impl Str {
         Str::inline(b"")
     }
     #[inline]
+    /// An empty string with room for `cap` bytes (a heap buffer only when they do not fit inline).
+    #[inline]
+    pub fn with_capacity(cap: usize) -> Str {
+        if cap <= INLINE_CAP { Str::empty() } else { Str::from_heap(HeapStr::with_capacity(cap)) }
+    }
+    /// Make room for `extra` more bytes, so the pushes that follow do not reallocate.
+    pub fn reserve(&mut self, extra: usize) {
+        let len = self.len();
+        if len + extra <= INLINE_CAP && !self.is_heap() {
+            return;
+        }
+        if self.is_heap() {
+            self.heap_mut().ensure_unique_cap(len + extra);
+            return;
+        }
+        let mut h = HeapStr::with_capacity(len + extra);
+        h.push_slice(self.as_bytes());
+        *self = Str::from_heap(h);
+    }
+    /// `a . b` in one exact-size buffer.
+    pub fn from_two(a: &[u8], b: &[u8]) -> Str {
+        let n = a.len() + b.len();
+        if n <= INLINE_CAP {
+            let mut data = [0u8; INLINE_CAP];
+            data[..a.len()].copy_from_slice(a);
+            data[a.len()..n].copy_from_slice(b);
+            return Str::inline(&data[..n]);
+        }
+        let mut h = HeapStr::with_capacity(n);
+        h.push_slice(a);
+        h.push_slice(b);
+        Str::from_heap(h)
+    }
     pub fn from_vec(v: Vec<u8>) -> Str {
         Str::from_bytes(&v)
     }

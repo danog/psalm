@@ -109,11 +109,81 @@ pub fn concat<A: ToStr, B: ToStr>(a: A, b: B) -> Str {
     if lb.is_empty() {
         return r;
     }
-    let mut out = Vec::with_capacity(lb.len() + rb.len());
-    out.extend_from_slice(lb);
-    out.extend_from_slice(rb);
-    Str::from_vec(out)
+    Str::from_two(lb, rb)
 }
+
+/// One operand of a flattened concatenation (`$a . $b . $c`, `"x{$y}z"`, `$s .= ...`): written straight into
+/// the result, so a chain allocates once and string operands are read in place (no handle clone per part).
+pub trait StrPart {
+    /// Upper bound of the bytes `put` writes (sizes the single allocation).
+    fn part_len(&self) -> usize;
+    fn put(&self, out: &mut Str);
+}
+impl StrPart for Str {
+    #[inline]
+    fn part_len(&self) -> usize {
+        self.len()
+    }
+    #[inline]
+    fn put(&self, out: &mut Str) {
+        out.push_bytes(self.as_bytes());
+    }
+}
+impl StrPart for i64 {
+    #[inline]
+    fn part_len(&self) -> usize {
+        20
+    }
+    fn put(&self, out: &mut Str) {
+        let mut buf = [0u8; 20];
+        let mut i = buf.len();
+        let neg = *self < 0;
+        let mut n = self.unsigned_abs();
+        loop {
+            i -= 1;
+            buf[i] = b'0' + (n % 10) as u8;
+            n /= 10;
+            if n == 0 {
+                break;
+            }
+        }
+        if neg {
+            i -= 1;
+            buf[i] = b'-';
+        }
+        out.push_bytes(&buf[i..]);
+    }
+}
+impl<T: StrPart + ?Sized> StrPart for &T {
+    #[inline]
+    fn part_len(&self) -> usize {
+        (**self).part_len()
+    }
+    #[inline]
+    fn put(&self, out: &mut Str) {
+        (**self).put(out)
+    }
+}
+
+/// `$a . $b . $c ...` in one allocation.
+pub fn concat_parts(parts: &[&dyn StrPart]) -> Str {
+    let cap: usize = parts.iter().map(|p| p.part_len()).sum();
+    let mut out = Str::with_capacity(cap);
+    for p in parts {
+        p.put(&mut out);
+    }
+    out
+}
+
+/// `$s .= $a . $b ...`: the parts are appended to `$s` in place (its buffer grows once when uniquely owned).
+pub fn append_parts(a: &mut Str, parts: &[&dyn StrPart]) {
+    let extra: usize = parts.iter().map(|p| p.part_len()).sum();
+    a.reserve(extra);
+    for p in parts {
+        p.put(a);
+    }
+}
+
 /// `$a .= $b`
 #[inline]
 pub fn append<B: ToStr>(a: &mut Str, b: B) {
@@ -202,4 +272,24 @@ pub fn str_increment(s: &Str) -> Str {
         }
     }
     Str::from_vec(b)
+}
+
+#[cfg(test)]
+mod concat_parts_tests {
+    use super::*;
+    #[test]
+    fn parts_join_in_order() {
+        let a = Str::from_static("hello ");
+        let long = Str::from_bytes(b"a string longer than fifteen bytes");
+        assert_eq!(concat_parts(&[&a, &-42i64, &Str::from_static("|"), &long]).as_bytes(), b"hello -42|a string longer than fifteen bytes");
+        assert_eq!(concat_parts(&[&i64::MIN]).as_bytes(), b"-9223372036854775808");
+        assert_eq!(concat_parts(&[&0i64, &Str::from_static("x")]).as_bytes(), b"0x");
+        let mut s = Str::from_static("ab");
+        append_parts(&mut s, &[&long, &7i64]);
+        assert_eq!(s.as_bytes(), b"aba string longer than fifteen bytes7");
+        let shared = s.clone();
+        append_parts(&mut s, &[&Str::from_static("!")]);
+        assert_eq!(shared.as_bytes(), b"aba string longer than fifteen bytes7");
+        assert_eq!(s.as_bytes(), b"aba string longer than fifteen bytes7!");
+    }
 }
