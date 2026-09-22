@@ -748,8 +748,80 @@ pub fn iterate_object<K, V>(_o: impl PhpObject) -> Result<std::vec::IntoIter<(K,
 /// Interior mutability for object storage. The program is single-threaded, so these are
 /// `RefCell` and `Cell` behind the names the generated code uses (the prelude aliases
 /// RefCell->RwCell, Ref->CellRef, RefMut->CellRefMut); `Ref::map`/`RefMut::map` keep working.
+///
+/// With the `unchecked-cells` feature the borrow flag goes away too: a read is a plain reference.
+/// That is only sound because the generated code never holds a mutable borrow across another
+/// borrow of the same object, which the checked build establishes by not panicking; the feature
+/// is for measuring what that bookkeeping costs and for builds validated that way.
+#[cfg(not(feature = "unchecked-cells"))]
 pub type CellRef<'a, T> = std::cell::Ref<'a, T>;
+#[cfg(not(feature = "unchecked-cells"))]
 pub type CellRefMut<'a, T> = std::cell::RefMut<'a, T>;
+
+#[cfg(feature = "unchecked-cells")]
+pub struct CellRef<'a, T: ?Sized>(&'a T);
+#[cfg(feature = "unchecked-cells")]
+impl<'a, T: ?Sized> CellRef<'a, T> {
+    #[inline]
+    pub fn map<U: ?Sized>(r: CellRef<'a, T>, f: impl FnOnce(&T) -> &U) -> CellRef<'a, U> {
+        CellRef(f(r.0))
+    }
+    #[inline]
+    pub fn clone(r: &CellRef<'a, T>) -> CellRef<'a, T> {
+        CellRef(r.0)
+    }
+}
+#[cfg(feature = "unchecked-cells")]
+impl<T: ?Sized> std::ops::Deref for CellRef<'_, T> {
+    type Target = T;
+    #[inline]
+    fn deref(&self) -> &T {
+        self.0
+    }
+}
+#[cfg(feature = "unchecked-cells")]
+impl<T: ?Sized + std::fmt::Debug> std::fmt::Debug for CellRef<'_, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+#[cfg(feature = "unchecked-cells")]
+impl<T: ?Sized + std::fmt::Display> std::fmt::Display for CellRef<'_, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+#[cfg(feature = "unchecked-cells")]
+pub struct CellRefMut<'a, T: ?Sized>(&'a mut T);
+#[cfg(feature = "unchecked-cells")]
+impl<'a, T: ?Sized> CellRefMut<'a, T> {
+    #[inline]
+    pub fn map<U: ?Sized>(r: CellRefMut<'a, T>, f: impl FnOnce(&mut T) -> &mut U) -> CellRefMut<'a, U> {
+        CellRefMut(f(r.0))
+    }
+}
+#[cfg(feature = "unchecked-cells")]
+impl<T: ?Sized> std::ops::Deref for CellRefMut<'_, T> {
+    type Target = T;
+    #[inline]
+    fn deref(&self) -> &T {
+        self.0
+    }
+}
+#[cfg(feature = "unchecked-cells")]
+impl<T: ?Sized + std::fmt::Debug> std::fmt::Debug for CellRefMut<'_, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+#[cfg(feature = "unchecked-cells")]
+impl<T: ?Sized> std::ops::DerefMut for CellRefMut<'_, T> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut T {
+        self.0
+    }
+}
+
 /// A `Cell<T>` (per-field interior mutability of immutable classes).
 pub struct SyncCell<T>(std::cell::Cell<T>);
 impl<T: Copy> SyncCell<T> {
@@ -792,7 +864,9 @@ impl<T: Copy + std::fmt::Debug> std::fmt::Debug for SyncCell<T> {
     }
 }
 
+#[cfg(not(feature = "unchecked-cells"))]
 pub struct RwCell<T>(std::cell::RefCell<T>);
+#[cfg(not(feature = "unchecked-cells"))]
 impl<T> RwCell<T> {
     #[inline]
     pub fn new(v: T) -> Self {
@@ -805,6 +879,32 @@ impl<T> RwCell<T> {
     #[inline]
     pub fn borrow_mut(&self) -> CellRefMut<'_, T> {
         self.0.borrow_mut()
+    }
+    pub fn get_mut(&mut self) -> &mut T {
+        self.0.get_mut()
+    }
+    pub fn into_inner(self) -> T {
+        self.0.into_inner()
+    }
+}
+#[cfg(feature = "unchecked-cells")]
+pub struct RwCell<T>(std::cell::UnsafeCell<T>);
+#[cfg(feature = "unchecked-cells")]
+impl<T> RwCell<T> {
+    #[inline]
+    pub fn new(v: T) -> Self {
+        RwCell(std::cell::UnsafeCell::new(v))
+    }
+    #[inline]
+    pub fn borrow(&self) -> CellRef<'_, T> {
+        // SAFETY: see the type's documentation -- no mutable borrow of an object is live across
+        // any other borrow of it in the generated code (the checked build panics otherwise).
+        CellRef(unsafe { &*self.0.get() })
+    }
+    #[inline]
+    pub fn borrow_mut(&self) -> CellRefMut<'_, T> {
+        // SAFETY: as for `borrow`.
+        CellRefMut(unsafe { &mut *self.0.get() })
     }
     pub fn get_mut(&mut self) -> &mut T {
         self.0.get_mut()
