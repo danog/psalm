@@ -202,4 +202,10 @@ final class Pool
         }
         return array_map(fn(Worker $w): Future => $w->submit($task)->getFuture(), $workers);
     }
+
+    /** Stop the workers (a later pool forks new ones from the parent's then-current state). */
+    public function shutdown(): void
+    {
+        $this->pool->shutdown();
+    }
 }

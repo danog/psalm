@@ -132,6 +132,12 @@ final class Casts
         $this->instance_checks[$subject->toRust() . ' => ' . $target->toRust()] = [$subject, $target];
     }
 
+    /** Temporaries are local to one emitted item: numbering restarts per item. */
+    public function resetTemporaries(): void
+    {
+        $this->tmp = 0;
+    }
+
     private function tmp(): string
     {
         return '__c' . (++$this->tmp);

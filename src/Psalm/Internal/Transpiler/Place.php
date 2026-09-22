@@ -56,6 +56,12 @@ final class Place
      */
     private static int $counter = 0;
 
+    /** Temporaries are local to one emitted item: numbering restarts per item, whatever emitted before it. */
+    public static function resetCounter(): void
+    {
+        self::$counter = 0;
+    }
+
     public function modify(Closure $f): string
     {
         if ($this->mut !== null) {

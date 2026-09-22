@@ -60,6 +60,65 @@ final class CrateEmitter
     ) {
     }
 
+    /**
+     * Sizes of every array (and scalar) property of the given objects, reached through public and private
+     * properties one level deep: what changes across a phase is the state that phase accumulates.
+     *
+     * @param array<string, object> $roots
+     * @return array<string, array{int, string}>
+     */
+    private static function stateCounts(array $roots): array
+    {
+        $out = [];
+        foreach ($roots as $rname => $obj) {
+            $r = new \ReflectionObject($obj);
+            foreach ($r->getProperties() as $prop) {
+                if ($prop->isStatic() || !$prop->isInitialized($obj)) {
+                    continue;
+                }
+                $v = $prop->getValue($obj);
+                $key = $rname . '.' . $prop->getName();
+                if (is_array($v)) {
+                    $first = $v === [] ? '' : array_key_first($v);
+                    $fv = $v === [] ? null : $v[$first];
+                    $out[$key] = [count($v), 'key=' . get_debug_type($first) . ' val=' . (is_array($fv) ? 'array(' . implode(',', array_map('get_debug_type', array_slice($fv, 0, 4))) . ')' : get_debug_type($fv))];
+                } elseif (is_int($v) || is_bool($v)) {
+                    $out[$key] = [(int) $v, 'scalar'];
+                } elseif ($v instanceof \WeakMap || $v instanceof \SplObjectStorage || $v instanceof \ArrayObject) {
+                    $out[$key] = [count($v), get_debug_type($v)];
+                }
+            }
+        }
+        // model objects: every property summed over all instances (a model flag set during emission shows here)
+        $models = [];
+        foreach ($roots['program']->classes as $c) {
+            $models['ClassModel'][] = $c;
+            foreach ($c->methods as $m) {
+                $models['MethodModel'][] = $m;
+            }
+            foreach ($c->fields as $f) {
+                $models['FieldModel'][] = $f;
+            }
+        }
+        foreach ($roots['program']->functions as $f) {
+            $models['FunctionModel'][] = $f;
+        }
+        foreach ($models as $kind => $objs) {
+            foreach ($objs as $obj) {
+                foreach ((new \ReflectionObject($obj))->getProperties() as $prop) {
+                    if ($prop->isStatic() || !$prop->isInitialized($obj)) {
+                        continue;
+                    }
+                    $v = $prop->getValue($obj);
+                    $key = $kind . '*.' . $prop->getName();
+                    $n = is_array($v) ? count($v) : (is_int($v) || is_bool($v) ? (int) $v : ($v === null ? 0 : 1));
+                    $out[$key] = [($out[$key][0] ?? 0) + $n, get_debug_type($v)];
+                }
+            }
+        }
+        return $out;
+    }
+
     public function emit(): void
     {
         Transpiler::phase('building program model');
@@ -84,12 +143,45 @@ final class CrateEmitter
                 $project_classes[] = $cls;
             }
         }
-        foreach ($project_classes as $cls) {
-            $w = $this->classModule($cls);
-            try {
-                $class_emitter->emit($cls, $w);
-            } catch (\Throwable $e) {
-                $this->diag->warn('class emission error: ' . $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine(), $cls->node, $cls->fqcn);
+        $probe_roots = ['crate' => $this, 'program' => $this->program, 'types' => $this->program->types, 'casts' => $this->casts, 'diag' => $this->diag, 'builtins' => $this->builtins, 'class_emitter' => $class_emitter, 'cast_emitter' => $cast_emitter];
+        $probe = getenv('TRANSPILE_STATE_PROBE') ? self::stateCounts($probe_roots) : null;
+        // class bodies (the bulk of the emission) on Psalm's worker pool when TRANSPILE_JOBS > 1
+        $jobs = Parallel::jobs();
+        $mod_before = $this->moduleLengths();
+        (new Parallel($this->sharedObjects()))->run(
+            $project_classes,
+            $jobs,
+            function (ClassModel $cls) use ($class_emitter): void {
+                // temporaries are numbered per class, so the output does not depend on which worker (or which
+                // earlier class) emitted before this one
+                $this->casts->resetTemporaries();
+                Place::resetCounter();
+                $w = $this->classModule($cls);
+                try {
+                    $class_emitter->emit($cls, $w);
+                } catch (\Throwable $e) {
+                    $this->diag->warn('class emission error: ' . $e->getMessage() . ' @ ' . basename($e->getFile()) . ':' . $e->getLine(), $cls->node, $cls->fqcn);
+                }
+            },
+            [$this->program, $this->program->types, $this->casts, $this->diag, $this->builtins, $class_emitter, $cast_emitter],
+            fn(): array => $this->moduleSuffixes($mod_before),
+            function (array $suffixes): void {
+                foreach ($suffixes as $crate => $paths) {
+                    foreach ($paths as $path => $text) {
+                        $this->module($crate, $path)->raw($text);
+                    }
+                }
+            },
+        );
+        if ($jobs > 1) {
+            Transpiler::phase("classes emitted on $jobs workers");
+        }
+        if ($probe !== null) {
+            $after = self::stateCounts($probe_roots);
+            foreach ($after as $k => [$n, $sample]) {
+                if (($probe[$k][0] ?? -1) !== $n) {
+                    fwrite(STDERR, "[state-probe] $k: " . ($probe[$k][0] ?? 'new') . " -> $n  sample: $sample\n");
+                }
             }
         }
         foreach ($project_classes as $cls) {
@@ -251,6 +343,11 @@ final class CrateEmitter
         for ($round = 0; $round < 10; $round++) {
             $new = false;
             $drop_mixed();
+            // by name: the declarations do not depend on which class (or which worker) first mapped the type
+            ksort($this->program->types->unions);
+            ksort($this->program->types->shapes);
+            ksort($this->casts->casts);
+            ksort($this->casts->instance_checks);
             foreach ($this->program->types->unions as $name => $u) {
                 if (!isset($emitted[$name]) && isset($referenced[$name])) {
                     $emitted[$name] = true;
@@ -374,6 +471,64 @@ final class CrateEmitter
             }
             return $m[0];
         }, $code) ?? $code;
+    }
+
+    /** @return array<int, array<string, int>> the length of every module's text so far */
+    private function moduleLengths(): array
+    {
+        $out = [];
+        foreach ($this->modules as $crate => $mods) {
+            foreach ($mods as $path => $w) {
+                $out[$crate][$path] = strlen($w->get());
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * What a worker appended to each module since `$before` (moduleLengths()).
+     *
+     * @param array<int, array<string, int>> $before
+     * @return array<int, array<string, string>>
+     */
+    private function moduleSuffixes(array $before): array
+    {
+        $out = [];
+        foreach ($this->modules as $crate => $mods) {
+            foreach ($mods as $path => $w) {
+                $text = $w->get();
+                $from = $before[$crate][$path] ?? 0;
+                if (strlen($text) > $from) {
+                    $out[$crate][$path] = substr($text, $from);
+                }
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * The model objects every worker process shares with the parent (they exist before the fork): results
+     * refer to them by identity instead of copying them.
+     *
+     * @return iterable<object>
+     */
+    private function sharedObjects(): iterable
+    {
+        foreach ($this->program->classes as $c) {
+            yield $c;
+            foreach ($c->methods as $m) {
+                yield $m;
+            }
+            foreach ($c->fields as $f) {
+                yield $f;
+            }
+            foreach ($c->static_fields as $f) {
+                yield $f;
+            }
+        }
+        foreach ($this->program->functions as $f) {
+            yield $f;
+        }
     }
 
     private function module(int $crate, string $path): Writer

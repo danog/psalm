@@ -59,6 +59,12 @@ final class RustType
 
     private static array $cache = [];
 
+    /** A RustType rebuilt from a transpile worker's result: the process's own interned instance. */
+    public static function reintern(RustType $t): RustType
+    {
+        return self::intern($t);
+    }
+
     private static function intern(RustType $t): RustType
     {
         $k = $t->toRust();
