@@ -393,21 +393,69 @@ trait StmtTrait
             $w->line($w_pre);
         }
         $w->open($label . ': for ' . $kv . ' in ' . $iter . ' {');
+        $bound = [];
         if ($key_var !== null) {
-            $key_val = $by_ref && $st->kind === RustType::MAP
-                ? new Val($kv . '.0.clone()', $key_t, '(*' . $kv . '.0)')
-                : new Val($kv . '.0', $key_t);
-            $w->line($this->assignTo($key_var, $key_val));
+            if ($by_ref && $st->kind === RustType::MAP && $this->loopVarBorrowable($s, $key_var, $key_t)) {
+                $bound[] = $key_var->name;
+                $w->line('let ' . Names::var($key_var->name) . ': &' . $key_t->toRust() . ' = ' . $kv . '.0;');
+            } else {
+                $key_val = $by_ref && $st->kind === RustType::MAP
+                    ? new Val($kv . '.0.clone()', $key_t, '(*' . $kv . '.0)')
+                    : new Val($kv . '.0', $key_t);
+                $w->line($this->assignTo($key_var, $key_val));
+            }
         }
         if (!($val_var instanceof Expr\Variable && $val_var->name === '_')) {
             // `$_` is the conventional discard: no binding (it never takes a type)
-            $val_val = $by_ref ? new Val($kv . '.1.clone()', $val_t, '(*' . $kv . '.1)') : new Val($kv . '.1', $val_t);
-            $w->line($this->assignTo($val_var, $val_val));
+            if ($by_ref && $this->loopVarBorrowable($s, $val_var, $val_t)) {
+                // the loop variable is a borrow into the container for the whole body: no clone per iteration
+                $bound[] = $val_var->name;
+                $w->line('let ' . Names::var($val_var->name) . ': &' . $val_t->toRust() . ' = ' . $kv . '.1;');
+            } else {
+                $val_val = $by_ref ? new Val($kv . '.1.clone()', $val_t, '(*' . $kv . '.1)') : new Val($kv . '.1', $val_t);
+                $w->line($this->assignTo($val_var, $val_val));
+            }
+        }
+        foreach ($bound as $name) {
+            $this->borrow[$name] = true;
         }
         $this->pushLoop($label, $label, false);
         $this->block($s->stmts);
         $this->popLoop();
+        foreach ($bound as $name) {
+            unset($this->borrow[$name]);
+        }
         $w->close();
+    }
+
+    /**
+     * Whether a foreach key/value variable can be bound as a `&T` into the iterated container instead of an
+     * owned copy per iteration: it is a plain local of exactly the element type, used nowhere in the function
+     * but inside this loop (PHP keeps the last element after the loop; a borrow could not), never written in
+     * the body, and not captured by a closure.
+     */
+    private function loopVarBorrowable(Stmt\Foreach_ $s, Expr $var, RustType $t): bool
+    {
+        if (!$var instanceof Expr\Variable || !is_string($var->name) || $var->name === 'this' || $t->isCopy()) {
+            return false;
+        }
+        $name = $var->name;
+        if (!isset($this->vars[$name]) || $this->vars[$name]->toRust() !== $t->toRust()
+            || !empty($this->cells[$name]) || !empty($this->refvars[$name]) || !empty($this->globals[$name])
+            || !empty($this->byref[$name]) || !empty($this->move_captured[$name]) || !empty($this->borrow[$name])
+        ) {
+            return false;
+        }
+        $inside = 0;
+        foreach ((new \PhpParser\NodeFinder())->findInstanceOf([$s], Expr\Variable::class) as $v) {
+            if ($v->name === $name) {
+                $inside++;
+            }
+        }
+        if (($this->var_occurrences[$name] ?? 0) !== $inside) {
+            return false;
+        }
+        return !$this->varWrittenIn($name, $s->stmts);
     }
 
     /**

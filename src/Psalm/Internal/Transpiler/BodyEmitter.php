@@ -808,12 +808,17 @@ final class BodyEmitter
             $this->warn('unknown variable $' . $name);
             return new Val('Mixed::Null', RustType::mixed());
         }
+        $t = $this->vars[$name];
+        $rn = Names::var($name);
+        if (!empty($this->borrow[$name])) {
+            // a `&T` local (borrow-safe param, or a foreach variable bound into the iterated container): reads
+            // through the place borrow it directly -- no Rc clone; an owned use clones out of the borrow.
+            return new Val('(*' . $rn . ').clone()', $t, '(*' . $rn . ')');
+        }
         // Owned/borrowed (axis 5): a local read exactly once (outside loops/closures) can move, not clone.
         if (!empty($this->single_use[$name]) && ($moved = $this->moveVar($name)) !== null) {
             return $moved;
         }
-        $t = $this->vars[$name];
-        $rn = Names::var($name);
         if (!empty($this->cells[$name])) {
             return new Val($rn . '.borrow().get().clone()', $t);
         }
@@ -822,11 +827,6 @@ final class BodyEmitter
         }
         if (!empty($this->byref[$name])) {
             return new Val('(*' . $rn . ').clone()', $t, '(*' . $rn . ')');
-        }
-        if (!empty($this->borrow[$name])) {
-            // `&T` param (borrow-safe): every use is a read (method receiver / property fetch), which works on
-            // the borrow directly -- no Rc clone. `$rn` is already `&T`; Rust auto-refs for `.m()`/`.prop_get()`.
-            return new Val($rn, $t, '(*' . $rn . ')');
         }
         if (!empty($this->late[$name])) {
             return new Val($rn . '.get().clone()', $t, '(*' . $rn . '.get())');
@@ -894,6 +894,12 @@ final class BodyEmitter
         return $this->expr($e, $to);
     }
 
+    /** @var list<Stmt> the statements of the function body being emitted */
+    public array $root_stmts = [];
+
+    /** @var array<string, int> how many times each variable name occurs in the function body */
+    public array $var_occurrences = [];
+
     /** The place `$this` lives in: the `&self` receiver, or the owned `this` local a closure captured. */
     public function thisPlace(): string
     {
@@ -913,7 +919,7 @@ final class BodyEmitter
             return null;
         }
         if (!empty($this->cells[$name]) || !empty($this->refvars[$name]) || !empty($this->byref[$name])
-            || !empty($this->globals[$name]) || !empty($this->move_captured[$name])
+            || !empty($this->globals[$name]) || !empty($this->move_captured[$name]) || !empty($this->borrow[$name])
         ) {
             return null;
         }
@@ -1123,6 +1129,13 @@ final class BodyEmitter
      */
     private function emitBodyInner(array $params, ?array $stmts, RustType $ret_type): string
     {
+        $this->root_stmts = $stmts ?? [];
+        $this->var_occurrences = [];
+        foreach ((new \PhpParser\NodeFinder())->findInstanceOf($this->root_stmts, Expr\Variable::class) as $v) {
+            if (is_string($v->name)) {
+                $this->var_occurrences[$v->name] = ($this->var_occurrences[$v->name] ?? 0) + 1;
+            }
+        }
         $this->scanWriteKinds($stmts ?? []);
         // a discarded pass must not leave its recorded conversions/erasures behind
         $snap_erasures = $this->casts->erasures;
