@@ -1537,6 +1537,8 @@ function run_all(): string
         . check('builtin_arity', case_builtin_arity(), 'ok')
         . check('sprintf_percent', case_sprintf_percent(), '%|%|%|%|%a|%b|a%c')
         . check('dynamic_new_dead', case_dynamic_new_dead(), 'named')
+        . check('codec_roundtrip', case_codec_roundtrip(), '9,12,a=x7,b=y8,same,tagged')
+        . check('fork_workers', case_fork_workers(), '1,4,9')
         . check('method_exists', case_method_exists(), 'yn')
         . check('hook_param_narrowing', case_hook_param_narrowing(), 'rich+|plain|plain')
         . check('class_string_or_object', case_class_string_or_object(), 'name:Tiny\\HookA|obj:A|name:Other')
@@ -2585,4 +2587,107 @@ function case_method_exists(): string
 {
     $o = new HasMethods();
     return (method_exists($o, 'known') ? 'y' : 'n') . (method_exists($o, 'nope') ? 'y' : 'n');
+}
+
+// ---- feature: values cross a worker's pipe intact, shared objects included ----
+
+final class Leaf
+{
+    public function __construct(public string $name, public int $n)
+    {
+    }
+}
+
+abstract class Shape2
+{
+    abstract public function area(): int;
+}
+
+final class Square extends Shape2
+{
+    public function __construct(public int $side)
+    {
+    }
+
+    public function area(): int
+    {
+        return $this->side * $this->side;
+    }
+}
+
+final class Circle extends Shape2
+{
+    public function __construct(public int $r)
+    {
+    }
+
+    public function area(): int
+    {
+        return 3 * $this->r * $this->r;
+    }
+}
+
+final class Bag
+{
+    /** @var list<Shape2> */
+    public array $shapes = [];
+    /** @var array<string, Leaf> */
+    public array $leaves = [];
+    public ?Leaf $favourite = null;
+    /** @var int|string|null */
+    public int|string|null $tag = null;
+}
+
+function bag_to_string(Bag $bag): string
+{
+    $out = [];
+    foreach ($bag->shapes as $shape) {
+        $out[] = $shape->area();
+    }
+    foreach ($bag->leaves as $k => $leaf) {
+        $out[] = $k . '=' . $leaf->name . $leaf->n;
+    }
+    $out[] = $bag->favourite === $bag->leaves['a'] ? 'same' : 'copy';
+    $out[] = (string) $bag->tag;
+    return implode(',', $out);
+}
+
+function decode_bag(string $bytes): Bag
+{
+    return __rt_decode($bytes);
+}
+
+function case_codec_roundtrip(): string
+{
+    $bag = new Bag();
+    $bag->shapes = [new Square(3), new Circle(2)];
+    $leaf = new Leaf('x', 7);
+    $bag->leaves = ['a' => $leaf, 'b' => new Leaf('y', 8)];
+    $bag->favourite = $leaf;
+    $bag->tag = 'tagged';
+    return bag_to_string(decode_bag(__rt_encode($bag)));
+}
+
+/** @return list<string> */
+function collect_squares(): array
+{
+    return __rt_collect_workers();
+}
+
+function decode_int(string $bytes): int
+{
+    return __rt_decode($bytes);
+}
+
+function case_fork_workers(): string
+{
+    $index = __rt_fork_workers(3);
+    if ($index >= 0) {
+        __rt_worker_exit(__rt_encode(($index + 1) * ($index + 1)));
+    }
+    $out = [];
+    foreach (collect_squares() as $bytes) {
+        $out[] = decode_int($bytes);
+    }
+    return implode(',', $out);
 }

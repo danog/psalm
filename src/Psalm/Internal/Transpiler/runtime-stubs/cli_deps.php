@@ -8,7 +8,7 @@ final class CpuCoreCounter
 {
     public function getCount(): int
     {
-        return 1;
+        return __rt_cpu_count();
     }
 
     public function getAvailableForParallelisation(): int

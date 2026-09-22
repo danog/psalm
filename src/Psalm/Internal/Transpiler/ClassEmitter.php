@@ -75,6 +75,7 @@ final class ClassEmitter
                 $this->emitDynTrait($cls, $w);
             }
             $this->emitEnumHandleImpls($cls, $w);
+            $this->emitEnumCodec($cls, $handle, $w);
         }
 
         // ---- accessors and methods on the own handle
@@ -972,6 +973,27 @@ final class ClassEmitter
         $clone_cell = $cls->immutable() ? $own . '(Rc::new((*self.0).clone()))' : $own . '(Rc::new(RefCell::new(self.0.borrow().clone())))';
         $w->line('impl php_rt::PhpClone for ' . $own . ' { fn php_clone(&self) -> Self { let ' . ($cls->immutable() && $clone_call !== '' ? 'mut ' : '') . 'c = ' . $clone_cell . '; ' . $clone_call . 'c } }');
         $w->line('impl Clone for ' . $cls->objStruct() . ' { fn clone(&self) -> Self { ' . $cls->objStruct() . ' { ' . implode(', ', array_map(fn(FieldModel $f) => $f->rustName() . ': self.' . $f->rustName() . '.clone()', $cls->fields)) . ' } } }');
+        // a value that crosses the worker/parent pipe: fields in declaration order, the handle through
+        // its Rc (identity-preserving)
+        $w->line('impl php_rt::Codec for ' . $cls->objStruct() . ' { fn encode(&self, __e: &mut php_rt::codec::Encoder) { ' . implode(' ', array_map(fn(FieldModel $f) => 'php_rt::Codec::encode(&self.' . $f->rustName() . ', __e);', $cls->fields)) . ' } fn decode(__d: &mut php_rt::codec::Decoder<\'_>) -> Self { ' . $cls->objStruct() . ' { ' . implode(', ', array_map(fn(FieldModel $f) => $f->rustName() . ': php_rt::Codec::decode(__d)', $cls->fields)) . ' } } }');
+        $w->line('impl php_rt::Codec for ' . $own . ' { fn encode(&self, __e: &mut php_rt::codec::Encoder) { php_rt::Codec::encode(&self.0, __e) } fn decode(__d: &mut php_rt::codec::Decoder<\'_>) -> Self { ' . $own . '(php_rt::Codec::decode(__d)) } }');
+    }
+
+    /** `Codec` for a dispatch enum: the variant's index, then the variant's own handle. */
+    private function emitEnumCodec(ClassModel $cls, string $handle, Writer $w): void
+    {
+        $enc = [];
+        $dec = [];
+        foreach ($cls->concrete as $i => $c) {
+            $enc[] = $handle . '::' . $c->variant() . '(__h) => { __e.u8(' . $i . '); php_rt::Codec::encode(__h, __e) }';
+            $dec[] = $i . ' => ' . $handle . '::' . $c->variant() . '(php_rt::Codec::decode(__d))';
+        }
+        if ($cls->has_downstream) {
+            $enc[] = $handle . '::Other__(_) => panic!("codec: an object of a class of another crate cannot cross a process boundary")';
+        }
+        $enc[] = '_ => unreachable!()';
+        $dec[] = '_ => panic!("codec: unknown variant of ' . $handle . '")';
+        $w->line('impl php_rt::Codec for ' . $handle . ' { fn encode(&self, __e: &mut php_rt::codec::Encoder) { match self { ' . implode(', ', $enc) . ' } } fn decode(__d: &mut php_rt::codec::Decoder<\'_>) -> Self { match __d.u8() { ' . implode(', ', $dec) . ' } } }');
     }
 
     /**

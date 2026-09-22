@@ -45,6 +45,19 @@ final class CastEmitter
         // Unions are CLOSED: no Other__(Mixed) escape. A value that matches no declared member is a docblock/type
         // lie and PANICS at construction (CastTo<Union> for Mixed below), per the no-Mixed policy.
         $w->close();
+        $enc = [];
+        $dec = [];
+        foreach ($u->params as $i => $m) {
+            if ($this->isUnit($m)) {
+                $enc[] = $name . '::' . $this->unitName($m) . ' => __e.u8(' . $i . ')';
+                $dec[] = $i . ' => ' . $name . '::' . $this->unitName($m);
+            } else {
+                $enc[] = $name . '::' . $m->variantName() . '(__v) => { __e.u8(' . $i . '); php_rt::Codec::encode(__v, __e) }';
+                $dec[] = $i . ' => ' . $name . '::' . $m->variantName() . '(php_rt::Codec::decode(__d))';
+            }
+        }
+        $dec[] = '_ => panic!("codec: unknown member of ' . $name . '")';
+        $w->line('impl php_rt::Codec for ' . $name . ' { fn encode(&self, __e: &mut php_rt::codec::Encoder) { match self { ' . implode(', ', $enc) . ' } } fn decode(__d: &mut php_rt::codec::Decoder<\'_>) -> Self { match __d.u8() { ' . implode(', ', $dec) . ' } } }');
         // in-place access to an array member (`$u[] = v` on a union-typed place): a value that is not that
         // array becomes an empty one, as PHP autovivifies null
         foreach ($u->params as $m) {
@@ -534,6 +547,8 @@ final class CastEmitter
         }
         $w->close();
         $w->line('impl php_rt::Truthy for ' . $name . ' { fn truthy(&self) -> bool { ' . (count($s->fields) ? 'true' : 'false') . ' } }');
+        $keys = array_keys($s->fields);
+        $w->line('impl php_rt::Codec for ' . $name . ' { fn encode(&self, __e: &mut php_rt::codec::Encoder) { ' . implode(' ', array_map(fn($k) => 'php_rt::Codec::encode(&self.' . Names::field($k) . ', __e);', $keys)) . ' } fn decode(__d: &mut php_rt::codec::Decoder<\'_>) -> Self { ' . $name . ' { ' . implode(', ', array_map(fn($k) => Names::field($k) . ': php_rt::Codec::decode(__d)', $keys)) . ' } } }');
         $w->line('impl php_rt::PhpKind for ' . $name . ' { fn php_kind(&self) -> php_rt::Kind { php_rt::Kind::Arr } }');
         $w->line('impl php_rt::InstanceOfName for ' . $name . ' { fn php_instance_of(&self, _n: &[u8]) -> bool { false } }');
         $w->line('impl php_rt::ToStr for ' . $name . ' { fn to_php_str(&self) -> Str { Str::from_static("Array") } }');

@@ -375,6 +375,8 @@ final class Builtins
         '__rt_class_file' => ['crate::names::class_file', ['&s'], 'os'],
         '__rt_function_is_builtin' => ['rt_function_is_builtin', ['&s'], 'b'],
         '__rt_class_is_trait' => ['crate::names::class_is_trait', ['&s'], 'b'],
+        '__rt_fork_workers' => ['php_rt::procs::fork_workers', ['i'], 'i'],
+        '__rt_cpu_count' => ['php_rt::procs::cpu_count', [], 'i'],
         'lz4_compress' => ['lz4_compress', ['&s'], 'os'],
         'lz4_uncompress' => ['lz4_uncompress', ['&s'], 'os'],
         'parse_url' => ['parse_url', ['&s', 'i=-1'], 'm'],
@@ -2885,6 +2887,34 @@ final class Builtins
     {
         $s = $b->exprTo($args[0]->value, RustType::str());
         return new Val('crate::names::instantiate_plugin(&' . $s . ')', $b->inferredOrMixed($call));
+    }
+
+    /** A value encoded for a worker's result pipe (see php-rt's codec). */
+    private function f___rt_encode(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        $v = $b->expr($args[0]->value);
+        return new Val('php_rt::codec::encode(&' . $v->code . ')', RustType::str());
+    }
+
+    /**
+     * The value a worker sent, decoded as the enclosing function's declared return type: the stub
+     * writes `return __rt_decode($bytes);`, which is the one place the target type is known.
+     */
+    private function f___rt_decode(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        $s = $b->exprTo($args[0]->value, RustType::str());
+        return new Val('php_rt::codec::decode::<' . $b->ret_type->toRust() . '>((' . $s . ').as_bytes())', $b->ret_type);
+    }
+
+    private function f___rt_worker_exit(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        $s = $b->exprTo($args[0]->value, RustType::str());
+        return new Val('php_rt::procs::worker_exit(&' . $s . ')', RustType::never());
+    }
+
+    private function f___rt_collect_workers(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
+    {
+        return new Val('php_rt::procs::collect_workers().unwrap_or_else(|__e| __throw_rt(__e))', RustType::list(RustType::str()));
     }
 
     private function f___rt_tokenize(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
