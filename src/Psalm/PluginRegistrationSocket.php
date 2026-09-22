@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm;
 
-use Psalm\Plugin\HookInterface;
-
+use InvalidArgumentException;
 use Override;
 use Psalm\Plugin\EventHandler\DynamicFunctionStorageProviderInterface;
 use Psalm\Plugin\EventHandler\FunctionExistenceProviderInterface;
@@ -18,8 +17,10 @@ use Psalm\Plugin\EventHandler\MethodVisibilityProviderInterface;
 use Psalm\Plugin\EventHandler\PropertyExistenceProviderInterface;
 use Psalm\Plugin\EventHandler\PropertyTypeProviderInterface;
 use Psalm\Plugin\EventHandler\PropertyVisibilityProviderInterface;
+use Psalm\Plugin\HookInterface;
 use Psalm\Plugin\RegistrationInterface;
 
+use function is_string;
 
 /**
  * @api
@@ -46,8 +47,21 @@ final class PluginRegistrationSocket implements RegistrationInterface
     }
 
     #[Override]
-    public function registerHooksFromClass(HookInterface $handler): void
+    /**
+     * @param HookInterface|class-string<HookInterface> $handler
+     */
+    public function registerHooksFromClass(HookInterface|string $handler): void
     {
+        if (is_string($handler)) {
+            $plugin = Config::instantiatePluginClass($handler);
+
+            if (!$plugin instanceof HookInterface) {
+                throw new InvalidArgumentException($handler . ' does not implement a plugin hook interface');
+            }
+
+            $handler = $plugin;
+        }
+
         $this->config->eventDispatcher->registerClass($handler);
 
         if ($handler instanceof PropertyExistenceProviderInterface) {

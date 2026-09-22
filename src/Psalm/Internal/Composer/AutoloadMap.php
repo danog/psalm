@@ -8,14 +8,12 @@ use PhpToken;
 
 use function array_merge;
 use function array_pop;
-use function array_values;
 use function count;
 use function end;
 use function explode;
 use function file_exists;
 use function file_get_contents;
 use function implode;
-use function is_array;
 use function is_dir;
 use function is_file;
 use function is_string;
@@ -55,6 +53,19 @@ use const T_TRAIT;
  * and the files it always loads. Reading them gives the interpreted and the compiled analyzer the
  * same view of a project's dependencies.
  *
+ * The autoload section of a package, as composer.json declares it and installed.json repeats it:
+ *
+ * @psalm-type AutoloadSection = array{
+ *     'psr-4'?: array<string, string|list<string>>,
+ *     'psr-0'?: array<string, string|list<string>>,
+ *     classmap?: list<string>,
+ *     files?: list<string>,
+ *     'exclude-from-classmap'?: list<string>
+ * }
+ * @psalm-type RootComposerJson = array{autoload?: AutoloadSection, 'autoload-dev'?: AutoloadSection}
+ * @psalm-type InstalledPackage = array{name: string, 'install-path'?: string, autoload?: AutoloadSection}
+ * @psalm-type InstalledJson = array{packages: list<InstalledPackage>}
+ *
  * @internal
  */
 final class AutoloadMap
@@ -88,7 +99,7 @@ final class AutoloadMap
 
     /**
      * Every autoload rule in effect for a project: the root package's own, plus one set per
-     * installed package. Returns null when the project has no Composer install to read.
+     * installed package. Returns null when the project has no Composer metadata to read.
      *
      * @param string $vendor_dir the vendor directory's name, as composer.json configures it
      */
@@ -96,6 +107,44 @@ final class AutoloadMap
     {
         $root_dir = rtrim($root_dir, DIRECTORY_SEPARATOR);
         $vendor_path = $root_dir . DIRECTORY_SEPARATOR . rtrim($vendor_dir, DIRECTORY_SEPARATOR);
+        $composer_dir = $vendor_path . DIRECTORY_SEPARATOR . 'composer';
+
+        $root_json = self::decodeRootComposerJson($root_dir . DIRECTORY_SEPARATOR . 'composer.json');
+        $installed = self::decodeInstalledJson($composer_dir . DIRECTORY_SEPARATOR . 'installed.json');
+
+        if ($root_json === null && $installed === null) {
+            return null;
+        }
+
+        /** @var list<array{string, AutoloadSection}> base directory and the rules relative to it */
+        $sections = [];
+
+        // The root package autoloads from paths relative to the project itself, and its dev
+        // section is loaded too (Composer only drops that for `--no-dev` installs).
+        if ($root_json !== null) {
+            if (isset($root_json['autoload'])) {
+                $sections[] = [$root_dir, $root_json['autoload']];
+            }
+
+            if (isset($root_json['autoload-dev'])) {
+                $sections[] = [$root_dir, $root_json['autoload-dev']];
+            }
+        }
+
+        if ($installed !== null) {
+            foreach ($installed['packages'] as $package) {
+                if (!isset($package['autoload'])) {
+                    continue;
+                }
+
+                // install-path is relative to vendor/composer; older metadata only names the package.
+                $base = isset($package['install-path'])
+                    ? $composer_dir . DIRECTORY_SEPARATOR . $package['install-path']
+                    : $vendor_path . DIRECTORY_SEPARATOR . $package['name'];
+
+                $sections[] = [self::normalize($base), $package['autoload']];
+            }
+        }
 
         $psr4 = [];
         $psr0 = [];
@@ -104,75 +153,21 @@ final class AutoloadMap
         $exclude_patterns = [];
         $files = [];
 
-        $sections = [];
-
-        // The root package autoloads from paths relative to the project itself, and its dev
-        // section is loaded too (Composer only drops that for `--no-dev` installs).
-        $root_json = self::readJson($root_dir . DIRECTORY_SEPARATOR . 'composer.json');
-        if ($root_json !== null) {
-            foreach (['autoload', 'autoload-dev'] as $key) {
-                $section = $root_json[$key] ?? null;
-                if (is_array($section)) {
-                    $sections[] = [$root_dir, $section];
-                }
-            }
-        }
-
-        $composer_dir = $vendor_path . DIRECTORY_SEPARATOR . 'composer';
-        $installed = self::readJson($composer_dir . DIRECTORY_SEPARATOR . 'installed.json');
-
-        if ($installed === null && $root_json === null) {
-            return null;
-        }
-
-        // Composer 2 wraps the list in a "packages" key; Composer 1 wrote the bare list.
-        $packages = $installed === null ? [] : ($installed['packages'] ?? $installed);
-
-        if (is_array($packages)) {
-            foreach ($packages as $package) {
-                if (!is_array($package)) {
-                    continue;
-                }
-
-                $section = $package['autoload'] ?? null;
-                if (!is_array($section)) {
-                    continue;
-                }
-
-                // install-path is relative to vendor/composer; older metadata only names the package.
-                $install_path = $package['install-path'] ?? null;
-                $name = $package['name'] ?? null;
-
-                if (is_string($install_path)) {
-                    $base = $composer_dir . DIRECTORY_SEPARATOR . $install_path;
-                } elseif (is_string($name)) {
-                    $base = $vendor_path . DIRECTORY_SEPARATOR . $name;
-                } else {
-                    continue;
-                }
-
-                $sections[] = [self::normalize($base), $section];
-            }
-        }
-
         foreach ($sections as [$base, $section]) {
-            foreach (self::stringList($section['files'] ?? null) as $file) {
+            foreach ($section['files'] ?? [] as $file) {
                 $files[] = self::normalize($base . DIRECTORY_SEPARATOR . $file);
             }
 
-            foreach (self::stringList($section['classmap'] ?? null) as $path) {
+            foreach ($section['classmap'] ?? [] as $path) {
                 $classmap_paths[] = self::normalize($base . DIRECTORY_SEPARATOR . $path);
             }
 
-            foreach (self::stringList($section['exclude-from-classmap'] ?? null) as $pattern) {
+            foreach ($section['exclude-from-classmap'] ?? [] as $pattern) {
                 $exclude_patterns[] = str_replace('\\', '/', $pattern);
             }
 
-            foreach (self::prefixMap($section['psr-4'] ?? null) as $prefix => $paths) {
-                $dirs = [];
-                foreach ($paths as $path) {
-                    $dirs[] = self::normalize($base . DIRECTORY_SEPARATOR . $path);
-                }
+            foreach ($section['psr-4'] ?? [] as $prefix => $paths) {
+                $dirs = self::rootsUnder($base, $paths);
 
                 if ($prefix === '') {
                     $fallback_dirs = array_merge($fallback_dirs, $dirs);
@@ -181,11 +176,8 @@ final class AutoloadMap
                 }
             }
 
-            foreach (self::prefixMap($section['psr-0'] ?? null) as $prefix => $paths) {
-                $dirs = [];
-                foreach ($paths as $path) {
-                    $dirs[] = self::normalize($base . DIRECTORY_SEPARATOR . $path);
-                }
+            foreach ($section['psr-0'] ?? [] as $prefix => $paths) {
+                $dirs = self::rootsUnder($base, $paths);
 
                 if ($prefix === '') {
                     $fallback_dirs = array_merge($fallback_dirs, $dirs);
@@ -207,10 +199,10 @@ final class AutoloadMap
         return new self(
             $psr4,
             $psr0,
-            array_values($fallback_dirs),
-            array_values($classmap_paths),
-            array_values($exclude_patterns),
-            array_values($files),
+            $fallback_dirs,
+            $classmap_paths,
+            $exclude_patterns,
+            $files,
             $seeded_classes,
         );
     }
@@ -310,6 +302,47 @@ final class AutoloadMap
         }
 
         return $files;
+    }
+
+    /**
+     * The root package's manifest, decoded in the shape Composer documents for it.
+     *
+     * @return RootComposerJson|null
+     */
+    private static function decodeRootComposerJson(string $path): ?array
+    {
+        $contents = is_file($path) ? file_get_contents($path) : false;
+
+        return $contents === false ? null : json_decode($contents, true);
+    }
+
+    /**
+     * The installed packages, as Composer 2 records them (`{"packages": [...], "dev": ...}`).
+     *
+     * @return InstalledJson|null
+     */
+    private static function decodeInstalledJson(string $path): ?array
+    {
+        $contents = is_file($path) ? file_get_contents($path) : false;
+
+        return $contents === false ? null : json_decode($contents, true);
+    }
+
+    /**
+     * A PSR entry names one source root or several; both are resolved under the package.
+     *
+     * @param string|list<string> $paths
+     * @return list<string>
+     */
+    private static function rootsUnder(string $base, string|array $paths): array
+    {
+        $dirs = [];
+
+        foreach (is_string($paths) ? [$paths] : $paths as $path) {
+            $dirs[] = self::normalize($base . DIRECTORY_SEPARATOR . $path);
+        }
+
+        return $dirs;
     }
 
     /**
@@ -468,64 +501,6 @@ final class AutoloadMap
         }
 
         return null;
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    private static function readJson(string $path): ?array
-    {
-        if (!is_file($path)) {
-            return null;
-        }
-
-        $contents = file_get_contents($path);
-
-        if ($contents === false) {
-            return null;
-        }
-
-        $decoded = json_decode($contents, true);
-
-        return is_array($decoded) ? $decoded : null;
-    }
-
-    /**
-     * A `files`/`classmap`/`exclude-from-classmap` entry is a list of paths.
-     *
-     * @return list<string>
-     */
-    private static function stringList(mixed $value): array
-    {
-        $out = [];
-
-        foreach (is_array($value) ? $value : [] as $item) {
-            if (is_string($item)) {
-                $out[] = $item;
-            }
-        }
-
-        return $out;
-    }
-
-    /**
-     * A `psr-4`/`psr-0` entry maps a prefix to one path or several.
-     *
-     * @return array<string, list<string>>
-     */
-    private static function prefixMap(mixed $value): array
-    {
-        $out = [];
-
-        foreach (is_array($value) ? $value : [] as $prefix => $paths) {
-            if (!is_string($prefix)) {
-                continue;
-            }
-
-            $out[$prefix] = self::stringList(is_string($paths) ? [$paths] : $paths);
-        }
-
-        return $out;
     }
 
     /**

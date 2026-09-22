@@ -25,7 +25,12 @@
         <directory name="examples/plugins"/>
         <directory name="../phpunit-port/typed/src"/>
         <directory name="vendor/composer/semver/src"/>
+        <directory name="vendor/psalm/plugin-phpunit/src"/>
+        <directory name="vendor/psalm/plugin-mockery"/>
         <ignoreFiles>
+            <file name="src/Psalm/Internal/PluginInstantiator.php"/>
+            <directory name="vendor/psalm/plugin-mockery/stubs"/>
+            <directory name="vendor/psalm/plugin-mockery/tests"/>
             <file name="vendor/composer/semver/src/CompilingMatcher.php"/>
             <file name="../php-parser/lib/PhpParser/JsonDecoder.php"/>
             <directory name="tests/fixtures"/>

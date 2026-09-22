@@ -44,8 +44,8 @@ final class FileBasedPluginAdapter implements PluginEntryPointInterface
     {
         $fq_class_name = $this->getPluginClassForPath($this->path);
 
-        // the class is compiled in and instantiated through its registered factory (never loaded by name)
-        $plugin = Config::instantiatePluginClass($fq_class_name);
+        // the interpreted analyzer loads the file for the class; the compiled one has it compiled in
+        $plugin = Config::instantiatePluginClass($fq_class_name, $this->path);
 
         if (!$plugin instanceof HookInterface) {
             throw new UnexpectedValueException($fq_class_name . ' does not implement a plugin hook interface');

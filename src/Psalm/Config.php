@@ -29,6 +29,7 @@ use Psalm\Internal\Composer;
 use Psalm\Internal\Composer\AutoloadMap;
 use Psalm\Internal\EventDispatcher;
 use Psalm\Internal\IncludeCollector;
+use Psalm\Internal\PluginInstantiator;
 use Psalm\Internal\Provider\AddRemoveTaints\HtmlFunctionTainter;
 use Psalm\Internal\Scanner\FileScanner;
 use Psalm\Issue\ArgumentIssue;
@@ -1765,16 +1766,22 @@ final class Config
      *
      * @throws ConfigException when no factory was registered for the class
      */
-    public static function instantiatePluginClass(string $pluginClassName): PluginInterface|HookInterface
-    {
+    /**
+     * A registered factory wins (tests register theirs); otherwise the class is built by name, which
+     * the interpreted analyzer does by autoloading it and the compiled one from its table of compiled-in
+     * plugin classes.
+     *
+     * @param string|null $path the file a `<plugin filename="...">` entry names
+     */
+    public static function instantiatePluginClass(
+        string $pluginClassName,
+        ?string $path = null,
+    ): PluginInterface|HookInterface {
         $factory = self::$plugin_factories[ltrim($pluginClassName, '\\')] ?? null;
-        if ($factory === null) {
-            throw new ConfigException(
-                'Cannot instantiate plugin class ' . $pluginClassName
-                . ': plugin classes must be registered with Config::registerPluginFactory() (the program is compiled)',
-            );
+        if ($factory !== null) {
+            return $factory();
         }
-        return $factory();
+        return PluginInstantiator::instantiate($pluginClassName, $path);
     }
 
     private function loadPlugin(ProjectAnalyzer $projectAnalyzer, string $pluginClassName): PluginInterface
