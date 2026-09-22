@@ -16,6 +16,7 @@ use Psalm\Type\Union;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeVisitor;
 use Psalm\Type\TypeNode;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 use function assert;
 
@@ -28,6 +29,7 @@ use function assert;
  */
 final class TClassStringMap extends Atomic
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     /**
      * Constructs a new instance of a list
      */

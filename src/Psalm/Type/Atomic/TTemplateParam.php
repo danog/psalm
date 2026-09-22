@@ -16,6 +16,7 @@ use function implode;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeVisitor;
 use Psalm\Type\TypeNode;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * denotes a template parameter that has been previously specified in a `@template` tag.
@@ -25,6 +26,7 @@ use Psalm\Type\TypeNode;
  */
 final class TTemplateParam extends Atomic
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     use HasIntersectionTrait;
 
     /**

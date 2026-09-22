@@ -6,6 +6,7 @@ namespace Psalm\Type\Atomic;
 
 use Override;
 use Psalm\Type\Atomic;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * Denotes the `void` type, normally just used to annotate a function/method that returns nothing
@@ -15,6 +16,7 @@ use Psalm\Type\Atomic;
  */
 final class TVoid extends Atomic
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     /**
      * @psalm-pure
      */

@@ -6,6 +6,7 @@ namespace Psalm\Type\Atomic;
 
 use Override;
 use Psalm\Type\Atomic;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * @psalm-immutable
@@ -13,6 +14,7 @@ use Psalm\Type\Atomic;
  */
 abstract class Scalar extends Atomic
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     /**
      * @psalm-pure
      */

@@ -7,6 +7,7 @@ namespace Psalm\Storage\Assertion;
 use Override;
 use Psalm\Storage\Assertion;
 use UnexpectedValueException;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * @psalm-immutable
@@ -14,6 +15,7 @@ use UnexpectedValueException;
  */
 final class HasIntOrStringArrayAccess extends Assertion
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     /**
      * @psalm-pure
      */

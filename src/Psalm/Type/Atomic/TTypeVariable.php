@@ -8,6 +8,7 @@ use Override;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
 use Psalm\Internal\Type\TypeVariableBounds;
 use Psalm\Type\Atomic;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * Denotes a type variable: a placeholder (e.g. `` `_0 ``) minted for a class template
@@ -21,6 +22,7 @@ use Psalm\Type\Atomic;
  */
 final class TTypeVariable extends Atomic
 {
+    use UnserializeMemoryUsageSuppressionTrait;
 
     public function __construct(
         public readonly string $name,

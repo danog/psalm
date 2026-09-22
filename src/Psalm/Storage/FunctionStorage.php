@@ -9,6 +9,7 @@ namespace Psalm\Storage;
  */
 final class FunctionStorage extends FunctionLikeStorage
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     /** @var array<string, bool> */
     public array $byref_uses = [];
 }

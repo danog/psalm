@@ -16,6 +16,7 @@ use function assert;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeVisitor;
 use Psalm\Type\TypeNode;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * Represents a value of an array or enum.
@@ -25,6 +26,7 @@ use Psalm\Type\TypeNode;
  */
 final class TValueOf extends Atomic
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     public function __construct(public Union $type, bool $from_docblock = false)
     {
         parent::__construct($from_docblock);

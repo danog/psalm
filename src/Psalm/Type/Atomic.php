@@ -69,6 +69,7 @@ use Psalm\Type\Atomic\TTrue;
 use Psalm\Type\Atomic\TTypeAlias;
 use Psalm\Type\Atomic\TVoid;
 use Stringable;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 use function array_any;
 use function array_keys;
@@ -85,6 +86,7 @@ use function strtolower;
  */
 abstract class Atomic implements TypeNode, Stringable
 {
+    use UnserializeMemoryUsageSuppressionTrait;
 
     /**
      * @psalm-mutation-free

@@ -19,6 +19,7 @@ use Psalm\IssueBuffer;
 use Psalm\Type;
 use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\Union;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 use function in_array;
 use function is_string;
@@ -32,6 +33,7 @@ use function strtolower;
  */
 final class ClosureAnalyzer extends FunctionLikeAnalyzer
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     /**
      * @param PhpParser\Node\Expr\Closure|PhpParser\Node\Expr\ArrowFunction $function
      */

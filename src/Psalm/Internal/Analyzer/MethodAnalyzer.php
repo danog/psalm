@@ -22,6 +22,7 @@ use Psalm\StatementsSource;
 use Psalm\Storage\ClassLikeStorage;
 use Psalm\Storage\MethodStorage;
 use UnexpectedValueException;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 use function in_array;
 use function strtolower;
@@ -32,6 +33,7 @@ use function strtolower;
  */
 final class MethodAnalyzer extends FunctionLikeAnalyzer
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     // https://github.com/php/php-src/blob/a83923044c48982c80804ae1b45e761c271966d3/Zend/zend_enum.c#L77-L95
     private const FORBIDDEN_ENUM_METHODS = [
         '__construct',

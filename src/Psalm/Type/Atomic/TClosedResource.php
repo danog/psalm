@@ -6,6 +6,7 @@ namespace Psalm\Type\Atomic;
 
 use Override;
 use Psalm\Type\Atomic;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * Denotes the `resource` type that has been closed (e.g. a file handle through `fclose()`).
@@ -15,6 +16,7 @@ use Psalm\Type\Atomic;
  */
 final class TClosedResource extends Atomic
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     /**
      * @psalm-pure
      */

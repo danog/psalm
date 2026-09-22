@@ -19,6 +19,7 @@ use function substr;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeVisitor;
 use Psalm\Type\TypeNode;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * denotes the `iterable` type(which can also result from an `is_iterable` check).
@@ -28,6 +29,7 @@ use Psalm\Type\TypeNode;
  */
 final class TIterable extends Atomic
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     use HasIntersectionTrait;
     /**
      * @use GenericTrait<array{Union, Union}>

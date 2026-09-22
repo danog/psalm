@@ -15,6 +15,7 @@ use Psalm\Type\Union;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeVisitor;
 use Psalm\Type\TypeNode;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 use function assert;
 
@@ -26,6 +27,7 @@ use function assert;
  */
 final class TCallable extends Atomic
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     use CallableTrait;
 
     public string $value = 'callable';

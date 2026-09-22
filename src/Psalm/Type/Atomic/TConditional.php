@@ -13,6 +13,7 @@ use Psalm\Type\Union;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeVisitor;
 use Psalm\Type\TypeNode;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 use function assert;
 
@@ -24,6 +25,7 @@ use function assert;
  */
 final class TConditional extends Atomic
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     public function __construct(
         public string $param_name,
         public string $defining_class,

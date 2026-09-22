@@ -15,6 +15,7 @@ use Stringable;
 abstract class Assertion implements Stringable
 {
     use ImmutableNonCloneableTrait;
+    use UnserializeMemoryUsageSuppressionTrait;
 
     /** @psalm-mutation-free */
     abstract public function getNegation(): Assertion;

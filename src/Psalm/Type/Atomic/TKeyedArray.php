@@ -30,6 +30,7 @@ use function str_replace;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeVisitor;
 use Psalm\Type\TypeNode;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * Represents an 'object-like array' - an array with known keys.
@@ -40,6 +41,7 @@ use Psalm\Type\TypeNode;
  */
 final class TKeyedArray extends Atomic
 {
+    use UnserializeMemoryUsageSuppressionTrait;
 
     /**
      * Constructs a new instance of a generic type

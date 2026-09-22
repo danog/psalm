@@ -10,6 +10,7 @@ use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * Represents the type used when using TPropertiesOf when the type of the array is a template
@@ -19,6 +20,7 @@ use Psalm\Type\Union;
  */
 final class TTemplatePropertiesOf extends Atomic
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     /**
      * @param TPropertiesOf::VISIBILITY_*|null $visibility_filter
      */

@@ -10,6 +10,7 @@ use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * Represents the type used when using TValueOf when the type of the array or enum is a template
@@ -19,6 +20,7 @@ use Psalm\Type\Union;
  */
 final class TTemplateValueOf extends Atomic
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     public function __construct(
         public string $param_name,
         public string $defining_class,
