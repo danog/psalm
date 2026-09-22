@@ -224,6 +224,8 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         $project_analyzer = $this->file_analyzer->project_analyzer;
         $codebase = $this->getCodebase();
 
+        self::registerDocblockSuppressions($storage, $this->getFilePath(), $codebase);
+
         if ($codebase->alter_code && $class->name && $codebase->classes_to_move) {
             if (isset($codebase->classes_to_move[strtolower($this->fq_class_name)])) {
                 $destination_class = $codebase->classes_to_move[strtolower($this->fq_class_name)];
@@ -291,6 +293,11 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         }
 
         $parent_fq_class_name = $this->parent_fq_class_name;
+
+        if (!$class_context) {
+            $class_context = new Context($this->fq_class_name);
+            $class_context->parent = $parent_fq_class_name;
+        }
 
         if ($class instanceof PhpParser\Node\Stmt\Class_ && $class->extends && $parent_fq_class_name) {
             $this->checkParentClass(
@@ -386,11 +393,6 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                     );
                 }
             }
-        }
-
-        if (!$class_context) {
-            $class_context = new Context($this->fq_class_name);
-            $class_context->parent = $parent_fq_class_name;
         }
 
         if ($global_context) {
@@ -1147,10 +1149,9 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 );
             }
 
-            $codebase->file_reference_provider->addMethodReferenceToMissingClassMember(
-                $fq_class_name_lc . '::__construct',
-                strtolower($property_class_name) . '::$' . $property_name,
-            );
+            // no reference is recorded from the constructor to the property: this check
+            // runs again whenever the class is re-analysed, so the constructor's own
+            // analysis needn't be invalidated when the property changes
 
             if ($property->visibility === ClassLikeAnalyzer::VISIBILITY_PRIVATE) {
                 $uninitialized_private_properties = true;
@@ -1430,7 +1431,11 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 $aliases,
             );
 
-            if (!$codebase->classlikes->hasFullyQualifiedTraitName($fq_trait_name, $trait_location, $class_context)) {
+            if (!$codebase->classlikes->hasFullyQualifiedTraitName(
+                $fq_trait_name,
+                $trait_location,
+                $class_context,
+            )) {
                 IssueBuffer::maybeAdd(
                     new UndefinedTrait(
                         'Trait ' . $fq_trait_name . ' does not exist',
@@ -1884,7 +1889,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 $class_context->self,
                 $analyzed_method_id,
                 $actual_method_id,
-                $method_context->has_returned,
+                $method_context,
             );
         }
 
@@ -1940,8 +1945,9 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         string $fq_classlike_name,
         MethodIdentifier $analyzed_method_id,
         MethodIdentifier $actual_method_id,
-        bool $did_explicitly_return,
+        ?Context $context,
     ): void {
+        $did_explicitly_return = (bool) $context?->has_returned;
         $secondary_return_type_location = null;
 
         $actual_method_storage = $codebase->methods->getStorage($actual_method_id);
@@ -2007,7 +2013,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             foreach ($overridden_method_ids as $interface_method_id) {
                 $interface_class = $interface_method_id->fq_class_name;
 
-                if (!$codebase->classlikes->interfaceExists($interface_class)) {
+                if (!$codebase->classlikes->interfaceExists($interface_class, null, $context)) {
                     continue;
                 }
 
@@ -2099,7 +2105,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 $this,
                 $fq_interface_name,
                 $interface_location,
-                null,
+                $class_context,
                 $this->getSuppressedIssues(),
             ) === false) {
                 return false;
@@ -2392,7 +2398,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             $this->getSource(),
             $parent_fq_class_name,
             $parent_reference_location,
-            null,
+            $class_context,
             $storage->suppressed_issues + $this->getSuppressedIssues(),
         ) === false) {
             return;

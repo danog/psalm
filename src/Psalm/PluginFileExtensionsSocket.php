@@ -15,6 +15,9 @@ use Psalm\Plugin\FileExtensionsInterface;
 use function in_array;
 use function sprintf;
 
+/**
+ * @api
+ */
 final class PluginFileExtensionsSocket implements FileExtensionsInterface
 {
     /**

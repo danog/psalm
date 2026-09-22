@@ -68,7 +68,10 @@ use Psalm\IssueBuffer;
 use Psalm\NodeTypeProvider;
 use Psalm\Plugin\EventHandler\Event\AfterStatementAnalysisEvent;
 use Psalm\Plugin\EventHandler\Event\BeforeStatementAnalysisEvent;
+use Psalm\Storage\Mutations;
 use Psalm\Type;
+use Psalm\Type\Atomic\TNamedObject;
+use Psalm\Type\Union;
 use UnexpectedValueException;
 
 use function array_change_key_case;
@@ -157,6 +160,8 @@ final class StatementsAnalyzer extends SourceAnalyzer
      */
     public array $foreach_var_locations = [];
 
+    private int $depth = 0;
+
     /**
      * Tracks bounds for the type variables minted while these statements are
      * analyzed. Shared with the enclosing function-like's statements analyzer
@@ -171,10 +176,13 @@ final class StatementsAnalyzer extends SourceAnalyzer
      */
     public readonly bool $owns_type_variable_tracker;
 
+    /**
+     * @psalm-mutation-free
+     */
     public function __construct(
         protected SourceAnalyzer $source,
         public NodeDataProvider $node_data,
-        private readonly bool $root_scope = false,
+        private readonly bool $root_scope,
     ) {
         $this->file_analyzer = $source->getFileAnalyzer();
         $this->codebase = $source->getCodebase();
@@ -191,10 +199,17 @@ final class StatementsAnalyzer extends SourceAnalyzer
             $this->owns_type_variable_tracker = true;
         }
 
-        if ($this->codebase->taint_flow_graph) {
-            $this->data_flow_graph = new TaintFlowGraph();
-        } elseif ($this->codebase->find_unused_variables) {
-            $this->data_flow_graph = new VariableUseGraph();
+        if ($this->codebase->taint_flow_graph
+            && $root_scope
+            && $this->codebase->config->trackTaintsInPath($this->getFilePath())
+        ) {
+            $this->data_flow_graph = $this->taint_flow_graph = $this->codebase->taint_flow_graph;
+        }
+        if ($this->codebase->find_unused_variables) {
+            $this->data_flow_graph = $this->variable_use_graph = new VariableUseGraph();
+        }
+        if ($this->taint_flow_graph && $this->variable_use_graph) {
+            $this->data_flow_graph = new CombinedFlowGraph($this->variable_use_graph, $this->taint_flow_graph);
         }
     }
 
@@ -482,6 +497,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
                                 $statements_analyzer->getFilePath(),
                                 $offset,
                                 $issue_type,
+                                $codebase->taint_flow_graph !== null,
                             );
                         }
                     }
@@ -998,6 +1014,9 @@ final class StatementsAnalyzer extends SourceAnalyzer
                         $original_location,
                     );
                 } else {
+                    if ($this->hasImpureDestructor($context->vars_in_scope[$var_id] ?? null, $codebase)) {
+                        continue;
+                    }
                     $issue = new UnusedVariable(
                         $var_id . ' is never referenced or the value is not used',
                         $original_location,
@@ -1026,6 +1045,41 @@ final class StatementsAnalyzer extends SourceAnalyzer
                 );
             }
         }
+    }
+
+    /**
+     * @psalm-mutation-free
+     */
+    private function hasImpureDestructor(?Union $type, Codebase $codebase): bool
+    {
+        if ($type === null) {
+            return false;
+        }
+
+        foreach ($type->getAtomicTypes() as $atomic_type) {
+            if (!$atomic_type instanceof TNamedObject) {
+                continue;
+            }
+
+            $class_storage = $codebase->classlikes->getStorageFor($atomic_type->value);
+            while ($class_storage !== null) {
+                $destructor = $class_storage->methods['__destruct'] ?? null;
+                if ($destructor !== null) {
+                    if ($destructor->has_mutations_annotation
+                        && $destructor->allowed_mutations >= Mutations::LEVEL_EXTERNAL) {
+                        return true;
+                    }
+
+                    break;
+                }
+
+                $class_storage = $class_storage->parent_class === null
+                    ? null
+                    : $codebase->classlikes->getStorageFor($class_storage->parent_class);
+            }
+        }
+
+        return false;
     }
 
     /**

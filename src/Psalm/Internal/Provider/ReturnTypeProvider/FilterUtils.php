@@ -20,7 +20,6 @@ use Psalm\Type;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TArrayKey;
 use Psalm\Type\Atomic\TBool;
-use Psalm\Type\Atomic\TClosure;
 use Psalm\Type\Atomic\TFalse;
 use Psalm\Type\Atomic\TFloat;
 use Psalm\Type\Atomic\TInt;
@@ -1497,20 +1496,18 @@ final class FilterUtils
         string $function_id,
     ): Union {
         if ($statements_analyzer->data_flow_graph) {
-            $function_return_sink = DataFlowNode::getForMethodReturn(
+            $function_return_sink = DataFlowNode::getForCallableReturn(
+                'builtin',
                 $function_id,
-                $function_id,
-                null,
                 $code_location,
             );
 
             $statements_analyzer->data_flow_graph->addNode($function_return_sink);
 
-            $function_param_sink = DataFlowNode::getForMethodArgument(
-                $function_id,
+            $function_param_sink = DataFlowNode::getForCallableArg(
+                'builtin',
                 $function_id,
                 0,
-                null,
                 $code_location,
             );
 

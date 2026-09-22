@@ -869,7 +869,7 @@ final class ReturnTypeAnalyzer
                 false,
                 false,
                 false,
-                $context->calling_method_id,
+                $context,
             );
 
             return null;

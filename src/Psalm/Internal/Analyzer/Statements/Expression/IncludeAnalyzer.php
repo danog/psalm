@@ -116,11 +116,10 @@ final class IncludeAnalyzer
         ) {
             $arg_location = new CodeLocation($statements_analyzer->getSource(), $stmt->expr);
 
-            $include_param_sink = DataFlowNode::getForMethodArgument(
-                'include',
+            $include_param_sink = DataFlowNode::getForCallableArg(
+                'builtin',
                 'include',
                 0,
-                $arg_location,
                 $arg_location,
                 TaintKind::INPUT_INCLUDE,
             );

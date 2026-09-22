@@ -244,7 +244,7 @@ class FileAnalyzer extends SourceAnalyzer
                         $this->getSource(),
                         $fq_source_classlike,
                         $location,
-                        null,
+                        $file_context,
                         $this->suppressed_issues,
                         new ClassLikeNameOptions(
                             true,
@@ -618,7 +618,7 @@ class FileAnalyzer extends SourceAnalyzer
     }
 
     /**
-     * @param array<int, string> $new_issues
+     * @param array<array-key, string> $new_issues
      * @psalm-external-mutation-free
      */
     #[Override]
@@ -632,7 +632,7 @@ class FileAnalyzer extends SourceAnalyzer
     }
 
     /**
-     * @param array<int, string> $new_issues
+     * @param array<array-key, string> $new_issues
      * @psalm-external-mutation-free
      */
     #[Override]

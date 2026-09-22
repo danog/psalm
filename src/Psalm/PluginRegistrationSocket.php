@@ -19,6 +19,9 @@ use Psalm\Plugin\EventHandler\PropertyVisibilityProviderInterface;
 use Psalm\Plugin\RegistrationInterface;
 
 
+/**
+ * @api
+ */
 final class PluginRegistrationSocket implements RegistrationInterface
 {
     /**
