@@ -329,6 +329,54 @@ final class Transpiler
         $this->inferred_return_types[spl_object_id($storage)] = [$storage, $type];
     }
 
+    public static function jobs(): int
+    {
+        return Parallel::jobs();
+    }
+
+    /**
+     * The inferred return types a pool worker recorded, keyed by where their storage lives (a worker's storages
+     * are copies: the parent finds its own by method id, or by file and position for functions and closures).
+     *
+     * @return list<array{array{0: 'm', 1: string, 2: string}|array{0: 'f', 1: string, 2: int}, Union}>
+     */
+    public function exportInferredReturnTypes(): array
+    {
+        $out = [];
+        foreach ($this->inferred_return_types as [$storage, $type]) {
+            if ($storage instanceof \Psalm\Storage\MethodStorage && $storage->defining_fqcln !== null && $storage->cased_name !== null) {
+                $out[] = [['m', $storage->defining_fqcln, strtolower($storage->cased_name)], $type];
+            } elseif ($storage->location !== null) {
+                $out[] = [['f', $storage->location->file_path, $storage->location->raw_file_start], $type];
+            }
+        }
+        return $out;
+    }
+
+    /** @param list<array{array{0: 'm', 1: string, 2: string}|array{0: 'f', 1: string, 2: int}, Union}> $types */
+    public function importInferredReturnTypes(Codebase $codebase, array $types): void
+    {
+        foreach ($types as [$loc, $type]) {
+            $storage = null;
+            if ($loc[0] === 'm') {
+                $id = new \Psalm\Internal\MethodIdentifier($loc[1], $loc[2]);
+                if ($codebase->methods->hasStorage($id)) {
+                    $storage = $codebase->methods->getStorage($id);
+                }
+            } elseif ($codebase->file_storage_provider->has($loc[1])) {
+                foreach ($codebase->file_storage_provider->get($loc[1])->functions as $fs) {
+                    if ($fs->location !== null && $fs->location->raw_file_start === $loc[2]) {
+                        $storage = $fs;
+                        break;
+                    }
+                }
+            }
+            if ($storage !== null) {
+                $this->recordInferredReturnType($storage, $type);
+            }
+        }
+    }
+
     /**
      * Declare the inferred return types on their storages so a second analysis pass sees typed call sites.
      *

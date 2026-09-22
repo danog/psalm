@@ -480,7 +480,10 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             $check_stmts = false;
         }
 
-        if (!$check_stmts) {
+        // A signature type that fails its check disables the body -- but only when the issue is NEW to the
+        // IssueBuffer (a duplicate does not count), so whether a body is analyzed depended on what an earlier
+        // pass, possibly in another process, had already reported. The transpiler needs every body.
+        if (!$check_stmts && !Transpiler::isEnabled()) {
             return false;
         }
 

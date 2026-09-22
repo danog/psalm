@@ -535,8 +535,9 @@ final class ProjectAnalyzer
     {
         $this->codebase->analyzer->resetAnalyzedMethods();
         $this->codebase->analyzer->addFilesToAnalyze($this->project_files);
-        $this->progress->startPhase(Phase::ANALYSIS, $this->threads);
-        $this->codebase->analyzer->analyzeFiles($this, $this->threads, false, true);
+        // in-process: the transpiler records this pass's analysis data (the first pass may have been parallel)
+        $this->progress->startPhase(Phase::ANALYSIS, 1);
+        $this->codebase->analyzer->analyzeFiles($this, 1, false, true);
     }
 
     public function consolidateAnalyzedData(): void

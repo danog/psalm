@@ -430,7 +430,8 @@ final class Psalm
             try {
                 Transpiler::phase('analysis pass 1 done');
                 $completed = Transpiler::get()->applyInferredReturnTypes();
-                if ($completed > 0) {
+                // a parallel first pass recorded nothing in this process: the second pass always runs
+                if ($completed > 0 || $project_analyzer->threads > 1) {
                     fwrite(STDERR, "\n[transpiler] $completed inferred return types declared, re-analyzing\n");
                     Transpiler::get()->resetRecords();
                     $project_analyzer->reanalyzeForTranspiler();
@@ -474,9 +475,10 @@ final class Psalm
     /** @return int<1, max> */
     public static function getThreads(array $options, Config $config, bool $in_ci, bool $for_scan): int
     {
-        if (isset($options['transpile-rust']) && !$for_scan) {
+        if (isset($options['transpile-rust']) && !$for_scan && Transpiler::jobs() <= 1) {
             // the transpiler collects analysis data in-process (scanning may still fork: its results are
-            // serialized back)
+            // serialized back). With TRANSPILE_JOBS the first analysis pass runs on the worker pool (it only
+            // feeds inferred return types to the second, in-process pass).
             return 1;
         }
         if (defined('PHP_WINDOWS_VERSION_MAJOR')) {

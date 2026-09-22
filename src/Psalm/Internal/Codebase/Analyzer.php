@@ -18,6 +18,7 @@ use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\FileManipulation\FunctionDocblockManipulator;
 use Psalm\Internal\FileManipulation\PropertyDocblockManipulator;
 use Psalm\Internal\Fork\AnalyzerTask;
+use Psalm\Internal\Transpiler\Transpiler;
 use Psalm\Internal\Fork\InitAnalyzerTask;
 use Psalm\Internal\Fork\Pool;
 use Psalm\Internal\Fork\ShutdownAnalyzerTask;
@@ -358,6 +359,10 @@ final class Analyzer
                     $pool_data['mixed_member_names'],
                 );
                 $this->function_timings += $pool_data['function_timings'];
+
+                if (Transpiler::isEnabled()) {
+                    Transpiler::get()->importInferredReturnTypes($codebase, $pool_data['transpiler_inferred_return_types']);
+                }
 
                 foreach ($pool_data['mutable_classes'] as $class => $level) {
                     if (array_key_exists($class, $this->mutable_classes)) {
