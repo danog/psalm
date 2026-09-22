@@ -1537,6 +1537,7 @@ function run_all(): string
         . check('builtin_arity', case_builtin_arity(), 'ok')
         . check('sprintf_percent', case_sprintf_percent(), '%|%|%|%|%a|%b|a%c')
         . check('dynamic_new_dead', case_dynamic_new_dead(), 'named')
+        . check('hook_param_narrowing', case_hook_param_narrowing(), 'rich+|plain|plain')
         . check('class_string_or_object', case_class_string_or_object(), 'name:Tiny\\HookA|obj:A|name:Other')
         . check('dir_const', case_dir_const(), 'php/fixtures')
         . check('array_map_void', case_array_map_void(), 'A,B,C')
@@ -2506,4 +2507,65 @@ function hook_tag(Hookish|string $handler): string
 function case_class_string_or_object(): string
 {
     return hook_tag(HookA::class) . '|' . hook_tag(new HookA()) . '|' . hook_tag('Other');
+}
+
+// ---- feature: a class-name-or-object parameter narrowed and reassigned in the body ----
+
+interface HookBase
+{
+    public function tag(): string;
+}
+
+interface HookExtra extends HookBase
+{
+    public function extra(): string;
+}
+
+final class HookPlain implements HookBase
+{
+    public function tag(): string
+    {
+        return 'plain';
+    }
+}
+
+final class HookRich implements HookExtra
+{
+    public function tag(): string
+    {
+        return 'rich';
+    }
+
+    public function extra(): string
+    {
+        return '+';
+    }
+}
+
+/**
+ * @param class-string<HookBase> $name
+ */
+function hook_by_name(string $name): HookBase
+{
+    return $name === HookRich::class ? new HookRich() : new HookPlain();
+}
+
+/**
+ * @param HookBase|class-string<HookBase> $handler
+ */
+function register_hook(HookBase|string $handler): string
+{
+    if (is_string($handler)) {
+        $handler = hook_by_name($handler);
+    }
+    $out = $handler->tag();
+    if ($handler instanceof HookExtra) {
+        $out .= $handler->extra();
+    }
+    return $out;
+}
+
+function case_hook_param_narrowing(): string
+{
+    return register_hook(HookRich::class) . '|' . register_hook(new HookPlain()) . '|' . register_hook(HookPlain::class);
 }

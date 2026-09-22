@@ -781,6 +781,16 @@ final class Casts
                 }
             }
         }
+        // an interned name is a string, and a string member admits an interned name: a `Foo|class-string`
+        // parameter narrowed by is_string() to `Foo|string` must still take the name it was passed
+        if ($from->kind === RustType::SYM || $from->kind === RustType::STR) {
+            $other = $from->kind === RustType::SYM ? RustType::STR : RustType::SYM;
+            foreach ($union->params as $m) {
+                if ($m->kind === $other) {
+                    return $m;
+                }
+            }
+        }
         if ($from->kind === RustType::INT) {
             foreach ($union->params as $m) {
                 if ($m->kind === RustType::FLOAT) {
