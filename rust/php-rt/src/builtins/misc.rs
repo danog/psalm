@@ -925,3 +925,59 @@ pub fn builtin_function_exists(lc: &[u8]) -> bool {
 pub fn builtin_constant_defined(name: &Str) -> bool {
     get_defined_constants(false).get(&name.clone()).is_some()
 }
+
+#[cfg(test)]
+mod getopt_tests {
+    use super::*;
+    use crate::conv::OptValue;
+
+    fn run(args: &[&str], short: &str, long: &[&str]) -> Map<Str, OptValue> {
+        crate::support::set_argv(List::from_vec(args.iter().map(|a| Str::from_str(a)).collect()));
+        getopt(&Str::from_str(short), List::from_vec(long.iter().map(|l| Str::from_str(l)).collect()))
+    }
+
+    fn str_of(v: &OptValue) -> String {
+        match v {
+            OptValue::Str(s) => s.to_string_lossy().into_owned(),
+            OptValue::False => "false".into(),
+            OptValue::List(l) => format!("[{}]", l.iter().map(str_of).collect::<Vec<_>>().join(",")),
+        }
+    }
+
+    fn get(m: &Map<Str, OptValue>, k: &str) -> Option<String> {
+        m.get(&Str::from_str(k)).map(str_of)
+    }
+
+    #[test]
+    fn psalm_style_command_line() {
+        let m = run(
+            &["psalm", "-c", "psalm.xml.dist", "--threads=1", "--no-cache", "--no-progress", "--php-version=8.5", "src/"],
+            "f:mhvc:ir:",
+            &["threads:", "no-cache", "no-progress", "php-version:", "config:"],
+        );
+        assert_eq!(get(&m, "c").as_deref(), Some("psalm.xml.dist"));
+        assert_eq!(get(&m, "threads").as_deref(), Some("1"));
+        assert_eq!(get(&m, "no-cache").as_deref(), Some("false"));
+        assert_eq!(get(&m, "no-progress").as_deref(), Some("false"));
+        assert_eq!(get(&m, "php-version").as_deref(), Some("8.5"));
+        assert_eq!(get(&m, "config"), None);
+    }
+
+    #[test]
+    fn value_spellings_repeats_and_stops() {
+        let m = run(&["x", "-cfoo", "-c=bar", "-c", "baz", "-vm", "--long", "val", "--opt", "--", "-c", "no"], "c:vm", &["long:", "opt::"]);
+        assert_eq!(get(&m, "c").as_deref(), Some("[foo,bar,baz]"));
+        assert_eq!(get(&m, "v").as_deref(), Some("false"));
+        assert_eq!(get(&m, "m").as_deref(), Some("false"));
+        assert_eq!(get(&m, "long").as_deref(), Some("val"));
+        assert_eq!(get(&m, "opt").as_deref(), Some("false"));
+        // parsing stops at the first non-option: nothing after `file` is seen
+        let m = run(&["x", "-v", "file", "-m"], "vm", &[]);
+        assert_eq!(get(&m, "v").as_deref(), Some("false"));
+        assert_eq!(get(&m, "m"), None);
+        // unknown options are skipped, not fatal
+        let m = run(&["x", "--nope", "-z", "-v"], "v", &[]);
+        assert_eq!(get(&m, "v").as_deref(), Some("false"));
+        assert_eq!(get(&m, "nope"), None);
+    }
+}
