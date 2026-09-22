@@ -1536,6 +1536,7 @@ function run_all(): string
         . check('php_shifts', case_php_shifts(), '0|1|0|-1|2|0|4611686018427387904')
         . check('builtin_arity', case_builtin_arity(), 'ok')
         . check('sprintf_percent', case_sprintf_percent(), '%|%|%|%|%a|%b|a%c')
+        . check('array_map_void', case_array_map_void(), 'A,B,C')
         . check('provided_builtins', case_provided_builtins(), 'sort:1|in_array:1|usort:1|file_exists:1|go:0|nonesuch_xyz:0')
         . check('htmlspecialchars_flags', case_htmlspecialchars_flags(), 'a&quot;b&#039;c&lt;&amp;&gt;|a&quot;b&apos;c&lt;&amp;&gt;|a&quot;b&apos;c&lt;&amp;&gt;|a&quot;b\'c&lt;&amp;&gt;|a"b\'c&lt;&amp;&gt;')
         . check('round_modes', case_round_modes(), '3,2,2,3,3,2,2,3,4,3,4,3,4,3,3,4,-3,-2,-2,-3,-2,-3,-2,-3,1.5,1.4,1.4,1.5,1.5,1.4,1.4,1.5,1.6,1.5,1.6,1.5,1.6,1.5,1.5,1.6,2,2,2,2,3,2,2,3,-2,-2,-2,-2,-2,-3,-2,-3,1,1,1,1,1,1,1,1,-2,-1,-2,-1,-1,-2,-1,-2')
@@ -2411,4 +2412,26 @@ function case_provided_builtins(): string
         $out[] = $name . ':' . (function_exists($name) ? '1' : '0');
     }
     return implode('|', $out);
+}
+
+// ---- feature: array_map over a callback that returns nothing ----
+
+/**
+ * @return array<int, string>
+ */
+function amv_args(): array
+{
+    return [0 => 'a', 1 => 'b', 2 => 'c'];
+}
+
+function case_array_map_void(): string
+{
+    $seen = [];
+    array_map(
+        static function (string $arg) use (&$seen): void {
+            $seen[] = strtoupper($arg);
+        },
+        amv_args(),
+    );
+    return implode(',', $seen);
 }

@@ -1169,6 +1169,24 @@ final class Builtins
         return new Val($code, $target);
     }
 
+    /**
+     * The element type of an array_map result. A callback declared `void` makes Psalm infer
+     * `array<never>` for the call, but the callback does return -- the elements are PHP nulls,
+     * not values of the uninhabited type -- so mapping into `never` would emit a closure whose
+     * every call is `unreachable!()`.
+     */
+    private function mappedElem(BodyEmitter $b, Expr $cb_expr, RustType $ret): RustType
+    {
+        if ($ret->kind !== RustType::NEVER) {
+            return $ret;
+        }
+        $ct = $b->inferred($cb_expr);
+        if ($ct !== null && $ct->kind === RustType::CLOSURE && $ct->ret->kind !== RustType::NEVER) {
+            return $ct->ret;
+        }
+        return RustType::unit();
+    }
+
     private function f_array_map(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
         $res = $b->inferredOrMixed($call);
@@ -1177,7 +1195,7 @@ final class Builtins
             $c = $this->container($b, $args[2]->value);
             $at = $a->type->kind === RustType::LIST ? $a->type : RustType::list($a->type->params[1]);
             $ct = $c->type->kind === RustType::LIST ? $c->type : RustType::list($c->type->params[1]);
-            $ret = $res->kind === RustType::LIST ? $res->inner() : ($res->kind === RustType::MAP ? $res->params[1] : RustType::mixed());
+            $ret = $this->mappedElem($b, $args[0]->value, $res->kind === RustType::LIST ? $res->inner() : ($res->kind === RustType::MAP ? $res->params[1] : RustType::mixed()));
             $cb = $this->cb($b, $args[0]->value, [$at->inner(), $ct->inner()], $ret);
             return new Val('array_map2_l(&' . $b->casts->convert($a->code, $a->type, $at) . ', &' . $b->casts->convert($c->code, $c->type, $ct) . ', ' . $cb . ')', RustType::list($ret));
         }
@@ -1191,6 +1209,7 @@ final class Builtins
             $ct = $b->inferred($args[0]->value);
             $ret = $ct !== null && $ct->kind === RustType::CLOSURE ? $ct->ret : RustType::mixed();
         }
+        $ret = $this->mappedElem($b, $args[0]->value, $ret);
         $cb = $this->cb($b, $args[0]->value, [$elem], $ret);
         if ($a->type->kind === RustType::LIST) {
             return new Val('array_map_l(&' . $a->code . ', ' . $cb . ')', RustType::list($ret));

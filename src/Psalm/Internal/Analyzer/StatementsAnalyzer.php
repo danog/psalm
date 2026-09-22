@@ -160,8 +160,6 @@ final class StatementsAnalyzer extends SourceAnalyzer
      */
     public array $foreach_var_locations = [];
 
-    private int $depth = 0;
-
     /**
      * Tracks bounds for the type variables minted while these statements are
      * analyzed. Shared with the enclosing function-like's statements analyzer
