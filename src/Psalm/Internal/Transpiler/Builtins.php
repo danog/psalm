@@ -14,6 +14,7 @@ use PhpParser\Node\Name;
 use PhpParser\Node\Scalar;
 
 use function array_filter;
+use function array_key_first;
 use function array_keys;
 use function array_unique;
 use function array_values;
@@ -2542,6 +2543,35 @@ final class Builtins
         }
         $b->warn('define of a constant unknown to the compiled program', $call);
         return new Val('{ let _ = ' . $b->expr($args[1]->value)->code . '; false }', RustType::bool());
+    }
+
+    /**
+     * method_exists() on a value whose class the program knows is a fact about the program, answered at
+     * compile time; a value that may be one of several classes is answered when they all agree. The
+     * receiver is still evaluated for its effects. Anything else stays unsupported (the plugins use this
+     * as a version check against Psalm's own API, which is exactly the case that resolves).
+     */
+    private function f_method_exists(BodyEmitter $b, Expr\FuncCall $call, array $args): ?Val
+    {
+        if (count($args) < 2 || !$args[1]->value instanceof Scalar\String_) {
+            return null;
+        }
+        $lc = strtolower($args[1]->value->value);
+        $v = $b->expr($args[0]->value);
+        $t = $v->type->kind === RustType::OPTION ? $v->type->inner() : $v->type;
+        $members = $t->kind === RustType::UNION ? $t->params : [$t];
+        $answers = [];
+        foreach ($members as $m) {
+            $cls = $m->kind === RustType::CLASS_ ? $b->program->classOf($m) : null;
+            if ($cls === null) {
+                return null;
+            }
+            $answers[$b->program->findMethod($cls, $lc) !== null ? 'true' : 'false'] = true;
+        }
+        if (count($answers) !== 1) {
+            return null;
+        }
+        return new Val('{ let _ = &' . $v->code . '; ' . array_key_first($answers) . ' }', RustType::bool());
     }
 
     private function f_get_class(BodyEmitter $b, Expr\FuncCall $call, array $args): Val

@@ -1537,6 +1537,7 @@ function run_all(): string
         . check('builtin_arity', case_builtin_arity(), 'ok')
         . check('sprintf_percent', case_sprintf_percent(), '%|%|%|%|%a|%b|a%c')
         . check('dynamic_new_dead', case_dynamic_new_dead(), 'named')
+        . check('method_exists', case_method_exists(), 'yn')
         . check('hook_param_narrowing', case_hook_param_narrowing(), 'rich+|plain|plain')
         . check('class_string_or_object', case_class_string_or_object(), 'name:Tiny\\HookA|obj:A|name:Other')
         . check('dir_const', case_dir_const(), 'php/fixtures')
@@ -2568,4 +2569,20 @@ function register_hook(HookBase|string $handler): string
 function case_hook_param_narrowing(): string
 {
     return register_hook(HookRich::class) . '|' . register_hook(new HookPlain()) . '|' . register_hook(HookPlain::class);
+}
+
+// ---- feature: method_exists() on a value of known class ----
+
+final class HasMethods
+{
+    public function known(): int
+    {
+        return 1;
+    }
+}
+
+function case_method_exists(): string
+{
+    $o = new HasMethods();
+    return (method_exists($o, 'known') ? 'y' : 'n') . (method_exists($o, 'nope') ? 'y' : 'n');
 }
