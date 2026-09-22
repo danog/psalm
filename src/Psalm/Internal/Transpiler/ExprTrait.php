@@ -406,18 +406,64 @@ trait ExprTrait
 
     private function interpolated(array $parts): Val
     {
-        $codes = [];
-        foreach ($parts as $part) {
-            if ($part instanceof InterpolatedStringPart) {
-                $codes[] = Names::strLit($part->value);
+        if (count($parts) === 1) {
+            $part = $parts[0];
+            return new Val($part instanceof InterpolatedStringPart ? Names::strLit($part->value) : $this->exprTo($part, RustType::str()), RustType::str());
+        }
+        return new Val('concat_parts(&[' . implode(', ', $this->strParts($parts)) . '])', RustType::str());
+    }
+
+    /**
+     * The operands of a concatenation chain in evaluation order (`$a . $b . $c` is `($a . $b) . $c`; a
+     * parenthesised right-hand chain flattens the same way).
+     *
+     * @return list<Expr>
+     */
+    public function concatOperands(Expr $e): array
+    {
+        if ($e instanceof BinaryOp\Concat) {
+            return array_merge($this->concatOperands($e->left), $this->concatOperands($e->right));
+        }
+        return [$e];
+    }
+
+    /**
+     * `&dyn StrPart` elements for `concat_parts`/`append_parts`: literals as static strings, strings read in
+     * place (a local is borrowed, not cloned), ints formatted straight into the result, anything else through
+     * its string conversion.
+     *
+     * @param list<Expr|InterpolatedStringPart> $parts
+     * @return list<string>
+     */
+    public function strParts(array $parts): array
+    {
+        $out = [];
+        foreach ($parts as $p) {
+            if ($p instanceof InterpolatedStringPart) {
+                if ($p->value !== '') {
+                    $out[] = '&' . Names::strLit($p->value) . ' as &dyn StrPart';
+                }
+                continue;
+            }
+            if ($p instanceof Scalar\String_) {
+                if ($p->value !== '') {
+                    $out[] = '&' . Names::strLit($p->value) . ' as &dyn StrPart';
+                }
+                continue;
+            }
+            $v = $this->expr($p);
+            if ($v->type->kind === RustType::STR) {
+                $out[] = $v->borrow() . ' as &dyn StrPart';
+            } elseif ($v->type->kind === RustType::INT) {
+                $out[] = '&(' . $v->code . ') as &dyn StrPart';
             } else {
-                $codes[] = $this->exprTo($part, RustType::str());
+                $out[] = '&' . $this->casts->convert($v->code, $v->type, RustType::str()) . ' as &dyn StrPart';
             }
         }
-        if (count($codes) === 1) {
-            return new Val($codes[0], RustType::str());
+        if ($out === []) {
+            $out[] = '&Str::empty() as &dyn StrPart';
         }
-        return new Val('cat!(' . implode(', ', $codes) . ')', RustType::str());
+        return $out;
     }
 
     private function magicConst(Scalar\MagicConst $e): Val
@@ -1101,9 +1147,7 @@ trait ExprTrait
     private function binaryOp(BinaryOp $e): Val
     {
         if ($e instanceof BinaryOp\Concat) {
-            $l = $this->exprTo($e->left, RustType::str());
-            $r = $this->exprTo($e->right, RustType::str());
-            return new Val('concat(' . $l . ', ' . $r . ')', RustType::str());
+            return new Val('concat_parts(&[' . implode(', ', $this->strParts($this->concatOperands($e))) . '])', RustType::str());
         }
         if ($e instanceof BinaryOp\BooleanAnd || $e instanceof BinaryOp\LogicalAnd) {
             // `$v instanceof X && $v->method()`: narrow $v to X while emitting the RHS so the call resolves

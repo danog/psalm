@@ -84,6 +84,7 @@ final class Transpiler
      */
     public static function enable(string $out_dir, Config $config, string $root_dir, array $splits = [], array $data_globs = []): void
     {
+        self::phase('enabled');
         if (!is_dir($out_dir) && !mkdir($out_dir, 0777, true)) {
             throw new RuntimeException("Could not create transpiler output directory $out_dir");
         }
@@ -211,6 +212,15 @@ final class Transpiler
             }
         }
         return isset(self::$runtime_stub_classes[$fq_classlike_name_lc]);
+    }
+
+    private static ?float $t0 = null;
+
+    /** A timestamped phase marker on stderr (seconds since the transpiler was enabled). */
+    public static function phase(string $what): void
+    {
+        self::$t0 ??= microtime(true);
+        fwrite(STDERR, sprintf("[transpiler] +%.1fs %s (%.0f MB)\n", microtime(true) - self::$t0, $what, memory_get_usage() / 1048576));
     }
 
     public static function get(): Transpiler

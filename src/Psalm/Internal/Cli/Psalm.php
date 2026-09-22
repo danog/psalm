@@ -417,6 +417,9 @@ final class Psalm
             );
         }
 
+        if (Transpiler::isEnabled()) {
+            Transpiler::phase('scan+analysis start');
+        }
         if ($paths_to_check === null) {
             $project_analyzer->check($current_dir, $is_diff);
         } elseif ($paths_to_check) {
@@ -425,13 +428,16 @@ final class Psalm
 
         if (Transpiler::isEnabled()) {
             try {
+                Transpiler::phase('analysis pass 1 done');
                 $completed = Transpiler::get()->applyInferredReturnTypes();
                 if ($completed > 0) {
                     fwrite(STDERR, "\n[transpiler] $completed inferred return types declared, re-analyzing\n");
                     Transpiler::get()->resetRecords();
                     $project_analyzer->reanalyzeForTranspiler();
+                    Transpiler::phase('analysis pass 2 done');
                 }
                 Transpiler::get()->emit($project_analyzer->getCodebase());
+                Transpiler::phase('emit done');
             } catch (\Throwable $e) {
                 fwrite(STDERR, "Transpiler crashed: " . $e::class . ': ' . $e->getMessage() . "\n" . $e->getTraceAsString() . "\n");
                 exit(70);

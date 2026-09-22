@@ -62,9 +62,9 @@ final class CrateEmitter
 
     public function emit(): void
     {
-        fwrite(STDERR, "[transpiler] building program model\n");
+        Transpiler::phase('building program model');
         $this->program = new Program($this->codebase, $this->transpiler);
-        fwrite(STDERR, "[transpiler] emitting classes\n");
+        Transpiler::phase('emitting classes');
         $this->casts = new Casts($this->program);
         $this->builtins = new Builtins();
         $this->diag = new Diagnostics();
@@ -97,14 +97,14 @@ final class CrateEmitter
             $cast_emitter->emitClassImpls($cls, $w);
         }
 
-        fwrite(STDERR, "[transpiler] emitting functions\n");
+        Transpiler::phase('emitting functions');
         // free functions
         foreach ($this->program->functions as $fn) {
             $w = $this->module($this->program->crateOfRecord($fn->record), Names::modulePath($fn->fq_name));
             $this->emitFunction($fn, $w);
         }
 
-        fwrite(STDERR, "[transpiler] emitting tests\n");
+        Transpiler::phase('emitting tests');
         $tests_w = [];
         $n_tests = 0;
         $test_emitter = new TestEmitter($this->program, $this->casts, $this->builtins, $this->diag);
@@ -278,7 +278,7 @@ final class CrateEmitter
             }
         }
 
-        fwrite(STDERR, "[transpiler] $n_tests tests, writing " . $n_crates . " crate(s)\n");
+        Transpiler::phase("$n_tests tests, writing " . $n_crates . " crate(s)");
         $this->buildPathMap();
         for ($i = 0; $i < $n_crates; $i++) {
             $this->writeCrate($i, $types_w[$i], $casts_w[$i], $i === 0 ? $any : null, $tests_w[$i]);

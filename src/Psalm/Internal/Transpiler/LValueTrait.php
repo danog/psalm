@@ -1262,6 +1262,18 @@ trait LValueTrait
             return '';
         }
         if ($e instanceof Expr\AssignOp\Concat) {
+            if ($t->kind === RustType::STR && $place->hasMut() && $e->var instanceof Expr\Variable && is_string($e->var->name)
+                && preg_match('/^[a-z_][a-z0-9_]*$/i', $place->mut()) && $place->wrap('X') === 'X'
+            ) {
+                // a plain local: the parts go straight into its buffer, read in place (unless they read the local)
+                $name = $e->var->name;
+                $mentions = (new \PhpParser\NodeFinder())->findFirst([$e->expr], static fn(\PhpParser\Node $n): bool =>
+                    $n instanceof Expr\Variable && $n->name === $name) !== null;
+                if (!$mentions) {
+                    $rhs_parts = $e->expr instanceof Scalar\InterpolatedString ? $e->expr->parts : $this->concatOperands($e->expr);
+                    return 'append_parts(&mut ' . $place->mut() . ', &[' . implode(', ', $this->strParts($rhs_parts)) . ']);';
+                }
+            }
             $rhs = $this->exprTo($e->expr, RustType::str());
             if ($t->kind === RustType::STR && $place->hasMut()) {
                 // the right side may read the same object: evaluate it before borrowing the place
