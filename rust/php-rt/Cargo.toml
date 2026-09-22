@@ -13,6 +13,7 @@ mimalloc = { version = "0.1", default-features = false }
 hashbrown = "0.15"
 pcre2 = "0.2"
 foldhash = "0.1"
+libc = "0.2"
 
 [features]
 # No borrow flag on object cells: a measurement/validated-build option (see support.rs).

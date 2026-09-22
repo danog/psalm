@@ -16,6 +16,8 @@ pub mod error;
 pub mod traits;
 pub mod ops;
 pub mod cast;
+pub mod codec;
+pub mod procs;
 pub mod output;
 pub mod support;
 pub mod containers;
@@ -66,6 +68,7 @@ pub mod prelude {
     pub use crate::traits::*;
     pub use crate::ops::*;
     pub use crate::cast::{CastTo, cast};
+    pub use crate::codec::Codec;
     pub use crate::support::*;
     pub use crate::containers::*;
     pub use crate::output::*;

@@ -56,7 +56,10 @@
             <file name="src/Psalm/Internal/LanguageServer/ProtocolWriter.php"/>
             <directory name="src/Psalm/Internal/LanguageServer/Provider"/>
             <directory name="src/Psalm/Internal/LanguageServer/Server"/>
-            <directory name="src/Psalm/Internal/Fork"/>
+            <file name="src/Psalm/Internal/Fork/Pool.php"/>
+            <file name="src/Psalm/Internal/Fork/PsalmRestarter.php"/>
+            <file name="src/Psalm/Internal/Fork/IgbinarySerializer.php"/>
+            <file name="src/Psalm/Internal/Fork/SignalDiagnosticContext.php"/>
             <directory name="src/Psalm/Internal/PluginManager/Command"/>
             <file name="src/Psalm/Internal/Cli/Plugin.php"/>
             <file name="src/Psalm/Internal/Cli/LanguageServer.php"/>

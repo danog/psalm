@@ -128,7 +128,7 @@ pub fn sleep(s: i64) -> i64 {
 /// One table answers both `extension_loaded()` and `get_loaded_extensions()`, so the two agree.
 pub const LOADED_EXTENSIONS: &[&str] = &[
     "Core", "date", "standard", "json", "tokenizer", "mbstring", "ctype", "pcre", "SPL", "SimpleXML", "dom",
-    "libxml", "filter", "hash", "random", "Reflection",
+    "libxml", "filter", "hash", "random", "Reflection", "pcntl",
 ];
 
 /// PHP matches the name case-insensitively (`zend_hash_str_find` over the lowercased name).

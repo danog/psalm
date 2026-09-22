@@ -371,6 +371,7 @@ pub trait PhpValue:
     + crate::traits::ToStr
     + crate::traits::PhpKind
     + crate::traits::InstanceOfName
+    + crate::codec::Codec
     + 'static
 {
 }
@@ -383,6 +384,7 @@ impl<T> PhpValue for T where
         + crate::traits::ToStr
         + crate::traits::PhpKind
         + crate::traits::InstanceOfName
+        + crate::codec::Codec
         + 'static
 {
 }
