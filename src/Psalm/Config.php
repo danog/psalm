@@ -551,6 +551,7 @@ final class Config
         "mongodb" => null,
         "mysqli" => null,
         "pdo" => null,
+        "phar" => null,
         "random" => null,
         "rdkafka" => null,
         "redis" => null,
@@ -2427,7 +2428,9 @@ final class Config
             foreach ($this->php_extensions as $ext => $enabled) {
                 $ext_stub_path = $ext_stubs_dir . $ext . '.phpstub';
 
-                if ($enabled && file_exists($ext_stub_path)) {
+                // an extension neither required nor configured is known through the runtime that loaded it
+                // (pzoom asks `php -m`); a compiled program has no reflection to fall back on for its classes
+                if (($enabled ?? extension_loaded($ext)) && file_exists($ext_stub_path)) {
                     $core_generic_files[] = $ext_stub_path;
                 }
             }

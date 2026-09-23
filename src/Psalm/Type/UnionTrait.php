@@ -1727,6 +1727,31 @@ trait UnionTrait
     /**
      * @psalm-mutation-free
      */
+    /**
+     * Whether both unions hold the same atomics: exactly `getId() === getId()` (a union's id is the sorted set of
+     * its atomics' ids), without building or comparing the union strings. Each atomic's id is memoized.
+     *
+     * @psalm-mutation-free
+     */
+    public function hasSameAtomics(self $other_type): bool
+    {
+        if ($other_type === $this) {
+            return true;
+        }
+
+        $ids = [];
+        foreach ($this->types as $atomic) {
+            $ids[$atomic->getId()] = true;
+        }
+
+        $other_ids = [];
+        foreach ($other_type->types as $atomic) {
+            $other_ids[$atomic->getId()] = true;
+        }
+
+        return $ids == $other_ids;
+    }
+
     public function equals(
         self $other_type,
         bool $ensure_source_equality = true,

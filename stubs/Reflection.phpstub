@@ -83,6 +83,13 @@ class ReflectionAttribute
  * @property-read class-string<T> $name
  */
 class ReflectionClass implements Reflector {
+    public const int IS_IMPLICIT_ABSTRACT = 16;
+    public const int IS_EXPLICIT_ABSTRACT = 64;
+    public const int IS_FINAL = 32;
+    public const int IS_READONLY = 65536;
+    public const int SKIP_INITIALIZATION_ON_SERIALIZE = 8;
+    public const int SKIP_DESTRUCTOR = 16;
+
 
     /**
      * @var class-string<T>
@@ -524,6 +531,17 @@ class ReflectionFunction extends ReflectionFunctionAbstract
 
 class ReflectionProperty implements Reflector
 {
+    public const int IS_STATIC = 16;
+    public const int IS_READONLY = 128;
+    public const int IS_PUBLIC = 1;
+    public const int IS_PROTECTED = 2;
+    public const int IS_PRIVATE = 4;
+    public const int IS_ABSTRACT = 64;
+    public const int IS_PROTECTED_SET = 2048;
+    public const int IS_PRIVATE_SET = 4096;
+    public const int IS_VIRTUAL = 512;
+    public const int IS_FINAL = 32;
+
     /**
      * @var string
      * @readonly
@@ -623,6 +641,13 @@ class ReflectionProperty implements Reflector
 
 class ReflectionMethod extends ReflectionFunctionAbstract
 {
+    public const int IS_STATIC = 16;
+    public const int IS_PUBLIC = 1;
+    public const int IS_PROTECTED = 2;
+    public const int IS_PRIVATE = 4;
+    public const int IS_ABSTRACT = 64;
+    public const int IS_FINAL = 32;
+
     /**
      * @var non-empty-string
      * @readonly
@@ -660,6 +685,11 @@ class ReflectionMethod extends ReflectionFunctionAbstract
 /** @psalm-immutable */
 class ReflectionClassConstant implements Reflector
 {
+    public const int IS_PUBLIC = 1;
+    public const int IS_PROTECTED = 2;
+    public const int IS_PRIVATE = 4;
+    public const int IS_FINAL = 32;
+
     /**
      * @var non-empty-string
      * @readonly

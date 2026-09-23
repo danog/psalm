@@ -1020,7 +1020,7 @@ class Reconciler
      */
     protected static function triggerIssueForImpossible(
         Union|MutableUnion $existing_var_type,
-        string $old_var_type_string,
+        Union $old_var_type,
         string $key,
         Assertion $assertion,
         bool $redundant,
@@ -1028,6 +1028,8 @@ class Reconciler
         CodeLocation $code_location,
         array $suppressed_issues,
     ): void {
+        // the type's id is only spelled out when an issue is reported (pzoom computes it here too)
+        $old_var_type_string = $old_var_type->getId();
         $assertion_string = (string)$assertion;
         $not = $assertion_string[0] === '!';
 
