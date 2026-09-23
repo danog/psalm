@@ -2050,20 +2050,14 @@ final class ClassLikes
             $late_static_binding,
         );
 
-        $types = [];
-        if ($enum_types !== null) {
-            $types = array_merge($types, $enum_types->getAtomicTypes());
+        if ($enum_types === null) {
+            return $constant_types === null ? null : new Union($constant_types->getAtomicTypes());
+        }
+        if ($constant_types === null) {
+            return new Union($enum_types->getAtomicTypes());
         }
 
-        if ($constant_types !== null) {
-            $types = array_merge($types, $constant_types->getAtomicTypes());
-        }
-
-        if ($types === []) {
-            return null;
-        }
-
-        return new Union($types);
+        return new Union(array_merge($enum_types->getAtomicTypes(), $constant_types->getAtomicTypes()));
     }
 
     private function checkMethodReferences(ClassLikeStorage $classlike_storage, Methods $methods): void
