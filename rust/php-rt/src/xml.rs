@@ -14,6 +14,9 @@ pub type XmlFlatNode = (Str, Str, bool, Map<Str, Str>, i64, i64);
 struct P<'a> {
     s: &'a [u8],
     i: usize,
+    /// offsets of every newline, so an element's line is a binary search rather than a count from the start
+    /// (a 150 KB baseline has thousands of elements: counting made the parse quadratic)
+    newlines: Vec<usize>,
 }
 
 pub fn xml_parse(src: &Str) -> Option<List<XmlFlatNode>> {
@@ -21,7 +24,8 @@ pub fn xml_parse(src: &Str) -> Option<List<XmlFlatNode>> {
     if s.starts_with(&[0xEF, 0xBB, 0xBF]) {
         s = &s[3..];
     }
-    let mut p = P { s, i: 0 };
+    let newlines = s.iter().enumerate().filter(|(_, c)| **c == b'\n').map(|(i, _)| i).collect();
+    let mut p = P { s, i: 0, newlines };
     p.skip_misc();
     let mut out: Vec<XmlFlatNode> = Vec::new();
     p.element(&mut out, -1)?;
@@ -42,7 +46,7 @@ impl<'a> P<'a> {
     }
     /// The 1-based line the byte at `at` is on.
     fn line_at(&self, at: usize) -> i64 {
-        1 + self.s[..at.min(self.s.len())].iter().filter(|&&c| c == b'\n').count() as i64
+        1 + self.newlines.partition_point(|&p| p < at.min(self.s.len())) as i64
     }
     fn skip_ws(&mut self) {
         while self.i < self.s.len() && self.s[self.i].is_ascii_whitespace() {
