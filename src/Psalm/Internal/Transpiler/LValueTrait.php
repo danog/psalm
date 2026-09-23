@@ -65,8 +65,11 @@ trait LValueTrait
             $bt = $base->type;
             $base_was_option = $bt->kind === RustType::OPTION;
             if ($bt->kind === RustType::OPTION) {
-                // the accessors take `&self`: the handle is borrowed out of the option, not cloned out of it
-                $base = new Val($base->recv() . '.as_ref().unwrap()', $bt->inner());
+                // the accessors take `&self`: a class handle is borrowed out of the option, not cloned out of it
+                // (a union member is matched by value below, so it stays an owned unwrap)
+                $base = $bt->inner()->kind === RustType::CLASS_
+                    ? new Val($base->recv() . '.as_ref().unwrap()', $bt->inner())
+                    : new Val($base->code . '.unwrap()', $bt->inner());
                 $bt = $bt->inner();
             }
             if ($bt->kind === RustType::CLASS_) {
