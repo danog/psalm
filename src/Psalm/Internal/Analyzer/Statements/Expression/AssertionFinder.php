@@ -1839,6 +1839,7 @@ final class AssertionFinder
     /**
      * @param Identical|Equal|NotIdentical|NotEqual $conditional
      * @return false|int
+     * @psalm-mutation-free
      */
     private static function hasTypedValueComparison(
         PhpParser\Node\Expr\BinaryOp $conditional,
@@ -2277,7 +2278,6 @@ final class AssertionFinder
     }
 
     /**
-     * @psalm-suppress MoreSpecificReturnType
      * @param PhpParser\Node\Expr\BinaryOp\NotIdentical|PhpParser\Node\Expr\BinaryOp\NotEqual $conditional
      * @return list<non-empty-array<string, non-empty-list<non-empty-list<Assertion>>>>
      */
@@ -3005,7 +3005,6 @@ final class AssertionFinder
     }
 
     /**
-     * @psalm-suppress MoreSpecificReturnType
      * @param PhpParser\Node\Expr\BinaryOp\Identical|PhpParser\Node\Expr\BinaryOp\Equal $conditional
      * @return list<non-empty-array<string, non-empty-list<non-empty-list<Assertion>>>>
      */
@@ -3663,6 +3662,7 @@ final class AssertionFinder
 
     /**
      * @return list<non-empty-array<string, non-empty-list<non-empty-list<Assertion>>>>
+     * @psalm-external-mutation-free
      */
     private static function getInarrayAssertions(
         PhpParser\Node\Expr\FuncCall $expr,
@@ -4086,7 +4086,6 @@ final class AssertionFinder
                 );
             }
 
-
             if ($var_name !== null && $inferior_value_comparison !== null) {
                 if ($inferior_value_position === self::ASSIGNMENT_TO_RIGHT) {
                     if ($conditional instanceof SmallerOrEqual) {
@@ -4248,6 +4247,7 @@ final class AssertionFinder
         }
     }
 
+    /** @psalm-mutation-free */
     public static function isPropertyImmutableOnArgument(
         string                       $property,
         NodeDataProvider             $node_provider,

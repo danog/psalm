@@ -10,8 +10,6 @@ use Psalm\CodeLocation;
 use Psalm\Config;
 use Psalm\Context;
 use Psalm\Exception\FileIncludeException;
-use Psalm\Exception\UnpreparedAnalysisException;
-use Psalm\Internal\Analyzer\FileAnalyzer;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\DataFlow\DataFlowNode;
@@ -23,11 +21,10 @@ use Psalm\Plugin\EventHandler\Event\AddRemoveTaintsEvent;
 use Psalm\Type\TaintKind;
 use Symfony\Component\Filesystem\Path;
 
-use function constant;
-use function defined;
 use function dirname;
 use function explode;
 use function file_exists;
+use function get_defined_constants;
 use function get_include_path;
 use function get_included_files;
 use function implode;
@@ -38,13 +35,11 @@ use function preg_match;
 use function preg_replace;
 use function preg_split;
 use function realpath;
-use function str_repeat;
 use function str_replace;
 use function substr;
 
 use const DIRECTORY_SEPARATOR;
 use const PATH_SEPARATOR;
-use const PHP_EOL;
 
 /**
  * @internal
@@ -55,7 +50,6 @@ final class IncludeAnalyzer
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node\Expr\Include_ $stmt,
         Context $context,
-        ?Context $global_context = null,
     ): bool {
         $codebase = $statements_analyzer->getCodebase();
         $config = $codebase->config;

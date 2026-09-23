@@ -30,9 +30,9 @@ use Psalm\Internal\Type\TemplateStandinTypeReplacer;
 use Psalm\Internal\Type\TypeExpander;
 use Psalm\Internal\TypeVisitor\TypeVariableResolver;
 use Psalm\Issue\ArgumentTypeCoercion;
+use Psalm\Issue\CodeIssue;
 use Psalm\Issue\DeprecatedConstant;
 use Psalm\Issue\ImplicitToStringCast;
-use Psalm\Issue\CodeIssue;
 use Psalm\Issue\InvalidArgument;
 use Psalm\Issue\InvalidLiteralArgument;
 use Psalm\Issue\InvalidScalarArgument;
@@ -1738,7 +1738,6 @@ final class ArgumentAnalyzer
             $input_type = new Union($types);
         }
 
-
         $was_cloned = false;
 
         if ($input_type->isNullable() && !$param_type->isNullable()) {
@@ -1768,7 +1767,7 @@ final class ArgumentAnalyzer
         }
 
         if ($was_cloned) {
-            $context->removeVarFromConflictingClauses($var_id, null, $statements_analyzer);
+            $context->removeVarFromConflictingClauses($var_id);
         }
 
         if ($unpack) {

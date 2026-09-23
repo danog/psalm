@@ -290,7 +290,8 @@ final class MethodCallAnalyzer extends CallAnalyzer
                         new PossiblyUndefinedMethod(
                             'Method ' . $result->non_existent_class_method_ids[0] . ' does not exist'
                                 . (isset($result->incorrect_casing[$result->non_existent_class_method_ids[0]])
-                                    ? ' (incorrect casing of ' . $result->incorrect_casing[$result->non_existent_class_method_ids[0]] . ')'
+                                    ? ' (incorrect casing of '
+                                        . $result->incorrect_casing[$result->non_existent_class_method_ids[0]] . ')'
                                     : ''),
                             new CodeLocation($source, $stmt->name),
                             $result->non_existent_class_method_ids[0],
@@ -302,7 +303,8 @@ final class MethodCallAnalyzer extends CallAnalyzer
                         new UndefinedMethod(
                             'Method ' . $result->non_existent_class_method_ids[0] . ' does not exist'
                                 . (isset($result->incorrect_casing[$result->non_existent_class_method_ids[0]])
-                                    ? ' (incorrect casing of ' . $result->incorrect_casing[$result->non_existent_class_method_ids[0]] . ')'
+                                    ? ' (incorrect casing of '
+                                        . $result->incorrect_casing[$result->non_existent_class_method_ids[0]] . ')'
                                     : ''),
                             new CodeLocation($source, $stmt->name),
                             $result->non_existent_class_method_ids[0],
@@ -441,7 +443,7 @@ final class MethodCallAnalyzer extends CallAnalyzer
                 throw new AssertionError("We must have some types here!");
             }
 
-            $context->removeVarFromConflictingClauses($lhs_var_id, null, $statements_analyzer);
+            $context->removeVarFromConflictingClauses($lhs_var_id);
 
             $class_type = $class_type->getBuilder()->setTypes($types);
             $class_type->from_docblock = false;

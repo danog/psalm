@@ -10,6 +10,7 @@ use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Config;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\TypeAlias\ClassTypeAlias;
 use Psalm\Issue\CodeIssue;
@@ -318,7 +319,6 @@ final class ClassLikeStorage implements HasAttributesInterface
      * @var array<string, int>|null
      */
     public ?array $template_type_extends_count = null;
-
 
     /**
      * @var array<string, int>|null

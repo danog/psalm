@@ -28,6 +28,8 @@ final class ArrayRandReturnTypeProvider implements FunctionReturnTypeProviderInt
         return ['array_rand'];
     }
 
+        /** @psalm-external-mutation-free */
+
     #[Override]
     public static function getFunctionReturnType(FunctionReturnTypeProviderEvent $event): Union
     {

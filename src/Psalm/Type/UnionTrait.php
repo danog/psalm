@@ -48,8 +48,8 @@ use Psalm\Type\Atomic\TTemplateParamClass;
 use Psalm\Type\Atomic\TTrue;
 use UnexpectedValueException;
 
-use function array_key_exists;
 use function array_filter;
+use function array_key_exists;
 use function array_unique;
 use function array_values;
 use function count;
@@ -212,7 +212,6 @@ trait UnionTrait
         /** @var non-empty-list<Atomic> */
         return array_values($by_key);
     }
-
 
     /**
      * The literal-typed atomics (pzoom scans its Vec; Psalm kept side maps of them).
@@ -692,7 +691,11 @@ trait UnionTrait
      */
     public function getArray(): Atomic
     {
-        return $this->find('array') ?? throw new UnexpectedValueException('No array type');
+        $array = $this->find('array');
+        if ($array instanceof TArray || $array instanceof TKeyedArray || $array instanceof TClassStringMap) {
+            return $array;
+        }
+        throw new UnexpectedValueException('No array type');
     }
 
     /**
@@ -1415,7 +1418,6 @@ trait UnionTrait
         return count($this->types) === 1 && $this->countLiteralStrings() === 1;
     }
 
-
     /**
      * @psalm-mutation-free
      * @return bool true if this type is a safe operand for string concatenation (int|string|array-key)
@@ -1562,7 +1564,6 @@ trait UnionTrait
 
     /**
      * @psalm-mutation-free
-     * @psalm-suppress InvalidFalsableReturnType
      */
     public function getSingleLiteral(): TLiteralInt|TLiteralString|TLiteralFloat
     {
@@ -1872,7 +1873,6 @@ trait UnionTrait
      */
     public function getSingleAtomic(): Atomic
     {
-        /** @psalm-suppress PossiblyUndefinedIntArrayOffset never empty */
         return $this->types[0];
     }
 
@@ -1889,6 +1889,7 @@ trait UnionTrait
 
     /**
      * @psalm-mutation-free
+     * @psalm-suppress TypeDoesNotContainType a MutableUnion is empty between mutations
      */
     public function isUnionEmpty(): bool
     {

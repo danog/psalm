@@ -11,8 +11,12 @@ use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
 use Psalm\Internal\Type\TypeCombiner;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type;
 use Psalm\Type\Atomic;
+use Psalm\Type\MutableTypeVisitor;
+use Psalm\Type\TypeNode;
+use Psalm\Type\TypeVisitor;
 use Psalm\Type\Union;
 use Throwable;
 
@@ -27,10 +31,6 @@ use function ksort;
 use function preg_match;
 use function sort;
 use function str_replace;
-use Psalm\Type\MutableTypeVisitor;
-use Psalm\Type\TypeVisitor;
-use Psalm\Type\TypeNode;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * Represents an 'object-like array' - an array with known keys.
@@ -385,11 +385,10 @@ final class TKeyedArray extends Atomic
      */
     private ?TArray $generic_array_memo = null;
 
-    /** @var array<int, Union> by (int) $possibly_undefined */
-    private array $generic_value_memo = [];
-
-    /** @var array<int, Union> by (int) $possibly_undefined */
-    private array $generic_key_memo = [];
+    private ?Union $generic_value_memo = null;
+    private ?Union $generic_value_memo_pu = null;
+    private ?Union $generic_key_memo = null;
+    private ?Union $generic_key_memo_pu = null;
 
     /**
      * @psalm-mutation-free
@@ -398,18 +397,18 @@ final class TKeyedArray extends Atomic
     protected function __clone()
     {
         parent::__clone();
-        /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
         $this->generic_array_memo = null;
-        /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
-        $this->generic_value_memo = [];
-        /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
-        $this->generic_key_memo = [];
+        $this->generic_value_memo = null;
+        $this->generic_value_memo_pu = null;
+        $this->generic_key_memo = null;
+        $this->generic_key_memo_pu = null;
     }
 
     public function getGenericKeyType(bool $possibly_undefined = false): Union
     {
-        /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
-        return $this->generic_key_memo[(int) $possibly_undefined] ??= $this->computeGenericKeyType($possibly_undefined);
+        return $possibly_undefined
+            ? ($this->generic_key_memo_pu ??= $this->computeGenericKeyType(true))
+            : ($this->generic_key_memo ??= $this->computeGenericKeyType(false));
     }
 
     /**
@@ -454,9 +453,9 @@ final class TKeyedArray extends Atomic
 
     public function getGenericValueType(bool $possibly_undefined = false): Union
     {
-        /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
-        return $this->generic_value_memo[(int) $possibly_undefined]
-            ??= $this->computeGenericValueType($possibly_undefined);
+        return $possibly_undefined
+            ? ($this->generic_value_memo_pu ??= $this->computeGenericValueType(true))
+            : ($this->generic_value_memo ??= $this->computeGenericValueType(false));
     }
 
     /**
@@ -489,7 +488,6 @@ final class TKeyedArray extends Atomic
         if ($list_var_id !== null) {
             return $this->computeGenericArrayType($list_var_id);
         }
-        /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
         return $this->generic_array_memo ??= $this->computeGenericArrayType(null);
     }
 
@@ -737,7 +735,6 @@ final class TKeyedArray extends Atomic
                 $depth,
             );
         }
-
 
         if ($properties === $this->properties && $fallback_params === $this->fallback_params) {
             return $this;

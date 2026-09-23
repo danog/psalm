@@ -27,9 +27,8 @@ use Psalm\Type\Atomic\TTemplateParamClass;
 use Psalm\Type\Atomic\TTrue;
 
 use function array_values;
+use function assert;
 use function count;
-use function get_object_vars;
-use function strpos;
 
 /**
  * @api
@@ -126,10 +125,6 @@ final class MutableUnion implements TypeNode
      */
     public bool $from_template_default = false;
 
-
-
-
-
     /**
      * True if the type was passed or returned by reference, or if the type refers to an object's
      * property or an item in an array. Note that this is not true for locally created references
@@ -153,7 +148,6 @@ final class MutableUnion implements TypeNode
      */
     private ?string $exact_id = null;
 
-
     /**
      * @var array<string, DataFlowNode>
      */
@@ -167,7 +161,6 @@ final class MutableUnion implements TypeNode
      * @param non-empty-array<array-key, Atomic> $types
      * @return static
      * @psalm-external-mutation-free
-     * @psalm-suppress ArgumentTypeCoercion the builder's list is non-empty between mutations
      */
     public function setTypes(array $types): self
     {
@@ -251,8 +244,7 @@ final class MutableUnion implements TypeNode
                     $kept[] = $existing;
                 }
                 /** @psalm-suppress InvalidPropertyAssignmentValue transiently empty */
-                /** @psalm-suppress InvalidPropertyAssignmentValue transiently empty */
-            $this->types = $kept;
+                $this->types = $kept;
             }
         } elseif ($type instanceof TInt) {
             if ($this->countLiteralInts() > 0) {
@@ -266,8 +258,7 @@ final class MutableUnion implements TypeNode
                     $kept[] = $existing;
                 }
                 /** @psalm-suppress InvalidPropertyAssignmentValue transiently empty */
-                /** @psalm-suppress InvalidPropertyAssignmentValue transiently empty */
-            $this->types = $kept;
+                $this->types = $kept;
             }
         } elseif ($type instanceof TFloat) {
             if ($this->countLiteralFloats() > 0) {
@@ -278,8 +269,7 @@ final class MutableUnion implements TypeNode
                     }
                 }
                 /** @psalm-suppress InvalidPropertyAssignmentValue transiently empty */
-                /** @psalm-suppress InvalidPropertyAssignmentValue transiently empty */
-            $this->types = $kept;
+                $this->types = $kept;
             }
         } elseif ($type instanceof TNever) {
             $this->explicit_never = true;
@@ -322,8 +312,7 @@ final class MutableUnion implements TypeNode
             }
             if (count($kept) !== count($this->types)) {
                 /** @psalm-suppress InvalidPropertyAssignmentValue transiently empty */
-                /** @psalm-suppress InvalidPropertyAssignmentValue transiently empty */
-            $this->types = $kept;
+                $this->types = $kept;
                 $this->bustCache();
             }
         } elseif ($type_string === 'int' && $this->countLiteralInts() > 0) {
@@ -451,8 +440,11 @@ final class MutableUnion implements TypeNode
                     $this->put(TypeCombiner::combine([$new_type_part, $existing])->getSingleAtomic());
                 }
             }
-        } elseif (count($this->types) === 0) {
-            $this->put(new TMixed());
+        } else {
+            /** @psalm-suppress TypeDoesNotContainType transiently empty */
+            if (count($this->types) === 0) {
+                $this->put(new TMixed());
+            }
         }
 
         $this->bustCache();
@@ -473,7 +465,6 @@ final class MutableUnion implements TypeNode
      */
     public function freeze(): Union
     {
-        /** @psalm-suppress InvalidArgument It's actually filtered internally */
         return new Union($this->getAtomicTypes(), $this->getConstructionProperties());
     }
 

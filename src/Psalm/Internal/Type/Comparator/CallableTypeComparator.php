@@ -97,7 +97,8 @@ final class CallableTypeComparator
                     $container_param = $container_type_part->params[$i];
                 } elseif ($container_type_part->params) {
                     // copy to a local before end() so it advances the local array's pointer, not the property's
-                    // (end() on a property compiles to a property write, which the immutable Rc<T> union can't dispatch)
+                    // (end() on a property compiles to a property write, which the immutable Rc<T> union
+                    // can't dispatch)
                     $cparams = $container_type_part->params;
                     $last_param = end($cparams);
 
@@ -565,7 +566,6 @@ final class CallableTypeComparator
                             }
 
                             if ($member_id) {
-                                /** @psalm-suppress PossiblyNullArgument Psalm bug */
                                 $codebase->analyzer->addMixedMemberName(
                                     strtolower($member_id) . '::',
                                     $calling_method_id ?: $file_name,

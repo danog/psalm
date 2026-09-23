@@ -173,11 +173,7 @@ final class UnsetAnalyzer
 
                     $context->vars_in_scope[$root_var_id] = new Union($root_types);
 
-                    $context->removeVarFromConflictingClauses(
-                        $root_var_id,
-                        $context->vars_in_scope[$root_var_id],
-                        $statements_analyzer,
-                    );
+                    $context->removeVarFromConflictingClauses($root_var_id);
                 }
             }
         }

@@ -11,7 +11,6 @@ use Psalm\Internal\ReferenceConstraint;
 use Psalm\Internal\Scope\CaseScope;
 use Psalm\Internal\Scope\FinallyScope;
 use Psalm\Internal\Scope\LoopScope;
-use Psalm\Internal\Type\AssertionReconciler;
 use Psalm\Storage\FunctionLikeStorage;
 use Psalm\Storage\Mutations;
 use Psalm\Type\Atomic\DependentType;
@@ -29,7 +28,6 @@ use function in_array;
 use function is_int;
 use function json_encode;
 use function preg_replace;
-use function reset;
 use function str_contains;
 use function strpos;
 use function strtolower;
@@ -545,14 +543,14 @@ final class Context
         return $redefined_var_ids;
     }
 
+    /** @psalm-external-mutation-free */
     public function remove(string $remove_var_id, bool $removeDescendents = true): void
     {
         if (isset($this->vars_in_scope[$remove_var_id])) {
-            $existing_type = $this->vars_in_scope[$remove_var_id];
             unset($this->vars_in_scope[$remove_var_id]);
 
             if ($removeDescendents) {
-                $this->removeDescendents($remove_var_id, $existing_type);
+                $this->removeDescendents($remove_var_id);
             }
         }
         $this->removePossibleReference($remove_var_id);
@@ -657,13 +655,10 @@ final class Context
      *
      * @param  list<Clause>               $clauses
      * @return list<Clause>
+     * @psalm-pure
      */
-    public static function filterClauses(
-        string $remove_var_id,
-        array $clauses,
-        ?Union $new_type = null,
-        ?StatementsAnalyzer $statements_analyzer = null,
-    ): array {
+    public static function filterClauses(string $remove_var_id, array $clauses): array
+    {
         $clauses_to_keep = [];
 
         foreach ($clauses as $clause) {
@@ -683,33 +678,22 @@ final class Context
         return $clauses_to_keep;
     }
 
-    public function removeVarFromConflictingClauses(
-        string $remove_var_id,
-        ?Union $new_type = null,
-        ?StatementsAnalyzer $statements_analyzer = null,
-    ): void {
-        $this->clauses = self::filterClauses($remove_var_id, $this->clauses, $new_type, $statements_analyzer);
+    /** @psalm-external-mutation-free */
+    public function removeVarFromConflictingClauses(string $remove_var_id): void
+    {
+        $this->clauses = self::filterClauses($remove_var_id, $this->clauses);
         $this->parent_remove_vars[$remove_var_id] = true;
     }
 
     /**
      * This method is used after assignments to variables to remove any existing
      * items in $vars_in_scope that are now made redundant by an update to some data
+     *
+     * @psalm-external-mutation-free
      */
-    public function removeDescendents(
-        string $remove_var_id,
-        Union $existing_type,
-        ?Union $new_type = null,
-        ?StatementsAnalyzer $statements_analyzer = null,
-    ): void {
-        $this->removeVarFromConflictingClauses(
-            $remove_var_id,
-            $existing_type->hasMixed()
-                || ($new_type && $existing_type->from_docblock !== $new_type->from_docblock)
-                ? null
-                : $new_type,
-            $statements_analyzer,
-        );
+    public function removeDescendents(string $remove_var_id): void
+    {
+        $this->removeVarFromConflictingClauses($remove_var_id);
 
         foreach ($this->vars_in_scope as $var_id => $type) {
             if (str_contains($var_id, $remove_var_id) && Reconciler::isPathThrough($var_id, $remove_var_id)) {
@@ -738,6 +722,7 @@ final class Context
         }
     }
 
+    /** @psalm-external-mutation-free */
     public function removeMutableObjectVars(bool $methods_only = false): void
     {
         $vars_to_remove = [];

@@ -401,8 +401,6 @@ final class IfElseAnalyzer
                     $if_scope->reasonable_clauses = Context::filterClauses(
                         $var_id,
                         $if_scope->reasonable_clauses,
-                        $context->vars_in_scope[$var_id] ?? null,
-                        $statements_analyzer,
                     );
                 }
             }
@@ -429,7 +427,7 @@ final class IfElseAnalyzer
                         );
 
                         if (!$combined_type->equals($context->vars_in_scope[$var_id], true, false)) {
-                            $context->removeDescendents($var_id, $combined_type);
+                            $context->removeDescendents($var_id);
                         }
 
                         $context->vars_in_scope[$var_id] = $combined_type;

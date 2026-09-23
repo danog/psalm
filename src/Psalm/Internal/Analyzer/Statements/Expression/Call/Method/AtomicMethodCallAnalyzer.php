@@ -6,7 +6,6 @@ namespace Psalm\Internal\Analyzer\Statements\Expression\Call\Method;
 
 use PhpParser;
 use Psalm\CodeLocation;
-use Psalm\Node\Expr\VirtualMethodCall;
 use Psalm\Codebase;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
@@ -25,6 +24,7 @@ use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TypeExpander;
 use Psalm\Issue\MixedMethodCall;
 use Psalm\IssueBuffer;
+use Psalm\Node\Expr\VirtualMethodCall;
 use Psalm\StatementsSource;
 use Psalm\Storage\ClassLikeStorage;
 use Psalm\Type;
@@ -49,7 +49,6 @@ use function array_keys;
 use function array_merge;
 use function array_search;
 use function array_shift;
-use function array_values;
 use function count;
 use function reset;
 use function strtolower;
@@ -87,9 +86,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
         ) {
             $extra_types = $lhs_type_part->extra_types;
 
-            $lhs_type_part = array_values(
-                $lhs_type_part->as->getAtomicTypes(),
-            )[0];
+            $lhs_type_part = $lhs_type_part->as->getAtomicTypes()[0];
 
             if ($lhs_type_part instanceof TNamedObject) {
                 $lhs_type_part = $lhs_type_part->setIntersectionTypes($extra_types)->setFromDocblock(true);
@@ -236,7 +233,6 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
 
                 $statements_analyzer->node_data->setType($stmt, $return_type_candidate ?? Type::getClosure());
 
-
                 return;
             }
 
@@ -253,7 +249,8 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
             return;
         }
 
-        $method_name_lc = strtolower($stmt->name->name);
+        $method_name_node = $stmt->name;
+        $method_name_lc = strtolower($method_name_node->name);
 
         $method_id = new MethodIdentifier($fq_class_name, $method_name_lc);
 
@@ -280,10 +277,10 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
         // pzoom resolves method names case-sensitively: a call written with another casing is undefined
         // (a callable string analyzed as a call resolves as PHP does)
         if ($naive_method_exists && !$stmt instanceof VirtualMethodCall) {
-            $declared = MethodAnalyzer::declaredCasingOf($codebase, $method_id, $stmt->name->name);
+            $declared = MethodAnalyzer::declaredCasingOf($codebase, $method_id, $method_name_node->name);
             if ($declared !== null) {
                 $naive_method_exists = false;
-                $result->incorrect_casing[$fq_class_name . '::' . $stmt->name->name] = $declared;
+                $result->incorrect_casing[$fq_class_name . '::' . $method_name_node->name] = $declared;
             }
         }
 
@@ -434,9 +431,9 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
         }
 
         $intersection_method_id = $intersection_types
-            ? '(' . $lhs_type_part . ')'  . '::' . $stmt->name->name
+            ? '(' . $lhs_type_part . ')'  . '::' . $method_name_node->name
             : null;
-        $cased_method_id = $fq_class_name . '::' . $stmt->name->name;
+        $cased_method_id = $fq_class_name . '::' . $method_name_node->name;
 
         if ($lhs_var_id === '$this'
             && $context->self
@@ -446,7 +443,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
             )
         ) {
             $method_id = new MethodIdentifier($context->self, $method_name_lc);
-            $cased_method_id = $context->self . '::' . $stmt->name->name;
+            $cased_method_id = $context->self . '::' . $method_name_node->name;
             $fq_class_name = $context->self;
         }
 
@@ -492,7 +489,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
         $return_type_candidate = ExistingAtomicMethodCallAnalyzer::analyze(
             $statements_analyzer,
             $stmt,
-            $stmt->name,
+            $method_name_node,
             $args,
             $codebase,
             $context,
@@ -770,9 +767,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
                 ) {
                     $current_type_param = $lhs_type_part->type_params[$param_position];
                     if ($current_type_param->isSingle()) {
-                        $lhs_type_part_new = array_values(
-                            $current_type_param->getAtomicTypes(),
-                        )[0];
+                        $lhs_type_part_new = $current_type_param->getAtomicTypes()[0];
 
                         if ($lhs_type_part_new instanceof TNamedObject) {
                             $new_method_id = new MethodIdentifier(

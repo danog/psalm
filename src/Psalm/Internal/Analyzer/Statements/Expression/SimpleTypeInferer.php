@@ -34,7 +34,6 @@ use Psalm\Type\Union;
 use ReflectionProperty;
 
 use function array_merge;
-use function array_values;
 use function count;
 use function is_string;
 use function strtolower;
@@ -813,9 +812,7 @@ final class SimpleTypeInferer
 
                     $array_creation_info->item_value_atomic_types = array_merge(
                         $array_creation_info->item_value_atomic_types,
-                        array_values(
-                            $unpacked_atomic_type->fallback_params[1]->getAtomicTypes(),
-                        ),
+                        $unpacked_atomic_type->fallback_params[1]->getAtomicTypes(),
                     );
                 }
             } elseif ($unpacked_atomic_type instanceof TArray) {
@@ -834,11 +831,9 @@ final class SimpleTypeInferer
 
                 $array_creation_info->item_value_atomic_types = array_merge(
                     $array_creation_info->item_value_atomic_types,
-                    array_values(
-                        isset($unpacked_atomic_type->type_params[1])
-                            ? $unpacked_atomic_type->type_params[1]->getAtomicTypes()
-                            : [new TMixed()],
-                    ),
+                    isset($unpacked_atomic_type->type_params[1])
+                        ? $unpacked_atomic_type->type_params[1]->getAtomicTypes()
+                        : [new TMixed()],
                 );
             }
         }

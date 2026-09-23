@@ -92,7 +92,6 @@ use UnexpectedValueException;
 use function array_keys;
 use function array_map;
 use function array_pop;
-use function array_values;
 use function count;
 use function implode;
 use function in_array;
@@ -2062,7 +2061,7 @@ final class ArrayFetchAnalyzer
     }
 
     /**
-     * @param array<string, Atomic> $offset_types
+     * @param list<Atomic> $offset_types
      */
     private static function checkArrayOffsetType(
         MutableUnion $offset_type,

@@ -14,9 +14,6 @@ use Psalm\Type\Atomic\TLiteralString;
 use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\Union;
 
-use function array_values;
-use function property_exists;
-
 /**
  * @psalm-immutable
  * @api
@@ -72,14 +69,13 @@ final class ClassConstantStorage
         $value = '';
         if ($this->type) {
             $types = $this->type->getAtomicTypes();
-            $type = array_values($types)[0];
+            $type = $types[0];
             if ($type instanceof TLiteralString || $type instanceof TLiteralInt || $type instanceof TLiteralFloat
                 || $type instanceof TNamedObject || $type instanceof TEnumCase
             ) {
                 $value = " = {$type->value};";
             }
         }
-
 
         return "$visibility_text const $const$value";
     }

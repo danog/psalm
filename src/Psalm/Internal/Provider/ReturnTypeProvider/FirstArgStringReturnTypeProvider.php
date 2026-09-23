@@ -30,6 +30,8 @@ final class FirstArgStringReturnTypeProvider implements FunctionReturnTypeProvid
         ];
     }
 
+        /** @psalm-mutation-free */
+
     #[Override]
     public static function getFunctionReturnType(FunctionReturnTypeProviderEvent $event): ?Union
     {

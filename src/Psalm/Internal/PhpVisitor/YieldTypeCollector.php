@@ -31,6 +31,8 @@ final class YieldTypeCollector extends NodeVisitorAbstract
     ) {
     }
 
+        /** @psalm-external-mutation-free */
+
     #[Override]
     public function enterNode(Node $node): ?int
     {

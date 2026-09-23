@@ -227,7 +227,6 @@ final class Algebra
                                 }
                             }
 
-                            /** @psalm-suppress MixedArgumentTypeCoercion due I think to Psalm bug */
                             $conflict_clause = (new Clause(
                                 $new_possibilities,
                                 $clause_a->creating_conditional_id,
@@ -366,7 +365,6 @@ final class Algebra
      *
      * doesn't infer the "unset" correctly
      *
-     * @psalm-suppress MoreSpecificReturnType
      * @param  list<Clause>  $clauses
      * @param  array<string, bool> $cond_referenced_var_ids
      * @param  array<string, array<int, list<Assertion>>> $active_truths

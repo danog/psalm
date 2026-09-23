@@ -7,8 +7,8 @@ namespace Psalm\Internal;
 use InvalidArgumentException;
 use Override;
 use Psalm\Storage\ImmutableNonCloneableTrait;
-use Stringable;
 use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
+use Stringable;
 
 use function explode;
 use function is_string;

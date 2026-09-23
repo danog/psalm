@@ -185,7 +185,6 @@ final class ReturnTypeAnalyzer
             [ScopeAnalyzer::ACTION_END, ScopeAnalyzer::ACTION_RETURN],
         );
 
-        /** @psalm-suppress PossiblyUndefinedStringArrayOffset */
         if ($return_type
             && (!$return_type->from_docblock
                 || ($return_type->isNullable()
@@ -244,7 +243,6 @@ final class ReturnTypeAnalyzer
             $inferred_return_type_parts[] = Type::getVoid();
         }
 
-        $inferred_return_type_parts_with_never = $inferred_return_type_parts;
         // we filter TNever that have no bearing on the return type
         if (count($inferred_return_type_parts) > 1) {
             $inferred_return_type_parts = array_filter(
@@ -260,24 +258,6 @@ final class ReturnTypeAnalyzer
 
         if ($function_always_exits) {
             $inferred_return_type = Type::getNever();
-        }
-
-        // void + never = null, so we need to check this separately
-        if (count($inferred_return_type_parts_with_never) > 1
-            && !$function_always_exits
-            && $inferred_return_type_parts_with_never !== $inferred_return_type_parts) {
-
-            /**
-             * see https://github.com/vimeo/psalm/issues/9045
-             *
-             * @psalm-suppress InvalidArgument
-             */
-            $inferred_return_type_with_never = Type::combineUnionTypeArray(
-                $inferred_return_type_parts_with_never,
-                $codebase,
-            );
-        } else {
-            $inferred_return_type_with_never = $inferred_return_type;
         }
 
         $inferred_yield_type = $inferred_yield_types
@@ -732,7 +712,6 @@ final class ReturnTypeAnalyzer
 
                     return null;
                 }
-
             }
 
             if (!$inferred_return_type->ignore_falsable_issues
@@ -757,7 +736,6 @@ final class ReturnTypeAnalyzer
 
                     return null;
                 }
-
             }
         }
 
