@@ -89,7 +89,6 @@ use function implode;
 use function in_array;
 use function intdiv;
 use function is_numeric;
-use function is_string;
 use function krsort;
 use function ksort;
 use function ltrim;
@@ -1221,10 +1220,10 @@ final class Codebase
     ): FunctionLikeStorage {
         $doesMethodExist =
             MethodIdentifier::isValidMethodIdReference($function_id)
-            && $this->methodExists($function_id);
+            && $this->methodExists(MethodIdentifier::fromMethodIdReference($function_id));
 
         if ($doesMethodExist) {
-            $method_id = MethodIdentifier::wrap($function_id);
+            $method_id = MethodIdentifier::fromMethodIdReference($function_id);
 
             $declaring_method_id = $this->methods->getDeclaringMethodId($method_id);
 
@@ -1262,8 +1261,8 @@ final class Codebase
      * Whether or not a given method exists
      */
     public function methodExists(
-        string|MethodIdentifier $method_id,
-        string|MethodIdentifier|null $calling_method_id = null,
+        MethodIdentifier $method_id,
+        ?string $calling_method_id = null,
         ?CodeLocation $code_location = null,
         ?StatementsSource $source = null,
         ?string $source_file_path = null,
@@ -1273,13 +1272,8 @@ final class Codebase
     ): bool {
         return $this->methods->methodExists(
             $this,
-            MethodIdentifier::wrap($method_id),
-            $calling_method_id !== null
-                ? (is_string($calling_method_id)
-                    ? strtolower($calling_method_id)
-                    : strtolower((string) $calling_method_id)
-                )
-                : null,
+            $method_id,
+            $calling_method_id !== null ? strtolower($calling_method_id) : null,
             $code_location,
             $source,
             $source_file_path,
@@ -1292,30 +1286,30 @@ final class Codebase
     /**
      * @return array<int, FunctionLikeParameter>
      */
-    public function getMethodParams(string|MethodIdentifier $method_id): array
+    public function getMethodParams(MethodIdentifier $method_id): array
     {
-        return $this->methods->getMethodParams(MethodIdentifier::wrap($method_id));
+        return $this->methods->getMethodParams($method_id);
     }
 
     /**
      * @psalm-mutation-free
      */
-    public function isVariadic(string|MethodIdentifier $method_id): bool
+    public function isVariadic(MethodIdentifier $method_id): bool
     {
-        return $this->methods->isVariadic(MethodIdentifier::wrap($method_id));
+        return $this->methods->isVariadic($method_id);
     }
 
     /**
      * @param  list<Arg> $call_args
      */
     public function getMethodReturnType(
-        string|MethodIdentifier $method_id,
+        MethodIdentifier $method_id,
         ?string &$self_class,
         array $call_args = [],
     ): ?Union {
         return $this->methods->getMethodReturnType(
             $this,
-            MethodIdentifier::wrap($method_id),
+            $method_id,
             $self_class,
             null,
             $call_args,
@@ -1325,17 +1319,17 @@ final class Codebase
     /**
      * @psalm-external-mutation-free
      */
-    public function getMethodReturnsByRef(string|MethodIdentifier $method_id): bool
+    public function getMethodReturnsByRef(MethodIdentifier $method_id): bool
     {
-        return $this->methods->getMethodReturnsByRef(MethodIdentifier::wrap($method_id));
+        return $this->methods->getMethodReturnsByRef($method_id);
     }
 
     public function getMethodReturnTypeLocation(
-        string|MethodIdentifier $method_id,
+        MethodIdentifier $method_id,
         ?CodeLocation &$defined_location = null,
     ): ?CodeLocation {
         return $this->methods->getMethodReturnTypeLocation(
-            MethodIdentifier::wrap($method_id),
+            $method_id,
             $defined_location,
         );
     }
@@ -1343,11 +1337,9 @@ final class Codebase
     /**
      * @psalm-mutation-free
      */
-    public function getDeclaringMethodId(string|MethodIdentifier $method_id): ?string
+    public function getDeclaringMethodId(MethodIdentifier $method_id): ?MethodIdentifier
     {
-        $new_method_id = $this->methods->getDeclaringMethodId(MethodIdentifier::wrap($method_id));
-
-        return $new_method_id ? (string) $new_method_id : null;
+        return $this->methods->getDeclaringMethodId($method_id);
     }
 
     /**
@@ -1355,28 +1347,26 @@ final class Codebase
      *
      * @psalm-mutation-free
      */
-    public function getAppearingMethodId(string|MethodIdentifier $method_id): ?string
+    public function getAppearingMethodId(MethodIdentifier $method_id): ?MethodIdentifier
     {
-        $new_method_id = $this->methods->getAppearingMethodId(MethodIdentifier::wrap($method_id));
-
-        return $new_method_id ? (string) $new_method_id : null;
+        return $this->methods->getAppearingMethodId($method_id);
     }
 
     /**
      * @return array<string, MethodIdentifier>
      * @psalm-mutation-free
      */
-    public function getOverriddenMethodIds(string|MethodIdentifier $method_id): array
+    public function getOverriddenMethodIds(MethodIdentifier $method_id): array
     {
-        return $this->methods->getOverriddenMethodIds(MethodIdentifier::wrap($method_id));
+        return $this->methods->getOverriddenMethodIds($method_id);
     }
 
     /**
      * @psalm-mutation-free
      */
-    public function getCasedMethodId(string|MethodIdentifier $method_id): string
+    public function getCasedMethodId(MethodIdentifier $method_id): string
     {
-        return $this->methods->getCasedMethodId(MethodIdentifier::wrap($method_id));
+        return $this->methods->getCasedMethodId($method_id);
     }
 
     /**

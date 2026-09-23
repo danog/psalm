@@ -279,7 +279,7 @@ final class ReturnAnalyzer
                     // `self`/`static` and templates bound to it), as the function-level check did
                     $lookup_method_id = $source->getSource() instanceof TraitAnalyzer
                         ? new MethodIdentifier($self_class, strtolower($method_name))
-                        : MethodIdentifier::wrap($cased_method_id);
+                        : MethodIdentifier::fromMethodIdReference($cased_method_id);
 
                     $declared_return_type = $codebase->methods->getMethodReturnType(
                         $codebase,

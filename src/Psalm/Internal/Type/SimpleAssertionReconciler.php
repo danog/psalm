@@ -9,6 +9,7 @@ use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Internal\Codebase\ClassConstantByWildcardResolver;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
+use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\Comparator\CallableTypeComparator;
 use Psalm\Storage\Assertion;
 use Psalm\Storage\Assertion\Any;
@@ -889,14 +890,14 @@ final class SimpleAssertionReconciler extends Reconciler
             if ($type instanceof TNamedObject
                 && $codebase->classOrInterfaceExists($type->value)
             ) {
-                if (!$codebase->methodExists($type->value . '::' . $method_name)) {
+                if (!$codebase->methodExists(new MethodIdentifier($type->value, strtolower($method_name)))) {
                     $match_found = false;
 
                     $extra_types = $type->extra_types;
                     foreach ($type->extra_types as $k => $extra_type) {
                         if ($extra_type instanceof TNamedObject
                             && $codebase->classOrInterfaceExists($extra_type->value)
-                            && $codebase->methodExists($extra_type->value . '::' . $method_name)
+                            && $codebase->methodExists(new MethodIdentifier($extra_type->value, strtolower($method_name)))
                         ) {
                             $match_found = true;
                         } elseif ($extra_type instanceof TObjectWithProperties) {
@@ -2608,7 +2609,7 @@ final class SimpleAssertionReconciler extends Reconciler
                 $redundant = false;
             } elseif ($type instanceof TNamedObject
                 && $codebase->classExists($type->value)
-                && $codebase->methodExists($type->value . '::__invoke')
+                && $codebase->methodExists(new MethodIdentifier($type->value, '__invoke'))
             ) {
                 $callable_types[] = $type;
             } elseif ($type::class === TString::class
