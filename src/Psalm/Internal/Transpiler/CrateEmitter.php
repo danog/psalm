@@ -146,12 +146,16 @@ final class CrateEmitter
         $probe_roots = ['crate' => $this, 'program' => $this->program, 'types' => $this->program->types, 'casts' => $this->casts, 'diag' => $this->diag, 'builtins' => $this->builtins, 'class_emitter' => $class_emitter, 'cast_emitter' => $cast_emitter];
         $probe = getenv('TRANSPILE_STATE_PROBE') ? self::stateCounts($probe_roots) : null;
         // class bodies (the bulk of the emission) on Psalm's worker pool when TRANSPILE_JOBS > 1
-        $jobs = Parallel::jobs();
+        $jobs = Parallel::emitJobs();
         $mod_before = $this->moduleLengths();
         $parallel = new Parallel($this->sharedObjects());
         $parallel->describe = static fn(ClassModel $c): string => $c->fqcn;
         // the biggest classes first, so none of them starts last and leaves the other workers idle
         $by_size = $project_classes;
+        if (($only = getenv('TRANSPILE_ONLY_CLASS')) !== false && $only !== '') {
+            // debugging aid: emit just this class (the crate will not build)
+            $by_size = array_values(array_filter($by_size, static fn(ClassModel $c): bool => $c->fqcn === $only));
+        }
         if ($jobs > 1) {
             usort($by_size, static fn(ClassModel $a, ClassModel $b): int => self::sourceSize($b) <=> self::sourceSize($a));
         }

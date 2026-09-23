@@ -59,6 +59,17 @@ final class Parallel
         return $n > 1 && function_exists('pcntl_fork') ? $n : 1;
     }
 
+    /** Workers for the emission phases: TRANSPILE_EMIT_JOBS, else TRANSPILE_JOBS (1 compares against serial). */
+    public static function emitJobs(): int
+    {
+        $e = getenv('TRANSPILE_EMIT_JOBS');
+        if ($e !== false && $e !== '') {
+            $n = (int) $e;
+            return $n > 1 && function_exists('pcntl_fork') ? $n : 1;
+        }
+        return self::jobs();
+    }
+
     /** The job the forked workers run (they inherit it from the parent at fork time). */
     public static ?Parallel $active = null;
 

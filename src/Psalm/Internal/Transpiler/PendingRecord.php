@@ -39,7 +39,16 @@ final class PendingRecord
                 // a possibly-unset variable's placeholder type says nothing about its values
                 continue;
             }
+            // a statement snapshot mostly sees the same Union object as the previous one: keep each type once
+            $oid = spl_object_id($type);
+            if (isset($this->var_type_seen[$var_id][$oid])) {
+                continue;
+            }
+            $this->var_type_seen[$var_id][$oid] = true;
             $this->var_types[$var_id][] = $type;
         }
     }
+
+    /** @var array<string, array<int, true>> var id => spl_object_ids of the Unions already in var_types */
+    private array $var_type_seen = [];
 }

@@ -874,8 +874,19 @@ final class TypeMapper
      */
     public function join(array $types): Union
     {
-        $result = null;
+        // equal types add nothing to a join: combine each distinct one once (a local's recorded history repeats
+        // the same type at every statement, and joining it pairwise was quadratic in the body's length)
+        $distinct = [];
         foreach ($types as $t) {
+            // the flags a join merges are part of the identity: only a true repeat is dropped
+            $key = $t->getId() . '|' . (int) $t->possibly_undefined . (int) $t->possibly_undefined_from_try
+                . (int) $t->from_docblock . (int) $t->ignore_nullable_issues . (int) $t->ignore_falsable_issues
+                . (int) $t->by_ref . (int) $t->initialized . (int) $t->from_calculation . (int) $t->failed_reconciliation
+                . (int) $t->had_template . (int) $t->reference_free . (int) $t->explicit_never;
+            $distinct[$key] ??= $t;
+        }
+        $result = null;
+        foreach ($distinct as $t) {
             $result = $result === null ? $t : Type::combineUnionTypes($result, $t, $this->codebase);
         }
         return $result;
