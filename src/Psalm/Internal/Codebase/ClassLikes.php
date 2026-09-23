@@ -331,7 +331,7 @@ final class ClassLikes
         ?CodeLocation $location = null,
         ?Context $context = null,
     ): bool {
-        $fq_class_name_lc = strtolower($this->getUnAliasedName($fq_class_name));
+        $fq_class_name_lc = $this->getUnAliasedNameLc($fq_class_name);
 
         // fixme: this looks like a crazy caching hack
         if (!isset($this->existing_classes_lc[$fq_class_name_lc])
@@ -373,7 +373,7 @@ final class ClassLikes
         ?CodeLocation $location = null,
         ?Context $context = null,
     ): bool {
-        $fq_class_name_lc = strtolower($this->getUnAliasedName($fq_class_name));
+        $fq_class_name_lc = $this->getUnAliasedNameLc($fq_class_name);
 
         // fixme: this looks like a crazy caching hack
         if (!isset($this->existing_interfaces_lc[$fq_class_name_lc])
@@ -415,7 +415,7 @@ final class ClassLikes
         ?CodeLocation $location = null,
         ?Context $context = null,
     ): bool {
-        $fq_class_name_lc = strtolower($this->getUnAliasedName($fq_class_name));
+        $fq_class_name_lc = $this->getUnAliasedNameLc($fq_class_name);
 
         // fixme: this looks like a crazy caching hack
         if (!isset($this->existing_enums_lc[$fq_class_name_lc])
@@ -457,7 +457,7 @@ final class ClassLikes
         ?CodeLocation $location = null,
         ?Context $context = null,
     ): bool {
-        $fq_class_name_lc = strtolower($this->getUnAliasedName($fq_class_name));
+        $fq_class_name_lc = $this->getUnAliasedNameLc($fq_class_name);
 
         if (!isset($this->existing_traits_lc[$fq_class_name_lc]) ||
             !$this->existing_traits_lc[$fq_class_name_lc]
@@ -774,8 +774,41 @@ final class ClassLikes
     }
 
     /** @psalm-mutation-free */
+    /**
+     * Spellings known to name an existing class-like, with their lowercase form: a lookup by a spelling
+     * that resolved before neither lowercases nor follows aliases again (pzoom resolves names by their exact
+     * spelling; the lowercase path stays for everything else). Emptied when a class-like stops existing.
+     *
+     * @var array<string, lowercase-string>
+     */
+    private array $existing_by_spelling = [];
+
+    /**
+     * strtolower($this->getUnAliasedName($name))
+     *
+     * @return lowercase-string
+     * @psalm-external-mutation-free
+     */
+    public function getUnAliasedNameLc(string $name): string
+    {
+        $lc = $this->existing_by_spelling[$name] ?? null;
+        if ($lc !== null) {
+            return $lc;
+        }
+        $lc = strtolower($name);
+        if ($this->existing_classlikes_lc[$lc] ?? false) {
+            /** @psalm-suppress ImpurePropertyAssignment cache */
+            $this->existing_by_spelling[$name] = $lc;
+            return $lc;
+        }
+        return strtolower($this->getUnAliasedName($name));
+    }
+
     public function getUnAliasedName(string $alias_name): string
     {
+        if (isset($this->existing_by_spelling[$alias_name])) {
+            return $alias_name;
+        }
         $alias_name_lc = strtolower($alias_name);
         if ($this->existing_classlikes_lc[$alias_name_lc] ?? false) {
             return $alias_name;
@@ -2451,6 +2484,7 @@ final class ClassLikes
     public function registerMissingClassLike(string $fq_classlike_name_lc): void
     {
         $this->existing_classlikes_lc[$fq_classlike_name_lc] = false;
+        $this->existing_by_spelling = [];
     }
 
     /**
@@ -2500,6 +2534,7 @@ final class ClassLikes
             $this->existing_classes[$fq_class_name],
             $this->trait_nodes[$fq_class_name_lc],
         );
+        $this->existing_by_spelling = [];
 
         $this->scanner->removeClassLike($fq_class_name_lc);
     }
@@ -2562,6 +2597,7 @@ final class ClassLikes
         ] = $thread_data;
 
         $this->existing_classlikes_lc = self::mergeThreadData($existing_classlikes_lc, $this->existing_classlikes_lc);
+        $this->existing_by_spelling = [];
         $this->existing_classes_lc = self::mergeThreadData($existing_classes_lc, $this->existing_classes_lc);
         $this->existing_traits_lc = self::mergeThreadData($existing_traits_lc, $this->existing_traits_lc);
         $this->existing_traits = self::mergeThreadData($existing_traits, $this->existing_traits);

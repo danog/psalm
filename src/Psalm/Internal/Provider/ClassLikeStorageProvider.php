@@ -30,6 +30,15 @@ final class ClassLikeStorageProvider
     private static array $new_storage = [];
 
     /**
+     * Storages by the exact spelling a lookup used (pzoom resolves names case-sensitively; Psalm keeps its
+     * case-insensitive semantics, but a spelling that resolved once resolves again without lowercasing).
+     * Emptied whenever the storage map changes.
+     *
+     * @var array<string, ClassLikeStorage>
+     */
+    private static array $by_spelling = [];
+
+    /**
      * @psalm-mutation-free
      */
     public function __construct(public ?ClassLikeStorageCacheProvider $cache = null)
@@ -42,6 +51,11 @@ final class ClassLikeStorageProvider
      */
     public function get(string $fq_classlike_name): ClassLikeStorage
     {
+        /** @psalm-suppress ImpureStaticProperty Used only for caching */
+        $known = self::$by_spelling[$fq_classlike_name] ?? null;
+        if ($known !== null) {
+            return $known;
+        }
         $fq_classlike_name_lc = strtolower($fq_classlike_name);
         /** @psalm-suppress ImpureStaticProperty Used only for caching */
         if (!isset(self::$storage[$fq_classlike_name_lc])) {
@@ -49,7 +63,10 @@ final class ClassLikeStorageProvider
         }
 
         /** @psalm-suppress ImpureStaticProperty Used only for caching */
-        return self::$storage[$fq_classlike_name_lc];
+        $storage = self::$storage[$fq_classlike_name_lc];
+        /** @psalm-suppress ImpureStaticProperty Used only for caching */
+        self::$by_spelling[$fq_classlike_name] = $storage;
+        return $storage;
     }
 
     /**
@@ -57,10 +74,20 @@ final class ClassLikeStorageProvider
      */
     public function has(string $fq_classlike_name): bool
     {
+        /** @psalm-suppress ImpureStaticProperty Used only for caching */
+        if (isset(self::$by_spelling[$fq_classlike_name])) {
+            return true;
+        }
         $fq_classlike_name_lc = strtolower($fq_classlike_name);
 
         /** @psalm-suppress ImpureStaticProperty Used only for caching */
-        return isset(self::$storage[$fq_classlike_name_lc]);
+        $storage = self::$storage[$fq_classlike_name_lc] ?? null;
+        if ($storage === null) {
+            return false;
+        }
+        /** @psalm-suppress ImpureStaticProperty Used only for caching */
+        self::$by_spelling[$fq_classlike_name] = $storage;
+        return true;
     }
 
     public function exhume(string $fq_classlike_name, string $file_path, string $file_contents): ClassLikeStorage
@@ -78,6 +105,7 @@ final class ClassLikeStorageProvider
         $cached_value = $this->cache->getLatestFromCache($fq_classlike_name_lc, $file_path, $file_contents);
 
         self::$storage[$fq_classlike_name_lc] = $cached_value;
+        self::$by_spelling = [];
         self::$new_storage[$fq_classlike_name_lc] = $cached_value;
 
         return $cached_value;
@@ -132,6 +160,7 @@ final class ClassLikeStorageProvider
             }
             self::$new_storage[$k] = $storage;
             self::$storage[$k] = $storage;
+            self::$by_spelling = [];
         }
     }
 
@@ -152,6 +181,7 @@ final class ClassLikeStorageProvider
 
         $storage = new ClassLikeStorage($fq_classlike_name);
         self::$storage[$fq_classlike_name_lc] = $storage;
+        self::$by_spelling = [];
         self::$new_storage[$fq_classlike_name_lc] = $storage;
 
         return $storage;
@@ -165,6 +195,7 @@ final class ClassLikeStorageProvider
         $fq_classlike_name_lc = strtolower($fq_classlike_name);
 
         unset(self::$storage[$fq_classlike_name_lc]);
+        self::$by_spelling = [];
     }
 
     /**
@@ -174,6 +205,7 @@ final class ClassLikeStorageProvider
     {
         self::$storage = [];
         self::$new_storage = [];
+        self::$by_spelling = [];
     }
 
     /**
