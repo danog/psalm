@@ -17,11 +17,6 @@
       <code><![CDATA[!$function_storage->cased_name]]></code>
     </RiskyTruthyFalsyComparison>
   </file>
-  <file src="examples/plugins/StringChecker.php">
-    <RiskyTruthyFalsyComparison>
-      <code><![CDATA[!$appearing_method_id]]></code>
-    </RiskyTruthyFalsyComparison>
-  </file>
   <file src="examples/plugins/composer-based/echo-checker/EchoChecker.php">
     <ImplicitToStringCast>
       <code><![CDATA[$expr_type]]></code>
@@ -922,11 +917,9 @@
       <code><![CDATA[!$template_types]]></code>
       <code><![CDATA[!$template_types]]></code>
       <code><![CDATA[$class_storage->template_types]]></code>
-      <code><![CDATA[$method_name]]></code>
       <code><![CDATA[$overridden_template_types]]></code>
       <code><![CDATA[$static_class_storage->template_extended_params]]></code>
       <code><![CDATA[$static_class_storage->template_types]]></code>
-      <code><![CDATA[empty($non_trait_class_storage->overridden_method_ids[$method_name])]]></code>
     </RiskyTruthyFalsyComparison>
   </file>
   <file src="src/Psalm/Internal/Analyzer/Statements/Expression/Call/FunctionCallAnalyzer.php">
@@ -1463,7 +1456,6 @@
       <code><![CDATA[$file_path]]></code>
       <code><![CDATA[$migrated_source_fqcln]]></code>
       <code><![CDATA[$migrated_source_fqcln]]></code>
-      <code><![CDATA[empty($classlike_storage->overridden_method_ids[$method_name])]]></code>
     </RiskyTruthyFalsyComparison>
   </file>
   <file src="src/Psalm/Internal/Codebase/CombinedFlowGraph.php">

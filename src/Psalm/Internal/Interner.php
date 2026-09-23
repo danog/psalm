@@ -96,7 +96,7 @@ final class Interner
      *
      * @return lowercase-string
      * @psalm-mutation-free
-     * @psalm-suppress LessSpecificReturnStatement, MoreSpecificReturnType the id was interned from a lowercase string
+     * @psalm-suppress LessSpecificReturnStatement the id was interned from a lowercase string
      */
     public static function lookupLc(int $id): string
     {
