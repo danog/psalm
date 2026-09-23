@@ -687,7 +687,7 @@ final class AtomicTypeComparator
                 || (
                     $input_type_part instanceof TNamedObject &&
                     $codebase->classOrInterfaceExistsById($input_type_part->name) &&
-                    $codebase->methodExists($input_type_part->value . '::__invoke')
+                    $codebase->methodExists(new MethodIdentifier($input_type_part->value, '__invoke'))
                 )
             )
         ) {

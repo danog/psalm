@@ -333,7 +333,7 @@ final class HighOrderFunctionArgHandler
         return new HighOrderFunctionArgInfo(
             HighOrderFunctionArgInfo::TYPE_STRING_CALLABLE,
             str_contains($literal->value, '::')
-                ? $codebase->methods->getStorage(MethodIdentifier::wrap($literal->value))
+                ? $codebase->methods->getStorage(MethodIdentifier::fromMethodIdReference($literal->value))
                 : $codebase->functions->getStorage($statements_analyzer, strtolower($literal->value)),
         );
     }

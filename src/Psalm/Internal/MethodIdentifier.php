@@ -11,7 +11,6 @@ use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Stringable;
 
 use function explode;
-use function is_string;
 use function ltrim;
 use function str_contains;
 use function strtolower;
@@ -45,16 +44,6 @@ final class MethodIdentifier implements Stringable
         $this->name_id = Interner::intern($method_name);
     }
 
-    /**
-     * Takes any valid reference to a method id and converts
-     * it into a MethodIdentifier
-     *
-     * @psalm-pure
-     */
-    public static function wrap(string|MethodIdentifier $method_id): self
-    {
-        return is_string($method_id) ? static::fromMethodIdReference($method_id) : $method_id;
-    }
 
     /**
      * @psalm-pure

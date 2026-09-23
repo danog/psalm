@@ -1197,7 +1197,7 @@ final class AtomicPropertyFetchAnalyzer
                     return;
                 }
 
-                if (!$codebase->methodExists($fq_class_name . '::__set')) {
+                if (!$codebase->methodExists(new MethodIdentifier($fq_class_name, '__set'))) {
                     return;
                 }
             }
