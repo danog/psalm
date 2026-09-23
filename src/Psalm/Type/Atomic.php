@@ -71,6 +71,7 @@ use Psalm\Type\Atomic\TVoid;
 use Stringable;
 use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
+use function get_object_vars;
 use function array_any;
 use function array_keys;
 use function count;
@@ -120,6 +121,20 @@ abstract class Atomic implements TypeNode, Stringable
     private ?string $key_memo = null;
     private ?string $id_memo = null;
     private ?string $inexact_id_memo = null;
+
+    /**
+     * The memos are not serialized: they are private (UnserializeMemoryUsageSuppressionTrait restores
+     * properties by name, which only public ones have) and cheap to recompute on the other side.
+     *
+     * @return array<string, mixed>
+     * @psalm-mutation-free
+     */
+    public function __serialize(): array
+    {
+        $vars = get_object_vars($this);
+        unset($vars['key_memo'], $vars['id_memo'], $vars['inexact_id_memo']);
+        return $vars;
+    }
 
     /**
      * Whether or not the type has been checked yet
