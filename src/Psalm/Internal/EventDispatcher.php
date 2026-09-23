@@ -413,6 +413,11 @@ final class EventDispatcher
         }
     }
 
+    public function hasBeforeAddIssueHandlers(): bool
+    {
+        return $this->before_add_issue !== [];
+    }
+
     public function dispatchBeforeAddIssue(BeforeAddIssueEvent $event): ?bool
     {
         foreach ($this->before_add_issue as $handler) {

@@ -810,6 +810,10 @@ final class StatementsAnalyzer extends SourceAnalyzer
     ): ?bool {
         $codebase = $statements_analyzer->getCodebase();
 
+        if ($codebase->config->eventDispatcher->after_statement_checks === []) {
+            return null;
+        }
+
         $event = new AfterStatementAnalysisEvent(
             $stmt,
             $context,
@@ -835,6 +839,10 @@ final class StatementsAnalyzer extends SourceAnalyzer
         StatementsAnalyzer $statements_analyzer,
     ): ?bool {
         $codebase = $statements_analyzer->getCodebase();
+
+        if ($codebase->config->eventDispatcher->before_statement_checks === []) {
+            return null;
+        }
 
         $event = new BeforeStatementAnalysisEvent(
             $stmt,

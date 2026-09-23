@@ -293,9 +293,11 @@ abstract class Type
     {
         $config = Config::getInstance();
 
-        $event = new StringInterpreterEvent($value, ProjectAnalyzer::getInstance()->getCodebase());
-
-        $type = $config->eventDispatcher->dispatchStringInterpreter($event);
+        $type = null;
+        if ($config->eventDispatcher->string_interpreters !== []) {
+            $event = new StringInterpreterEvent($value, ProjectAnalyzer::getInstance()->getCodebase());
+            $type = $config->eventDispatcher->dispatchStringInterpreter($event);
+        }
 
         if (!$type) {
             if ($value === '' || strlen($value) < $config->max_string_length) {

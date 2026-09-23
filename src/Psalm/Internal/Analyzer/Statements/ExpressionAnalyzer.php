@@ -528,6 +528,10 @@ final class ExpressionAnalyzer
     ): ?bool {
         $codebase = $statements_analyzer->getCodebase();
 
+        if ($codebase->config->eventDispatcher->before_expression_checks === []) {
+            return null;
+        }
+
         $event = new BeforeExpressionAnalysisEvent(
             $expr,
             $context,
@@ -555,6 +559,10 @@ final class ExpressionAnalyzer
         StatementsAnalyzer $statements_analyzer,
     ): ?bool {
         $codebase = $statements_analyzer->getCodebase();
+
+        if ($codebase->config->eventDispatcher->after_expression_checks === []) {
+            return null;
+        }
 
         $event = new AfterExpressionAnalysisEvent(
             $expr,
