@@ -1842,7 +1842,7 @@ final class ReturnTypeTest extends TestCase
                             return new Example();
                         }
                     }',
-                'error_message' => 'InvalidClass',
+                'error_message' => 'UndefinedDocblockClass',
             ],
             'listItems' => [
                 'code' => <<<'PHP'

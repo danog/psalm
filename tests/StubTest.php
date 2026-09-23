@@ -410,21 +410,21 @@ final class StubTest extends TestCase
                     $const1 = (new \Ns\MyClass)->creAte3(\Ns\MyClass::OBJECT);
                     $const2 = (new \Ns\MyClass)->creaTe3("exception");
 
-                    $b1 = \Create("object");
-                    $b2 = \cReate("exception");
+                    $b1 = \create("object");
+                    $b2 = \create("exception");
 
-                    $e2 = \creAte(\LogicException::class);
+                    $e2 = \create(\LogicException::class);
 
-                    $z1 = \Create2("object");
-                    $z2 = \cReate2("exception");
+                    $z1 = \create2("object");
+                    $z2 = \create2("exception");
 
-                    $x2 = \creAte2(\LogicException::class);
+                    $x2 = \create2(\LogicException::class);
 
                     $c1 = (new \Ns\MyClass)->foo(5);
                     $c2 = (new \Ns\MyClass)->bar(["hello"]);
 
-                    $d1 = \foO(5);
-                    $d2 = \baR(["hello"]);
+                    $d1 = \foo(5);
+                    $d2 = \bar(["hello"]);
                 }',
         );
 

@@ -523,6 +523,8 @@ final class FunctionCallAnalyzer extends CallAnalyzer
                     $function_call_info->function_id,
                     $code_location,
                     $is_maybe_root_function,
+                    // a callable string analyzed as a call is a runtime truth: it resolves as PHP does
+                    !$stmt instanceof VirtualFuncCall,
                 ) === false) {
                     if ($args) {
                         ArgumentsAnalyzer::analyze(
