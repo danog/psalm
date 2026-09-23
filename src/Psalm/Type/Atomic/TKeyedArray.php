@@ -877,6 +877,10 @@ final class TKeyedArray extends Atomic
             return false;
         }
 
+        if ($this->is_list !== $other_type->is_list) {
+            return false;
+        }
+
         if (count($this->properties) !== count($other_type->properties)) {
             return false;
         }
