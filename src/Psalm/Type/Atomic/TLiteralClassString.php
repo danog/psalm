@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Type\Atomic;
 
 use Override;
+use Psalm\Internal\Interner;
 
 use function preg_quote;
 use function preg_replace;
@@ -20,6 +21,11 @@ use function strtolower;
  */
 final class TLiteralClassString extends TLiteralString
 {
+    /**
+     * The interned class name (as TNamedObject::$name): storages are looked up by it.
+     */
+    public int $name;
+
     public function __construct(
         string $value, /**
          * Whether or not this type can represent a child of the class named in $value
@@ -28,6 +34,24 @@ final class TLiteralClassString extends TLiteralString
         bool $from_docblock = false,
     ) {
         parent::__construct($value, $from_docblock);
+        /** @psalm-suppress ImpureMethodCall the interner only grows */
+        $this->name = Interner::intern($this->value);
+    }
+
+    /**
+     * @return static
+     */
+    #[Override]
+    public function setValue(string $value): self
+    {
+        if ($value === $this->value) {
+            return $this;
+        }
+        $cloned = clone $this;
+        $cloned->value = $value;
+        /** @psalm-suppress ImpureMethodCall the interner only grows */
+        $cloned->name = Interner::intern($value);
+        return $cloned;
     }
 
     #[Override]

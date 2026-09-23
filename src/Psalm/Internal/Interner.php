@@ -104,6 +104,9 @@ final class Interner
 
     /**
      * A forked worker calls this first: delta() then lists what it interned on its own.
+     *
+     * @psalm-external-mutation-free
+     * @psalm-suppress ImpureStaticProperty
      */
     public static function mark(): void
     {
@@ -115,6 +118,8 @@ final class Interner
      * The strings interned since mark(), for the parent to merge().
      *
      * @return list<string>
+     * @psalm-external-mutation-free
+     * @psalm-suppress ImpureStaticProperty
      */
     public static function delta(): array
     {
@@ -123,6 +128,7 @@ final class Interner
 
     /**
      * @param iterable<string> $strings
+     * @psalm-external-mutation-free
      */
     public static function merge(iterable $strings): void
     {
@@ -135,6 +141,8 @@ final class Interner
      * Every string interned in this process, for the cache.
      *
      * @return list<string>
+     * @psalm-external-mutation-free
+     * @psalm-suppress ImpureStaticProperty
      */
     public static function all(): array
     {

@@ -270,7 +270,7 @@ final class AtomicPropertyFetchAnalyzer
                     $new_property_id = $mixin->value . '::$' . $prop_name;
 
                     try {
-                        $new_class_storage = $codebase->classlike_storage_provider->get($mixin->value);
+                        $new_class_storage = $codebase->classlike_storage_provider->getById($mixin->name);
                     } catch (InvalidArgumentException) {
                         $new_class_storage = null;
                     }
@@ -1147,7 +1147,7 @@ final class AtomicPropertyFetchAnalyzer
     ): void {
         if ($codebase->interfaceExists($lhs_type_part->value)) {
             $interface_exists = true;
-            $interface_storage = $codebase->classlike_storage_provider->get($lhs_type_part->value);
+            $interface_storage = $codebase->classlike_storage_provider->getById($lhs_type_part->name);
 
             $override_property_visibility = $interface_storage->override_property_visibility;
 

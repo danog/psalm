@@ -953,7 +953,7 @@ final class TypeExpander
         } else {
             foreach ($return_type->classlike_type->extra_types as $type) {
                 if ($type instanceof TNamedObject && $codebase->classExists($type->value)) {
-                    $class_storage = $codebase->classlike_storage_provider->get($type->value);
+                    $class_storage = $codebase->classlike_storage_provider->getById($type->name);
                     break;
                 }
             }

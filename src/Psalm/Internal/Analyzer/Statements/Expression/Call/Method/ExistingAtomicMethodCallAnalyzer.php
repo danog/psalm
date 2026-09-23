@@ -347,7 +347,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                         true,
                         false,
                         $static_type instanceof TNamedObject
-                            && $codebase->classlike_storage_provider->get($static_type->value)->final,
+                            && $codebase->classlike_storage_provider->getById($static_type->name)->final,
                         true,
                     );
                 }
@@ -369,7 +369,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                     true,
                     false,
                     $static_type instanceof TNamedObject
-                        && $codebase->classlike_storage_provider->get($static_type->value)->final,
+                        && $codebase->classlike_storage_provider->getById($static_type->name)->final,
                     true,
                 );
 

@@ -890,7 +890,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
                     $lhs_type_part = $new_lhs_type_part;
                 }
 
-                $mixin_class_storage = $codebase->classlike_storage_provider->get($mixin->value);
+                $mixin_class_storage = $codebase->classlike_storage_provider->getById($mixin->name);
 
                 $fq_class_name = $mixin_class_storage->name;
                 $mixin_class_storage->mixin_declaring_fqcln = $class_storage->mixin_declaring_fqcln;

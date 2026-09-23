@@ -2126,7 +2126,7 @@ final class Codebase
         foreach ($type->getAtomicTypes() as $atomic_type) {
             if ($atomic_type instanceof TNamedObject) {
                 try {
-                    $class_storage = $this->classlike_storage_provider->get($atomic_type->value);
+                    $class_storage = $this->classlike_storage_provider->getById($atomic_type->name);
 
                     $method_storages = [];
                     foreach ($class_storage->declaring_method_ids as $declaring_method_id) {

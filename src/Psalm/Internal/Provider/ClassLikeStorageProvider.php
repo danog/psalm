@@ -7,9 +7,11 @@ namespace Psalm\Internal\Provider;
 use InvalidArgumentException;
 use LogicException;
 use Psalm\Issue\DuplicateClass;
+use Psalm\Internal\Interner;
 use Psalm\IssueBuffer;
 use Psalm\Storage\ClassLikeStorage;
 
+use function array_key_exists;
 use function strtolower;
 
 /**
@@ -39,6 +41,22 @@ final class ClassLikeStorageProvider
     private static array $by_spelling = [];
 
     /**
+     * Storages by the interned declared name (pzoom keys its class-like map by StrId).
+     *
+     * @var array<int, ClassLikeStorage>
+     */
+    private static array $by_id = [];
+
+    /**
+     * The storage a differently-spelled name resolves to (Psalm resolves names case-insensitively for now:
+     * the id of the spelling used maps to the storage declared under another casing), or null. Emptied
+     * whenever the storage map changes.
+     *
+     * @var array<int, ClassLikeStorage|null>
+     */
+    private static array $canonical = [];
+
+    /**
      * @psalm-mutation-free
      */
     public function __construct(public ?ClassLikeStorageCacheProvider $cache = null)
@@ -66,6 +84,44 @@ final class ClassLikeStorageProvider
         $storage = self::$storage[$fq_classlike_name_lc];
         /** @psalm-suppress ImpureStaticProperty Used only for caching */
         self::$by_spelling[$fq_classlike_name] = $storage;
+        return $storage;
+    }
+
+    /**
+     * The storage of the class-like whose declared name interns to $id, or, while resolution is
+     * case-insensitive, of the one whose lowercased name matches.
+     *
+     * @psalm-mutation-free
+     * @throws InvalidArgumentException when class does not exist
+     */
+    public function getById(int $id): ClassLikeStorage
+    {
+        /** @psalm-suppress ImpureStaticProperty, ImpureMethodCall Used only for caching */
+        return self::$by_id[$id]
+            ?? self::resolveId($id)
+            ?? throw new InvalidArgumentException('Could not get class storage for ' . Interner::lookup($id));
+    }
+
+    /**
+     * @psalm-mutation-free
+     */
+    public function hasById(int $id): bool
+    {
+        /** @psalm-suppress ImpureStaticProperty, ImpureMethodCall Used only for caching */
+        return isset(self::$by_id[$id]) || self::resolveId($id) !== null;
+    }
+
+    /**
+     * @psalm-external-mutation-free
+     * @psalm-suppress ImpureStaticProperty Used only for caching
+     */
+    private static function resolveId(int $id): ?ClassLikeStorage
+    {
+        if (isset(self::$canonical[$id]) || array_key_exists($id, self::$canonical)) {
+            return self::$canonical[$id];
+        }
+        $storage = self::$storage[strtolower(Interner::lookup($id))] ?? null;
+        self::$canonical[$id] = $storage;
         return $storage;
     }
 
@@ -105,7 +161,9 @@ final class ClassLikeStorageProvider
         $cached_value = $this->cache->getLatestFromCache($fq_classlike_name_lc, $file_path, $file_contents);
 
         self::$storage[$fq_classlike_name_lc] = $cached_value;
+        self::$by_id[$cached_value->id] = $cached_value;
         self::$by_spelling = [];
+        self::$canonical = [];
         self::$new_storage[$fq_classlike_name_lc] = $cached_value;
 
         return $cached_value;
@@ -160,7 +218,9 @@ final class ClassLikeStorageProvider
             }
             self::$new_storage[$k] = $storage;
             self::$storage[$k] = $storage;
+            self::$by_id[$storage->id] = $storage;
             self::$by_spelling = [];
+            self::$canonical = [];
         }
     }
 
@@ -181,7 +241,9 @@ final class ClassLikeStorageProvider
 
         $storage = new ClassLikeStorage($fq_classlike_name);
         self::$storage[$fq_classlike_name_lc] = $storage;
+        self::$by_id[$storage->id] = $storage;
         self::$by_spelling = [];
+        self::$canonical = [];
         self::$new_storage[$fq_classlike_name_lc] = $storage;
 
         return $storage;
@@ -194,8 +256,13 @@ final class ClassLikeStorageProvider
     {
         $fq_classlike_name_lc = strtolower($fq_classlike_name);
 
+        $existing = self::$storage[$fq_classlike_name_lc] ?? null;
+        if ($existing !== null) {
+            unset(self::$by_id[$existing->id]);
+        }
         unset(self::$storage[$fq_classlike_name_lc]);
         self::$by_spelling = [];
+        self::$canonical = [];
     }
 
     /**
@@ -206,6 +273,8 @@ final class ClassLikeStorageProvider
         self::$storage = [];
         self::$new_storage = [];
         self::$by_spelling = [];
+        self::$by_id = [];
+        self::$canonical = [];
     }
 
     /**

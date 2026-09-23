@@ -2989,11 +2989,11 @@ final class SimpleAssertionReconciler extends Reconciler
             return true;
         }
 
-        if (!$type instanceof TNamedObject || !$codebase->classlike_storage_provider->has($type->value)) {
+        if (!$type instanceof TNamedObject || !$codebase->classlike_storage_provider->hasById($type->name)) {
             return false;
         }
 
-        $class_storage = $codebase->classlike_storage_provider->get($type->value);
+        $class_storage = $codebase->classlike_storage_provider->getById($type->name);
 
         return !$class_storage->final;
     }

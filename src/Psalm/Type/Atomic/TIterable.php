@@ -8,6 +8,7 @@ use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Type\TemplateResult;
+use Psalm\Internal\Sym;
 use Psalm\Type;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
@@ -71,6 +72,12 @@ final class TIterable extends Atomic
     public array $type_params;
 
     public string $value = 'iterable';
+
+    /**
+     * The interned `iterable`, so code that treats an iterable like a generic object named `iterable`
+     * (template mapping, comparisons) can key it as it keys a TNamedObject.
+     */
+    public int $name = Sym::ITERABLE;
 
     public bool $has_docblock_params = false;
 

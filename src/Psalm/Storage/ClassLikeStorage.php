@@ -7,6 +7,7 @@ namespace Psalm\Storage;
 use Override;
 use Psalm\Aliases;
 use Psalm\CodeLocation;
+use Psalm\Internal\Interner;
 use Psalm\Codebase;
 use Psalm\Config;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
@@ -396,8 +397,15 @@ final class ClassLikeStorage implements HasAttributesInterface
     /**
      * @psalm-mutation-free
      */
+    /**
+     * The interned declared name (pzoom's `name: StrId`): what storages are keyed by and what types carry.
+     */
+    public int $id;
+
+    /** @psalm-external-mutation-free */
     public function __construct(public string $name)
     {
+        $this->id = Interner::intern($name);
     }
 
     /**

@@ -7,6 +7,7 @@ namespace Psalm\Type\Atomic;
 use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Storage\Mutations;
 use Psalm\Type;
@@ -33,6 +34,11 @@ class TNamedObject extends Atomic
 
     public string $value;
 
+    /**
+     * The interned class name (pzoom's `name: StrId`): storages are looked up and names compared by it.
+     */
+    public int $name;
+
     public bool $is_static_resolved = false;
 
     /**
@@ -54,6 +60,8 @@ class TNamedObject extends Atomic
         }
 
         $this->value = $value;
+        /** @psalm-suppress ImpureMethodCall the interner only grows */
+        $this->name = Interner::intern($value);
         $this->extra_types = $extra_types;
         parent::__construct($from_docblock);
     }
@@ -86,6 +94,8 @@ class TNamedObject extends Atomic
         }
         $cloned = clone $this;
         $cloned->value = $value;
+        /** @psalm-suppress ImpureMethodCall the interner only grows */
+        $cloned->name = Interner::intern($value);
         return $cloned;
     }
     /**
@@ -105,6 +115,8 @@ class TNamedObject extends Atomic
         }
         $cloned = clone $this;
         $cloned->value = $value;
+        /** @psalm-suppress ImpureMethodCall the interner only grows */
+        $cloned->name = Interner::intern($value);
         $cloned->is_static = $is_static;
         $cloned->is_static_resolved = $is_static;
         return $cloned;

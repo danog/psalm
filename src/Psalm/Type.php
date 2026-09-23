@@ -1088,7 +1088,7 @@ abstract class Type
             return null;
         }
         try {
-            $storage = $codebase->classlike_storage_provider->get($type->value);
+            $storage = $codebase->classlike_storage_provider->getById($type->name);
         } catch (InvalidArgumentException) {
             // Ignore non-existing classes during initial scan
             return $type;

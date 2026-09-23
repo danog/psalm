@@ -162,7 +162,7 @@ final class YieldAnalyzer
                 continue;
             }
 
-            $classlike_storage = $codebase->classlike_storage_provider->get($expression_atomic_type->value);
+            $classlike_storage = $codebase->classlike_storage_provider->getById($expression_atomic_type->name);
 
             if (!$classlike_storage->yield) {
                 continue;
