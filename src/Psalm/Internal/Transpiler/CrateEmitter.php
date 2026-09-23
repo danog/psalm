@@ -529,7 +529,26 @@ final class CrateEmitter
         foreach ($this->program->functions as $f) {
             yield $f;
         }
-        // the analysis objects the model points into (storages, records, AST nodes) are the parent's too
+        // the analysis objects the model points into (storages, records, AST nodes) are the parent's too; a
+        // worker may model a class the parent has not modeled yet, so every storage the providers hold counts
+        foreach (\Psalm\Internal\Provider\ClassLikeStorageProvider::getAll() as $cs) {
+            yield $cs;
+            foreach ($cs->methods as $ms) {
+                yield $ms;
+            }
+            foreach ($cs->properties as $ps) {
+                yield $ps;
+            }
+            foreach ($cs->constants as $cc) {
+                yield $cc;
+            }
+        }
+        foreach (\Psalm\Internal\Provider\FileStorageProvider::getAll() as $fs) {
+            yield $fs;
+            foreach ($fs->functions as $fn) {
+                yield $fn;
+            }
+        }
         foreach ($this->program->classes as $c) {
             yield $c->storage;
             foreach ($c->storage->methods as $ms) {
