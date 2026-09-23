@@ -84,11 +84,11 @@ use function array_unique;
 use function array_unshift;
 use function array_values;
 use function assert;
-use function constant;
 use function count;
 use function defined;
 use function end;
 use function explode;
+use function get_defined_constants;
 use function in_array;
 use function is_int;
 use function is_numeric;
@@ -811,7 +811,7 @@ final class TypeParser
                 );
             }
 
-            $template_marker_parts = array_values($generic_params[0]->getAtomicTypes());
+            $template_marker_parts = $generic_params[0]->getAtomicTypes();
 
             $template_marker = $template_marker_parts[0];
 
@@ -874,7 +874,7 @@ final class TypeParser
                 );
             }
 
-            $param_union_types = array_values($generic_params[0]->getAtomicTypes());
+            $param_union_types = $generic_params[0]->getAtomicTypes();
 
             if (count($param_union_types) > 1) {
                 throw new TypeParseTreeException('Union types are not allowed in ' . $generic_type_value . ' param');
@@ -1001,7 +1001,7 @@ final class TypeParser
         }
 
         if ($generic_type_value === 'int-mask-of') {
-            $param_union_types = array_values($generic_params[0]->getAtomicTypes());
+            $param_union_types = $generic_params[0]->getAtomicTypes();
 
             if (count($param_union_types) > 1) {
                 throw new TypeParseTreeException('Union types are not allowed in value-of type');

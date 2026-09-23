@@ -34,7 +34,6 @@ final class TLiteralClassString extends TLiteralString
         bool $from_docblock = false,
     ) {
         parent::__construct($value, $from_docblock);
-        /** @psalm-suppress ImpureMethodCall the interner only grows */
         $this->name = Interner::intern($this->value);
     }
 

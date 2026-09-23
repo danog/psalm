@@ -11,7 +11,6 @@ use Psalm\Codebase;
 use Psalm\Config;
 use Psalm\FileManipulation;
 use Psalm\Internal\Analyzer\FileAnalyzer;
-use Psalm\Internal\Interner;
 use Psalm\Internal\Analyzer\IssueData;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\FileManipulation\ClassDocblockManipulator;
@@ -22,6 +21,7 @@ use Psalm\Internal\Fork\AnalyzerTask;
 use Psalm\Internal\Fork\InitAnalyzerTask;
 use Psalm\Internal\Fork\Pool;
 use Psalm\Internal\Fork\ShutdownAnalyzerTask;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\FileProvider;
 use Psalm\Internal\Provider\FileStorageProvider;
 use Psalm\Internal\Provider\StatementsProvider;
@@ -76,8 +76,7 @@ use const PHP_INT_MAX;
  *      mixed_counts: array<string, array{0: int, 1: int}>,
  *      mixed_member_names: array<string, array<string, bool>>,
  *      function_timings: array<string, float>,
- *      file_manipulations: array<string, list<FileManipulation>>,
- *      method_references_to_class_members: array<string, array<string,bool>>,
+ *      file_manipulations: array<string, array<string, FileManipulation>>,
  *      method_dependencies: array<string, array<string,bool>>,
  *      method_param_uses: array<string, array<int, array<string, bool>>>,
  *      analyzed_methods: array<string, array<string, int>>,
@@ -323,7 +322,11 @@ final class Analyzer
 
             // Wait for all tasks to complete and collect the results.
             await($pool->runAll(new InitAnalyzerTask));
-            $pool->run($this->files_to_analyze, static fn(string $file): AnalyzerTask => new AnalyzerTask($file), $task_done_closure);
+            $pool->run(
+                $this->files_to_analyze,
+                static fn(string $file): AnalyzerTask => new AnalyzerTask($file),
+                $task_done_closure,
+            );
             $forked_pool_data = $pool->runAll(new ShutdownAnalyzerTask);
 
             $this->progress->debug('Collecting forked analysis results' . "\n");
@@ -642,7 +645,6 @@ final class Analyzer
         $file_reference_provider->setMethodDependencies(
             $method_dependencies,
         );
-
 
         $file_reference_provider->setReferencesToMixedMemberNames(
             $references_to_mixed_member_names,

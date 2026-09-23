@@ -60,8 +60,8 @@ use Psalm\Plugin\EventHandler\Event\BeforeExpressionAnalysisEvent;
 use Psalm\Type;
 use Psalm\Type\Atomic\TBool;
 
-use function count;
 use function assert;
+use function count;
 use function in_array;
 use function strtolower;
 
@@ -188,6 +188,7 @@ final class ExpressionAnalyzer
      */
     private static array $expression_kinds = [];
 
+    /** @psalm-pure */
     private static function expressionKind(PhpParser\Node\Expr $stmt): int
     {
         if ($stmt instanceof PhpParser\Node\Expr\Variable) {
@@ -258,8 +259,7 @@ final class ExpressionAnalyzer
             return 16;
         }
 
-        if (
-            $stmt instanceof PhpParser\Node\Expr\PostInc
+        if ($stmt instanceof PhpParser\Node\Expr\PostInc
             || $stmt instanceof PhpParser\Node\Expr\PostDec
             || $stmt instanceof PhpParser\Node\Expr\PreInc
             || $stmt instanceof PhpParser\Node\Expr\PreDec
@@ -359,8 +359,7 @@ final class ExpressionAnalyzer
             return 40;
         }
 
-        if (
-            $stmt instanceof PhpParser\Node\Expr\NullsafePropertyFetch
+        if ($stmt instanceof PhpParser\Node\Expr\NullsafePropertyFetch
             || $stmt instanceof PhpParser\Node\Expr\NullsafeMethodCall
         ) {
             return 41;
@@ -386,7 +385,7 @@ final class ExpressionAnalyzer
 
         switch ($kind) {
             case 0: // Variable
-                assert($stmt instanceof PhpParser\Node\Expr\BinaryOp || $stmt instanceof PhpParser\Node\Expr\Instanceof_ || $stmt instanceof PhpParser\Node\Expr\Assign || $stmt instanceof PhpParser\Node\Expr\BooleanNot || $stmt instanceof PhpParser\Node\Expr\Empty_ || $stmt instanceof PhpParser\Node\Expr\Isset_ || $stmt instanceof PhpParser\Node\Expr\FuncCall || $stmt instanceof PhpParser\Node\Expr\BooleanNot || $stmt instanceof PhpParser\Node\Expr\Variable);
+                assert($stmt instanceof PhpParser\Node\Expr\Variable);
                 return VariableFetchAnalyzer::analyze(
                     $statements_analyzer,
                     $stmt,
@@ -435,7 +434,10 @@ final class ExpressionAnalyzer
 
                 return true;
             case 10: // UnaryMinus, UnaryPlus
-                assert($stmt instanceof PhpParser\Node\Expr\UnaryMinus || $stmt instanceof PhpParser\Node\Expr\UnaryPlus);
+                assert(
+                    $stmt instanceof PhpParser\Node\Expr\UnaryMinus
+                    || $stmt instanceof PhpParser\Node\Expr\UnaryPlus,
+                );
                 return UnaryPlusMinusAnalyzer::analyze($statements_analyzer, $stmt, $context);
             case 11: // Isset_
                 assert($stmt instanceof PhpParser\Node\Expr\Isset_);
@@ -474,7 +476,12 @@ final class ExpressionAnalyzer
                     $from_stmt !== null,
                 );
             case 17: // PostInc, PostDec, PreInc, PreDec
-                assert($stmt instanceof PhpParser\Node\Expr\PostInc || $stmt instanceof PhpParser\Node\Expr\PostDec || $stmt instanceof PhpParser\Node\Expr\PreInc || $stmt instanceof PhpParser\Node\Expr\PreDec);
+                assert(
+                    $stmt instanceof PhpParser\Node\Expr\PostInc
+                    || $stmt instanceof PhpParser\Node\Expr\PostDec
+                    || $stmt instanceof PhpParser\Node\Expr\PreInc
+                    || $stmt instanceof PhpParser\Node\Expr\PreDec,
+                );
                 return IncDecExpressionAnalyzer::analyze($statements_analyzer, $stmt, $context);
             case 18: // New_
                 assert($stmt instanceof PhpParser\Node\Expr\New_);
@@ -505,7 +512,10 @@ final class ExpressionAnalyzer
 
                 return true;
             case 25: // Closure, ArrowFunction
-                assert($stmt instanceof PhpParser\Node\Expr\Closure || $stmt instanceof PhpParser\Node\Expr\ArrowFunction);
+                assert(
+                    $stmt instanceof PhpParser\Node\Expr\Closure
+                    || $stmt instanceof PhpParser\Node\Expr\ArrowFunction,
+                );
                 return ClosureAnalyzer::analyzeExpression($statements_analyzer, $stmt, $context);
             case 26: // ArrayDimFetch
                 assert($stmt instanceof PhpParser\Node\Expr\ArrayDimFetch);
@@ -528,7 +538,7 @@ final class ExpressionAnalyzer
                 return ExitAnalyzer::analyze($statements_analyzer, $stmt, $context);
             case 31: // Include_
                 assert($stmt instanceof PhpParser\Node\Expr\Include_);
-                return IncludeAnalyzer::analyze($statements_analyzer, $stmt, $context, $global_context);
+                return IncludeAnalyzer::analyze($statements_analyzer, $stmt, $context);
             case 32: // Eval_
                 assert($stmt instanceof PhpParser\Node\Expr\Eval_);
                 EvalAnalyzer::analyze($statements_analyzer, $stmt, $context);
@@ -608,7 +618,10 @@ final class ExpressionAnalyzer
                 assert($stmt instanceof PhpParser\Node\Expr\Throw_);
                 return ThrowAnalyzer::analyze($statements_analyzer, $stmt, $context);
             case 41: // NullsafePropertyFetch, NullsafeMethodCall
-                assert($stmt instanceof PhpParser\Node\Expr\NullsafePropertyFetch || $stmt instanceof PhpParser\Node\Expr\NullsafeMethodCall);
+                assert(
+                    $stmt instanceof PhpParser\Node\Expr\NullsafePropertyFetch
+                    || $stmt instanceof PhpParser\Node\Expr\NullsafeMethodCall,
+                );
                 if ($statements_analyzer->getCodebase()->analysis_php_version_id >= 8_00_00) {
                     return NullsafeAnalyzer::analyze($statements_analyzer, $stmt, $context);
                 }
@@ -620,8 +633,6 @@ final class ExpressionAnalyzer
         }
 
         $codebase = $statements_analyzer->getCodebase();
-        $analysis_php_version_id = $codebase->analysis_php_version_id;
-
         IssueBuffer::maybeAdd(
             new UnrecognizedExpression(
                 'Psalm does not understand ' . $stmt::class . ' for PHP ' .

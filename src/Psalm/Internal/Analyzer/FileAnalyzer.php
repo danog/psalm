@@ -28,13 +28,11 @@ use Psalm\IssueBuffer;
 use Psalm\NodeTypeProvider;
 use Psalm\Plugin\EventHandler\Event\AfterFileAnalysisEvent;
 use Psalm\Plugin\EventHandler\Event\BeforeFileAnalysisEvent;
-use Psalm\Type;
 use Psalm\Type\Union;
 use UnexpectedValueException;
 
 use function array_combine;
 use function array_diff_key;
-use function array_keys;
 use function count;
 use function str_starts_with;
 use function strtolower;
@@ -98,8 +96,6 @@ class FileAnalyzer extends SourceAnalyzer
     private int $first_statement_offset = -1;
 
     private ?NodeDataProvider $node_data = null;
-
-    private ?Union $return_type = null;
 
     /**
      * @psalm-mutation-free
@@ -183,19 +179,6 @@ class FileAnalyzer extends SourceAnalyzer
                     new CodeLocation($this, $leftover_stmts[0]),
                     $statements_analyzer->getSuppressedIssues(),
                 );
-            }
-
-            foreach ($leftover_stmts as $leftover_stmt) {
-                if ($leftover_stmt instanceof PhpParser\Node\Stmt\Return_) {
-                    if ($leftover_stmt->expr) {
-                        $this->return_type =
-                            $statements_analyzer->node_data->getType($leftover_stmt->expr) ?? Type::getMixed();
-                    } else {
-                        $this->return_type = Type::getVoid();
-                    }
-
-                    break;
-                }
             }
         }
 
@@ -332,7 +315,6 @@ class FileAnalyzer extends SourceAnalyzer
             ) {
                 return;
             }
-
 
             $class_analyzer = new ClassAnalyzer($stmt, $this, $stmt->name->name);
 
@@ -553,14 +535,6 @@ class FileAnalyzer extends SourceAnalyzer
         $this->required_file_paths[$file_path] = true;
     }
 
-    /**
-     * @psalm-external-mutation-free
-     */
-    public function addParentFilePath(string $file_path): void
-    {
-        $this->parent_file_paths[$file_path] = true;
-    }
-
     /** @psalm-mutation-free */
     #[Override]
     public function hasParentFilePath(string $file_path): bool
@@ -573,24 +547,6 @@ class FileAnalyzer extends SourceAnalyzer
     public function hasAlreadyRequiredFilePath(string $file_path): bool
     {
         return isset($this->required_file_paths[$file_path]);
-    }
-
-    /**
-     * @psalm-mutation-free
-     * @return list<string>
-     */
-    public function getRequiredFilePaths(): array
-    {
-        return array_keys($this->required_file_paths);
-    }
-
-    /**
-     * @psalm-mutation-free
-     * @return list<string>
-     */
-    public function getParentFilePaths(): array
-    {
-        return array_keys($this->parent_file_paths);
     }
 
     /** @psalm-mutation-free */
@@ -724,12 +680,6 @@ class FileAnalyzer extends SourceAnalyzer
         }
 
         return $this->node_data;
-    }
-
-    /** @psalm-mutation-free */
-    public function getReturnType(): ?Union
-    {
-        return $this->return_type;
     }
 
     /**

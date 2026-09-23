@@ -12,15 +12,15 @@ use Psalm\Internal\Type\TemplateResult;
 use Psalm\Storage\Mutations;
 use Psalm\Type;
 use Psalm\Type\Atomic;
+use Psalm\Type\MutableTypeVisitor;
+use Psalm\Type\TypeNode;
+use Psalm\Type\TypeVisitor;
 
-use function assert;
 use function array_map;
+use function assert;
 use function implode;
 use function strrpos;
 use function substr;
-use Psalm\Type\MutableTypeVisitor;
-use Psalm\Type\TypeVisitor;
-use Psalm\Type\TypeNode;
 
 /**
  * Denotes an object type where the type of the object is known e.g. `Exception`, `Throwable`, `Foo\Bar`
@@ -60,7 +60,6 @@ class TNamedObject extends Atomic
         }
 
         $this->value = $value;
-        /** @psalm-suppress ImpureMethodCall the interner only grows */
         $this->name = Interner::intern($value);
         $this->extra_types = $extra_types;
         parent::__construct($from_docblock);

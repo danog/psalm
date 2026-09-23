@@ -304,7 +304,11 @@ final class ReturnAnalyzer
                 }
 
                 if ($declared_return_type && !$declared_return_type->hasMixed()) {
-                    if ($source->getSource() instanceof TraitAnalyzer && $context->self) {
+                    $trait_name = $source->getFQCLN();
+                    if ($source->getSource() instanceof TraitAnalyzer
+                        && $context->self !== null
+                        && $trait_name !== null
+                    ) {
                         // a trait body is checked for each using class (pzoom): the trait's own name,
                         // `self` and `static` bind to that class and the trait's template params resolve
                         // to their bounds
@@ -312,7 +316,7 @@ final class ReturnAnalyzer
                         $using_storage = $codebase->classlike_storage_provider->get($using_class);
                         $local_return_type = TypeExpander::expandUnion(
                             $codebase,
-                            $declared_return_type->replaceClassLike(strtolower($source->getFQCLN()), $using_class),
+                            $declared_return_type->replaceClassLike(strtolower($trait_name), $using_class),
                             $using_class,
                             $using_class,
                             $using_storage->parent_class,

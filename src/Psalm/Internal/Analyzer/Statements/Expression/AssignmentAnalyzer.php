@@ -249,11 +249,7 @@ final class AssignmentAnalyzer
 
                 if ($var_id) {
                     if ($extended_var_id && isset($context->vars_in_scope[$extended_var_id])) {
-                        $context->removeDescendents(
-                            $extended_var_id,
-                            $context->vars_in_scope[$extended_var_id],
-                            $assign_value_type,
-                        );
+                        $context->removeDescendents($extended_var_id);
                     }
 
                     // if we're not exiting immediately, make everything mixed
@@ -339,12 +335,7 @@ final class AssignmentAnalyzer
             }
 
             // removes dependent vars from $context
-            $context->removeDescendents(
-                $extended_var_id,
-                $context->vars_in_scope[$extended_var_id],
-                $assign_value_type,
-                $statements_analyzer,
-            );
+            $context->removeDescendents($extended_var_id);
         } else {
             $root_var_id = ExpressionIdentifier::getRootVarId(
                 $assign_var,
@@ -353,11 +344,7 @@ final class AssignmentAnalyzer
             );
 
             if ($root_var_id && isset($context->vars_in_scope[$root_var_id])) {
-                $context->removeVarFromConflictingClauses(
-                    $root_var_id,
-                    $context->vars_in_scope[$root_var_id],
-                    $statements_analyzer,
-                );
+                $context->removeVarFromConflictingClauses($root_var_id);
             }
         }
 
@@ -1143,12 +1130,7 @@ final class AssignmentAnalyzer
                 $existing_type = $context->vars_in_scope[$var_id];
 
                 // removes dependent vars from $context
-                $context->removeDescendents(
-                    $var_id,
-                    $existing_type,
-                    $by_ref_type,
-                    $statements_analyzer,
-                );
+                $context->removeDescendents($var_id);
 
                 $by_ref_out_type = $by_ref_out_type->addParentNodes(
                     $existing_type->parent_nodes,
@@ -1505,17 +1487,10 @@ final class AssignmentAnalyzer
 
                     if ($already_in_scope) {
                         // removes dependent vars from $context
-                        $context->removeDescendents(
-                            $list_var_id,
-                            $context->vars_in_scope[$list_var_id],
-                            $new_assign_type,
-                            $statements_analyzer,
-                        );
+                        $context->removeDescendents($list_var_id);
                     }
                 }
             }
-
-
 
             if (!$assigned) {
                 if ($has_null) {

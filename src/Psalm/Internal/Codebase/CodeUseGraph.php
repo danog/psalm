@@ -207,7 +207,6 @@ final class CodeUseGraph
      * The class node of a storage, without lowercasing its name on every reference.
      *
      * @psalm-external-mutation-free
-     * @psalm-suppress ImpureStaticProperty cache
      */
     public static function classNodeFor(ClassLikeStorage $storage): string
     {

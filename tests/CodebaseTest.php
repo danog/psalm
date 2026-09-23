@@ -23,8 +23,6 @@ use Psalm\PluginRegistrationSocket;
 use Psalm\Type;
 
 use function array_map;
-use function array_values;
-use function get_class;
 use function getcwd;
 
 use const DIRECTORY_SEPARATOR;
@@ -109,7 +107,7 @@ final class CodebaseTest extends TestCase
      */
     public function getKeyValueParamsForTraversableObject(string $input, array $expected): void
     {
-        [$input] = array_values(Type::parseString($input)->getAtomicTypes());
+        [$input] = Type::parseString($input)->getAtomicTypes();
 
         $expected_key_type = Type::parseString($expected[0]);
         $expected_value_type = Type::parseString($expected[1]);

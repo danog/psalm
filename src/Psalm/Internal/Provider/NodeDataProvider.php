@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Internal\Provider;
 
 use Override;
-use PhpParser\Node;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
@@ -33,6 +32,7 @@ final class NodeDataProvider implements NodeTypeProvider
 
     public bool $cache_assertions = true;
 
+    /** @psalm-mutation-free */
     public function __construct()
     {
         $this->store = new NodeDataStore();
@@ -45,6 +45,8 @@ final class NodeDataProvider implements NodeTypeProvider
         $this->store->node_types[$id] = $type;
         $this->store->nodes[$id] = $node;
     }
+
+        /** @psalm-mutation-free */
 
     #[Override]
     public function getType(NodeAbstract $node): ?Union
@@ -68,6 +70,7 @@ final class NodeDataProvider implements NodeTypeProvider
 
     /**
      * @return list<non-empty-array<string, non-empty-list<non-empty-list<Assertion>>>>|null
+     * @psalm-mutation-free
      */
     public function getAssertions(Expr $node): ?array
     {
@@ -92,6 +95,7 @@ final class NodeDataProvider implements NodeTypeProvider
     /**
      * @param Expr\FuncCall|MethodCall|StaticCall|New_ $node
      * @return array<int, Possibilities>|null
+     * @psalm-mutation-free
      */
     public function getIfTrueAssertions(Expr $node): ?array
     {
@@ -112,12 +116,14 @@ final class NodeDataProvider implements NodeTypeProvider
     /**
      * @param FuncCall|MethodCall|StaticCall|New_ $node
      * @return array<int, Possibilities>|null
+     * @psalm-mutation-free
      */
     public function getIfFalseAssertions(Expr $node): ?array
     {
         return $this->store->node_if_false_assertions[spl_object_id($node)] ?? null;
     }
 
+    /** @psalm-mutation-free */
     public function isPureCompatible(Expr $node): bool
     {
         $node_type = $this->getType($node);

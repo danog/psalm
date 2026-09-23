@@ -239,8 +239,6 @@ final class IfAnalyzer
                     $if_scope->reasonable_clauses = Context::filterClauses(
                         $var_id,
                         $if_scope->reasonable_clauses,
-                        $if_context->vars_in_scope[$var_id] ?? null,
-                        $statements_analyzer,
                     );
                 }
             }

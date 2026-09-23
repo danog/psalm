@@ -6,8 +6,6 @@ namespace Psalm\Internal;
 
 use UnexpectedValueException;
 
-use function array_slice;
-use function count;
 use function hash;
 use function unpack;
 
@@ -41,7 +39,6 @@ final class Interner
 
     /**
      * @psalm-external-mutation-free
-     * @psalm-suppress ImpureStaticProperty the table only grows; an id never changes meaning
      */
     public static function intern(string $string): int
     {
@@ -50,7 +47,6 @@ final class Interner
 
     /**
      * @psalm-external-mutation-free
-     * @psalm-suppress ImpureStaticProperty
      */
     private static function add(string $string): int
     {
@@ -81,7 +77,6 @@ final class Interner
 
     /**
      * @psalm-external-mutation-free
-     * @psalm-suppress ImpureStaticProperty
      */
     public static function lookup(int $id): string
     {
@@ -94,19 +89,9 @@ final class Interner
     }
 
     /**
-     * @psalm-external-mutation-free
-     * @psalm-suppress ImpureStaticProperty
-     */
-    public static function has(int $id): bool
-    {
-        return isset(self::$strings[$id]);
-    }
-
-    /**
      * A forked worker calls this first: delta() then lists what it interned on its own.
      *
      * @psalm-external-mutation-free
-     * @psalm-suppress ImpureStaticProperty
      */
     public static function mark(): void
     {
@@ -119,7 +104,6 @@ final class Interner
      *
      * @return list<string>
      * @psalm-external-mutation-free
-     * @psalm-suppress ImpureStaticProperty
      */
     public static function delta(): array
     {
@@ -136,17 +120,5 @@ final class Interner
         foreach ($strings as $string) {
             self::intern($string);
         }
-    }
-
-    /**
-     * Every string interned in this process, for the cache.
-     *
-     * @return list<string>
-     * @psalm-external-mutation-free
-     * @psalm-suppress ImpureStaticProperty
-     */
-    public static function all(): array
-    {
-        return array_slice(self::$strings, 0, count(self::$strings), false);
     }
 }

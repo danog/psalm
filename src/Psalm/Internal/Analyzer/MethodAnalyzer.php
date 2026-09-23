@@ -21,8 +21,8 @@ use Psalm\IssueBuffer;
 use Psalm\StatementsSource;
 use Psalm\Storage\ClassLikeStorage;
 use Psalm\Storage\MethodStorage;
-use UnexpectedValueException;
 use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
+use UnexpectedValueException;
 
 use function in_array;
 use function strtolower;
@@ -234,9 +234,14 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
     /**
      * The declared spelling of a method that exists but is written with another casing (pzoom's casing
      * hint), or null when the spelling matches or nothing is declared to compare against.
+     *
+     * @psalm-mutation-free
      */
-    public static function declaredCasingOf(Codebase $codebase, MethodIdentifier $method_id, string $written_name): ?string
-    {
+    public static function declaredCasingOf(
+        Codebase $codebase,
+        MethodIdentifier $method_id,
+        string $written_name,
+    ): ?string {
         $declaring_method_id = $codebase->methods->getDeclaringMethodId($method_id, true);
         if ($declaring_method_id === null) {
             return null;

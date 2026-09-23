@@ -7,8 +7,8 @@ namespace Psalm\Internal;
 use InvalidArgumentException;
 use Override;
 use Psalm\Storage\ImmutableNonCloneableTrait;
-use Stringable;
 use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
+use Stringable;
 
 use function explode;
 use function is_string;
@@ -36,7 +36,6 @@ final class MethodIdentifier implements Stringable
      */
     public function __construct(public readonly string $fq_class_name, public readonly string $method_name)
     {
-        /** @psalm-suppress ImpureMethodCall the interner only grows */
         $this->class_id = Interner::intern($fq_class_name);
     }
 

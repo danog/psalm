@@ -41,7 +41,6 @@ use Psalm\Type\Atomic\TTrue;
 use Psalm\Type\Union;
 
 use function array_merge;
-use function array_values;
 use function count;
 use function filter_var;
 use function in_array;
@@ -174,7 +173,6 @@ final class ArrayAnalyzer
                     $bad_types[] = $atomic_key_type;
 
                     $good_types[] = new TArrayKey;
-
 
                     continue;
                 }
@@ -545,12 +543,7 @@ final class ArrayAnalyzer
 
             if ($var_id) {
                 if (isset($context->vars_in_scope[$var_id])) {
-                    $context->removeDescendents(
-                        $var_id,
-                        $context->vars_in_scope[$var_id],
-                        null,
-                        $statements_analyzer,
-                    );
+                    $context->removeDescendents($var_id);
                 }
 
                 $context->vars_in_scope[$var_id] = Type::getMixed();
@@ -723,11 +716,11 @@ final class ArrayAnalyzer
 
             $array_creation_info->item_key_atomic_types = array_merge(
                 $array_creation_info->item_key_atomic_types,
-                array_values($iterable_type->type_params[0]->getAtomicTypes()),
+                $iterable_type->type_params[0]->getAtomicTypes(),
             );
             $array_creation_info->item_value_atomic_types = array_merge(
                 $array_creation_info->item_value_atomic_types,
-                array_values($iterable_type->type_params[1]->getAtomicTypes()),
+                $iterable_type->type_params[1]->getAtomicTypes(),
             );
         }
 

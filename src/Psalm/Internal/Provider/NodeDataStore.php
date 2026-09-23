@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Psalm\Internal\Provider;
 
 use PhpParser\Node;
-use Psalm\Storage\Possibilities;
 use Psalm\Storage\Assertion;
+use Psalm\Storage\Possibilities;
 use Psalm\Type\Union;
 
 /**
@@ -29,6 +29,12 @@ final class NodeDataStore
     /** @var array<int, array<int, Possibilities>> */
     public array $node_if_false_assertions = [];
 
-    /** @var array<int, Node> */
+    /**
+     * The nodes whose data is stored, held so that their object ids (the keys above) cannot be reused by
+     * other nodes while the data lives.
+     *
+     * @var array<int, Node>
+     * @psalm-suppress PossiblyUnusedProperty
+     */
     public array $nodes = [];
 }

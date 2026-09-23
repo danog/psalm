@@ -15,17 +15,17 @@ use Psalm\Context;
 use Psalm\Exception\UnpopulatedClasslikeException;
 use Psalm\FileManipulation;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
-use Psalm\Internal\Sym;
-use Psalm\Internal\Interner;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\FileManipulation\ClassDocblockManipulator;
 use Psalm\Internal\FileManipulation\CodeMigration;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\PhpVisitor\TraitFinder;
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
 use Psalm\Internal\Provider\FileReferenceProvider;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\TypeExpander;
 use Psalm\Issue\ClassMustBeFinal;
 use Psalm\Issue\MissingImmutableAnnotation;
@@ -554,24 +554,6 @@ final class ClassLikes
     }
 
     /** @psalm-external-mutation-free */
-    public function traitExistsById(int $name, ?CodeLocation $location = null, ?Context $context = null): bool
-    {
-        $storage = $this->classlike_storage_provider->findById($name);
-        if ($storage === null) {
-            return $this->traitExists(Interner::lookup($name), $location, $context);
-        }
-        if (!$storage->is_trait) {
-            return false;
-        }
-        $this->file_reference_provider->code_use_graph->addReference(
-            CodeUseGraph::classNodeFor($storage),
-            $context,
-            $location,
-        );
-        return true;
-    }
-
-    /** @psalm-external-mutation-free */
     public function classOrInterfaceExistsById(
         int $name,
         ?CodeLocation $location = null,
@@ -596,7 +578,6 @@ final class ClassLikes
      * Whether the class named by $name has $possible_parent among its ancestors, by interned names.
      *
      * @throws InvalidArgumentException when the class does not exist
-     *
      * @psalm-external-mutation-free
      */
     public function classExtendsById(int $name, int $possible_parent, bool $from_api = false): bool
@@ -747,7 +728,7 @@ final class ClassLikes
     /**
      * Check whether a class implements an interface
      *
-     * @psalm-external-mutation-free
+     * @psalm-mutation-free
      */
     public function classImplements(string $fq_class_name, string $interface): bool
     {
@@ -786,6 +767,7 @@ final class ClassLikes
 
         // another spelling of an implemented interface: its storage's id is in the id set (pzoom's single
         // lookup; Psalm walked every implemented interface unaliasing each)
+        /** @psalm-suppress ImpureMethodCall the interner only grows */
         $interface_storage = $this->classlike_storage_provider->findById(Interner::intern($interface));
         if ($interface_storage !== null && isset($class_storage->class_implements_ids[$interface_storage->id])) {
             return true;
@@ -1004,6 +986,7 @@ final class ClassLikes
         return strtolower($this->getUnAliasedName($name));
     }
 
+    /** @psalm-mutation-free */
     public function getUnAliasedName(string $alias_name): string
     {
         if (isset($this->existing_by_spelling[$alias_name])) {
@@ -2357,7 +2340,6 @@ final class ClassLikes
             }
         }
     }
-
 
     private function checkMethodParamReferences(ClassLikeStorage $classlike_storage): void
     {

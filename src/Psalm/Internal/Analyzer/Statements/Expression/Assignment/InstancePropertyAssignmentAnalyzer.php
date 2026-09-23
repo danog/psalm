@@ -1564,11 +1564,7 @@ final class InstancePropertyAssignmentAnalyzer
         Expr $assignment_value,
     ): void {
         if ($var_id) {
-            $context->removeVarFromConflictingClauses(
-                $var_id,
-                Type::getMixed(),
-                $statements_analyzer,
-            );
+            $context->removeVarFromConflictingClauses($var_id);
 
             $context->removePossibleReference($var_id);
         }

@@ -6,8 +6,8 @@ namespace Psalm\Internal\Provider;
 
 use InvalidArgumentException;
 use LogicException;
-use Psalm\Issue\DuplicateClass;
 use Psalm\Internal\Interner;
+use Psalm\Issue\DuplicateClass;
 use Psalm\IssueBuffer;
 use Psalm\Storage\ClassLikeStorage;
 
@@ -130,7 +130,6 @@ final class ClassLikeStorageProvider
 
     /**
      * @psalm-external-mutation-free
-     * @psalm-suppress ImpureStaticProperty Used only for caching
      */
     private static function resolveId(int $id): ?ClassLikeStorage
     {
@@ -193,6 +192,7 @@ final class ClassLikeStorageProvider
         $cached_value = $this->cache->getLatestFromCache($fq_classlike_name_lc, $file_path, $file_contents);
 
         self::$storage[$fq_classlike_name_lc] = $cached_value;
+        Interner::intern($cached_value->name);
         self::$by_id[$cached_value->id] = $cached_value;
         self::$by_spelling = [];
         self::$canonical = [];

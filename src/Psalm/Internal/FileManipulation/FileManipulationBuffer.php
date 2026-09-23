@@ -31,7 +31,7 @@ final class FileManipulationBuffer
     private static array $code_migrations = [];
 
     /**
-     * @param array<int, FileManipulation> $file_manipulations
+     * @param array<array-key, FileManipulation> $file_manipulations
      * @psalm-external-mutation-free
      */
     public static function add(string $file_path, array $file_manipulations): void

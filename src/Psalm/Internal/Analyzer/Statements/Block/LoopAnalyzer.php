@@ -639,6 +639,7 @@ final class LoopAnalyzer
 
     /**
      * @param array<string, Union> $init_var_types
+     * @psalm-mutation-free
      */
     private static function doesEnterLoop(
         StatementsAnalyzer $statements_analyzer,
@@ -801,12 +802,7 @@ final class LoopAnalyzer
         }
 
         foreach ($always_assigned_before_loop_body_vars as $var_id) {
-            $loop_context->clauses = Context::filterClauses(
-                $var_id,
-                $loop_context->clauses,
-                null,
-                $statements_analyzer,
-            );
+            $loop_context->clauses = Context::filterClauses($var_id, $loop_context->clauses);
         }
 
         return $always_assigned_before_loop_body_vars;

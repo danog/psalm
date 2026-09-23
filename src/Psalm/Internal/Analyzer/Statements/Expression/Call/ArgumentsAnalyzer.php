@@ -1297,11 +1297,7 @@ final class ArgumentsAnalyzer
                 ExpressionAnalyzer::analyze($statements_analyzer, $arg->value, $context);
                 $context->inside_call = $was_inside_call;
 
-                $context->removeVarFromConflictingClauses(
-                    $var_id,
-                    $context->vars_in_scope[$var_id],
-                    $statements_analyzer,
-                );
+                $context->removeVarFromConflictingClauses($var_id);
 
                 $t = $context->vars_in_scope[$var_id]->getBuilder();
                 foreach ($t->getAtomicTypes() as $type) {
@@ -1720,7 +1716,6 @@ final class ArgumentsAnalyzer
                             } else {
                                 return;
                             }
-
 
                             if (min($packed_var_definite_args_tmp) === max($packed_var_definite_args_tmp)) {
                                 //we have a stable number of params

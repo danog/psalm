@@ -7,10 +7,10 @@ namespace Psalm\Storage;
 use Override;
 use Psalm\Aliases;
 use Psalm\CodeLocation;
-use Psalm\Internal\Interner;
 use Psalm\Codebase;
 use Psalm\Config;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\TypeAlias\ClassTypeAlias;
 use Psalm\Issue\CodeIssue;
@@ -320,7 +320,6 @@ final class ClassLikeStorage implements HasAttributesInterface
      */
     public ?array $template_type_extends_count = null;
 
-
     /**
      * @var array<string, int>|null
      */
@@ -447,7 +446,10 @@ final class ClassLikeStorage implements HasAttributesInterface
      */
     public array $all_properties = [];
 
-    /** @psalm-external-mutation-free */
+    /**
+     * @psalm-external-mutation-free
+     * @psalm-mutation-free
+     */
     public function __construct(public string $name)
     {
         $this->id = Interner::intern($name);

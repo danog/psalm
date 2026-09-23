@@ -140,7 +140,6 @@ final class Methods
             $calling_class_name = explode('::', $calling_method_id)[0];
         }
 
-
         $declaring_method_id = $class_storage->declaring_method_ids[$method_name] ?? null;
         if ($declaring_method_id === null && $with_pseudo) {
             $declaring_method_id = $class_storage->declaring_pseudo_method_ids[$method_name] ?? null;
@@ -928,6 +927,7 @@ final class Methods
     /**
      * @param lowercase-string $method_name
      * @return array{lowercase-string, lowercase-string, list<lowercase-string>}
+     * @psalm-mutation-free
      */
     private function referenceNodesFor(
         ClassLikeStorage $class_storage,
