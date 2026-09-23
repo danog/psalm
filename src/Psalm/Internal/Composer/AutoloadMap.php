@@ -9,6 +9,7 @@ use PhpToken;
 use function array_merge;
 use function array_pop;
 use function count;
+use function dirname;
 use function end;
 use function explode;
 use function file_exists;
@@ -20,6 +21,7 @@ use function is_string;
 use function json_decode;
 use function ltrim;
 use function preg_match;
+use function preg_match_all;
 use function realpath;
 use function rtrim;
 use function scandir;
@@ -27,12 +29,14 @@ use function str_contains;
 use function str_ends_with;
 use function str_replace;
 use function str_starts_with;
+use function stripslashes;
 use function strrpos;
 use function strtr;
 use function substr;
 use function trim;
 
 use const DIRECTORY_SEPARATOR;
+use const PREG_SET_ORDER;
 use const T_CLASS;
 use const T_DOUBLE_COLON;
 use const T_ENUM;
@@ -224,6 +228,14 @@ final class AutoloadMap
             $seeded_classes['Composer\\InstalledVersions'] = $installed_versions;
         }
 
+        // Composer dumps the classmap it built from the same paths: read that table instead of tokenizing
+        // every file under them again (the fallback when a project has no dumped autoloader)
+        $dumped = self::readDumpedClassMap($composer_dir . DIRECTORY_SEPARATOR . 'autoload_classmap.php', $vendor_path);
+        if ($dumped !== null) {
+            $seeded_classes += $dumped;
+            $classmap_paths = [];
+        }
+
         return new self(
             $psr4,
             $psr0,
@@ -380,6 +392,35 @@ final class AutoloadMap
         }
 
         return $dirs;
+    }
+
+    /**
+     * Composer's generated `vendor/composer/autoload_classmap.php`: `'Class' => $vendorDir . '/path'` (or
+     * `$baseDir . ...`) lines. Null when the file is missing or not in that shape.
+     *
+     * @return array<string, string>|null
+     */
+    private static function readDumpedClassMap(string $file, string $vendor_path): ?array
+    {
+        if (!is_file($file) || ($contents = file_get_contents($file)) === false) {
+            return null;
+        }
+        if (!preg_match_all(
+            "/^\\s*'((?:[^'\\\\]|\\\\.)*)' => \\\$(vendorDir|baseDir) \\. '((?:[^'\\\\]|\\\\.)*)',\\s*\$/m",
+            $contents,
+            $matches,
+            PREG_SET_ORDER,
+        )) {
+            return null;
+        }
+        $base_dir = dirname($vendor_path);
+        $classmap = [];
+        foreach ($matches as [, $class, $root, $path]) {
+            $classmap[stripslashes($class)] = self::normalize(
+                ($root === 'vendorDir' ? $vendor_path : $base_dir) . str_replace('/', DIRECTORY_SEPARATOR, stripslashes($path)),
+            );
+        }
+        return $classmap;
     }
 
     /**

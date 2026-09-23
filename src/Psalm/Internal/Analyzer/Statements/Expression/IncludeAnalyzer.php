@@ -169,20 +169,19 @@ final class IncludeAnalyzer
                 }
                 if ($statements_analyzer->hasParentFilePath($path_to_file)
                     || !$codebase->file_storage_provider->has($path_to_file)
+                    // a file of declarations only (classes, functions, further includes) adds nothing to the
+                    // including context, and when it is analyzed on its own (its issues are reported from
+                    // that pass) analyzing it here too costs one more full pass per including root file.
+                    // (pzoom never analyzes an included file in the including context at all.)
+                    || (!$codebase->file_storage_provider->get($path_to_file)->has_extra_statements
+                        && $codebase->analyzer->canReportIssues($path_to_file))
                     || (
                         $statements_analyzer->hasAlreadyRequiredFilePath($path_to_file)
-                        && (
-                            !$codebase->file_storage_provider->get($path_to_file)->has_extra_statements
-                            ||
-                            (
-                                $config->respect_include_once
-                                &&
-                                in_array($stmt->type, [
-                                    PhpParser\Node\Expr\Include_::TYPE_INCLUDE_ONCE,
-                                    PhpParser\Node\Expr\Include_::TYPE_REQUIRE_ONCE,
-                                ])
-                            )
-                        )
+                        && $config->respect_include_once
+                        && in_array($stmt->type, [
+                            PhpParser\Node\Expr\Include_::TYPE_INCLUDE_ONCE,
+                            PhpParser\Node\Expr\Include_::TYPE_REQUIRE_ONCE,
+                        ])
                     )
                 ) {
                     return true;
