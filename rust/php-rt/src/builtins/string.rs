@@ -908,15 +908,26 @@ pub fn sha1(s: &Str) -> Str {
 pub fn crc32(s: &Str) -> i64 {
     crate::builtins::hash::crc32(s.as_bytes()) as i64
 }
-pub fn hash(algo: &Str, data: &Str) -> Result<Str, RtError> {
-    match algo.as_bytes() {
-        b"md5" => Ok(md5(data)),
-        b"sha1" => Ok(sha1(data)),
-        b"crc32b" => Ok(Str::from_string(format!("{:08x}", crate::builtins::hash::crc32(data.as_bytes())))),
-        b"sha256" => Ok(Str::from_string(crate::builtins::hash::sha256_hex(data.as_bytes()))),
-        b"xxh128" | b"xxh3" | b"xxh64" | b"xxh32" | b"murmur3a" => Ok(Str::from_string(format!("{:016x}", crate::builtins::hash::fnv64(data.as_bytes())))),
-        _ => Err(RtError::value_error(crate::sfmt!("hash(): Argument #1 ($algo) must be a valid hashing algorithm, got {}", algo))),
+pub fn hash(algo: &Str, data: &Str, binary: bool) -> Result<Str, RtError> {
+    let hex = match algo.as_bytes() {
+        b"md5" => md5(data),
+        b"sha1" => sha1(data),
+        b"crc32b" => Str::from_string(format!("{:08x}", crate::builtins::hash::crc32(data.as_bytes()))),
+        b"sha256" => Str::from_string(crate::builtins::hash::sha256_hex(data.as_bytes())),
+        b"xxh3" => Str::from_string(format!("{:016x}", crate::builtins::hash::xxh3_64(data.as_bytes()))),
+        // stand-ins (not the real digests): nothing in the program relies on their values
+        b"xxh128" | b"xxh64" | b"xxh32" | b"murmur3a" => Str::from_string(format!("{:016x}", crate::builtins::hash::fnv64(data.as_bytes()))),
+        _ => return Err(RtError::value_error(crate::sfmt!("hash(): Argument #1 ($algo) must be a valid hashing algorithm, got {}", algo))),
+    };
+    if binary {
+        return Ok(hex2bin(&hex).expect("hash: hex digest"));
     }
+    Ok(hex)
+}
+
+/// `__rt_str_id`: Psalm's `Interner::hash` of a string, computed natively (see `hash::str_id`).
+pub fn rt_str_id(s: &Str) -> i64 {
+    crate::builtins::hash::str_id(s.as_bytes())
 }
 pub fn urlencode(s: &Str) -> Str {
     let mut out = Vec::new();

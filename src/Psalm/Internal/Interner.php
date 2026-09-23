@@ -6,6 +6,7 @@ namespace Psalm\Internal;
 
 use UnexpectedValueException;
 
+use function defined;
 use function hash;
 use function unpack;
 
@@ -71,6 +72,10 @@ final class Interner
      */
     public static function hash(string $string): int
     {
+        if (\defined('PSALM_COMPILED')) {
+            // the compiled program hashes natively (php-rt's __rt_str_id: the same value as below)
+            return __rt_str_id($string);
+        }
         /** @var array{1: int} $unpacked */
         $unpacked = unpack('q', hash('xxh3', $string, true));
         return $unpacked[1] & PHP_INT_MAX;

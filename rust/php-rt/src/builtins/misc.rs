@@ -610,7 +610,7 @@ pub fn hash_final(ctx: &Mixed, _binary: bool) -> Str {
     if let Mixed::Obj(o) = ctx {
         if let Some(h) = o.as_any().downcast_ref::<HashContext>() {
             let data = Str::from_vec(h.data.borrow().clone());
-            return crate::builtins::string::hash(&h.algo, &data).unwrap_or_default();
+            return crate::builtins::string::hash(&h.algo, &data, false).unwrap_or_default();
         }
     }
     Str::empty()

@@ -21,6 +21,7 @@
 >
     <stubs>
         <file name="stubs/phpparser.phpstub"/>
+        <file name="../psalm-transpiler/src/Psalm/Internal/Transpiler/runtime-stubs/rt.phpstub"/>
     </stubs>
     <projectFiles>
         <directory name="src"/>
