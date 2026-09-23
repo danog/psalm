@@ -126,9 +126,15 @@ pub fn sleep(s: i64) -> i64 {
 /// The extensions the runtime implements, spelled as PHP's own module entries spell them
 /// (`ext/reflection/php_reflection.c` registers `Reflection`, `ext/spl/php_spl.c` `SPL`, ...).
 /// One table answers both `extension_loaded()` and `get_loaded_extensions()`, so the two agree.
+/// The extensions a stock PHP build of the reference machine loads (`php -m` there, PECL modules left out):
+/// Psalm loads the stub of an extension neither required by composer.json nor configured when the runtime has
+/// it, so a class such as `PDOException` or `Phar` is known to the compiled analyzer the way it is to PHP.
 pub const LOADED_EXTENSIONS: &[&str] = &[
     "Core", "date", "standard", "json", "tokenizer", "mbstring", "ctype", "pcre", "SPL", "SimpleXML", "dom",
-    "libxml", "filter", "hash", "random", "Reflection",
+    "libxml", "filter", "hash", "random", "Reflection", "PDO", "pdo_mysql", "Phar", "xml", "xmlreader", "xmlwriter",
+    "xsl", "zlib", "curl", "openssl", "posix", "pcntl", "iconv", "session", "sodium", "fileinfo", "gd", "bcmath",
+    "calendar", "exif", "ftp", "gettext", "gmp", "intl", "mysqli", "mysqlnd", "readline", "shmop", "soap", "sockets",
+    "sysvmsg", "sysvsem", "sysvshm", "zip", "FFI",
 ];
 
 /// PHP matches the name case-insensitively (`zend_hash_str_find` over the lowercased name).

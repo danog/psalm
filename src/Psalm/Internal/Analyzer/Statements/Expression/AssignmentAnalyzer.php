@@ -270,7 +270,7 @@ final class AssignmentAnalyzer
                 && $temp_assign_value_type
                 && $extended_var_id
                 && (!$not_ignored_docblock_var_ids || isset($not_ignored_docblock_var_ids[$extended_var_id]))
-                && $temp_assign_value_type->getId() === $comment_type->getId()
+                && $temp_assign_value_type->hasSameAtomics($comment_type)
                 && !$comment_type->isMixed(true)
             ) {
                 if ($codebase->alter_code
@@ -779,7 +779,7 @@ final class AssignmentAnalyzer
                 && $type_location
                 && (!$not_ignored_docblock_var_ids || isset($not_ignored_docblock_var_ids[$var_comment->var_id]))
                 && isset($context->vars_in_scope[$var_comment->var_id])
-                && $context->vars_in_scope[$var_comment->var_id]->getId() === $var_comment_type->getId()
+                && $context->vars_in_scope[$var_comment->var_id]->hasSameAtomics($var_comment_type)
                 && !$var_comment_type->isMixed()
             ) {
                 if ($codebase->alter_code

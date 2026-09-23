@@ -54,7 +54,7 @@ final class NegatedAssertionReconciler extends Reconciler
         StatementsAnalyzer $statements_analyzer,
         Assertion $assertion,
         Union $existing_var_type,
-        string $old_var_type_string,
+        Union $old_var_type,
         ?string $key,
         bool $negated,
         ?CodeLocation $code_location,
@@ -87,7 +87,7 @@ final class NegatedAssertionReconciler extends Reconciler
                 $assertion,
                 $assertion_type,
                 $existing_var_type,
-                $old_var_type_string,
+                $old_var_type,
                 $key,
                 $negated,
                 $code_location,
@@ -298,7 +298,7 @@ final class NegatedAssertionReconciler extends Reconciler
             ) {
                 self::triggerIssueForImpossible(
                     $existing_var_type,
-                    $old_var_type_string,
+                    $old_var_type,
                     $key,
                     $assertion,
                     true,
@@ -316,7 +316,7 @@ final class NegatedAssertionReconciler extends Reconciler
                 if ($key && $code_location && !$is_equality) {
                     self::triggerIssueForImpossible(
                         $existing_var_type,
-                        $old_var_type_string,
+                        $old_var_type,
                         $key,
                         $assertion,
                         false,
@@ -344,7 +344,7 @@ final class NegatedAssertionReconciler extends Reconciler
         Assertion $assertion,
         Atomic $assertion_type,
         Union $existing_var_type,
-        string $old_var_type_string,
+        Union $old_var_type,
         ?string $key,
         bool $negated,
         ?CodeLocation $code_location,
@@ -482,7 +482,7 @@ final class NegatedAssertionReconciler extends Reconciler
             ) {
                 self::triggerIssueForImpossible(
                     $existing_var_type,
-                    $old_var_type_string,
+                    $old_var_type,
                     $key,
                     $assertion,
                     $redundant,
@@ -502,7 +502,7 @@ final class NegatedAssertionReconciler extends Reconciler
                 )) {
                     self::triggerIssueForImpossible(
                         $existing_var_type,
-                        $old_var_type_string,
+                        $old_var_type,
                         $key,
                         $assertion,
                         true,

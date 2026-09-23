@@ -1747,7 +1747,7 @@ final class ArgumentAnalyzer
             $input_type = $input_type->freeze();
         }
 
-        if ($input_type->getId() === $param_type->getId()) {
+        if ($input_type->hasSameAtomics($param_type)) {
             if ($input_type->from_docblock) {
                 $input_type = $input_type->setFromDocblock(false);
             }
