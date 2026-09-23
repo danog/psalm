@@ -467,6 +467,12 @@ final class TestEmitter
         $w->open('php_rt::testing::case(' . $dataset . ', || {');
         $mm = fn(string $n) => Names::method($n);
         $w->line('__t.' . $mm('runSetUp') . '();');
+        // a borrowed parameter (owned/borrowed axis 5) takes a reference to the row value's temporary
+        foreach ($args as $i => $a) {
+            if (isset($m->borrow_params[$i]) && !str_starts_with($a, '&')) {
+                $args[$i] = '&(' . $a . ')';
+            }
+        }
         $w->line('let __outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| __t.' . $m->rustName() . '(' . implode(', ', $args) . ')));');
         $w->line('let __td = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| __t.' . $mm('runTearDown') . '()));');
         $w->open('match __outcome {');
