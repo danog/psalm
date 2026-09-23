@@ -1907,7 +1907,9 @@ trait ExprTrait
             }
             if ($bt->kind === RustType::MAP) {
                 [$kt, $vt] = $bt->params;
-                $code = '{ let __k = ' . $this->keyExpr($dim, $kt) . '; ' . $base->code . '.and_then(|__b| __b.get(&__k).cloned()) }';
+                // a variable key stays usable after the read (`$m[$k] ??= ...` writes with it again)
+                $key = $this->keyExpr($dim, $kt) . ($dim instanceof Expr\Variable ? '.clone()' : '');
+                $code = '{ let __k = ' . $key . '; ' . $base->code . '.and_then(|__b| __b.get(&__k).cloned()) }';
                 return $this->flattenOption($code, $vt);
             }
             if ($bt->kind === RustType::SHAPE) {

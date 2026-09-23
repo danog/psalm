@@ -680,6 +680,51 @@ function case_kind_dispatch(): string
         . KindDispatch::handle(new KindC());
 }
 
+final class KeyIds
+{
+    /** @var array<string, int> */
+    private static array $ids = [];
+
+    public static function keyId(string $key): int
+    {
+        return self::$ids[$key] ??= count(self::$ids);
+    }
+}
+
+/** @return list<string> */
+function names_a(): array
+{
+    $out = [];
+    $out[] = 'a';
+    return $out;
+}
+
+/** @return list<string> */
+function names_of(bool $with_b): array
+{
+    $a = names_a();
+    $b = $with_b ? names_a() : null;
+    if ($b !== null) {
+        $b[0] = 'b';
+    }
+    if ($a === []) {
+        return $b ?? [];
+    }
+    if ($b === null) {
+        return $a;
+    }
+    return array_merge($a, $b);
+}
+
+function case_coalesce_assign_var_key(): string
+{
+    $k = 'x';
+    $first = KeyIds::keyId($k);
+    $again = KeyIds::keyId($k);
+    $other = KeyIds::keyId('y');
+    return $first . $again . $other . ':' . implode(',', names_of(true)) . ':' . implode(',', names_of(false));
+}
+
 function check(string $name, string $actual, string $expected): string
 {
     return ($actual === $expected ? 'PASS ' : 'FAIL ') . $name
@@ -1597,7 +1642,8 @@ function case_node_parts(): string
 
 function run_all(): string
 {
-    return check('id_keyed_map', case_id_keyed_map(), 'yn:foo,bar:Bar:foo=Foo:bar=Bar:B2A2B2:hr')
+    return check('coalesce_assign_var_key', case_coalesce_assign_var_key(), '001:a,b:a')
+        . check('id_keyed_map', case_id_keyed_map(), 'yn:foo,bar:Bar:foo=Foo:bar=Bar:B2A2B2:hr')
         . check('kind_dispatch', case_kind_dispatch(), 'AaBbAa-cTiny\\KindC')
         . check('node_parts', case_node_parts(), 'PE:PE')
         . check('generic_empty_return', case_generic_empty_return(), '0:2')

@@ -380,13 +380,15 @@ trait LValueTrait
                 );
             }
             $key = fn() => $this->keyExpr($dim, $kt);
+            // a variable key is cloned into the map: the statement may read it again (`$m[$k] ??= ...` yields the element)
+            $owned_key = fn() => $key() . ($dim instanceof Expr\Variable && $kt->kind !== RustType::INT ? '.clone()' : '');
             $mut = !$has_mut ? null : ($vt->hasDefault()
                 ? fn() => '(*' . $parent->mut() . '.entry_or_default(' . $key() . '))'
                 : fn() => '(*' . $parent->mut() . '.idx_mut(&' . $key() . '))');
             return new Place(
                 $vt,
                 fn() => $parent->read() . '.idx(' . Names::refOf($key()) . ').clone()',
-                fn(string $v) => $this->hoisted([$key(), $v], fn(string $k, string $v) => $parent->modify(fn(string $p) => $p . '.insert(' . $k . ', ' . $v . ');')),
+                fn(string $v) => $this->hoisted([$owned_key(), $v], fn(string $k, string $v) => $parent->modify(fn(string $p) => $p . '.insert(' . $k . ', ' . $v . ');')),
                 $mut,
                 $wrap,
             );
