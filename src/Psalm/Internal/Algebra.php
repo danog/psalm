@@ -10,6 +10,7 @@ use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TKeyedArray;
 use UnexpectedValueException;
 
+use function array_diff_key;
 use function array_filter;
 use function array_intersect_key;
 use function array_key_first;
@@ -67,12 +68,15 @@ final class Algebra
     }
 
     /**
-     * This is a very simple simplification heuristic
-     * for CNF formulae.
+     * Simplifies a CNF formula the way pzoom's `simplify_cnf` does:
      *
-     * It simplifies formulae:
-     *     ($a) && ($a || $b) => $a
-     *     (!$a) && (!$b) && ($a || $b || $c) => $c
+     *  - duplicates (by hash) are dropped;
+     *  - unit propagation runs to a fixpoint (at most ten rounds): a unit clause `A` removes `!A` from
+     *    every other clause, and a clause differing from another in exactly one negated key loses that
+     *    key -- and every clause a round rewrites takes part in the next round, so `$a && (!$a || $b)
+     *    && (!$b || $c)` concludes `$c` (Psalm's single pass stopped at `$b`);
+     *  - a clause containing another is dropped;
+     *  - `(A || X) && (!A || Y) && (X || Y)` loses `(X || Y)`.
      *
      * @param list<Clause>  $clauses
      * @return list<Clause>
@@ -111,128 +115,44 @@ final class Algebra
             }
         }
 
-        $cloned_clauses = [];
-
         // avoid strict duplicates
+        $working = [];
         foreach ($clauses as $clause) {
-            $cloned_clauses[$clause->hash] = $clause;
+            $working[$clause->hash] = $clause;
         }
 
-        // each clause's variables, listed once instead of once per pair (a clause's hash identifies them)
-        $var_lists = [];
+        [$removed, $added] = self::unitPropagationRound($working);
 
-        // remove impossible types
-        foreach ($cloned_clauses as $clause_a_hash => $clause_a) {
-            if (!$clause_a->reconcilable || $clause_a->wedge) {
-                continue;
+        if ($removed !== [] || $added !== []) {
+            foreach ($removed as $hash => $_) {
+                unset($working[$hash]);
+            }
+            foreach ($added as $added_clause) {
+                $working[$added_clause->hash] = $added_clause;
             }
 
-            if (count($clause_a->possibilities) !== 1
-                || count($clause_a->possibilities[array_key_first($clause_a->possibilities)]) !== 1
-            ) {
-                $clause_a_keys = $var_lists[$clause_a->hash] ??= array_keys($clause_a->possibilities);
-                $clause_a_count = count($clause_a_keys);
-
-                foreach ($cloned_clauses as $clause_b) {
-                    if ($clause_a === $clause_b
-                        || !$clause_b->reconcilable
-                        || $clause_b->wedge
-                        || count($clause_b->possibilities) !== $clause_a_count
-                    ) {
-                        continue;
-                    }
-
-                    if ($clause_a_keys === ($var_lists[$clause_b->hash] ??= array_keys($clause_b->possibilities))) {
-                        $opposing_keys = [];
-
-                        foreach ($clause_a->possibilities as $key => $a_possibilities) {
-                            $b_possibilities = $clause_b->possibilities[$key];
-
-                            if (array_keys($clause_a->possibilities[$key])
-                                === array_keys($clause_b->possibilities[$key])
-                            ) {
-                                continue;
-                            }
-
-                            if (count($a_possibilities) === 1 && count($b_possibilities) === 1) {
-                                if (reset($a_possibilities)->isNegationOf(reset($b_possibilities))) {
-                                    $opposing_keys[] = $key;
-                                    continue;
-                                }
-                            }
-
-                            continue 2;
-                        }
-
-                        if (count($opposing_keys) === 1) {
-                            unset($cloned_clauses[$clause_a_hash]);
-
-                            $clause_a = $clause_a->removePossibilities($opposing_keys[0]);
-
-                            if (!$clause_a) {
-                                continue 2;
-                            }
-
-                            $cloned_clauses[$clause_a->hash] = $clause_a;
-                        }
-                    }
+            // iterate to a fixpoint (bounded)
+            for ($round = 0; $round < 9; $round++) {
+                [$removed, $added] = self::unitPropagationRound($working);
+                if ($removed === [] && $added === []) {
+                    break;
                 }
-
-                continue;
-            }
-
-            $clause_var = array_key_first($clause_a->possibilities);
-            $only_types = $clause_a->possibilities[$clause_var];
-            $only_type = $only_types[array_key_first($only_types)];
-            $negated_clause_type_hash = $only_type->getNegation()->getHash();
-
-            foreach ($cloned_clauses as $clause_b_hash => $clause_b) {
-                if ($clause_a === $clause_b || !$clause_b->reconcilable || $clause_b->wedge) {
-                    continue;
+                foreach ($removed as $hash => $_) {
+                    unset($working[$hash]);
                 }
-
-                if (isset($clause_b->possibilities[$clause_var])) {
-                    $unmatched = [];
-                    $matched = [];
-
-                    foreach ($clause_b->possibilities[$clause_var] as $k => $possible_type) {
-                        if ($k === $negated_clause_type_hash) {
-                            $matched[] = $possible_type;
-                        } else {
-                            $unmatched[$k] = $possible_type;
-                        }
-                    }
-
-                    if ($matched) {
-                        $clause_var_possibilities = $unmatched;
-
-                        unset($cloned_clauses[$clause_b_hash]);
-
-                        if (!$clause_var_possibilities) {
-                            $updated_clause = $clause_b->removePossibilities($clause_var);
-
-                            if ($updated_clause) {
-                                $cloned_clauses[$updated_clause->hash] = $updated_clause;
-                            }
-                        } else {
-                            $updated_clause = $clause_b->addPossibilities(
-                                $clause_var,
-                                $clause_var_possibilities,
-                            );
-
-                            $cloned_clauses[$updated_clause->hash] = $updated_clause;
-                        }
-                    }
+                foreach ($added as $added_clause) {
+                    $working[$added_clause->hash] = $added_clause;
                 }
             }
         }
 
+        // remove redundant clauses (those containing another)
         $simplified_clauses = [];
 
-        foreach ($cloned_clauses as $clause_a) {
+        foreach ($working as $clause_a) {
             $is_redundant = false;
 
-            foreach ($cloned_clauses as $clause_b) {
+            foreach ($working as $clause_b) {
                 if ($clause_a === $clause_b
                     || !$clause_b->reconcilable
                     || $clause_b->wedge
@@ -326,6 +246,119 @@ final class Algebra
         }
 
         return array_values($simplified_clauses);
+    }
+
+    /**
+     * One unit-propagation round over a set of distinct clauses (pzoom's `unit_propagation_round`): the
+     * hashes of the clauses to drop and the rewritten clauses to add. The caller applies both and runs
+     * another round until nothing changes.
+     *
+     * @param array<int, Clause> $clauses by hash
+     * @return array{array<int, true>, list<Clause>}
+     * @psalm-pure
+     */
+    private static function unitPropagationRound(array $clauses): array
+    {
+        $removed = [];
+        $added = [];
+
+        foreach ($clauses as $clause_a) {
+            if (!$clause_a->reconcilable || $clause_a->wedge) {
+                continue;
+            }
+
+            $is_clause_a_simple = count($clause_a->possibilities) === 1
+                && count($clause_a->possibilities[array_key_first($clause_a->possibilities)]) === 1;
+
+            if (!$is_clause_a_simple) {
+                $clause_a_keys = array_keys($clause_a->possibilities);
+                $clause_a_count = count($clause_a_keys);
+
+                foreach ($clauses as $clause_b) {
+                    if ($clause_a === $clause_b
+                        || !$clause_b->reconcilable
+                        || $clause_b->wedge
+                        || count($clause_b->possibilities) !== $clause_a_count
+                    ) {
+                        continue;
+                    }
+
+                    // the same variables (both maps are sorted by variable)
+                    if ($clause_a_keys !== array_keys($clause_b->possibilities)) {
+                        continue;
+                    }
+
+                    $opposing_keys = [];
+
+                    foreach ($clause_a->possibilities as $key => $a_possibilities) {
+                        $b_possibilities = $clause_b->possibilities[$key];
+
+                        // the same assertions
+                        if (count($a_possibilities) === count($b_possibilities)
+                            && array_diff_key($a_possibilities, $b_possibilities) === []
+                        ) {
+                            continue;
+                        }
+
+                        if (count($a_possibilities) === 1
+                            && count($b_possibilities) === 1
+                            && reset($a_possibilities)->isNegationOf(reset($b_possibilities))
+                        ) {
+                            $opposing_keys[] = $key;
+                            continue;
+                        }
+
+                        continue 2;
+                    }
+
+                    if (count($opposing_keys) === 1) {
+                        $removed[$clause_a->hash] = true;
+
+                        $rewritten = $clause_a->removePossibilities($opposing_keys[0]);
+
+                        if ($rewritten === null) {
+                            continue 2;
+                        }
+
+                        $added[] = $rewritten;
+                    }
+                }
+
+                continue;
+            }
+
+            // a unit clause: its negation leaves every other clause
+            foreach ($clause_a->possibilities as $clause_var => $var_possibilities) {
+                $only_type = $var_possibilities[array_key_first($var_possibilities)];
+                $negated_hash = $only_type->getNegation()->getHash();
+
+                foreach ($clauses as $clause_b) {
+                    if ($clause_a === $clause_b || !$clause_b->reconcilable || $clause_b->wedge) {
+                        continue;
+                    }
+
+                    $matching_possibilities = $clause_b->possibilities[$clause_var] ?? null;
+
+                    if ($matching_possibilities !== null && isset($matching_possibilities[$negated_hash])) {
+                        unset($matching_possibilities[$negated_hash]);
+
+                        $removed[$clause_b->hash] = true;
+
+                        if ($matching_possibilities === []) {
+                            $updated_clause = $clause_b->removePossibilities($clause_var);
+
+                            if ($updated_clause !== null) {
+                                $added[] = $updated_clause;
+                            }
+                        } else {
+                            $added[] = $clause_b->addPossibilities($clause_var, $matching_possibilities);
+                        }
+                    }
+                }
+            }
+        }
+
+        return [$removed, $added];
     }
 
     /**
