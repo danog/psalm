@@ -86,7 +86,7 @@ use const PHP_EOL;
  *     file_storage:array<lowercase-string, FileStorage>,
  *     taint_data: ?TaintFlowGraph,
  *     global_constants: array<string, Union>,
- *     global_functions: array<lowercase-string, FunctionStorage>
+ *     global_functions: array<int, FunctionStorage>
  * }
  */
 
@@ -652,8 +652,9 @@ final class Scanner
 
             if ($this->codebase->register_stub_files) {
                 // what the reflector registers globally while traversing a stub file
-                foreach ($file_storage->functions as $function_id => $function_storage) {
-                    $this->codebase->functions->addGlobalFunction((string) $function_id, $function_storage);
+                foreach ($file_storage->functions as $function_iid => $function_storage) {
+                    $function_id = Interner::lookup($function_iid);
+                    $this->codebase->functions->addGlobalFunction($function_id, $function_storage);
                 }
                 foreach ($file_storage->constants as $const_name => $const_type) {
                     if (!defined($const_name) || !$const_type->isMixed()) {

@@ -46,7 +46,7 @@ use const PHP_VERSION_ID;
 final class Reflection
 {
     /**
-     * @var array<string, FunctionStorage>
+     * @var array<int, FunctionStorage> by interned lowercase function id
      */
     private static array $builtin_functions = [];
 
@@ -371,6 +371,7 @@ final class Reflection
      */
     public function registerFunction(string $function_id): ?bool
     {
+        $function_iid = Interner::intern($function_id);
         if (\defined('PSALM_COMPILED')) {
             // a compiled program cannot reflect the interpreter's own functions, so the call map is
             // the only description of them there is
@@ -381,11 +382,11 @@ final class Reflection
 
             $callmap_callable = null;
 
-            if (isset(self::$builtin_functions[$function_id])) {
+            if (isset(self::$builtin_functions[$function_iid])) {
                 return null;
             }
 
-            $storage = self::$builtin_functions[$function_id] = new FunctionStorage();
+            $storage = self::$builtin_functions[$function_iid] = new FunctionStorage();
 
             if (InternalCallMapHandler::inCallMap($function_id)) {
                 $callmap_callable = InternalCallMapHandler::getCallableFromCallMapById(
@@ -445,7 +446,8 @@ final class Reflection
      */
     private function registerFunctionFromCallMap(string $function_id): ?bool
     {
-        if (isset(self::$builtin_functions[$function_id])) {
+        $function_iid = Interner::intern($function_id);
+        if (isset(self::$builtin_functions[$function_iid])) {
             return null;
         }
 
@@ -464,7 +466,7 @@ final class Reflection
             return false;
         }
 
-        $storage = self::$builtin_functions[$function_id] = new FunctionStorage();
+        $storage = self::$builtin_functions[$function_iid] = new FunctionStorage();
         $storage->setParams($callmap_callable->params);
         $storage->return_type = $callmap_callable->return_type;
         $storage->allowed_mutations = Mutations::LEVEL_NONE;
@@ -584,7 +586,8 @@ final class Reflection
      */
     public function hasFunction(string $function_id): bool
     {
-        return isset(self::$builtin_functions[$function_id]);
+        $function_iid = Interner::intern($function_id);
+        return isset(self::$builtin_functions[$function_iid]);
     }
 
     /**
@@ -592,15 +595,16 @@ final class Reflection
      */
     public function getFunctionStorage(string $function_id): FunctionStorage
     {
-        if (isset(self::$builtin_functions[$function_id])) {
-            return self::$builtin_functions[$function_id];
+        $function_iid = Interner::intern($function_id);
+        if (isset(self::$builtin_functions[$function_iid])) {
+            return self::$builtin_functions[$function_iid];
         }
 
         throw new UnexpectedValueException('Expecting to have a function for ' . $function_id);
     }
 
     /**
-     * @return array<string, FunctionStorage>
+     * @return array<int, FunctionStorage>
      * @psalm-external-mutation-free
      */
     public function getFunctions(): array

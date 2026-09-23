@@ -38,11 +38,11 @@ final class FileStorage
     public array $required_interfaces = [];
 
     /**
-     * @var array<string, FunctionStorage>
+     * @var array<int, FunctionStorage> by interned lowercase function id
      */
     public array $functions = [];
 
-    /** @var array<string, string> */
+    /** @var array<int, string> by interned lowercase function id */
     public array $declaring_function_ids = [];
 
     /**

@@ -1020,11 +1020,12 @@ final class Codebase
      */
     public function getClosureStorage(string $file_path, string $closure_id): FunctionStorage
     {
+        $closure_iid = Interner::intern($closure_id);
         $file_storage = $this->file_storage_provider->get($file_path);
 
         // closures can be returned here
-        if (isset($file_storage->functions[$closure_id])) {
-            return $file_storage->functions[$closure_id];
+        if (isset($file_storage->functions[$closure_iid])) {
+            return $file_storage->functions[$closure_iid];
         }
 
         throw new UnexpectedValueException(
@@ -1481,10 +1482,11 @@ final class Codebase
         }
 
         $function_id = strtolower(substr($symbol, 0, -2));
+        $function_iid = Interner::intern($function_id);
         $file_storage = $this->file_storage_provider->get($file_path);
 
-        if (isset($file_storage->functions[$function_id])) {
-            return $file_storage->functions[$function_id];
+        if (isset($file_storage->functions[$function_iid])) {
+            return $file_storage->functions[$function_iid];
         }
 
         if (!$function_id) {
@@ -1610,12 +1612,13 @@ final class Codebase
         //Procedural Function
         if (strpos($reference->symbol, '()')) {
             $function_id = strtolower(substr($reference->symbol, 0, -2));
+            $function_iid = Interner::intern($function_id);
             $file_storage = $this->file_storage_provider->get(
                 $reference->file_path,
             );
 
-            if (isset($file_storage->functions[$function_id])) {
-                $function_storage = $file_storage->functions[$function_id];
+            if (isset($file_storage->functions[$function_iid])) {
+                $function_storage = $file_storage->functions[$function_iid];
 
                 return new PHPMarkdownContent(
                     $function_storage->getHoverMarkdown(),
@@ -1789,9 +1792,10 @@ final class Codebase
                 );
 
                 $function_id = strtolower(substr($reference->symbol, 0, -2));
+                $function_iid = Interner::intern($function_id);
 
-                if (isset($file_storage->functions[$function_id])) {
-                    return $file_storage->functions[$function_id]->location;
+                if (isset($file_storage->functions[$function_iid])) {
+                    return $file_storage->functions[$function_iid]->location;
                 }
 
                 if (!$function_id) {

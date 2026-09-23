@@ -871,10 +871,7 @@ final class Populator
                 continue;
             }
 
-            $storage->declaring_function_ids = [
-                ...$included_file_storage->declaring_function_ids,
-                ...$storage->declaring_function_ids,
-            ];
+            $storage->declaring_function_ids += $included_file_storage->declaring_function_ids;
 
             $storage->declaring_constants = [
                 ...$included_file_storage->declaring_constants,
@@ -918,16 +915,10 @@ final class Populator
                     continue;
                 }
 
-                $storage->declaring_function_ids = [
-                    ...$included_trait_file_storage->declaring_function_ids,
-                    ...$storage->declaring_function_ids,
-                ];
+                $storage->declaring_function_ids += $included_trait_file_storage->declaring_function_ids;
             }
 
-            $storage->declaring_function_ids = [
-                ...$included_file_storage->declaring_function_ids,
-                ...$storage->declaring_function_ids,
-            ];
+            $storage->declaring_function_ids += $included_file_storage->declaring_function_ids;
         }
 
         $storage->required_file_paths = $all_required_file_paths;

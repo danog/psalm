@@ -527,8 +527,9 @@ final class FunctionLikeNodeScanner
                 $this->codebase->functions->addGlobalFunction($function_id, $storage);
             }
 
-            $this->file_storage->functions[$function_id] = $storage;
-            $this->file_storage->declaring_function_ids[$function_id] = strtolower($this->file_path);
+            $function_iid = Interner::intern($function_id);
+            $this->file_storage->functions[$function_iid] = $storage;
+            $this->file_storage->declaring_function_ids[$function_iid] = strtolower($this->file_path);
         } elseif ($stmt instanceof PhpParser\Node\Stmt\ClassMethod
             && $classlike_storage
             && $storage instanceof MethodStorage
@@ -563,7 +564,7 @@ final class FunctionLikeNodeScanner
             && $function_id
             && $storage instanceof FunctionStorage
         ) {
-            $this->file_storage->functions[$function_id] = $storage;
+            $this->file_storage->functions[Interner::intern($function_id)] = $storage;
         }
 
         if ($classlike_storage && $method_name_lc === '__construct') {
@@ -1004,6 +1005,7 @@ final class FunctionLikeNodeScanner
             $cased_function_id =
                 ($this->aliases->namespace ? $this->aliases->namespace . '\\' : '') . $stmt->name->name;
             $function_id = strtolower($cased_function_id);
+            $function_iid = Interner::intern($function_id);
 
             $storage = $this->storage = new FunctionStorage();
 
@@ -1011,27 +1013,27 @@ final class FunctionLikeNodeScanner
                 || $this->codebase->register_autoload_files
                 || $this->codebase->all_functions_global
             ) {
-                if (isset($this->file_storage->functions[$function_id])
+                if (isset($this->file_storage->functions[$function_iid])
                     && ($this->codebase->register_stub_files
                         || !$this->codebase->functions->hasStubbedFunction($function_id))
                 ) {
                     $this->codebase->functions->addGlobalFunction(
                         $function_id,
-                        $this->file_storage->functions[$function_id],
+                        $this->file_storage->functions[$function_iid],
                     );
 
-                    $storage = $this->storage = $this->file_storage->functions[$function_id];
+                    $storage = $this->storage = $this->file_storage->functions[$function_iid];
 
                     return [$function_id, $storage, null, null, null, null, false, null, true];
                 }
             } else {
-                if (isset($this->file_storage->functions[$function_id])) {
-                    $duplicate_function_storage = $this->file_storage->functions[$function_id];
+                if (isset($this->file_storage->functions[$function_iid])) {
+                    $duplicate_function_storage = $this->file_storage->functions[$function_iid];
 
                     if ($duplicate_function_storage->location
                         && $duplicate_function_storage->location->getLineNumber() === $stmt->getLine()
                     ) {
-                        $storage = $this->storage = $this->file_storage->functions[$function_id];
+                        $storage = $this->storage = $this->file_storage->functions[$function_iid];
 
                         return [$function_id, $storage, null, null, null, null, false, null, true];
                     }
@@ -1050,7 +1052,7 @@ final class FunctionLikeNodeScanner
 
                     $duplicate_function_storage->has_visitor_issues = true;
 
-                    $storage = $this->storage = $this->file_storage->functions[$function_id];
+                    $storage = $this->storage = $this->file_storage->functions[$function_iid];
 
                     return [$function_id, $storage, null, null, null, null, false, null, true];
                 }
@@ -1218,7 +1220,7 @@ final class FunctionLikeNodeScanner
                 . ':' . $stmt->getLine()
                 . ':' . $stmt->getStartFilePos() . ':-:closure';
 
-            $storage = $this->storage = $this->file_storage->functions[$function_id] = new FunctionStorage();
+            $storage = $this->storage = $this->file_storage->functions[Interner::intern($function_id)] = new FunctionStorage();
 
             $storage->is_static = $stmt->static;
 
@@ -1234,7 +1236,7 @@ final class FunctionLikeNodeScanner
                 . ':' . $stmt->getLine()
                 . ':' . $stmt->getStartFilePos() . ':-:hook';
 
-            $storage = $this->storage = $this->file_storage->functions[$function_id] = new FunctionStorage();
+            $storage = $this->storage = $this->file_storage->functions[Interner::intern($function_id)] = new FunctionStorage();
         } else {
             throw new UnexpectedValueException("Unrecognized functionlike of type ".($stmt::class));
         }

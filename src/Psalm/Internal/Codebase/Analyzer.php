@@ -702,7 +702,8 @@ final class Analyzer
             }
         }
 
-        foreach ($file_storage->functions as $function_id => $_) {
+        foreach ($file_storage->functions as $function_iid => $_) {
+            $function_id = Interner::lookup($function_iid);
             $code_use_graph->removeReferencesFrom(CodeUseGraph::functionLikeNode(strtolower($function_id)));
         }
     }

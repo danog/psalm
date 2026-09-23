@@ -7,6 +7,7 @@ namespace Psalm\Tests\Internal\Scanner;
 use Psalm\Aliases;
 use Psalm\Codebase;
 use Psalm\Config;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\FakeFileProvider;
 use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\Scanner\FileScanner;
@@ -68,10 +69,10 @@ final class FileScannerTest extends TestCase
         $file_storage->deep_scan = true;
         $file_storage->aliases = new Aliases();
         $file_storage->functions = [
-            'some_function' => $function_storage_some_function,
+            Interner::intern('some_function') => $function_storage_some_function,
         ];
         $file_storage->declaring_function_ids = [
-            'some_function' => '/dir/file.php',
+            Interner::intern('some_function') => '/dir/file.php',
         ];
         $file_storage->referenced_classlikes = [
             'globalclass' => 'GlobalClass',

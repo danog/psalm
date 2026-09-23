@@ -325,7 +325,7 @@ final class CompiledProbeTest extends TestCase
         $strlen = CallableTypeComparator::getCallableFromAtomic($codebase, new TLiteralString('strlen'));
         $create = $codebase->methods->getStorage(new MethodIdentifier('DateTime', 'createfrominterface'));
         $param = $codebase->file_storage_provider->get($file_path)
-            ->functions['takescallableobject']->params[0]->type;
+            ->functions[Interner::intern('takescallableobject')]->params[0]->type;
         $class_string = $param?->getSingleAtomic();
         $as_type = $class_string instanceof TClassString ? $class_string->as_type : null;
 
