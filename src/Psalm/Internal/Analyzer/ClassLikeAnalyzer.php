@@ -12,6 +12,7 @@ use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Context;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TemplateResult;
@@ -297,23 +298,39 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
             return null;
         }
 
-        $class_exists = $codebase->classlikes->classExists(
-            $fq_class_name,
-            !$options->inferred ? $code_location : null,
-            $context,
-        );
+        // one storage lookup answers the three kinds (pzoom's single get_class); the string checks remain
+        // for a name without storage (registered but not scanned, special types, aliases)
+        $found_storage = $codebase->classlike_storage_provider->findById(Interner::intern($fq_class_name));
+        if ($found_storage !== null) {
+            $class_exists = !$found_storage->is_interface && !$found_storage->is_trait && !$found_storage->is_enum;
+            $interface_exists = $found_storage->is_interface;
+            $enum_exists = $found_storage->is_enum;
+            if ($class_exists || $interface_exists || $enum_exists) {
+                $codebase->classlikes->addClassLikeReference(
+                    $found_storage,
+                    !$options->inferred ? $code_location : null,
+                    $context,
+                );
+            }
+        } else {
+            $class_exists = $codebase->classlikes->classExists(
+                $fq_class_name,
+                !$options->inferred ? $code_location : null,
+                $context,
+            );
 
-        $interface_exists = $codebase->classlikes->interfaceExists(
-            $fq_class_name,
-            !$options->inferred ? $code_location : null,
-            $context,
-        );
+            $interface_exists = $codebase->classlikes->interfaceExists(
+                $fq_class_name,
+                !$options->inferred ? $code_location : null,
+                $context,
+            );
 
-        $enum_exists = $codebase->classlikes->enumExists(
-            $fq_class_name,
-            !$options->inferred ? $code_location : null,
-            $context,
-        );
+            $enum_exists = $codebase->classlikes->enumExists(
+                $fq_class_name,
+                !$options->inferred ? $code_location : null,
+                $context,
+            );
+        }
 
         // pzoom resolves names case-sensitively: a reference spelled differently from the declaration is
         // undefined, reported with the declared spelling (Psalm reported InvalidClass and carried on)

@@ -475,7 +475,24 @@ final class ClassLikes
     }
 
     /**
-     * Check whether a class/interface exists
+     * Records a reference to an existing class-like (what the existence checks do when they succeed).
+     *
+     * @psalm-external-mutation-free
+     */
+    public function addClassLikeReference(
+        ClassLikeStorage $storage,
+        ?CodeLocation $location = null,
+        ?Context $context = null,
+    ): void {
+        $this->file_reference_provider->code_use_graph->addReference(
+            CodeUseGraph::classNodeFor($storage),
+            $context,
+            $location,
+        );
+    }
+
+    /**
+     * The existence checks by interned name (pzoom looks the class-like up by whether a class/interface exists
      *
      * @psalm-external-mutation-free
      */
