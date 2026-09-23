@@ -32,7 +32,7 @@ final class TCallableObject extends TObject
     }
 
     #[Override]
-    public function getKey(bool $include_extra = true): string
+    protected function computeKey(bool $include_extra = true): string
     {
         $key = 'callable-object';
         if ($this->callable !== null) {

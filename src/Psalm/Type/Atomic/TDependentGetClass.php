@@ -24,7 +24,7 @@ final class TDependentGetClass extends TString implements DependentType
     }
 
     #[Override]
-    public function getId(bool $exact = true, bool $nested = false): string
+    protected function computeId(bool $exact = true, bool $nested = false): string
     {
         return $this->as_type->isMixed()
             || $this->as_type->hasObject()
@@ -33,7 +33,7 @@ final class TDependentGetClass extends TString implements DependentType
     }
 
     #[Override]
-    public function getKey(bool $include_extra = true): string
+    protected function computeKey(bool $include_extra = true): string
     {
         return 'get-class-of<' . $this->typeof
             . (!$this->as_type->isMixed() && !$this->as_type->hasObject() ? ', ' . $this->as_type->getId() : '')

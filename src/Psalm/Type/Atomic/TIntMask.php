@@ -24,7 +24,7 @@ final class TIntMask extends TInt
     }
 
     #[Override]
-    public function getKey(bool $include_extra = true): string
+    protected function computeKey(bool $include_extra = true): string
     {
         $s = '';
 
@@ -36,7 +36,7 @@ final class TIntMask extends TInt
     }
 
     #[Override]
-    public function getId(bool $exact = true, bool $nested = false): string
+    protected function computeId(bool $exact = true, bool $nested = false): string
     {
         $s = '';
 

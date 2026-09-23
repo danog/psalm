@@ -98,7 +98,7 @@ final class TValueOf extends Atomic
 
 
     #[Override]
-    public function getKey(bool $include_extra = true): string
+    protected function computeKey(bool $include_extra = true): string
     {
         return 'value-of<' . $this->type . '>';
     }

@@ -57,7 +57,7 @@ class TClassString extends TString
         return $cloned;
     }
     #[Override]
-    public function getKey(bool $include_extra = true): string
+    protected function computeKey(bool $include_extra = true): string
     {
         if ($this->is_interface) {
             $key = 'interface-string';
@@ -71,7 +71,7 @@ class TClassString extends TString
     }
 
     #[Override]
-    public function getId(bool $exact = true, bool $nested = false): string
+    protected function computeId(bool $exact = true, bool $nested = false): string
     {
         if ($this->is_interface) {
             $key = 'interface-string';

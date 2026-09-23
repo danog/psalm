@@ -27,13 +27,13 @@ final class TClassConstant extends Atomic
     }
 
     #[Override]
-    public function getKey(bool $include_extra = true): string
+    protected function computeKey(bool $include_extra = true): string
     {
         return 'class-constant(' . $this->fq_classlike_name . '::' . $this->const_name . ')';
     }
 
     #[Override]
-    public function getId(bool $exact = true, bool $nested = false): string
+    protected function computeId(bool $exact = true, bool $nested = false): string
     {
         return $this->fq_classlike_name . '::' . $this->const_name;
     }

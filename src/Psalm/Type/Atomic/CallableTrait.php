@@ -96,7 +96,7 @@ trait CallableTrait
     }
 
     #[Override]
-    public function getKey(bool $include_extra = true): string
+    protected function computeKey(bool $include_extra = true): string
     {
         $param_string = $this->getParamString();
         $return_type_string = $this->getReturnTypeString();
@@ -183,7 +183,7 @@ trait CallableTrait
     }
 
     #[Override]
-    public function getId(bool $exact = true, bool $nested = false): string
+    protected function computeId(bool $exact = true, bool $nested = false): string
     {
         $param_string = '';
         $return_type_string = '';

@@ -110,7 +110,7 @@ class TNamedObject extends Atomic
         return $cloned;
     }
     #[Override]
-    public function getKey(bool $include_extra = true): string
+    protected function computeKey(bool $include_extra = true): string
     {
         if ($include_extra && $this->extra_types) {
             return $this->value . '&' . implode('&', $this->extra_types);
@@ -145,7 +145,7 @@ class TNamedObject extends Atomic
         return $suffix;
     }
 
-    public function getId(bool $exact = true, bool $nested = false): string
+    protected function computeId(bool $exact = true, bool $nested = false): string
     {
         if ($this->extra_types) {
             return $this->value . '&' . implode(

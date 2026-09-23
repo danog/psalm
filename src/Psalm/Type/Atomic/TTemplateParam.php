@@ -57,7 +57,7 @@ final class TTemplateParam extends Atomic
     }
 
     #[Override]
-    public function getKey(bool $include_extra = true): string
+    protected function computeKey(bool $include_extra = true): string
     {
         if ($include_extra && $this->extra_types) {
             return $this->param_name . ':' . $this->defining_class . '&' . implode('&', $this->extra_types);
@@ -73,7 +73,7 @@ final class TTemplateParam extends Atomic
     }
 
     #[Override]
-    public function getId(bool $exact = true, bool $nested = false): string
+    protected function computeId(bool $exact = true, bool $nested = false): string
     {
         if (!$exact) {
             return $this->param_name;

@@ -69,7 +69,7 @@ trait GenericTrait
     }
 
     #[Override]
-    public function getId(bool $exact = true, bool $nested = false): string
+    protected function computeId(bool $exact = true, bool $nested = false): string
     {
         $s = '';
         foreach ($this->type_params as $type_param) {

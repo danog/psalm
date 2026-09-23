@@ -103,7 +103,23 @@ abstract class Atomic implements TypeNode, Stringable
      */
     protected function __clone()
     {
+        // a clone is about to be changed (withers write it right after cloning): its strings are recomputed
+        /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
+        $this->key_memo = null;
+        /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
+        $this->id_memo = null;
+        /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
+        $this->inexact_id_memo = null;
     }
+
+    /**
+     * Memoized getKey() / getId(true) / getId(false): an atomic is immutable, and these strings are rebuilt on
+     * every Union construction, comparison and combination otherwise (pzoom never builds them: its types are
+     * compared structurally and names are interned ids).
+     */
+    private ?string $key_memo = null;
+    private ?string $id_memo = null;
+    private ?string $inexact_id_memo = null;
 
     /**
      * Whether or not the type has been checked yet
@@ -472,7 +488,22 @@ abstract class Atomic implements TypeNode, Stringable
      *
      * @psalm-mutation-free
      */
-    abstract public function getKey(bool $include_extra = true): string;
+    abstract protected function computeKey(bool $include_extra = true): string;
+
+    /**
+     * @psalm-mutation-free
+     */
+    final public function getKey(bool $include_extra = true): string
+    {
+        if (!$include_extra) {
+            return $this->computeKey(false);
+        }
+        if ($this->key_memo === null) {
+            /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
+            $this->key_memo = $this->computeKey();
+        }
+        return $this->key_memo;
+    }
 
     /**
      * @psalm-mutation-free
@@ -687,7 +718,29 @@ abstract class Atomic implements TypeNode, Stringable
      *
      * @psalm-mutation-free
      */
-    public function getId(bool $exact = true, bool $nested = false): string
+    final public function getId(bool $exact = true, bool $nested = false): string
+    {
+        if ($nested) {
+            return $this->computeId($exact, true);
+        }
+        if ($exact) {
+            if ($this->id_memo === null) {
+                /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
+                $this->id_memo = $this->computeId(true, false);
+            }
+            return $this->id_memo;
+        }
+        if ($this->inexact_id_memo === null) {
+            /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
+            $this->inexact_id_memo = $this->computeId(false, false);
+        }
+        return $this->inexact_id_memo;
+    }
+
+    /**
+     * @psalm-mutation-free
+     */
+    protected function computeId(bool $exact = true, bool $nested = false): string
     {
         return $this->getKey();
     }
