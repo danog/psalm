@@ -306,6 +306,10 @@ final class DocumentationTest extends TestCase
             switch ($issue_name) {
                 // emitted by plugins only: a wrong-cased class reference is UndefinedClass (pzoom's rule)
                 case 'InvalidClass':
+                // no longer emitted: return mismatches are reported at the return statement (pzoom's rule)
+                case 'MoreSpecificReturnType':
+                case 'InvalidNullableReturnType':
+                case 'InvalidFalsableReturnType':
                 case 'InvalidStringClass':
                 case 'MissingThrowsDocblock':
                 case 'PluginClass':

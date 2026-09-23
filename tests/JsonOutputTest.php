@@ -84,7 +84,7 @@ final class JsonOutputTest extends TestCase
                     function fooFoo(int $a): string {
                         return $a + 1;
                     }',
-                'error_count' => 2,
+                'error_count' => 1,
                 'message' => "The inferred type 'int' does not match the declared return type 'string' for fooFoo",
                 'line' => 4,
                 'error' => '$a + 1',
@@ -132,7 +132,7 @@ final class JsonOutputTest extends TestCase
                     function fooFoo() {
                         return "hello";
                     }',
-                'error_count' => 2,
+                'error_count' => 1,
                 'message' => "The inferred type ''hello'' does not match the declared return type 'int' for fooFoo",
                 'line' => 7,
                 'error' => '"hello"',

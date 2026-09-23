@@ -1,5 +1,7 @@
 # InvalidNullableReturnType
 
+No longer emitted: a mismatch is reported at the offending `return` statement (`NullableReturnStatement`).
+
 Emitted when a function can return a nullable value, but its given return type says otherwise
 
 ```php

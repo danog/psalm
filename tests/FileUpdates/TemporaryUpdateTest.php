@@ -384,7 +384,8 @@ final class TemporaryUpdateTest extends TestCase
                             }',
                     ],
                 ],
-                'error_positions' => [[196, 144, 339, 290], [345, 296], []],
+                // the function-level InvalidReturnType is gone (pzoom): the return statements' positions remain
+                'error_positions' => [[196, 339], [345], []],
                 'ignored_issues' => [
                     'MissingReturnType' => Config::REPORT_INFO,
                 ],
@@ -474,7 +475,7 @@ final class TemporaryUpdateTest extends TestCase
                             }',
                     ],
                 ],
-                'error_positions' => [[136, 273], [279], [193, 144]],
+                'error_positions' => [[136, 273], [279], [193]],
                 'ignored_issues' => [
                     'MissingReturnType' => Config::REPORT_INFO,
                 ],

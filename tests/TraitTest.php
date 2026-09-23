@@ -1390,7 +1390,8 @@ final class TraitTest extends TestCase
                     class C {
                         use B;
                     }',
-                'error_message' => 'InvalidReturnType',
+                // reported at the return, in the trait body checked for its using class (pzoom)
+                'error_message' => 'InvalidReturnStatement',
             ],
             'replaceTraitMethod' => [
                 'code' => '<?php
