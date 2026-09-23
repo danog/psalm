@@ -401,14 +401,14 @@ final class StubTest extends TestCase
                      */
                     function bar(array $a) {}
 
-                    $a1 = (new \Ns\MyClass)->creAte("object");
-                    $a2 = (new \Ns\MyClass)->creaTe("exception");
+                    $a1 = (new \Ns\MyClass)->create("object");
+                    $a2 = (new \Ns\MyClass)->create("exception");
 
-                    $y1 = (new \Ns\MyClass)->creAte2("object");
-                    $y2 = (new \Ns\MyClass)->creaTe2("exception");
+                    $y1 = (new \Ns\MyClass)->create2("object");
+                    $y2 = (new \Ns\MyClass)->create2("exception");
 
-                    $const1 = (new \Ns\MyClass)->creAte3(\Ns\MyClass::OBJECT);
-                    $const2 = (new \Ns\MyClass)->creaTe3("exception");
+                    $const1 = (new \Ns\MyClass)->create3(\Ns\MyClass::OBJECT);
+                    $const2 = (new \Ns\MyClass)->create3("exception");
 
                     $b1 = \create("object");
                     $b2 = \create("exception");

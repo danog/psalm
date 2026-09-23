@@ -6,6 +6,7 @@ namespace Psalm\Internal\Analyzer\Statements\Expression\Call\Method;
 
 use PhpParser;
 use Psalm\CodeLocation;
+use Psalm\Node\Expr\VirtualMethodCall;
 use Psalm\Codebase;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
@@ -275,6 +276,16 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
             false,
             $context->insideUse(),
         );
+
+        // pzoom resolves method names case-sensitively: a call written with another casing is undefined
+        // (a callable string analyzed as a call resolves as PHP does)
+        if ($naive_method_exists && !$stmt instanceof VirtualMethodCall) {
+            $declared = MethodAnalyzer::declaredCasingOf($codebase, $method_id, $stmt->name->name);
+            if ($declared !== null) {
+                $naive_method_exists = false;
+                $result->incorrect_casing[$fq_class_name . '::' . $stmt->name->name] = $declared;
+            }
+        }
 
         $fake_method_exists = false;
 

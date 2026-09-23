@@ -386,11 +386,6 @@ final class Context
     /**
      * @psalm-external-mutation-free
      */
-    public function __destruct()
-    {
-        $this->case_scope = null;
-    }
-
     /**
      * @psalm-mutation-free
      */
