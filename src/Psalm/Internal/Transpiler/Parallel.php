@@ -69,6 +69,8 @@ final class Parallel
     private array $accumulators = [];
     /** @var list<mixed> the accumulators' values at fork time */
     private array $before = [];
+    /** @var array<int, float> item index => seconds, on the worker that ran it */
+    private array $item_times = [];
     private ?Closure $collect_extra = null;
 
     /**
@@ -132,20 +134,33 @@ final class Parallel
             $pool->shutdown();
             self::$active = null;
         }
+        $times = [];
         foreach ($results as $payload) {
-            [$acc, $extra] = unserialize($payload);
+            [$acc, $extra, $item_times] = unserialize($payload);
+            $times += $item_times;
             foreach ($acc as $i => $changed) {
                 [$obj, $prop] = $accumulators[$i];
                 self::write($obj, $prop, self::merge(self::read($obj, $prop), $before[$i], $this->decode($changed)));
             }
             $merge_extra($this->decode($extra));
         }
+        arsort($times);
+        $slow = [];
+        foreach (array_slice($times, 0, 5, true) as $i => $sec) {
+            $slow[] = sprintf('%s %.1fs', $this->describe !== null ? ($this->describe)($items[$i]) : '#' . $i, $sec);
+        }
+        fwrite(STDERR, sprintf("[parallel] %d items, %.1fs of work on %d workers; slowest: %s\n", count($items), array_sum($times), $jobs, implode(', ', $slow)));
     }
+
+    /** @var (Closure(mixed): string)|null names an item in the timing report */
+    public ?Closure $describe = null;
 
     /** Worker side: one item. */
     public function runItem(int $index): void
     {
+        $t = microtime(true);
         ($this->work)($this->items[$index]);
+        $this->item_times[$index] = microtime(true) - $t;
     }
 
     /** Worker side: everything this worker accumulated, encoded for the parent. */
@@ -162,7 +177,7 @@ final class Parallel
                 }
             }
         }
-        return serialize([$acc, $this->encode(($this->collect_extra)())]);
+        return serialize([$acc, $this->encode(($this->collect_extra)()), $this->item_times]);
     }
 
     private static function read(object $obj, string $prop): mixed

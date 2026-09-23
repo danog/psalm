@@ -1401,6 +1401,23 @@ final class Program
         }
     }
 
+    /** Whether a compiled member of the class reads its private constant `$name`. */
+    private function privateConstantUsed(\PhpParser\Node\Stmt\ClassLike $node, string $name): bool
+    {
+        $finder = new \PhpParser\NodeFinder();
+        foreach ($node->stmts as $stmt) {
+            if ($stmt instanceof \PhpParser\Node\Stmt\ClassMethod && isset(self::SERIALIZATION_HOOKS[strtolower($stmt->name->name)])) {
+                continue;
+            }
+            $hit = $finder->findFirst([$stmt], static fn(\PhpParser\Node $n): bool => $n instanceof \PhpParser\Node\Expr\ClassConstFetch
+                && $n->name instanceof \PhpParser\Node\Identifier && $n->name->name === $name);
+            if ($hit !== null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private function buildConstants(ClassModel $model): void
     {
         $exprs = [];
@@ -1414,6 +1431,13 @@ final class Program
         foreach ($model->storage->constants as $name => $cstorage) {
             if (!isset($exprs[$name]) && $model->is_project) {
                 // inherited from an interface/parent; skip, the declaring class emits it
+                continue;
+            }
+            if ($model->node !== null && $cstorage->visibility === \Psalm\Internal\Analyzer\ClassLikeAnalyzer::VISIBILITY_PRIVATE
+                && !$this->privateConstantUsed($model->node, $name)
+            ) {
+                // only the class itself can read a private constant, and nothing it compiles does (the readers
+                // may be serializer-only hooks, which are not compiled)
                 continue;
             }
             $type = $cstorage->type ?? $cstorage->inferred_type;

@@ -148,8 +148,15 @@ final class CrateEmitter
         // class bodies (the bulk of the emission) on Psalm's worker pool when TRANSPILE_JOBS > 1
         $jobs = Parallel::jobs();
         $mod_before = $this->moduleLengths();
-        (new Parallel($this->sharedObjects()))->run(
-            $project_classes,
+        $parallel = new Parallel($this->sharedObjects());
+        $parallel->describe = static fn(ClassModel $c): string => $c->fqcn;
+        // the biggest classes first, so none of them starts last and leaves the other workers idle
+        $by_size = $project_classes;
+        if ($jobs > 1) {
+            usort($by_size, static fn(ClassModel $a, ClassModel $b): int => self::sourceSize($b) <=> self::sourceSize($a));
+        }
+        $parallel->run(
+            $by_size,
             $jobs,
             function (ClassModel $cls) use ($class_emitter): void {
                 // temporaries are numbered per class, so the output does not depend on which worker (or which
@@ -471,6 +478,11 @@ final class CrateEmitter
             }
             return $m[0];
         }, $code) ?? $code;
+    }
+
+    private static function sourceSize(ClassModel $c): int
+    {
+        return $c->node === null ? 0 : $c->node->getEndFilePos() - $c->node->getStartFilePos();
     }
 
     /** @return array<int, array<string, int>> the length of every module's text so far */
