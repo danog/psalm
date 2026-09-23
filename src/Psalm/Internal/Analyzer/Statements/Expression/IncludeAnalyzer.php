@@ -151,8 +151,12 @@ final class IncludeAnalyzer
         if ($path_to_file) {
             $path_to_file = self::normalizeFilePath($path_to_file);
 
-            // if the file is already included, we can't check much more
-            if (in_array(realpath($path_to_file), get_included_files(), true)) {
+            // if the file is already included, we can't check much more -- including the project's Composer
+            // bootstrap, which is loaded when Psalm runs from the project's own vendor/bin
+            $real_path_to_file = realpath($path_to_file);
+            if (in_array($real_path_to_file, get_included_files(), true)
+                || ($real_path_to_file !== false && $config->isComposerBootstrapFile($real_path_to_file))
+            ) {
                 return true;
             }
 

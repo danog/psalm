@@ -20,6 +20,7 @@ use function is_string;
 use function json_decode;
 use function ltrim;
 use function preg_match;
+use function realpath;
 use function rtrim;
 use function scandir;
 use function str_contains;
@@ -77,6 +78,7 @@ final class AutoloadMap
      * @param list<string> $exclude_patterns path fragments excluded from those classmaps
      * @param list<string> $files the always-loaded files (function and constant definitions)
      * @param array<string, string> $seeded_classes classes Composer's generator maps by itself
+     * @param string $vendor_path the project's vendor directory
      */
     private function __construct(
         private readonly array $psr4,
@@ -86,7 +88,34 @@ final class AutoloadMap
         private readonly array $exclude_patterns,
         private readonly array $files,
         private readonly array $seeded_classes,
+        private readonly string $vendor_path,
     ) {
+    }
+
+    /**
+     * What `require 'vendor/autoload.php'` loads: the autoloader stub, Composer's runtime in vendor/composer,
+     * and the always-loaded files. When Psalm runs from the project's own vendor/bin (the usual way), all of
+     * these are already included in the analyzing process, and an `include` of one is not analyzed.
+     *
+     * @return list<string> real paths
+     */
+    public function getBootstrapFiles(): array
+    {
+        $paths = [$this->vendor_path . DIRECTORY_SEPARATOR . 'autoload.php'];
+        $composer_dir = $this->vendor_path . DIRECTORY_SEPARATOR . 'composer';
+        foreach (is_dir($composer_dir) ? (scandir($composer_dir) ?: []) : [] as $entry) {
+            if (str_ends_with($entry, '.php')) {
+                $paths[] = $composer_dir . DIRECTORY_SEPARATOR . $entry;
+            }
+        }
+        $out = [];
+        foreach ([...$paths, ...$this->getAutoloadedFiles()] as $path) {
+            $real = realpath($path);
+            if ($real !== false) {
+                $out[] = $real;
+            }
+        }
+        return $out;
     }
 
     /**
@@ -203,6 +232,7 @@ final class AutoloadMap
             $exclude_patterns,
             $files,
             $seeded_classes,
+            $vendor_path,
         );
     }
 

@@ -1550,6 +1550,28 @@ final class Config
     public function setComposerAutoloadMap(?AutoloadMap $autoload_map): void
     {
         $this->autoload_map = $autoload_map;
+        $this->composer_bootstrap_files = null;
+    }
+
+    /** @var array<string, true>|null real paths of the project's Composer bootstrap (see isComposerBootstrapFile) */
+    private ?array $composer_bootstrap_files = null;
+
+    /**
+     * Whether a file is part of what the project's `vendor/autoload.php` loads. Psalm normally runs from the
+     * project's own vendor/bin, where all of it is already included (and IncludeAnalyzer does not analyze an
+     * include of an already-included file); answering from the project's Composer metadata keeps that behaviour
+     * however Psalm itself was loaded -- from another vendor directory, or compiled.
+     */
+    public function isComposerBootstrapFile(string $real_path): bool
+    {
+        if ($this->composer_bootstrap_files === null) {
+            $set = [];
+            foreach ($this->autoload_map?->getBootstrapFiles() ?? [] as $file) {
+                $set[$file] = true;
+            }
+            $this->composer_bootstrap_files = $set;
+        }
+        return isset($this->composer_bootstrap_files[$real_path]);
     }
 
     /**
