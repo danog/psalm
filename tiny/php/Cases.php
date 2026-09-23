@@ -1452,6 +1452,7 @@ function case_node_parts(): string
 function run_all(): string
 {
     return check('node_parts', case_node_parts(), 'PE:PE')
+        . check('generic_empty_return', case_generic_empty_return(), '0:2')
         . check('guard_key_writes', case_guard_key_writes(), 'ab4')
         . check('shape_dyn_key', case_shape_dyn_key(), 'int,-,zero,string,')
         . check('foreach_ref_unset', case_foreach_ref_unset(), '10:-:30')
@@ -2627,4 +2628,23 @@ function case_guard_key_writes(): string
 {
     $c = new TokenCursor();
     return $c->next() . $c->next() . $c->count();
+}
+
+/**
+ * @template T
+ * @param list<T> $items
+ * @return array<int, T>
+ */
+function generic_or_empty(array $items, bool $empty): array
+{
+    if ($empty) {
+        return [];
+    }
+    return $items;
+}
+
+/** An empty literal returned where the return type is a container of a generic. */
+function case_generic_empty_return(): string
+{
+    return count(generic_or_empty(['a', 'b'], true)) . ':' . count(generic_or_empty(['a', 'b'], false));
 }

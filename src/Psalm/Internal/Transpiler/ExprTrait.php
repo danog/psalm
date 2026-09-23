@@ -92,6 +92,11 @@ trait ExprTrait
                 // an empty literal for a generic slot: an empty list (no element type to infer)
                 return $this->expr($e, RustType::list(RustType::unit()))->code;
             }
+            if (($to->kind === RustType::MAP || $to->kind === RustType::LIST) && $e instanceof Expr\Array_ && $e->items === []) {
+                // an empty literal for a container of generics (`Map<i64, G_T>`): the container as declared --
+                // unifying with the literal's own `never` elements would fix the generic to Never
+                return $this->expr($e, $to)->code;
+            }
             // an argument for a generic parameter: emitted in its own natural type (rustc infers/checks T), with
             // the parameter's container structure kept (`list<T>` takes a List of the literal's element type,
             // not the tuple/shape the literal would naturally be)
