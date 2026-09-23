@@ -304,6 +304,8 @@ final class DocumentationTest extends TestCase
             $php_version = '8.0';
             $ignored_issues = [];
             switch ($issue_name) {
+                // emitted by plugins only: a wrong-cased class reference is UndefinedClass (pzoom's rule)
+                case 'InvalidClass':
                 case 'InvalidStringClass':
                 case 'MissingThrowsDocblock':
                 case 'PluginClass':

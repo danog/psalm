@@ -17,7 +17,6 @@ use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
 use Psalm\Issue\InaccessibleProperty;
-use Psalm\Issue\InvalidClass;
 use Psalm\Issue\InvalidTemplateParam;
 use Psalm\Issue\MissingDependency;
 use Psalm\Issue\MissingTemplateParam;
@@ -316,6 +315,23 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
             $context,
         );
 
+        // pzoom resolves names case-sensitively: a reference spelled differently from the declaration is
+        // undefined, reported with the declared spelling (Psalm reported InvalidClass and carried on)
+        $incorrect_casing_of = null;
+        if (!$options->inferred
+            && (($class_exists && !$codebase->classHasCorrectCasing($fq_class_name))
+                || ($interface_exists && !$codebase->interfaceHasCorrectCasing($fq_class_name))
+                || ($enum_exists && !$codebase->classlikes->enumHasCorrectCasing($fq_class_name)))
+        ) {
+            $incorrect_casing_of = $codebase->classlike_storage_provider->has($fq_class_name)
+                ? $codebase->classlike_storage_provider->get($fq_class_name)->name
+                : null;
+            $class_exists = false;
+            $interface_exists = false;
+            $enum_exists = false;
+        }
+        $casing_hint = $incorrect_casing_of !== null ? ' (incorrect casing of ' . $incorrect_casing_of . ')' : '';
+
         if (!$class_exists
             && !($interface_exists && $options->allow_interface)
             && !($enum_exists && $options->allow_enum)
@@ -333,7 +349,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                 if ($options->from_docblock) {
                     if (IssueBuffer::accepts(
                         new UndefinedDocblockClass(
-                            'Docblock-defined class, interface or enum named ' . $fq_class_name . ' does not exist',
+                            'Docblock-defined class, interface or enum named ' . $fq_class_name . ' does not exist' . $casing_hint,
                             $code_location,
                             $fq_class_name,
                         ),
@@ -344,7 +360,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                 } elseif ($options->from_attribute) {
                     if (IssueBuffer::accepts(
                         new UndefinedAttributeClass(
-                            'Attribute class ' . $fq_class_name . ' does not exist',
+                            'Attribute class ' . $fq_class_name . ' does not exist' . $casing_hint,
                             $code_location,
                             $fq_class_name,
                         ),
@@ -355,7 +371,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                 } else {
                     if (IssueBuffer::accepts(
                         new UndefinedClass(
-                            'Class, interface or enum named ' . $fq_class_name . ' does not exist',
+                            'Class, interface or enum named ' . $fq_class_name . ' does not exist' . $casing_hint,
                             $code_location,
                             $fq_class_name,
                         ),
@@ -400,22 +416,6 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                 $suppressed_issues,
             )) {
                 return false;
-            }
-        }
-
-        if (!$options->inferred) {
-            if (($class_exists && !$codebase->classHasCorrectCasing($fq_class_name))
-                || ($interface_exists && !$codebase->interfaceHasCorrectCasing($fq_class_name))
-                || ($enum_exists && !$codebase->classlikes->enumHasCorrectCasing($fq_class_name))
-            ) {
-                IssueBuffer::maybeAdd(
-                    new InvalidClass(
-                        'Class, interface or enum ' . $fq_class_name . ' has wrong casing',
-                        $code_location,
-                        $fq_class_name,
-                    ),
-                    $suppressed_issues,
-                );
             }
         }
 
