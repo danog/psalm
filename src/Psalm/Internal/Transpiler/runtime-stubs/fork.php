@@ -38,7 +38,7 @@ namespace Amp {
 namespace Amp\Future {
     /**
      * @template T
-     * @param iterable<Future<T>> $futures
+     * @param iterable<\Amp\Future<T>> $futures
      * @return array<int, T>
      */
     function await(iterable $futures, ?\Amp\Cancellation $cancellation = null): array
