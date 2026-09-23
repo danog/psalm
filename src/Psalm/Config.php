@@ -2670,6 +2670,7 @@ final class Config
         return $this->predefined_constants;
     }
 
+    /** @psalm-external-mutation-free */
     public function collectPredefinedConstants(): void
     {
         $this->predefined_constants = ConstantMap::get();

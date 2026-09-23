@@ -13,6 +13,7 @@ use function dirname;
  * compiled program does not have.
  *
  * @internal
+ * @psalm-external-mutation-free
  */
 final class ConstantMap
 {
@@ -21,6 +22,7 @@ final class ConstantMap
 
     /**
      * @return array<string, scalar|null>
+     * @psalm-external-mutation-free
      */
     public static function get(): array
     {
@@ -30,6 +32,7 @@ final class ConstantMap
         return self::$map;
     }
 
+    /** @psalm-external-mutation-free */
     public static function has(string $name): bool
     {
         return array_key_exists($name, self::get());

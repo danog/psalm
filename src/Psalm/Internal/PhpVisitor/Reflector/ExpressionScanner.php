@@ -156,6 +156,7 @@ final class ExpressionScanner
                         $type_provider,
                         $second_arg_value,
                         $aliases,
+                        $file_scanner,
                     );
 
                     // allow docblocks to override the declared value to make constants in stubs configurable
