@@ -63,7 +63,7 @@ final class AndAnalyzer
         $left_context->cond_referenced_var_ids = [];
         $left_context->assigned_var_ids = [];
 
-        /** @var list<string> $left_context->getReconciledExpressionClauses() */
+        /** @var list<int> $left_context->getReconciledExpressionClauses() */
         $left_context->reconciled_expression_clauses = [];
 
         if (ExpressionAnalyzer::analyze($statements_analyzer, $stmt->left, $left_context) === false) {

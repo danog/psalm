@@ -189,7 +189,7 @@ final class Context
     /**
      * A list of hashed clauses that have already been factored in
      *
-     * @var list<string|int>
+     * @var list<int>
      */
     public array $reconciled_expression_clauses = [];
 
@@ -292,7 +292,7 @@ final class Context
     /**
      * The hashed clauses already factored in, as recorded so far.
      *
-     * @return list<string|int>
+     * @return list<int>
      * @psalm-mutation-free
      */
     public function getReconciledExpressionClauses(): array
