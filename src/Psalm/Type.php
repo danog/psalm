@@ -642,6 +642,50 @@ abstract class Type
             return $type_1;
         }
 
+        // pzoom's combine_union_types: `if type_1 == type_2 { return type_1.clone() }` -- a union combined with
+        // an equal one (the same types and the same flags) is that union. 91% of the calls on vimeo/psalm.
+        if (self::unionsEqual($type_1, $type_2)) {
+            return $possibly_undefined !== null && $type_1->possibly_undefined !== $possibly_undefined
+                ? $type_1->setPossiblyUndefined($possibly_undefined)
+                : $type_1;
+        }
+        return self::combineUnionTypesSlow($type_1, $type_2, $codebase, $overwrite_empty_array, $allow_mixed_union, $literal_limit, $possibly_undefined);
+    }
+
+    /**
+     * pzoom's `TUnion::eq`: the same atomic types (by exact id; per-atomic docblock provenance aside) and the same
+     * flags a combination merges.
+     *
+     * @psalm-mutation-free
+     */
+    public static function unionsEqual(Union $a, Union $b): bool
+    {
+        return $a->getId() === $b->getId()
+            && $a->from_docblock === $b->from_docblock
+            && $a->from_calculation === $b->from_calculation
+            && $a->ignore_nullable_issues === $b->ignore_nullable_issues
+            && $a->ignore_falsable_issues === $b->ignore_falsable_issues
+            && $a->reference_free === $b->reference_free
+            && $a->allow_mutations === $b->allow_mutations
+            && $a->initialized === $b->initialized
+            && $a->explicit_never === $b->explicit_never
+            && $a->had_template === $b->had_template
+            && $a->failed_reconciliation === $b->failed_reconciliation
+            && $a->possibly_undefined === $b->possibly_undefined
+            && $a->possibly_undefined_from_try === $b->possibly_undefined_from_try
+            && $a->by_ref === $b->by_ref
+            && $a->parent_nodes === $b->parent_nodes;
+    }
+
+    private static function combineUnionTypesSlow(
+        Union $type_1,
+        Union $type_2,
+        ?Codebase $codebase,
+        bool $overwrite_empty_array,
+        bool $allow_mixed_union,
+        int $literal_limit,
+        ?bool $possibly_undefined,
+    ): Union {
         if ($type_1->isVanillaMixed() && $type_2->isVanillaMixed()) {
             $combined_type = self::getMixed();
         } else {

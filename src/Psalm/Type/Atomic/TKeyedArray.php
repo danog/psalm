@@ -90,6 +90,17 @@ final class TKeyedArray extends Atomic
     ): self|TArray {
         if ($is_list && $fallback_params) {
             $fallback_params[0] = Type::getListKey();
+            // canonical form (what combining produces, and what pzoom's single representation of a list
+            // is): a list whose only entry is an optional 0 of the element type is list<element>, whatever
+            // flags that entry carried
+            if (count($properties) === 1
+                && isset($properties[0])
+                && $properties[0]->possibly_undefined
+                && $properties[0] !== $fallback_params[1]
+                && $properties[0]->getId() === $fallback_params[1]->getId()
+            ) {
+                $properties[0] = $fallback_params[1]->setPossiblyUndefined(true);
+            }
         }
         if (count($properties) === 1
             && $properties[array_key_first($properties)]->isNever()
