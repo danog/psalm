@@ -2886,7 +2886,7 @@ final class ClassLikes
             return null;
         }
 
-        return new Union(array_merge([], ...$new_atomic_types));
+        return new Union(array_merge(...$new_atomic_types));
     }
 
     /**
