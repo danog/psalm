@@ -348,7 +348,7 @@ final class Scanner
                 },
                 // Register custom taints a worker discovers in this (parent) process's single registry, so
                 // every worker resolves a given taint name to the same bit.
-                fn(string $taint_type): array => $this->codebase->registerTaintFromWorker($taint_type),
+                $this->codebase->registerTaintFromWorker(...),
             );
 
             // Wait for all tasks to complete and collect the results.
