@@ -288,7 +288,10 @@ final class MethodCallAnalyzer extends CallAnalyzer
                 if ($result->existent_method_ids || $result->has_mixed_method_call) {
                     IssueBuffer::maybeAdd(
                         new PossiblyUndefinedMethod(
-                            'Method ' . $result->non_existent_class_method_ids[0] . ' does not exist',
+                            'Method ' . $result->non_existent_class_method_ids[0] . ' does not exist'
+                                . (isset($result->incorrect_casing[$result->non_existent_class_method_ids[0]])
+                                    ? ' (incorrect casing of ' . $result->incorrect_casing[$result->non_existent_class_method_ids[0]] . ')'
+                                    : ''),
                             new CodeLocation($source, $stmt->name),
                             $result->non_existent_class_method_ids[0],
                         ),
@@ -297,7 +300,10 @@ final class MethodCallAnalyzer extends CallAnalyzer
                 } else {
                     IssueBuffer::maybeAdd(
                         new UndefinedMethod(
-                            'Method ' . $result->non_existent_class_method_ids[0] . ' does not exist',
+                            'Method ' . $result->non_existent_class_method_ids[0] . ' does not exist'
+                                . (isset($result->incorrect_casing[$result->non_existent_class_method_ids[0]])
+                                    ? ' (incorrect casing of ' . $result->incorrect_casing[$result->non_existent_class_method_ids[0]] . ')'
+                                    : ''),
                             new CodeLocation($source, $stmt->name),
                             $result->non_existent_class_method_ids[0],
                         ),

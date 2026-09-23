@@ -7,6 +7,7 @@ namespace Psalm\Internal\Analyzer\Statements\Expression\Call\StaticMethod;
 use Exception;
 use PhpParser;
 use Psalm\CodeLocation;
+use Psalm\Node\Expr\VirtualStaticCall;
 use Psalm\Codebase;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
@@ -366,6 +367,15 @@ final class AtomicStaticCallAnalyzer
             false,
             $context->insideUse(),
         );
+
+        // pzoom resolves method names case-sensitively (a callable string analyzed as a call resolves as
+        // PHP does); the missing-method path reports it with the declared spelling
+        if ($naive_method_exists
+            && !$stmt instanceof VirtualStaticCall
+            && MethodAnalyzer::declaredCasingOf($codebase, $method_id, $stmt_name->name) !== null
+        ) {
+            $naive_method_exists = false;
+        }
 
         $fake_method_exists = false;
 
@@ -770,6 +780,7 @@ final class AtomicStaticCallAnalyzer
                 $statements_analyzer->getSuppressedIssues(),
                 $context->calling_method_id,
                 $with_pseudo,
+                $stmt instanceof VirtualStaticCall ? null : $stmt_name->name,
             );
         } else {
             $does_method_exist = null;

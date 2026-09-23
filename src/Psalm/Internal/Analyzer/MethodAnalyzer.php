@@ -175,6 +175,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
         array $suppressed_issues,
         ?string $calling_method_id = null,
         bool $with_pseudo = false,
+        ?string $written_name = null,
     ): ?bool {
         if ($codebase->methodExists(
             method_id: $method_id,
@@ -186,7 +187,25 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
             source_file_path: $code_location->file_path,
             with_pseudo: $with_pseudo,
         )) {
-            return true;
+            // pzoom resolves method names case-sensitively: a call written with another casing is undefined
+            $declared = $written_name !== null ? self::declaredCasingOf($codebase, $method_id, $written_name) : null;
+            if ($declared === null) {
+                return true;
+            }
+
+            if (IssueBuffer::accepts(
+                new UndefinedMethod(
+                    'Method ' . $method_id->fq_class_name . '::' . $written_name
+                        . ' does not exist (incorrect casing of ' . $declared . ')',
+                    $code_location,
+                    (string) $method_id,
+                ),
+                $suppressed_issues,
+            )) {
+                return false;
+            }
+
+            return null;
         }
 
         if ($with_pseudo) {
@@ -210,6 +229,27 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
         }
 
         return null;
+    }
+
+    /**
+     * The declared spelling of a method that exists but is written with another casing (pzoom's casing
+     * hint), or null when the spelling matches or nothing is declared to compare against.
+     */
+    public static function declaredCasingOf(Codebase $codebase, MethodIdentifier $method_id, string $written_name): ?string
+    {
+        $declaring_method_id = $codebase->methods->getDeclaringMethodId($method_id, true);
+        if ($declaring_method_id === null) {
+            return null;
+        }
+        try {
+            $declared = $codebase->methods->getStorage($declaring_method_id, true)->cased_name;
+        } catch (UnexpectedValueException) {
+            return null;
+        }
+        if ($declared === null || $declared === $written_name || strtolower($declared) !== strtolower($written_name)) {
+            return null;
+        }
+        return $declared;
     }
 
     public static function isMethodVisible(
