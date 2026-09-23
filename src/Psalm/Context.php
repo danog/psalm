@@ -655,6 +655,11 @@ final class Context
     }
 
     /**
+     * The clauses that survive a change to $remove_var_id: those that mention neither the variable nor a
+     * path through it (pzoom's `remove_var_name_clauses`). pzoom always discards a clause that mentions the
+     * variable; Psalm used to keep one whose assertions the new type still satisfied, at the price of a
+     * reconciliation per clause.
+     *
      * @param  list<Clause>               $clauses
      * @return list<Clause>
      */
@@ -664,60 +669,20 @@ final class Context
         ?Union $new_type = null,
         ?StatementsAnalyzer $statements_analyzer = null,
     ): array {
-        $new_type_string = $new_type ? $new_type->getId() : '';
         $clauses_to_keep = [];
 
         foreach ($clauses as $clause) {
-            $clause = $clause->calculateNegation();
+            if (isset($clause->possibilities[$remove_var_id])) {
+                continue;
+            }
 
             foreach ($clause->possibilities as $var_id => $_) {
                 if (str_contains($var_id, $remove_var_id) && Reconciler::isPathThrough($var_id, $remove_var_id)) {
-                    break 2;
+                    continue 2;
                 }
             }
 
-            if (!isset($clause->possibilities[$remove_var_id])
-                || (count($clause->possibilities[$remove_var_id]) === 1
-                    && (string) reset($clause->possibilities[$remove_var_id]) === $new_type_string)
-            ) {
-                $clauses_to_keep[] = $clause;
-            } elseif ($statements_analyzer &&
-                $new_type &&
-                !$new_type->hasMixed()
-            ) {
-                $type_changed = false;
-
-                // if the clause contains any possibilities that would be altered
-                // by the new type
-                foreach ($clause->possibilities[$remove_var_id] as $assertion) {
-                    // if we're negating a type, we generally don't need the clause anymore
-                    if ($assertion->isNegation()) {
-                        $type_changed = true;
-                        break;
-                    }
-
-                    $result_type = AssertionReconciler::reconcile(
-                        $assertion,
-                        $new_type,
-                        null,
-                        $statements_analyzer,
-                        false,
-                        [],
-                        null,
-                        [],
-                        $failed_reconciliation,
-                    );
-
-                    if ($result_type->getId() !== $new_type_string) {
-                        $type_changed = true;
-                        break;
-                    }
-                }
-
-                if (!$type_changed) {
-                    $clauses_to_keep[] = $clause;
-                }
-            }
+            $clauses_to_keep[] = $clause;
         }
 
         return $clauses_to_keep;
