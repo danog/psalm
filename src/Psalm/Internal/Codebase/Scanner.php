@@ -7,6 +7,7 @@ namespace Psalm\Internal\Codebase;
 use Closure;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Config;
 use Psalm\Internal\Analyzer\IssueData;
@@ -62,6 +63,7 @@ use const PHP_EOL;
  * }
  *
  * @psalm-type  PoolData = array{
+ *     interner: list<string>,
  *     classlikes_data:array{
  *         array<lowercase-string, bool>,
  *         array<lowercase-string, bool>,
@@ -376,6 +378,8 @@ final class Scanner
                 if ($this->codebase->taint_flow_graph && $pool_data['taint_data']) {
                     $this->codebase->taint_flow_graph->addGraph($pool_data['taint_data']);
                 }
+
+                Interner::merge($pool_data['interner']);
 
                 $this->codebase->file_storage_provider->addMore($pool_data['file_storage']);
                 $this->codebase->classlike_storage_provider->addMore($pool_data['classlike_storage']);

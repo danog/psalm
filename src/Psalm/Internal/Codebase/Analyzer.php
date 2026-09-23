@@ -11,6 +11,7 @@ use Psalm\Codebase;
 use Psalm\Config;
 use Psalm\FileManipulation;
 use Psalm\Internal\Analyzer\FileAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Analyzer\IssueData;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\FileManipulation\ClassDocblockManipulator;
@@ -69,6 +70,7 @@ use const PHP_INT_MAX;
  * }
  *
  * @psalm-type  WorkerData = array{
+ *     interner: list<string>,
  *      issues: array<string, list<IssueData>>,
  *      fixable_issue_counts: array<string, int>,
  *      mixed_counts: array<string, array{0: int, 1: int}>,
@@ -330,6 +332,8 @@ final class Analyzer
 
             foreach (Future::iterate($forked_pool_data) as $pool_data) {
                 $pool_data = $pool_data->await();
+
+                Interner::merge($pool_data['interner']);
 
                 IssueBuffer::addIssues($pool_data['issues']);
                 IssueBuffer::addFixableIssues($pool_data['fixable_issue_counts']);

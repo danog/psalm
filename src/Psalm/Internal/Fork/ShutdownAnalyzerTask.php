@@ -9,6 +9,7 @@ use Amp\Parallel\Worker\Task;
 use Amp\Sync\Channel;
 use Override;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Codebase\Analyzer;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\FileManipulation\FunctionDocblockManipulator;
@@ -36,6 +37,7 @@ final class ShutdownAnalyzerTask implements Task
 
         // @codingStandardsIgnoreStart
         return [
+            'interner' => Interner::delta(),
             'issues'                                     => IssueBuffer::getIssuesData(),
             'fixable_issue_counts'                       => IssueBuffer::getFixableIssues(),
             'method_dependencies'                        => $file_reference_provider->getAllMethodDependencies(),

@@ -23,6 +23,8 @@ use Psalm\CodeLocation\Raw;
 use Psalm\Exception\UnanalyzedFileException;
 use Psalm\Exception\UnpopulatedClasslikeException;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
+use Psalm\Internal\Interner;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Analyzer\FunctionLikeAnalyzer;
 use Psalm\Internal\Analyzer\NamespaceAnalyzer;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
@@ -300,6 +302,8 @@ final class Codebase
         if ($progress === null) {
             $progress = new VoidProgress();
         }
+        Interner::merge(Sym::PRELOADED);
+
         $this->file_storage_provider = $providers->file_storage_provider;
         $this->classlike_storage_provider = $providers->classlike_storage_provider;
         $this->progress = $progress;
