@@ -92,21 +92,6 @@ class Reconciler
     private static array $broken_paths = [];
 
     /**
-     * Takes two arrays and consolidates them, removing null values from existing types where applicable.
-     * Returns a tuple of [new_types, new_references].
-     *
-     * @param  array<string, array<int, list<Assertion>>> $new_types
-     * @param  array<string, array<int, list<Assertion>>> $active_new_types - types we can complain about
-     * @param  array<string, Union> $existing_types
-     * @param  array<string, string> $existing_references Maps keys of $existing_types that are references to other
-     *                                                    keys of $existing_types that they are references to.
-     * @param  array<string, bool>       $changed_var_ids
-     * @param  array<string, bool>       $referenced_var_ids
-     * @param  array<string, array<string, Union>> $template_type_map
-     * @return array{array<string, Union>, array<string, string>}
-     * @psalm-suppress ComplexMethod
-     */
-    /**
      * Whether $var_id contains $base followed by `]`, `[` or `-`, i.e. names an access path through it (what the
      * regex `/<base>[\]\[\-]/` tested, without building and compiling one per call).
      *
@@ -127,6 +112,21 @@ class Reconciler
         return false;
     }
 
+    /**
+     * Takes two arrays and consolidates them, removing null values from existing types where applicable.
+     * Returns a tuple of [new_types, new_references].
+     *
+     * @param  array<string, array<int, list<Assertion>>> $new_types
+     * @param  array<string, array<int, list<Assertion>>> $active_new_types - types we can complain about
+     * @param  array<string, Union> $existing_types
+     * @param  array<string, string> $existing_references Maps keys of $existing_types that are references to other
+     *                                                    keys of $existing_types that they are references to.
+     * @param  array<string, bool>       $changed_var_ids
+     * @param  array<string, bool>       $referenced_var_ids
+     * @param  array<string, array<string, Union>> $template_type_map
+     * @return array{array<string, Union>, array<string, string>}
+     * @psalm-suppress ComplexMethod
+     */
     public static function reconcileKeyedTypes(
         array $new_types,
         array $active_new_types,
