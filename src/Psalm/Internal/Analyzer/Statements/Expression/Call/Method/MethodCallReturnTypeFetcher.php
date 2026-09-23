@@ -66,7 +66,7 @@ final class MethodCallReturnTypeFetcher
         $method_name = $method_id->method_name;
 
         $class_storage = $codebase->methods->getClassLikeStorageForMethod($method_id);
-        $method_storage = ($class_storage->methods[$method_id->method_name] ?? null);
+        $method_storage = ($class_storage->methods[$method_id->name_id] ?? null);
 
         if ($stmt->isFirstClassCallable()) {
             if ($method_storage) {
@@ -133,7 +133,7 @@ final class MethodCallReturnTypeFetcher
 
         if (InternalCallMapHandler::inCallMap((string) $call_map_id)) {
             if (($template_result->lower_bounds || $class_storage->stubbed)
-                && ($method_storage = ($class_storage->methods[$method_id->method_name] ?? null))
+                && ($method_storage = ($class_storage->methods[$method_id->name_id] ?? null))
                 && $method_storage->return_type
             ) {
                 $return_type_candidate = $method_storage->return_type;

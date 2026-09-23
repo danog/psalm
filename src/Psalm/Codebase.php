@@ -1114,7 +1114,7 @@ final class Codebase
     }
 
     /** By interned names (pzoom's StrId lookups); see the string forms for the semant     *
-     * @psalm-external-mutation-free
+     * @psalm-mutation-free
      */
     public function classExtendsOrImplementsById(int $name, int $possible_parent): bool
     {
@@ -1122,19 +1122,19 @@ final class Codebase
             || $this->classlikes->classImplementsById($name, $possible_parent);
     }
 
-    /** @psalm-external-mutation-free */
+    /** @psalm-mutation-free */
     public function classExtendsById(int $name, int $possible_parent): bool
     {
         return $this->classlikes->classExtendsById($name, $possible_parent, true);
     }
 
-    /** @psalm-external-mutation-free */
+    /** @psalm-mutation-free */
     public function classImplementsById(int $name, int $interface): bool
     {
         return $this->classlikes->classImplementsById($name, $interface);
     }
 
-    /** @psalm-external-mutation-free */
+    /** @psalm-mutation-free */
     public function interfaceExtendsById(int $name, int $possible_parent): bool
     {
         return $this->classlikes->interfaceExtendsById($name, $possible_parent);
@@ -1548,12 +1548,12 @@ final class Codebase
                 $class_storage = $this->classlikes->getStorageFor($fq_class_name);
 
                 //Get Real Properties
-                if (isset($class_storage->declaring_property_ids[$property_name])) {
-                    $declaring_property_class = $class_storage->declaring_property_ids[$property_name];
+                if (isset($class_storage->declaring_property_ids[Interner::intern($property_name)])) {
+                    $declaring_property_class = $class_storage->declaring_property_ids[Interner::intern($property_name)];
                     $declaring_class_storage = $this->classlike_storage_provider->get($declaring_property_class);
 
-                    if (isset($declaring_class_storage->properties[$property_name])) {
-                        $storage = $declaring_class_storage->properties[$property_name];
+                    if (isset($declaring_class_storage->properties[Interner::intern($property_name)])) {
+                        $storage = $declaring_class_storage->properties[Interner::intern($property_name)];
                         return new PHPMarkdownContent(
                             "{$storage->getInfo()} {$symbol_name}",
                             $reference->symbol,
@@ -1563,19 +1563,19 @@ final class Codebase
                 }
 
                 //Get Docblock properties
-                if (isset($class_storage->pseudo_property_set_types['$'.$property_name])) {
+                if (isset($class_storage->pseudo_property_set_types[Interner::intern('$' . $property_name)])) {
                     return new PHPMarkdownContent(
                         'public '.
-                        (string) $class_storage->pseudo_property_set_types['$'.$property_name].' $'.$property_name,
+                        (string) $class_storage->pseudo_property_set_types[Interner::intern('$' . $property_name)].' $'.$property_name,
                         $reference->symbol,
                     );
                 }
 
                 //Get Docblock properties
-                if (isset($class_storage->pseudo_property_get_types['$'.$property_name])) {
+                if (isset($class_storage->pseudo_property_get_types[Interner::intern('$' . $property_name)])) {
                     return new PHPMarkdownContent(
                         'public '.
-                        (string) $class_storage->pseudo_property_get_types['$'.$property_name].' $'.$property_name,
+                        (string) $class_storage->pseudo_property_get_types[Interner::intern('$' . $property_name)].' $'.$property_name,
                         $reference->symbol,
                     );
                 }
@@ -1594,15 +1594,16 @@ final class Codebase
                 ReflectionProperty::IS_PRIVATE,
             );
 
-            if (!isset($class_constants[$const_name])) {
+            $const_name_id = Interner::intern($const_name);
+            if (!isset($class_constants[$const_name_id])) {
                 return null;
             }
 
             //Class Constant
             return new PHPMarkdownContent(
-                $class_constants[$const_name]->getHoverMarkdown($const_name),
+                $class_constants[$const_name_id]->getHoverMarkdown($const_name),
                 $fq_classlike_name . '::' . $const_name,
-                $class_constants[$const_name]->description,
+                $class_constants[$const_name_id]->description,
             );
         }
 
@@ -1774,11 +1775,12 @@ final class Codebase
                     ReflectionProperty::IS_PRIVATE,
                 );
 
-                if (!isset($class_constants[$const_name])) {
+                $const_name_id = Interner::intern($const_name);
+                if (!isset($class_constants[$const_name_id])) {
                     return null;
                 }
 
-                return $class_constants[$const_name]->location;
+                return $class_constants[$const_name_id]->location;
             }
 
             if (strpos($reference->symbol, '()')) {
@@ -2241,7 +2243,8 @@ final class Codebase
 
                     if ($gap === '->') {
                         $pseudo_property_types = [];
-                        foreach ($class_storage->pseudo_property_get_types as $property_name => $type) {
+                        foreach ($class_storage->pseudo_property_get_types as $property_name_id => $type) {
+                            $property_name = Interner::lookup($property_name_id);
                             $pseudo_property_types[$property_name] = new CompletionItem(
                                 str_replace('$', '', $property_name),
                                 CompletionItemKind::PROPERTY,
@@ -2253,7 +2256,8 @@ final class Codebase
                             );
                         }
 
-                        foreach ($class_storage->pseudo_property_set_types as $property_name => $type) {
+                        foreach ($class_storage->pseudo_property_set_types as $property_name_id => $type) {
+                            $property_name = Interner::lookup($property_name_id);
                             $pseudo_property_types[$property_name] = new CompletionItem(
                                 str_replace('$', '', $property_name),
                                 CompletionItemKind::PROPERTY,
@@ -2268,7 +2272,8 @@ final class Codebase
                         $completion_items = [...$completion_items, ...array_values($pseudo_property_types)];
                     }
 
-                    foreach ($class_storage->declaring_property_ids as $property_name => $declaring_class) {
+                    foreach ($class_storage->declaring_property_ids as $property_name_id => $declaring_class) {
+                        $property_name = Interner::lookup($property_name_id);
                         try {
                             $property_storage = $this->properties->getStorage(
                                 $declaring_class . '::$' . $property_name,
@@ -2294,7 +2299,8 @@ final class Codebase
                         }
                     }
 
-                    foreach ($class_storage->constants as $const_name => $const) {
+                    foreach ($class_storage->constants as $const_name_id => $const) {
+                        $const_name = Interner::lookup($const_name_id);
                         $completion_items[] = new CompletionItem(
                             $const_name,
                             CompletionItemKind::VARIABLE,

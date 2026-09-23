@@ -9,6 +9,7 @@ use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Internal\Codebase\ClassConstantByWildcardResolver;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\Comparator\CallableTypeComparator;
 use Psalm\Storage\Assertion;
 use Psalm\Storage\Assertion\Any;
@@ -2961,7 +2962,7 @@ final class SimpleAssertionReconciler extends Reconciler
                 continue;
             }
 
-            $enum_case = $class_storage->enum_cases[$enum_case_to_assert] ?? null;
+            $enum_case = $class_storage->enum_cases[Interner::intern($enum_case_to_assert)] ?? null;
             if ($enum_case === null) {
                 return null;
             }

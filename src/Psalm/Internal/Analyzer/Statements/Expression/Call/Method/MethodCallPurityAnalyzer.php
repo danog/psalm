@@ -14,6 +14,7 @@ use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Assignment\InstancePropertyAssignmentAnalyzer as AssignmentAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\NoDiscardAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Issue\ImpureMethodCall;
 use Psalm\Issue\UnusedMethodCall;
@@ -204,7 +205,7 @@ final class MethodCallPurityAnalyzer
 
                 $this_property_didnt_exist = $lhs_var_id === '$this'
                     && isset($context->vars_in_scope[$mutation_var_id])
-                    && !isset($class_storage->declaring_property_ids[$name]);
+                    && !isset($class_storage->declaring_property_ids[Interner::intern($name)]);
 
                 if ($this_property_didnt_exist) {
                     unset($context->vars_in_scope[$mutation_var_id]);

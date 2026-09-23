@@ -27,10 +27,12 @@ use Psalm\Internal\Analyzer\CommentAnalyzer;
 use Psalm\Internal\Analyzer\NamespaceAnalyzer;
 use Psalm\Internal\Analyzer\ScopeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\SimpleTypeInferer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\Scanner\FileScanner;
 use Psalm\Internal\Scanner\ParsedDocblock;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\TypeAlias;
 use Psalm\Issue\DuplicateFunction;
 use Psalm\Issue\DuplicateMethod;
@@ -244,10 +246,11 @@ final class FunctionLikeNodeScanner
                 && $stmt->stmts[0]->expr->name instanceof PhpParser\Node\Identifier
             ) {
                 $property_name = $stmt->stmts[0]->expr->name->name;
+                $property_name_id = Interner::intern($property_name);
 
-                if (isset($classlike_storage->properties[$property_name])
-                    && $classlike_storage->properties[$property_name]->type
-                    && !$classlike_storage->properties[$property_name]->hook_get
+                if (isset($classlike_storage->properties[$property_name_id])
+                    && $classlike_storage->properties[$property_name_id]->type
+                    && !$classlike_storage->properties[$property_name_id]->hook_get
                 ) {
                     $storage->allowed_mutations = min(
                         Mutations::LEVEL_INTERNAL_READ,
@@ -255,7 +258,7 @@ final class FunctionLikeNodeScanner
                     );
                     $storage->mutation_free_assumed = !$stmt->isFinal() && !$classlike_storage->final;
 
-                    $classlike_storage->properties[$property_name]->getter_method = strtolower($stmt->name->name);
+                    $classlike_storage->properties[$property_name_id]->getter_method = strtolower($stmt->name->name);
                 }
             } elseif (str_starts_with($stmt->name->name, 'assert')
                 && $stmt->stmts
@@ -533,10 +536,10 @@ final class FunctionLikeNodeScanner
             && !$fake_method
             && $method_id
         ) {
-            $classlike_storage->methods[$method_name_lc] = $storage;
+            $classlike_storage->methods[$method_id->name_id] = $storage;
 
-            $classlike_storage->declaring_method_ids[$method_name_lc]
-                = $classlike_storage->appearing_method_ids[$method_name_lc]
+            $classlike_storage->declaring_method_ids[$method_id->name_id]
+                = $classlike_storage->appearing_method_ids[$method_id->name_id]
                 = $method_id;
 
             if (!$stmt->isPrivate()
@@ -544,11 +547,11 @@ final class FunctionLikeNodeScanner
                 || $method_name_lc === '__clone'
                 || $classlike_storage->is_trait
             ) {
-                $classlike_storage->inheritable_method_ids[$method_name_lc] = $method_id;
+                $classlike_storage->inheritable_method_ids[$method_id->name_id] = $method_id;
             }
 
-            if (!isset($classlike_storage->overridden_method_ids[$method_name_lc])) {
-                $classlike_storage->overridden_method_ids[$method_name_lc] = [];
+            if (!isset($classlike_storage->overridden_method_ids[$method_id->name_id])) {
+                $classlike_storage->overridden_method_ids[$method_id->name_id] = [];
             }
 
             if ($storage->final && $method_name_lc === '__construct') {
@@ -581,7 +584,7 @@ final class FunctionLikeNodeScanner
                     continue;
                 }
 
-                if (isset($classlike_storage->properties[$param_storage->name]) && $param_storage->location) {
+                if (isset($classlike_storage->properties[Interner::intern($param_storage->name)]) && $param_storage->location) {
                     IssueBuffer::maybeAdd(
                         new ParseError(
                             'Promoted property ' . $param_storage->name . ' clashes with an existing property',
@@ -639,7 +642,7 @@ final class FunctionLikeNodeScanner
                     $param_storage->type = $var_comment_type;
                 }
 
-                $property_storage = $classlike_storage->properties[$param_storage->name] = new PropertyStorage();
+                $property_storage = $classlike_storage->properties[Interner::intern($param_storage->name)] = new PropertyStorage();
                 $property_storage->is_static = false;
                 $property_storage->type = $param_storage->type;
                 $property_storage->signature_type = $param_storage->signature_type;
@@ -659,12 +662,12 @@ final class FunctionLikeNodeScanner
                 switch ($param->flags & Modifiers::VISIBILITY_MASK) {
                     case Modifiers::PUBLIC:
                         $property_storage->visibility = ClassLikeAnalyzer::VISIBILITY_PUBLIC;
-                        $classlike_storage->inheritable_property_ids[$param_storage->name] = $property_id;
+                        $classlike_storage->inheritable_property_ids[Interner::intern($param_storage->name)] = $property_id;
                         break;
 
                     case Modifiers::PROTECTED:
                         $property_storage->visibility = ClassLikeAnalyzer::VISIBILITY_PROTECTED;
-                        $classlike_storage->inheritable_property_ids[$param_storage->name] = $property_id;
+                        $classlike_storage->inheritable_property_ids[Interner::intern($param_storage->name)] = $property_id;
                         break;
 
                     case Modifiers::PRIVATE:
@@ -676,8 +679,8 @@ final class FunctionLikeNodeScanner
 
                 $property_id = $fq_classlike_name . '::$' . $param_storage->name;
 
-                $classlike_storage->declaring_property_ids[$param_storage->name] = $fq_classlike_name;
-                $classlike_storage->appearing_property_ids[$param_storage->name] = $property_id;
+                $classlike_storage->declaring_property_ids[Interner::intern($param_storage->name)] = $fq_classlike_name;
+                $classlike_storage->appearing_property_ids[Interner::intern($param_storage->name)] = $property_id;
                 $classlike_storage->initialized_properties[$param_storage->name] = true;
             }
 
@@ -814,13 +817,13 @@ final class FunctionLikeNodeScanner
                 && $function_stmt->expr->var->var->name === 'this'
                 && $function_stmt->expr->var->name instanceof PhpParser\Node\Identifier
                 && ($property_name = $function_stmt->expr->var->name->name)
-                && isset($classlike_storage->properties[$property_name])
+                && isset($classlike_storage->properties[Interner::intern($property_name)])
                 && $function_stmt->expr->expr instanceof PhpParser\Node\Expr\Variable
                 && is_string($function_stmt->expr->expr->name)
                 && ($param_name = $function_stmt->expr->expr->name)
                 && isset($storage->param_lookup[$param_name])
             ) {
-                if ($classlike_storage->properties[$property_name]->type
+                if ($classlike_storage->properties[Interner::intern($property_name)]->type
                     || !$storage->param_lookup[$param_name]
                 ) {
                     continue;
@@ -861,7 +864,7 @@ final class FunctionLikeNodeScanner
         $storage->mutation_free_assumed = true;
 
         foreach ($assigned_properties as $property_name => $property_type) {
-            $classlike_storage->properties[$property_name]->type = $property_type;
+            $classlike_storage->properties[Interner::intern($property_name)]->type = $property_type;
         }
     }
 
@@ -1077,6 +1080,7 @@ final class FunctionLikeNodeScanner
             $fq_classlike_name = $this->classlike_storage->name;
 
             $method_name_lc = strtolower($stmt->name->name);
+            $method_name_lc_id = Interner::intern($method_name_lc);
 
             $function_id = $fq_classlike_name . '::' . $method_name_lc;
             $cased_function_id = $fq_classlike_name . '::' . $stmt->name->name;
@@ -1085,9 +1089,9 @@ final class FunctionLikeNodeScanner
 
             $storage = null;
 
-            if (isset($classlike_storage->methods[$method_name_lc])) {
+            if (isset($classlike_storage->methods[$method_name_lc_id])) {
                 if (!$this->codebase->register_stub_files) {
-                    $duplicate_method_storage = $classlike_storage->methods[$method_name_lc];
+                    $duplicate_method_storage = $classlike_storage->methods[$method_name_lc_id];
 
                     IssueBuffer::maybeAdd(
                         new DuplicateMethod(
@@ -1139,7 +1143,7 @@ final class FunctionLikeNodeScanner
                 }
 
                 $is_functionlike_override = true;
-                $storage = $this->storage = $classlike_storage->methods[$method_name_lc];
+                $storage = $this->storage = $classlike_storage->methods[$method_name_lc_id];
             }
 
             if (!$storage) {
@@ -1153,7 +1157,7 @@ final class FunctionLikeNodeScanner
             $class_name = array_pop($class_name_parts);
 
             if ($method_name_lc === strtolower($class_name)
-                && !isset($classlike_storage->methods['__construct'])
+                && !isset($classlike_storage->methods[Sym::CONSTRUCT])
                 && !str_contains($fq_classlike_name, '\\')
                 && $this->codebase->analysis_php_version_id <= 7_04_00
             ) {

@@ -8,7 +8,9 @@ use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
@@ -253,7 +255,7 @@ final class HighOrderFunctionArgHandler
                     ->getStorageFor((string)$input_arg_expr->class->attrs()->resolvedName);
 
                 $constant = null !== $storage
-                    ? $storage->constants[$input_arg_expr->name->toString()] ?? null
+                    ? $storage->constants[Interner::intern($input_arg_expr->name->toString())] ?? null
                     : null;
 
                 return null !== $constant && null !== $constant->type
@@ -267,8 +269,8 @@ final class HighOrderFunctionArgHandler
                 $class_storage = $codebase->classlikes
                     ->getStorageFor((string) $input_arg_expr->class->attrs()->resolvedName);
 
-                $invoke_storage = $class_storage && isset($class_storage->methods['__invoke'])
-                    ? $class_storage->methods['__invoke']
+                $invoke_storage = $class_storage && isset($class_storage->methods[Sym::INVOKE])
+                    ? $class_storage->methods[Sym::INVOKE]
                     : null;
 
                 if (!$invoke_storage) {

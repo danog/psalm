@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Internal\Type\Comparator;
 
 use Psalm\Codebase;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Type;
@@ -378,7 +379,8 @@ final class KeyedArrayComparator
 
         $properties = [];
 
-        foreach ($storage->appearing_property_ids as $property_name => $property_id) {
+        foreach ($storage->appearing_property_ids as $property_name_id => $property_id) {
+            $property_name = Interner::lookup($property_name_id);
             if (!isset($container_type_part->properties[$property_name])) {
                 continue;
             }

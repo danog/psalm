@@ -19,6 +19,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\CallAnalyzer;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\TemplateBound;
 use Psalm\Internal\Type\TemplateResult;
@@ -1178,7 +1179,8 @@ final class NewAnalyzer extends CallAnalyzer
             $unconstrainable[$template_name] = true;
         }
 
-        foreach ($storage->methods as $method_name => $method_storage) {
+        foreach ($storage->methods as $method_name_id => $method_storage) {
+            $method_name = Interner::lookupLc($method_name_id);
             if (!$unconstrainable) {
                 break;
             }

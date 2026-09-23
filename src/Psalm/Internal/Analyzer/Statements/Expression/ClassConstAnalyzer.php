@@ -18,6 +18,7 @@ use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Issue\AmbiguousConstantInheritance;
 use Psalm\Issue\CircularReference;
@@ -243,7 +244,7 @@ final class ClassConstAnalyzer
 
             $const_class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
             if ($const_class_storage->is_enum) {
-                $case = $const_class_storage->enum_cases[(string)$stmt->name] ?? null;
+                $case = $const_class_storage->enum_cases[Interner::intern((string)$stmt->name)] ?? null;
                 if ($case && $case->deprecated) {
                     IssueBuffer::maybeAdd(
                         new DeprecatedConstant(
@@ -393,8 +394,8 @@ final class ClassConstAnalyzer
                     ),
                     $statements_analyzer->getSuppressedIssues(),
                 );
-            } elseif (isset($const_class_storage->constants[$stmt->name->name])
-                && $const_class_storage->constants[$stmt->name->name]->deprecated
+            } elseif (isset($const_class_storage->constants[Interner::intern($stmt->name->name)])
+                && $const_class_storage->constants[Interner::intern($stmt->name->name)]->deprecated
             ) {
                 IssueBuffer::maybeAdd(
                     new DeprecatedConstant(
@@ -406,8 +407,8 @@ final class ClassConstAnalyzer
             }
 
             if ($first_part_lc !== 'static' || $const_class_storage->final || $class_constant_type->from_docblock
-                || (isset($const_class_storage->constants[$stmt->name->name])
-                    && $const_class_storage->constants[$stmt->name->name]->final
+                || (isset($const_class_storage->constants[Interner::intern($stmt->name->name)])
+                    && $const_class_storage->constants[Interner::intern($stmt->name->name)]->final
                 )
             ) {
                 $stmt_type = $class_constant_type;
@@ -685,8 +686,8 @@ final class ClassConstAnalyzer
                     ),
                     $statements_analyzer->getSuppressedIssues(),
                 );
-            } elseif (isset($const_class_storage->constants[$stmt->name->name])
-                && $const_class_storage->constants[$stmt->name->name]->deprecated
+            } elseif (isset($const_class_storage->constants[Interner::intern($stmt->name->name)])
+                && $const_class_storage->constants[Interner::intern($stmt->name->name)]->deprecated
             ) {
                 IssueBuffer::maybeAdd(
                     new DeprecatedConstant(
@@ -724,7 +725,7 @@ final class ClassConstAnalyzer
 
         foreach ($stmt->consts as $const) {
             ExpressionAnalyzer::analyze($statements_analyzer, $const->value, $context);
-            $const_storage = $class_storage->constants[$const->name->name];
+            $const_storage = $class_storage->constants[Interner::intern($const->name->name)];
 
             // Check assigned type matches docblock type
             if ($assigned_type = $statements_analyzer->node_data->getType($const->value)) {
@@ -763,7 +764,8 @@ final class ClassConstAnalyzer
         ClassLikeStorage $class_storage,
         Codebase $codebase,
     ): void {
-        foreach ($class_storage->constants as $const_name => $const_storage) {
+        foreach ($class_storage->constants as $const_name_id => $const_storage) {
+            $const_name = Interner::lookup($const_name_id);
             [$parent_classlike_storage, $parent_const_storage] = self::getOverriddenConstant(
                 $class_storage,
                 $const_storage,
@@ -861,11 +863,12 @@ final class ClassConstAnalyzer
         string $const_name,
         Codebase $codebase,
     ): ?array {
+        $const_name_id = Interner::intern($const_name);
         $parent_classlike_storage = $interface_const_storage = $parent_const_storage = null;
         $interface_overrides = [];
         foreach ($class_storage->class_implements ?: $class_storage->direct_interface_parents as $interface) {
             $interface_storage = $codebase->classlike_storage_provider->get($interface);
-            $parent_const_storage = $interface_storage->constants[$const_name] ?? null;
+            $parent_const_storage = $interface_storage->constants[$const_name_id] ?? null;
             if ($parent_const_storage !== null) {
                 if ($const_storage->location
                     && $const_storage !== $parent_const_storage
@@ -901,7 +904,7 @@ final class ClassConstAnalyzer
 
         foreach ($class_storage->parent_classes as $parent_class) {
             $parent_class_storage = $codebase->classlike_storage_provider->get($parent_class);
-            $parent_const_storage = $parent_class_storage->constants[$const_name] ?? null;
+            $parent_const_storage = $parent_class_storage->constants[$const_name_id] ?? null;
             if ($parent_const_storage !== null) {
                 if ($const_storage->location !== null && $interface_const_storage !== null) {
                     assert($parent_classlike_storage !== null);

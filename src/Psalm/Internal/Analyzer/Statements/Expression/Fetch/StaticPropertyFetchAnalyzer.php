@@ -13,6 +13,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\ExpressionIdentifier;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\TypeExpander;
 use Psalm\Issue\ImpureStaticProperty;
 use Psalm\Issue\ParentNotFound;
@@ -288,7 +289,7 @@ final class StaticPropertyFetchAnalyzer
         );
 
         $class_storage = $codebase->classlike_storage_provider->get($declaring_property_class);
-        $property = $class_storage->properties[$prop_name];
+        $property = $class_storage->properties[Interner::intern($prop_name)];
 
         if (!$property->is_static) {
             if ($context->inside_isset) {

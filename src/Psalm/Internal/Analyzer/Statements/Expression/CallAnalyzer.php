@@ -18,6 +18,7 @@ use Psalm\Internal\Analyzer\FunctionLikeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\ArgumentsAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
@@ -302,8 +303,8 @@ abstract class CallAnalyzer
 
         $method_storage = null;
 
-        if (isset($class_storage->declaring_method_ids[$method_name])) {
-            $declaring_method_id = $class_storage->declaring_method_ids[$method_name];
+        if (isset($class_storage->declaring_method_ids[$method_id->name_id])) {
+            $declaring_method_id = $class_storage->declaring_method_ids[$method_id->name_id];
 
             $declaring_fq_class_name = $declaring_method_id->fq_class_name;
 
@@ -317,9 +318,9 @@ abstract class CallAnalyzer
 
             if ($declaring_class_storage->user_defined
                 && !$method_storage->has_docblock_param_types
-                && isset($declaring_class_storage->documenting_method_ids[$method_name])
+                && isset($declaring_class_storage->documenting_method_ids[$method_id->name_id])
             ) {
-                $documenting_method_id = $declaring_class_storage->documenting_method_ids[$method_name];
+                $documenting_method_id = $declaring_class_storage->documenting_method_ids[$method_id->name_id];
 
                 $documenting_method_storage = $codebase->methods->getStorage($documenting_method_id);
 

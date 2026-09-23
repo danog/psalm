@@ -15,7 +15,9 @@ use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Codebase\VariableUseGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TypeExpander;
@@ -84,12 +86,13 @@ final class StaticCallAnalyzer extends CallAnalyzer
                     if ($context->collect_initializations
                         && isset($stmt->name->name)
                         && $stmt->name->name === '__construct'
-                        && isset($class_storage->declaring_method_ids['__construct'])) {
-                        $construct_fq_class_name = $class_storage->declaring_method_ids['__construct']->fq_class_name;
+                        && isset($class_storage->declaring_method_ids[Sym::CONSTRUCT])) {
+                        $construct_fq_class_name = $class_storage->declaring_method_ids[Sym::CONSTRUCT]->fq_class_name;
                         $construct_class_storage = $codebase->classlike_storage_provider->get($construct_fq_class_name);
                         $construct_fq_class_name = $construct_class_storage->name;
 
-                        foreach ($construct_class_storage->properties as $property_name => $property_storage) {
+                        foreach ($construct_class_storage->properties as $property_name_id => $property_storage) {
+                            $property_name = Interner::lookup($property_name_id);
                             if ($property_storage->is_promoted
                                 && isset($context->vars_in_scope['$this->' . $property_name])) {
                                 $context_type = $context->vars_in_scope['$this->' . $property_name];

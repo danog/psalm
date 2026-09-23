@@ -8,6 +8,7 @@ use InvalidArgumentException;
 use Psalm\Exception\CircularReferenceException;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\ConstFetchAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Scanner\UnresolvedConstant\ArrayOffsetFetch;
 use Psalm\Internal\Scanner\UnresolvedConstant\ArraySpread;
 use Psalm\Internal\Scanner\UnresolvedConstant\ArrayValue;
@@ -338,9 +339,9 @@ final class ConstantTypeResolver
         if ($c instanceof EnumPropertyFetch) {
             if ($classlikes->enumExists($c->fqcln)) {
                 $enum_storage = $classlikes->getStorageFor($c->fqcln);
-                if (isset($enum_storage->enum_cases[$c->case])) {
+                if (isset($enum_storage->enum_cases[Interner::intern($c->case)])) {
                     if ($c instanceof EnumValueFetch) {
-                        $value = $enum_storage->enum_cases[$c->case]->value;
+                        $value = $enum_storage->enum_cases[Interner::intern($c->case)]->value;
 
                         if ($value !== null) {
                             if ($value instanceof UnresolvedConstantComponent) {

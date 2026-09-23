@@ -19,6 +19,7 @@ use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TypeExpander;
@@ -251,6 +252,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
 
         $method_name_node = $stmt->name;
         $method_name_lc = strtolower($method_name_node->name);
+        $method_name_lc_id = Interner::intern($method_name_lc);
 
         $method_id = new MethodIdentifier($fq_class_name, $method_name_lc);
 
@@ -376,7 +378,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
                 foreach ($class_storage->class_implements as $interface_fqcln_lc => $_) {
                     $interface_storage = $codebase->classlike_storage_provider->get($interface_fqcln_lc);
 
-                    if (isset($interface_storage->methods[$method_name_lc])) {
+                    if (isset($interface_storage->methods[$method_name_lc_id])) {
                         $interface_has_method = true;
                         $fq_class_name = $interface_storage->name;
                         $method_id = new MethodIdentifier(
@@ -463,7 +465,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
 
         if (!$corrected_method_exists
             || ($codebase->config->use_phpdoc_method_without_magic_or_parent
-                && isset($class_storage->pseudo_methods[$method_name_lc]))
+                && isset($class_storage->pseudo_methods[$method_name_lc_id]))
         ) {
             MissingMethodCallHandler::handleMissingOrMagicMethod(
                 $statements_analyzer,
@@ -747,6 +749,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
         StatementsAnalyzer $statements_analyzer,
         string $fq_class_name,
     ): array {
+        $method_name_lc_id = Interner::intern($method_name_lc);
         $naive_method_exists = false;
 
         if ($class_storage->templatedMixins
@@ -798,7 +801,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
 
                                 $naive_method_exists = true;
                                 $method_id = $new_method_id;
-                            } elseif (isset($mixin_class_storage->pseudo_methods[$method_name_lc])) {
+                            } elseif (isset($mixin_class_storage->pseudo_methods[$method_name_lc_id])) {
                                 $lhs_type_part = $lhs_type_part_new;
                                 $class_storage = $mixin_class_storage;
                                 $method_id = $new_method_id;

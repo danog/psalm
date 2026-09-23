@@ -468,37 +468,39 @@ final class Scanner
     private function mergeReflectedMembers(ClassLikeStorage $stub, ClassLikeStorage $reflected): bool
     {
         $changed = false;
-        foreach ($reflected->methods as $method_name_lc => $method_storage) {
-            if (isset($stub->methods[$method_name_lc])) {
+        foreach ($reflected->methods as $method_name_lc_id => $method_storage) {
+            $method_name_lc = Interner::lookupLc($method_name_lc_id);
+            if (isset($stub->methods[$method_name_lc_id])) {
                 continue;
             }
             $changed = true;
-            $stub->methods[$method_name_lc] = $method_storage;
+            $stub->methods[$method_name_lc_id] = $method_storage;
             $method_id = new MethodIdentifier($stub->name, $method_name_lc);
-            $stub->declaring_method_ids[$method_name_lc] ??= $method_id;
-            $stub->appearing_method_ids[$method_name_lc] ??= $method_id;
+            $stub->declaring_method_ids[$method_name_lc_id] ??= $method_id;
+            $stub->appearing_method_ids[$method_name_lc_id] ??= $method_id;
             if ($method_storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PRIVATE) {
-                $stub->inheritable_method_ids[$method_name_lc] ??= $method_id;
+                $stub->inheritable_method_ids[$method_name_lc_id] ??= $method_id;
             }
         }
-        foreach ($reflected->properties as $property_name => $property_storage) {
-            if (isset($stub->properties[$property_name])) {
+        foreach ($reflected->properties as $property_name_id => $property_storage) {
+            $property_name = Interner::lookup($property_name_id);
+            if (isset($stub->properties[$property_name_id])) {
                 continue;
             }
             $changed = true;
-            $stub->properties[$property_name] = $property_storage;
+            $stub->properties[$property_name_id] = $property_storage;
             $property_id = $stub->name . '::$' . $property_name;
             // the declaring map holds the class, the other two hold the property id
-            $stub->declaring_property_ids[$property_name] ??= $stub->name;
-            $stub->appearing_property_ids[$property_name] ??= $property_id;
+            $stub->declaring_property_ids[$property_name_id] ??= $stub->name;
+            $stub->appearing_property_ids[$property_name_id] ??= $property_id;
             if ($property_storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PRIVATE) {
-                $stub->inheritable_property_ids[$property_name] ??= $property_id;
+                $stub->inheritable_property_ids[$property_name_id] ??= $property_id;
             }
         }
-        foreach ($reflected->constants as $const_name => $const_storage) {
-            if (!isset($stub->constants[$const_name])) {
+        foreach ($reflected->constants as $const_name_id => $const_storage) {
+            if (!isset($stub->constants[$const_name_id])) {
                 $changed = true;
-                $stub->constants[$const_name] = $const_storage;
+                $stub->constants[$const_name_id] = $const_storage;
             }
         }
         return $changed;

@@ -31,12 +31,18 @@ final class MethodIdentifier implements Stringable
     public readonly int $class_id;
 
     /**
+     * The interned (lowercase) method name: the class-like storages key their method maps by it.
+     */
+    public readonly int $name_id;
+
+    /**
      * @param lowercase-string $method_name
      * @psalm-mutation-free
      */
     public function __construct(public readonly string $fq_class_name, public readonly string $method_name)
     {
         $this->class_id = Interner::intern($fq_class_name);
+        $this->name_id = Interner::intern($method_name);
     }
 
     /**

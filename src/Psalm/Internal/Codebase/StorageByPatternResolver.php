@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Codebase;
 
+use Psalm\Internal\Interner;
 use Psalm\Storage\ClassConstantStorage;
 use Psalm\Storage\ClassLikeStorage;
 use Psalm\Storage\EnumCaseStorage;
@@ -33,19 +34,20 @@ final class StorageByPatternResolver
         $constants = $class_like_storage->constants;
 
         if (!str_contains($pattern, '*')) {
-            if (isset($constants[$pattern])) {
-                return [$pattern => $constants[$pattern]];
+            if (isset($constants[Interner::intern($pattern)])) {
+                return [$pattern => $constants[Interner::intern($pattern)]];
             }
 
             return [];
         } elseif ($pattern === '*') {
-            return $constants;
+            return self::byName($constants);
         }
 
         $regex_pattern = sprintf('#^%s$#', str_replace('*', '.*?', $pattern));
         $matched_constants = [];
 
-        foreach ($constants as $constant => $class_constant_storage) {
+        foreach ($constants as $constant_id => $class_constant_storage) {
+            $constant = Interner::lookup($constant_id);
             if (preg_match($regex_pattern, $constant) === 0) {
                 continue;
             }
@@ -66,18 +68,19 @@ final class StorageByPatternResolver
     ): array {
         $enum_cases = $class_like_storage->enum_cases;
         if (!str_contains($pattern, '*')) {
-            if (isset($enum_cases[$pattern])) {
-                return [$pattern => $enum_cases[$pattern]];
+            if (isset($enum_cases[Interner::intern($pattern)])) {
+                return [$pattern => $enum_cases[Interner::intern($pattern)]];
             }
 
             return [];
         } elseif ($pattern === '*') {
-            return $enum_cases;
+            return self::byName($enum_cases);
         }
 
         $regex_pattern = sprintf('#^%s$#', str_replace('*', '.*?', $pattern));
         $matched_enums = [];
-        foreach ($enum_cases as $enum_case_name => $enum_case_storage) {
+        foreach ($enum_cases as $enum_case_name_id => $enum_case_storage) {
+            $enum_case_name = Interner::lookup($enum_case_name_id);
             if (preg_match($regex_pattern, $enum_case_name) === 0) {
                 continue;
             }
@@ -86,5 +89,21 @@ final class StorageByPatternResolver
         }
 
         return $matched_enums;
+    }
+
+    /**
+     * The id-keyed member map keyed by member name (the resolved maps are keyed by name).
+     *
+     * @template T
+     * @param array<int, T> $members
+     * @return array<string, T>
+     */
+    private static function byName(array $members): array
+    {
+        $by_name = [];
+        foreach ($members as $id => $member) {
+            $by_name[Interner::lookup($id)] = $member;
+        }
+        return $by_name;
     }
 }

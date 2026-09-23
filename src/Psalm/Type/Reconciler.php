@@ -9,6 +9,7 @@ use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\Statements\Expression\ArrayAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\AssertionReconciler;
 use Psalm\Internal\Type\TypeExpander;
@@ -979,7 +980,7 @@ class Reconciler
                 $fq_class_name,
             );
 
-            return $declaring_class_storage->pseudo_property_get_types['$' . $property_name] ?? null;
+            return $declaring_class_storage->pseudo_property_get_types[Interner::intern('$' . $property_name)] ?? null;
         }
 
         $declaring_property_class = $codebase->properties->getDeclaringClassForProperty(

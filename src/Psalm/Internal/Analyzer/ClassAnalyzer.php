@@ -24,8 +24,10 @@ use Psalm\Internal\Analyzer\Statements\Expression\ClassConstAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\AtomicPropertyFetchAnalyzer;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\FileManipulation\PropertyDocblockManipulator;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Provider\NodeDataProvider;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
@@ -679,7 +681,8 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
     ): void {
         $codebase = $statements_source->getCodebase();
 
-        foreach ($storage->appearing_property_ids as $property_name => $appearing_property_id) {
+        foreach ($storage->appearing_property_ids as $property_name_id => $appearing_property_id) {
+            $property_name = Interner::lookup($property_name_id);
             $property_class_name = $codebase->properties->getDeclaringClassForProperty(
                 $appearing_property_id,
                 true,
@@ -691,7 +694,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
 
             $property_class_storage = $codebase->classlike_storage_provider->get($property_class_name);
 
-            $property_storage = $property_class_storage->properties[$property_name];
+            $property_storage = $property_class_storage->properties[$property_name_id];
 
             if ($property_class_storage->isPure() && $property_storage->location) {
                 IssueBuffer::maybeAdd(
@@ -704,11 +707,11 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 );
             }
 
-            if (isset($storage->overridden_property_ids[$property_name])) {
-                foreach ($storage->overridden_property_ids[$property_name] as $overridden_property_id) {
+            if (isset($storage->overridden_property_ids[$property_name_id])) {
+                foreach ($storage->overridden_property_ids[$property_name_id] as $overridden_property_id) {
                     [$guide_class_name] = explode('::$', $overridden_property_id);
                     $guide_class_storage = $codebase->classlike_storage_provider->get($guide_class_name);
-                    $guide_property_storage = $guide_class_storage->properties[$property_name];
+                    $guide_property_storage = $guide_class_storage->properties[$property_name_id];
 
                     if ($property_storage->visibility > $guide_property_storage->visibility
                         && $property_storage->location
@@ -858,9 +861,9 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 if (!$property_type->isMixed()
                     && (!$property_storage->is_promoted
                         || (strtolower($fq_class_name) !== strtolower($property_class_name)
-                            && isset($storage->declaring_method_ids['__construct'])
+                            && isset($storage->declaring_method_ids[Sym::CONSTRUCT])
                             && strtolower(
-                                $storage->declaring_method_ids['__construct']->fq_class_name,
+                                $storage->declaring_method_ids[Sym::CONSTRUCT]->fq_class_name,
                             ) === strtolower($fq_class_name)))
                     && !$property_storage->has_default
                     && !($property_type->isNullable() && $property_type->from_docblock)
@@ -875,9 +878,9 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 if (!$property_storage->has_default
                     && (!$property_storage->is_promoted
                         || (strtolower($fq_class_name) !== strtolower($property_class_name)
-                            && isset($storage->declaring_method_ids['__construct'])
+                            && isset($storage->declaring_method_ids[Sym::CONSTRUCT])
                             && strtolower(
-                                $storage->declaring_method_ids['__construct']->fq_class_name,
+                                $storage->declaring_method_ids[Sym::CONSTRUCT]->fq_class_name,
                             ) === strtolower($fq_class_name)))) {
                     $property_type = new Union([new TMixed()], [
                         'initialized' => false,
@@ -1004,7 +1007,8 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             }
         }
 
-        foreach ($storage->pseudo_property_get_types as $property_name => $property_type) {
+        foreach ($storage->pseudo_property_get_types as $property_name_id => $property_type) {
+            $property_name = Interner::lookup($property_name_id);
             $property_name = substr($property_name, 1);
 
             if (isset($class_context->vars_in_scope['$this->' . $property_name])) {
@@ -1035,14 +1039,14 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             return;
         }
 
-        if (!isset($storage->declaring_method_ids['__construct'])
+        if (!isset($storage->declaring_method_ids[Sym::CONSTRUCT])
             && !$config->reportIssueInFile('MissingConstructor', $this->getFilePath())
         ) {
             return;
         }
 
         // abstract constructors do not have any code, therefore cannot set any properties either
-        if (isset($storage->methods['__construct']) && $storage->methods['__construct']->abstract) {
+        if (isset($storage->methods[Sym::CONSTRUCT]) && $storage->methods[Sym::CONSTRUCT]->abstract) {
             return;
         }
 
@@ -1075,7 +1079,8 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         $uninitialized_typed_properties = [];
         $uninitialized_private_properties = false;
 
-        foreach ($storage->appearing_property_ids as $property_name => $appearing_property_id) {
+        foreach ($storage->appearing_property_ids as $property_name_id => $appearing_property_id) {
+            $property_name = Interner::lookup($property_name_id);
             $property_class_name = $codebase->properties->getDeclaringClassForProperty(
                 $appearing_property_id,
                 true,
@@ -1087,7 +1092,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
 
             $property_class_storage = $classlike_storage_provider->get($property_class_name);
 
-            $property = $property_class_storage->properties[$property_name];
+            $property = $property_class_storage->properties[$property_name_id];
 
             $property_is_initialized = isset($property_class_storage->initialized_properties[$property_name]);
 
@@ -1097,8 +1102,8 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
 
             if ($property->is_promoted
                 && strtolower($property_class_name) !== $fq_class_name_lc
-                && isset($storage->declaring_method_ids['__construct'])
-                && strtolower($storage->declaring_method_ids['__construct']->fq_class_name) === $fq_class_name_lc) {
+                && isset($storage->declaring_method_ids[Sym::CONSTRUCT])
+                && strtolower($storage->declaring_method_ids[Sym::CONSTRUCT]->fq_class_name) === $fq_class_name_lc) {
                 $property_is_initialized = false;
             }
 
@@ -1160,21 +1165,21 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
 
         if (!$storage->abstract
             && !$constructor_analyzer
-            && isset($storage->declaring_method_ids['__construct'])
-            && isset($storage->appearing_method_ids['__construct'])
+            && isset($storage->declaring_method_ids[Sym::CONSTRUCT])
+            && isset($storage->appearing_method_ids[Sym::CONSTRUCT])
             && $class->extends
         ) {
-            $constructor_declaring_fqcln = $storage->declaring_method_ids['__construct']->fq_class_name;
-            $constructor_appearing_fqcln = $storage->appearing_method_ids['__construct']->fq_class_name;
+            $constructor_declaring_fqcln = $storage->declaring_method_ids[Sym::CONSTRUCT]->fq_class_name;
+            $constructor_appearing_fqcln = $storage->appearing_method_ids[Sym::CONSTRUCT]->fq_class_name;
 
             $constructor_class_storage = $classlike_storage_provider->get($constructor_declaring_fqcln);
 
             // ignore oldstyle constructors and classes without any declared properties
             if ($constructor_class_storage->user_defined
                 && !$constructor_class_storage->stubbed
-                && isset($constructor_class_storage->methods['__construct'])
+                && isset($constructor_class_storage->methods[Sym::CONSTRUCT])
             ) {
-                $constructor_storage = $constructor_class_storage->methods['__construct'];
+                $constructor_storage = $constructor_class_storage->methods[Sym::CONSTRUCT];
 
                 $fake_constructor_params = array_map(
                     static function (FunctionLikeParameter $param): PhpParser\Node\Param {
@@ -1311,7 +1316,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
 
                 $error_location = $property_storage->location;
 
-                if ($storage->declaring_property_ids[$property_name] !== $fq_class_name) {
+                if ($storage->declaring_property_ids[Interner::intern($property_name)] !== $fq_class_name) {
                     $error_location = $storage->location ?: $storage->stmt_location;
                 }
 
@@ -1322,13 +1327,13 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                         $end_type->initialized_class ?: $constructor_appearing_fqcln,
                     );
 
-                    if (!isset($a_class_storage->declaring_property_ids[$property_name])) {
+                    if (!isset($a_class_storage->declaring_property_ids[Interner::intern($property_name)])) {
                         $constructor_class_property_storage = null;
                     } else {
-                        $declaring_property_class = $a_class_storage->declaring_property_ids[$property_name];
+                        $declaring_property_class = $a_class_storage->declaring_property_ids[Interner::intern($property_name)];
                         $constructor_class_property_storage = $classlike_storage_provider
                             ->get($declaring_property_class)
-                            ->properties[$property_name];
+                            ->properties[Interner::intern($property_name)];
                     }
                 }
 
@@ -1567,6 +1572,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
     ): void {
         $fq_class_name = $source->getFQCLN();
         $property_name = $stmt->props[0]->name->name;
+        $property_name_id = Interner::intern($property_name);
 
         $codebase = $this->getCodebase();
 
@@ -1588,7 +1594,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
 
         $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
 
-        $property_storage = $class_storage->properties[$property_name];
+        $property_storage = $class_storage->properties[$property_name_id];
 
         AttributesAnalyzer::analyze(
             $source,
@@ -1986,7 +1992,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             );
         }
 
-        $overridden_method_ids = $class_storage->overridden_method_ids[strtolower($stmt->name->name)] ?? [];
+        $overridden_method_ids = $class_storage->overridden_method_ids[Interner::intern(strtolower($stmt->name->name))] ?? [];
 
         if (!$return_type
             && !$class_storage->is_interface
@@ -2237,7 +2243,8 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 $interface_storage->allowed_mutations,
             );
 
-            foreach ($interface_storage->methods as $interface_method_name_lc => $interface_method_storage) {
+            foreach ($interface_storage->methods as $interface_method_name_lc_id => $interface_method_storage) {
+                $interface_method_name_lc = Interner::lookupLc($interface_method_name_lc_id);
                 if ($interface_method_storage->visibility === self::VISIBILITY_PUBLIC) {
                     $implementer_declaring_method_id = $codebase->methods->getDeclaringMethodId(
                         new MethodIdentifier(

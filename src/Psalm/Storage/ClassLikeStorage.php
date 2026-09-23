@@ -31,7 +31,7 @@ final class ClassLikeStorage implements HasAttributesInterface
     use UnserializeMemoryUsageSuppressionTrait;
 
     /**
-     * @var array<string, ClassConstantStorage>
+     * @var array<int, ClassConstantStorage>
      */
     public array $constants = [];
 
@@ -174,17 +174,17 @@ final class ClassLikeStorage implements HasAttributesInterface
     public bool $specialize_instance = false;
 
     /**
-     * @var array<lowercase-string, MethodStorage>
+     * @var array<int, MethodStorage>
      */
     public array $methods = [];
 
     /**
-     * @var array<lowercase-string, MethodStorage>
+     * @var array<int, MethodStorage>
      */
     public array $pseudo_methods = [];
 
     /**
-     * @var array<lowercase-string, MethodStorage>
+     * @var array<int, MethodStorage>
      */
     public array $pseudo_static_methods = [];
 
@@ -196,17 +196,17 @@ final class ClassLikeStorage implements HasAttributesInterface
      *
      * This property contains all pseudo methods declared on ancestors.
      *
-     * @var array<lowercase-string, MethodIdentifier>
+     * @var array<int, MethodIdentifier>
      */
     public array $declaring_pseudo_method_ids = [];
 
     /**
-     * @var array<lowercase-string, MethodIdentifier>
+     * @var array<int, MethodIdentifier>
      */
     public array $declaring_method_ids = [];
 
     /**
-     * @var array<lowercase-string, MethodIdentifier>
+     * @var array<int, MethodIdentifier>
      */
     public array $appearing_method_ids = [];
 
@@ -215,59 +215,59 @@ final class ClassLikeStorage implements HasAttributesInterface
      * great-grandparent, etc **including traits and interfaces**. Ancestors that don't have their own declaration are
      * skipped.
      *
-     * @var array<lowercase-string, array<string, MethodIdentifier>>
+     * @var array<int, array<string, MethodIdentifier>>
      */
     public array $overridden_method_ids = [];
 
     /**
-     * @var array<lowercase-string, MethodIdentifier>
+     * @var array<int, MethodIdentifier>
      */
     public array $documenting_method_ids = [];
 
     /**
-     * @var array<lowercase-string, MethodIdentifier>
+     * @var array<int, MethodIdentifier>
      */
     public array $inheritable_method_ids = [];
 
     /**
-     * @var array<lowercase-string, array<string, bool>>
+     * @var array<int, array<string, bool>>
      */
     public array $potential_declaring_method_ids = [];
 
     /**
-     * @var array<string, PropertyStorage>
+     * @var array<int, PropertyStorage>
      */
     public array $properties = [];
 
     /**
-     * @var array<string, Union>
+     * @var array<int, Union>
      */
     public array $pseudo_property_set_types = [];
 
     /**
-     * @var array<string, Union>
+     * @var array<int, Union>
      */
     public array $pseudo_property_get_types = [];
 
     /**
-     * @var array<string, string>
+     * @var array<int, string>
      */
     public array $declaring_property_ids = [];
 
     /**
-     * @var array<string, string>
+     * @var array<int, string>
      */
     public array $appearing_property_ids = [];
 
     public ?Union $inheritors = null;
 
     /**
-     * @var array<string, string>
+     * @var array<int, string>
      */
     public array $inheritable_property_ids = [];
 
     /**
-     * @var array<string, list<string>>
+     * @var array<int, list<string>>
      */
     public array $overridden_property_ids = [];
 
@@ -378,7 +378,7 @@ final class ClassLikeStorage implements HasAttributesInterface
     public array $attributes = [];
 
     /**
-     * @var array<string, EnumCaseStorage>
+     * @var array<int, EnumCaseStorage>
      */
     public array $enum_cases = [];
 
@@ -434,7 +434,7 @@ final class ClassLikeStorage implements HasAttributesInterface
      * MethodStorage objects, shared (pzoom flattens ancestor methods into every descendant, Arc-shared).
      * Filled at populate from declaring_method_ids.
      *
-     * @var array<lowercase-string, MethodStorage>
+     * @var array<int, MethodStorage>
      */
     public array $all_methods = [];
 
@@ -442,7 +442,7 @@ final class ClassLikeStorage implements HasAttributesInterface
      * Every property of the class-like, own and inherited, by name: the declaring class's PropertyStorage
      * objects, shared. Filled at populate from declaring_property_ids.
      *
-     * @var array<string, PropertyStorage>
+     * @var array<int, PropertyStorage>
      */
     public array $all_properties = [];
 

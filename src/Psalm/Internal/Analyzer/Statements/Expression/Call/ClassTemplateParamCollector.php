@@ -6,6 +6,7 @@ namespace Psalm\Internal\Analyzer\Statements\Expression\Call;
 
 use AssertionError;
 use Psalm\Codebase;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TypeExpander;
 use Psalm\Storage\ClassLikeStorage;
@@ -38,6 +39,7 @@ final class ClassTemplateParamCollector
         ?Atomic $lhs_type_part = null,
         bool $self_call = false,
     ): ?array {
+        $method_name_id = $method_name !== null ? Interner::intern($method_name) : null;
         $non_trait_class_storage = $class_storage->is_trait
             ? $static_class_storage
             : $class_storage;
@@ -47,10 +49,10 @@ final class ClassTemplateParamCollector
         $candidate_class_storages = [$class_storage];
 
         if ($static_class_storage->template_extended_params
-            && $method_name
-            && !empty($non_trait_class_storage->overridden_method_ids[$method_name])
+            && $method_name_id !== null
+            && ($non_trait_class_storage->overridden_method_ids[$method_name_id] ?? []) !== []
         ) {
-            foreach ($non_trait_class_storage->overridden_method_ids[$method_name] as $overridden_method_id) {
+            foreach ($non_trait_class_storage->overridden_method_ids[$method_name_id] as $overridden_method_id) {
                 $overridden_storage = $codebase->methods->getStorage($overridden_method_id);
 
                 if (!$overridden_storage->return_type) {

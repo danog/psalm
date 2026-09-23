@@ -47,6 +47,7 @@ use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\ReferenceConstraint;
 use Psalm\Internal\Scanner\ParsedDocblock;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TypeParser;
 use Psalm\Internal\Type\TypeTokenizer;
@@ -1060,7 +1061,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
 
             $class_storage = $codebase->classlikes->getStorageFor($atomic_type->value);
             while ($class_storage !== null) {
-                $destructor = $class_storage->methods['__destruct'] ?? null;
+                $destructor = $class_storage->methods[Sym::DESTRUCT] ?? null;
                 if ($destructor !== null) {
                     if ($destructor->has_mutations_annotation
                         && $destructor->allowed_mutations >= Mutations::LEVEL_EXTERNAL) {

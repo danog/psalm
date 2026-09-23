@@ -18,6 +18,7 @@ use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Codebase\ConstantTypeResolver;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\Scanner\UnresolvedConstantComponent;
+use Psalm\Internal\Sym;
 use Psalm\Issue\InvalidAttribute;
 use Psalm\Issue\UndefinedClass;
 use Psalm\IssueBuffer;
@@ -197,8 +198,8 @@ final class AttributesAnalyzer
                     ),
                     $suppressed_issues,
                 );
-            } elseif (isset($classlike_storage->methods['__construct'])
-                && $classlike_storage->methods['__construct']->visibility !== ClassLikeAnalyzer::VISIBILITY_PUBLIC
+            } elseif (isset($classlike_storage->methods[Sym::CONSTRUCT])
+                && $classlike_storage->methods[Sym::CONSTRUCT]->visibility !== ClassLikeAnalyzer::VISIBILITY_PUBLIC
             ) {
                 IssueBuffer::maybeAdd(
                     new InvalidAttribute(

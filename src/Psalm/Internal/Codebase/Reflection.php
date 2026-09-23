@@ -9,8 +9,10 @@ use LibXMLError;
 use LogicException;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
+use Psalm\Internal\Sym;
 use Psalm\Storage\ClassConstantStorage;
 use Psalm\Storage\FunctionLikeParameter;
 use Psalm\Storage\FunctionStorage;
@@ -82,7 +84,7 @@ final class Reflection
         $storage->abstract = $reflected_class->isAbstract();
         $storage->is_interface = $reflected_class->isInterface();
 
-        $storage->potential_declaring_method_ids['__construct'][$class_name_lower . '::__construct'] = true;
+        $storage->potential_declaring_method_ids[Sym::CONSTRUCT][$class_name_lower . '::__construct'] = true;
 
         if ($reflected_parent_class) {
             $parent_class_name = $reflected_parent_class->getName();
@@ -114,43 +116,45 @@ final class Reflection
 
         foreach ($class_properties as $class_property) {
             $property_name = $class_property->getName();
-            $storage->properties[$property_name] = new PropertyStorage();
+            $property_name_id = Interner::intern($property_name);
+            $storage->properties[$property_name_id] = new PropertyStorage();
 
-            $storage->properties[$property_name]->type = Type::getMixed();
+            $storage->properties[$property_name_id]->type = Type::getMixed();
 
             if ($class_property->isStatic()) {
-                $storage->properties[$property_name]->is_static = true;
+                $storage->properties[$property_name_id]->is_static = true;
             }
 
             if ($class_property->isPublic()) {
-                $storage->properties[$property_name]->visibility = ClassLikeAnalyzer::VISIBILITY_PUBLIC;
+                $storage->properties[$property_name_id]->visibility = ClassLikeAnalyzer::VISIBILITY_PUBLIC;
             } elseif ($class_property->isProtected()) {
-                $storage->properties[$property_name]->visibility = ClassLikeAnalyzer::VISIBILITY_PROTECTED;
+                $storage->properties[$property_name_id]->visibility = ClassLikeAnalyzer::VISIBILITY_PROTECTED;
             } elseif ($class_property->isPrivate()) {
-                $storage->properties[$property_name]->visibility = ClassLikeAnalyzer::VISIBILITY_PRIVATE;
+                $storage->properties[$property_name_id]->visibility = ClassLikeAnalyzer::VISIBILITY_PRIVATE;
             }
 
             $property_id = $class_property->class . '::$' . $property_name;
 
-            $storage->declaring_property_ids[$property_name] = $class_property->class;
-            $storage->appearing_property_ids[$property_name] = $property_id;
+            $storage->declaring_property_ids[$property_name_id] = $class_property->class;
+            $storage->appearing_property_ids[$property_name_id] = $property_id;
 
             if (!$class_property->isPrivate()) {
-                $storage->inheritable_property_ids[$property_name] = $property_id;
+                $storage->inheritable_property_ids[$property_name_id] = $property_id;
             }
         }
 
         // have to do this separately as there can be new properties here
         foreach ($public_mapped_properties as $property_name => $type_string) {
+            $property_name_id = Interner::intern($property_name);
             $property_id = $class_name . '::$' . $property_name;
 
-            if (!isset($storage->properties[$property_name])) {
-                $storage->properties[$property_name] = new PropertyStorage();
-                $storage->properties[$property_name]->visibility = ClassLikeAnalyzer::VISIBILITY_PUBLIC;
+            if (!isset($storage->properties[$property_name_id])) {
+                $storage->properties[$property_name_id] = new PropertyStorage();
+                $storage->properties[$property_name_id]->visibility = ClassLikeAnalyzer::VISIBILITY_PUBLIC;
 
-                $storage->declaring_property_ids[$property_name] = $class_name;
-                $storage->appearing_property_ids[$property_name] = $property_id;
-                $storage->inheritable_property_ids[$property_name] = $property_id;
+                $storage->declaring_property_ids[$property_name_id] = $class_name;
+                $storage->appearing_property_ids[$property_name_id] = $property_id;
+                $storage->inheritable_property_ids[$property_name_id] = $property_id;
             }
 
             $type = Type::parseString($type_string);
@@ -160,14 +164,14 @@ final class Reflection
                 $type->ignore_falsable_issues = true;
             }
 
-            $storage->properties[$property_name]->type = $type;
+            $storage->properties[$property_name_id]->type = $type;
         }
 
         /** @var array<string, scalar|null|list<scalar|null|list<scalar|null|array>|array<string, scalar|null|array>>|array<string, scalar|null|list<scalar|null|array>|array<string, scalar|null|array>>> */
         $class_constants = $reflected_class->getConstants();
 
         foreach ($class_constants as $name => $value) {
-            $storage->constants[$name] = new ClassConstantStorage(
+            $storage->constants[Interner::intern($name)] = new ClassConstantStorage(
                 ClassLikeAnalyzer::getTypeFromValue($value),
                 new Union([ConstantTypeResolver::getLiteralTypeFromScalarValue($value)]),
                 ClassLikeAnalyzer::VISIBILITY_PUBLIC,
@@ -240,6 +244,7 @@ final class Reflection
     public function extractReflectionMethodInfo(ReflectionMethod $method): void
     {
         $method_name_lc = strtolower($method->getName());
+        $method_name_lc_id = Interner::intern($method_name_lc);
 
         $fq_class_name = $method->class;
 
@@ -247,13 +252,13 @@ final class Reflection
 
         $class_storage = $this->storage_provider->get($fq_class_name_lc);
 
-        if (isset($class_storage->methods[$method_name_lc])) {
+        if (isset($class_storage->methods[$method_name_lc_id])) {
             return;
         }
 
         $method_id = $method->class . '::' . $method_name_lc;
 
-        $storage = $class_storage->methods[$method_name_lc] = new MethodStorage();
+        $storage = $class_storage->methods[$method_name_lc_id] = new MethodStorage();
 
         $storage->cased_name = $method->name;
         $storage->defining_fqcln = $method->class;
@@ -284,16 +289,16 @@ final class Reflection
             $storage->allowed_mutations = Mutations::LEVEL_ALL;
         }
 
-        $class_storage->declaring_method_ids[$method_name_lc] = new MethodIdentifier(
+        $class_storage->declaring_method_ids[$method_name_lc_id] = new MethodIdentifier(
             $declaring_class->name,
             $method_name_lc,
         );
 
-        $class_storage->inheritable_method_ids[$method_name_lc]
-            = $class_storage->declaring_method_ids[$method_name_lc];
-        $class_storage->appearing_method_ids[$method_name_lc]
-            = $class_storage->declaring_method_ids[$method_name_lc];
-        $class_storage->overridden_method_ids[$method_name_lc] = [];
+        $class_storage->inheritable_method_ids[$method_name_lc_id]
+            = $class_storage->declaring_method_ids[$method_name_lc_id];
+        $class_storage->appearing_method_ids[$method_name_lc_id]
+            = $class_storage->declaring_method_ids[$method_name_lc_id];
+        $class_storage->overridden_method_ids[$method_name_lc_id] = [];
 
         $storage->visibility = $method->isPrivate()
             ? ClassLikeAnalyzer::VISIBILITY_PRIVATE
@@ -512,16 +517,16 @@ final class Reflection
         $storage = $this->storage_provider->get($fq_class_name);
 
         // register where they appear (can never be in a trait)
-        foreach ($parent_storage->appearing_method_ids as $method_name => $appearing_method_id) {
-            $storage->appearing_method_ids[$method_name] = $appearing_method_id;
+        foreach ($parent_storage->appearing_method_ids as $method_name_id => $appearing_method_id) {
+            $storage->appearing_method_ids[$method_name_id] = $appearing_method_id;
         }
 
         // register where they're declared
-        foreach ($parent_storage->inheritable_method_ids as $method_name => $declaring_method_id) {
-            $storage->declaring_method_ids[$method_name] = $declaring_method_id;
-            $storage->inheritable_method_ids[$method_name] = $declaring_method_id;
+        foreach ($parent_storage->inheritable_method_ids as $method_name_id => $declaring_method_id) {
+            $storage->declaring_method_ids[$method_name_id] = $declaring_method_id;
+            $storage->inheritable_method_ids[$method_name_id] = $declaring_method_id;
 
-            $storage->overridden_method_ids[$method_name][$declaring_method_id->fq_class_name]
+            $storage->overridden_method_ids[$method_name_id][$declaring_method_id->fq_class_name]
                 = $declaring_method_id;
         }
     }
@@ -538,39 +543,39 @@ final class Reflection
         $storage = $this->storage_provider->get($fq_class_name);
 
         // register where they appear (can never be in a trait)
-        foreach ($parent_storage->appearing_property_ids as $property_name => $appearing_property_id) {
+        foreach ($parent_storage->appearing_property_ids as $property_name_id => $appearing_property_id) {
             if (!$parent_storage->is_trait
-                && isset($parent_storage->properties[$property_name])
-                && $parent_storage->properties[$property_name]->visibility === ClassLikeAnalyzer::VISIBILITY_PRIVATE
+                && isset($parent_storage->properties[$property_name_id])
+                && $parent_storage->properties[$property_name_id]->visibility === ClassLikeAnalyzer::VISIBILITY_PRIVATE
             ) {
                 continue;
             }
 
-            $storage->appearing_property_ids[$property_name] = $appearing_property_id;
+            $storage->appearing_property_ids[$property_name_id] = $appearing_property_id;
         }
 
         // register where they're declared
-        foreach ($parent_storage->declaring_property_ids as $property_name => $declaring_property_class) {
+        foreach ($parent_storage->declaring_property_ids as $property_name_id => $declaring_property_class) {
             if (!$parent_storage->is_trait
-                && isset($parent_storage->properties[$property_name])
-                && $parent_storage->properties[$property_name]->visibility === ClassLikeAnalyzer::VISIBILITY_PRIVATE
+                && isset($parent_storage->properties[$property_name_id])
+                && $parent_storage->properties[$property_name_id]->visibility === ClassLikeAnalyzer::VISIBILITY_PRIVATE
             ) {
                 continue;
             }
 
-            $storage->declaring_property_ids[$property_name] = strtolower($declaring_property_class);
+            $storage->declaring_property_ids[$property_name_id] = strtolower($declaring_property_class);
         }
 
         // register where they're declared
-        foreach ($parent_storage->inheritable_property_ids as $property_name => $inheritable_property_id) {
+        foreach ($parent_storage->inheritable_property_ids as $property_name_id => $inheritable_property_id) {
             if (!$parent_storage->is_trait
-                && isset($parent_storage->properties[$property_name])
-                && $parent_storage->properties[$property_name]->visibility === ClassLikeAnalyzer::VISIBILITY_PRIVATE
+                && isset($parent_storage->properties[$property_name_id])
+                && $parent_storage->properties[$property_name_id]->visibility === ClassLikeAnalyzer::VISIBILITY_PRIVATE
             ) {
                 continue;
             }
 
-            $storage->inheritable_property_ids[$property_name] = $inheritable_property_id;
+            $storage->inheritable_property_ids[$property_name_id] = $inheritable_property_id;
         }
     }
 

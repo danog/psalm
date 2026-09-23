@@ -7,6 +7,7 @@ namespace Psalm\Internal\Type;
 use Psalm\CodeLocation;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\Comparator\AtomicTypeComparator;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
@@ -452,7 +453,8 @@ final class NegatedAssertionReconciler extends Reconciler
                         $existing_var_type->removeType($atomic_type->getKey());
                         $redundant = false;
 
-                        foreach ($enum_storage->enum_cases as $alt_case_name => $_) {
+                        foreach ($enum_storage->enum_cases as $alt_case_name_id => $_) {
+                            $alt_case_name = Interner::lookup($alt_case_name_id);
                             if ($alt_case_name === $case_name) {
                                 continue;
                             }

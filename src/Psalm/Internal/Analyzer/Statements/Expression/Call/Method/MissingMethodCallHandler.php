@@ -13,6 +13,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\Call\ArgumentsAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\ClassTemplateParamCollector;
 use Psalm\Internal\Analyzer\Statements\Expression\CallAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
@@ -52,11 +53,11 @@ final class MissingMethodCallHandler
         $method_name_lc = $method_id->method_name;
 
         if ($stmt->isFirstClassCallable()) {
-            if (isset($class_storage->pseudo_methods[$method_name_lc])) {
+            if (isset($class_storage->pseudo_methods[$method_id->name_id])) {
                 $result->has_valid_method_call_type = true;
                 $result->existent_method_ids[$method_id->__toString()] = true;
                 $result->return_type = self::createFirstClassCallableReturnType(
-                    $class_storage->pseudo_methods[$method_name_lc],
+                    $class_storage->pseudo_methods[$method_id->name_id],
                 );
             } else {
                 $result->non_existent_magic_method_ids[] = $method_id->__toString();
@@ -382,7 +383,7 @@ final class MissingMethodCallHandler
         }
 
         if ((!$is_interface && !$config->use_phpdoc_method_without_magic_or_parent)
-            || !isset($class_storage->pseudo_methods[$method_name_lc])
+            || !isset($class_storage->pseudo_methods[$method_id->name_id])
         ) {
             if ($is_interface) {
                 $result->non_existent_interface_method_ids[] = $intersection_method_id ?: $cased_method_id;
@@ -424,16 +425,17 @@ final class MissingMethodCallHandler
         ClassLikeStorage $static_class_storage,
         string $method_name_lc,
     ): ?array {
-        if (isset($static_class_storage->declaring_pseudo_method_ids[$method_name_lc])) {
-            $method_id = $static_class_storage->declaring_pseudo_method_ids[$method_name_lc];
+        $method_name_lc_id = Interner::intern($method_name_lc);
+        if (isset($static_class_storage->declaring_pseudo_method_ids[$method_name_lc_id])) {
+            $method_id = $static_class_storage->declaring_pseudo_method_ids[$method_name_lc_id];
             $class_storage = $codebase->classlikes->getStorageFor($method_id->fq_class_name);
 
-            if ($class_storage && isset($class_storage->pseudo_methods[$method_name_lc])) {
-                return [$class_storage->pseudo_methods[$method_name_lc], $class_storage];
+            if ($class_storage && isset($class_storage->pseudo_methods[$method_name_lc_id])) {
+                return [$class_storage->pseudo_methods[$method_name_lc_id], $class_storage];
             }
         }
 
-        if ($pseudo_method_storage = $static_class_storage->pseudo_methods[$method_name_lc] ?? null) {
+        if ($pseudo_method_storage = $static_class_storage->pseudo_methods[$method_name_lc_id] ?? null) {
             return [$pseudo_method_storage, $static_class_storage];
         }
 
@@ -448,9 +450,9 @@ final class MissingMethodCallHandler
         foreach ($ancestors as $fq_class_name => $_) {
             $class_storage = $codebase->classlikes->getStorageFor($fq_class_name);
 
-            if ($class_storage && isset($class_storage->pseudo_methods[$method_name_lc])) {
+            if ($class_storage && isset($class_storage->pseudo_methods[$method_name_lc_id])) {
                 return [
-                    $class_storage->pseudo_methods[$method_name_lc],
+                    $class_storage->pseudo_methods[$method_name_lc_id],
                     $class_storage,
                 ];
             }

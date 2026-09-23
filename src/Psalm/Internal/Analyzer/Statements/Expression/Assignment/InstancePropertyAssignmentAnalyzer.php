@@ -29,6 +29,7 @@ use Psalm\Internal\Codebase\Methods;
 use Psalm\Internal\Codebase\VariableUseGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
@@ -931,6 +932,7 @@ final class InstancePropertyAssignmentAnalyzer
         bool &$has_valid_assignment_type,
         bool &$has_regular_setter,
     ): ?AssignedProperty {
+        $prop_name_id = Interner::intern($prop_name);
         if ($lhs_type_part instanceof TNull) {
             return null;
         }
@@ -1017,7 +1019,7 @@ final class InstancePropertyAssignmentAnalyzer
 
                 // Test if the property has a 'set' hook
                 $interface_property = $stmt->name instanceof PhpParser\Node\Identifier
-                    ? $interface_storage->properties[$stmt->name->name] ?? null
+                    ? $interface_storage->properties[Interner::intern($stmt->name->name)] ?? null
                     : null;
                 $has_set_hook = $codebase->analysis_php_version_id >= 8_04_00
                     && $interface_property?->hook_set !== null;
@@ -1096,10 +1098,10 @@ final class InstancePropertyAssignmentAnalyzer
             $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
 
             if ($var_id) {
-                if (isset($class_storage->pseudo_property_set_types['$' . $prop_name])) {
+                if (isset($class_storage->pseudo_property_set_types[Interner::intern('$' . $prop_name)])) {
                     $class_property_type = TypeExpander::expandUnion(
                         $codebase,
-                        $class_storage->pseudo_property_set_types['$' . $prop_name],
+                        $class_storage->pseudo_property_set_types[Interner::intern('$' . $prop_name)],
                         $fq_class_name,
                         $fq_class_name,
                         $class_storage->parent_class,
@@ -1310,8 +1312,8 @@ final class InstancePropertyAssignmentAnalyzer
 
         $declaring_class_storage = $codebase->classlike_storage_provider->get($declaring_property_class);
 
-        if (isset($declaring_class_storage->properties[$prop_name])) {
-            $property_storage = $declaring_class_storage->properties[$prop_name];
+        if (isset($declaring_class_storage->properties[$prop_name_id])) {
+            $property_storage = $declaring_class_storage->properties[$prop_name_id];
 
             if ($property_storage->deprecated) {
                 IssueBuffer::maybeAdd(
@@ -1361,8 +1363,8 @@ final class InstancePropertyAssignmentAnalyzer
         );
 
         if (!$class_property_type
-            || (isset($declaring_class_storage->properties[$prop_name])
-                && !$declaring_class_storage->properties[$prop_name]->type_location)
+            || (isset($declaring_class_storage->properties[$prop_name_id])
+                && !$declaring_class_storage->properties[$prop_name_id]->type_location)
         ) {
             if (!$class_property_type) {
                 $class_property_type = Type::getMixed();
@@ -1495,6 +1497,7 @@ final class InstancePropertyAssignmentAnalyzer
         string $property_name,
         ClassLikeStorage $storage,
     ): ?Union {
+        $property_name_id = Interner::intern($property_name);
         $property_class_name = $codebase->properties->getDeclaringClassForProperty(
             $fq_class_name . '::$' . $property_name,
             true,
@@ -1506,7 +1509,7 @@ final class InstancePropertyAssignmentAnalyzer
 
         $property_class_storage = $codebase->classlike_storage_provider->get($property_class_name);
 
-        $property_storage = $property_class_storage->properties[$property_name];
+        $property_storage = $property_class_storage->properties[$property_name_id];
 
         if (!$property_storage->type) {
             return null;

@@ -21,6 +21,7 @@ use Psalm\Internal\Codebase\ConstantTypeResolver;
 use Psalm\Internal\Codebase\Functions;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Stubs\Generator\StubsGenerator;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
@@ -1325,6 +1326,7 @@ final class ArgumentsAnalyzer
         string $prop_name,
         ?string $lhs_var_id,
     ): void {
+        $prop_name_id = Interner::intern($prop_name);
         $property_id = $fq_class_name . '::$' . $prop_name;
 
         $codebase = $statements_analyzer->getCodebase();
@@ -1340,8 +1342,8 @@ final class ArgumentsAnalyzer
             return;
         }
 
-        if (isset($declaring_class_storage->properties[$prop_name])) {
-            $property_storage = $declaring_class_storage->properties[$prop_name];
+        if (isset($declaring_class_storage->properties[$prop_name_id])) {
+            $property_storage = $declaring_class_storage->properties[$prop_name_id];
 
             InstancePropertyAssignmentAnalyzer::trackPropertyImpurity(
                 $statements_analyzer,

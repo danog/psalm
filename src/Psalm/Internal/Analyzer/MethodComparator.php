@@ -11,7 +11,9 @@ use Psalm\Codebase;
 use Psalm\Config;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Internal\PhpVisitor\ParamReplacementVisitor;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
@@ -241,7 +243,7 @@ final class MethodComparator
     }
 
     /**
-     * @param array<lowercase-string, MethodStorage> $pseudo_methods
+     * @param array<int, MethodStorage> $pseudo_methods
      */
     public static function comparePseudoMethods(
         array $pseudo_methods,
@@ -249,19 +251,19 @@ final class MethodComparator
         Codebase $codebase,
         ClassLikeStorage $class_storage,
     ): void {
-        foreach ($pseudo_methods as $pseudo_method_name => $pseudo_method_storage) {
+        foreach ($pseudo_methods as $pseudo_method_name_id => $pseudo_method_storage) {
             $pseudo_method_id = new MethodIdentifier(
                 $fq_class_name,
-                $pseudo_method_name,
+                Interner::lookupLc($pseudo_method_name_id),
             );
 
             $overridden_method_ids = $codebase->methods->getOverriddenMethodIds($pseudo_method_id);
-            if (isset($class_storage->methods[$pseudo_method_id->method_name])) {
+            if (isset($class_storage->methods[$pseudo_method_id->name_id])) {
                 $overridden_method_ids[$class_storage->name] = $pseudo_method_id;
             }
 
             if ($overridden_method_ids
-                && $pseudo_method_name !== '__construct'
+                && $pseudo_method_name_id !== Sym::CONSTRUCT
                 && $pseudo_method_storage->location
             ) {
                 foreach ($overridden_method_ids as $overridden_method_id) {

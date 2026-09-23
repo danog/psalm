@@ -11,6 +11,7 @@ use Psalm\Internal\Analyzer\ClassAnalyzer;
 use Psalm\Internal\Analyzer\SourceAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\AtomicPropertyFetchAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Plugin\EventHandler\Event\FunctionReturnTypeProviderEvent;
 use Psalm\Plugin\EventHandler\FunctionReturnTypeProviderInterface;
 use Psalm\Type;
@@ -66,7 +67,7 @@ final class GetObjectVarsReturnTypeProvider implements FunctionReturnTypeProvide
                 if ($enum_classlike_storage->enum_type === null) {
                     return TKeyedArray::make($properties);
                 }
-                $enum_case_storage = $enum_classlike_storage->enum_cases[$object_type->case_name];
+                $enum_case_storage = $enum_classlike_storage->enum_cases[Interner::intern($object_type->case_name)];
                 $case_value = $enum_case_storage->getValue($statements_source->getCodebase()->classlikes);
 
                 if ($case_value !== null) {
@@ -103,7 +104,8 @@ final class GetObjectVarsReturnTypeProvider implements FunctionReturnTypeProvide
                 }
 
                 $properties = [];
-                foreach ($class_storage->appearing_property_ids as $name => $property_id) {
+                foreach ($class_storage->appearing_property_ids as $name_id => $property_id) {
+                    $name = Interner::lookup($name_id);
                     if (ClassAnalyzer::checkPropertyVisibility(
                         $property_id,
                         $context,

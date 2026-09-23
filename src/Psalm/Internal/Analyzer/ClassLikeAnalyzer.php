@@ -645,11 +645,11 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
 
         $class_storage = $codebase->classlike_storage_provider->get($declaring_property_class);
 
-        if (!isset($class_storage->properties[$property_name])) {
+        if (!isset($class_storage->properties[Interner::intern($property_name)])) {
             throw new UnexpectedValueException('$storage should not be null for ' . $property_id);
         }
 
-        $storage = $class_storage->properties[$property_name];
+        $storage = $class_storage->properties[Interner::intern($property_name)];
 
         switch ($storage->visibility) {
             case self::VISIBILITY_PUBLIC:

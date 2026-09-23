@@ -13,6 +13,7 @@ use Psalm\Context;
 use Psalm\FileManipulation;
 use Psalm\Internal\Analyzer\Statements\Expression\ClassConstAnalyzer;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Issue\InheritorViolation;
@@ -167,7 +168,8 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
         foreach ($this->class->stmts as $stmt) {
             if ($stmt instanceof PhpParser\Node\Stmt\ClassMethod) {
                 $method_name_lc = strtolower($stmt->name->name);
-                if (!isset($class_storage->methods[$method_name_lc])) {
+                $method_name_lc_id = Interner::intern($method_name_lc);
+                if (!isset($class_storage->methods[$method_name_lc_id])) {
                     // Storage was overwritten by a different class-like with the same FQCN
                     // (e.g., project declares interface X while vendor has class X).
                     // Skip analysis — DuplicateClass was already emitted during scanning.

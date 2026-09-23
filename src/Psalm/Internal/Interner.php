@@ -38,7 +38,8 @@ final class Interner
     private static bool $marked = false;
 
     /**
-     * @psalm-external-mutation-free
+     * @psalm-mutation-free
+     * @psalm-suppress ImpureStaticProperty, ImpureMethodCall the table only grows; an id never changes meaning
      */
     public static function intern(string $string): int
     {
@@ -76,7 +77,8 @@ final class Interner
     }
 
     /**
-     * @psalm-external-mutation-free
+     * @psalm-mutation-free
+     * @psalm-suppress ImpureStaticProperty, ImpureMethodCall the table only grows; an id never changes meaning
      */
     public static function lookup(int $id): string
     {
@@ -86,6 +88,19 @@ final class Interner
         }
         return self::$strings[$id]
             ?? throw new UnexpectedValueException('Unknown interned id ' . $id);
+    }
+
+    /**
+     * The string of an id interned from a lowercase spelling (the member names: the storages key their method,
+     * property and constant maps by the id of the canonical lowercase name).
+     *
+     * @return lowercase-string
+     * @psalm-mutation-free
+     * @psalm-suppress LessSpecificReturnStatement, MoreSpecificReturnType the id was interned from a lowercase string
+     */
+    public static function lookupLc(int $id): string
+    {
+        return self::lookup($id);
     }
 
     /**

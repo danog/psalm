@@ -26,6 +26,7 @@ use Psalm\Internal\Codebase\MutationInfo;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\FileManipulation\FunctionDocblockManipulator;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\PhpVisitor\NodeCounterVisitor;
 use Psalm\Internal\Provider\NodeDataProvider;
@@ -1073,12 +1074,13 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                     );
 
                     $method_name_lc = strtolower($storage->cased_name);
+                    $method_name_lc_id = Interner::intern($method_name_lc);
 
-                    if (!isset($class_storage->overridden_method_ids[$method_name_lc])) {
+                    if (!isset($class_storage->overridden_method_ids[$method_name_lc_id])) {
                         continue;
                     }
 
-                    foreach ($class_storage->overridden_method_ids[$method_name_lc] as $parent_method_id) {
+                    foreach ($class_storage->overridden_method_ids[$method_name_lc_id] as $parent_method_id) {
                         $codebase->file_reference_provider->addMethodParamUse(
                             strtolower((string) $parent_method_id),
                             $i,
@@ -2306,13 +2308,14 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
 
             $method_name_lc = strtolower($storage->cased_name);
+            $method_name_lc_id = Interner::intern($method_name_lc);
 
             if ($storage->abstract) {
                 continue;
             }
 
-            if (isset($class_storage->overridden_method_ids[$method_name_lc])) {
-                $parent_method_id = end($class_storage->overridden_method_ids[$method_name_lc]);
+            if (isset($class_storage->overridden_method_ids[$method_name_lc_id])) {
+                $parent_method_id = end($class_storage->overridden_method_ids[$method_name_lc_id]);
 
                 if ($parent_method_id) {
                     $parent_method_storage = $codebase->methods->getStorage($parent_method_id);

@@ -27,23 +27,6 @@ $names = [
     'SELF' => 'self',
     'STATIC' => 'static',
     'PARENT' => 'parent',
-    'CONSTRUCT' => '__construct',
-    'DESTRUCT' => '__destruct',
-    'CALL' => '__call',
-    'CALL_STATIC' => '__callStatic',
-    'GET' => '__get',
-    'SET' => '__set',
-    'ISSET' => '__isset',
-    'UNSET' => '__unset',
-    'SLEEP' => '__sleep',
-    'WAKEUP' => '__wakeup',
-    'SERIALIZE' => '__serialize',
-    'UNSERIALIZE' => '__unserialize',
-    'TO_STRING' => '__toString',
-    'INVOKE' => '__invoke',
-    'SET_STATE' => '__set_state',
-    'CLONE' => '__clone',
-    'DEBUG_INFO' => '__debugInfo',
     'THIS_VAR' => '$this',
     'DOM_DOCUMENT' => 'DOMDocument',
     'DATE_TIME' => 'DateTime',
@@ -74,6 +57,33 @@ $names = [
     'JSON_SERIALIZABLE' => 'JsonSerializable',
     'SERIALIZABLE' => 'Serializable',
     'CALLABLE_OBJECT' => 'callable-object',
+    'MIXED' => 'mixed',
+    'ITERABLE' => 'iterable',
+    'CALLABLE' => 'callable',
+    'OBJECT' => 'object',
+];
+
+// Member (method, property, constant) names: the storages key their member maps by the id of the canonical
+// lowercase spelling (Psalm resolves members case-insensitively for PHP semantics and keeps the declared casing
+// on the storage), so these are interned lowercase.
+$member_names = [
+    'CONSTRUCT' => '__construct',
+    'DESTRUCT' => '__destruct',
+    'CALL' => '__call',
+    'CALL_STATIC' => '__callStatic',
+    'GET' => '__get',
+    'SET' => '__set',
+    'ISSET' => '__isset',
+    'UNSET' => '__unset',
+    'SLEEP' => '__sleep',
+    'WAKEUP' => '__wakeup',
+    'SERIALIZE' => '__serialize',
+    'UNSERIALIZE' => '__unserialize',
+    'TO_STRING' => '__toString',
+    'INVOKE' => '__invoke',
+    'SET_STATE' => '__set_state',
+    'CLONE' => '__clone',
+    'DEBUG_INFO' => '__debugInfo',
     'OFFSET_GET' => 'offsetGet',
     'OFFSET_SET' => 'offsetSet',
     'OFFSET_EXISTS' => 'offsetExists',
@@ -91,11 +101,11 @@ $names = [
     'NAME' => 'name',
     'VALUE' => 'value',
     'JSON_SERIALIZE' => 'jsonSerialize',
-    'MIXED' => 'mixed',
-    'ITERABLE' => 'iterable',
-    'CALLABLE' => 'callable',
-    'OBJECT' => 'object',
+    'CLASS_CONST' => 'class',
 ];
+foreach ($member_names as $const => $name) {
+    $names[$const] = strtolower($name);
+}
 
 $seen = [];
 foreach ($names as $const => $name) {

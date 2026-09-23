@@ -8,6 +8,7 @@ use Psalm\Codebase;
 use Psalm\Exception\CircularReferenceException;
 use Psalm\Exception\UnresolvableConstantException;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\AtomicPropertyFetchAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Storage\Assertion\IsType;
 use Psalm\Type;
 use Psalm\Type\Atomic;
@@ -973,7 +974,8 @@ final class TypeExpander
             if (!$storage->final) {
                 $all_sealed = false;
             }
-            foreach ($storage->properties as $key => $property) {
+            foreach ($storage->properties as $key_id => $property) {
+                $key = Interner::lookup($key_id);
                 if (isset($properties[$key])) {
                     continue;
                 }

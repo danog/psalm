@@ -13,6 +13,7 @@ use Psalm\Exception\UnsupportedIssueToFixException;
 use Psalm\FileManipulation;
 use Psalm\Internal\Codebase\TaintFlowGraph;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\LanguageServer\LanguageServer;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
@@ -714,7 +715,7 @@ final class ProjectAnalyzer
                 ReflectionProperty::IS_PRIVATE,
             );
 
-            if (isset($source_class_constants[$source_parts[1]])) {
+            if (isset($source_class_constants[Interner::intern($source_parts[1])])) {
                 if (!$this->codebase->classlikes->hasFullyQualifiedClassName($destination_parts[0])) {
                     throw new RefactorException(
                         'Destination class ' . $destination_parts[0] . ' doesn’t exist',
@@ -726,7 +727,7 @@ final class ProjectAnalyzer
                     ReflectionProperty::IS_PRIVATE,
                 );
 
-                if (isset($destination_class_constants[$destination_parts[1]])) {
+                if (isset($destination_class_constants[Interner::intern($destination_parts[1])])) {
                     throw new RefactorException(
                         'Destination constant ' . $destination . ' already exists',
                     );

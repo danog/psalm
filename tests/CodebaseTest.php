@@ -11,6 +11,7 @@ use Psalm\Codebase;
 use Psalm\Context;
 use Psalm\Exception\CodeException;
 use Psalm\Exception\UnpopulatedClasslikeException;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\ClassLikeStorageCacheProvider;
 use Psalm\Issue\InvalidReturnStatement;
 use Psalm\Issue\InvalidReturnType;
@@ -183,9 +184,9 @@ final class CodebaseTest extends TestCase
                         $stmt->implements,
                     );
                     $storage->custom_metadata['a'] = 'b';
-                    $storage->methods['m']->custom_metadata['c'] = 'd';
-                    $storage->properties['prop']->custom_metadata['e'] = 'f';
-                    $storage->methods['m']->params[0]->custom_metadata['g'] = 'h';
+                    $storage->methods[Interner::intern('m')]->custom_metadata['c'] = 'd';
+                    $storage->properties[Interner::intern('prop')]->custom_metadata['e'] = 'f';
+                    $storage->methods[Interner::intern('m')]->params[0]->custom_metadata['g'] = 'h';
                     $codebase->file_storage_provider->get('somefile.php')->custom_metadata['i'] = 'j';
                 }
             }
@@ -207,9 +208,9 @@ final class CodebaseTest extends TestCase
         self::assertSame($fixtureNamespace . 'A', $class_storage->custom_metadata['extends']);
         self::assertSame([$fixtureNamespace . 'I'], $class_storage->custom_metadata['implements']);
         self::assertSame('b', $class_storage->custom_metadata['a']);
-        self::assertSame('d', $class_storage->methods['m']->custom_metadata['c']);
-        self::assertSame('f', $class_storage->properties['prop']->custom_metadata['e']);
-        self::assertSame('h', $class_storage->methods['m']->params[0]->custom_metadata['g']);
+        self::assertSame('d', $class_storage->methods[Interner::intern('m')]->custom_metadata['c']);
+        self::assertSame('f', $class_storage->properties[Interner::intern('prop')]->custom_metadata['e']);
+        self::assertSame('h', $class_storage->methods[Interner::intern('m')]->params[0]->custom_metadata['g']);
         self::assertSame('j', $file_storage->custom_metadata['i']);
     }
 

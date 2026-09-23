@@ -43,40 +43,6 @@ final class Sym
     public const STATIC = 1335590545988339695;
     /** `parent` */
     public const PARENT = 4231834832957691001;
-    /** `__construct` */
-    public const CONSTRUCT = 3382564448877090733;
-    /** `__destruct` */
-    public const DESTRUCT = 5691088208178543058;
-    /** `__call` */
-    public const CALL = 8628220337170367366;
-    /** `__callStatic` */
-    public const CALL_STATIC = 1581261718573231335;
-    /** `__get` */
-    public const GET = 3407561851061190111;
-    /** `__set` */
-    public const SET = 2767823299192269249;
-    /** `__isset` */
-    public const ISSET = 2920316239351839102;
-    /** `__unset` */
-    public const UNSET = 2327073671135115313;
-    /** `__sleep` */
-    public const SLEEP = 7113730034438234897;
-    /** `__wakeup` */
-    public const WAKEUP = 1901885556704046983;
-    /** `__serialize` */
-    public const SERIALIZE = 1679894526645440540;
-    /** `__unserialize` */
-    public const UNSERIALIZE = 3528718869334508555;
-    /** `__toString` */
-    public const TO_STRING = 482850270128963222;
-    /** `__invoke` */
-    public const INVOKE = 1647427323143086741;
-    /** `__set_state` */
-    public const SET_STATE = 7735846320412266184;
-    /** `__clone` */
-    public const CLONE = 3143688217959380106;
-    /** `__debugInfo` */
-    public const DEBUG_INFO = 658687677005025495;
     /** `$this` */
     public const THIS_VAR = 3701023240118791341;
     /** `DOMDocument` */
@@ -135,16 +101,58 @@ final class Sym
     public const SERIALIZABLE = 3828241092641770287;
     /** `callable-object` */
     public const CALLABLE_OBJECT = 7173888424040814020;
-    /** `offsetGet` */
-    public const OFFSET_GET = 6291830200553730628;
-    /** `offsetSet` */
-    public const OFFSET_SET = 3793847127950609463;
-    /** `offsetExists` */
-    public const OFFSET_EXISTS = 6700776040815164872;
-    /** `offsetUnset` */
-    public const OFFSET_UNSET = 8188928326992791535;
-    /** `getIterator` */
-    public const GET_ITERATOR = 2573929534014476010;
+    /** `mixed` */
+    public const MIXED = 7922561976114297195;
+    /** `iterable` */
+    public const ITERABLE = 8387073025668260858;
+    /** `callable` */
+    public const CALLABLE = 1977547412625762836;
+    /** `object` */
+    public const OBJECT = 823527073289988991;
+    /** `__construct` */
+    public const CONSTRUCT = 3382564448877090733;
+    /** `__destruct` */
+    public const DESTRUCT = 5691088208178543058;
+    /** `__call` */
+    public const CALL = 8628220337170367366;
+    /** `__callstatic` */
+    public const CALL_STATIC = 2196978717879205057;
+    /** `__get` */
+    public const GET = 3407561851061190111;
+    /** `__set` */
+    public const SET = 2767823299192269249;
+    /** `__isset` */
+    public const ISSET = 2920316239351839102;
+    /** `__unset` */
+    public const UNSET = 2327073671135115313;
+    /** `__sleep` */
+    public const SLEEP = 7113730034438234897;
+    /** `__wakeup` */
+    public const WAKEUP = 1901885556704046983;
+    /** `__serialize` */
+    public const SERIALIZE = 1679894526645440540;
+    /** `__unserialize` */
+    public const UNSERIALIZE = 3528718869334508555;
+    /** `__tostring` */
+    public const TO_STRING = 7873505925985942102;
+    /** `__invoke` */
+    public const INVOKE = 1647427323143086741;
+    /** `__set_state` */
+    public const SET_STATE = 7735846320412266184;
+    /** `__clone` */
+    public const CLONE = 3143688217959380106;
+    /** `__debuginfo` */
+    public const DEBUG_INFO = 6404759213502557953;
+    /** `offsetget` */
+    public const OFFSET_GET = 3768108224591030917;
+    /** `offsetset` */
+    public const OFFSET_SET = 4188616327257009482;
+    /** `offsetexists` */
+    public const OFFSET_EXISTS = 4900236925049510155;
+    /** `offsetunset` */
+    public const OFFSET_UNSET = 5555352841948908394;
+    /** `getiterator` */
+    public const GET_ITERATOR = 6898952005275664987;
     /** `count` */
     public const COUNT = 8197783949329762945;
     /** `current` */
@@ -161,22 +169,16 @@ final class Sym
     public const CASES = 2009888848317674150;
     /** `from` */
     public const FROM = 2207122527620866935;
-    /** `tryFrom` */
-    public const TRY_FROM = 2949545269677071199;
+    /** `tryfrom` */
+    public const TRY_FROM = 1253564128254340472;
     /** `name` */
     public const NAME = 6158473215981008140;
     /** `value` */
     public const VALUE = 8138177816349824391;
-    /** `jsonSerialize` */
-    public const JSON_SERIALIZE = 8044460422733846099;
-    /** `mixed` */
-    public const MIXED = 7922561976114297195;
-    /** `iterable` */
-    public const ITERABLE = 8387073025668260858;
-    /** `callable` */
-    public const CALLABLE = 1977547412625762836;
-    /** `object` */
-    public const OBJECT = 823527073289988991;
+    /** `jsonserialize` */
+    public const JSON_SERIALIZE = 1495521433391386205;
+    /** `class` */
+    public const CLASS_CONST = 8915531469815241323;
 
     /**
      * The preloaded names, interned at startup so their ids resolve in every process.
@@ -199,23 +201,6 @@ final class Sym
         'self',
         'static',
         'parent',
-        '__construct',
-        '__destruct',
-        '__call',
-        '__callStatic',
-        '__get',
-        '__set',
-        '__isset',
-        '__unset',
-        '__sleep',
-        '__wakeup',
-        '__serialize',
-        '__unserialize',
-        '__toString',
-        '__invoke',
-        '__set_state',
-        '__clone',
-        '__debugInfo',
         '$this',
         'DOMDocument',
         'DateTime',
@@ -245,11 +230,32 @@ final class Sym
         'JsonSerializable',
         'Serializable',
         'callable-object',
-        'offsetGet',
-        'offsetSet',
-        'offsetExists',
-        'offsetUnset',
-        'getIterator',
+        'mixed',
+        'iterable',
+        'callable',
+        'object',
+        '__construct',
+        '__destruct',
+        '__call',
+        '__callstatic',
+        '__get',
+        '__set',
+        '__isset',
+        '__unset',
+        '__sleep',
+        '__wakeup',
+        '__serialize',
+        '__unserialize',
+        '__tostring',
+        '__invoke',
+        '__set_state',
+        '__clone',
+        '__debuginfo',
+        'offsetget',
+        'offsetset',
+        'offsetexists',
+        'offsetunset',
+        'getiterator',
         'count',
         'current',
         'key',
@@ -258,13 +264,10 @@ final class Sym
         'valid',
         'cases',
         'from',
-        'tryFrom',
+        'tryfrom',
         'name',
         'value',
-        'jsonSerialize',
-        'mixed',
-        'iterable',
-        'callable',
-        'object',
+        'jsonserialize',
+        'class',
     ];
 }

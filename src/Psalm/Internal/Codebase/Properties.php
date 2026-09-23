@@ -7,6 +7,7 @@ namespace Psalm\Internal\Codebase;
 use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Context;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
 use Psalm\Internal\Provider\PropertyExistenceProvider;
 use Psalm\Internal\Provider\PropertyTypeProvider;
@@ -90,8 +91,8 @@ final class Properties
             $codebase->addReferenceToClass($fq_class_name_lc, $code_location, $context, $source->getFilePath());
         }
 
-        if (isset($class_storage->declaring_property_ids[$property_name])) {
-            $declaring_property_class = strtolower($class_storage->declaring_property_ids[$property_name]);
+        if (isset($class_storage->declaring_property_ids[Interner::intern($property_name)])) {
+            $declaring_property_class = strtolower($class_storage->declaring_property_ids[Interner::intern($property_name)]);
 
             $codebase->addReferenceToProperty(
                 $declaring_property_class,
@@ -136,8 +137,8 @@ final class Properties
 
         $class_storage = $this->classlikes->getStorageFor($fq_class_name);
 
-        if ($class_storage && isset($class_storage->declaring_property_ids[$property_name])) {
-            return $class_storage->declaring_property_ids[$property_name];
+        if ($class_storage && isset($class_storage->declaring_property_ids[Interner::intern($property_name)])) {
+            return $class_storage->declaring_property_ids[Interner::intern($property_name)];
         }
 
         return null;
@@ -167,8 +168,8 @@ final class Properties
 
         $class_storage = $this->classlikes->getStorageFor($fq_class_name);
 
-        if ($class_storage && isset($class_storage->appearing_property_ids[$property_name])) {
-            $appearing_property_id = $class_storage->appearing_property_ids[$property_name];
+        if ($class_storage && isset($class_storage->appearing_property_ids[Interner::intern($property_name)])) {
+            $appearing_property_id = $class_storage->appearing_property_ids[Interner::intern($property_name)];
 
             return explode('::$', $appearing_property_id)[0];
         }
@@ -189,16 +190,16 @@ final class Properties
         $class_storage = $this->classlike_storage_provider->get($fq_class_name);
 
         // own or inherited: the flattened map filled at populate
-        if (isset($class_storage->all_properties[$property_name])) {
-            return $class_storage->all_properties[$property_name];
+        if (isset($class_storage->all_properties[Interner::intern($property_name)])) {
+            return $class_storage->all_properties[Interner::intern($property_name)];
         }
 
-        if (isset($class_storage->declaring_property_ids[$property_name])) {
-            $declaring_property_class = $class_storage->declaring_property_ids[$property_name];
+        if (isset($class_storage->declaring_property_ids[Interner::intern($property_name)])) {
+            $declaring_property_class = $class_storage->declaring_property_ids[Interner::intern($property_name)];
             $declaring_class_storage = $this->classlike_storage_provider->get($declaring_property_class);
 
-            if (isset($declaring_class_storage->properties[$property_name])) {
-                return $declaring_class_storage->properties[$property_name];
+            if (isset($declaring_class_storage->properties[Interner::intern($property_name)])) {
+                return $declaring_class_storage->properties[Interner::intern($property_name)];
             }
         }
 
@@ -217,11 +218,11 @@ final class Properties
 
         $class_storage = $this->classlike_storage_provider->get($fq_class_name);
 
-        if (isset($class_storage->declaring_property_ids[$property_name])) {
-            $declaring_property_class = $class_storage->declaring_property_ids[$property_name];
+        if (isset($class_storage->declaring_property_ids[Interner::intern($property_name)])) {
+            $declaring_property_class = $class_storage->declaring_property_ids[Interner::intern($property_name)];
             $declaring_class_storage = $this->classlike_storage_provider->get($declaring_property_class);
 
-            return isset($declaring_class_storage->properties[$property_name]);
+            return isset($declaring_class_storage->properties[Interner::intern($property_name)]);
         }
         return false;
     }
@@ -253,12 +254,12 @@ final class Properties
 
         $class_storage = $this->classlikes->getStorageFor($fq_class_name);
 
-        if ($class_storage && isset($class_storage->declaring_property_ids[$property_name])) {
-            $declaring_property_class = $class_storage->declaring_property_ids[$property_name];
+        if ($class_storage && isset($class_storage->declaring_property_ids[Interner::intern($property_name)])) {
+            $declaring_property_class = $class_storage->declaring_property_ids[Interner::intern($property_name)];
             $declaring_class_storage = $this->classlike_storage_provider->get($declaring_property_class);
 
-            if (isset($declaring_class_storage->properties[$property_name])) {
-                $storage = $declaring_class_storage->properties[$property_name];
+            if (isset($declaring_class_storage->properties[Interner::intern($property_name)])) {
+                $storage = $declaring_class_storage->properties[Interner::intern($property_name)];
             } else {
                 throw new UnexpectedValueException('Property ' . $property_id . ' should exist');
             }
@@ -268,23 +269,23 @@ final class Properties
 
         if ($storage->type) {
             if ($property_set) {
-                if (isset($class_storage->pseudo_property_set_types['$'.$property_name])) {
-                    return $class_storage->pseudo_property_set_types['$'.$property_name];
+                if (isset($class_storage->pseudo_property_set_types[Interner::intern('$' . $property_name)])) {
+                    return $class_storage->pseudo_property_set_types[Interner::intern('$' . $property_name)];
                 }
             } else {
-                if (isset($class_storage->pseudo_property_get_types['$'.$property_name])) {
-                    return $class_storage->pseudo_property_get_types['$'.$property_name];
+                if (isset($class_storage->pseudo_property_get_types[Interner::intern('$' . $property_name)])) {
+                    return $class_storage->pseudo_property_get_types[Interner::intern('$' . $property_name)];
                 }
             }
 
             return $storage->type;
         }
 
-        if (!isset($class_storage->overridden_property_ids[$property_name])) {
+        if (!isset($class_storage->overridden_property_ids[Interner::intern($property_name)])) {
             return null;
         }
 
-        foreach ($class_storage->overridden_property_ids[$property_name] as $overridden_property_id) {
+        foreach ($class_storage->overridden_property_ids[Interner::intern($property_name)] as $overridden_property_id) {
             $overridden_storage = $this->getStorage($overridden_property_id);
 
             if ($overridden_storage->type) {

@@ -7,6 +7,7 @@ namespace Psalm\Tests;
 use Psalm\Context;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\Codebase\Methods;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\Comparator\CallableTypeComparator;
 use Psalm\Type\Atomic\TArray;
@@ -250,8 +251,8 @@ final class CompiledProbeTest extends TestCase
 
         $actual = [
             'user_defined' => $storage->user_defined ? 'yes' : 'no',
-            'format' => (string) ($storage->methods['format']->return_type ?? null),
-            'getTimestamp' => (string) ($storage->methods['gettimestamp']->return_type ?? null),
+            'format' => (string) ($storage->methods[Interner::intern('format')]->return_type ?? null),
+            'getTimestamp' => (string) ($storage->methods[Interner::intern('gettimestamp')]->return_type ?? null),
             '$a' => (string) ($context->vars_in_scope['$a'] ?? null),
             '$b' => (string) ($context->vars_in_scope['$b'] ?? null),
         ];
@@ -377,19 +378,19 @@ final class CompiledProbeTest extends TestCase
 
         $codebase = $this->project_analyzer->getCodebase();
         $c = $codebase->classlike_storage_provider->get('C');
-        $item = $c->properties['items']->type?->getSingleAtomic();
+        $item = $c->properties[Interner::intern('items')]->type?->getSingleAtomic();
         $value = $item instanceof TArray ? $item->type_params[1] : null;
 
         $this->assertSame(
             ['property' => 'array<string, T:C as I>', 'localized' => 'Impl'],
             [
-                'property' => $c->properties['items']->type?->getId() ?? 'absent',
+                'property' => $c->properties[Interner::intern('items')]->type?->getId() ?? 'absent',
                 'localized' => $value === null
                     ? 'absent'
                     : Methods::localizeType($codebase, $value, 'Test', 'C')->getId(),
             ],
             json_encode([
-                'property' => $c->properties['items']->type?->getId() ?? 'absent',
+                'property' => $c->properties[Interner::intern('items')]->type?->getId() ?? 'absent',
                 'localized' => $value === null
                     ? 'absent'
                     : Methods::localizeType($codebase, $value, 'Test', 'C')->getId(),

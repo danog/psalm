@@ -26,8 +26,10 @@ use Psalm\Internal\Analyzer\ClassLikeNameOptions;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\ArrayFetchAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
 use Psalm\Internal\Provider\NodeDataProvider;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TypeExpander;
 use Psalm\Issue\DocblockTypeContradiction;
@@ -4268,10 +4270,10 @@ final class AssertionFinder
             }
 
             $class_definition = $class_provider->get($type->value);
-            $property_definition = $class_definition->properties[$property] ?? null;
+            $property_definition = $class_definition->properties[Interner::intern($property)] ?? null;
 
             if (!$property_definition instanceof PropertyStorage) {
-                $magic_type = $class_definition->pseudo_property_get_types['$' . $property] ?? null;
+                $magic_type = $class_definition->pseudo_property_get_types[Interner::intern('$' . $property)] ?? null;
                 if ($magic_type === null) {
                     return sprintf(
                         'Property %s is not defined on variable %s so the assertion cannot be applied',
@@ -4280,7 +4282,7 @@ final class AssertionFinder
                     );
                 }
 
-                $magic_getter = $class_definition->methods['__get'] ?? null;
+                $magic_getter = $class_definition->methods[Sym::GET] ?? null;
                 if ($magic_getter === null || !$magic_getter->isMutationFree()) {
                     return "{$class_definition->name}::__get is not mutation-free, so the assertion cannot be applied";
                 }

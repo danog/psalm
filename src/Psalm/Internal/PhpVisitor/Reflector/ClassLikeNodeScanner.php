@@ -30,11 +30,13 @@ use Psalm\Internal\Analyzer\CommentAnalyzer;
 use Psalm\Internal\Analyzer\NamespaceAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\SimpleTypeInferer;
 use Psalm\Internal\Codebase\PropertyMap;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\Scanner\ClassLikeDocblockComment;
 use Psalm\Internal\Scanner\FileScanner;
 use Psalm\Internal\Scanner\UnresolvedConstantComponent;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\TypeAlias;
 use Psalm\Internal\Type\TypeAlias\ClassTypeAlias;
 use Psalm\Internal\Type\TypeAlias\InlineTypeAlias;
@@ -325,13 +327,13 @@ final class ClassLikeNodeScanner
                     $storage->direct_class_interfaces['backedenum'] = 'BackedEnum';
                     $this->file_storage->required_interfaces['backedenum'] = 'BackedEnum';
                     $this->codebase->scanner->queueClassLikeForScanning('BackedEnum');
-                    $storage->declaring_method_ids['from'] = new MethodIdentifier('BackedEnum', 'from');
-                    $storage->appearing_method_ids['from'] = $storage->declaring_method_ids['from'];
-                    $storage->declaring_method_ids['tryfrom'] = new MethodIdentifier(
+                    $storage->declaring_method_ids[Sym::FROM] = new MethodIdentifier('BackedEnum', 'from');
+                    $storage->appearing_method_ids[Sym::FROM] = $storage->declaring_method_ids[Sym::FROM];
+                    $storage->declaring_method_ids[Sym::TRY_FROM] = new MethodIdentifier(
                         'BackedEnum',
                         'tryfrom',
                     );
-                    $storage->appearing_method_ids['tryfrom'] = $storage->declaring_method_ids['tryfrom'];
+                    $storage->appearing_method_ids[Sym::TRY_FROM] = $storage->declaring_method_ids[Sym::TRY_FROM];
                 } else {
                     IssueBuffer::maybeAdd(
                         new InvalidEnumBackingType(
@@ -351,11 +353,11 @@ final class ClassLikeNodeScanner
             $this->file_storage->required_interfaces['unitenum'] = 'UnitEnum';
             $storage->final = true;
 
-            $storage->declaring_method_ids['cases'] = new MethodIdentifier(
+            $storage->declaring_method_ids[Sym::CASES] = new MethodIdentifier(
                 'UnitEnum',
                 'cases',
             );
-            $storage->appearing_method_ids['cases'] = $storage->declaring_method_ids['cases'];
+            $storage->appearing_method_ids[Sym::CASES] = $storage->declaring_method_ids[Sym::CASES];
 
             $this->codebase->classlikes->addFullyQualifiedEnumName($fq_classlike_name, $this->file_path);
         } else {
@@ -620,11 +622,11 @@ final class ClassLikeNodeScanner
                         );
 
                         if ($property['tag'] !== 'property-read' && $property['tag'] !== 'psalm-property-read') {
-                            $storage->pseudo_property_set_types[$property['name']] = $pseudo_property_type;
+                            $storage->pseudo_property_set_types[Interner::intern($property['name'])] = $pseudo_property_type;
                         }
 
                         if ($property['tag'] !== 'property-write' && $property['tag'] !== 'psalm-property-write') {
-                            $storage->pseudo_property_get_types[$property['name']] = $pseudo_property_type;
+                            $storage->pseudo_property_get_types[Interner::intern($property['name'])] = $pseudo_property_type;
                         }
                     } catch (TypeParseTreeException $e) {
                         $storage->docblock_issues[] = new InvalidDocblock(
@@ -649,12 +651,13 @@ final class ClassLikeNodeScanner
                 /** @var MethodStorage */
                 $pseudo_method_storage = $functionlike_node_scanner->start($method, true);
                 $lc_method_name = strtolower($method->name->name);
+                $lc_method_name_id = Interner::intern($lc_method_name);
 
                 if ($pseudo_method_storage->is_static) {
-                    $storage->pseudo_static_methods[$lc_method_name] = $pseudo_method_storage;
+                    $storage->pseudo_static_methods[$lc_method_name_id] = $pseudo_method_storage;
                 } else {
-                    $storage->pseudo_methods[$lc_method_name] = $pseudo_method_storage;
-                    $storage->declaring_pseudo_method_ids[$lc_method_name] = new MethodIdentifier(
+                    $storage->pseudo_methods[$lc_method_name_id] = $pseudo_method_storage;
+                    $storage->declaring_pseudo_method_ids[$lc_method_name_id] = new MethodIdentifier(
                         $fq_classlike_name,
                         $lc_method_name,
                     );
@@ -771,7 +774,8 @@ final class ClassLikeNodeScanner
         if ($storage->is_enum) {
             $name_types = [];
             $values_types = [];
-            foreach ($storage->enum_cases as $name => $enum_case_storage) {
+            foreach ($storage->enum_cases as $name_id => $enum_case_storage) {
+                $name = Interner::lookup($name_id);
                 $name_types[] = Type::getAtomicStringFromLiteral($name);
                 if ($storage->enum_type !== null
                     && $enum_case_storage->value !== null) {
@@ -784,16 +788,16 @@ final class ClassLikeNodeScanner
                 }
             }
             if ($name_types !== []) {
-                $storage->declaring_property_ids['name'] = $storage->name;
-                $storage->appearing_property_ids['name'] = "{$storage->name}::\$name";
-                $storage->properties['name'] = new PropertyStorage();
-                $storage->properties['name']->type = new Union($name_types);
+                $storage->declaring_property_ids[Interner::intern('name')] = $storage->name;
+                $storage->appearing_property_ids[Interner::intern('name')] = "{$storage->name}::\$name";
+                $storage->properties[Interner::intern('name')] = new PropertyStorage();
+                $storage->properties[Interner::intern('name')]->type = new Union($name_types);
             }
             if ($values_types !== []) {
-                $storage->declaring_property_ids['value'] = $storage->name;
-                $storage->appearing_property_ids['value'] = "{$storage->name}::\$value";
-                $storage->properties['value'] = new PropertyStorage();
-                $storage->properties['value']->type = new Union($values_types);
+                $storage->declaring_property_ids[Interner::intern('value')] = $storage->name;
+                $storage->appearing_property_ids[Interner::intern('value')] = "{$storage->name}::\$value";
+                $storage->properties[Interner::intern('value')] = new PropertyStorage();
+                $storage->properties[Interner::intern('value')]->type = new Union($values_types);
             }
         }
 
@@ -879,8 +883,8 @@ final class ClassLikeNodeScanner
                 /** @psalm-suppress UnusedMethodCall */
                 $property_type->queueClassLikesForScanning($this->codebase, $this->file_storage);
 
-                if (!isset($classlike_storage->properties[$property_name])) {
-                    $classlike_storage->properties[$property_name] = new PropertyStorage();
+                if (!isset($classlike_storage->properties[Interner::intern($property_name)])) {
+                    $classlike_storage->properties[Interner::intern($property_name)] = new PropertyStorage();
                 }
 
                 $property_id = $fq_classlike_name . '::$' . $property_name;
@@ -890,10 +894,10 @@ final class ClassLikeNodeScanner
                     $property_type->ignore_falsable_issues = true;
                 }
 
-                $classlike_storage->properties[$property_name]->type = $property_type;
+                $classlike_storage->properties[Interner::intern($property_name)]->type = $property_type;
 
-                $classlike_storage->declaring_property_ids[$property_name] = $fq_classlike_name;
-                $classlike_storage->appearing_property_ids[$property_name] = $property_id;
+                $classlike_storage->declaring_property_ids[Interner::intern($property_name)] = $fq_classlike_name;
+                $classlike_storage->appearing_property_ids[Interner::intern($property_name)] = $property_id;
             }
         }
 
@@ -1263,12 +1267,13 @@ final class ClassLikeNodeScanner
     private static function registerEmptyConstructor(ClassLikeStorage $class_storage): void
     {
         $method_name_lc = '__construct';
+        $method_name_lc_id = Interner::intern($method_name_lc);
 
-        if (isset($class_storage->methods[$method_name_lc])) {
+        if (isset($class_storage->methods[$method_name_lc_id])) {
             return;
         }
 
-        $storage = $class_storage->methods['__construct'] = new MethodStorage();
+        $storage = $class_storage->methods[Sym::CONSTRUCT] = new MethodStorage();
 
         $storage->cased_name = '__construct';
         $storage->defining_fqcln = $class_storage->name;
@@ -1276,16 +1281,16 @@ final class ClassLikeNodeScanner
         $storage->allowed_mutations = Mutations::LEVEL_NONE;
         $storage->mutation_free_assumed = true;
 
-        $class_storage->declaring_method_ids['__construct'] = new MethodIdentifier(
+        $class_storage->declaring_method_ids[Sym::CONSTRUCT] = new MethodIdentifier(
             $class_storage->name,
             '__construct',
         );
 
-        $class_storage->inheritable_method_ids['__construct']
-            = $class_storage->declaring_method_ids['__construct'];
-        $class_storage->appearing_method_ids['__construct']
-            = $class_storage->declaring_method_ids['__construct'];
-        $class_storage->overridden_method_ids['__construct'] = [];
+        $class_storage->inheritable_method_ids[Sym::CONSTRUCT]
+            = $class_storage->declaring_method_ids[Sym::CONSTRUCT];
+        $class_storage->appearing_method_ids[Sym::CONSTRUCT]
+            = $class_storage->declaring_method_ids[Sym::CONSTRUCT];
+        $class_storage->overridden_method_ids[Sym::CONSTRUCT] = [];
 
         $storage->visibility = ClassLikeAnalyzer::VISIBILITY_PUBLIC;
     }
@@ -1345,8 +1350,8 @@ final class ClassLikeNodeScanner
         }
 
         foreach ($stmt->consts as $const) {
-            if (isset($storage->constants[$const->name->name])
-                || isset($storage->enum_cases[$const->name->name])
+            if (isset($storage->constants[Interner::intern($const->name->name)])
+                || isset($storage->enum_cases[Interner::intern($const->name->name)])
             ) {
                 IssueBuffer::maybeAdd(new DuplicateConstant(
                     'Constant names should be unique',
@@ -1430,7 +1435,7 @@ final class ClassLikeNodeScanner
                     $const_type = Type::getMixed();
                 }
             }
-            $storage->constants[$const->name->name] = $constant_storage = new ClassConstantStorage(
+            $storage->constants[Interner::intern($const->name->name)] = $constant_storage = new ClassConstantStorage(
                 $const_type,
                 $inferred_type,
                 $stmt->isProtected()
@@ -1473,7 +1478,7 @@ final class ClassLikeNodeScanner
             }
 
             if ($exists) {
-                $existing_constants[$const->name->name] = $constant_storage;
+                $existing_constants[Interner::intern($const->name->name)] = $constant_storage;
             }
         }
     }
@@ -1483,7 +1488,7 @@ final class ClassLikeNodeScanner
         ClassLikeStorage $storage,
         string $fq_classlike_name,
     ): void {
-        if (isset($storage->constants[$stmt->name->name])) {
+        if (isset($storage->constants[Interner::intern($stmt->name->name)])) {
             IssueBuffer::maybeAdd(new DuplicateConstant(
                 'Constant names should be unique',
                 new CodeLocation($this->file_scanner, $stmt),
@@ -1532,7 +1537,7 @@ final class ClassLikeNodeScanner
         }
 
 
-        if (!isset($storage->enum_cases[$stmt->name->name])) {
+        if (!isset($storage->enum_cases[Interner::intern($stmt->name->name)])) {
             $deprecated = false;
 
             $attrs = $this->getAttributeStorageFromStatement(
@@ -1562,7 +1567,7 @@ final class ClassLikeNodeScanner
                     $deprecated = true;
                 }
             }
-            $storage->enum_cases[$stmt->name->name] = new EnumCaseStorage(
+            $storage->enum_cases[Interner::intern($stmt->name->name)] = new EnumCaseStorage(
                 $enum_value,
                 $case_location,
                 $deprecated,
@@ -1694,7 +1699,7 @@ final class ClassLikeNodeScanner
         foreach ($stmt->props as $property) {
             $doc_var_location = null;
 
-            if (isset($storage->properties[$property->name->name])) {
+            if (isset($storage->properties[Interner::intern($property->name->name)])) {
                 IssueBuffer::maybeAdd(
                     new DuplicateProperty(
                         'Property ' . $fq_classlike_name . '::$' . $property->name->name . ' has already been defined',
@@ -1704,7 +1709,7 @@ final class ClassLikeNodeScanner
                 );
             }
 
-            $property_storage = $storage->properties[$property->name->name] = new PropertyStorage();
+            $property_storage = $storage->properties[Interner::intern($property->name->name)] = new PropertyStorage();
             $property_storage->is_static = $stmt->isStatic();
             $property_storage->type = $signature_type;
             $property_storage->signature_type = $signature_type;
@@ -1814,15 +1819,15 @@ final class ClassLikeNodeScanner
 
             $property_id = $fq_classlike_name . '::$' . $property->name->name;
 
-            $storage->declaring_property_ids[$property->name->name] = $fq_classlike_name;
-            $storage->appearing_property_ids[$property->name->name] = $property_id;
+            $storage->declaring_property_ids[Interner::intern($property->name->name)] = $fq_classlike_name;
+            $storage->appearing_property_ids[Interner::intern($property->name->name)] = $property_id;
 
             if ($property_is_initialized) {
                 $storage->initialized_properties[$property->name->name] = true;
             }
 
             if (!$stmt->isPrivate()) {
-                $storage->inheritable_property_ids[$property->name->name] = $property_id;
+                $storage->inheritable_property_ids[Interner::intern($property->name->name)] = $property_id;
             }
 
             $attrs = $this->getAttributeStorageFromStatement(

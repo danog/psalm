@@ -20,6 +20,7 @@ use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\Codebase\AssertionsFromInheritanceResolver;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
@@ -191,7 +192,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
 
                 $trait_storage = $codebase->classlike_storage_provider->get($fq_trait_name_lc);
 
-                if (isset($trait_storage->methods[$method_name_lc])) {
+                if (isset($trait_storage->methods[$method_id->name_id])) {
                     $trait_method_id = new MethodIdentifier($trait_storage->name, $method_name_lc);
 
                     $class_template_params = ClassTemplateParamCollector::collect(
@@ -582,7 +583,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                 // If `@psalm-seal-properties` is set, the property must be defined with
                 // a `@property` annotation
                 if (($class_storage->hasSealedProperties($codebase->config))
-                    && !isset($class_storage->pseudo_property_set_types['$' . $prop_name])
+                    && !isset($class_storage->pseudo_property_set_types[Interner::intern('$' . $prop_name)])
                 ) {
                     IssueBuffer::maybeAdd(
                         new UndefinedThisPropertyAssignment(
@@ -600,10 +601,10 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                     ? $statements_analyzer->node_data->getType($stmt->getArgs()[1]->value)
                     : null;
 
-                if (isset($class_storage->pseudo_property_set_types['$' . $prop_name]) && $second_arg_type) {
+                if (isset($class_storage->pseudo_property_set_types[Interner::intern('$' . $prop_name)]) && $second_arg_type) {
                     $pseudo_set_type = TypeExpander::expandUnion(
                         $codebase,
-                        $class_storage->pseudo_property_set_types['$' . $prop_name],
+                        $class_storage->pseudo_property_set_types[Interner::intern('$' . $prop_name)],
                         $fq_class_name,
                         new TNamedObject($fq_class_name),
                         $class_storage->parent_class,
@@ -680,7 +681,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                 // If `@psalm-seal-properties` is set, the property must be defined with
                 // a `@property` annotation
                 if (($class_storage->hasSealedProperties($codebase->config))
-                    && !isset($class_storage->pseudo_property_get_types['$' . $prop_name])
+                    && !isset($class_storage->pseudo_property_get_types[Interner::intern('$' . $prop_name)])
                 ) {
                     IssueBuffer::maybeAdd(
                         new UndefinedThisPropertyFetch(
@@ -692,8 +693,8 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                     );
                 }
 
-                if (isset($class_storage->pseudo_property_get_types['$' . $prop_name])) {
-                    return $class_storage->pseudo_property_get_types['$' . $prop_name];
+                if (isset($class_storage->pseudo_property_get_types[Interner::intern('$' . $prop_name)])) {
+                    return $class_storage->pseudo_property_get_types[Interner::intern('$' . $prop_name)];
                 }
 
                 break;

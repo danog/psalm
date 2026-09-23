@@ -7,6 +7,7 @@ namespace Psalm\Internal\Analyzer\Statements\Expression\Call\StaticMethod;
 use Exception;
 use PhpParser;
 use Psalm\CodeLocation;
+use Psalm\Internal\Interner;
 use Psalm\Node\Expr\VirtualStaticCall;
 use Psalm\Codebase;
 use Psalm\Context;
@@ -312,6 +313,7 @@ final class AtomicStaticCallAnalyzer
         $codebase = $statements_analyzer->getCodebase();
 
         $method_name_lc = strtolower($stmt_name->name);
+        $method_name_lc_id = Interner::intern($method_name_lc);
         $method_id = new MethodIdentifier($fq_class_name, $method_name_lc);
 
         $cased_method_id = $fq_class_name . '::' . $stmt_name->name;
@@ -507,8 +509,8 @@ final class AtomicStaticCallAnalyzer
             } else {
                 $method_exists = $naive_method_exists
                     || $fake_method_exists
-                    || isset($class_storage->methods[$method_name_lc])
-                    || isset($class_storage->pseudo_static_methods[$method_name_lc]);
+                    || isset($class_storage->methods[$method_name_lc_id])
+                    || isset($class_storage->pseudo_static_methods[$method_name_lc_id]);
 
                 if ($method_exists) {
                     $declaring_method_id = $codebase->methods->getDeclaringMethodId($method_id) ?? $method_id;
@@ -1058,7 +1060,8 @@ final class AtomicStaticCallAnalyzer
         ClassLikeStorage $static_class_storage,
         string $method_name_lc,
     ): ?array {
-        if ($pseudo_method_storage = $static_class_storage->pseudo_static_methods[$method_name_lc] ?? null) {
+        $method_name_lc_id = Interner::intern($method_name_lc);
+        if ($pseudo_method_storage = $static_class_storage->pseudo_static_methods[$method_name_lc_id] ?? null) {
             return [$pseudo_method_storage, $static_class_storage];
         }
 
@@ -1067,9 +1070,9 @@ final class AtomicStaticCallAnalyzer
         foreach ($ancestors as $fq_class_name => $_) {
             $class_storage = $codebase->classlikes->getStorageFor($fq_class_name);
 
-            if ($class_storage && isset($class_storage->pseudo_static_methods[$method_name_lc])) {
+            if ($class_storage && isset($class_storage->pseudo_static_methods[$method_name_lc_id])) {
                 return [
-                    $class_storage->pseudo_static_methods[$method_name_lc],
+                    $class_storage->pseudo_static_methods[$method_name_lc_id],
                     $class_storage,
                 ];
             }
