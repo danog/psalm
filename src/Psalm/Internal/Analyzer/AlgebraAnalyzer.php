@@ -15,6 +15,7 @@ use Psalm\IssueBuffer;
 use Psalm\Storage\Assertion\InArray;
 use Psalm\Storage\Assertion\NotInArray;
 
+use function array_diff_key;
 use function array_intersect_key;
 use function count;
 use function implode;
@@ -98,7 +99,13 @@ final class AlgebraAnalyzer
                         break;
                     }
 
-                    if ($negated_clause_2->possibilities[$key] != $keyed_possibilities) {
+                    // the same assertions: the maps are keyed by each assertion's own string form, so equal key
+                    // sets are equal assertions (a loose `!=` compared every Assertion -- and the types inside
+                    // it -- property by property, which also saw memoized strings)
+                    $other_possibilities = $negated_clause_2->possibilities[$key];
+                    if (count($other_possibilities) !== count($keyed_possibilities)
+                        || array_diff_key($other_possibilities, $keyed_possibilities) !== []
+                    ) {
                         $negated_clause_2_contains_1_possibilities = false;
                         break;
                     }
