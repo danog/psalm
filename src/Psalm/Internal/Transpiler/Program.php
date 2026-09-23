@@ -2010,13 +2010,25 @@ final class Program
     private const USE_ESCAPE = 1;
     private const USE_UNSAFE = 2;
 
-    /** Heap values worth borrowing: handles, unions of them, strings and containers (and options of those). */
+    /**
+     * Heap values worth borrowing: handles, unions of handles, strings and containers (and options of those).
+     * A union with non-handle members (list|tuple shapes, scalars) is matched and rebuilt by value in the
+     * emitted code, so it stays owned.
+     */
     private static function borrowableParamType(RustType $t): bool
     {
         if ($t->kind === RustType::OPTION) {
             return self::borrowableParamType($t->inner());
         }
-        return in_array($t->kind, [RustType::CLASS_, RustType::UNION, RustType::STR, RustType::LIST, RustType::MAP], true);
+        if ($t->kind === RustType::UNION) {
+            foreach ($t->params as $m) {
+                if ($m->kind !== RustType::CLASS_) {
+                    return false;
+                }
+            }
+            return $t->params !== [];
+        }
+        return in_array($t->kind, [RustType::CLASS_, RustType::STR, RustType::LIST, RustType::MAP], true);
     }
 
     /** How one occurrence of a parameter uses it (see borrowSafeParams). */
