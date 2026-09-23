@@ -534,6 +534,152 @@ function case_closure_capture(): string
 
 // ---- runner --------------------------------------------------------------
 
+// ---- feature: constructs introduced by the member-name id port (psalm-port 2026-09-24) ----
+
+final class NameTable
+{
+    /** @var array<string, int> */
+    private static array $ids = [];
+    /** @var array<int, string> */
+    private static array $strings = [];
+
+    public static function intern(string $string): int
+    {
+        return self::$ids[$string] ?? self::add($string);
+    }
+
+    private static function add(string $string): int
+    {
+        $id = self::hash($string);
+        self::$strings[$id] = $string;
+        self::$ids[$string] = $id;
+        return $id;
+    }
+
+    public static function hash(string $string): int
+    {
+        /** @var array{1: int} $unpacked */
+        $unpacked = unpack('q', hash('xxh3', $string, true));
+        return $unpacked[1] & PHP_INT_MAX;
+    }
+
+    public static function lookup(int $id): string
+    {
+        return self::$strings[$id] ?? '?';
+    }
+
+    /** @return lowercase-string */
+    public static function lookupLc(int $id): string
+    {
+        /** @psalm-suppress LessSpecificReturnStatement */
+        return self::lookup($id);
+    }
+}
+
+final class MemberStore
+{
+    /** @var array<int, string> */
+    public array $members = [];
+    private ?string $memo_a = null;
+    private ?string $memo_b = null;
+
+    public function memo(bool $b): string
+    {
+        return $b
+            ? ($this->memo_b ??= 'B' . count($this->members))
+            : ($this->memo_a ??= 'A' . count($this->members));
+    }
+}
+
+function case_id_keyed_map(): string
+{
+    $store = new MemberStore();
+    $store->members[NameTable::intern('foo')] = 'Foo';
+    $store->members[NameTable::intern('bar')] = 'Bar';
+    $hit = isset($store->members[NameTable::intern('foo')]) ? 'y' : 'n';
+    $miss = isset($store->members[NameTable::intern('baz')]) ? 'y' : 'n';
+    $names = implode(',', array_map(NameTable::lookupLc(...), array_keys($store->members)));
+    $kept = array_filter(
+        $store->members,
+        static fn(int $key): bool => in_array($key, [NameTable::intern('bar')], true),
+        ARRAY_FILTER_USE_KEY,
+    );
+    $out = $hit . $miss . ':' . $names . ':' . implode(',', $kept);
+    foreach ($store->members as $id => $member) {
+        $name = NameTable::lookup($id);
+        $out .= ':' . $name . '=' . $member;
+    }
+    return $out . ':' . $store->memo(true) . $store->memo(false) . $store->memo(true)
+        . ':' . (NameTable::hash('Foo\\Bar') === 5094806515607143651 ? 'h' : 'H')
+        . (__rt_str_id('Foo\\Bar') === 5094806515607143651 ? 'r' : 'R');
+}
+
+abstract class Kind
+{
+    abstract public function name(): string;
+}
+
+final class KindA extends Kind
+{
+    public function name(): string
+    {
+        return 'a';
+    }
+}
+
+final class KindB extends Kind
+{
+    public function name(): string
+    {
+        return 'b';
+    }
+}
+
+final class KindC extends Kind
+{
+    public function name(): string
+    {
+        return 'c';
+    }
+}
+
+final class KindDispatch
+{
+    /** @var array<class-string, int> */
+    private static array $kinds = [];
+
+    private static function kind(Kind $o): int
+    {
+        if ($o instanceof KindA) {
+            return 1;
+        }
+        if ($o instanceof KindB) {
+            return 2;
+        }
+        return 0;
+    }
+
+    public static function handle(Kind $o): string
+    {
+        $kind = self::$kinds[$o::class] ??= self::kind($o);
+        switch ($kind) {
+            case 1:
+                assert($o instanceof KindA);
+                return 'A' . $o->name();
+            case 2:
+                assert($o instanceof KindA || $o instanceof KindB);
+                return 'B' . $o->name();
+        }
+        return '-' . $o->name() . $o::class;
+    }
+}
+
+function case_kind_dispatch(): string
+{
+    return KindDispatch::handle(new KindA()) . KindDispatch::handle(new KindB()) . KindDispatch::handle(new KindA())
+        . KindDispatch::handle(new KindC());
+}
+
 function check(string $name, string $actual, string $expected): string
 {
     return ($actual === $expected ? 'PASS ' : 'FAIL ') . $name
@@ -1451,7 +1597,9 @@ function case_node_parts(): string
 
 function run_all(): string
 {
-    return check('node_parts', case_node_parts(), 'PE:PE')
+    return check('id_keyed_map', case_id_keyed_map(), 'yn:foo,bar:Bar:foo=Foo:bar=Bar:B2A2B2:hr')
+        . check('kind_dispatch', case_kind_dispatch(), 'AaBbAa-cTiny\\KindC')
+        . check('node_parts', case_node_parts(), 'PE:PE')
         . check('generic_empty_return', case_generic_empty_return(), '0:2')
         . check('guard_key_writes', case_guard_key_writes(), 'ab4')
         . check('shape_dyn_key', case_shape_dyn_key(), 'int,-,zero,string,')
