@@ -383,6 +383,7 @@ class Reconciler
 
                         if ($is_real
                             && !isset($new_types[$new_key])
+                            && str_contains($new_key, $key)
                             && self::isPathThrough($new_key, $key)
                         ) {
                             // Fix any references to the type before removing it.

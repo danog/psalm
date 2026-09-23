@@ -666,40 +666,36 @@ abstract class Type
             return true;
         }
 
-        if ($a->from_docblock !== $b->from_docblock
-            || $a->from_calculation !== $b->from_calculation
-            || $a->ignore_nullable_issues !== $b->ignore_nullable_issues
-            || $a->ignore_falsable_issues !== $b->ignore_falsable_issues
-            || $a->reference_free !== $b->reference_free
-            || $a->allow_mutations !== $b->allow_mutations
-            || $a->initialized !== $b->initialized
-            || $a->explicit_never !== $b->explicit_never
-            || $a->had_template !== $b->had_template
-            || $a->failed_reconciliation !== $b->failed_reconciliation
-            || $a->possibly_undefined !== $b->possibly_undefined
-            || $a->possibly_undefined_from_try !== $b->possibly_undefined_from_try
-            || $a->by_ref !== $b->by_ref
-            || $a->parent_nodes !== $b->parent_nodes
-        ) {
-            return false;
-        }
-
+        // the atomics first: most pairs differ there, and a union derived from the other by a wither shares
+        // its atomics array, so `===` is a pointer comparison (else an element-wise identity check in C)
         $a_types = $a->getAtomicTypes();
         $b_types = $b->getAtomicTypes();
-        // a union derived from the other by a wither shares its atomics array: identity is a pointer check
-        if ($a_types === $b_types) {
-            return true;
-        }
-        if (count($a_types) !== count($b_types)) {
-            return false;
-        }
-        foreach ($a_types as $key => $atomic) {
-            $other = $b_types[$key] ?? null;
-            if ($other === null || ($other !== $atomic && $other->getId() !== $atomic->getId())) {
+        if ($a_types !== $b_types) {
+            if (count($a_types) !== count($b_types)) {
                 return false;
             }
+            foreach ($a_types as $key => $atomic) {
+                $other = $b_types[$key] ?? null;
+                if ($other === null || ($other !== $atomic && $other->getId() !== $atomic->getId())) {
+                    return false;
+                }
+            }
         }
-        return true;
+
+        return $a->from_docblock === $b->from_docblock
+            && $a->from_calculation === $b->from_calculation
+            && $a->ignore_nullable_issues === $b->ignore_nullable_issues
+            && $a->ignore_falsable_issues === $b->ignore_falsable_issues
+            && $a->reference_free === $b->reference_free
+            && $a->allow_mutations === $b->allow_mutations
+            && $a->initialized === $b->initialized
+            && $a->explicit_never === $b->explicit_never
+            && $a->had_template === $b->had_template
+            && $a->failed_reconciliation === $b->failed_reconciliation
+            && $a->possibly_undefined === $b->possibly_undefined
+            && $a->possibly_undefined_from_try === $b->possibly_undefined_from_try
+            && $a->by_ref === $b->by_ref
+            && $a->parent_nodes === $b->parent_nodes;
     }
 
     private static function combineUnionTypesSlow(

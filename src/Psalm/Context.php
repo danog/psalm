@@ -671,7 +671,7 @@ final class Context
             $clause = $clause->calculateNegation();
 
             foreach ($clause->possibilities as $var_id => $_) {
-                if (Reconciler::isPathThrough($var_id, $remove_var_id)) {
+                if (str_contains($var_id, $remove_var_id) && Reconciler::isPathThrough($var_id, $remove_var_id)) {
                     break 2;
                 }
             }
@@ -752,7 +752,7 @@ final class Context
         );
 
         foreach ($this->vars_in_scope as $var_id => $type) {
-            if (Reconciler::isPathThrough($var_id, $remove_var_id)) {
+            if (str_contains($var_id, $remove_var_id) && Reconciler::isPathThrough($var_id, $remove_var_id)) {
                 // gone: the dependent atomics below have nothing left to replace
                 $this->remove($var_id, false);
                 continue;
