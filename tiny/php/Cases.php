@@ -725,6 +725,65 @@ function case_coalesce_assign_var_key(): string
     return $first . $again . $other . ':' . implode(',', names_of(true)) . ':' . implode(',', names_of(false));
 }
 
+abstract class SubNode
+{
+    abstract public function tag(): string;
+}
+
+final class LeafNode extends SubNode
+{
+    public function tag(): string
+    {
+        return 'L';
+    }
+}
+
+final class OtherThing
+{
+}
+
+final class SubNodeHolder
+{
+    /** @var object|list<object|null>|string|int|null */
+    public mixed $child = null;
+
+    /** @return SubNode|list<SubNode|null>|string|int|null */
+    public function typedChild(): mixed
+    {
+        return $this->child;
+    }
+}
+
+function describe_child(SubNodeHolder $holder): string
+{
+    $typed = $holder->typedChild();
+    if ($typed instanceof SubNode) {
+        return $typed->tag() . ',';
+    }
+    if (is_array($typed)) {
+        return count($typed) . ($typed[0] instanceof SubNode ? $typed[0]->tag() : '?') . ',';
+    }
+    if ($typed === null) {
+        return 'n,';
+    }
+    return (string) $typed . ',';
+}
+
+function case_object_union_narrowing(): string
+{
+    $holder = new SubNodeHolder();
+    $holder->child = new LeafNode();
+    $out = describe_child($holder);
+    $holder->child = [new LeafNode(), null];
+    $out .= describe_child($holder);
+    $holder->child = 'str';
+    $out .= describe_child($holder);
+    $holder->child = 7;
+    $out .= describe_child($holder);
+    $holder->child = null;
+    return $out . describe_child($holder);
+}
+
 function check(string $name, string $actual, string $expected): string
 {
     return ($actual === $expected ? 'PASS ' : 'FAIL ') . $name
@@ -1642,7 +1701,8 @@ function case_node_parts(): string
 
 function run_all(): string
 {
-    return check('coalesce_assign_var_key', case_coalesce_assign_var_key(), '001:a,b:a')
+    return check('object_union_narrowing', case_object_union_narrowing(), 'L,2L,str,7,n,')
+        . check('coalesce_assign_var_key', case_coalesce_assign_var_key(), '001:a,b:a')
         . check('id_keyed_map', case_id_keyed_map(), 'yn:foo,bar:Bar:foo=Foo:bar=Bar:B2A2B2:hr')
         . check('kind_dispatch', case_kind_dispatch(), 'AaBbAa-cTiny\\KindC')
         . check('node_parts', case_node_parts(), 'PE:PE')

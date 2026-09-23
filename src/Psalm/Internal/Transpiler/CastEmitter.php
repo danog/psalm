@@ -399,6 +399,25 @@ final class CastEmitter
      */
     private function downcastArm(string $code, RustType $m, RustType $to): ?string
     {
+        if ($m->kind === RustType::ANY_OBJECT) {
+            // an object of no static class (`object`): it narrows into whichever target class member it is
+            // an instance of; one that is none of them is a type error at runtime
+            $chain = [];
+            foreach ($to->params as $t) {
+                $c = $t->kind === RustType::OPTION ? $t->inner() : $t;
+                if ($c->kind !== RustType::CLASS_ || $this->program->classOf($c) === null) {
+                    continue;
+                }
+                $this->casts->needInstanceOf($m, $c);
+                $chain[] = 'if is_instance::<' . $c->toRust() . '>(&' . $code . ') { ' . $this->wrapMember($code, $m, $to, $t) . ' }';
+            }
+            if ($chain === []) {
+                return null;
+            }
+            return implode(' else ', $chain) . ' else { panic!('
+                . Names::rustStringLiteral('cannot narrow an object ({}) into ' . $to->toRust())
+                . ', php_rt::PhpObject::class_name(&' . $code . ')) }';
+        }
         if ($m->kind !== RustType::CLASS_) {
             return null;
         }
@@ -435,7 +454,9 @@ final class CastEmitter
         }
         $else = $base !== null
             ? $this->wrapMember($code, $m, $to, $base)
-            : 'panic!(' . Names::rustStringLiteral('cannot narrow ' . $m->toRust() . ' into ' . $to->toRust()) . ')';
+            : ($m->kind === RustType::ANY_OBJECT
+                ? 'panic!(' . Names::rustStringLiteral('cannot narrow ' . $m->toRust() . ' ({}) into ' . $to->toRust()) . ', php_rt::PhpObject::class_name(&' . $code . '))'
+                : 'panic!(' . Names::rustStringLiteral('cannot narrow ' . $m->toRust() . ' into ' . $to->toRust()) . ')');
         return implode(' else ', $chain) . ' else { ' . $else . ' }';
     }
 
@@ -1188,7 +1209,10 @@ final class CastEmitter
                     // a hierarchy member narrowed to one of its subclasses (typed downcast)
                     $arms[] = $from->mangle() . '::' . $m->variantName() . '(v) => ' . $this->conv('v', $m, $to);
                 } else {
-                    $arms[] = $from->mangle() . '::' . $m->variantName() . '(_) => panic!("cannot narrow ' . $from->mangle() . '::' . $m->variantName() . ' into ' . $to->toRust() . '")';
+                    // an object variant names the class it actually held
+                    $arms[] = $m->kind === RustType::ANY_OBJECT
+                        ? $from->mangle() . '::' . $m->variantName() . '(__v) => panic!("cannot narrow ' . $from->mangle() . '::' . $m->variantName() . ' ({}) into ' . $to->toRust() . '", php_rt::PhpObject::class_name(&__v))'
+                        : $from->mangle() . '::' . $m->variantName() . '(_) => panic!("cannot narrow ' . $from->mangle() . '::' . $m->variantName() . ' into ' . $to->toRust() . '")';
                 }
             }
             $w->line('impl php_rt::CastTo<' . $to->toRust() . '> for ' . $from->toRust() . ' { fn cast_to(self) -> ' . $to->toRust() . ' { match self { ' . implode(', ', $arms) . ' } } }');
