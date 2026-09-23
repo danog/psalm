@@ -727,6 +727,14 @@ trait ExprTrait
         if (in_array($v->type->kind, $containers, true) && in_array($inf->kind, $containers, true)) {
             return $v;
         }
+        // a nullable handle Psalm knows to be set (`$x->m()` after `if ($x)`) is borrowed out of its option: the
+        // place `(*x.as_ref().unwrap())` auto-refs as a receiver, so no clone of the option is unwrapped
+        if ($v->type->kind === RustType::OPTION && $v->place !== null && $inf->kind === RustType::CLASS_
+            && $v->type->inner()->toRust() === $inf->toRust()
+        ) {
+            $place = '(*' . $v->place . '.as_ref().unwrap())';
+            return new Val($place . '.clone()', $inf, $place, null, null, $v->temp);
+        }
         return $this->casts->convertVal($v, $inf);
     }
 
@@ -1880,7 +1888,25 @@ trait ExprTrait
     /**
      * Emit an expression as an Option (None when unset/null); null when the expression cannot be unset.
      */
-    public function optionalValue(Expr $e): ?Val
+    /**
+     * The `Some(())`/`None` test of an element borrowed for `isset()`: no value is cloned to learn whether it is set.
+     * A nullable element (Option / Mixed) is set only when it is not null, as in PHP.
+     */
+    private static function issetProbe(RustType $elem): string
+    {
+        if ($elem->kind === RustType::OPTION) {
+            return '__v.as_ref().map(|_| ())';
+        }
+        if ($elem->kind === RustType::MIXED) {
+            return 'if __v.is_null() { None } else { Some(()) }';
+        }
+        return 'Some(())';
+    }
+
+    /**
+     * @param bool $probe the value is only tested for presence (`isset()`): the element is borrowed, not cloned
+     */
+    public function optionalValue(Expr $e, bool $probe = false): ?Val
     {
         if ($e instanceof Expr\Variable && is_string($e->name)) {
             $v = $this->readVar($e->name);
@@ -1902,13 +1928,23 @@ trait ExprTrait
             $dim = $e->dim;
             if ($bt->kind === RustType::LIST) {
                 $inner = $bt->inner();
+                if ($probe) {
+                    return new Val('{ let __k = ' . $this->exprTo($dim, RustType::int()) . '; ' . $base->code . '.and_then(|__b| __b.get(__k).and_then(|__v| ' . self::issetProbe($inner) . ')) }', RustType::option(RustType::bool()));
+                }
                 $code = '{ let __k = ' . $this->exprTo($dim, RustType::int()) . '; ' . $base->code . '.and_then(|__b| __b.get(__k).cloned()) }';
                 return $this->flattenOption($code, $inner);
             }
             if ($bt->kind === RustType::MAP) {
                 [$kt, $vt] = $bt->params;
-                // a variable key stays usable after the read (`$m[$k] ??= ...` writes with it again)
-                $key = $this->keyExpr($dim, $kt) . ($dim instanceof Expr\Variable ? '.clone()' : '');
+                // a variable key stays usable after the read (`$m[$k] ??= ...` writes with it again): only a bare
+                // binding would be moved; `to_key(&k)`, `k.clone()` and literal keys are already owned temporaries
+                $key = $this->keyExpr($dim, $kt);
+                if ($dim instanceof Expr\Variable && preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $key)) {
+                    $key .= '.clone()';
+                }
+                if ($probe) {
+                    return new Val('{ let __k = ' . $key . '; ' . $base->code . '.and_then(|__b| __b.get(&__k).and_then(|__v| ' . self::issetProbe($vt) . ')) }', RustType::option(RustType::bool()));
+                }
                 $code = '{ let __k = ' . $key . '; ' . $base->code . '.and_then(|__b| __b.get(&__k).cloned()) }';
                 return $this->flattenOption($code, $vt);
             }
@@ -2137,7 +2173,7 @@ trait ExprTrait
     /** `isset($x)` */
     private function issetCode(Expr $e): string
     {
-        $ov = $this->optionalValue($e);
+        $ov = $this->optionalValue($e, true);
         if ($ov !== null) {
             return $ov->code . '.is_some()';
         }

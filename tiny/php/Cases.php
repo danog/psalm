@@ -1713,9 +1713,145 @@ function case_node_parts(): string
     return $out;
 }
 
+final class Graph
+{
+    public const ROOT = 'root';
+    /** @var array<string, array<string, string>> */
+    private array $edges = ['root' => ['a' => 'use', 'b' => 'use'], 'a' => ['c' => 'use'], 'b' => ['c' => 'write'], 'c' => ['d' => 'use']];
+
+    /** @return array<string, true> */
+    public function resolve(): array
+    {
+        $used = [self::ROOT => true];
+        $queue = [self::ROOT];
+        while ($queue) {
+            $node = array_pop($queue);
+            foreach ($this->edges[$node] ?? [] as $target => $type) {
+                if ($type === 'write' || isset($used[$target])) {
+                    continue;
+                }
+                $used[$target] = true;
+                $queue[] = $target;
+            }
+        }
+        return $used;
+    }
+}
+
+function case_queue_pop(): string
+{
+    return implode(',', array_keys((new Graph())->resolve()));
+}
+
+final class UseGraph
+{
+    public const PUBLIC_API = 'public-api';
+    public const EDGE_WRITE = 'write';
+    public const EDGE_OVERRIDE = 'override';
+    /** @var array<string, array<string, string>> */
+    private array $forward_edges = [];
+    /** @var array<string, true>|null */
+    private ?array $used = null;
+
+    public function addEdge(string $a, string $b, string $type): void
+    {
+        $this->forward_edges[$a][$b] = $type;
+    }
+
+    public static function classNode(string $fq_class_name_lc): string
+    {
+        return 'class:' . $fq_class_name_lc;
+    }
+
+    public static function getOwnerClass(string $node_id): ?string
+    {
+        $pos = strpos($node_id, '::');
+        return $pos === false ? null : strtolower(substr($node_id, 0, $pos));
+    }
+
+    /** @param Closure(string): bool $is_external */
+    private static function isRoot(string $node_id, Closure $is_external): bool
+    {
+        return str_starts_with($node_id, 'root:') || $is_external($node_id);
+    }
+
+    /** @param Closure(string): bool $is_external */
+    public function resolve(Closure $is_external): void
+    {
+        $used = [self::PUBLIC_API => true];
+        $queue = [self::PUBLIC_API];
+
+        foreach ($this->forward_edges as $node_id => $_) {
+            if (!isset($used[$node_id]) && self::isRoot($node_id, $is_external)) {
+                $used[$node_id] = true;
+                $queue[] = $node_id;
+            }
+        }
+
+        $deferred = [];
+
+        while ($queue) {
+            $node_id = array_pop($queue);
+
+            foreach ($this->forward_edges[$node_id] ?? [] as $target_node => $type) {
+                if ($type === self::EDGE_WRITE || isset($used[$target_node])) {
+                    continue;
+                }
+
+                if ($type === self::EDGE_OVERRIDE) {
+                    $owner_class = self::getOwnerClass($target_node);
+
+                    if ($owner_class !== null && !$is_external($node_id)) {
+                        $owner_node = self::classNode($owner_class);
+
+                        if (!isset($used[$owner_node])) {
+                            $deferred[$owner_node][] = $target_node;
+                            continue;
+                        }
+                    }
+                }
+
+                $used[$target_node] = true;
+                $queue[] = $target_node;
+
+                foreach ($deferred[$target_node] ?? [] as $deferred_node) {
+                    if (!isset($used[$deferred_node])) {
+                        $used[$deferred_node] = true;
+                        $queue[] = $deferred_node;
+                    }
+                }
+
+                unset($deferred[$target_node]);
+            }
+        }
+
+        $this->used = $used;
+    }
+
+    /** @return list<string> */
+    public function usedNodes(): array
+    {
+        return array_keys($this->used ?? []);
+    }
+}
+
+function case_use_graph(): string
+{
+    $g = new UseGraph();
+    $g->addEdge('public-api', 'a::m', 'use');
+    $g->addEdge('a::m', 'b::n', 'override');
+    $g->addEdge('a::m', 'c::p', 'write');
+    $g->addEdge('root:x', 'class:b', 'use');
+    $g->addEdge('class:b', 'd::q', 'use');
+    $g->resolve(static fn(string $n): bool => $n === 'ext::e');
+    return implode(',', $g->usedNodes());
+}
+
 function run_all(): string
 {
-    return check('const_table', case_const_table(), 'inf,nan,null,30719,eol,absent,10')
+    return check('use_graph', case_use_graph(), 'public-api,root:x,class:b,d::q,a::m,b::n')
+        . check('queue_pop', case_queue_pop(), 'root,a,b,c,d')
+        . check('const_table', case_const_table(), 'inf,nan,null,30719,eol,absent,10')
         . check('object_union_narrowing', case_object_union_narrowing(), 'L,2L,str,7,n,')
         . check('coalesce_assign_var_key', case_coalesce_assign_var_key(), '001:a,b:a')
         . check('id_keyed_map', case_id_keyed_map(), 'yn:foo,bar:Bar:foo=Foo:bar=Bar:B2A2B2:hr')

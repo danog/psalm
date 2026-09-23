@@ -65,7 +65,8 @@ trait LValueTrait
             $bt = $base->type;
             $base_was_option = $bt->kind === RustType::OPTION;
             if ($bt->kind === RustType::OPTION) {
-                $base = new Val($base->code . '.unwrap()', $bt->inner());
+                // the accessors take `&self`: the handle is borrowed out of the option, not cloned out of it
+                $base = new Val($base->recv() . '.as_ref().unwrap()', $bt->inner());
                 $bt = $bt->inner();
             }
             if ($bt->kind === RustType::CLASS_) {
@@ -73,7 +74,9 @@ trait LValueTrait
                 $field = $cls?->fields[$name] ?? null;
                 if ($field !== null) {
                     $rn = $field->acc();
-                    $bc = $base->code;
+                    // the accessors take `&self`: a place (`x`, `(*self)`, `(*x.get())`) auto-refs, so the handle is
+                    // not cloned for every read or write of a field
+                    $bc = $base->recv();
                     // Immutable Rc<T> classes have no RefCell: set_/mut do Rc::make_mut copy-on-write, which needs
                     // the ACTUAL binding (`c`), not a throwaway `c.clone()` — a write through the clone COWs the
                     // copy and is silently lost. When the base is a plain local (`$c` of a wither
@@ -380,8 +383,12 @@ trait LValueTrait
                 );
             }
             $key = fn() => $this->keyExpr($dim, $kt);
-            // a variable key is cloned into the map: the statement may read it again (`$m[$k] ??= ...` yields the element)
-            $owned_key = fn() => $key() . ($dim instanceof Expr\Variable && $kt->kind !== RustType::INT ? '.clone()' : '');
+            // a variable key is cloned into the map: the statement may read it again (`$m[$k] ??= ...` yields the
+            // element). Only a bare binding would be moved: `to_key(&k)` and `k.clone()` are already owned temporaries.
+            $owned_key = function () use ($key, $dim, $kt): string {
+                $k = $key();
+                return $k . ($dim instanceof Expr\Variable && $kt->kind !== RustType::INT && preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $k) ? '.clone()' : '');
+            };
             $mut = !$has_mut ? null : ($vt->hasDefault()
                 ? fn() => '(*' . $parent->mut() . '.entry_or_default(' . $key() . '))'
                 : fn() => '(*' . $parent->mut() . '.idx_mut(&' . $key() . '))');
