@@ -1728,12 +1728,17 @@ final class Program
             return;
         }
         $lc = $method->lc();
+        // magic methods are invoked by emitter-generated calls (property/call/string protocols) with owned
+        // arguments, outside the argument emitter that knows about borrowed parameters
+        if (str_starts_with($lc, '__') && $lc !== '__construct') {
+            return;
+        }
         if ($lc === '__construct' || $lc === 'magic__construct'
             || isset($method->declaring->constructionMethods()[$lc])
         ) {
             return;
         }
-        $method->local_borrow = $this->borrowSafeParams($method->node->stmts ?? [], $method->node->params, $method->param_types);
+        $method->local_borrow = $this->borrowSafeParams($method->node->stmts ?? [], $method->node->params, $method->param_types, $method->declaring);
         if ($method->isStatic()) {
             // private static: single implementation, not in the instance-method agreement pass -> finalise now.
             $method->borrow_params = $method->local_borrow;
@@ -1902,59 +1907,52 @@ final class Program
     }
 
     /**
-     * The escape-analysis core shared by free functions and private methods: a param qualifies as borrow-safe
-     * (`&T`) when its type is a heap object/union (CLASS_/UNION) and EVERY occurrence of it in the body is a
-     * borrowing read -- a method-call receiver or property-fetch base. Any other use (return, store, compare,
-     * pass-by-value, reassignment, closure capture, by-ref, instanceof-narrowing) makes it escape -> owned.
+     * Owned/borrowed (axis 5): the parameters a body only ever READS, so the callee can take them as `&T` and
+     * callers pass a borrow instead of a clone. A parameter stays owned when the body could need it as an
+     * owned value in a way a clone out of the borrow would not serve as well, or could not serve at all:
+     *  - it is written (reassigned, incremented, destructured into, unset, or its elements/properties are
+     *    assigned, or it is passed by reference, including to a by-reference builtin);
+     *  - it escapes into a closure (`use ($p)`, an arrow function body) -- the borrow could not outlive the call;
+     *  - it is consumed as a value: returned, assigned to something, put in an array literal, yielded, thrown,
+     *    used through `??`/ternary branches (an owned param can be MOVED there; a borrowed one would clone);
+     *  - it is narrowed by `instanceof` (the narrowing cast needs an owned value);
+     *  - it is the receiver of a method the transpiler cannot resolve statically on its type (dynamic dispatch
+     *    casts the receiver to Mixed).
+     * Every other use (member/element reads, operands, conditions, foreach/match subjects, casts, `isset`,
+     * arguments of calls whose parameter is not by reference) reads through the borrow, cloning out of it
+     * where an owned value is needed. Uses Psalm's storage for by-reference parameters (user code through the
+     * models, builtins through the call map) and the AST's parent links for the context of each use.
+     *
      * @param list<\PhpParser\Node\Stmt> $stmts
      * @param list<\PhpParser\Node\Param> $params
      * @param list<RustType> $param_types
      * @return array<int, true>
      */
-    private function borrowSafeParams(array $stmts, array $params, array $param_types): array
+    private function borrowSafeParams(array $stmts, array $params, array $param_types, ?ClassModel $cls = null): array
     {
         $borrow = [];
+        if ($stmts === []) {
+            return $borrow;
+        }
+        $traverser = new \PhpParser\NodeTraverser();
+        $traverser->addVisitor(new \PhpParser\NodeVisitor\ParentConnectingVisitor());
+        $traverser->traverse($stmts);
         $finder = new \PhpParser\NodeFinder();
-        // Variable nodes that are a borrowing read (safe): the receiver/base/operand of a read expression.
-        $safe = [];
-        $recv_method = []; // receiver Variable node-id => lowercase method name (for static-resolvability check)
-        foreach ($finder->findInstanceOf($stmts, \PhpParser\Node\Expr\MethodCall::class) as $m) {
-            // A first-class callable `$x->m(...)` CAPTURES the receiver into a closure that may be stored/
-            // escape ('static), so its receiver is NOT a plain borrow.
-            if ($m->var instanceof \PhpParser\Node\Expr\Variable && !$m->isFirstClassCallable()) {
-                $safe[spl_object_id($m->var)] = true;
-                if ($m->name instanceof \PhpParser\Node\Identifier) {
-                    $recv_method[spl_object_id($m->var)] = strtolower($m->name->name);
+        $vars = $finder->findInstanceOf($stmts, \PhpParser\Node\Expr\Variable::class);
+        // captured by a closure or an arrow function: the borrow could not outlive the call
+        $captured = [];
+        foreach ($finder->findInstanceOf($stmts, \PhpParser\Node\Expr\Closure::class) as $c) {
+            foreach ($c->uses as $u) {
+                if (is_string($u->var->name)) {
+                    $captured[$u->var->name] = true;
                 }
             }
         }
-        foreach ($finder->findInstanceOf($stmts, \PhpParser\Node\Expr\NullsafeMethodCall::class) as $m) {
-            if ($m->var instanceof \PhpParser\Node\Expr\Variable) {
-                $safe[spl_object_id($m->var)] = true;
-            }
-        }
-        foreach ($finder->findInstanceOf($stmts, \PhpParser\Node\Expr\PropertyFetch::class) as $p) {
-            if ($p->var instanceof \PhpParser\Node\Expr\Variable) {
-                $safe[spl_object_id($p->var)] = true;
-            }
-        }
-        foreach ($finder->findInstanceOf($stmts, \PhpParser\Node\Expr\NullsafePropertyFetch::class) as $p) {
-            if ($p->var instanceof \PhpParser\Node\Expr\Variable) {
-                $safe[spl_object_id($p->var)] = true;
-            }
-        }
-        // NB: `instanceof` is deliberately NOT a safe use: the transpiler inserts a narrowing cast
-        // (cast::<Sub>($p)) after it, which needs an owned value -> would not typecheck on a `&T`.
-        // A property WRITE ($p->x = ...) reads the base too, but mutating the borrow is not what we allow;
-        // exclude params whose base is written.
-        $written_base = [];
-        foreach ($finder->findInstanceOf($stmts, \PhpParser\Node\Expr\Assign::class) as $a) {
-            $tgt = $a->var;
-            if (($tgt instanceof \PhpParser\Node\Expr\PropertyFetch || $tgt instanceof \PhpParser\Node\Expr\ArrayDimFetch)
-                && $tgt->var instanceof \PhpParser\Node\Expr\Variable && is_string($tgt->var->name)
-            ) {
-                $written_base[$tgt->var->name] = true;
-                unset($safe[spl_object_id($tgt->var)]);
+        foreach ($finder->findInstanceOf($stmts, \PhpParser\Node\Expr\ArrowFunction::class) as $af) {
+            foreach ($finder->findInstanceOf([$af], \PhpParser\Node\Expr\Variable::class) as $v) {
+                if (is_string($v->name)) {
+                    $captured[$v->name] = true;
+                }
             }
         }
         foreach ($params as $i => $p) {
@@ -1962,39 +1960,21 @@ final class Program
                 continue;
             }
             $t = $param_types[$i] ?? null;
-            if ($t === null || ($t->kind !== RustType::CLASS_ && $t->kind !== RustType::UNION)) {
-                continue; // only heap objects/unions are worth borrowing
-            }
-            $name = $p->var->name;
-            if (isset($written_base[$name])) {
+            if ($t === null || !self::borrowableParamType($t)) {
                 continue;
             }
-            // Classes the param type can be at runtime, for the method-resolvability check below.
-            $recv_classes = $t->kind === RustType::CLASS_
-                ? [$this->classOf($t)]
-                : array_map(fn(RustType $m) => $m->kind === RustType::CLASS_ ? $this->classOf($m) : null, $t->params);
+            $name = $p->var->name;
+            if ($name === 'this' || isset($captured[$name])) {
+                continue;
+            }
             $all_safe = true;
-            foreach ($finder->findInstanceOf($stmts, \PhpParser\Node\Expr\Variable::class) as $v) {
+            foreach ($vars as $v) {
                 if (!is_string($v->name) || $v->name !== $name) {
                     continue;
                 }
-                $oid = spl_object_id($v);
-                if (!isset($safe[$oid])) {
+                if (!$this->isBorrowingUse($v, $t, $cls)) {
                     $all_safe = false;
                     break;
-                }
-                // A method-call receiver escapes into Mixed when the method is NOT statically resolvable on the
-                // param's type (unmodeled builtin like DOMDocument::getElementsByTagNameNS -> the dynamic
-                // call_method path casts the receiver to Mixed, which cannot apply to a &T). Require resolution
-                // on every possible runtime class.
-                if (isset($recv_method[$oid])) {
-                    $lcm = $recv_method[$oid];
-                    foreach ($recv_classes as $rc) {
-                        if ($rc === null || $this->findMethod($rc, $lcm) === null) {
-                            $all_safe = false;
-                            break 2;
-                        }
-                    }
                 }
             }
             if ($all_safe) {
@@ -2002,6 +1982,223 @@ final class Program
             }
         }
         return $borrow;
+    }
+
+    /** Heap values worth borrowing: handles, unions of them, strings and containers (and options of those). */
+    private static function borrowableParamType(RustType $t): bool
+    {
+        if ($t->kind === RustType::OPTION) {
+            return self::borrowableParamType($t->inner());
+        }
+        return in_array($t->kind, [RustType::CLASS_, RustType::UNION, RustType::STR, RustType::LIST, RustType::MAP], true);
+    }
+
+    /** Whether one occurrence of a parameter only reads it (see borrowSafeParams). */
+    private function isBorrowingUse(\PhpParser\Node\Expr\Variable $v, RustType $t, ?ClassModel $cls): bool
+    {
+        $parent = $v->getAttribute('parent');
+        if (!$parent instanceof \PhpParser\Node) {
+            return false;
+        }
+        // receiver of a method call: only when the method resolves statically on every runtime class
+        if (($parent instanceof \PhpParser\Node\Expr\MethodCall || $parent instanceof \PhpParser\Node\Expr\NullsafeMethodCall)
+            && $parent->var === $v
+        ) {
+            if ($parent->isFirstClassCallable() || !$parent->name instanceof \PhpParser\Node\Identifier) {
+                return false;
+            }
+            return $this->methodResolvableOn($t, strtolower($parent->name->name));
+        }
+        // base of a member/element read; a write through it is a mutation of the borrow
+        if (($parent instanceof \PhpParser\Node\Expr\PropertyFetch || $parent instanceof \PhpParser\Node\Expr\NullsafePropertyFetch
+                || $parent instanceof \PhpParser\Node\Expr\ArrayDimFetch)
+            && $parent->var === $v
+        ) {
+            return !$this->isWrittenThrough($parent);
+        }
+        if ($parent instanceof \PhpParser\Node\Expr\Isset_ || $parent instanceof \PhpParser\Node\Expr\Empty_
+            || $parent instanceof \PhpParser\Node\Expr\BooleanNot || $parent instanceof \PhpParser\Node\Expr\Cast
+            || $parent instanceof \PhpParser\Node\Expr\Clone_ || $parent instanceof \PhpParser\Node\Expr\Print_
+            || $parent instanceof \PhpParser\Node\Stmt\Echo_ || $parent instanceof \PhpParser\Node\Scalar\InterpolatedString
+        ) {
+            return true;
+        }
+        if ($parent instanceof \PhpParser\Node\Expr\BinaryOp) {
+            return true; // comparisons, concatenation, arithmetic: operands are read
+        }
+        if ($parent instanceof \PhpParser\Node\Expr\Instanceof_) {
+            return false; // the narrowing cast that follows needs an owned value
+        }
+        if ($parent instanceof \PhpParser\Node\Stmt\Foreach_) {
+            return $parent->expr === $v; // the subject is iterated by borrow; a bound key/value var is a write
+        }
+        if ($parent instanceof \PhpParser\Node\Expr\Match_) {
+            return $parent->cond === $v;
+        }
+        if ($parent instanceof \PhpParser\Node\Stmt\Switch_ || $parent instanceof \PhpParser\Node\Stmt\If_
+            || $parent instanceof \PhpParser\Node\Stmt\ElseIf_ || $parent instanceof \PhpParser\Node\Stmt\While_
+            || $parent instanceof \PhpParser\Node\Stmt\Do_
+        ) {
+            return $parent->cond === $v;
+        }
+        if ($parent instanceof \PhpParser\Node\Stmt\For_) {
+            return in_array($v, $parent->cond, true);
+        }
+        if ($parent instanceof \PhpParser\Node\Expr\Ternary) {
+            return $parent->cond === $v && $parent->if !== null; // `$p ?: x` yields the value itself
+        }
+        if ($parent instanceof \PhpParser\Node\Expr\Assign || $parent instanceof \PhpParser\Node\Expr\AssignOp
+            || $parent instanceof \PhpParser\Node\Expr\AssignRef
+        ) {
+            return false; // a write of the param, or the param's value moving into something else
+        }
+        if ($parent instanceof \PhpParser\Node\Arg) {
+            if ($parent->byRef || $parent->unpack) {
+                return false;
+            }
+            $call = $parent->getAttribute('parent');
+            return $call instanceof \PhpParser\Node && $this->argIsByValue($call, $parent, $cls);
+        }
+        return false;
+    }
+
+    /**
+     * Whether a member/element fetch chain rooted at a parameter is the target of a write (`$p->x = `,
+     * `$p[k][] = `, `unset($p[k])`, `$p->x++`, a by-reference argument, a by-reference foreach binding).
+     */
+    private function isWrittenThrough(\PhpParser\Node\Expr $fetch): bool
+    {
+        $top = $fetch;
+        $parent = $top->getAttribute('parent');
+        while (($parent instanceof \PhpParser\Node\Expr\PropertyFetch || $parent instanceof \PhpParser\Node\Expr\NullsafePropertyFetch
+                || $parent instanceof \PhpParser\Node\Expr\ArrayDimFetch)
+            && $parent->var === $top
+        ) {
+            $top = $parent;
+            $parent = $top->getAttribute('parent');
+        }
+        if (!$parent instanceof \PhpParser\Node) {
+            return false;
+        }
+        if (($parent instanceof \PhpParser\Node\Expr\Assign || $parent instanceof \PhpParser\Node\Expr\AssignOp
+                || $parent instanceof \PhpParser\Node\Expr\AssignRef)
+            && $parent->var === $top
+        ) {
+            return true;
+        }
+        if ($parent instanceof \PhpParser\Node\Stmt\Unset_ || $parent instanceof \PhpParser\Node\Expr\PreInc
+            || $parent instanceof \PhpParser\Node\Expr\PostInc || $parent instanceof \PhpParser\Node\Expr\PreDec
+            || $parent instanceof \PhpParser\Node\Expr\PostDec
+        ) {
+            return true;
+        }
+        if ($parent instanceof \PhpParser\Node\Stmt\Foreach_) {
+            return $parent->expr !== $top;
+        }
+        if ($parent instanceof \PhpParser\Node\Arg) {
+            if ($parent->byRef) {
+                return true;
+            }
+            $call = $parent->getAttribute('parent');
+            return !($call instanceof \PhpParser\Node) || !$this->argIsByValue($call, $parent, null);
+        }
+        if ($parent instanceof \PhpParser\Node\Expr\Assign && $parent->expr === $top) {
+            return false;
+        }
+        return false;
+    }
+
+    /**
+     * Whether an argument feeds a by-value parameter of a callee we can identify: a user function or method
+     * (its storage), a builtin (the call map), a constructor. An unidentifiable callee could take it by
+     * reference, which a borrow could not serve.
+     */
+    private function argIsByValue(\PhpParser\Node $call, \PhpParser\Node\Arg $arg, ?ClassModel $cls): bool
+    {
+        $args = $call instanceof \PhpParser\Node\Expr\CallLike ? $call->getArgs() : [];
+        $index = null;
+        foreach ($args as $i => $a) {
+            if ($a === $arg) {
+                $index = $i;
+            }
+        }
+        if ($index === null || $arg->name !== null) {
+            return false;
+        }
+        $storage = null;
+        if ($call instanceof \PhpParser\Node\Expr\FuncCall && $call->name instanceof \PhpParser\Node\Name) {
+            $resolved = (string) ($call->name->getAttribute('resolvedName') ?? $call->name->toString());
+            $fn = $this->getFunction($resolved) ?? $this->getFunction($call->name->getLast());
+            if ($fn !== null) {
+                $storage = $fn->record->storage;
+            } else {
+                $callables = \Psalm\Internal\Codebase\InternalCallMapHandler::getCallablesFromCallMap(strtolower($call->name->getLast()));
+                if ($callables === null) {
+                    return false;
+                }
+                foreach ($callables as $callable) {
+                    $params = $callable->params ?? [];
+                    $param = $params[$index] ?? (($params !== [] && $params[count($params) - 1]->is_variadic) ? $params[count($params) - 1] : null);
+                    if ($param !== null && $param->by_ref) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        } elseif ($call instanceof \PhpParser\Node\Expr\MethodCall || $call instanceof \PhpParser\Node\Expr\NullsafeMethodCall) {
+            if ($cls === null || !$call->name instanceof \PhpParser\Node\Identifier
+                || !$call->var instanceof \PhpParser\Node\Expr\Variable || $call->var->name !== 'this'
+            ) {
+                return false;
+            }
+            $m = $this->findMethod($cls, strtolower($call->name->name));
+            if ($m === null) {
+                return false;
+            }
+            $storage = $m->storage;
+        } elseif ($call instanceof \PhpParser\Node\Expr\StaticCall) {
+            if ($cls === null || !$call->name instanceof \PhpParser\Node\Identifier || !$call->class instanceof \PhpParser\Node\Name) {
+                return false;
+            }
+            $cn = strtolower($call->class->toString());
+            $target = in_array($cn, ['self', 'static'], true) ? $cls : ($cn === 'parent' ? $cls->parent : $this->getClass((string) ($call->class->getAttribute('resolvedName') ?? $call->class->toString())));
+            $m = $target !== null ? $this->findMethod($target, strtolower($call->name->name)) : null;
+            if ($m === null) {
+                return false;
+            }
+            $storage = $m->storage;
+        } elseif ($call instanceof \PhpParser\Node\Expr\New_) {
+            if (!$call->class instanceof \PhpParser\Node\Name) {
+                return false;
+            }
+            $target = $this->getClass((string) ($call->class->getAttribute('resolvedName') ?? $call->class->toString()));
+            $m = $target !== null ? $this->findMethod($target, '__construct') : null;
+            if ($m === null) {
+                return $target !== null && $target->fields === []; // a class without a constructor takes nothing by reference
+            }
+            $storage = $m->storage;
+        } else {
+            return false;
+        }
+        $params = $storage->params;
+        $param = $params[$index] ?? (($params !== [] && $params[count($params) - 1]->is_variadic) ? $params[count($params) - 1] : null);
+        return $param !== null && !$param->by_ref;
+    }
+
+    /** Whether a method is statically resolvable on every class a parameter of type $t can hold at runtime. */
+    private function methodResolvableOn(RustType $t, string $lc_method): bool
+    {
+        if ($t->kind === RustType::OPTION) {
+            $t = $t->inner();
+        }
+        $members = $t->kind === RustType::UNION ? $t->params : [$t];
+        foreach ($members as $m) {
+            $rc = $m->kind === RustType::CLASS_ ? $this->classOf($m) : null;
+            if ($rc === null || $this->findMethod($rc, $lc_method) === null) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

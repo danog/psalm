@@ -232,7 +232,7 @@ trait CallTrait
                 // parameters fed by a spread argument (`f(...$pair)`): element i-k of the hoisted list
                 $k = $i - $unpacked[1];
                 $default = ($param->by_ref ? '&mut ' : '') . $this->defaultArg($param, $t, $callee_class, $callee_name, $i);
-                $out[] = '(match ' . $unpacked[0] . '.get(' . $k . ').cloned() { Some(__ua) => ' . $this->casts->convert('__ua', $unpacked[2], $t) . ', None => ' . $default . ' })';
+                $out[] = (isset($borrow_params[$i]) && !$param->by_ref ? '&' : '') . '(match ' . $unpacked[0] . '.get(' . $k . ').cloned() { Some(__ua) => ' . $this->casts->convert('__ua', $unpacked[2], $t) . ', None => ' . $default . ' })';
                 continue;
             }
             if ($arg !== null && $arg->unpack) {
@@ -243,11 +243,12 @@ trait CallTrait
                 $tmp = $this->tmp('__ul');
                 $this->addPre('let ' . $tmp . ': ' . $lt->toRust() . ' = ' . $this->casts->convert($sv->code, $sv->type, $lt) . ';');
                 $unpacked = [$tmp, $i, $et];
-                $out[] = '(match ' . $tmp . '.get(0).cloned() { Some(__ua) => ' . $this->casts->convert('__ua', $et, $t) . ', None => ' . $this->defaultArg($param, $t, $callee_class, $callee_name, $i) . ' })';
+                $out[] = (isset($borrow_params[$i]) && !$param->by_ref ? '&' : '') . '(match ' . $tmp . '.get(0).cloned() { Some(__ua) => ' . $this->casts->convert('__ua', $et, $t) . ', None => ' . $this->defaultArg($param, $t, $callee_class, $callee_name, $i) . ' })';
                 continue;
             }
             if ($arg === null) {
-                $out[] = ($param->by_ref ? '&mut ' : '') . $this->defaultArg($param, $t, $callee_class, $callee_name, $i);
+                // a borrowed parameter takes a reference to the default's temporary (it lives for the call)
+                $out[] = ($param->by_ref ? '&mut ' : (isset($borrow_params[$i]) ? '&' : '')) . $this->defaultArg($param, $t, $callee_class, $callee_name, $i);
                 continue;
             }
             if ($param->by_ref) {
