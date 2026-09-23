@@ -116,7 +116,8 @@ abstract class Atomic implements TypeNode, Stringable
     /**
      * Memoized getKey() / getId(true) / getId(false): an atomic is immutable, and these strings are rebuilt on
      * every Union construction, comparison and combination otherwise (pzoom never builds them: its types are
-     * compared structurally and names are interned ids).
+     * compared structurally and names are interned ids). The exception is a type variable (`` `_0 ``): its
+     * id shows its bounds, which grow during inference, so no string mentioning one is kept.
      */
     private ?string $key_memo = null;
     private ?string $id_memo = null;
@@ -513,11 +514,15 @@ abstract class Atomic implements TypeNode, Stringable
         if (!$include_extra) {
             return $this->computeKey(false);
         }
-        if ($this->key_memo === null) {
-            /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
-            $this->key_memo = $this->computeKey();
+        if ($this->key_memo !== null) {
+            return $this->key_memo;
         }
-        return $this->key_memo;
+        $key = $this->computeKey();
+        if (!str_contains($key, '`')) {
+            /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
+            $this->key_memo = $key;
+        }
+        return $key;
     }
 
     /**
@@ -739,17 +744,25 @@ abstract class Atomic implements TypeNode, Stringable
             return $this->computeId($exact, true);
         }
         if ($exact) {
-            if ($this->id_memo === null) {
-                /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
-                $this->id_memo = $this->computeId(true, false);
+            if ($this->id_memo !== null) {
+                return $this->id_memo;
             }
-            return $this->id_memo;
+            $id = $this->computeId(true, false);
+            if (!str_contains($id, '`')) {
+                /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
+                $this->id_memo = $id;
+            }
+            return $id;
         }
-        if ($this->inexact_id_memo === null) {
+        if ($this->inexact_id_memo !== null) {
+            return $this->inexact_id_memo;
+        }
+        $id = $this->computeId(false, false);
+        if (!str_contains($id, '`')) {
             /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
-            $this->inexact_id_memo = $this->computeId(false, false);
+            $this->inexact_id_memo = $id;
         }
-        return $this->inexact_id_memo;
+        return $id;
     }
 
     /**
