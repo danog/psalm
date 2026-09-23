@@ -784,6 +784,20 @@ function case_object_union_narrowing(): string
     return $out . describe_child($holder);
 }
 
+function case_const_table(): string
+{
+    $consts = ConstTable::get();
+    $inf = $consts['INF'];
+    $nan = $consts['NAN'];
+    $out = (is_float($inf) && is_infinite($inf) ? 'inf' : '?') . ',';
+    $out .= (is_float($nan) && is_nan($nan) ? 'nan' : '?') . ',';
+    $out .= (array_key_exists('NULL_ONE', $consts) && $consts['NULL_ONE'] === null ? 'null' : '?') . ',';
+    $out .= (is_int($consts['E_ALL']) ? (string) $consts['E_ALL'] : '?') . ',';
+    $out .= ($consts['PHP_EOL'] === "\n" ? 'eol' : '?') . ',';
+    $out .= (isset($consts['NOPE']) ? '?' : 'absent') . ',';
+    return $out . count($consts);
+}
+
 function check(string $name, string $actual, string $expected): string
 {
     return ($actual === $expected ? 'PASS ' : 'FAIL ') . $name
@@ -1701,7 +1715,8 @@ function case_node_parts(): string
 
 function run_all(): string
 {
-    return check('object_union_narrowing', case_object_union_narrowing(), 'L,2L,str,7,n,')
+    return check('const_table', case_const_table(), 'inf,nan,null,30719,eol,absent,10')
+        . check('object_union_narrowing', case_object_union_narrowing(), 'L,2L,str,7,n,')
         . check('coalesce_assign_var_key', case_coalesce_assign_var_key(), '001:a,b:a')
         . check('id_keyed_map', case_id_keyed_map(), 'yn:foo,bar:Bar:foo=Foo:bar=Bar:B2A2B2:hr')
         . check('kind_dispatch', case_kind_dispatch(), 'AaBbAa-cTiny\\KindC')
@@ -1765,7 +1780,7 @@ function run_all(): string
         . check('generics', case_generics(), 'i:eq,s:ne,l:eq,42,xy,has,no,5,strintother')
         . check('phpunit', case_phpunit(), '1,failed,skip:later,expects,verified,mismatch,testThrows with data set "ds"')
         . check('object_eq', case_object_eq(), 'eq,ne,ne,notsame,eq,eq,ne')
-        . check('defined_constants', case_defined_constants(), 'size8,eall,eol,pi')
+        . check('defined_constants', case_defined_constants(), 'max9223372036854775807,eall,eol,pi')
         . check('data_file', case_data_file(), 'a1x-,b2y3.5|a,b')
         . check('elseif_assign', case_elseif_assign(), 'none,a5,skip|1')
         . check('json_encode', case_json_encode(), '{"a":1,"b":[1,2,3],"c":null,"d":true,"e":1.5,"f":"x\\"y"}|[{"x":1,"label":null},{"x":2,"label":"p"}]|{"a":1,"b":"two","c":[3,4]}|{"3":"a","5":"b"}|[]|' . "{\n    \"k\": [\n        1,\n        \"z\"\n    ]\n}")
@@ -1805,13 +1820,28 @@ function run_all(): string
         . check('array_to_xml', case_array_to_xml(), "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item/>\n</report>\n|<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<report>\n  <item>\n    <severity>error</severity>\n    <line_from>4</line_from>\n    <taint_trace/>\n    <refs>\n      <label>a &amp; b</label>\n    </refs>\n    <refs>\n      <label>c</label>\n    </refs>\n  </item>\n</report>\n");
 }
 
-// ---- feature: typed constant table (get_defined_constants without Mixed) ----
+// ---- feature: a constant table read from a dictionary in its declared type (psalm-port's ConstantMap) ----
+
+final class ConstTable
+{
+    /** @var array<string, scalar|null>|null */
+    private static ?array $map = null;
+
+    /** @return array<string, scalar|null> */
+    public static function get(): array
+    {
+        if (self::$map === null) {
+            self::$map = require __DIR__ . '/data/consts.php';
+        }
+        return self::$map;
+    }
+}
 
 function case_defined_constants(): string
 {
-    $constants = get_defined_constants();
+    $constants = ConstTable::get();
     $out = [];
-    $out[] = isset($constants['PHP_INT_SIZE']) ? 'size' . (string) $constants['PHP_INT_SIZE'] : 'nosize';
+    $out[] = isset($constants['PHP_INT_MAX']) ? 'max' . (string) $constants['PHP_INT_MAX'] : 'nomax';
     $out[] = isset($constants['E_ALL']) && is_int($constants['E_ALL']) ? 'eall' : 'noeall';
     $out[] = ($constants['PHP_EOL'] ?? '') === "\n" ? 'eol' : 'noeol';
     $out[] = array_key_exists('M_PI', $constants) && is_float($constants['M_PI']) ? 'pi' : 'nopi';

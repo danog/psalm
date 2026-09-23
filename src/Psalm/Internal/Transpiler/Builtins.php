@@ -354,7 +354,6 @@ final class Builtins
         'get_loaded_extensions' => ['get_loaded_extensions', ['b=false'], 'ls'],
         'get_declared_classes' => ['crate::names::declared_classlikes', ['b=false'], 'ls'],
         'get_declared_interfaces' => ['crate::names::declared_classlikes', ['b=true'], 'ls'],
-        'get_defined_constants' => ['get_defined_constants', ['b=false'], 'msc'],
         'get_defined_functions' => ['get_defined_functions', ['x=crate::names::USER_FUNCTIONS'], 'msl'],
         'opcache_get_status' => ['opcache_get_status', [], 'om'],
         'get_cfg_var' => ['get_cfg_var', ['&s'], 'os'],
