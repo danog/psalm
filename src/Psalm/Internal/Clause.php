@@ -105,29 +105,30 @@ final class Clause implements Stringable
 
         // One pass over interned ids computes both the hash and the bloom (pzoom's compute_hash /
         // compute_keys_bloom). Within a variable the assertions are combined by a sum, so their order does not
-        // matter (Psalm's identity never depended on it); across variables the sorted order is hashed. Two
-        // 31-bit lanes keep every product inside PHP's int range.
+        // matter (Psalm's identity never depended on it); across variables the sorted order is hashed. PHP is
+        // 64-bit (CliUtils::checkRuntimeRequirements), but an overflowing product becomes a float, so the hash is
+        // built in a 32-bit and a 31-bit lane (63 bits: negative numbers stay free for wedges).
         $h1 = 0;
         $h2 = 0;
         $bloom = 0;
         foreach ($possibilities as $var => $assertions) {
             $var_id = self::keyId((string) $var);
-            $bloom |= 1 << ($var_id % 62);
+            $bloom |= 1 << ($var_id & 63);
             $set1 = 0;
             $set2 = 0;
             foreach ($assertions as $key => $_) {
                 $id = self::keyId((string) $key);
-                $bloom |= 1 << ($id % 62);
-                $set1 = ($set1 + (($id * 0x2545F491) & 0x7FFFFFFF)) & 0x7FFFFFFF;
+                $bloom |= 1 << ($id & 63);
+                $set1 = ($set1 + (($id * 0x2545F491) & 0xFFFFFFFF)) & 0xFFFFFFFF;
                 $set2 = ($set2 + (($id * 0x1B873593) & 0x7FFFFFFF)) & 0x7FFFFFFF;
             }
-            $h1 = ($h1 * 1_000_003 + ((($var_id * 0x2545F491) & 0x7FFFFFFF) ^ $set1)) % 2_147_483_647;
+            $h1 = ($h1 * 1_000_003 + ((($var_id * 0x2545F491) & 0xFFFFFFFF) ^ $set1)) % 4_294_967_291;
             $h2 = ($h2 * 998_244_353 + ((($var_id * 0x1B873593) & 0x7FFFFFFF) ^ $set2)) % 2_147_483_629;
         }
         $this->keys_bloom = $bloom;
         $this->hash = $wedge || !$reconcilable
             ? -1 - (2 * $creating_object_id + ($wedge ? 1 : 0))
-            : ($h1 << 31) | $h2;
+            : ($h1 << 31) | $h2;  // h1 < 2^32, h2 < 2^31: 63 bits, never negative
 
         $this->possibilities = $possibilities;
         $this->wedge = $wedge;

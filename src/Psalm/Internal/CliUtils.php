@@ -53,6 +53,7 @@ use function substr;
 use function substr_replace;
 use function trim;
 
+use const PHP_INT_SIZE;
 use const DIRECTORY_SEPARATOR;
 use const JSON_THROW_ON_ERROR;
 use const PHP_EOL;
@@ -586,6 +587,11 @@ final class CliUtils
             'tokenizer',
         ];
         $issues = [];
+
+        if (PHP_INT_SIZE < 8) {
+            // hashes and bloom filters (e.g. Clause) use the full 64-bit int range
+            $issues[] = 'Psalm requires a 64-bit PHP build';
+        }
 
         $major_minor = PHP_VERSION_ID - (PHP_VERSION_ID % 100);
         foreach ([
