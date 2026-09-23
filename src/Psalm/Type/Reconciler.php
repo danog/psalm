@@ -71,8 +71,6 @@ use function is_numeric;
 use function is_string;
 use function key;
 use function ksort;
-use function preg_match;
-use function preg_quote;
 use function str_contains;
 use function str_ends_with;
 use function str_split;
@@ -108,6 +106,27 @@ class Reconciler
      * @return array{array<string, Union>, array<string, string>}
      * @psalm-suppress ComplexMethod
      */
+    /**
+     * Whether $var_id contains $base followed by `]`, `[` or `-`, i.e. names an access path through it (what the
+     * regex `/<base>[\]\[\-]/` tested, without building and compiling one per call).
+     *
+     * @internal
+     * @psalm-pure
+     */
+    public static function isPathThrough(string $var_id, string $base): bool
+    {
+        $length = strlen($base);
+        $offset = 0;
+        while (($position = strpos($var_id, $base, $offset)) !== false) {
+            $next = $var_id[$position + $length] ?? '';
+            if ($next === ']' || $next === '[' || $next === '-') {
+                return true;
+            }
+            $offset = $position + 1;
+        }
+        return false;
+    }
+
     public static function reconcileKeyedTypes(
         array $new_types,
         array $active_new_types,
@@ -362,9 +381,9 @@ class Reconciler
                             continue;
                         }
 
-                        if (!isset($new_types[$new_key])
-                            && preg_match('/' . preg_quote($key, '/') . '[\]\[\-]/', $new_key)
-                            && $is_real
+                        if ($is_real
+                            && !isset($new_types[$new_key])
+                            && self::isPathThrough($new_key, $key)
                         ) {
                             // Fix any references to the type before removing it.
                             $references_to_fix = array_keys($reference_graph[$new_key] ?? []);

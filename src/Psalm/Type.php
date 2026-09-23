@@ -59,6 +59,7 @@ use function array_merge;
 use function array_pop;
 use function array_shift;
 use function array_values;
+use function count;
 use function explode;
 use function implode;
 use function is_int;
@@ -653,28 +654,48 @@ abstract class Type
     }
 
     /**
-     * pzoom's `TUnion::eq`: the same atomic types (by exact id; per-atomic docblock provenance aside) and the same
-     * flags a combination merges.
+     * pzoom's `TUnion::eq`: the same flags a combination merges and, compared structurally, the same atomic types
+     * (per-atomic docblock provenance aside). Unions key their atomics by getKey(), so equal unions have the same
+     * keys, each holding the same atomic object or one with the same (memoized) exact id; no union id is built.
      *
      * @psalm-mutation-free
      */
     public static function unionsEqual(Union $a, Union $b): bool
     {
-        return $a->getId() === $b->getId()
-            && $a->from_docblock === $b->from_docblock
-            && $a->from_calculation === $b->from_calculation
-            && $a->ignore_nullable_issues === $b->ignore_nullable_issues
-            && $a->ignore_falsable_issues === $b->ignore_falsable_issues
-            && $a->reference_free === $b->reference_free
-            && $a->allow_mutations === $b->allow_mutations
-            && $a->initialized === $b->initialized
-            && $a->explicit_never === $b->explicit_never
-            && $a->had_template === $b->had_template
-            && $a->failed_reconciliation === $b->failed_reconciliation
-            && $a->possibly_undefined === $b->possibly_undefined
-            && $a->possibly_undefined_from_try === $b->possibly_undefined_from_try
-            && $a->by_ref === $b->by_ref
-            && $a->parent_nodes === $b->parent_nodes;
+        if ($a === $b) {
+            return true;
+        }
+
+        if ($a->from_docblock !== $b->from_docblock
+            || $a->from_calculation !== $b->from_calculation
+            || $a->ignore_nullable_issues !== $b->ignore_nullable_issues
+            || $a->ignore_falsable_issues !== $b->ignore_falsable_issues
+            || $a->reference_free !== $b->reference_free
+            || $a->allow_mutations !== $b->allow_mutations
+            || $a->initialized !== $b->initialized
+            || $a->explicit_never !== $b->explicit_never
+            || $a->had_template !== $b->had_template
+            || $a->failed_reconciliation !== $b->failed_reconciliation
+            || $a->possibly_undefined !== $b->possibly_undefined
+            || $a->possibly_undefined_from_try !== $b->possibly_undefined_from_try
+            || $a->by_ref !== $b->by_ref
+            || $a->parent_nodes !== $b->parent_nodes
+        ) {
+            return false;
+        }
+
+        $a_types = $a->getAtomicTypes();
+        $b_types = $b->getAtomicTypes();
+        if (count($a_types) !== count($b_types)) {
+            return false;
+        }
+        foreach ($a_types as $key => $atomic) {
+            $other = $b_types[$key] ?? null;
+            if ($other === null || ($other !== $atomic && $other->getId() !== $atomic->getId())) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static function combineUnionTypesSlow(

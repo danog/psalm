@@ -17,6 +17,7 @@ use Psalm\Storage\Mutations;
 use Psalm\Type\Atomic\DependentType;
 use Psalm\Type\Atomic\TIntRange;
 use Psalm\Type\Atomic\TNull;
+use Psalm\Type\Reconciler;
 use Psalm\Type\Union;
 use RuntimeException;
 
@@ -27,8 +28,6 @@ use function count;
 use function in_array;
 use function is_int;
 use function json_encode;
-use function preg_match;
-use function preg_quote;
 use function preg_replace;
 use function reset;
 use function str_contains;
@@ -671,10 +670,8 @@ final class Context
         foreach ($clauses as $clause) {
             $clause = $clause->calculateNegation();
 
-            $quoted_remove_var_id = preg_quote($remove_var_id, '/');
-
             foreach ($clause->possibilities as $var_id => $_) {
-                if (preg_match('/' . $quoted_remove_var_id . '[\]\[\-]/', $var_id)) {
+                if (Reconciler::isPathThrough($var_id, $remove_var_id)) {
                     break 2;
                 }
             }
@@ -755,7 +752,7 @@ final class Context
         );
 
         foreach ($this->vars_in_scope as $var_id => $type) {
-            if (preg_match('/' . preg_quote($remove_var_id, '/') . '[\]\[\-]/', $var_id)) {
+            if (Reconciler::isPathThrough($var_id, $remove_var_id)) {
                 // gone: the dependent atomics below have nothing left to replace
                 $this->remove($var_id, false);
                 continue;

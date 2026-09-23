@@ -12,6 +12,7 @@ use UnexpectedValueException;
 
 use function array_filter;
 use function array_intersect_key;
+use function array_key_first;
 use function array_keys;
 use function array_pop;
 use function array_values;
@@ -117,20 +118,31 @@ final class Algebra
             $cloned_clauses[$clause->hash] = $clause;
         }
 
+        // each clause's variables, listed once instead of once per pair (a clause's hash identifies them)
+        $var_lists = [];
+
         // remove impossible types
         foreach ($cloned_clauses as $clause_a_hash => $clause_a) {
             if (!$clause_a->reconcilable || $clause_a->wedge) {
                 continue;
             }
-            $clause_a_keys = array_keys($clause_a->possibilities);
 
-            if (count($clause_a->possibilities) !== 1 || count(array_values($clause_a->possibilities)[0]) !== 1) {
+            if (count($clause_a->possibilities) !== 1
+                || count($clause_a->possibilities[array_key_first($clause_a->possibilities)]) !== 1
+            ) {
+                $clause_a_keys = $var_lists[$clause_a->hash] ??= array_keys($clause_a->possibilities);
+                $clause_a_count = count($clause_a_keys);
+
                 foreach ($cloned_clauses as $clause_b) {
-                    if ($clause_a === $clause_b || !$clause_b->reconcilable || $clause_b->wedge) {
+                    if ($clause_a === $clause_b
+                        || !$clause_b->reconcilable
+                        || $clause_b->wedge
+                        || count($clause_b->possibilities) !== $clause_a_count
+                    ) {
                         continue;
                     }
 
-                    if ($clause_a_keys === array_keys($clause_b->possibilities)) {
+                    if ($clause_a_keys === ($var_lists[$clause_b->hash] ??= array_keys($clause_b->possibilities))) {
                         $opposing_keys = [];
 
                         foreach ($clause_a->possibilities as $key => $a_possibilities) {
@@ -169,8 +181,9 @@ final class Algebra
                 continue;
             }
 
-            $clause_var = array_keys($clause_a->possibilities)[0];
-            $only_type = array_pop(array_values($clause_a->possibilities)[0]);
+            $clause_var = array_key_first($clause_a->possibilities);
+            $only_types = $clause_a->possibilities[$clause_var];
+            $only_type = $only_types[array_key_first($only_types)];
             $negated_clause_type_hash = $only_type->getNegation()->getHash();
 
             foreach ($cloned_clauses as $clause_b_hash => $clause_b) {
