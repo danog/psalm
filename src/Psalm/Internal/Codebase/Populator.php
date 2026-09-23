@@ -117,6 +117,29 @@ final class Populator
         $storage->class_implements_ids = $this->nameIdSet($storage->class_implements);
         $storage->parent_interface_ids = $this->nameIdSet($storage->parent_interfaces);
         $storage->used_trait_ids = $this->nameIdSet($storage->used_traits);
+
+        // the flattened member maps: the declaring storages' objects, shared
+        $all_methods = [];
+        foreach ($storage->declaring_method_ids as $method_name_lc => $declaring_method_id) {
+            $declaring_storage = $this->classlike_storage_provider->findById($declaring_method_id->class_id);
+            $method_storage = $declaring_storage?->methods[$declaring_method_id->method_name] ?? null;
+            if ($method_storage !== null) {
+                $all_methods[$method_name_lc] = $method_storage;
+            }
+        }
+        $storage->all_methods = $all_methods;
+
+        $all_properties = [];
+        foreach ($storage->declaring_property_ids as $property_name => $declaring_class) {
+            $declaring_storage = $this->classlike_storage_provider->has($declaring_class)
+                ? $this->classlike_storage_provider->get($declaring_class)
+                : null;
+            $property_storage = $declaring_storage?->properties[$property_name] ?? null;
+            if ($property_storage !== null) {
+                $all_properties[$property_name] = $property_storage;
+            }
+        }
+        $storage->all_properties = $all_properties;
     }
 
     /**

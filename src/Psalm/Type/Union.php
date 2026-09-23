@@ -253,7 +253,10 @@ final class Union implements TypeNode
                         return false;
                     }
                 }
-                if ($theirs !== $atomic && $theirs->getId() !== $atomic->getId()) {
+                // the id last: it is built on demand, and for a fresh keyed array that is its whole shape
+                if ($theirs !== $atomic
+                    && ($theirs::class !== $atomic::class || $theirs->getId() !== $atomic->getId())
+                ) {
                     return false;
                 }
             }

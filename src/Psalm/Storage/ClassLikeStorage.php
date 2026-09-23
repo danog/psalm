@@ -430,6 +430,23 @@ final class ClassLikeStorage implements HasAttributesInterface
      */
     public array $used_trait_ids = [];
 
+    /**
+     * Every method callable on the class-like, own and inherited, by lowercased name: the declaring class's
+     * MethodStorage objects, shared (pzoom flattens ancestor methods into every descendant, Arc-shared).
+     * Filled at populate from declaring_method_ids.
+     *
+     * @var array<lowercase-string, MethodStorage>
+     */
+    public array $all_methods = [];
+
+    /**
+     * Every property of the class-like, own and inherited, by name: the declaring class's PropertyStorage
+     * objects, shared. Filled at populate from declaring_property_ids.
+     *
+     * @var array<string, PropertyStorage>
+     */
+    public array $all_properties = [];
+
     /** @psalm-external-mutation-free */
     public function __construct(public string $name)
     {
