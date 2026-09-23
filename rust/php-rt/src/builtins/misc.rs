@@ -219,20 +219,6 @@ pub fn get_loaded_extensions(zend_extensions: bool) -> List<Str> {
     }
     LOADED_EXTENSIONS.iter().map(|e| Str::from_static(*e)).collect::<Vec<_>>().into()
 }
-pub fn get_defined_constants(_categorize: bool) -> Map<Str, crate::conv::Scalar> {
-    // the compiled program's constants: PHP's builtin table plus the runtime's own (PHP_EOL, PSALM_COMPILED, ...);
-    // always the flat table (the program never asks for the per-extension grouping)
-    let mut all: Map<Str, crate::conv::Scalar> = Map::new();
-    for (name, value) in crate::php_constants::PHP_CONSTANTS {
-        all.insert(Str::from(*name), value());
-    }
-    for name in ["PHP_EOL", "PHP_VERSION", "PHP_VERSION_ID", "PHP_INT_MAX", "PHP_INT_MIN", "PHP_INT_SIZE", "PHP_OS", "PHP_OS_FAMILY", "DIRECTORY_SEPARATOR", "E_ALL", "E_STRICT", "PSALM_COMPILED", "PSALM_VERSION", "PHP_PARSER_VERSION"] {
-        if let Some(v) = crate::consts::builtin_value(name.as_bytes()).and_then(crate::conv::Scalar::from_mixed) {
-            all.insert(Str::from(name.as_bytes()), v);
-        }
-    }
-    all
-}
 /// Names of the functions the runtime implements natively (see `builtin_callable` and the eval call table).
 pub const BUILTIN_FUNCTION_NAMES: &[&str] = &[
     "strtolower", "strtoupper", "ucfirst", "lcfirst", "trim", "strval", "strlen", "intval", "is_string", "is_int",
@@ -923,7 +909,7 @@ pub fn builtin_function_exists(lc: &[u8]) -> bool {
 
 /// `defined()` on a runtime-provided constant name.
 pub fn builtin_constant_defined(name: &Str) -> bool {
-    get_defined_constants(false).get(&name.clone()).is_some()
+    crate::consts::builtin_value(name.as_bytes()).is_some()
 }
 
 #[cfg(test)]

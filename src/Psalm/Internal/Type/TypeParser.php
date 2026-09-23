@@ -10,6 +10,7 @@ use Psalm\Codebase;
 use Psalm\Exception\TypeParseTreeException;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\ArrayAnalyzer;
+use Psalm\Internal\Codebase\ConstantMap;
 use Psalm\Internal\Type\ParseTree\CallableParamTree;
 use Psalm\Internal\Type\ParseTree\CallableTree;
 use Psalm\Internal\Type\ParseTree\CallableWithReturnTypeTree;
@@ -85,10 +86,8 @@ use function array_unshift;
 use function array_values;
 use function assert;
 use function count;
-use function defined;
 use function end;
 use function explode;
-use function get_defined_constants;
 use function in_array;
 use function is_int;
 use function is_numeric;
@@ -953,10 +952,9 @@ final class TypeParser
                 $atomic_type = reset($generic_param_atomics);
 
                 if ($atomic_type instanceof TNamedObject) {
-                    if (defined($atomic_type->value)) {
-                        /** @var scalar|null|list<scalar|null>|array<string, scalar|null> */
-                        // a builtin constant of the analyzer's runtime (its own table; no dynamic constant lookup)
-                        $constant_value = get_defined_constants()[$atomic_type->value] ?? null;
+                    if (ConstantMap::has($atomic_type->value)) {
+                        // an internal constant the analyzer models
+                        $constant_value = ConstantMap::get()[$atomic_type->value];
 
                         if (!is_int($constant_value)) {
                             throw new TypeParseTreeException(

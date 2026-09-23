@@ -12,6 +12,7 @@ use Psalm\Context;
 use Psalm\Exception\FileIncludeException;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Codebase\ConstantMap;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Issue\MissingFile;
@@ -24,7 +25,6 @@ use Symfony\Component\Filesystem\Path;
 use function dirname;
 use function explode;
 use function file_exists;
-use function get_defined_constants;
 use function get_include_path;
 use function get_included_files;
 use function implode;
@@ -310,7 +310,7 @@ final class IncludeAnalyzer
             }
 
             // a builtin constant of the analyzer's runtime
-            $constant_value = get_defined_constants()[$const_name] ?? null;
+            $constant_value = ConstantMap::get()[$const_name] ?? null;
 
             if (is_string($constant_value)) {
                 return $constant_value;

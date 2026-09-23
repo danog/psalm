@@ -25,6 +25,7 @@ use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\FileAnalyzer;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\CliUtils;
+use Psalm\Internal\Codebase\ConstantMap;
 use Psalm\Internal\Composer;
 use Psalm\Internal\Composer\AutoloadMap;
 use Psalm\Internal\EventDispatcher;
@@ -76,7 +77,6 @@ use function file_get_contents;
 use function flock;
 use function fopen;
 use function function_exists;
-use function get_defined_constants;
 use function get_defined_functions;
 use function getcwd;
 use function glob;
@@ -2672,9 +2672,7 @@ final class Config
 
     public function collectPredefinedConstants(): void
     {
-        /** @var array<string, scalar|null> $constants PHP constants are scalars (arrays are unused by Psalm) */
-        $constants = get_defined_constants();
-        $this->predefined_constants = $constants;
+        $this->predefined_constants = ConstantMap::get();
     }
 
     /**
