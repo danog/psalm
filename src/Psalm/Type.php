@@ -645,57 +645,12 @@ abstract class Type
 
         // pzoom's combine_union_types: `if type_1 == type_2 { return type_1.clone() }` -- a union combined with
         // an equal one (the same types and the same flags) is that union. 91% of the calls on vimeo/psalm.
-        if (self::unionsEqual($type_1, $type_2)) {
+        if ($type_1->isCombineEquivalent($type_2)) {
             return $possibly_undefined !== null && $type_1->possibly_undefined !== $possibly_undefined
                 ? $type_1->setPossiblyUndefined($possibly_undefined)
                 : $type_1;
         }
         return self::combineUnionTypesSlow($type_1, $type_2, $codebase, $overwrite_empty_array, $allow_mixed_union, $literal_limit, $possibly_undefined);
-    }
-
-    /**
-     * pzoom's `TUnion::eq`: the same flags a combination merges and, compared structurally, the same atomic types
-     * (per-atomic docblock provenance aside). Unions key their atomics by getKey(), so equal unions have the same
-     * keys, each holding the same atomic object or one with the same (memoized) exact id; no union id is built.
-     *
-     * @psalm-mutation-free
-     */
-    public static function unionsEqual(Union $a, Union $b): bool
-    {
-        if ($a === $b) {
-            return true;
-        }
-
-        // the atomics first: most pairs differ there, and a union derived from the other by a wither shares
-        // its atomics array, so `===` is a pointer comparison (else an element-wise identity check in C)
-        $a_types = $a->getAtomicTypes();
-        $b_types = $b->getAtomicTypes();
-        if ($a_types !== $b_types) {
-            if (count($a_types) !== count($b_types)) {
-                return false;
-            }
-            foreach ($a_types as $key => $atomic) {
-                $other = $b_types[$key] ?? null;
-                if ($other === null || ($other !== $atomic && $other->getId() !== $atomic->getId())) {
-                    return false;
-                }
-            }
-        }
-
-        return $a->from_docblock === $b->from_docblock
-            && $a->from_calculation === $b->from_calculation
-            && $a->ignore_nullable_issues === $b->ignore_nullable_issues
-            && $a->ignore_falsable_issues === $b->ignore_falsable_issues
-            && $a->reference_free === $b->reference_free
-            && $a->allow_mutations === $b->allow_mutations
-            && $a->initialized === $b->initialized
-            && $a->explicit_never === $b->explicit_never
-            && $a->had_template === $b->had_template
-            && $a->failed_reconciliation === $b->failed_reconciliation
-            && $a->possibly_undefined === $b->possibly_undefined
-            && $a->possibly_undefined_from_try === $b->possibly_undefined_from_try
-            && $a->by_ref === $b->by_ref
-            && $a->parent_nodes === $b->parent_nodes;
     }
 
     private static function combineUnionTypesSlow(

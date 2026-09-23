@@ -242,6 +242,48 @@ final class Union implements TypeNode
      * @param TProperties $properties
      * @return static
      */
+    /**
+     * pzoom's `TUnion::eq`, as combineUnionTypes uses it: the same atomics (compared first, since most pairs
+     * differ there; a wither's clone shares the atomics array, so `===` is a pointer comparison, else an
+     * element-wise identity check in C, then a per-key id comparison) and the same flags a combination merges.
+     * Per-atomic docblock provenance is not compared.
+     *
+     * @psalm-mutation-free
+     */
+    public function isCombineEquivalent(Union $other): bool
+    {
+        if ($this === $other) {
+            return true;
+        }
+
+        if ($this->types !== $other->types) {
+            if (count($this->types) !== count($other->types)) {
+                return false;
+            }
+            foreach ($this->types as $key => $atomic) {
+                $theirs = $other->types[$key] ?? null;
+                if ($theirs === null || ($theirs !== $atomic && $theirs->getId() !== $atomic->getId())) {
+                    return false;
+                }
+            }
+        }
+
+        return $this->from_docblock === $other->from_docblock
+            && $this->from_calculation === $other->from_calculation
+            && $this->ignore_nullable_issues === $other->ignore_nullable_issues
+            && $this->ignore_falsable_issues === $other->ignore_falsable_issues
+            && $this->reference_free === $other->reference_free
+            && $this->allow_mutations === $other->allow_mutations
+            && $this->initialized === $other->initialized
+            && $this->explicit_never === $other->explicit_never
+            && $this->had_template === $other->had_template
+            && $this->failed_reconciliation === $other->failed_reconciliation
+            && $this->possibly_undefined === $other->possibly_undefined
+            && $this->possibly_undefined_from_try === $other->possibly_undefined_from_try
+            && $this->by_ref === $other->by_ref
+            && $this->parent_nodes === $other->parent_nodes;
+    }
+
     public function setProperties(array $properties): self
     {
         $obj = null;
