@@ -160,93 +160,15 @@ final class IncludeAnalyzer
                 return true;
             }
 
+            // pzoom resolves the path and stops: an included file is never analyzed in the including
+            // context. Its declarations were scanned, and it is analyzed on its own if it is in the project.
+            // (Psalm analyzed it inline, once per including root file, carrying the includer's variables in
+            // and the file's return type out; `$x = require ...` is mixed now.)
             $current_file_analyzer = $statements_analyzer->getFileAnalyzer();
 
             if ($current_file_analyzer->project_analyzer->fileExists($path_to_file)
                 && !$current_file_analyzer->project_analyzer->isDirectory($path_to_file)) {
-                if ($config->ignore_include_side_effects) {
-                    return true;
-                }
-                if ($statements_analyzer->hasParentFilePath($path_to_file)
-                    || !$codebase->file_storage_provider->has($path_to_file)
-                    // a file of declarations only (classes, functions, further includes) adds nothing to the
-                    // including context, and when it is analyzed on its own (its issues are reported from
-                    // that pass) analyzing it here too costs one more full pass per including root file.
-                    // (pzoom never analyzes an included file in the including context at all.)
-                    || (!$codebase->file_storage_provider->get($path_to_file)->has_extra_statements
-                        && $codebase->analyzer->canReportIssues($path_to_file))
-                    || (
-                        $statements_analyzer->hasAlreadyRequiredFilePath($path_to_file)
-                        && $config->respect_include_once
-                        && in_array($stmt->type, [
-                            PhpParser\Node\Expr\Include_::TYPE_INCLUDE_ONCE,
-                            PhpParser\Node\Expr\Include_::TYPE_REQUIRE_ONCE,
-                        ])
-                    )
-                ) {
-                    return true;
-                }
-                if ($config->mustBeIgnored($path_to_file)) {
-                    return true;
-                }
-
                 $current_file_analyzer->addRequiredFilePath($path_to_file);
-
-                $file_name = $config->shortenFileName($path_to_file);
-
-                $nesting = $statements_analyzer->getRequireNesting() + 1;
-                $current_file_analyzer->project_analyzer->progress->debug(
-                    str_repeat('  ', $nesting) . 'checking ' . $file_name . PHP_EOL,
-                );
-
-                $include_file_analyzer = new FileAnalyzer(
-                    $current_file_analyzer->project_analyzer,
-                    $path_to_file,
-                    $file_name,
-                );
-
-                $include_file_analyzer->setRootFilePath(
-                    $current_file_analyzer->getRootFilePath(),
-                    $current_file_analyzer->getRootFileName(),
-                );
-
-                $include_file_analyzer->addParentFilePath($current_file_analyzer->getFilePath());
-                $include_file_analyzer->addRequiredFilePath($current_file_analyzer->getFilePath());
-
-                foreach ($current_file_analyzer->getRequiredFilePaths() as $required_file_path) {
-                    $include_file_analyzer->addRequiredFilePath($required_file_path);
-                }
-
-                foreach ($current_file_analyzer->getParentFilePaths() as $parent_file_path) {
-                    $include_file_analyzer->addParentFilePath($parent_file_path);
-                }
-
-                try {
-                    $include_file_analyzer->analyze(
-                        $context,
-                        $global_context,
-                    );
-                } catch (UnpreparedAnalysisException) {
-                    if ($config->skip_checks_on_unresolvable_includes) {
-                        $context->check_classes = false;
-                        $context->check_variables = false;
-                        $context->check_functions = false;
-                    }
-                }
-
-                $included_return_type = $include_file_analyzer->getReturnType();
-
-                if ($included_return_type) {
-                    $statements_analyzer->node_data->setType($stmt, $included_return_type);
-                }
-
-                $context->has_returned = false;
-
-                foreach ($include_file_analyzer->getRequiredFilePaths() as $required_file_path) {
-                    $current_file_analyzer->addRequiredFilePath($required_file_path);
-                }
-
-                $include_file_analyzer->clearSourceBeforeDestruction();
 
                 return true;
             }

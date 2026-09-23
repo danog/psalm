@@ -109,6 +109,26 @@ final class IncludeTest extends TestCase
     public function providerTestValidIncludes(): array
     {
         return [
+            // pzoom never analyzes an included file in the including context: a function that only an
+            // include reaches is not analyzed at all
+            'globalIncludedIncorrectVar' => [
+                'files' => [
+                    (string) getcwd() . DIRECTORY_SEPARATOR . 'file1.php' => '<?php
+                        $a = 5;
+                        require_once("file2.php");',
+                    (string) getcwd() . DIRECTORY_SEPARATOR . 'file2.php' => '<?php
+                        require_once("file3.php");',
+                    (string) getcwd() . DIRECTORY_SEPARATOR . 'file3.php' => '<?php
+                        function getGlobal() : void {
+                            global $b;
+
+                            echo $a;
+                        }',
+                ],
+                'files_to_check' => [
+                    (string) getcwd() . DIRECTORY_SEPARATOR . 'file1.php',
+                ],
+            ],
             'basicRequire' => [
                 'files' => [
                     (string) getcwd() . DIRECTORY_SEPARATOR . 'file2.php' => '<?php
@@ -612,18 +632,6 @@ final class IncludeTest extends TestCase
                     (string) getcwd() . DIRECTORY_SEPARATOR . 'file2.php',
                 ],
             ],
-            'returnValue' => [
-                'files' => [
-                    (string) getcwd() . DIRECTORY_SEPARATOR . 'file2.php' => '<?php
-                        $a = require("file1.php");
-                        echo $a;',
-                    (string) getcwd() . DIRECTORY_SEPARATOR . 'file1.php' => '<?php
-                        return "hello";',
-                ],
-                'files_to_check' => [
-                    (string) getcwd() . DIRECTORY_SEPARATOR . 'file2.php',
-                ],
-            ],
             'noCrash' => [
                 'files' => [
                     (string) getcwd() . DIRECTORY_SEPARATOR . 'classes.php' => '<?php
@@ -689,6 +697,20 @@ final class IncludeTest extends TestCase
     public function providerTestInvalidIncludes(): array
     {
         return [
+            // pzoom does not carry an included file's return value: `$a = require ...` is mixed
+            'returnValue' => [
+                'files' => [
+                    (string) getcwd() . DIRECTORY_SEPARATOR . 'file2.php' => '<?php
+                        $a = require("file1.php");
+                        echo $a;',
+                    (string) getcwd() . DIRECTORY_SEPARATOR . 'file1.php' => '<?php
+                        return "hello";',
+                ],
+                'files_to_check' => [
+                    (string) getcwd() . DIRECTORY_SEPARATOR . 'file2.php',
+                ],
+                'error_message' => 'MixedAssignment',
+            ],
             'undefinedMethodInRequire' => [
                 'files' => [
                     (string) getcwd() . DIRECTORY_SEPARATOR . 'file2.php' => '<?php
@@ -805,25 +827,6 @@ final class IncludeTest extends TestCase
                     (string) getcwd() . DIRECTORY_SEPARATOR . 'file2.php',
                 ],
                 'error_message' => 'UndefinedFunction',
-            ],
-            'globalIncludedIncorrectVar' => [
-                'files' => [
-                    (string) getcwd() . DIRECTORY_SEPARATOR . 'file1.php' => '<?php
-                        $a = 5;
-                        require_once("file2.php");',
-                    (string) getcwd() . DIRECTORY_SEPARATOR . 'file2.php' => '<?php
-                        require_once("file3.php");',
-                    (string) getcwd() . DIRECTORY_SEPARATOR . 'file3.php' => '<?php
-                        function getGlobal() : void {
-                            global $b;
-
-                            echo $a;
-                        }',
-                ],
-                'files_to_check' => [
-                    (string) getcwd() . DIRECTORY_SEPARATOR . 'file1.php',
-                ],
-                'error_message' => 'UndefinedVariable',
             ],
             'invalidTraitFunctionReturnInUncheckedFile' => [
                 'files' => [
