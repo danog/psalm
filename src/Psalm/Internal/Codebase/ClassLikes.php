@@ -477,6 +477,23 @@ final class ClassLikes
     }
 
     /**
+     * Records a reference to an existing class-like (what the existence checks do when they succeed).
+     *
+     * @psalm-external-mutation-free
+     */
+    public function addClassLikeReference(
+        ClassLikeStorage $storage,
+        ?CodeLocation $location = null,
+        ?Context $context = null,
+    ): void {
+        $this->file_reference_provider->code_use_graph->addReference(
+            CodeUseGraph::classNodeFor($storage),
+            $context,
+            $location,
+        );
+    }
+
+    /**
      * The existence checks by interned name (pzoom looks the class-like up by StrId): a storage found under
      * the id answers directly and records the reference; a name without storage takes the string path,
      * which knows aliases, special types and class-likes registered without a storage.

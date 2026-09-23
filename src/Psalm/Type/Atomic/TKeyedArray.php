@@ -379,7 +379,43 @@ final class TKeyedArray extends Atomic
         return false;
     }
 
+    /**
+     * The derived generic forms of this shape, built once: the atomic is immutable, and the reconcilers and
+     * comparators ask for them again and again (a wither's clone starts over, see __clone).
+     */
+    private ?TArray $generic_array_memo = null;
+
+    /** @var array<int, Union> by (int) $possibly_undefined */
+    private array $generic_value_memo = [];
+
+    /** @var array<int, Union> by (int) $possibly_undefined */
+    private array $generic_key_memo = [];
+
+    /**
+     * @psalm-mutation-free
+     */
+    #[Override]
+    protected function __clone()
+    {
+        parent::__clone();
+        /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
+        $this->generic_array_memo = null;
+        /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
+        $this->generic_value_memo = [];
+        /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
+        $this->generic_key_memo = [];
+    }
+
     public function getGenericKeyType(bool $possibly_undefined = false): Union
+    {
+        /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
+        return $this->generic_key_memo[(int) $possibly_undefined] ??= $this->computeGenericKeyType($possibly_undefined);
+    }
+
+    /**
+     * @psalm-mutation-free
+     */
+    private function computeGenericKeyType(bool $possibly_undefined): Union
     {
         if ($this->is_list) {
             if ($this->fallback_params) {
@@ -418,6 +454,16 @@ final class TKeyedArray extends Atomic
 
     public function getGenericValueType(bool $possibly_undefined = false): Union
     {
+        /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
+        return $this->generic_value_memo[(int) $possibly_undefined]
+            ??= $this->computeGenericValueType($possibly_undefined);
+    }
+
+    /**
+     * @psalm-mutation-free
+     */
+    private function computeGenericValueType(bool $possibly_undefined): Union
+    {
         $value_type = null;
 
         foreach ($this->properties as $property) {
@@ -439,6 +485,18 @@ final class TKeyedArray extends Atomic
      * @return TArray|TNonEmptyArray
      */
     public function getGenericArrayType(?string $list_var_id = null): TArray
+    {
+        if ($list_var_id !== null) {
+            return $this->computeGenericArrayType($list_var_id);
+        }
+        /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
+        return $this->generic_array_memo ??= $this->computeGenericArrayType(null);
+    }
+
+    /**
+     * @psalm-mutation-free
+     */
+    private function computeGenericArrayType(?string $list_var_id): TArray
     {
         $key_types = [];
         $value_type = null;

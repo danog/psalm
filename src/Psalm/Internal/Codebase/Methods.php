@@ -151,73 +151,33 @@ final class Methods
             $declaring_method_id = $class_storage->declaring_pseudo_method_ids[$method_name] ?? null;
         }
         if ($declaring_method_id !== null) {
-            if ($calling_method_id === strtolower((string) $declaring_method_id)) {
+            // the nodes a call to this method references, built once per (class, method): the declaring
+            // class and method (or its potential declarers), every interface's copy and every override
+            // (pzoom records one symbol reference; Psalm's unused-code and cache invalidation need these)
+            $nodes = $this->reference_nodes[$class_storage->id][$method_name]
+                ??= $this->referenceNodesFor($class_storage, $method_name, $declaring_method_id);
+
+            if ($calling_method_id === $nodes[0]) {
                 return true;
             }
 
-            $declaring_fq_class_name = strtolower($declaring_method_id->fq_class_name);
-
-            if ($declaring_fq_class_name !== strtolower((string) $calling_class_name)) {
+            if ($nodes[1] !== strtolower((string) $calling_class_name)) {
                 $codebase->addReferenceToClass(
-                    $declaring_fq_class_name,
+                    $nodes[1],
                     $code_location,
                     $calling_context,
                     $source_file_path,
                 );
             }
 
-            if ((string) $method_id !== (string) $declaring_method_id
-                && $class_storage->user_defined
-                && isset($class_storage->potential_declaring_method_ids[$method_name])
-            ) {
-                foreach ($class_storage->potential_declaring_method_ids[$method_name] as $potential_id => $_) {
-                    $codebase->addReferenceToFunctionLike(
-                        strtolower($potential_id),
-                        $code_location,
-                        $calling_context,
-                        $is_used,
-                        $source_file_path,
-                    );
-                }
-            } else {
+            foreach ($nodes[2] as $function_id_lc) {
                 $codebase->addReferenceToFunctionLike(
-                    strtolower((string) $declaring_method_id),
+                    $function_id_lc,
                     $code_location,
                     $calling_context,
                     $is_used,
                     $source_file_path,
                 );
-            }
-
-            foreach ($class_storage->class_implements as $fq_interface_name) {
-                $interface_method_id_lc = strtolower($fq_interface_name . '::' . $method_name);
-
-                $codebase->addReferenceToFunctionLike(
-                    $interface_method_id_lc,
-                    $code_location,
-                    $calling_context,
-                    $is_used,
-                    $source_file_path,
-                );
-            }
-
-            $declaring_method_class = $declaring_method_id->fq_class_name;
-            $declaring_method_name = $declaring_method_id->method_name;
-
-            $declaring_class_storage = $this->classlike_storage_provider->get($declaring_method_class);
-
-            if (isset($declaring_class_storage->overridden_method_ids[$declaring_method_name])) {
-                $overridden_method_ids = $declaring_class_storage->overridden_method_ids[$declaring_method_name];
-
-                foreach ($overridden_method_ids as $overridden_method_id) {
-                    $codebase->addReferenceToFunctionLike(
-                        strtolower((string) $overridden_method_id),
-                        $code_location,
-                        $calling_context,
-                        $is_used,
-                        $source_file_path,
-                    );
-                }
             }
 
             return true;
@@ -939,6 +899,54 @@ final class Methods
             $appearing_fq_class_name,
             $appearing_method_name_lc,
         );
+    }
+
+    /**
+     * @var array<int, array<lowercase-string, array{lowercase-string, lowercase-string, list<lowercase-string>}>>
+     *      by class-like id and method name: the declaring method id, the declaring class, and the
+     *      function-like ids a call references (see methodExists)
+     */
+    private array $reference_nodes = [];
+
+    /**
+     * @param lowercase-string $method_name
+     * @return array{lowercase-string, lowercase-string, list<lowercase-string>}
+     */
+    private function referenceNodesFor(
+        ClassLikeStorage $class_storage,
+        string $method_name,
+        MethodIdentifier $declaring_method_id,
+    ): array {
+        $declaring_method_id_lc = strtolower((string) $declaring_method_id);
+        $declaring_fq_class_name_lc = strtolower($declaring_method_id->fq_class_name);
+
+        $function_ids = [];
+
+        if ($declaring_method_id->class_id !== $class_storage->id
+            && $class_storage->user_defined
+            && isset($class_storage->potential_declaring_method_ids[$method_name])
+        ) {
+            foreach ($class_storage->potential_declaring_method_ids[$method_name] as $potential_id => $_) {
+                $function_ids[] = strtolower($potential_id);
+            }
+        } else {
+            $function_ids[] = $declaring_method_id_lc;
+        }
+
+        foreach ($class_storage->class_implements as $fq_interface_name) {
+            $function_ids[] = strtolower($fq_interface_name . '::' . $method_name);
+        }
+
+        $declaring_class_storage = $this->classlike_storage_provider->getById($declaring_method_id->class_id);
+        $declaring_method_name = $declaring_method_id->method_name;
+
+        if (isset($declaring_class_storage->overridden_method_ids[$declaring_method_name])) {
+            foreach ($declaring_class_storage->overridden_method_ids[$declaring_method_name] as $overridden_method_id) {
+                $function_ids[] = strtolower((string) $overridden_method_id);
+            }
+        }
+
+        return [$declaring_method_id_lc, $declaring_fq_class_name_lc, $function_ids];
     }
 
     /** @psalm-mutation-free */
