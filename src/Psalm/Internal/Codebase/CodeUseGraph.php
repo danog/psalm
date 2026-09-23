@@ -453,11 +453,34 @@ final class CodeUseGraph
         string $type = self::EDGE_USE,
         ?string $file_path = null,
     ): void {
-        $file_path = $location?->file_path ?? $file_path;
+        $this->addReferenceFrom(
+            $target_node,
+            $context?->calling_method_id,
+            $context?->calling_function_id,
+            $context?->self,
+            $location,
+            $type,
+            $file_path,
+        );
+    }
 
-        $calling_method_id = $context?->calling_method_id;
-        $calling_function_id = $context?->calling_function_id;
-        $self = $context?->self;
+    /**
+     * addReference() with the referencing scope given directly (no Context needs building for it).
+     *
+     * @param lowercase-string|null $calling_method_id
+     * @param lowercase-string|null $calling_function_id
+     * @psalm-external-mutation-free
+     */
+    public function addReferenceFrom(
+        string $target_node,
+        ?string $calling_method_id,
+        ?string $calling_function_id,
+        ?string $self,
+        ?CodeLocation $location = null,
+        string $type = self::EDGE_USE,
+        ?string $file_path = null,
+    ): void {
+        $file_path = $location?->file_path ?? $file_path;
 
         if ($calling_method_id !== null) {
             $source_node = self::functionLikeNode($calling_method_id);

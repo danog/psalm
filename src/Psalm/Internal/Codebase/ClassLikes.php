@@ -747,7 +747,7 @@ final class ClassLikes
     /**
      * Check whether a class implements an interface
      *
-     * @psalm-mutation-free
+     * @psalm-external-mutation-free
      */
     public function classImplements(string $fq_class_name, string $interface): bool
     {
@@ -784,12 +784,20 @@ final class ClassLikes
             return true;
         }
 
-        foreach ($class_storage->class_implements as $implementing_interface_lc => $_) {
-            $aliased_interface_lc = strtolower(
-                $this->getUnAliasedName($implementing_interface_lc),
-            );
+        // another spelling of an implemented interface: its storage's id is in the id set (pzoom's single
+        // lookup; Psalm walked every implemented interface unaliasing each)
+        $interface_storage = $this->classlike_storage_provider->findById(Interner::intern($interface));
+        if ($interface_storage !== null && isset($class_storage->class_implements_ids[$interface_storage->id])) {
+            return true;
+        }
 
-            if ($aliased_interface_lc === $interface_id) {
+        // an implemented name that is a class_alias of the interface: only when aliases exist at all
+        if ($this->classlike_aliases_map === []) {
+            return false;
+        }
+
+        foreach ($class_storage->class_implements as $implementing_interface_lc => $_) {
+            if (strtolower($this->getUnAliasedName($implementing_interface_lc)) === $interface_id) {
                 return true;
             }
         }

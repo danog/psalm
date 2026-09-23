@@ -150,11 +150,10 @@ final class Populator
     private function nameIdSet(array $names): array
     {
         $ids = [];
-        foreach ($names as $lc => $cased) {
-            $id = $this->classlike_storage_provider->has($lc)
-                ? $this->classlike_storage_provider->get($lc)->id
-                : Interner::intern($cased);
-            $ids[$id] = true;
+        foreach ($names as $cased) {
+            // the storage's id when the name resolves (through another casing or a class_alias too)
+            $storage = $this->classlike_storage_provider->findById(Interner::intern($cased));
+            $ids[$storage !== null ? $storage->id : Interner::intern($cased)] = true;
         }
         return $ids;
     }
