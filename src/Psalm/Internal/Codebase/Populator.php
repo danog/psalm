@@ -106,7 +106,6 @@ final class Populator
         FileStorageProvider::populated();
     }
 
-    /** @param array<string, bool> $dependent_classlikes */
     /**
      * The id-keyed forms of the hierarchy maps (which are keyed by lowercased names and hold the spellings
      * used in the declarations): the id of the declared name when the class-like exists, of the spelling
@@ -123,6 +122,7 @@ final class Populator
     /**
      * @param array<lowercase-string, string> $names
      * @return array<int, true>
+     * @psalm-external-mutation-free
      */
     private function nameIdSet(array $names): array
     {
@@ -136,6 +136,7 @@ final class Populator
         return $ids;
     }
 
+    /** @param array<string, bool> $dependent_classlikes */
     private function populateClassLikeStorage(ClassLikeStorage $storage, array $dependent_classlikes = []): void
     {
         $fq_classlike_name_lc = strtolower($storage->name);

@@ -946,9 +946,7 @@ final class Methods
         MethodIdentifier $method_id,
         bool $with_pseudo = false,
     ): ?MethodIdentifier {
-        $fq_class_name = $this->classlikes->getUnAliasedName($method_id->fq_class_name);
-
-        $class_storage = $this->classlike_storage_provider->get($fq_class_name);
+        $class_storage = $this->classlike_storage_provider->getById($method_id->class_id);
 
         $method_name = $method_id->method_name;
 
@@ -977,9 +975,7 @@ final class Methods
     public function getAppearingMethodId(
         MethodIdentifier $method_id,
     ): ?MethodIdentifier {
-        $fq_class_name = $this->classlikes->getUnAliasedName($method_id->fq_class_name);
-
-        $class_storage = $this->classlike_storage_provider->get($fq_class_name);
+        $class_storage = $this->classlike_storage_provider->getById($method_id->class_id);
 
         $method_name = $method_id->method_name;
 
@@ -992,7 +988,7 @@ final class Methods
      */
     public function getOverriddenMethodIds(MethodIdentifier $method_id): array
     {
-        $class_storage = $this->classlike_storage_provider->get($method_id->fq_class_name);
+        $class_storage = $this->classlike_storage_provider->getById($method_id->class_id);
         $method_name = $method_id->method_name;
 
         return $class_storage->overridden_method_ids[$method_name] ?? [];
@@ -1076,16 +1072,14 @@ final class Methods
             }
         }
 
-        $declaring_fq_class_name = $declaring_method_id->fq_class_name;
-
-        return $this->classlike_storage_provider->get($declaring_fq_class_name);
+        return $this->classlike_storage_provider->getById($declaring_method_id->class_id);
     }
 
     /** @psalm-mutation-free */
     public function getStorage(MethodIdentifier $method_id, bool $with_pseudo = false): MethodStorage
     {
         try {
-            $class_storage = $this->classlike_storage_provider->get($method_id->fq_class_name);
+            $class_storage = $this->classlike_storage_provider->getById($method_id->class_id);
         } catch (InvalidArgumentException $e) {
             throw new UnexpectedValueException($e->getMessage());
         }

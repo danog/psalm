@@ -26,11 +26,18 @@ final class MethodIdentifier implements Stringable
     use UnserializeMemoryUsageSuppressionTrait;
 
     /**
+     * The interned class name (pzoom's `MethodIdentifier(StrId, StrId)`): storages are looked up by it.
+     */
+    public readonly int $class_id;
+
+    /**
      * @param lowercase-string $method_name
      * @psalm-mutation-free
      */
     public function __construct(public readonly string $fq_class_name, public readonly string $method_name)
     {
+        /** @psalm-suppress ImpureMethodCall the interner only grows */
+        $this->class_id = Interner::intern($fq_class_name);
     }
 
     /**

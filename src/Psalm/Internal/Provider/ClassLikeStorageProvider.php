@@ -48,6 +48,14 @@ final class ClassLikeStorageProvider
     private static array $by_id = [];
 
     /**
+     * class_alias() targets by the alias's lowercased name (ClassLikes::addClassAlias), so an alias's id
+     * resolves to the aliased storage like a differently-cased spelling does.
+     *
+     * @var array<lowercase-string, string>
+     */
+    private static array $aliases = [];
+
+    /**
      * The storage a differently-spelled name resolves to (Psalm resolves names case-insensitively for now:
      * the id of the spelling used maps to the storage declared under another casing), or null. Emptied
      * whenever the storage map changes.
@@ -129,9 +137,24 @@ final class ClassLikeStorageProvider
         if (isset(self::$canonical[$id]) || array_key_exists($id, self::$canonical)) {
             return self::$canonical[$id];
         }
-        $storage = self::$storage[strtolower(Interner::lookup($id))] ?? null;
+        $lc = strtolower(Interner::lookup($id));
+        $storage = self::$storage[$lc] ?? null;
+        for ($hops = 0; $storage === null && $hops < 10 && isset(self::$aliases[$lc]); $hops++) {
+            $lc = strtolower(self::$aliases[$lc]);
+            $storage = self::$storage[$lc] ?? null;
+        }
         self::$canonical[$id] = $storage;
         return $storage;
+    }
+
+    /**
+     * @param lowercase-string $alias_name_lc
+     * @psalm-external-mutation-free
+     */
+    public static function addAlias(string $alias_name_lc, string $fq_class_name): void
+    {
+        self::$aliases[$alias_name_lc] = $fq_class_name;
+        self::$canonical = [];
     }
 
     /**
@@ -284,6 +307,7 @@ final class ClassLikeStorageProvider
         self::$by_spelling = [];
         self::$by_id = [];
         self::$canonical = [];
+        self::$aliases = [];
     }
 
     /**

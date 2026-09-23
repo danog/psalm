@@ -945,6 +945,7 @@ final class ClassLikes
     {
         $this->classlike_aliases_map[strtolower($alias_name)] = $fq_class_name;
         $this->existing_classlike_aliases[$alias_name] = true;
+        ClassLikeStorageProvider::addAlias(strtolower($alias_name), $fq_class_name);
     }
 
     /** @psalm-mutation-free */

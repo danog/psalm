@@ -129,6 +129,7 @@ final class Interner
     /**
      * @param iterable<string> $strings
      * @psalm-external-mutation-free
+     * @psalm-suppress ImpureMethodCall iterating the input
      */
     public static function merge(iterable $strings): void
     {
