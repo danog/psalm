@@ -4149,7 +4149,7 @@ final class AssertionFinder
                         && $inside_negation
                         && $source instanceof StatementsAnalyzer
                     ) {
-                        if ($codebase->interfaceExists($instanceof_type->value)) {
+                        if ($codebase->interfaceExistsById($instanceof_type->name)) {
                             continue;
                         }
 

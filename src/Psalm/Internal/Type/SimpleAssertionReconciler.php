@@ -887,7 +887,7 @@ final class SimpleAssertionReconciler extends Reconciler
 
         foreach ($existing_var_atomic_types as $type) {
             if ($type instanceof TNamedObject
-                && $codebase->classOrInterfaceExists($type->value)
+                && $codebase->classOrInterfaceExistsById($type->name)
             ) {
                 if (!$codebase->methodExists($type->value . '::' . $method_name)) {
                     $match_found = false;
@@ -895,7 +895,7 @@ final class SimpleAssertionReconciler extends Reconciler
                     $extra_types = $type->extra_types;
                     foreach ($type->extra_types as $k => $extra_type) {
                         if ($extra_type instanceof TNamedObject
-                            && $codebase->classOrInterfaceExists($extra_type->value)
+                            && $codebase->classOrInterfaceExistsById($extra_type->name)
                             && $codebase->methodExists($extra_type->value . '::' . $method_name)
                         ) {
                             $match_found = true;
@@ -2607,7 +2607,7 @@ final class SimpleAssertionReconciler extends Reconciler
                 $callable_types[] = new TCallableObject();
                 $redundant = false;
             } elseif ($type instanceof TNamedObject
-                && $codebase->classExists($type->value)
+                && $codebase->classExistsById($type->name)
                 && $codebase->methodExists($type->value . '::__invoke')
             ) {
                 $callable_types[] = $type;

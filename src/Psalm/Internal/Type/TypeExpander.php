@@ -594,7 +594,7 @@ final class TypeExpander
         if ($expand_generic
             && $return_type::class === TNamedObject::class
             && !$return_type->extra_types
-            && $codebase->classOrInterfaceExists($return_type->value)
+            && $codebase->classOrInterfaceExistsById($return_type->name)
             // a class can exist without having been scanned, and then there is nothing to expand
             && $codebase->classlike_storage_provider->has(
                 $codebase->classlikes->getUnAliasedName($return_type->value),
@@ -663,7 +663,7 @@ final class TypeExpander
             && !$return_type->is_static_resolved
             && $return_type::class === TNamedObject::class
             && $static_class_type instanceof TNamedObject
-            && $codebase->classExtends($static_class_type->value, $return_type->value)
+            && $codebase->classExtendsById($static_class_type->name, $return_type->name)
         ) {
             // The called class already includes the declaring class's constraints.
             $return_type = $static_class_type->setIntersectionTypes(
@@ -948,11 +948,11 @@ final class TypeExpander
         }
 
         $class_storage = null;
-        if ($codebase->classExists($return_type->classlike_type->value)) {
+        if ($codebase->classExistsById($return_type->classlike_type->name)) {
             $class_storage = $codebase->classlike_storage_provider->get($return_type->classlike_type->value);
         } else {
             foreach ($return_type->classlike_type->extra_types as $type) {
-                if ($type instanceof TNamedObject && $codebase->classExists($type->value)) {
+                if ($type instanceof TNamedObject && $codebase->classExistsById($type->name)) {
                     $class_storage = $codebase->classlike_storage_provider->getById($type->name);
                     break;
                 }

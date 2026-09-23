@@ -1113,6 +1113,63 @@ final class Codebase
             || $this->classlikes->classImplements($fq_class_name, $possible_parent);
     }
 
+    /** By interned names (pzoom's StrId lookups); see the string forms for the semant     *
+     * @psalm-external-mutation-free
+     */
+    public function classExtendsOrImplementsById(int $name, int $possible_parent): bool
+    {
+        return $this->classlikes->classExtendsById($name, $possible_parent)
+            || $this->classlikes->classImplementsById($name, $possible_parent);
+    }
+
+    /** @psalm-external-mutation-free */
+    public function classExtendsById(int $name, int $possible_parent): bool
+    {
+        return $this->classlikes->classExtendsById($name, $possible_parent, true);
+    }
+
+    /** @psalm-external-mutation-free */
+    public function classImplementsById(int $name, int $interface): bool
+    {
+        return $this->classlikes->classImplementsById($name, $interface);
+    }
+
+    /** @psalm-external-mutation-free */
+    public function interfaceExtendsById(int $name, int $possible_parent): bool
+    {
+        return $this->classlikes->interfaceExtendsById($name, $possible_parent);
+    }
+
+    /** @psalm-external-mutation-free */
+    public function classExistsById(int $name, ?CodeLocation $code_location = null, ?Context $context = null): bool
+    {
+        return $this->classlikes->classExistsById($name, $code_location, $context);
+    }
+
+    /** @psalm-external-mutation-free */
+    public function interfaceExistsById(int $name, ?CodeLocation $code_location = null, ?Context $context = null): bool
+    {
+        return $this->classlikes->interfaceExistsById($name, $code_location, $context);
+    }
+
+    /** @psalm-external-mutation-free */
+    public function classOrInterfaceExistsById(
+        int $name,
+        ?CodeLocation $code_location = null,
+        ?Context $context = null,
+    ): bool {
+        return $this->classlikes->classOrInterfaceExistsById($name, $code_location, $context);
+    }
+
+    /** @psalm-external-mutation-free */
+    public function classOrInterfaceOrEnumExistsById(
+        int $name,
+        ?CodeLocation $code_location = null,
+        ?Context $context = null,
+    ): bool {
+        return $this->classlikes->classOrInterfaceOrEnumExistsById($name, $code_location, $context);
+    }
+
     /**
      * Determine whether or not a given class exists
      *

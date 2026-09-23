@@ -402,6 +402,34 @@ final class ClassLikeStorage implements HasAttributesInterface
      */
     public int $id;
 
+    /**
+     * The ids of every ancestor class (pzoom's `all_parent_classes`), derived from parent_classes at populate.
+     *
+     * @var array<int, true>
+     */
+    public array $parent_class_ids = [];
+
+    /**
+     * The ids of every implemented interface, transitively (pzoom's `all_parent_interfaces` for classes).
+     *
+     * @var array<int, true>
+     */
+    public array $class_implements_ids = [];
+
+    /**
+     * The ids of every parent interface, transitively (for interfaces).
+     *
+     * @var array<int, true>
+     */
+    public array $parent_interface_ids = [];
+
+    /**
+     * The ids of every used trait.
+     *
+     * @var array<int, true>
+     */
+    public array $used_trait_ids = [];
+
     /** @psalm-external-mutation-free */
     public function __construct(public string $name)
     {

@@ -184,8 +184,8 @@ final class AtomicPropertyFetchAnalyzer
 
         $codebase = $statements_analyzer->getCodebase();
 
-        if (!$codebase->classExists($lhs_type_part->value, null, $context)
-            && !$codebase->classlikes->enumExists($lhs_type_part->value, null, $context)
+        if (!$codebase->classExistsById($lhs_type_part->name, null, $context)
+            && !$codebase->classlikes->enumExistsById($lhs_type_part->name, null, $context)
         ) {
             $interface_exists = false;
 
@@ -1145,7 +1145,7 @@ final class AtomicPropertyFetchAnalyzer
         string &$fq_class_name,
         bool &$override_property_visibility,
     ): void {
-        if ($codebase->interfaceExists($lhs_type_part->value)) {
+        if ($codebase->interfaceExistsById($lhs_type_part->name)) {
             $interface_exists = true;
             $interface_storage = $codebase->classlike_storage_provider->getById($lhs_type_part->name);
 
@@ -1155,7 +1155,7 @@ final class AtomicPropertyFetchAnalyzer
 
             foreach ($intersection_types as $intersection_type) {
                 if ($intersection_type instanceof TNamedObject
-                    && $codebase->classExists($intersection_type->value)
+                    && $codebase->classExistsById($intersection_type->name)
                 ) {
                     $fq_class_name = $intersection_type->value;
                     $class_exists = true;

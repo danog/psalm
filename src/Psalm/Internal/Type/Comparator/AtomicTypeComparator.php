@@ -631,10 +631,10 @@ final class AtomicTypeComparator
         if ($container_type_part instanceof TString || $container_type_part instanceof TScalar) {
             if ($input_type_part instanceof TNamedObject) {
                 // check whether the object has a __toString method
-                if ($codebase->classOrInterfaceExists($input_type_part->value)) {
+                if ($codebase->classOrInterfaceExistsById($input_type_part->name)) {
                     if ($codebase->analysis_php_version_id >= 8_00_00
                         && ($input_type_part->value === 'Stringable'
-                            || ($codebase->classlikes->classExists($input_type_part->value)
+                            || ($codebase->classlikes->classExistsById($input_type_part->name)
                                 && $codebase->classlikes->classImplements($input_type_part->value, 'Stringable'))
                             || $codebase->classlikes->interfaceExtends($input_type_part->value, 'Stringable'))
                     ) {
@@ -686,7 +686,7 @@ final class AtomicTypeComparator
                 || $input_type_part instanceof TKeyedArray
                 || (
                     $input_type_part instanceof TNamedObject &&
-                    $codebase->classOrInterfaceExists($input_type_part->value) &&
+                    $codebase->classOrInterfaceExistsById($input_type_part->name) &&
                     $codebase->methodExists($input_type_part->value . '::__invoke')
                 )
             )
@@ -739,10 +739,10 @@ final class AtomicTypeComparator
 
         if ($container_type_part instanceof TNamedObject
             && $input_type_part instanceof TNamedObject
-            && $codebase->classOrInterfaceOrEnumExists($input_type_part->value)
+            && $codebase->classOrInterfaceOrEnumExistsById($input_type_part->name)
             && (
                 (
-                    $codebase->classExists($container_type_part->value)
+                    $codebase->classExistsById($container_type_part->name)
                     && $codebase->classExtendsOrImplements(
                         $container_type_part->value,
                         $input_type_part->value,
@@ -750,7 +750,7 @@ final class AtomicTypeComparator
                 )
                 ||
                 (
-                    $codebase->interfaceExists($container_type_part->value)
+                    $codebase->interfaceExistsById($container_type_part->name)
                     && $codebase->interfaceExtends(
                         $container_type_part->value,
                         $input_type_part->value,

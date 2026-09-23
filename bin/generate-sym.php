@@ -93,6 +93,7 @@ $names = [
     'JSON_SERIALIZE' => 'jsonSerialize',
     'MIXED' => 'mixed',
     'ITERABLE' => 'iterable',
+    'CALLABLE' => 'callable',
     'OBJECT' => 'object',
 ];
 

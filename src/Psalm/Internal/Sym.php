@@ -173,6 +173,8 @@ final class Sym
     public const MIXED = 7922561976114297195;
     /** `iterable` */
     public const ITERABLE = 8387073025668260858;
+    /** `callable` */
+    public const CALLABLE = 1977547412625762836;
     /** `object` */
     public const OBJECT = 823527073289988991;
 
@@ -262,6 +264,7 @@ final class Sym
         'jsonSerialize',
         'mixed',
         'iterable',
+        'callable',
         'object',
     ];
 }

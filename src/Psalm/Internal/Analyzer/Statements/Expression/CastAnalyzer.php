@@ -434,7 +434,7 @@ final class CastAnalyzer
                     }
 
                     // prevent "Could not get class storage for mixed"
-                    if (!$codebase->classExists($intersection_type->value)) {
+                    if (!$codebase->classExistsById($intersection_type->name)) {
                         continue;
                     }
 
@@ -633,7 +633,7 @@ final class CastAnalyzer
                     }
 
                     // prevent "Could not get class storage for mixed"
-                    if (!$codebase->classExists($intersection_type->value)) {
+                    if (!$codebase->classExistsById($intersection_type->name)) {
                         continue;
                     }
 

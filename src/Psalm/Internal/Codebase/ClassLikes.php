@@ -15,6 +15,8 @@ use Psalm\Context;
 use Psalm\Exception\UnpopulatedClasslikeException;
 use Psalm\FileManipulation;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
+use Psalm\Internal\Sym;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\FileManipulation\ClassDocblockManipulator;
@@ -472,6 +474,178 @@ final class ClassLikes
         );
 
         return true;
+    }
+
+    /**
+     * The existence checks by interned name (pzoom looks the class-like up by StrId): a storage found under
+     * the id answers directly and records the reference; a name without storage takes the string path,
+     * which knows aliases, special types and class-likes registered without a storage.
+     *
+     * @psalm-external-mutation-free
+     */
+    public function classExistsById(int $name, ?CodeLocation $location = null, ?Context $context = null): bool
+    {
+        $storage = $this->classlike_storage_provider->findById($name);
+        if ($storage === null) {
+            return $this->classExists(Interner::lookup($name), $location, $context);
+        }
+        if ($storage->is_interface || $storage->is_trait || $storage->is_enum) {
+            return false;
+        }
+        $this->file_reference_provider->code_use_graph->addReference(
+            CodeUseGraph::classNodeFor($storage),
+            $context,
+            $location,
+        );
+        return true;
+    }
+
+    /** @psalm-external-mutation-free */
+    public function interfaceExistsById(int $name, ?CodeLocation $location = null, ?Context $context = null): bool
+    {
+        $storage = $this->classlike_storage_provider->findById($name);
+        if ($storage === null) {
+            return $this->interfaceExists(Interner::lookup($name), $location, $context);
+        }
+        if (!$storage->is_interface) {
+            return false;
+        }
+        $this->file_reference_provider->code_use_graph->addReference(
+            CodeUseGraph::classNodeFor($storage),
+            $context,
+            $location,
+        );
+        return true;
+    }
+
+    /** @psalm-external-mutation-free */
+    public function enumExistsById(int $name, ?CodeLocation $location = null, ?Context $context = null): bool
+    {
+        $storage = $this->classlike_storage_provider->findById($name);
+        if ($storage === null) {
+            return $this->enumExists(Interner::lookup($name), $location, $context);
+        }
+        if (!$storage->is_enum) {
+            return false;
+        }
+        $this->file_reference_provider->code_use_graph->addReference(
+            CodeUseGraph::classNodeFor($storage),
+            $context,
+            $location,
+        );
+        return true;
+    }
+
+    /** @psalm-external-mutation-free */
+    public function traitExistsById(int $name, ?CodeLocation $location = null, ?Context $context = null): bool
+    {
+        $storage = $this->classlike_storage_provider->findById($name);
+        if ($storage === null) {
+            return $this->traitExists(Interner::lookup($name), $location, $context);
+        }
+        if (!$storage->is_trait) {
+            return false;
+        }
+        $this->file_reference_provider->code_use_graph->addReference(
+            CodeUseGraph::classNodeFor($storage),
+            $context,
+            $location,
+        );
+        return true;
+    }
+
+    /** @psalm-external-mutation-free */
+    public function classOrInterfaceExistsById(
+        int $name,
+        ?CodeLocation $location = null,
+        ?Context $context = null,
+    ): bool {
+        return $this->classExistsById($name, $location, $context)
+            || $this->interfaceExistsById($name, $location, $context);
+    }
+
+    /** @psalm-external-mutation-free */
+    public function classOrInterfaceOrEnumExistsById(
+        int $name,
+        ?CodeLocation $location = null,
+        ?Context $context = null,
+    ): bool {
+        return $this->classExistsById($name, $location, $context)
+            || $this->interfaceExistsById($name, $location, $context)
+            || $this->enumExistsById($name, $location, $context);
+    }
+
+    /**
+     * Whether the class named by $name has $possible_parent among its ancestors, by interned names.
+     *
+     * @throws InvalidArgumentException when the class does not exist
+     *
+     * @psalm-external-mutation-free
+     */
+    public function classExtendsById(int $name, int $possible_parent, bool $from_api = false): bool
+    {
+        $storage = $this->classlike_storage_provider->findById($name);
+        if ($storage === null) {
+            return $this->classExtends(Interner::lookup($name), Interner::lookup($possible_parent), $from_api);
+        }
+        if ($storage->id === Sym::GENERATOR) {
+            return false;
+        }
+        if ($from_api && !$storage->populated) {
+            throw new UnpopulatedClasslikeException($storage->name);
+        }
+        if (isset($storage->parent_class_ids[$possible_parent])) {
+            return true;
+        }
+        // a differently-cased spelling of the parent
+        $parent_storage = $this->classlike_storage_provider->findById($possible_parent);
+        return $parent_storage !== null && isset($storage->parent_class_ids[$parent_storage->id]);
+    }
+
+    /**
+     * Whether the class named by $name implements $interface, by interned names.
+     *
+     * @psalm-external-mutation-free
+     */
+    public function classImplementsById(int $name, int $interface): bool
+    {
+        $storage = $this->classlike_storage_provider->findById($name);
+        if ($storage === null) {
+            return $this->classImplements(Interner::lookup($name), Interner::lookup($interface));
+        }
+        if ($interface === Sym::CALLABLE) {
+            return $storage->id === Sym::CLOSURE;
+        }
+        if ($interface === Sym::TRAVERSABLE && ($storage->id === Sym::GENERATOR || $storage->id === Sym::ITERATOR)) {
+            return true;
+        }
+        if (isset($storage->class_implements_ids[$interface])) {
+            return true;
+        }
+        $interface_storage = $this->classlike_storage_provider->findById($interface);
+        if ($interface_storage !== null) {
+            return isset($storage->class_implements_ids[$interface_storage->id]);
+        }
+        // a special type, or an interface with no storage: the string path knows
+        return $this->classImplements($storage->name, Interner::lookup($interface));
+    }
+
+    /**
+     * Whether the interface named by $name extends $possible_parent, by interned names.
+     *
+     * @psalm-external-mutation-free
+     */
+    public function interfaceExtendsById(int $name, int $possible_parent): bool
+    {
+        $storage = $this->classlike_storage_provider->findById($name);
+        if ($storage === null) {
+            return $this->interfaceExtends(Interner::lookup($name), Interner::lookup($possible_parent));
+        }
+        if (isset($storage->parent_interface_ids[$possible_parent])) {
+            return true;
+        }
+        $parent_storage = $this->classlike_storage_provider->findById($possible_parent);
+        return $parent_storage !== null && isset($storage->parent_interface_ids[$parent_storage->id]);
     }
 
     /**

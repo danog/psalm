@@ -880,7 +880,7 @@ class Reconciler
                         ) {
                             $class_property_type = Type::getMixed();
                         } elseif ($existing_key_type_part instanceof TNamedObject) {
-                            if (!$codebase->classOrInterfaceExists($existing_key_type_part->value)) {
+                            if (!$codebase->classOrInterfaceExistsById($existing_key_type_part->name)) {
                                 $class_property_type = Type::getMixed();
                             } else {
                                 if (str_ends_with($property_name, '()')) {

@@ -105,6 +105,15 @@ final class ClassLikeStorageProvider
     /**
      * @psalm-mutation-free
      */
+    public function findById(int $id): ?ClassLikeStorage
+    {
+        /** @psalm-suppress ImpureStaticProperty, ImpureMethodCall Used only for caching */
+        return self::$by_id[$id] ?? self::resolveId($id);
+    }
+
+    /**
+     * @psalm-mutation-free
+     */
     public function hasById(int $id): bool
     {
         /** @psalm-suppress ImpureStaticProperty, ImpureMethodCall Used only for caching */

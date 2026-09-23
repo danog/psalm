@@ -630,7 +630,7 @@ abstract class Atomic implements TypeNode, Stringable
         return $this instanceof TNamedObject
             && (
                 strtolower($this->value) === 'traversable'
-                || ($codebase->classOrInterfaceExists($this->value)
+                || ($codebase->classOrInterfaceExistsById($this->name)
                     && ($codebase->classExtendsOrImplements(
                         $this->value,
                         'Traversable',
@@ -653,7 +653,7 @@ abstract class Atomic implements TypeNode, Stringable
         return $this instanceof TNamedObject
             && (
                 strtolower($this->value) === 'countable'
-                || ($codebase->classOrInterfaceExists($this->value)
+                || ($codebase->classOrInterfaceExistsById($this->name)
                     && ($codebase->classExtendsOrImplements(
                         $this->value,
                         'Countable',
@@ -691,7 +691,7 @@ abstract class Atomic implements TypeNode, Stringable
         return $this instanceof TNamedObject
             && (
                 strtolower($this->value) === 'arrayaccess'
-                || ($codebase->classOrInterfaceExists($this->value)
+                || ($codebase->classOrInterfaceExistsById($this->name)
                     && ($codebase->classExtendsOrImplements(
                         $this->value,
                         'ArrayAccess',

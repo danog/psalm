@@ -385,7 +385,7 @@ final class AttributesAnalyzer
 
         $codebase = $statements_analyzer->getCodebase();
 
-        if (!$codebase->classExists($class_string->value)) {
+        if (!$codebase->classExistsById($class_string->name)) {
             return;
         }
 

@@ -335,7 +335,7 @@ final class AssertionReconciler extends Reconciler
 
         if ($new_type_part->isObjectType()) {
             if ($new_type_part instanceof TNamedObject &&
-                $codebase->interfaceExists($new_type_part->value)
+                $codebase->interfaceExistsById($new_type_part->name)
             ) {
                 $new_type_has_interface = true;
             }
@@ -346,7 +346,7 @@ final class AssertionReconciler extends Reconciler
         if ($existing_var_type->hasObjectType()) {
             foreach ($existing_var_type->getAtomicTypes() as $existing_type_part) {
                 if ($existing_type_part instanceof TNamedObject &&
-                    $codebase->interfaceExists($existing_type_part->value)
+                    $codebase->interfaceExistsById($existing_type_part->name)
                 ) {
                     $old_type_has_interface = true;
                     break;
@@ -432,8 +432,8 @@ final class AssertionReconciler extends Reconciler
                 }
 
                 if ($existing_var_type_part instanceof TNamedObject
-                    && ($codebase->classExists($existing_var_type_part->value)
-                        || $codebase->interfaceExists($existing_var_type_part->value))
+                    && ($codebase->classExistsById($existing_var_type_part->name)
+                        || $codebase->interfaceExistsById($existing_var_type_part->name))
                 ) {
                     $existing_var_type_part = $existing_var_type_part->addIntersectionType($new_type_part);
                     $acceptable_atomic_types[] = $existing_var_type_part;
@@ -1627,7 +1627,7 @@ final class AssertionReconciler extends Reconciler
                     return [$assertion_type];
                 }
 
-                $new_type_has_interface_string = $codebase->interfaceExists($assertion_type->value);
+                $new_type_has_interface_string = $codebase->interfaceExistsById($assertion_type->name);
 
                 $old_type_has_interface_string = false;
 
@@ -1688,8 +1688,8 @@ final class AssertionReconciler extends Reconciler
                             continue;
                         }
 
-                        if ($codebase->classExists($existing_var_type_part->value)
-                            || $codebase->interfaceExists($existing_var_type_part->value)
+                        if ($codebase->classExistsById($existing_var_type_part->name)
+                            || $codebase->interfaceExistsById($existing_var_type_part->name)
                         ) {
                             $existing_var_type_part = $existing_var_type_part->addIntersectionType($new_type_part);
                             $acceptable_atomic_types[] = $existing_var_type_part;

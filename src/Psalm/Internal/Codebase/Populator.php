@@ -7,6 +7,7 @@ namespace Psalm\Internal\Codebase;
 use BackedEnum;
 use InvalidArgumentException;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
 use Psalm\Internal\Provider\FileReferenceProvider;
@@ -73,6 +74,10 @@ final class Populator
             $this->populateClassLikeStorage($class_storage);
         }
 
+        foreach ($this->classlike_storage_provider->getNew() as $class_storage) {
+            $this->fillNameIdSets($class_storage);
+        }
+
         $this->progress->debug('ClassLikeStorage is populated' . "\n");
 
         $this->progress->debug('FileStorage is populating' . "\n");
@@ -102,6 +107,35 @@ final class Populator
     }
 
     /** @param array<string, bool> $dependent_classlikes */
+    /**
+     * The id-keyed forms of the hierarchy maps (which are keyed by lowercased names and hold the spellings
+     * used in the declarations): the id of the declared name when the class-like exists, of the spelling
+     * otherwise. Analysis checks inheritance against these.
+     */
+    private function fillNameIdSets(ClassLikeStorage $storage): void
+    {
+        $storage->parent_class_ids = $this->nameIdSet($storage->parent_classes);
+        $storage->class_implements_ids = $this->nameIdSet($storage->class_implements);
+        $storage->parent_interface_ids = $this->nameIdSet($storage->parent_interfaces);
+        $storage->used_trait_ids = $this->nameIdSet($storage->used_traits);
+    }
+
+    /**
+     * @param array<lowercase-string, string> $names
+     * @return array<int, true>
+     */
+    private function nameIdSet(array $names): array
+    {
+        $ids = [];
+        foreach ($names as $lc => $cased) {
+            $id = $this->classlike_storage_provider->has($lc)
+                ? $this->classlike_storage_provider->get($lc)->id
+                : Interner::intern($cased);
+            $ids[$id] = true;
+        }
+        return $ids;
+    }
+
     private function populateClassLikeStorage(ClassLikeStorage $storage, array $dependent_classlikes = []): void
     {
         $fq_classlike_name_lc = strtolower($storage->name);

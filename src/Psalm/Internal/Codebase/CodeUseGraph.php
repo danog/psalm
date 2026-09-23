@@ -8,6 +8,7 @@ use Closure;
 use LogicException;
 use Psalm\CodeLocation;
 use Psalm\Context;
+use Psalm\Storage\ClassLikeStorage;
 use Psalm\Storage\FunctionLikeStorage;
 use Psalm\Storage\MethodStorage;
 
@@ -197,6 +198,20 @@ final class CodeUseGraph
     public static function classNode(string $fq_class_name_lc): string
     {
         return self::KIND_CLASS . ' ' . $fq_class_name_lc;
+    }
+
+    /** @var array<int, string> the class node of each storage id, built once */
+    private static array $class_nodes_by_id = [];
+
+    /**
+     * The class node of a storage, without lowercasing its name on every reference.
+     *
+     * @psalm-external-mutation-free
+     * @psalm-suppress ImpureStaticProperty cache
+     */
+    public static function classNodeFor(ClassLikeStorage $storage): string
+    {
+        return self::$class_nodes_by_id[$storage->id] ??= self::KIND_CLASS . ' ' . strtolower($storage->name);
     }
 
     /**
