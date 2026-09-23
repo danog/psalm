@@ -140,11 +140,6 @@ final class Methods
             $calling_class_name = explode('::', $calling_method_id)[0];
         }
 
-        $calling_context = null;
-        if ($calling_method_id !== null || $calling_class_name !== null) {
-            $calling_context = new Context($calling_class_name);
-            $calling_context->calling_method_id = $calling_method_id;
-        }
 
         $declaring_method_id = $class_storage->declaring_method_ids[$method_name] ?? null;
         if ($declaring_method_id === null && $with_pseudo) {
@@ -161,26 +156,48 @@ final class Methods
                 return true;
             }
 
+            $graph = $codebase->code_use_graph;
+
             if ($nodes[1] !== strtolower((string) $calling_class_name)) {
-                $codebase->addReferenceToClass(
-                    $nodes[1],
+                $graph->addReferenceFrom(
+                    CodeUseGraph::classNode($nodes[1]),
+                    $calling_method_id,
+                    null,
+                    $calling_class_name,
                     $code_location,
-                    $calling_context,
+                    CodeUseGraph::EDGE_USE,
                     $source_file_path,
                 );
             }
 
             foreach ($nodes[2] as $function_id_lc) {
-                $codebase->addReferenceToFunctionLike(
-                    $function_id_lc,
+                $function_node = CodeUseGraph::functionLikeNode($function_id_lc);
+                if ($is_used) {
+                    // using the return value implies calling the function
+                    $return_node = CodeUseGraph::functionLikeReturnNode($function_id_lc);
+                    $graph->addEdge($return_node, $function_node, CodeUseGraph::EDGE_RETURN);
+                    $function_node = $return_node;
+                }
+                $graph->addReferenceFrom(
+                    $function_node,
+                    $calling_method_id,
+                    null,
+                    $calling_class_name,
                     $code_location,
-                    $calling_context,
-                    $is_used,
+                    CodeUseGraph::EDGE_USE,
                     $source_file_path,
                 );
             }
 
             return true;
+        }
+
+        // the method is missing: the references below take a Context (the found path above records
+        // without one)
+        $calling_context = null;
+        if ($calling_method_id !== null || $calling_class_name !== null) {
+            $calling_context = new Context($calling_class_name);
+            $calling_context->calling_method_id = $calling_method_id;
         }
 
         if ($source_file_path && $fq_class_name !== strtolower((string) $calling_class_name)) {
