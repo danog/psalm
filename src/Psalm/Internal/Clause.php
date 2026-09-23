@@ -47,7 +47,9 @@ final class Clause implements Stringable
      *
      * !$a || $b || $c !== null || is_string($d) || is_int($d)
      *
-     * @var array<string, non-empty-array<string, Assertion>>
+     * Each variable's assertions are keyed by Assertion::getHash() (pzoom's AssertionSet), see keyed().
+     *
+     * @var array<string, non-empty-array<int, Assertion>>
      */
     public array $possibilities;
 
@@ -88,7 +90,7 @@ final class Clause implements Stringable
     private static array $key_ids = [];
 
     /**
-     * @param array<string, non-empty-array<string, Assertion>>  $possibilities
+     * @param array<string, non-empty-array<int, Assertion>>  $possibilities
      * @param array<string, bool> $redefined_vars
      */
     public function __construct(
@@ -103,7 +105,7 @@ final class Clause implements Stringable
         // pzoom keeps possibilities in a BTreeMap: sorted by variable
         ksort($possibilities);
 
-        // One pass over interned ids computes both the hash and the bloom (pzoom's compute_hash /
+        // One pass over interned ids (variables here, assertions by Assertion::getHash()) computes both the hash and the bloom (pzoom's compute_hash /
         // compute_keys_bloom). Within a variable the assertions are combined by a sum, so their order does not
         // matter (Psalm's identity never depended on it); across variables the sorted order is hashed. PHP is
         // 64-bit (CliUtils::checkRuntimeRequirements), but an overflowing product becomes a float, so the hash is
@@ -116,11 +118,12 @@ final class Clause implements Stringable
             $bloom |= 1 << ($var_id & 63);
             $set1 = 0;
             $set2 = 0;
-            foreach ($assertions as $key => $_) {
-                $id = self::keyId((string) $key);
+            foreach ($assertions as $id => $_) {
                 $bloom |= 1 << ($id & 63);
-                $set1 = ($set1 + (($id * 0x2545F491) & 0xFFFFFFFF)) & 0xFFFFFFFF;
-                $set2 = ($set2 + (($id * 0x1B873593) & 0x7FFFFFFF)) & 0x7FFFFFFF;
+                // assertion ids come from their own table, so they are mixed differently from variable ids
+                // (with the same mixing, `$a: #0` and `$b: #1` would each cancel out to 0)
+                $set1 = ($set1 + ((($id + 1) * 0x9E3779B1) & 0xFFFFFFFF)) & 0xFFFFFFFF;
+                $set2 = ($set2 + ((($id + 1) * 0x85EBCA6B) & 0x7FFFFFFF)) & 0x7FFFFFFF;
             }
             $h1 = ($h1 * 1_000_003 + ((($var_id * 0x2545F491) & 0xFFFFFFFF) ^ $set1)) % 4_294_967_291;
             $h2 = ($h2 * 998_244_353 + ((($var_id * 0x1B873593) & 0x7FFFFFFF) ^ $set2)) % 2_147_483_629;
@@ -146,6 +149,21 @@ final class Clause implements Stringable
     }
 
     /**
+     * An assertion set as clauses key it: by each assertion's hash.
+     *
+     * @return non-empty-array<int, Assertion>
+     * @psalm-mutation-free
+     */
+    public static function keyed(Assertion $assertion, Assertion ...$assertions): array
+    {
+        $keyed = [$assertion->getHash() => $assertion];
+        foreach ($assertions as $other) {
+            $keyed[$other->getHash()] = $other;
+        }
+        return $keyed;
+    }
+
+    /**
      * @psalm-mutation-free
      */
     public function contains(Clause $other_clause): bool
@@ -166,7 +184,7 @@ final class Clause implements Stringable
         }
 
         foreach ($other_clause->possibilities as $var => $possible_types) {
-            // keyed by each assertion's string form (pzoom compares the assertion hashes)
+            // keyed by the assertions' hashes, as pzoom compares them
             if (array_diff_key($possible_types, $this->possibilities[$var]) !== []) {
                 return false;
             }
@@ -258,7 +276,7 @@ final class Clause implements Stringable
     }
 
     /**
-     * @param non-empty-array<string, Assertion> $clause_var_possibilities
+     * @param non-empty-array<int, Assertion> $clause_var_possibilities
      */
     public function addPossibilities(string $var_id, array $clause_var_possibilities): self
     {

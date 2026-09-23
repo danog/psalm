@@ -20,7 +20,6 @@ use Psalm\Type\Atomic\TNull;
 use Psalm\Type\Union;
 use RuntimeException;
 
-use function array_keys;
 use function array_search;
 use function array_shift;
 use function assert;
@@ -31,6 +30,7 @@ use function json_encode;
 use function preg_match;
 use function preg_quote;
 use function preg_replace;
+use function reset;
 use function str_contains;
 use function strpos;
 use function strtolower;
@@ -681,7 +681,7 @@ final class Context
 
             if (!isset($clause->possibilities[$remove_var_id])
                 || (count($clause->possibilities[$remove_var_id]) === 1
-                    && array_keys($clause->possibilities[$remove_var_id])[0] === $new_type_string)
+                    && (string) reset($clause->possibilities[$remove_var_id]) === $new_type_string)
             ) {
                 $clauses_to_keep[] = $clause;
             } elseif ($statements_analyzer &&

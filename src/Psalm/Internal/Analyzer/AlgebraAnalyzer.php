@@ -99,8 +99,8 @@ final class AlgebraAnalyzer
                         break;
                     }
 
-                    // the same assertions: the maps are keyed by each assertion's own string form, so equal key
-                    // sets are equal assertions (a loose `!=` compared every Assertion -- and the types inside
+                    // the same assertions: the maps are keyed by each assertion's hash, so equal key sets are
+                    // equal assertions (a loose `!=` compared every Assertion -- and the types inside
                     // it -- property by property, which also saw memoized strings)
                     $other_possibilities = $negated_clause_2->possibilities[$key];
                     if (count($other_possibilities) !== count($keyed_possibilities)

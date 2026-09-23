@@ -1821,7 +1821,7 @@ final class AssignmentAnalyzer
                     );
 
                     $assignment_clauses = Algebra::combineOredClauses(
-                        [new Clause([$var_id => ['falsy' => new Falsy()]], $var_object_id, $var_object_id)],
+                        [new Clause([$var_id => Clause::keyed(new Falsy())], $var_object_id, $var_object_id)],
                         $right_clauses,
                         $cond_object_id,
                     );

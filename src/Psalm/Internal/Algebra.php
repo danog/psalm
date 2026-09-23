@@ -13,7 +13,6 @@ use UnexpectedValueException;
 use function array_filter;
 use function array_intersect_key;
 use function array_keys;
-use function array_merge;
 use function array_pop;
 use function array_values;
 use function assert;
@@ -172,8 +171,7 @@ final class Algebra
 
             $clause_var = array_keys($clause_a->possibilities)[0];
             $only_type = array_pop(array_values($clause_a->possibilities)[0]);
-            $negated_clause_type = $only_type->getNegation();
-            $negated_clause_type_string = (string)$negated_clause_type;
+            $negated_clause_type_hash = $only_type->getNegation()->getHash();
 
             foreach ($cloned_clauses as $clause_b_hash => $clause_b) {
                 if ($clause_a === $clause_b || !$clause_b->reconcilable || $clause_b->wedge) {
@@ -185,7 +183,7 @@ final class Algebra
                     $matched = [];
 
                     foreach ($clause_b->possibilities[$clause_var] as $k => $possible_type) {
-                        if ((string)$possible_type === $negated_clause_type_string) {
+                        if ($k === $negated_clause_type_hash) {
                             $matched[] = $possible_type;
                         } else {
                             $unmatched[$k] = $possible_type;
@@ -280,10 +278,7 @@ final class Algebra
                                 if (!isset($new_possibilities[$var_id])) {
                                     $new_possibilities[$var_id] = $possibilities;
                                 } else {
-                                    $new_possibilities[$var_id] = array_merge(
-                                        $new_possibilities[$var_id],
-                                        $possibilities,
-                                    );
+                                    $new_possibilities[$var_id] += $possibilities;
                                 }
                             }
 
@@ -295,10 +290,7 @@ final class Algebra
                                 if (!isset($new_possibilities[$var_id])) {
                                     $new_possibilities[$var_id] = $possibilities;
                                 } else {
-                                    $new_possibilities[$var_id] = array_merge(
-                                        $new_possibilities[$var_id],
-                                        $possibilities,
-                                    );
+                                    $new_possibilities[$var_id] += $possibilities;
                                 }
                             }
 
@@ -376,11 +368,8 @@ final class Algebra
                     }
                 } else {
                     // if there's only one active clause, return all the non-negation clause members ORed together
-                    $things_that_can_be_said = [];
-
-                    foreach ($possible_types as $assertion) {
-                        $things_that_can_be_said[(string)$assertion] = $assertion;
-                    }
+                    // already distinct: a clause keys its assertions by hash
+                    $things_that_can_be_said = $possible_types;
 
                     if ($clause->generated && count($possible_types) > 1) {
                         unset($cond_referenced_var_ids[$var]);
@@ -479,7 +468,7 @@ final class Algebra
             foreach ($clause->impossibilities as $var => $impossible_types) {
                 foreach ($impossible_types as $impossible_type) {
                     $seed_clause = new Clause(
-                        [$var => [(string)$impossible_type => $impossible_type]],
+                        [$var => [$impossible_type->getHash() => $impossible_type]],
                         $clause->creating_conditional_id,
                         $clause->creating_object_id,
                     );
@@ -525,8 +514,8 @@ final class Algebra
                         $new_clause_possibilities = $grouped_clause->possibilities;
 
                         if (isset($new_clause_possibilities[$var])) {
-                            $impossible_type_string = (string)$impossible_type;
-                            $new_clause_possibilities[$var][$impossible_type_string] = $impossible_type;
+                            $impossible_type_hash = $impossible_type->getHash();
+                            $new_clause_possibilities[$var][$impossible_type_hash] = $impossible_type;
 
                             foreach ($new_clause_possibilities[$var] as $ak => $av) {
                                 foreach ($new_clause_possibilities[$var] as $bk => $bv) {
@@ -534,7 +523,7 @@ final class Algebra
                                         break;
                                     }
 
-                                    if ($ak !== $impossible_type_string && $bk !== $impossible_type_string) {
+                                    if ($ak !== $impossible_type_hash && $bk !== $impossible_type_hash) {
                                         continue;
                                     }
 
@@ -544,7 +533,7 @@ final class Algebra
                                 }
                             }
                         } else {
-                            $new_clause_possibilities[$var] = [(string)$impossible_type => $impossible_type];
+                            $new_clause_possibilities[$var] = [$impossible_type->getHash() => $impossible_type];
                         }
 
                         $new_clause = new Clause(
@@ -612,7 +601,7 @@ final class Algebra
                     continue;
                 }
 
-                /** @var  array<string, non-empty-array<string, Assertion>> */
+                /** @var  array<string, non-empty-array<int, Assertion>> */
                 $possibilities = [];
 
                 $can_reconcile = true;
@@ -631,7 +620,7 @@ final class Algebra
                     }
 
                     if (isset($possibilities[$var])) {
-                        $possibilities[$var] = array_merge($possibilities[$var], $possible_types);
+                        $possibilities[$var] += $possible_types;
                     } else {
                         $possibilities[$var] = $possible_types;
                     }
@@ -639,7 +628,7 @@ final class Algebra
 
                 foreach ($right_clause->possibilities as $var => $possible_types) {
                     if (isset($possibilities[$var])) {
-                        $possibilities[$var] = array_merge($possibilities[$var], $possible_types);
+                        $possibilities[$var] += $possible_types;
                     } else {
                         $possibilities[$var] = $possible_types;
                     }

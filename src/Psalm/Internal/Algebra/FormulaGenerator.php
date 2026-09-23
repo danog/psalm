@@ -158,7 +158,7 @@ final class FormulaGenerator
                         foreach ($anded_types as $orred_types) {
                             $mapped_orred_types = [];
                             foreach ($orred_types as $orred_type) {
-                                $mapped_orred_types[(string)$orred_type] = $orred_type;
+                                $mapped_orred_types[$orred_type->getHash()] = $orred_type;
                             }
                             $clauses[] = new Clause(
                                 [$var => $mapped_orred_types],
@@ -428,7 +428,7 @@ final class FormulaGenerator
                 foreach ($anded_types as $orred_types) {
                     $mapped_orred_types = [];
                     foreach ($orred_types as $orred_type) {
-                        $mapped_orred_types[(string)$orred_type] = $orred_type;
+                        $mapped_orred_types[$orred_type->getHash()] = $orred_type;
                     }
                     $clauses[] = new Clause(
                         [$var => $mapped_orred_types],
@@ -452,7 +452,7 @@ final class FormulaGenerator
 
         return [
             new Clause(
-                [$conditional_ref => ['truthy' => new Truthy()]],
+                [$conditional_ref => Clause::keyed(new Truthy())],
                 $conditional_object_id,
                 $creating_object_id,
             ),
