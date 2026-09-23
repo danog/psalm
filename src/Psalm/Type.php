@@ -686,6 +686,10 @@ abstract class Type
 
         $a_types = $a->getAtomicTypes();
         $b_types = $b->getAtomicTypes();
+        // a union derived from the other by a wither shares its atomics array: identity is a pointer check
+        if ($a_types === $b_types) {
+            return true;
+        }
         if (count($a_types) !== count($b_types)) {
             return false;
         }

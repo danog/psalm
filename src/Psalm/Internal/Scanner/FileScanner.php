@@ -28,6 +28,37 @@ class FileScanner implements FileSource
     {
     }
 
+    /**
+     * Whether the file does anything besides declaring things: a statement other than a class, function,
+     * include, namespace (looked into), use, declare or comment. Only such a file can affect the context of
+     * a file that includes it.
+     *
+     * @param array<PhpParser\Node\Stmt> $stmts
+     */
+    private static function hasExtraStatements(array $stmts): bool
+    {
+        foreach ($stmts as $stmt) {
+            if ($stmt instanceof PhpParser\Node\Stmt\Namespace_) {
+                if (self::hasExtraStatements($stmt->stmts)) {
+                    return true;
+                }
+                continue;
+            }
+            if (!$stmt instanceof PhpParser\Node\Stmt\ClassLike
+                && !$stmt instanceof PhpParser\Node\Stmt\Function_
+                && !$stmt instanceof PhpParser\Node\Stmt\Use_
+                && !$stmt instanceof PhpParser\Node\Stmt\GroupUse
+                && !$stmt instanceof PhpParser\Node\Stmt\Declare_
+                && !$stmt instanceof PhpParser\Node\Stmt\Nop
+                && !($stmt instanceof PhpParser\Node\Stmt\Expression
+                    && $stmt->expr instanceof PhpParser\Node\Expr\Include_)
+            ) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public function scan(
         Codebase $codebase,
         FileStorage $file_storage,
@@ -51,16 +82,7 @@ class FileScanner implements FileSource
             $progress,
         );
 
-        foreach ($stmts as $stmt) {
-            if (!$stmt instanceof PhpParser\Node\Stmt\ClassLike
-                && !$stmt instanceof PhpParser\Node\Stmt\Function_
-                && !($stmt instanceof PhpParser\Node\Stmt\Expression
-                    && $stmt->expr instanceof PhpParser\Node\Expr\Include_)
-            ) {
-                $file_storage->has_extra_statements = true;
-                break;
-            }
-        }
+        $file_storage->has_extra_statements = self::hasExtraStatements($stmts);
 
         if ($this->will_analyze) {
             $progress->debug('Deep scanning ' . $file_storage->file_path . "\n");
