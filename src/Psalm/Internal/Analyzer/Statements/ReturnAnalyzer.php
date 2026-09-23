@@ -221,10 +221,13 @@ final class ReturnAnalyzer
 
         $context->has_returned = true;
 
-        if ($source instanceof FunctionLikeAnalyzer
-            && !($source->getSource() instanceof TraitAnalyzer)
-        ) {
-            $source->addReturnTypes($context);
+        if ($source instanceof FunctionLikeAnalyzer) {
+            // a trait body is analyzed once per using class: its returns are checked each time (pzoom checks
+            // them there too, with self/static bound to the using class), but its inferred return types are
+            // not collected, since they would mix the using classes
+            if (!($source->getSource() instanceof TraitAnalyzer)) {
+                $source->addReturnTypes($context);
+            }
 
             $source->examineParamTypes($statements_analyzer, $context, $codebase, $stmt);
 
@@ -270,15 +273,22 @@ final class ReturnAnalyzer
                 if ($storage instanceof MethodStorage && $context->self) {
                     $self_class = $context->self;
 
+                    [, $method_name] = explode('::', $cased_method_id);
+
+                    // in a trait body the declared type is read through the using class (the trait's
+                    // `self`/`static` and templates bound to it), as the function-level check did
+                    $lookup_method_id = $source->getSource() instanceof TraitAnalyzer
+                        ? new MethodIdentifier($self_class, strtolower($method_name))
+                        : MethodIdentifier::wrap($cased_method_id);
+
                     $declared_return_type = $codebase->methods->getMethodReturnType(
                         $codebase,
-                        MethodIdentifier::wrap($cased_method_id),
+                        $lookup_method_id,
                         $self_class,
                         $statements_analyzer,
                         null,
                     );
 
-                    [, $method_name] = explode('::', $cased_method_id);
                     if ($method_name === '__construct') {
                         IssueBuffer::maybeAdd(
                             new InvalidReturnStatement(
@@ -294,10 +304,30 @@ final class ReturnAnalyzer
                 }
 
                 if ($declared_return_type && !$declared_return_type->hasMixed()) {
-                    $local_return_type = $source->getLocalReturnType(
-                        $declared_return_type,
-                        $storage instanceof MethodStorage && $storage->final,
-                    );
+                    if ($source->getSource() instanceof TraitAnalyzer && $context->self) {
+                        // a trait body is checked for each using class (pzoom): the trait's own name,
+                        // `self` and `static` bind to that class and the trait's template params resolve
+                        // to their bounds
+                        $using_class = $context->self;
+                        $using_storage = $codebase->classlike_storage_provider->get($using_class);
+                        $local_return_type = TypeExpander::expandUnion(
+                            $codebase,
+                            $declared_return_type->replaceClassLike(strtolower($source->getFQCLN()), $using_class),
+                            $using_class,
+                            $using_class,
+                            $using_storage->parent_class,
+                            true,
+                            true,
+                            ($storage instanceof MethodStorage && $storage->final) || $using_storage->final,
+                            false,
+                            true,
+                        );
+                    } else {
+                        $local_return_type = $source->getLocalReturnType(
+                            $declared_return_type,
+                            $storage instanceof MethodStorage && $storage->final,
+                        );
+                    }
 
                     if ($storage instanceof MethodStorage) {
                         [$fq_class_name, $method_name] = explode('::', $cased_method_id);

@@ -1121,7 +1121,6 @@ final class FunctionTemplateTest extends TestCase
                     }
 
                     /**
-                     * @psalm-suppress InvalidReturnType
                      * @psalm-suppress InvalidReturnStatement
                      *
                      * @psalm-template T2 of object

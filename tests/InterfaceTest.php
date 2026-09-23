@@ -1067,7 +1067,8 @@ final class InterfaceTest extends TestCase
                             return "hello";
                         }
                     }',
-                'error_message' => 'InvalidReturnType',
+                // the function-level mismatch is gone (pzoom); the missing signature type is what remains
+                'error_message' => 'MissingReturnType',
             ],
             'interfaceInstantiation' => [
                 'code' => '<?php

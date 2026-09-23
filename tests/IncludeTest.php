@@ -847,7 +847,7 @@ final class IncludeTest extends TestCase
                 'files_to_check' => [
                     (string) getcwd() . DIRECTORY_SEPARATOR . 'file2.php',
                 ],
-                'error_message' => 'InvalidReturnType',
+                'error_message' => 'InvalidReturnStatement',
             ],
             'invalidDoubleNestedTraitFunctionReturnInUncheckedFile' => [
                 'files' => [
@@ -884,7 +884,7 @@ final class IncludeTest extends TestCase
                 'files_to_check' => [
                     (string) getcwd() . DIRECTORY_SEPARATOR . 'file3.php',
                 ],
-                'error_message' => 'InvalidReturnType',
+                'error_message' => 'InvalidReturnStatement',
             ],
             'invalidTraitFunctionMissingNestedUse' => [
                 'files' => [

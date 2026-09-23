@@ -31,8 +31,6 @@ use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
 use Psalm\Internal\Type\TypeExpander;
 use Psalm\Issue\ImplicitToStringCast;
-use Psalm\Issue\InvalidFalsableReturnType;
-use Psalm\Issue\InvalidNullableReturnType;
 use Psalm\Issue\InvalidParent;
 use Psalm\Issue\InvalidReturnType;
 use Psalm\Issue\InvalidToString;
@@ -41,7 +39,6 @@ use Psalm\Issue\MismatchingDocblockReturnType;
 use Psalm\Issue\MissingClosureReturnType;
 use Psalm\Issue\MissingReturnType;
 use Psalm\Issue\MixedReturnTypeCoercion;
-use Psalm\Issue\MoreSpecificReturnType;
 use Psalm\Issue\UnresolvableConstant;
 use Psalm\IssueBuffer;
 use Psalm\StatementsSource;
@@ -195,6 +192,13 @@ final class ReturnTypeAnalyzer
                     && !$return_type->hasTemplate()
                     && !$return_type->find('null')?->from_docblock
                 )
+                // pzoom: a docblock-declared type that is not nullable is wrong for a body that can fall
+                // through too (Psalm reported InvalidNullableReturnType there, which is no longer emitted)
+                || (!$return_type->isNullable()
+                    && !$return_type->hasMixed()
+                    && !$return_type->hasTemplate()
+                    && !$return_type->hasConditional()
+                    && $inferred_return_type_parts)
             )
             && !$return_type->isVoid()
             && !$return_type->isNever()
@@ -510,20 +514,12 @@ final class ReturnTypeAnalyzer
 
             $union_comparison_results = new TypeComparisonResult();
 
-            if ($declared_return_type->explicit_never === true &&
-                $inferred_return_type_with_never->explicit_never === false) {
-                if (IssueBuffer::accepts(
-                    new MoreSpecificReturnType(
-                        'The declared return type \'' . $declared_return_type->getId() . '|never\' for '
-                        . $cased_method_id . ' is more specific than the inferred return type '
-                        . '\'' . $inferred_return_type->getId() . '\'',
-                        $return_type_location,
-                    ),
-                    $suppressed_issues,
-                )) {
-                    return false;
-                }
-            }
+            // pzoom reports a declared-vs-inferred mismatch at the offending return statement
+            // (InvalidReturnStatement / NullableReturnStatement / FalsableReturnStatement /
+            // LessSpecificReturnStatement) instead of the function-level MoreSpecificReturnType,
+            // InvalidNullableReturnType and InvalidFalsableReturnType; the function-level InvalidReturnType
+            // is kept for the structural cases only (fall-through, no return, a never body that returns, a
+            // generator whose aggregate is wrong).
 
             if (!$declared_return_type->isNever()
                 && $function_always_exits
@@ -590,18 +586,6 @@ final class ReturnTypeAnalyzer
                                 return false;
                             }
                         }
-                    } else {
-                        if (IssueBuffer::accepts(
-                            new MoreSpecificReturnType(
-                                'The declared return type \'' . $declared_return_type->getId() . '\' for '
-                                    . $cased_method_id . ' is more specific than the inferred return type '
-                                    . '\'' . $inferred_return_type->getId() . '\'',
-                                $return_type_location,
-                            ),
-                            $suppressed_issues,
-                        )) {
-                            return false;
-                        }
                     }
                 } elseif (($declared_return_type->explicit_never === false || !$declared_return_type->isNull())
                     && (
@@ -627,7 +611,7 @@ final class ReturnTypeAnalyzer
                         return null;
                     }
 
-                    if (IssueBuffer::accepts(
+                    if ($inferred_yield_types && IssueBuffer::accepts(
                         new InvalidReturnType(
                             'The declared return type \''
                                 . $declared_return_type->getId()
@@ -749,17 +733,6 @@ final class ReturnTypeAnalyzer
                     return null;
                 }
 
-                if (IssueBuffer::accepts(
-                    new InvalidNullableReturnType(
-                        'The declared return type \'' . $declared_return_type . '\' for ' . $cased_method_id .
-                            ' is not nullable, but \'' . $inferred_return_type . '\' contains null',
-                        $return_type_location,
-                    ),
-                    $suppressed_issues,
-                    !$inferred_return_type->isNull(),
-                )) {
-                    return false;
-                }
             }
 
             if (!$inferred_return_type->ignore_falsable_issues
@@ -785,17 +758,6 @@ final class ReturnTypeAnalyzer
                     return null;
                 }
 
-                if (IssueBuffer::accepts(
-                    new InvalidFalsableReturnType(
-                        'The declared return type \'' . $declared_return_type . '\' for ' . $cased_method_id .
-                            ' does not allow false, but \'' . $inferred_return_type . '\' contains false',
-                        $return_type_location,
-                    ),
-                    $suppressed_issues,
-                    true,
-                )) {
-                    return false;
-                }
             }
         }
 

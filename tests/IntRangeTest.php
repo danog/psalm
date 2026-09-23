@@ -32,6 +32,18 @@ final class IntRangeTest extends TestCase
     public function providerValidCodeParse(): iterable
     {
         return [
+            // pzoom reports return mismatches at the return statement only: suppressed there, nothing
+            'intRangeNotContained' => [
+                'code' => '<?php
+                    /**
+                     * @param int<1,12> $a
+                     * @return int<-1, 11>
+                     * @psalm-suppress InvalidReturnStatement
+                     */
+                    function scope(int $a){
+                        return $a;
+                    }',
+            ],
             'intRangeContained' => [
                 'code' => '<?php
                     /**
@@ -1047,18 +1059,6 @@ final class IntRangeTest extends TestCase
     public function providerInvalidCodeParse(): iterable
     {
         return [
-            'intRangeNotContained' => [
-                'code' => '<?php
-                    /**
-                     * @param int<1,12> $a
-                     * @return int<-1, 11>
-                     * @psalm-suppress InvalidReturnStatement
-                     */
-                    function scope(int $a){
-                        return $a;
-                    }',
-                'error_message' => 'InvalidReturnType',
-            ],
             'assertOutOfRange' => [
                 'code' => '<?php
                     /**
