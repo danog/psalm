@@ -36,6 +36,7 @@ use ReflectionProperty;
 
 use function array_merge;
 use function count;
+use function dirname;
 use function is_string;
 use function strtolower;
 
@@ -311,6 +312,12 @@ final class SimpleTypeInferer
         if ($stmt instanceof PhpParser\Node\Scalar\MagicConst\Dir
             || $stmt instanceof PhpParser\Node\Scalar\MagicConst\File
         ) {
+            // the value the file's own path gives, so `define('X', __DIR__ . '/y.php')` records a literal path
+            // (the analyzer never runs the file it scans)
+            if ($file_source !== null) {
+                $file_path = $file_source->getFilePath();
+                return Type::getString($stmt instanceof PhpParser\Node\Scalar\MagicConst\Dir ? dirname($file_path) : $file_path);
+            }
             return new Union([new TNonEmptyString()]);
         }
 
