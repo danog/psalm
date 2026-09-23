@@ -136,7 +136,7 @@ final class ArrayMergeReturnTypeProvider implements FunctionReturnTypeProviderIn
                                     $added_inner_values = true;
                                     $inner_value_types = array_merge(
                                         $inner_value_types,
-                                        array_values($type->getAtomicTypes()),
+                                        $type->getAtomicTypes(),
                                     );
                                 } else {
                                     $generic_properties[] = $type;

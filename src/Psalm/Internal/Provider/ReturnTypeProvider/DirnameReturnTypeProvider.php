@@ -82,7 +82,7 @@ final class DirnameReturnTypeProvider implements FunctionReturnTypeProviderInter
             $type = $node_type_provider->getType($call_args[1]->value);
 
             if ($type !== null && $type->isSingle()) {
-                $atomic_type = array_values($type->getAtomicTypes())[0];
+                $atomic_type = $type->getAtomicTypes()[0];
                 if ($atomic_type instanceof TLiteralInt &&
                     $atomic_type->value > 0) {
                     $dir_level = $atomic_type->value;

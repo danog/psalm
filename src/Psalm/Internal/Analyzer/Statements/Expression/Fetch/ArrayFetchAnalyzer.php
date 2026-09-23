@@ -282,9 +282,10 @@ final class ArrayFetchAnalyzer
                     && !$stmt_dim_type->hasMixed()
                 ) {
                     $new_offset_type = $stmt_dim_type->getBuilder();
-                    $const_array_key_atomic_types = $const_array_key_type->getAtomicTypes();
+                    $const_array_key_atomic_types = $const_array_key_type->getAtomicTypesByKey();
 
-                    foreach ($new_offset_type->getAtomicTypes() as $offset_key => $offset_atomic_type) {
+                    foreach ($new_offset_type->getAtomicTypes() as $offset_atomic_type) {
+                        $offset_key = $offset_atomic_type->getKey();
                         if ($offset_atomic_type instanceof TString
                             || $offset_atomic_type instanceof TInt
                         ) {
@@ -599,7 +600,7 @@ final class ArrayFetchAnalyzer
             $has_valid_absolute_offset = true;
         }
 
-        $types = $array_type->getAtomicTypes();
+        $types = $array_type->getAtomicTypesByKey();
         $changed = false;
         foreach ($types as $type_string => $type) {
             $original_type_real = $type;
@@ -1040,7 +1041,7 @@ final class ArrayFetchAnalyzer
     public static function replaceOffsetTypeWithInts(Union $offset_type): Union
     {
         $offset_type = $offset_type->getBuilder();
-        $offset_types = $offset_type->getAtomicTypes();
+        $offset_types = $offset_type->getAtomicTypesByKey();
 
         foreach ($offset_types as $key => $offset_type_part) {
             if ($offset_type_part instanceof TLiteralString) {
@@ -1464,7 +1465,7 @@ final class ArrayFetchAnalyzer
         ?Union $replacement_type,
         ?Union &$array_access_type,
     ): void {
-        $offset_type_parts = array_values($offset_type->getAtomicTypes());
+        $offset_type_parts = $offset_type->getAtomicTypes();
 
         foreach ($offset_type_parts as $offset_type_part) {
             if ($offset_type_part instanceof TClassString) {

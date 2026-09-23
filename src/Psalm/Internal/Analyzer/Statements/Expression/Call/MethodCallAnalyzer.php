@@ -181,7 +181,7 @@ final class MethodCallAnalyzer extends CallAnalyzer
         
         $class_type = TypeVariableTracker::resolveTypeVariables($class_type, $codebase);
 
-        $lhs_types = $class_type->getAtomicTypes();
+        $lhs_types = $class_type->getAtomicTypesByKey();
 
         foreach ($lhs_types as $k => $lhs_type_part) {
             if ($lhs_type_part instanceof TConditional) {
@@ -414,7 +414,7 @@ final class MethodCallAnalyzer extends CallAnalyzer
             && ($class_type->from_docblock || $class_type->isNullable())
             && $real_method_call
         ) {
-            $types = $class_type->getAtomicTypes();
+            $types = $class_type->getAtomicTypesByKey();
 
             foreach ($types as $key => &$type) {
                 // A type variable that survived here is a valid method-call

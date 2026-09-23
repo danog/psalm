@@ -46,10 +46,12 @@ use Psalm\Type\Atomic\TString;
 use Psalm\Type\Atomic\TTemplateParam;
 use Psalm\Type\Atomic\TTemplateParamClass;
 use Psalm\Type\Atomic\TTrue;
+use UnexpectedValueException;
 
 use function array_key_exists;
 use function array_filter;
 use function array_unique;
+use function array_values;
 use function count;
 use function implode;
 use function ksort;
@@ -174,45 +176,224 @@ trait UnionTrait
         if (array_key_exists('parent_nodes', $properties)) {
             $this->parent_nodes = $properties['parent_nodes'];
         }
-        $this->literal_int_types = [];
-        $this->literal_string_types = [];
-        $this->literal_float_types = [];
-        $this->typed_class_strings = [];
         $this->checked = false;
         $this->id = null;
         $this->exact_id = null;
 
-        $keyed_types = [];
+        $this->types = self::listOfTypes($types);
 
         $from_docblock = $this->from_docblock;
-        foreach ($types as $type) {
-            $key = $type->getKey();
-            $keyed_types[$key] = $type;
-
-            if ($type instanceof TLiteralInt) {
-                $this->literal_int_types[$key] = $type;
-            } elseif ($type instanceof TLiteralString) {
-                $this->literal_string_types[$key] = $type;
-            } elseif ($type instanceof TLiteralFloat) {
-                $this->literal_float_types[$key] = $type;
-            } elseif ($type instanceof TClassString
-                && ($type->as_type || $type instanceof TTemplateParamClass)
-            ) {
-                $this->typed_class_strings[$key] = $type;
-            } elseif ($type instanceof TNever) {
+        foreach ($this->types as $type) {
+            if ($type instanceof TNever) {
                 $this->explicit_never = true;
             }
-
             $from_docblock = $from_docblock || $type->from_docblock;
         }
-
         $this->from_docblock = $from_docblock;
-        $this->types = $keyed_types;
+    }
+
+    /**
+     * The atomics as a list holding one type per key (pzoom's `Vec<TAtomic>`; Psalm's map kept one atomic
+     * per getKey(), the later one winning, and that stays true). A single atomic needs no keys at all.
+     *
+     * @param non-empty-array<array-key, Atomic> $types
+     * @return non-empty-list<Atomic>
+     * @psalm-pure
+     */
+    private static function listOfTypes(array $types): array
+    {
+        if (count($types) === 1) {
+            return [reset($types)];
+        }
+        $by_key = [];
+        foreach ($types as $type) {
+            $by_key[$type->getKey()] = $type;
+        }
+        /** @var non-empty-list<Atomic> */
+        return array_values($by_key);
+    }
+
+
+    /**
+     * The literal-typed atomics (pzoom scans its Vec; Psalm kept side maps of them).
+     *
+     * @psalm-mutation-free
+     */
+    private function countLiteralInts(): int
+    {
+        $n = 0;
+        foreach ($this->types as $type) {
+            if ($type instanceof TLiteralInt) {
+                $n++;
+            }
+        }
+        return $n;
+    }
+
+    /** @psalm-mutation-free */
+    private function countLiteralStrings(): int
+    {
+        $n = 0;
+        foreach ($this->types as $type) {
+            if ($type instanceof TLiteralString) {
+                $n++;
+            }
+        }
+        return $n;
+    }
+
+    /** @psalm-mutation-free */
+    private function countLiteralFloats(): int
+    {
+        $n = 0;
+        foreach ($this->types as $type) {
+            if ($type instanceof TLiteralFloat) {
+                $n++;
+            }
+        }
+        return $n;
+    }
+
+    /** @psalm-mutation-free */
+    private function firstLiteralInt(): ?TLiteralInt
+    {
+        foreach ($this->types as $type) {
+            if ($type instanceof TLiteralInt) {
+                return $type;
+            }
+        }
+        return null;
+    }
+
+    /** @psalm-mutation-free */
+    private function firstLiteralString(): ?TLiteralString
+    {
+        foreach ($this->types as $type) {
+            if ($type instanceof TLiteralString) {
+                return $type;
+            }
+        }
+        return null;
+    }
+
+    /** @psalm-mutation-free */
+    private function firstLiteralFloat(): ?TLiteralFloat
+    {
+        foreach ($this->types as $type) {
+            if ($type instanceof TLiteralFloat) {
+                return $type;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @return array<string, TLiteralInt>
+     * @psalm-mutation-free
+     */
+    private function collectLiteralInts(): array
+    {
+        $literals = [];
+        foreach ($this->types as $type) {
+            if ($type instanceof TLiteralInt) {
+                $literals[$type->getKey()] = $type;
+            }
+        }
+        return $literals;
+    }
+
+    /**
+     * @return array<string, TLiteralString>
+     * @psalm-mutation-free
+     */
+    private function collectLiteralStrings(): array
+    {
+        $literals = [];
+        foreach ($this->types as $type) {
+            if ($type instanceof TLiteralString) {
+                $literals[$type->getKey()] = $type;
+            }
+        }
+        return $literals;
+    }
+
+    /**
+     * @return array<string, TLiteralFloat>
+     * @psalm-mutation-free
+     */
+    private function collectLiteralFloats(): array
+    {
+        $literals = [];
+        foreach ($this->types as $type) {
+            if ($type instanceof TLiteralFloat) {
+                $literals[$type->getKey()] = $type;
+            }
+        }
+        return $literals;
+    }
+
+    /**
+     * A class-string with a bound (`class-string<Foo>`) or a template class-string.
+     *
+     * @psalm-mutation-free
+     */
+    private function hasTypedClassString(): bool
+    {
+        foreach ($this->types as $type) {
+            if ($type instanceof TClassString && ($type->as_type || $type instanceof TTemplateParamClass)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * The atomics keyed by Atomic::getKey(), for code that edits a keyed copy and builds a union from it.
+     * Built on demand: the union itself holds a list.
+     *
+     * @psalm-mutation-free
+     * @return non-empty-array<string, Atomic>
+     */
+    public function getAtomicTypesByKey(): array
+    {
+        $by_key = [];
+        foreach ($this->types as $type) {
+            $by_key[$type->getKey()] = $type;
+        }
+        return $by_key;
+    }
+
+    /**
+     * The atomic with this key (Atomic::getKey()), if any.
+     *
+     * @psalm-mutation-free
+     */
+    public function find(string $key): ?Atomic
+    {
+        foreach ($this->types as $type) {
+            if ($type->getKey() === $key) {
+                return $type;
+            }
+        }
+        return null;
     }
 
     /**
      * @psalm-mutation-free
-     * @return non-empty-array<string, Atomic>
+     */
+    public function has(string $key): bool
+    {
+        foreach ($this->types as $type) {
+            if ($type->getKey() === $key) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @psalm-mutation-free
+     * @return non-empty-list<Atomic>
      */
     public function getAtomicTypes(): array
     {
@@ -404,12 +585,12 @@ trait UnionTrait
                 return null;
             }
         } elseif ($analysis_php_version_id < 7_00_00
-            || (isset($this->types['null']) && $analysis_php_version_id < 7_01_00)
+            || ($this->has('null') && $analysis_php_version_id < 7_01_00)
         ) {
             return null;
         }
 
-        $types = $this->types;
+        $types = $this->getAtomicTypesByKey();
 
         $nullable = false;
 
@@ -471,7 +652,7 @@ trait UnionTrait
             return false;
         }
 
-        $types = $this->types;
+        $types = $this->getAtomicTypesByKey();
 
         if (isset($types['null'])) {
             if (count($types) > 1) {
@@ -495,7 +676,7 @@ trait UnionTrait
      */
     public function hasType(string $type_string): bool
     {
-        return isset($this->types[$type_string]);
+        return $this->has($type_string);
     }
 
     /**
@@ -503,7 +684,7 @@ trait UnionTrait
      */
     public function hasArray(): bool
     {
-        return isset($this->types['array']);
+        return $this->has('array');
     }
 
     /**
@@ -511,7 +692,7 @@ trait UnionTrait
      */
     public function getArray(): Atomic
     {
-        return $this->types['array'];
+        return $this->find('array') ?? throw new UnexpectedValueException('No array type');
     }
 
     /**
@@ -519,7 +700,7 @@ trait UnionTrait
      */
     public function hasIterable(): bool
     {
-        return isset($this->types['iterable']);
+        return $this->has('iterable');
     }
 
     /**
@@ -528,7 +709,7 @@ trait UnionTrait
      */
     public function hasIterableType(Codebase $codebase): bool
     {
-        if (isset($this->types['iterable'])) {
+        if ($this->has('iterable')) {
             return true;
         }
         foreach ($this->types as $t) {
@@ -544,9 +725,8 @@ trait UnionTrait
      */
     public function hasList(): bool
     {
-        return isset($this->types['array'])
-            && $this->types['array'] instanceof TKeyedArray
-            && $this->types['array']->is_list;
+        $array = $this->find('array');
+        return $array instanceof TKeyedArray && $array->is_list;
     }
 
     /**
@@ -554,7 +734,7 @@ trait UnionTrait
      */
     public function hasClassStringMap(): bool
     {
-        return isset($this->types['array']) && $this->types['array'] instanceof TClassStringMap;
+        return $this->find('array') instanceof TClassStringMap;
     }
 
     /**
@@ -605,26 +785,26 @@ trait UnionTrait
 
     /**
      * @psalm-mutation-free
-     * @return array<string, TCallable>
+     * @return list<TCallable>
      */
     public function getCallableTypes(): array
     {
-        return array_filter(
+        return array_values(array_filter(
             $this->types,
             static fn($type): bool => $type instanceof TCallable,
-        );
+        ));
     }
 
     /**
      * @psalm-mutation-free
-     * @return array<string, TClosure>
+     * @return list<TClosure>
      */
     public function getClosureTypes(): array
     {
-        return array_filter(
+        return array_values(array_filter(
             $this->types,
             static fn($type): bool => $type instanceof TClosure,
-        );
+        ));
     }
 
     /**
@@ -632,7 +812,7 @@ trait UnionTrait
      */
     public function hasObject(): bool
     {
-        return isset($this->types['object']);
+        return $this->has('object');
     }
 
     /**
@@ -726,7 +906,7 @@ trait UnionTrait
      */
     public function isNullable(): bool
     {
-        if (isset($this->types['null'])) {
+        if ($this->has('null')) {
             return true;
         }
 
@@ -744,7 +924,7 @@ trait UnionTrait
      */
     public function isFalsable(): bool
     {
-        if (isset($this->types['false'])) {
+        if ($this->has('false')) {
             return true;
         }
 
@@ -762,7 +942,7 @@ trait UnionTrait
      */
     public function hasBool(): bool
     {
-        return isset($this->types['bool']) || isset($this->types['false']) || isset($this->types['true']);
+        return $this->has('bool') || $this->has('false') || $this->has('true');
     }
 
     /**
@@ -770,7 +950,7 @@ trait UnionTrait
      */
     public function hasNull(): bool
     {
-        return isset($this->types['null']);
+        return $this->has('null');
     }
 
     /**
@@ -778,14 +958,14 @@ trait UnionTrait
      */
     public function hasString(): bool
     {
-        return isset($this->types['string'])
-            || isset($this->types['class-string'])
-            || isset($this->types['trait-string'])
-            || isset($this->types['numeric-string'])
-            || isset($this->types['callable-string'])
-            || isset($this->types['array-key'])
-            || $this->literal_string_types
-            || $this->typed_class_strings;
+        return $this->has('string')
+            || $this->has('class-string')
+            || $this->has('trait-string')
+            || $this->has('numeric-string')
+            || $this->has('callable-string')
+            || $this->has('array-key')
+            || $this->countLiteralStrings() > 0
+            || $this->hasTypedClassString();
     }
 
     /**
@@ -793,9 +973,8 @@ trait UnionTrait
      */
     public function hasLowercaseString(): bool
     {
-        return isset($this->types['string'])
-            && ($this->types['string'] instanceof TLowercaseString
-                || $this->types['string'] instanceof TNonEmptyLowercaseString);
+        $string = $this->find('string');
+        return $string instanceof TLowercaseString || $string instanceof TNonEmptyLowercaseString;
     }
 
     /**
@@ -803,7 +982,7 @@ trait UnionTrait
      */
     public function hasLiteralClassString(): bool
     {
-        return count($this->typed_class_strings) > 0;
+        return $this->hasTypedClassString();
     }
 
     /**
@@ -811,7 +990,7 @@ trait UnionTrait
      */
     public function hasInt(): bool
     {
-        if (isset($this->types['int']) || isset($this->types['array-key']) || $this->literal_int_types) {
+        if ($this->has('int') || $this->has('array-key') || $this->countLiteralInts() > 0) {
             return true;
         }
         foreach ($this->types as $t) {
@@ -827,7 +1006,7 @@ trait UnionTrait
      */
     public function hasArrayKey(): bool
     {
-        return isset($this->types['array-key']);
+        return $this->has('array-key');
     }
 
     /**
@@ -835,7 +1014,7 @@ trait UnionTrait
      */
     public function hasFloat(): bool
     {
-        return isset($this->types['float']) || $this->literal_float_types;
+        return $this->has('float') || $this->countLiteralFloats() > 0;
     }
 
     /**
@@ -843,7 +1022,7 @@ trait UnionTrait
      */
     public function hasScalar(): bool
     {
-        return isset($this->types['scalar']);
+        return $this->has('scalar');
     }
 
     /**
@@ -851,7 +1030,7 @@ trait UnionTrait
      */
     public function hasNumeric(): bool
     {
-        return isset($this->types['numeric']);
+        return $this->has('numeric');
     }
 
     /**
@@ -859,20 +1038,20 @@ trait UnionTrait
      */
     public function hasScalarType(): bool
     {
-        return isset($this->types['int'])
-            || isset($this->types['float'])
-            || isset($this->types['string'])
-            || isset($this->types['class-string'])
-            || isset($this->types['trait-string'])
-            || isset($this->types['bool'])
-            || isset($this->types['false'])
-            || isset($this->types['true'])
-            || isset($this->types['numeric'])
-            || isset($this->types['numeric-string'])
-            || $this->literal_int_types
-            || $this->literal_float_types
-            || $this->literal_string_types
-            || $this->typed_class_strings;
+        return $this->has('int')
+            || $this->has('float')
+            || $this->has('string')
+            || $this->has('class-string')
+            || $this->has('trait-string')
+            || $this->has('bool')
+            || $this->has('false')
+            || $this->has('true')
+            || $this->has('numeric')
+            || $this->has('numeric-string')
+            || $this->countLiteralInts() > 0
+            || $this->countLiteralFloats() > 0
+            || $this->countLiteralStrings() > 0
+            || $this->hasTypedClassString();
     }
 
     /**
@@ -937,7 +1116,7 @@ trait UnionTrait
      */
     public function hasMixed(): bool
     {
-        return isset($this->types['mixed']);
+        return $this->has('mixed');
     }
 
     /**
@@ -945,7 +1124,8 @@ trait UnionTrait
      */
     public function isMixed(bool $check_templates = false): bool
     {
-        foreach ($this->types as $key => $t) {
+        foreach ($this->types as $t) {
+            $key = $t->getKey();
             if ($key === 'mixed' || $t instanceof TMixed) {
                 continue;
             }
@@ -965,8 +1145,7 @@ trait UnionTrait
      */
     public function isEmptyMixed(): bool
     {
-        return isset($this->types['mixed'])
-            && $this->types['mixed'] instanceof TEmptyMixed
+        return $this->find('mixed') instanceof TEmptyMixed
             && count($this->types) === 1;
     }
 
@@ -975,9 +1154,10 @@ trait UnionTrait
      */
     public function isVanillaMixed(): bool
     {
-        return isset($this->types['mixed'])
-            && $this->types['mixed']::class === TMixed::class
-            && !$this->types['mixed']->from_loop_isset
+        $mixed = $this->find('mixed');
+        return $mixed !== null
+            && $mixed::class === TMixed::class
+            && !$mixed->from_loop_isset
             && count($this->types) === 1;
     }
 
@@ -986,7 +1166,7 @@ trait UnionTrait
      */
     public function isArrayKey(): bool
     {
-        return isset($this->types['array-key']) && count($this->types) === 1;
+        return $this->has('array-key') && count($this->types) === 1;
     }
 
     /**
@@ -994,7 +1174,7 @@ trait UnionTrait
      */
     public function isNull(): bool
     {
-        return count($this->types) === 1 && isset($this->types['null']);
+        return count($this->types) === 1 && $this->has('null');
     }
 
     /**
@@ -1002,7 +1182,7 @@ trait UnionTrait
      */
     public function isFalse(): bool
     {
-        return count($this->types) === 1 && isset($this->types['false']);
+        return count($this->types) === 1 && $this->has('false');
     }
 
     /**
@@ -1024,7 +1204,7 @@ trait UnionTrait
      */
     public function isTrue(): bool
     {
-        return count($this->types) === 1 && isset($this->types['true']);
+        return count($this->types) === 1 && $this->has('true');
     }
 
     /**
@@ -1050,7 +1230,7 @@ trait UnionTrait
      */
     public function isVoid(): bool
     {
-        return isset($this->types['void']) && count($this->types) === 1;
+        return $this->has('void') && count($this->types) === 1;
     }
 
     /**
@@ -1058,7 +1238,7 @@ trait UnionTrait
      */
     public function isNever(): bool
     {
-        return isset($this->types['never']) && count($this->types) === 1;
+        return $this->has('never') && count($this->types) === 1;
     }
 
     /**
@@ -1078,9 +1258,9 @@ trait UnionTrait
     {
         $type_count = count($this->types);
 
-        $int_literal_count = count($this->literal_int_types);
-        $string_literal_count = count($this->literal_string_types);
-        $float_literal_count = count($this->literal_float_types);
+        $int_literal_count = $this->countLiteralInts();
+        $string_literal_count = $this->countLiteralStrings();
+        $float_literal_count = $this->countLiteralFloats();
 
         if (($int_literal_count && $string_literal_count)
             || ($int_literal_count && $float_literal_count)
@@ -1101,7 +1281,7 @@ trait UnionTrait
      */
     public function isSingleAndMaybeNullable(): bool
     {
-        $is_nullable = isset($this->types['null']);
+        $is_nullable = $this->has('null');
 
         $type_count = count($this->types);
 
@@ -1109,9 +1289,9 @@ trait UnionTrait
             return false;
         }
 
-        $int_literal_count = count($this->literal_int_types);
-        $string_literal_count = count($this->literal_string_types);
-        $float_literal_count = count($this->literal_float_types);
+        $int_literal_count = $this->countLiteralInts();
+        $string_literal_count = $this->countLiteralStrings();
+        $float_literal_count = $this->countLiteralFloats();
 
         if (($int_literal_count && $string_literal_count)
             || ($int_literal_count && $float_literal_count)
@@ -1156,7 +1336,7 @@ trait UnionTrait
             return false;
         }
 
-        return isset($this->types['float']) || $this->literal_float_types;
+        return $this->has('float') || $this->countLiteralFloats() > 0;
     }
 
     /**
@@ -1210,7 +1390,7 @@ trait UnionTrait
             return false;
         }
 
-        return isset($this->types['bool']);
+        return $this->has('bool');
     }
 
     /**
@@ -1223,7 +1403,7 @@ trait UnionTrait
             return false;
         }
 
-        return isset($this->types['array']);
+        return $this->has('array');
     }
 
     /**
@@ -1232,7 +1412,7 @@ trait UnionTrait
      */
     public function isSingleStringLiteral(): bool
     {
-        return count($this->types) === 1 && count($this->literal_string_types) === 1;
+        return count($this->types) === 1 && $this->countLiteralStrings() === 1;
     }
 
 
@@ -1259,11 +1439,11 @@ trait UnionTrait
      */
     public function getSingleStringLiteral(): TLiteralString
     {
-        if (count($this->types) !== 1 || count($this->literal_string_types) !== 1) {
+        if (count($this->types) !== 1 || $this->countLiteralStrings() !== 1) {
             throw new InvalidArgumentException('Not a string literal');
         }
 
-        return reset($this->literal_string_types);
+        return $this->firstLiteralString() ?? throw new UnexpectedValueException('No literal string');
     }
 
     /**
@@ -1361,11 +1541,11 @@ trait UnionTrait
      */
     public function hasLiteralValue(): bool
     {
-        return $this->literal_int_types
-            || $this->literal_string_types
-            || $this->literal_float_types
-            || isset($this->types['false'])
-            || isset($this->types['true']);
+        return $this->countLiteralInts() > 0
+            || $this->countLiteralStrings() > 0
+            || $this->countLiteralFloats() > 0
+            || $this->has('false')
+            || $this->has('true');
     }
 
     /**
@@ -1374,9 +1554,9 @@ trait UnionTrait
     public function isSingleLiteral(): bool
     {
         return count($this->types) === 1
-            && count($this->literal_int_types)
-                + count($this->literal_string_types)
-                + count($this->literal_float_types) === 1
+            && $this->countLiteralInts()
+                + $this->countLiteralStrings()
+                + $this->countLiteralFloats() === 1
         ;
     }
 
@@ -1390,11 +1570,10 @@ trait UnionTrait
             throw new InvalidArgumentException("Not a single literal");
         }
 
-        return ($literal = reset($this->literal_int_types)) !== false
-            ? $literal
-            : (($literal = reset($this->literal_string_types)) !== false
-                ? $literal
-                : reset($this->literal_float_types))
+        return $this->firstLiteralInt()
+            ?? $this->firstLiteralString()
+            ?? $this->firstLiteralFloat()
+            ?? throw new InvalidArgumentException("Not a single literal")
         ;
     }
 
@@ -1403,7 +1582,7 @@ trait UnionTrait
      */
     public function hasLiteralString(): bool
     {
-        return count($this->literal_string_types) > 0;
+        return $this->countLiteralStrings() > 0;
     }
 
     /**
@@ -1411,7 +1590,7 @@ trait UnionTrait
      */
     public function hasLiteralInt(): bool
     {
-        return count($this->literal_int_types) > 0;
+        return $this->countLiteralInts() > 0;
     }
 
     /**
@@ -1420,7 +1599,7 @@ trait UnionTrait
      */
     public function isSingleIntLiteral(): bool
     {
-        return count($this->types) === 1 && count($this->literal_int_types) === 1;
+        return count($this->types) === 1 && $this->countLiteralInts() === 1;
     }
 
     /**
@@ -1430,11 +1609,11 @@ trait UnionTrait
      */
     public function getSingleIntLiteral(): TLiteralInt
     {
-        if (count($this->types) !== 1 || count($this->literal_int_types) !== 1) {
+        if (count($this->types) !== 1 || $this->countLiteralInts() !== 1) {
             throw new InvalidArgumentException('Not an int literal');
         }
 
-        return reset($this->literal_int_types);
+        return $this->firstLiteralInt() ?? throw new UnexpectedValueException('No literal int');
     }
 
     /**
@@ -1601,14 +1780,12 @@ trait UnionTrait
             return false;
         }
 
-        $other_atomic_types = $other_type->types;
-
-        foreach ($this->types as $key => $atomic_type) {
-            if (!isset($other_atomic_types[$key])) {
-                return false;
-            }
-
-            if (!$atomic_type->equals($other_atomic_types[$key], $ensure_source_equality)) {
+        // one atomic per key on both sides (same count): each of ours must have its equal under the same key
+        foreach ($this->types as $atomic_type) {
+            $other_atomic_type = $other_type->find($atomic_type->getKey());
+            if ($other_atomic_type === null
+                || !$atomic_type->equals($other_atomic_type, $ensure_source_equality)
+            ) {
                 return false;
             }
         }
@@ -1622,7 +1799,7 @@ trait UnionTrait
      */
     public function getLiteralStrings(): array
     {
-        return $this->literal_string_types;
+        return $this->collectLiteralStrings();
     }
 
     /**
@@ -1631,7 +1808,7 @@ trait UnionTrait
      */
     public function getLiteralInts(): array
     {
-        return $this->literal_int_types;
+        return $this->collectLiteralInts();
     }
 
     /**
@@ -1656,7 +1833,7 @@ trait UnionTrait
      */
     public function getLiteralFloats(): array
     {
-        return $this->literal_float_types;
+        return $this->collectLiteralFloats();
     }
 
     /**
@@ -1665,7 +1842,7 @@ trait UnionTrait
      */
     public function isSingleFloatLiteral(): bool
     {
-        return count($this->types) === 1 && count($this->literal_float_types) === 1;
+        return count($this->types) === 1 && $this->countLiteralFloats() === 1;
     }
 
     /**
@@ -1675,11 +1852,11 @@ trait UnionTrait
      */
     public function getSingleFloatLiteral(): TLiteralFloat
     {
-        if (count($this->types) !== 1 || count($this->literal_float_types) !== 1) {
+        if (count($this->types) !== 1 || $this->countLiteralFloats() !== 1) {
             throw new InvalidArgumentException('Not a float literal');
         }
 
-        return reset($this->literal_float_types);
+        return $this->firstLiteralFloat() ?? throw new UnexpectedValueException('No literal float');
     }
 
     /**
@@ -1687,7 +1864,7 @@ trait UnionTrait
      */
     public function hasLiteralFloat(): bool
     {
-        return count($this->literal_float_types) > 0;
+        return $this->countLiteralFloats() > 0;
     }
 
     /**
@@ -1695,7 +1872,8 @@ trait UnionTrait
      */
     public function getSingleAtomic(): Atomic
     {
-        return reset($this->types);
+        /** @psalm-suppress PossiblyUndefinedIntArrayOffset never empty */
+        return $this->types[0];
     }
 
     /**
@@ -1705,9 +1883,8 @@ trait UnionTrait
     public function isEmptyArray(): bool
     {
         return count($this->types) === 1
-            && isset($this->types['array'])
-            && $this->types['array'] instanceof TArray
-            && $this->types['array']->isEmptyArray();
+            && ($array = $this->find('array')) instanceof TArray
+            && $array->isEmptyArray();
     }
 
     /**

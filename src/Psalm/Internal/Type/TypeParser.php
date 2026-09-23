@@ -676,7 +676,8 @@ final class TypeParser
                 }
             }
 
-            foreach ($generic_params[0]->getAtomicTypes() as $key => $atomic_type) {
+            foreach ($generic_params[0]->getAtomicTypes() as $atomic_type) {
+                $key = $atomic_type->getKey();
                 if ($atomic_type instanceof TLiteralString
                     && ($string_to_int = ArrayAnalyzer::getLiteralArrayKeyInt($atomic_type->value)) !== false
                 ) {

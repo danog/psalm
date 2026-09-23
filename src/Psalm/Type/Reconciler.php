@@ -1047,7 +1047,7 @@ class Reconciler
             $not = !$not;
         }
 
-        $existing_var_atomic_types = $existing_var_type->getAtomicTypes();
+        $existing_var_atomic_types = $existing_var_type->getAtomicTypesByKey();
 
         $from_docblock = $existing_var_type->from_docblock
             || (isset($existing_var_atomic_types[$assertion_string])

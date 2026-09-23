@@ -110,7 +110,7 @@ final class TKeyOf extends TArrayKey
 
             $key_types = array_merge(
                 $key_types,
-                array_values($array_key_atomics->getAtomicTypes()),
+                $array_key_atomics->getAtomicTypes(),
             );
         }
 

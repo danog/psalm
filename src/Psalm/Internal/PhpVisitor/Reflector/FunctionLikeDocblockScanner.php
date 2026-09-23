@@ -876,11 +876,12 @@ final class FunctionLikeDocblockScanner
                 continue;
             }
 
-            $storage_param_atomic_types = $storage_param->type->getAtomicTypes();
+            $storage_param_atomic_types = $storage_param->type->getAtomicTypesByKey();
 
             $all_typehint_types_match = true;
 
-            foreach ($new_param_type->getAtomicTypes() as $key => $type) {
+            foreach ($new_param_type->getAtomicTypes() as $type) {
+                $key = $type->getKey();
                 if (isset($storage_param_atomic_types[$key])) {
                     /** @psalm-suppress InaccessibleProperty We just created this type */
                     $type->from_docblock = false;
@@ -993,10 +994,10 @@ final class FunctionLikeDocblockScanner
 
             if ($storage->signature_return_type) {
                 $all_typehint_types_match = true;
-                $signature_return_atomic_types = $storage->signature_return_type->getAtomicTypes();
+                $signature_return_type = $storage->signature_return_type;
 
-                foreach ($storage->return_type->getAtomicTypes() as $key => $type) {
-                    if (isset($signature_return_atomic_types[$key])) {
+                foreach ($storage->return_type->getAtomicTypes() as $type) {
+                    if ($signature_return_type->has($type->getKey())) {
                         /** @psalm-suppress InaccessibleProperty We just created this atomic type */
                         $type->from_docblock = false;
                     } else {

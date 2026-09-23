@@ -904,7 +904,8 @@ final class ArgumentAnalyzer
             // we do this replacement early because later we don't have access to the
             // $statements_analyzer, which is necessary to understand string function names
             $input_type = $input_type->getBuilder();
-            foreach ($input_type->getAtomicTypes() as $key => $atomic_type) {
+            foreach ($input_type->getAtomicTypes() as $atomic_type) {
+                $key = $atomic_type->getKey();
                 $container_callable_type = $param_type->getSingleAtomic();
                 $container_callable_type = $container_callable_type instanceof TCallable
                     ? $container_callable_type
@@ -980,7 +981,7 @@ final class ArgumentAnalyzer
             $input_type,
             $param_type,
             true,
-            !isset($param_type->getAtomicTypes()['true']),
+            !$param_type->has('true'),
             $union_comparison_results,
         );
 

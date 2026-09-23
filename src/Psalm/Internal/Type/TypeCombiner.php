@@ -238,7 +238,7 @@ final class TypeCombiner
             $combination->extra_types = self::combine(
                 array_values($combination->extra_types),
                 $codebase,
-            )->getAtomicTypes();
+            )->getAtomicTypesByKey();
         }
 
         foreach ($combination->builtin_type_params as $generic_type => $generic_type_params) {

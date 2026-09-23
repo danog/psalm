@@ -52,7 +52,7 @@ final class IntegerRangeComparator
         TIntRange $input_type_part,
         Union $container_type,
     ): bool {
-        $container_atomic_types = $container_type->getAtomicTypes();
+        $container_atomic_types = $container_type->getAtomicTypesByKey();
         $reduced_range = new TIntRange(
             $input_type_part->min_bound,
             $input_type_part->max_bound,

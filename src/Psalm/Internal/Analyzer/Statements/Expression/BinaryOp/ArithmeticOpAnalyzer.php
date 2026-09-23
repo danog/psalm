@@ -435,7 +435,7 @@ final class ArithmeticOpAnalyzer
                 $right_type_part->as,
             );
 
-            $combined_atomic_types = array_values($combined_type->getAtomicTypes());
+            $combined_atomic_types = $combined_type->getAtomicTypes();
 
             if (count($combined_atomic_types) <= 2) {
                 $left_type_part = $combined_atomic_types[0];
