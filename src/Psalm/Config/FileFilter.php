@@ -11,6 +11,8 @@ use RecursiveIteratorIterator;
 use SimpleXMLElement;
 use Symfony\Component\Filesystem\Path;
 
+use function strlen;
+use function strncasecmp;
 use function array_filter;
 use function array_map;
 use function array_merge;
@@ -541,7 +543,8 @@ class FileFilter
                         return true;
                     }
                 } else {
-                    if (stripos($file_name, $include_dir) === 0) {
+                    // a prefix test, not a search of the whole path for the directory
+                    if (strncasecmp($file_name, $include_dir, strlen($include_dir)) === 0) {
                         return true;
                     }
                 }
@@ -567,7 +570,7 @@ class FileFilter
                     return false;
                 }
             } else {
-                if (stripos($file_name, $exclude_dir) === 0) {
+                if (strncasecmp($file_name, $exclude_dir, strlen($exclude_dir)) === 0) {
                     return false;
                 }
             }

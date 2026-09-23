@@ -5,6 +5,12 @@ declare(strict_types=1);
 namespace Psalm\Type;
 
 use Override;
+use Psalm\Type\Atomic\TClassStringMap;
+use Psalm\Type\Atomic\TObjectWithProperties;
+use Psalm\Type\Atomic\TIterable;
+use Psalm\Type\Atomic\TGenericObject;
+use Psalm\Type\Atomic\TArray;
+use Psalm\Type\Atomic\TKeyedArray;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\TypeVisitor\FromDocblockSetter;
 use Psalm\Storage\ImmutableNonCloneableTrait;
@@ -253,11 +259,25 @@ final class Union implements TypeNode
                         return false;
                     }
                 }
-                // the id last: it is built on demand, and for a fresh keyed array that is its whole shape
-                if ($theirs !== $atomic
-                    && ($theirs::class !== $atomic::class || $theirs->getId() !== $atomic->getId())
-                ) {
-                    return false;
+                if ($theirs !== $atomic) {
+                    if ($theirs::class !== $atomic::class) {
+                        return false;
+                    }
+                    // containers compare their shape structurally (pzoom's TAtomic equality); for a fresh keyed
+                    // array the id would be its whole shape spelled out. Other atomics are their memoized id.
+                    if ($atomic instanceof TKeyedArray
+                        || $atomic instanceof TArray
+                        || $atomic instanceof TGenericObject
+                        || $atomic instanceof TIterable
+                        || $atomic instanceof TObjectWithProperties
+                        || $atomic instanceof TClassStringMap
+                    ) {
+                        if (!$atomic->equals($theirs, true)) {
+                            return false;
+                        }
+                    } elseif ($theirs->getId() !== $atomic->getId()) {
+                        return false;
+                    }
                 }
             }
         }

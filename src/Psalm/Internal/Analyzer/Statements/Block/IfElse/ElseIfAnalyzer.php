@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Internal\Analyzer\Statements\Block\IfElse;
 
 use PhpParser;
+use Psalm\Internal\Analyzer\Statements\Expression\Fetch\VariableFetchAnalyzer;
 use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Context;
@@ -36,8 +37,6 @@ use function array_unique;
 use function array_values;
 use function count;
 use function in_array;
-use function preg_match;
-use function preg_quote;
 use function spl_object_id;
 
 /**
@@ -107,7 +106,7 @@ final class ElseIfAnalyzer
 
             foreach ($keys as $key) {
                 foreach ($mixed_var_ids as $mixed_var_id) {
-                    if (preg_match('/^' . preg_quote($mixed_var_id, '/') . '(\[|-)/', $key)) {
+                    if (VariableFetchAnalyzer::isSubVarId($key, $mixed_var_id)) {
                         $clause = new Clause([], $elseif_cond_id, $elseif_cond_id, true);
                         break 2;
                     }
@@ -124,7 +123,7 @@ final class ElseIfAnalyzer
         foreach ($if_conditional_scope->entry_clauses as $c) {
             foreach ($c->possibilities as $key => $_value) {
                 foreach ($assigned_in_conditional_var_ids as $conditional_assigned_var_id => $_) {
-                    if (preg_match('/^'.preg_quote($conditional_assigned_var_id, '/').'(\[|-|$)/', $key)) {
+                    if (VariableFetchAnalyzer::isSubVarIdOrSelf($key, $conditional_assigned_var_id)) {
                         $c =  new Clause([], $elseif_cond_id, $elseif_cond_id, true);
                         break 2;
                     }
@@ -248,7 +247,7 @@ final class ElseIfAnalyzer
 
                 foreach ($newly_reconciled_var_ids as $changed_var_id => $_) {
                     foreach ($elseif_context->vars_in_scope as $var_id => $_) {
-                        if (preg_match('/' . preg_quote($changed_var_id, '/') . '[\]\[\-]/', $var_id)
+                        if (VariableFetchAnalyzer::mentionsVarIdAsBase($var_id, $changed_var_id)
                             && !array_key_exists($var_id, $newly_reconciled_var_ids)
                             && !array_key_exists($var_id, $cond_referenced_var_ids)
                         ) {
