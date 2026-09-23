@@ -59,7 +59,7 @@ final class InArrayReturnTypeProvider implements FunctionReturnTypeProviderInter
             return $bool;
         }
 
-        $types = $haystack_type->getAtomicTypes();
+        $types = $haystack_type->getAtomicTypesByKey();
         /**
          * @var TKeyedArray|TArray|null
          */

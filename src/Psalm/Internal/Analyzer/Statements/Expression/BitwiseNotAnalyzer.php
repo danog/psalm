@@ -46,7 +46,8 @@ final class BitwiseNotAnalyzer
             $has_valid_operand = false;
 
             $stmt_expr_type = $stmt_expr_type->getBuilder();
-            foreach ($stmt_expr_type->getAtomicTypes() as $type_string => $type_part) {
+            foreach ($stmt_expr_type->getAtomicTypes() as $type_part) {
+                $type_string = $type_part->getKey();
                 if ($type_part instanceof TInt || $type_part instanceof TString) {
                     if ($type_part instanceof TLiteralInt) {
                         $type_part = new TLiteralInt(~$type_part->value);

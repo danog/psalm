@@ -148,7 +148,8 @@ final class ExpressionAnalyzer
         if (count($type->getAtomicTypes()) > 1) {
             $has_truthy_or_falsy_exclusive_type = false;
             $both_types = $type->getBuilder();
-            foreach ($both_types->getAtomicTypes() as $key => $atomic_type) {
+            foreach ($both_types->getAtomicTypes() as $atomic_type) {
+                $key = $atomic_type->getKey();
                 if ($atomic_type->isTruthy()
                     || $atomic_type->isFalsy()
                     || $atomic_type instanceof TBool) {

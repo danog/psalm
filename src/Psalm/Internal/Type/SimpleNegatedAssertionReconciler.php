@@ -429,7 +429,8 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         TCallable $assertion_type,
     ): Union {
         $existing_var_type = $existing_var_type->getBuilder();
-        foreach ($existing_var_type->getAtomicTypes() as $atomic_key => $type) {
+        foreach ($existing_var_type->getAtomicTypes() as $type) {
+            $atomic_key = $type->getKey();
             if ($type instanceof TLiteralString
                 && InternalCallMapHandler::inCallMap($type->value)
             ) {
@@ -558,7 +559,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
     ): Union {
         $existing_var_type = $existing_var_type->getBuilder();
         $old_var_type_string = $existing_var_type->getId();
-        $existing_var_atomic_types = $existing_var_type->getAtomicTypes();
+        $existing_var_atomic_types = $existing_var_type->getAtomicTypesByKey();
 
         if (isset($existing_var_atomic_types['array'])) {
             $array_atomic_type = $existing_var_type->getArray();
@@ -671,7 +672,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         int &$failed_reconciliation,
         bool $is_equality,
     ): Union {
-        $types = $existing_var_type->getAtomicTypes();
+        $types = $existing_var_type->getAtomicTypesByKey();
         $old_var_type_string = $existing_var_type->getId();
         $redundant = true;
 
@@ -746,7 +747,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         int &$failed_reconciliation,
         bool $is_equality,
     ): Union {
-        $types = $existing_var_type->getAtomicTypes();
+        $types = $existing_var_type->getAtomicTypesByKey();
         $old_var_type_string = $existing_var_type->getId();
         $redundant = true;
 
@@ -826,7 +827,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         int &$failed_reconciliation,
         bool $is_equality,
     ): Union {
-        $types = $existing_var_type->getAtomicTypes();
+        $types = $existing_var_type->getAtomicTypesByKey();
         $old_var_type_string = $existing_var_type->getId();
         $redundant = true;
 
@@ -913,7 +914,8 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         $redundant = !($existing_var_type->possibly_undefined
             || $existing_var_type->possibly_undefined_from_try);
 
-        foreach ($existing_var_type->getAtomicTypes() as $existing_var_type_key => $existing_var_type_part) {
+        foreach ($existing_var_type->getAtomicTypes() as $existing_var_type_part) {
+            $existing_var_type_key = $existing_var_type_part->getKey();
             //if any atomic in the union is either always truthy, we remove it. If not always falsy, we mark the check
             //as not redundant.
             if (!$existing_var_type->possibly_undefined
@@ -983,7 +985,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         }
 
         if ($existing_var_type->hasMixed()) {
-            $mixed_atomic_type = $existing_var_type->getAtomicTypes()['mixed'];
+            $mixed_atomic_type = $existing_var_type->find('mixed');
 
             if ($mixed_atomic_type::class === TMixed::class) {
                 $existing_var_type->removeType('mixed');
@@ -992,7 +994,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         }
 
         if ($existing_var_type->hasScalar()) {
-            $scalar_atomic_type = $existing_var_type->getAtomicTypes()['scalar'];
+            $scalar_atomic_type = $existing_var_type->find('scalar');
 
             if ($scalar_atomic_type::class === TScalar::class) {
                 $existing_var_type->removeType('scalar');
@@ -1001,7 +1003,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         }
 
         if ($existing_var_type->hasType('string')) {
-            $string_atomic_type = $existing_var_type->getAtomicTypes()['string'];
+            $string_atomic_type = $existing_var_type->find('string');
 
             if ($string_atomic_type::class === TString::class) {
                 $existing_var_type->removeType('string');
@@ -1045,7 +1047,8 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
             $existing_var_type->addType(new TEmptyNumeric());
         }
 
-        foreach ($existing_var_type->getAtomicTypes() as $type_key => $existing_var_atomic_type) {
+        foreach ($existing_var_type->getAtomicTypes() as $existing_var_atomic_type) {
+            $type_key = $existing_var_atomic_type->getKey();
             if ($existing_var_atomic_type instanceof TTemplateParam) {
                 if (!$existing_var_atomic_type->as->isMixed()) {
                     $template_did_fail = 0;
@@ -1766,7 +1769,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         int &$failed_reconciliation,
         bool $is_equality,
     ): Union {
-        $types = $existing_var_type->getAtomicTypes();
+        $types = $existing_var_type->getAtomicTypesByKey();
         $old_var_type_string = $existing_var_type->getId();
         $redundant = true;
 

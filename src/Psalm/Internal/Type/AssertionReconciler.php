@@ -1051,7 +1051,7 @@ final class AssertionReconciler extends Reconciler
     }
 
     /**
-     * @param array<string, Atomic> $existing_var_atomic_types
+     * @param array<array-key, Atomic> $existing_var_atomic_types
      * @param array<array-key, string>     $suppressed_issues
      */
     private static function handleLiteralEqualityWithInt(
@@ -1192,7 +1192,7 @@ final class AssertionReconciler extends Reconciler
     }
 
     /**
-     * @param array<string, Atomic> $existing_var_atomic_types
+     * @param array<array-key, Atomic> $existing_var_atomic_types
      * @param array<array-key, string>     $suppressed_issues
      */
     private static function handleLiteralEqualityWithString(
@@ -1335,7 +1335,7 @@ final class AssertionReconciler extends Reconciler
     }
 
     /**
-     * @param array<string, Atomic> $existing_var_atomic_types
+     * @param array<array-key, Atomic> $existing_var_atomic_types
      * @param array<array-key, string>     $suppressed_issues
      */
     private static function handleLiteralEqualityWithFloat(
@@ -1477,7 +1477,7 @@ final class AssertionReconciler extends Reconciler
     }
 
     /**
-     * @param array<string, Atomic> $existing_var_atomic_types
+     * @param array<array-key, Atomic> $existing_var_atomic_types
      * @psalm-pure
      */
     private static function getCompatibleIntType(
@@ -1506,7 +1506,7 @@ final class AssertionReconciler extends Reconciler
     }
 
     /**
-     * @param array<string, Atomic> $existing_var_atomic_types
+     * @param array<array-key, Atomic> $existing_var_atomic_types
      * @psalm-pure
      */
     private static function getCompatibleStringType(
@@ -1534,7 +1534,7 @@ final class AssertionReconciler extends Reconciler
     }
 
     /**
-     * @param array<string, Atomic> $existing_var_atomic_types
+     * @param array<array-key, Atomic> $existing_var_atomic_types
      * @psalm-pure
      */
     private static function getCompatibleFloatType(

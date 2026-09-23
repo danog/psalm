@@ -568,11 +568,11 @@ final class ArrayAnalyzer
                 $array_creation_info->can_create_objectlike = false;
                 $array_creation_info->item_key_atomic_types = array_merge(
                     $array_creation_info->item_key_atomic_types,
-                    array_values($key_type->getAtomicTypes()),
+                    $key_type->getAtomicTypes(),
                 );
                 $array_creation_info->item_value_atomic_types = array_merge(
                     $array_creation_info->item_value_atomic_types,
-                    array_values($item_value_type->getAtomicTypes()),
+                    $item_value_type->getAtomicTypes(),
                 );
             }
         } else {
@@ -584,7 +584,7 @@ final class ArrayAnalyzer
                 $array_creation_info->can_create_objectlike = false;
                 $array_creation_info->item_key_atomic_types = array_merge(
                     $array_creation_info->item_key_atomic_types,
-                    array_values($key_type->getAtomicTypes()),
+                    $key_type->getAtomicTypes(),
                 );
                 $array_creation_info->item_value_atomic_types[] = new TMixed();
             }

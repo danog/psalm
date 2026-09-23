@@ -95,7 +95,7 @@ final class TTemplateValueOf extends Atomic
             $template_result,
             $codebase,
         );
-        $mixed = $as->getAtomicTypes()['mixed'] ?? null;
+        $mixed = $as->find('mixed') ?? null;
         if ($mixed !== null) {
             return $mixed;
         }

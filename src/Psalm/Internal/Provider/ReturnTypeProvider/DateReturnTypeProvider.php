@@ -59,7 +59,7 @@ final class DateReturnTypeProvider implements FunctionReturnTypeProviderInterfac
 
         $type = $source->node_data->getType($call_args[1]->value);
         if ($type !== null && $type->isSingle()) {
-            $atomic_type = array_values($type->getAtomicTypes())[0];
+            $atomic_type = $type->getAtomicTypes()[0];
             if ($atomic_type instanceof Type\Atomic\TNumeric
                 || $atomic_type instanceof Type\Atomic\TInt
                 || $atomic_type instanceof TLiteralInt

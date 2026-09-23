@@ -94,7 +94,7 @@ final class NegatedAssertionReconciler extends Reconciler
             );
         }
 
-        $existing_var_atomic_types = $existing_var_type->getAtomicTypes();
+        $existing_var_atomic_types = $existing_var_type->getAtomicTypesByKey();
         $existing_var_type = $existing_var_type->getBuilder();
 
         $simple_negated_type = SimpleNegatedAssertionReconciler::reconcile(
@@ -164,7 +164,8 @@ final class NegatedAssertionReconciler extends Reconciler
         }
 
         if (!$is_equality && $assertion_type instanceof TNamedObject) {
-            foreach ($existing_var_type->getAtomicTypes() as $key => $type) {
+            foreach ($existing_var_type->getAtomicTypes() as $type) {
+                $key = $type->getKey();
                 if ($type instanceof TEnumCase && $type->value === $assertion_type->value) {
                     $existing_var_type->removeType($key);
                 }
@@ -189,7 +190,7 @@ final class NegatedAssertionReconciler extends Reconciler
                 ],
             ));
         } elseif ($assertion_type !== null && $assertion_type::class === TInt::class
-            && isset($existing_var_type->getAtomicTypes()['array-key'])
+            && $existing_var_type->has('array-key')
             && !$is_equality
         ) {
             $existing_var_type->removeType('array-key');
@@ -209,7 +210,7 @@ final class NegatedAssertionReconciler extends Reconciler
         } elseif ($existing_var_type->isSingle()
             && $existing_var_type->hasNamedObjectType()
             && $assertion_type instanceof TNamedObject
-            && isset($existing_var_type->getAtomicTypes()[$assertion_type->getKey()])
+            && $existing_var_type->has($assertion_type->getKey())
         ) {
             // checking if two types share a common parent is not enough to guarantee children are instanceof each other
             // fall through
@@ -219,7 +220,7 @@ final class NegatedAssertionReconciler extends Reconciler
         ) {
             //if both types are arrays, try to combine them
             $combined_type = TypeCombiner::combine(
-                array_merge(array_values($existing_var_type->getAtomicTypes()), [$assertion->getAtomicType()]),
+                array_merge($existing_var_type->getAtomicTypes(), [$assertion->getAtomicType()]),
                 $codebase,
             );
             $existing_var_type->removeType('array');
@@ -232,7 +233,8 @@ final class NegatedAssertionReconciler extends Reconciler
             // if there wasn't a direct hit, go deeper, eliminating subtypes
             if ($assertion_type && !$existing_var_type->removeType($assertion_type->getKey())) {
                 if ($assertion_type instanceof TNamedObject) {
-                    foreach ($existing_var_type->getAtomicTypes() as $part_name => $existing_var_type_part) {
+                    foreach ($existing_var_type->getAtomicTypes() as $existing_var_type_part) {
+                        $part_name = $existing_var_type_part->getKey();
                         if (!$existing_var_type_part->isObjectType()) {
                             continue;
                         }
@@ -348,7 +350,7 @@ final class NegatedAssertionReconciler extends Reconciler
         array $suppressed_issues,
     ): Union {
         $existing_var_type = $existing_var_type->getBuilder();
-        $existing_var_atomic_types = $existing_var_type->getAtomicTypes();
+        $existing_var_atomic_types = $existing_var_type->getAtomicTypesByKey();
 
         $redundant = true;
         $did_match_literal_type = false;
@@ -392,8 +394,8 @@ final class NegatedAssertionReconciler extends Reconciler
                     }
                 }
 
-                if (isset($existing_var_type->getAtomicTypes()['int'])
-                    && $existing_var_type->getAtomicTypes()['int']::class === Type\Atomic\TInt::class
+                if ($existing_var_type->has('int')
+                    && $existing_var_type->find('int')::class === Type\Atomic\TInt::class
                 ) {
                     $redundant = false;
                     //this may be used to generate a range containing any int except the one that was asserted against
@@ -435,7 +437,8 @@ final class NegatedAssertionReconciler extends Reconciler
             $fq_enum_name = $assertion_type->value;
             $case_name = $assertion_type->case_name;
 
-            foreach ($existing_var_type->getAtomicTypes() as $atomic_key => $atomic_type) {
+            foreach ($existing_var_type->getAtomicTypes() as $atomic_type) {
+                $atomic_key = $atomic_type->getKey();
                 if ($atomic_type::class === TNamedObject::class
                     && $atomic_type->value === $fq_enum_name
                 ) {

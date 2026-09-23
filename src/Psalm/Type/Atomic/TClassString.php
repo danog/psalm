@@ -231,7 +231,7 @@ class TClassString extends TString
             $depth,
         );
 
-        $as_type_types = array_values($as_type->getAtomicTypes());
+        $as_type_types = $as_type->getAtomicTypes();
 
         $as_type = count($as_type_types) === 1
             && $as_type_types[0] instanceof TNamedObject

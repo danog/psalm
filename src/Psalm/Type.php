@@ -687,8 +687,8 @@ abstract class Type
 
             $combined_type = TypeCombiner::combine(
                 array_merge(
-                    array_values($type_1->getAtomicTypes()),
-                    array_values($type_2->getAtomicTypes()),
+                    $type_1->getAtomicTypes(),
+                    $type_2->getAtomicTypes(),
                 ),
                 $codebase,
                 $overwrite_empty_array,

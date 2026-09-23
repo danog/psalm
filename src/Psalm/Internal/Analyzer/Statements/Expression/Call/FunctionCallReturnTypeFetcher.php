@@ -376,7 +376,7 @@ final class FunctionCallReturnTypeFetcher
                 case 'count':
                 case 'sizeof':
                     if (($first_arg_type = $statements_analyzer->node_data->getType($call_args[0]->value))) {
-                        $atomic_types = $first_arg_type->getAtomicTypes();
+                        $atomic_types = $first_arg_type->getAtomicTypesByKey();
 
                         if (count($atomic_types) === 1) {
                             if (isset($atomic_types['array'])) {

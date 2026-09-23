@@ -52,7 +52,7 @@ final class Union implements TypeNode
 
     /**
      * @psalm-readonly
-     * @var non-empty-array<string, Atomic>
+     * @var non-empty-list<Atomic>
      */
     private array $types;
 
@@ -139,25 +139,9 @@ final class Union implements TypeNode
      */
     public bool $from_template_default = false;
 
-    /**
-     * @var array<string, TLiteralString>
-     */
-    private array $literal_string_types = [];
 
-    /**
-     * @var array<string, TClassString>
-     */
-    private array $typed_class_strings = [];
 
-    /**
-     * @var array<string, TLiteralInt>
-     */
-    private array $literal_int_types = [];
 
-    /**
-     * @var array<string, TLiteralFloat>
-     */
-    private array $literal_float_types = [];
 
     /**
      * True if the type was passed or returned by reference, or if the type refers to an object's
@@ -210,10 +194,6 @@ final class Union implements TypeNode
         'explicit_never' => 'explicit_never',
         'had_template' => 'had_template',
         'from_template_default' => 'from_template_default',
-        "\0" . self::class . "\0" . 'literal_string_types' => 'literal_string_types',
-        "\0" . self::class . "\0" . 'typed_class_strings' => 'typed_class_strings',
-        "\0" . self::class . "\0" . 'literal_int_types' => 'literal_int_types',
-        "\0" . self::class . "\0" . 'literal_float_types' => 'literal_float_types',
         'by_ref' => 'by_ref',
         'reference_free' => 'reference_free',
         'allow_mutations' => 'allow_mutations',
@@ -260,9 +240,20 @@ final class Union implements TypeNode
             if (count($this->types) !== count($other->types)) {
                 return false;
             }
-            foreach ($this->types as $key => $atomic) {
-                $theirs = $other->types[$key] ?? null;
-                if ($theirs === null || ($theirs !== $atomic && $theirs->getId() !== $atomic->getId())) {
+            // lists built from the same atomics keep their order, so compare by position and only look
+            // the key up when the orders differ
+            foreach ($this->types as $i => $atomic) {
+                $theirs = $other->types[$i];
+                if ($theirs === $atomic) {
+                    continue;
+                }
+                if ($theirs->getKey() !== $atomic->getKey()) {
+                    $theirs = $other->find($atomic->getKey());
+                    if ($theirs === null) {
+                        return false;
+                    }
+                }
+                if ($theirs !== $atomic && $theirs->getId() !== $atomic->getId()) {
                     return false;
                 }
             }

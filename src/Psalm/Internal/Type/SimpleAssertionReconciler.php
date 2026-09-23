@@ -514,7 +514,7 @@ final class SimpleAssertionReconciler extends Reconciler
         if ($existing_var_type->isSingle()
             && $existing_var_type->hasTemplate()
         ) {
-            $types = $existing_var_type->getAtomicTypes();
+            $types = $existing_var_type->getAtomicTypesByKey();
             foreach ($types as $k => $atomic_type) {
                 if ($atomic_type instanceof TTemplateParam && $assertion_type) {
                     if ($atomic_type->as->hasMixed()
@@ -1922,7 +1922,7 @@ final class SimpleAssertionReconciler extends Reconciler
         HasArrayKey $assertion,
     ): Union {
         $assertion = $assertion->key;
-        $types = $existing_var_type->getAtomicTypes();
+        $types = $existing_var_type->getAtomicTypesByKey();
         foreach ($types as &$atomic_type) {
             if ($atomic_type instanceof TKeyedArray) {
                 assert(strpos($assertion, '::class') === (strlen($assertion)-7));
@@ -2699,7 +2699,7 @@ final class SimpleAssertionReconciler extends Reconciler
         int &$failed_reconciliation,
         bool $recursive_check,
     ): Union {
-        $types = $existing_var_type->getAtomicTypes();
+        $types = $existing_var_type->getAtomicTypesByKey();
         $old_var_type_string = $existing_var_type->getId();
 
         //empty is used a lot to check for array offset existence, so we have to silent errors a lot

@@ -731,7 +731,8 @@ final class AtomicStaticCallAnalyzer
                 ) {
                     $method_call_type = $method_call_type->getBuilder();
 
-                    foreach ($method_call_type->getAtomicTypes() as $name => $type) {
+                    foreach ($method_call_type->getAtomicTypes() as $type) {
+                        $name = $type->getKey();
                         if ($type instanceof TNamedObject && $type->is_static && $type->value === $fq_class_name) {
                             // Replace parent&static type to actual static type
                             $method_call_type->removeType($name);

@@ -666,7 +666,8 @@ final class MethodComparator
             );
 
             $builder = $guide_method_storage_param_type->getBuilder();
-            foreach ($builder->getAtomicTypes() as $k => $t) {
+            foreach ($builder->getAtomicTypes() as $t) {
+                $k = $t->getKey();
                 if ($t instanceof TTemplateParam) {
                     $builder->removeType($k);
 
@@ -677,7 +678,8 @@ final class MethodComparator
             }
 
             if ($builder->hasMixed()) {
-                foreach ($builder->getAtomicTypes() as $k => $_) {
+                foreach ($builder->getAtomicTypes() as $_) {
+                    $k = $_->getKey();
                     if ($k !== 'mixed') {
                         $builder->removeType($k);
                     }
@@ -844,7 +846,8 @@ final class MethodComparator
         }
 
         $builder = $implementer_method_storage_param_type->getBuilder();
-        foreach ($builder->getAtomicTypes() as $k => $t) {
+        foreach ($builder->getAtomicTypes() as $t) {
+            $k = $t->getKey();
             if ($t instanceof TTemplateParam
                 && str_starts_with($t->defining_class, 'fn-')
             ) {
@@ -858,7 +861,8 @@ final class MethodComparator
         $implementer_method_storage_param_type = $builder->freeze();
 
         $builder = $guide_method_storage_param_type->getBuilder();
-        foreach ($builder->getAtomicTypes() as $k => $t) {
+        foreach ($builder->getAtomicTypes() as $t) {
+            $k = $t->getKey();
             if ($t instanceof TTemplateParam
                 && str_starts_with($t->defining_class, 'fn-')
             ) {

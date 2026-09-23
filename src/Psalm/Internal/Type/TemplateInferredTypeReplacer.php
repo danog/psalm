@@ -62,7 +62,8 @@ final class TemplateInferredTypeReplacer
 
         $types = [];
 
-        foreach ($union->getAtomicTypes() as $key => $atomic_type) {
+        foreach ($union->getAtomicTypes() as $atomic_type) {
+            $key = $atomic_type->getKey();
             $should_set = true;
             $atomic_type = $atomic_type->replaceTemplateTypesWithArgTypes($template_result, $codebase);
 
@@ -466,7 +467,7 @@ final class TemplateInferredTypeReplacer
             $matching_if_types = [];
             $matching_else_types = [];
 
-            $l = $template_type->getAtomicTypes();
+            $l = $template_type->getAtomicTypesByKey();
             foreach (isset($l['mixed']) ? [$l['mixed']] : $l as $candidate_atomic_type) {
                 $candidate = new Union([$candidate_atomic_type]);
                 if (UnionTypeComparator::isContainedBy(

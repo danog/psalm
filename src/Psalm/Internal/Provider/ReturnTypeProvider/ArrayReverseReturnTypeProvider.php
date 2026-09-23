@@ -86,7 +86,7 @@ final class ArrayReverseReturnTypeProvider implements FunctionReturnTypeProvider
                     for (; $j < $i; ++$j) {
                         $reversed_array_items[$j] = TypeCombiner::combine([
                             ...array_values($reversed_array_items[$j]->getAtomicTypes()),
-                            ...array_values($array_item_type->getAtomicTypes()),
+                            ...$array_item_type->getAtomicTypes(),
                         ]);
                     }
                     if ($array_item_type->possibly_undefined) {

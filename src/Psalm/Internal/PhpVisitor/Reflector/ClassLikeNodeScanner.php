@@ -908,7 +908,7 @@ final class ClassLikeNodeScanner
                     true,
                 );
 
-                $converted_aliases[$key] = new ClassTypeAlias(array_values($union->getAtomicTypes()));
+                $converted_aliases[$key] = new ClassTypeAlias($union->getAtomicTypes());
             } catch (TypeParseTreeException $e) {
                 $classlike_storage->docblock_issues[] = new InvalidDocblock(
                     '@psalm-type ' . $key . ' contains invalid reference: ' . $e->getMessage(),
@@ -1777,10 +1777,10 @@ final class ClassLikeNodeScanner
 
                 if ($property_storage->signature_type) {
                     $all_typehint_types_match = true;
-                    $signature_atomic_types = $property_storage->signature_type->getAtomicTypes();
+                    $signature_type = $property_storage->signature_type;
 
-                    foreach ($property_storage->type->getAtomicTypes() as $key => $type) {
-                        if (isset($signature_atomic_types[$key])) {
+                    foreach ($property_storage->type->getAtomicTypes() as $type) {
+                        if ($signature_type->has($type->getKey())) {
                             /** @psalm-suppress InaccessibleProperty We just created this type */
                             $type->from_docblock = false;
                         } else {

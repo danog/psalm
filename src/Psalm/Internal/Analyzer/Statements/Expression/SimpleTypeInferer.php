@@ -674,7 +674,7 @@ final class SimpleTypeInferer
 
                 $array_creation_info->item_key_atomic_types = array_merge(
                     $array_creation_info->item_key_atomic_types,
-                    array_values($key_type->getAtomicTypes()),
+                    $key_type->getAtomicTypes(),
                 );
 
                 if ($key_type->isSingleStringLiteral()) {
@@ -767,7 +767,7 @@ final class SimpleTypeInferer
 
         $array_creation_info->item_value_atomic_types = array_merge(
             $array_creation_info->item_value_atomic_types,
-            array_values($single_item_value_type->getAtomicTypes()),
+            $single_item_value_type->getAtomicTypes(),
         );
 
         return true;
@@ -793,7 +793,7 @@ final class SimpleTypeInferer
 
                     $array_creation_info->item_value_atomic_types = array_merge(
                         $array_creation_info->item_value_atomic_types,
-                        array_values($property_value->getAtomicTypes()),
+                        $property_value->getAtomicTypes(),
                     );
 
                     $array_creation_info->array_keys[$new_offset] = true;

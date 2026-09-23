@@ -220,7 +220,7 @@ final class TypeExpander
             );
 
             if ($expand_templates) {
-                return array_values($new_as_type->getAtomicTypes());
+                return $new_as_type->getAtomicTypes();
             }
 
             $return_type = $return_type->replaceAs($new_as_type);
@@ -256,7 +256,7 @@ final class TypeExpander
                 }
 
                 if ($class_constant) {
-                    return array_values($class_constant->getAtomicTypes());
+                    return $class_constant->getAtomicTypes();
                 }
             }
 
@@ -825,7 +825,7 @@ final class TypeExpander
 
 
                 if ($if_conditional_return_type) {
-                    $if_conditional_return_types = array_values($if_conditional_return_type->getAtomicTypes());
+                    $if_conditional_return_types = $if_conditional_return_type->getAtomicTypes();
                 }
             }
 
@@ -842,7 +842,7 @@ final class TypeExpander
                 );
 
                 if ($else_conditional_return_type) {
-                    $else_conditional_return_types = array_values($else_conditional_return_type->getAtomicTypes());
+                    $else_conditional_return_types = $else_conditional_return_type->getAtomicTypes();
                 }
             }
 
@@ -878,7 +878,7 @@ final class TypeExpander
 
                 $return_type = $return_type->setTypes($new_as_type);
 
-                return array_values($combined->getAtomicTypes());
+                return $combined->getAtomicTypes();
             }
         }
 
@@ -1090,7 +1090,7 @@ final class TypeExpander
 
             $type_atomics = array_merge(
                 $type_atomics,
-                array_values($constant_type->getAtomicTypes()),
+                $constant_type->getAtomicTypes(),
             );
         }
         if ($type_atomics === []) {
@@ -1107,6 +1107,6 @@ final class TypeExpander
             return [$return_type];
         }
 
-        return array_values($new_return_types->getAtomicTypes());
+        return $new_return_types->getAtomicTypes();
     }
 }

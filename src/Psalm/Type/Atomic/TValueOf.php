@@ -200,7 +200,7 @@ final class TValueOf extends Atomic
                 continue;
             }
 
-            $value_types = [...$value_types, ...array_values($value_atomics->getAtomicTypes())];
+            $value_types = [...$value_types, ...$value_atomics->getAtomicTypes()];
         }
 
         if ($value_types === []) {

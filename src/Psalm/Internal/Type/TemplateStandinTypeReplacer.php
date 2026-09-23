@@ -116,7 +116,7 @@ final class TemplateStandinTypeReplacer
     ): Union {
         $atomic_types = [];
 
-        $original_atomic_types = $union_type->getAtomicTypes();
+        $original_atomic_types = $union_type->getAtomicTypesByKey();
 
         // here we want to subtract atomic types from the input type
         // when they're also in the union type, so those shared atomic
@@ -244,7 +244,7 @@ final class TemplateStandinTypeReplacer
                 $codebase,
             );
 
-            return array_values($most_specific_type->getAtomicTypes());
+            return $most_specific_type->getAtomicTypes();
         }
 
         if ($atomic_type instanceof TTemplateParamClass
@@ -473,7 +473,8 @@ final class TemplateStandinTypeReplacer
     ): array {
         $matching_atomic_types = [];
 
-        foreach ($input_type->getAtomicTypes() as $input_key => $atomic_input_type) {
+        foreach ($input_type->getAtomicTypes() as $atomic_input_type) {
+            $input_key = $atomic_input_type->getKey();
             if ($bracket_pos = strpos($input_key, '<')) {
                 $input_key = substr($input_key, 0, $bracket_pos);
             }
@@ -662,7 +663,7 @@ final class TemplateStandinTypeReplacer
             [$atomic_type->defining_class];
 
         if ($template_type->getId() === $key) {
-            return array_values($template_type->getAtomicTypes());
+            return $template_type->getAtomicTypes();
         }
 
         $replacement_type = $template_type;
@@ -847,7 +848,7 @@ final class TemplateStandinTypeReplacer
                 $generic_param = $input_type->getBuilder();
 
                 if ($matching_input_keys) {
-                    $generic_param_keys = array_keys($generic_param->getAtomicTypes());
+                    $generic_param_keys = array_keys($generic_param->getAtomicTypesByKey());
 
                     foreach ($generic_param_keys as $atomic_key) {
                         if (!isset($matching_input_keys[$atomic_key])) {
@@ -856,7 +857,7 @@ final class TemplateStandinTypeReplacer
                     }
                 }
                 if ($add_lower_bound) {
-                    return array_values($generic_param->getAtomicTypes());
+                    return $generic_param->getAtomicTypes();
                 }
 
                 $generic_param->possibly_undefined = false;
@@ -961,7 +962,7 @@ final class TemplateStandinTypeReplacer
                 $generic_param = $input_type->getBuilder();
 
                 if ($matching_input_keys) {
-                    $generic_param_keys = array_keys($generic_param->getAtomicTypes());
+                    $generic_param_keys = array_keys($generic_param->getAtomicTypesByKey());
 
                     foreach ($generic_param_keys as $atomic_key) {
                         if (!isset($matching_input_keys[$atomic_key])) {
@@ -1188,7 +1189,7 @@ final class TemplateStandinTypeReplacer
                 $codebase,
             );
 
-            $mapped_type_atomic_types = array_values($mapped_type->getAtomicTypes());
+            $mapped_type_atomic_types = $mapped_type->getAtomicTypes();
 
             if (count($mapped_type_atomic_types) > 1
                 || !$mapped_type_atomic_types[0] instanceof TTemplateParam

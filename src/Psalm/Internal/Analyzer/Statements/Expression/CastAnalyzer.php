@@ -859,7 +859,7 @@ final class CastAnalyzer
                                 $parent_nodes = array_merge($return_type->parent_nodes, $parent_nodes);
                             }
 
-                            $castable_types = [...$castable_types, ...array_values($return_type->getAtomicTypes())];
+                            $castable_types = [...$castable_types, ...$return_type->getAtomicTypes()];
 
                             continue 2;
                         }
