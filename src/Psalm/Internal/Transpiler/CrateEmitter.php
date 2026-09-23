@@ -529,6 +529,37 @@ final class CrateEmitter
         foreach ($this->program->functions as $f) {
             yield $f;
         }
+        // the analysis objects the model points into (storages, records, AST nodes) are the parent's too
+        foreach ($this->program->classes as $c) {
+            yield $c->storage;
+            foreach ($c->storage->methods as $ms) {
+                yield $ms;
+            }
+            foreach ($c->storage->properties as $ps) {
+                yield $ps;
+            }
+            if ($c->node !== null) {
+                yield $c->node;
+            }
+            foreach ($c->methods as $m) {
+                yield $m->storage;
+                if ($m->node !== null) {
+                    yield $m->node;
+                }
+            }
+        }
+        foreach ($this->program->functions as $f) {
+            yield $f->record;
+            yield $f->record->storage;
+            yield $f->record->node;
+        }
+        foreach ($this->program->classes as $c) {
+            foreach ($c->methods as $m) {
+                if ($m->record !== null) {
+                    yield $m->record;
+                }
+            }
+        }
     }
 
     private function module(int $crate, string $path): Writer

@@ -155,7 +155,11 @@ final class Parallel
         foreach ($this->accumulators as $i => [$obj, $prop]) {
             $d = self::delta($this->before[$i], self::read($obj, $prop));
             if ($d !== null) {
-                $acc[$i] = $this->encode($d);
+                try {
+                    $acc[$i] = $this->encode($d);
+                } catch (RuntimeException $e) {
+                    throw new RuntimeException($e->getMessage() . ' (in ' . $obj::class . '::$' . $prop . ')', 0, $e);
+                }
             }
         }
         return serialize([$acc, $this->encode(($this->collect_extra)())]);
