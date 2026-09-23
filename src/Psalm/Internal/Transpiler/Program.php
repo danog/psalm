@@ -1996,11 +1996,25 @@ final class Program
                 $kind = $this->borrowUseKind($v, $t, $ctx);
                 if ($kind === self::USE_UNSAFE || ($kind === self::USE_ESCAPE && count($uses) < 2)) {
                     $ok = false;
+                    if (getenv('BORROW_DIAG')) {
+                        $parent = $v->getAttribute('parent');
+                        $why = ($kind === self::USE_UNSAFE ? 'unsafe' : 'escape1') . ' ' . ($parent instanceof \PhpParser\Node ? $parent->getType() : 'none');
+                        if ($parent instanceof \PhpParser\Node\Arg) {
+                            $call = $parent->getAttribute('parent');
+                            $why .= '/' . ($call instanceof \PhpParser\Node ? $call->getType() : '?');
+                            if ($call instanceof \PhpParser\Node\Expr\MethodCall) {
+                                $why .= ':' . ($call->var instanceof \PhpParser\Node\Expr\Variable && is_string($call->var->name) ? '$' . $call->var->name : $call->var->getType());
+                            }
+                        }
+                        fwrite(STDERR, "[borrow-diag] " . $t->toRust() . " " . $why . "\n");
+                    }
                     break;
                 }
             }
             if ($ok) {
                 $borrow[$i] = true;
+            } elseif (getenv('BORROW_DIAG') && $uses === []) {
+                fwrite(STDERR, "[borrow-diag] " . $t->toRust() . " unused\n");
             }
         }
         return $borrow;
@@ -2052,6 +2066,9 @@ final class Program
         ) {
             return $this->isWrittenThrough($parent, $ctx) ? self::USE_UNSAFE : self::USE_READ;
         }
+        if ($parent instanceof \PhpParser\Node\Expr\ArrayDimFetch && $parent->dim === $v) {
+            return self::USE_READ; // the key of an element access
+        }
         if ($parent instanceof \PhpParser\Node\Expr\Isset_ || $parent instanceof \PhpParser\Node\Expr\Empty_
             || $parent instanceof \PhpParser\Node\Expr\BooleanNot || $parent instanceof \PhpParser\Node\Expr\Cast
             || $parent instanceof \PhpParser\Node\Expr\Clone_ || $parent instanceof \PhpParser\Node\Expr\Print_
@@ -2062,7 +2079,7 @@ final class Program
             return self::USE_READ;
         }
         if ($parent instanceof \PhpParser\Node\Expr\Instanceof_) {
-            return self::USE_UNSAFE; // the narrowing cast that follows needs an owned value
+            return self::USE_READ; // the narrowing cast that follows clones out of the borrow
         }
         if ($parent instanceof \PhpParser\Node\Stmt\Foreach_) {
             return $parent->expr === $v ? self::USE_READ : self::USE_UNSAFE;

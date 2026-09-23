@@ -571,7 +571,10 @@ final class BodyEmitter
             $rn = Names::var($name);
             if (isset($params[$name])) {
                 if (isset($this->rebound[$name])) {
-                    $this->w->line('let mut ' . $rn . ': ' . $type->toRust() . ' = ' . $this->casts->convert($rn, $this->rebound[$name], $type) . ';');
+                    // a borrowed parameter rebinds to an owned narrowed local: the value is cloned out of the borrow
+                    $src = !empty($this->borrow[$name]) ? '(*' . $rn . ').clone()' : $rn;
+                    $this->w->line('let mut ' . $rn . ': ' . $type->toRust() . ' = ' . $this->casts->convert($src, $this->rebound[$name], $type) . ';');
+                    $this->borrow[$name] = false;
                     continue;
                 }
                 // parameters captured/bound by reference are re-wrapped
