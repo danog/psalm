@@ -81,7 +81,7 @@ final class ClassEmitter
         if ($concrete) {
             $w->open('impl ' . $own . ' {');
             foreach ($cls->fields as $f) {
-                $this->emitAccessors($f, $w, $cls->immutable(), $this->cellKind($cls, $f), $cls->valueType());
+                $this->emitAccessors($f, $w, $cls->immutable(), $this->cellKind($cls, $f), $cls->valueType(), $cls->writtenAfterConstruction($f->name));
             }
             $this->emitConstructor($cls, $w);
             foreach ($cls->methods as $m) {
@@ -149,8 +149,10 @@ final class ClassEmitter
         return $cls->cellKind($f);
     }
 
-    private function emitAccessors(FieldModel $f, Writer $w, bool $immut = false, string $cell = '', bool $value = false): void
+    private function emitAccessors(FieldModel $f, Writer $w, bool $immut = false, string $cell = '', bool $value = false, bool $written_after_ctor = true): void
     {
+        // census: reads of never-written fields could be plain borrows instead of clones
+        $bump = 'php_rt::stats::bump(php_rt::stats::' . ($written_after_ctor ? 'PROP_GET_CLONE' : 'PROP_GET_CLONE_IMMUT') . ');';
         $fld = $f->rustName();
         $rn = $f->acc();
         $t = $f->type->toRust();
@@ -166,16 +168,16 @@ final class ClassEmitter
             if ($f->isLate()) {
                 // memoized deferred-init field: RefCell<Late<T>>. Borrow through &self, then through Late.
                 $w->line('#[inline] pub fn ' . $rn . '(&self) -> Ref<\'_, ' . $t . '> { Ref::map(self.0.' . $fld . '.borrow(), |__l| __l.get()) }');
-                $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { php_rt::stats::bump(php_rt::stats::PROP_GET_CLONE); self.0.' . $fld . '.borrow().get().clone() }');
-                $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { php_rt::stats::bump(php_rt::stats::PROP_GET_CLONE); self.0.' . $fld . '.borrow().as_option().cloned() }');
+                $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { ' . $bump . ' self.0.' . $fld . '.borrow().get().clone() }');
+                $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { ' . $bump . ' self.0.' . $fld . '.borrow().as_option().cloned() }');
                 $w->line('#[inline] pub fn ' . $rn . '_mut(&self) -> RefMut<\'_, ' . $t . '> { RefMut::map(self.0.' . $fld . '.borrow_mut(), |__l| __l.' . ($f->type->hasDefault() ? 'get_or_default_mut()' : 'get_mut()') . ') }');
                 $w->line('#[inline] pub fn set_' . $rn . '(&self, v: ' . $t . ') { self.0.' . $fld . '.borrow_mut().set(v); }');
                 return;
             }
             // non-Copy field with per-field interior mutability (e.g. memoized Option<Str>): borrow through &self.
             $w->line('#[inline] pub fn ' . $rn . '(&self) -> Ref<\'_, ' . $t . '> { self.0.' . $fld . '.borrow() }');
-            $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { php_rt::stats::bump(php_rt::stats::PROP_GET_CLONE); self.0.' . $fld . '.borrow().clone() }');
-            $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { php_rt::stats::bump(php_rt::stats::PROP_GET_CLONE); Some(self.0.' . $fld . '.borrow().clone()) }');
+            $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { ' . $bump . ' self.0.' . $fld . '.borrow().clone() }');
+            $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { ' . $bump . ' Some(self.0.' . $fld . '.borrow().clone()) }');
             $w->line('#[inline] pub fn ' . $rn . '_mut(&self) -> RefMut<\'_, ' . $t . '> { self.0.' . $fld . '.borrow_mut() }');
             $w->line('#[inline] pub fn set_' . $rn . '(&self, v: ' . $t . ') { *self.0.' . $fld . '.borrow_mut() = v; }');
             return;
@@ -186,8 +188,8 @@ final class ClassEmitter
             $mut_obj = $value ? 'self.0' : 'Rc::make_mut(&mut self.0)';
             if ($f->isLate()) {
                 $w->line('#[inline] pub fn ' . $rn . '(&self) -> &' . $t . ' { self.0.' . $fld . '.get() }');
-                $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { php_rt::stats::bump(php_rt::stats::PROP_GET_CLONE); self.0.' . $fld . '.get().clone() }');
-                $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { php_rt::stats::bump(php_rt::stats::PROP_GET_CLONE); self.0.' . $fld . '.as_option().cloned() }');
+                $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { ' . $bump . ' self.0.' . $fld . '.get().clone() }');
+                $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { ' . $bump . ' self.0.' . $fld . '.as_option().cloned() }');
                 $w->line('#[inline] pub fn ' . $rn . '_mut(&mut self) -> &mut ' . $t . ' { ' . $mut_obj . '.' . $fld . ($f->type->hasDefault() ? '.get_or_default_mut()' : '.get_mut()') . ' }');
                 $w->line('#[inline] pub fn set_' . $rn . '(&mut self, v: ' . $t . ') { ' . $mut_obj . '.' . $fld . '.set(v); }');
             } else {

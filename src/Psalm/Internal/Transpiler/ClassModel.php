@@ -387,6 +387,24 @@ final class ClassModel
      * WITHOUT consulting immutable() (which depends on this), so it is safe to use in the immutable() decision.
      * @return array<string, true>
      */
+    /**
+     * Whether `$field` is ever assigned after construction: by this class's own methods, externally by other
+     * code, or by any subclass (which shares the accessor through the hierarchy). A field that is never
+     * written after construction can be read through a plain borrow: no guard, no clone.
+     */
+    public function writtenAfterConstruction(string $field): bool
+    {
+        if (isset($this->postConstructionWrittenFields()[$field]) || isset($this->ext_written_fields[$field])) {
+            return true;
+        }
+        foreach ($this->children as $child) {
+            if ($child->writtenAfterConstruction($field)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private function postConstructionWrittenFields(): array
     {
         if ($this->post_ctor_written !== null) {
