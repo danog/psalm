@@ -1921,6 +1921,7 @@ function run_all(): string
         . check('memo_immutable', case_memo_immutable(), 'v7:v7:1|v7:1|n:1')
         . check('memo_trait_immutable', case_memo_trait_immutable(), 'k3:k3:1')
         . check('variant_field_read', case_variant_field_read(), '7|x|-')
+        . check('nested_receiver_narrowing', case_nested_receiver_narrowing(), '7:x')
         . check('data_file', case_data_file(), 'a1x-,b2y3.5|a,b')
         . check('elseif_assign', case_elseif_assign(), 'none,a5,skip|1')
         . check('json_encode', case_json_encode(), '{"a":1,"b":[1,2,3],"c":null,"d":true,"e":1.5,"f":"x\\"y"}|[{"x":1,"label":null},{"x":2,"label":"p"}]|{"a":1,"b":"two","c":[3,4]}|{"3":"a","5":"b"}|[]|' . "{\n    \"k\": [\n        1,\n        \"z\"\n    ]\n}")
@@ -2125,6 +2126,66 @@ final class VfNone extends VfBase
 function vf_values(): array
 {
     return [new VfMidChild(7), new VfOther('x'), new VfNone()];
+}
+
+final class VfHolder
+{
+    /** @param list<VfBase> $items */
+    public function __construct(public array $items)
+    {
+    }
+
+    /** @return list<VfBase> */
+    public function items(): array
+    {
+        return $this->items;
+    }
+}
+
+abstract class VfBox
+{
+}
+
+final class VfBoxA extends VfBox
+{
+    public function __construct(public VfHolder $holder)
+    {
+    }
+
+    public function holder(): VfHolder
+    {
+        return $this->holder;
+    }
+}
+
+final class VfBoxB extends VfBox
+{
+}
+
+/** @return list<VfBox> */
+function vf_boxes(): array
+{
+    return [new VfBoxA(new VfHolder(vf_values())), new VfBoxB()];
+}
+
+function case_nested_receiver_narrowing(): string
+{
+    $out = [];
+    foreach (vf_boxes() as $box) {
+        if ($box instanceof VfBoxA) {
+            // the property fetch's receiver is a method call on a narrowed receiver: only the outer
+            // receiver may stay un-narrowed, the inner one must still resolve holder() on VfBoxA
+            $first = $box->holder()->items()[0];
+            if ($first instanceof VfMid) {
+                $out[] = (string) $first->name;
+            }
+            $second = $box->holder->items[1];
+            if ($second instanceof VfOther) {
+                $out[] = $second->name;
+            }
+        }
+    }
+    return implode(':', $out);
 }
 
 function case_variant_field_read(): string
