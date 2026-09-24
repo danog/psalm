@@ -325,15 +325,6 @@ final class Union implements TypeNode
     }
 
     /**
-     * The type has been checked (TypeChecker): a memo that affects nothing else.
-     */
-    public function markChecked(): void
-    {
-        /** @psalm-suppress InaccessibleProperty, ImpurePropertyAssignment Does not affect anything else */
-        $this->checked = true;
-    }
-
-    /**
      * @param TProperties $properties
      * @return static
      * @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty We just cloned this object

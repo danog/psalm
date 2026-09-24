@@ -1783,14 +1783,18 @@ final class ClassLikeNodeScanner
                     $all_typehint_types_match = true;
                     $signature_type = $property_storage->signature_type;
 
-                    foreach ($property_storage->type->getAtomicTypes() as $type) {
+                    // the atomics the signature also declares are not docblock-only: rebuilt through the wither
+                    // (a type is a value, never written in place)
+                    $types = [];
+                    foreach ($property_storage->type->getAtomicTypes() as $key => $type) {
                         if ($signature_type->has($type->getKey())) {
-                            /** @psalm-suppress InaccessibleProperty We just created this type */
-                            $type->from_docblock = false;
+                            $types[$key] = $type->setFromDocblock(false);
                         } else {
                             $all_typehint_types_match = false;
+                            $types[$key] = $type;
                         }
                     }
+                    $property_storage->type = $property_storage->type->setTypes($types);
 
                     if ($all_typehint_types_match) {
                         $property_storage->type = $property_storage->type->setProperties(['from_docblock' => false]);

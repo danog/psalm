@@ -1640,10 +1640,6 @@ trait UnionTrait
         bool $prevent_template_covariance = false,
         ?Context $context = null,
     ): bool {
-        if ($this->checked) {
-            return true;
-        }
-
         $checker = new TypeChecker(
             $source,
             $code_location,
@@ -1656,9 +1652,6 @@ trait UnionTrait
         );
 
         $checker->traverseArray($this->types);
-
-        /** @psalm-suppress InaccessibleProperty, ImpurePropertyAssignment Does not affect anything else */
-        $this->checked = true;
 
         return !$checker->hasErrors();
     }
