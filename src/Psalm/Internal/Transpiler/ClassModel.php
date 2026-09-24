@@ -271,8 +271,15 @@ final class ClassModel
             return $this->construction_methods;
         }
         $reachable = [];
+        // __unserialize / __wakeup run on the freshly created object of an unserialization (nothing else holds
+        // it yet), so their writes are construction too
+        foreach (['__unserialize', '__wakeup'] as $hook) {
+            if (isset($this->methods[$hook])) {
+                $reachable[$hook] = true;
+            }
+        }
         if (isset($this->methods['__construct'])) {
-            $reachable = ['__construct' => true];
+            $reachable['__construct'] = true;
             $queue = ['__construct'];
             $finder = new \PhpParser\NodeFinder();
             while ($queue !== []) {
@@ -650,6 +657,37 @@ final class ClassModel
         ) {
             return true;
         }
+        // Memoizing standalone leaves (Type\Union: id/exact_id/checked): the memo fields become per-field
+        // Cell/RefCell through interiorMutFields(), every other field is a plain `&T` read.
+        if ($this->parent === null
+            && !$this->externally_written
+            && $this->noHelperConstructionWrites()
+            && $this->memoOnlyPostConstructionWrites()
+        ) {
+            return true;
+        }
         return false;
+    }
+
+    /**
+     * Every post-construction `$this->field =` write of this class is a memo: the field is nullable (a lazily
+     * computed value) or a bool flag, never a field the object's identity or contents live in.
+     */
+    private function memoOnlyPostConstructionWrites(): bool
+    {
+        $written = $this->postConstructionWrittenFields();
+        if ($written === []) {
+            return false;
+        }
+        foreach ($written as $name => $_) {
+            $f = $this->fields[$name] ?? null;
+            if ($f === null) {
+                return false;
+            }
+            if (!$f->type->isCopy() && !$f->type->isOption()) {
+                return false;
+            }
+        }
+        return true;
     }
 }

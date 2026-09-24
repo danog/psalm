@@ -1918,6 +1918,7 @@ function run_all(): string
         . check('object_eq', case_object_eq(), 'eq,ne,ne,notsame,eq,eq,ne')
         . check('defined_constants', case_defined_constants(), 'max9223372036854775807,eall,eol,pi')
         . check('defined_fold', case_defined_fold(), 'rt=1,cls=1,nocls=0,unknown=0,dyn=1')
+        . check('memo_immutable', case_memo_immutable(), 'v7:v7:1|v7:1|n:1')
         . check('data_file', case_data_file(), 'a1x-,b2y3.5|a,b')
         . check('elseif_assign', case_elseif_assign(), 'none,a5,skip|1')
         . check('json_encode', case_json_encode(), '{"a":1,"b":[1,2,3],"c":null,"d":true,"e":1.5,"f":"x\\"y"}|[{"x":1,"label":null},{"x":2,"label":"p"}]|{"a":1,"b":"two","c":[3,4]}|{"3":"a","5":"b"}|[]|' . "{\n    \"k\": [\n        1,\n        \"z\"\n    ]\n}")
@@ -1983,6 +1984,62 @@ final class FoldConsts
 function fold_name(): string
 {
     return 'PHP_EOL';
+}
+
+/**
+ * @psalm-immutable
+ */
+final class MemoBox
+{
+    private ?string $id = null;
+
+    private bool $checked = false;
+
+    public function __construct(public int $v, public readonly ?MemoBox $next = null)
+    {
+    }
+
+    public function id(): string
+    {
+        if ($this->id === null) {
+            /** @psalm-suppress ImpurePropertyAssignment memo */
+            $this->id = 'v' . $this->v;
+        }
+        return $this->id;
+    }
+
+    /** @psalm-external-mutation-free */
+    public function markChecked(): void
+    {
+        /** @psalm-suppress ImpurePropertyAssignment memo */
+        $this->checked = true;
+    }
+
+    public function isChecked(): bool
+    {
+        return $this->checked;
+    }
+
+    public function withV(int $v): self
+    {
+        // a clone copies the memos too (PHP semantics)
+        $c = clone $this;
+        /** @psalm-suppress ImpurePropertyAssignment wither */
+        $c->v = $v;
+        return $c;
+    }
+}
+
+function case_memo_immutable(): string
+{
+    $a = new MemoBox(7);
+    $first = $a->id();
+    $a->markChecked();
+    $b = $a->withV(8);
+    $wrapped = new MemoBox(1, $a);
+    return $first . ':' . $a->id() . ':' . (int) $a->isChecked()
+        . '|' . $b->id() . ':' . (int) $b->isChecked()
+        . '|n:' . (int) ($wrapped->next !== null && $wrapped->next->isChecked());
 }
 
 function case_defined_fold(): string

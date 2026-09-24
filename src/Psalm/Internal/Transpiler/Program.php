@@ -370,7 +370,7 @@ final class Program
         // an Option-narrowed clone-local — is fixed (varType-based unwrap in LValueTrait::place). Env var can still
         // force-disable for A/B: WITHER_FIX=0.
         $skip_withers = getenv('WITHER_FIX') !== '0';
-        $scan = function (?array $stmts, $node_data) use ($finder, $is_ext_write, $skip_withers): void {
+        $scan = function (?array $stmts, $node_data, string $where = '') use ($finder, $is_ext_write, $skip_withers): void {
             if ($stmts === null || $node_data === null) {
                 return;
             }
@@ -409,6 +409,12 @@ final class Program
                         if (isset($this->classes[$lc])) {
                             $this->classes[$lc]->externally_written = true;
                             $this->classes[$lc]->ext_written_fields[$target->name->name] = true;
+                            if (($diag = getenv('EXTWRITE_DIAG')) !== false && $diag !== ''
+                                && str_contains($lc, strtolower($diag))
+                            ) {
+                                fwrite(STDERR, "[ext-write] " . $atomic->value . "::$" . $target->name->name
+                                    . " @ " . $where . ":" . $n->getStartLine() . "\n");
+                            }
                         }
                     }
                 }
@@ -419,12 +425,12 @@ final class Program
                 if ($m->node === null || $m->record === null) {
                     continue;
                 }
-                $scan($m->node->stmts ?? [], $m->record->node_data);
+                $scan($m->node->stmts ?? [], $m->record->node_data, $model->fqcn . '::' . $m->name);
             }
         }
         foreach ($this->functions as $fn) {
             if ($fn->record->node !== null) {
-                $scan($fn->record->node->stmts ?? [], $fn->record->node_data);
+                $scan($fn->record->node->stmts ?? [], $fn->record->node_data, $fn->fq_name);
             }
         }
         // diagnostics: total externally-written classes, and how many NEW classes auto-widen would add
