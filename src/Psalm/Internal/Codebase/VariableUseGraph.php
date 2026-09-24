@@ -8,7 +8,6 @@ use Override;
 use Psalm\CodeLocation;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\DataFlow\Path;
-use Psalm\Internal\Interner;
 
 use function abs;
 use function count;
@@ -23,6 +22,9 @@ final class VariableUseGraph extends DataFlowGraph
 
     /** @var array<int, DataFlowNode> */
     private array $nodes = [];
+
+    /** @var array<int, string> the spelled-out id of every edge target, by key */
+    private array $ids = [];
 
     /** @var array<int, list<CodeLocation>> */
     private array $origin_locations_by_id = [];
@@ -67,6 +69,8 @@ final class VariableUseGraph extends DataFlowGraph
 
         $this->backward_edges[$to_id][$from_id] = true;
         $this->forward_edges[$from_id][$to_id] = new Path($path_type, $length);
+        // the keys are hashes: keep the target's spelling for the destination nodes built while walking
+        $this->ids[$to_id] = $to->id;
     }
 
     public function isVariableUsed(DataFlowNode $assignment_node): bool
@@ -189,7 +193,7 @@ final class VariableUseGraph extends DataFlowGraph
 
             $path_types = $generated_source->path_types;
             $path_types []= $path_type;
-            $new_destination = DataFlowNode::getForVariableUseDestination(Interner::lookup($to_id), $path_types);
+            $new_destination = DataFlowNode::getForVariableUseDestination($this->ids[$to_id], $path_types);
 
             $child_nodes[$to_id] = $new_destination;
         }

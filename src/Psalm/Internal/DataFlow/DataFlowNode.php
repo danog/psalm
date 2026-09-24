@@ -47,8 +47,10 @@ use function substr;
 final class DataFlowNode implements Stringable
 {
     /**
-     * The id interned: what the graphs key their maps by (pzoom keys by a structured id; the spelling stays in
-     * $id for messages and for the taint graph, which parses it).
+     * The id's 63-bit hash: what the variable-use graph keys its maps by (pzoom keys by a structured id; the
+     * spelling stays in $id for messages and for the taint graph, which parses it). A hash rather than an
+     * interned id: a node is made per assignment and use, and interning every one of them inside a forked
+     * worker made the interner delta the workers hand back grow past memory.
      */
     public readonly int $key;
 
@@ -70,7 +72,7 @@ final class DataFlowNode implements Stringable
          */
         public readonly array $specialized_calls = [],
     ) {
-        $this->key = Interner::intern($id);
+        $this->key = Interner::hash($id);
     }
 
     /**
