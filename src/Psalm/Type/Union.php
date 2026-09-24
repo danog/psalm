@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Type;
 
 use Override;
+use Psalm\Type\Atomic\IdMemo;
 use Psalm\Type\Atomic\TClassStringMap;
 use Psalm\Type\Atomic\TObjectWithProperties;
 use Psalm\Type\Atomic\TIterable;
@@ -162,15 +163,8 @@ final class Union implements TypeNode
 
     public bool $has_mutations = true;
 
-    /**
-     * This is a cache of getId on non-exact mode
-     */
-    private ?string $id = null;
-
-    /**
-     * This is a cache of getId on exact mode
-     */
-    private ?string $exact_id = null;
+    /** The memoized getId(true) / getId(false) strings (IdMemo::$id / IdMemo::$inexact_id), allocated on first use */
+    private ?IdMemo $memo = null;
 
 
     /**
@@ -204,8 +198,6 @@ final class Union implements TypeNode
         'reference_free' => 'reference_free',
         'allow_mutations' => 'allow_mutations',
         'has_mutations' => 'has_mutations',
-        "\0" . self::class . "\0" . 'id' => 'id',
-        "\0" . self::class . "\0" . 'exact_id' => 'exact_id',
         'parent_nodes' => 'parent_nodes',
         'propagate_parent_nodes' => 'propagate_parent_nodes',
         'different' => 'different',
