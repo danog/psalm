@@ -1791,8 +1791,10 @@ final class Program
             return;
         }
         // Non-private static methods are reachable through the `__static` / late-static-binding dispatch
-        // variants (uniform signature required across the hierarchy); only private statics are single-impl.
-        if ($method->isStatic() && !$method->isPrivate()) {
+        // variants (uniform signature required across the hierarchy): with STATIC_BORROW they join the
+        // dispatch groups (same-named statics of a hierarchy agree on one signature); otherwise only private
+        // statics (single-impl) are analysed.
+        if ($method->isStatic() && !$method->isPrivate() && !self::staticBorrow()) {
             return;
         }
         $lc = $method->lc();
@@ -1807,8 +1809,8 @@ final class Program
             return;
         }
         $method->local_borrow = $this->borrowSafeParams($method->node->stmts ?? [], $method->node->params, $method->param_types, $method->declaring, $method->record);
-        if ($method->isStatic()) {
-            // private static: single implementation, not in the instance-method agreement pass -> finalise now.
+        if ($method->isStatic() && ($method->isPrivate() || !self::staticBorrow())) {
+            // private static: single implementation, not in the agreement pass -> finalise now.
             $method->borrow_params = $method->local_borrow;
         }
     }
@@ -1828,6 +1830,13 @@ final class Program
      *
      * @return list<list<MethodModel>>
      */
+    /** STATIC_BORROW=1: public/protected static methods take part in the owned/borrowed parameter analysis. */
+    public static function staticBorrow(): bool
+    {
+        $v = getenv('STATIC_BORROW');
+        return $v !== false && $v !== '' && $v !== '0';
+    }
+
     private function dispatchGroups(): array
     {
         $parent = [];
@@ -1854,10 +1863,31 @@ final class Program
                 $parent[$ra] = $rb;
             }
         };
+        $static_borrow = self::staticBorrow();
         foreach ($this->uniqueClasses() as $cls) {
             foreach ($cls->methods as $m) {
-                if (!$m->isStatic()) {
+                if (!$m->isStatic() || ($static_borrow && !$m->isPrivate())) {
                     $add($m);
+                }
+            }
+            if ($static_borrow) {
+                // a static method and its overriders in the subtree: `static::m()` / `__static` dispatch may route
+                // a call on the base to any of them, so they share one signature
+                foreach ($cls->methods as $m) {
+                    if (!$m->isStatic() || $m->isPrivate() || $m->declaring !== $cls) {
+                        continue;
+                    }
+                    $stack = $cls->children;
+                    while ($stack !== []) {
+                        $sub = array_pop($stack);
+                        $sm = $sub->methods[$m->lc()] ?? null;
+                        if ($sm !== null && $sm->isStatic() && !$sm->isPrivate()) {
+                            $union($m, $sm);
+                        }
+                        foreach ($sub->children as $c) {
+                            $stack[] = $c;
+                        }
+                    }
                 }
             }
             // A class dispatched on (interface/abstract root, or a base with subclasses) routes each instance
