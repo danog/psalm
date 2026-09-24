@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Internal\Type\Comparator;
 
 use Psalm\Codebase;
+use Psalm\Internal\Sym;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\Scalar;
@@ -635,8 +636,8 @@ final class AtomicTypeComparator
                     if ($codebase->analysis_php_version_id >= 8_00_00
                         && ($input_type_part->value === 'Stringable'
                             || ($codebase->classlikes->classExistsById($input_type_part->name)
-                                && $codebase->classlikes->classImplements($input_type_part->value, 'Stringable'))
-                            || $codebase->classlikes->interfaceExtends($input_type_part->value, 'Stringable'))
+                                && $codebase->classlikes->classImplementsById($input_type_part->name, Sym::STRINGABLE))
+                            || $codebase->classlikes->interfaceExtendsById($input_type_part->name, Sym::STRINGABLE))
                     ) {
                         if ($atomic_comparison_result) {
                             $atomic_comparison_result->to_string_cast = true;
@@ -743,17 +744,17 @@ final class AtomicTypeComparator
             && (
                 (
                     $codebase->classExistsById($container_type_part->name)
-                    && $codebase->classExtendsOrImplements(
-                        $container_type_part->value,
-                        $input_type_part->value,
+                    && $codebase->classExtendsOrImplementsById(
+                        $container_type_part->name,
+                        $input_type_part->name,
                     )
                 )
                 ||
                 (
                     $codebase->interfaceExistsById($container_type_part->name)
-                    && $codebase->interfaceExtends(
-                        $container_type_part->value,
-                        $input_type_part->value,
+                    && $codebase->interfaceExtendsById(
+                        $container_type_part->name,
+                        $input_type_part->name,
                     )
                 )
             )

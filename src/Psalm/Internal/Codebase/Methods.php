@@ -113,12 +113,17 @@ final class Methods
 
         $old_method_id = null;
 
-        $fq_class_name = strtolower($this->classlikes->getUnAliasedName($fq_class_name));
+        // the storage by interned class name (pzoom's StrId path); an alias or an undefined class takes the
+        // spelled path
+        $class_storage = $this->classlike_storage_provider->findById($method_id->class_id);
+        if ($class_storage === null) {
+            $fq_class_name = strtolower($this->classlikes->getUnAliasedName($fq_class_name));
 
-        try {
-            $class_storage = $this->classlike_storage_provider->get($fq_class_name);
-        } catch (InvalidArgumentException) {
-            return false;
+            try {
+                $class_storage = $this->classlike_storage_provider->get($fq_class_name);
+            } catch (InvalidArgumentException) {
+                return false;
+            }
         }
 
         if ($class_storage->is_enum) {
@@ -193,7 +198,8 @@ final class Methods
         }
 
         // the method is missing: the references below take a Context (the found path above records
-        // without one)
+        // without one); the lowercase unaliased name is the storage's own
+        $fq_class_name = strtolower($class_storage->name);
         $calling_context = null;
         if ($calling_method_id !== null || $calling_class_name !== null) {
             $calling_context = new Context($calling_class_name);

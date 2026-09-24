@@ -2050,11 +2050,6 @@
       <code><![CDATA[$member_id]]></code>
     </RiskyTruthyFalsyComparison>
   </file>
-  <file src="src/Psalm/Internal/Type/Comparator/ObjectComparator.php">
-    <RiskyTruthyFalsyComparison>
-      <code><![CDATA[$intersection_container_type_lower]]></code>
-    </RiskyTruthyFalsyComparison>
-  </file>
   <file src="src/Psalm/Internal/Type/NegatedAssertionReconciler.php">
     <RiskyTruthyFalsyComparison>
       <code><![CDATA[$key]]></code>

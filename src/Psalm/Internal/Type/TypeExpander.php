@@ -673,16 +673,17 @@ final class TypeExpander
             && $return_type::class === TNamedObject::class
             && !$return_type->extra_types
             && $codebase->classOrInterfaceExistsById($return_type->name)
-            // a class can exist without having been scanned, and then there is nothing to expand
-            && $codebase->classlike_storage_provider->has(
-                $codebase->classlikes->getUnAliasedName($return_type->value),
-            )
+            // a class can exist without having been scanned, and then there is nothing to expand (an alias
+            // has no storage under its own name: the spelled path resolves it)
+            && ($container_class_storage = $codebase->classlike_storage_provider->findById($return_type->name)
+                ?? ($codebase->classlike_storage_provider->has(
+                    $codebase->classlikes->getUnAliasedName($return_type->value),
+                )
+                    ? $codebase->classlike_storage_provider->get(
+                        $codebase->classlikes->getUnAliasedName($return_type->value),
+                    )
+                    : null)) !== null
         ) {
-            $value = $codebase->classlikes->getUnAliasedName($return_type->value);
-            $container_class_storage = $codebase->classlike_storage_provider->get(
-                $value,
-            );
-
             if ($container_class_storage->template_types
                 && array_any(
                     $container_class_storage->template_types,
@@ -786,7 +787,8 @@ final class TypeExpander
             $return_type = $return_type->setValue($self_class);
         } elseif ($parent_class && $return_type_lc === 'parent') {
             $return_type = $return_type->setValue($parent_class);
-        } else {
+        } elseif (!$codebase->classlike_storage_provider->hasById($return_type->name)) {
+            // a name with a storage is already unaliased (getUnAliasedName keeps the spelling of a known name)
             $new_value = $codebase->classlikes->getUnAliasedName($return_type->value);
             $return_type = $return_type->setValue($new_value);
         }

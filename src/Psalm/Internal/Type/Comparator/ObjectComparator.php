@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Psalm\Internal\Type\Comparator;
 
 use Psalm\Codebase;
+use Psalm\Internal\Sym;
+use Psalm\Storage\ClassLikeStorage;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\TCallableObject;
@@ -99,17 +101,18 @@ final class ObjectComparator
             } else {
                 $container_was_static = $intersection_container_type->is_static;
 
-                $intersection_container_type_lower = strtolower(
-                    $codebase->classlikes->getUnAliasedName(
-                        $intersection_container_type->value,
-                    ),
-                );
+                // a named container is compared by its interned name; the lowercase spelling is only built
+                // when a class-like has no storage (see isIntersectionShallowlyContainedBy)
+                $intersection_container_type_lower = null;
             }
 
             $any_inputs_contained = false;
 
-            $container_type_is_interface = $intersection_container_type_lower
-                && $codebase->interfaceExists($intersection_container_type_lower);
+            $container_type_is_interface = $intersection_container_type instanceof TTemplateParam
+                ? false
+                : ($intersection_container_type_lower === null
+                    ? $codebase->interfaceExistsById($intersection_container_type->name)
+                    : $codebase->interfaceExists($intersection_container_type_lower));
 
             foreach ($intersection_input_types as $input_type_key => $intersection_input_type) {
                 if ($allow_interface_equality
@@ -241,9 +244,7 @@ final class ObjectComparator
             return false;
         }
 
-        if ($intersection_container_type instanceof TTemplateParam
-            || $intersection_container_type_lower === null
-        ) {
+        if ($intersection_container_type instanceof TTemplateParam) {
             return false;
         }
 
@@ -280,9 +281,42 @@ final class ObjectComparator
         } else {
             $input_was_static = $intersection_input_type->is_static;
 
+            if ($intersection_container_type_lower === null && $intersection_container_type instanceof TNamedObject) {
+                // both are named class-likes: compared by interned name (pzoom's StrId path) when both have a
+                // storage; an undefined class or an alias takes the spelled path below
+                $input_storage = $codebase->classlike_storage_provider->findById($intersection_input_type->name);
+                $container_storage = $codebase->classlike_storage_provider->findById(
+                    $intersection_container_type->name,
+                );
+
+                if ($input_storage !== null && $container_storage !== null) {
+                    return self::isNamedShallowlyContainedBy(
+                        $codebase,
+                        $intersection_input_type->name,
+                        $input_storage,
+                        $intersection_container_type->name,
+                        $container_storage,
+                        $input_was_static,
+                        $container_was_static,
+                        $allow_interface_equality,
+                        $atomic_comparison_result,
+                    );
+                }
+            }
+
             $intersection_input_type_lower = strtolower(
                 $codebase->classlikes->getUnAliasedName(
                     $intersection_input_type->value,
+                ),
+            );
+        }
+
+        if ($intersection_container_type_lower === null) {
+            // the caller spells out every other container kind
+            assert($intersection_container_type instanceof TNamedObject);
+            $intersection_container_type_lower = strtolower(
+                $codebase->classlikes->getUnAliasedName(
+                    $intersection_container_type->value,
                 ),
             );
         }
@@ -367,6 +401,78 @@ final class ObjectComparator
         }
 
         if (ExpressionAnalyzer::isMock($intersection_input_type_lower)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * The named-class-like half of isIntersectionShallowlyContainedBy() on interned names: the same decisions,
+     * with every existence and inheritance question asked by id (no lowercase copies, no alias walks).
+     */
+    private static function isNamedShallowlyContainedBy(
+        Codebase $codebase,
+        int $input_id,
+        ClassLikeStorage $input_storage,
+        int $container_id,
+        ClassLikeStorage $container_storage,
+        bool $input_was_static,
+        bool $container_was_static,
+        bool $allow_interface_equality,
+        ?TypeComparisonResult $atomic_comparison_result,
+    ): bool {
+        if ($input_storage->id === $container_storage->id) {
+            if ($container_was_static && !$input_was_static) {
+                if ($atomic_comparison_result) {
+                    $atomic_comparison_result->type_coerced = true;
+                }
+
+                return false;
+            }
+
+            return true;
+        }
+
+        if ($input_storage->id === Sym::GENERATOR
+            && ($container_storage->id === Sym::ITERATOR || $container_storage->id === Sym::TRAVERSABLE)
+        ) {
+            return true;
+        }
+
+        $input_type_is_interface = $codebase->interfaceExistsById($input_id);
+        $container_type_is_interface = $codebase->interfaceExistsById($container_id);
+
+        if ($allow_interface_equality
+            && $container_type_is_interface
+            && $input_type_is_interface
+        ) {
+            return true;
+        }
+
+        if (($codebase->classExistsById($input_id)
+                || $codebase->classlikes->enumExistsById($input_id))
+            && $codebase->classOrInterfaceExistsById($container_id)
+            && $codebase->classExtendsOrImplementsById($input_id, $container_id)
+        ) {
+            if ($container_was_static && !$input_was_static) {
+                if ($atomic_comparison_result) {
+                    $atomic_comparison_result->type_coerced = true;
+                }
+
+                return false;
+            }
+
+            return true;
+        }
+
+        if ($input_type_is_interface
+            && $codebase->interfaceExtendsById($input_id, $container_id)
+        ) {
+            return true;
+        }
+
+        if (ExpressionAnalyzer::isMock(strtolower($input_storage->name))) {
             return true;
         }
 
