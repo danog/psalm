@@ -436,16 +436,45 @@ final class ClassModel
             $root = $root->parent;
         }
         $set = [];
+        $diag = getenv('CO_DIAG');
         foreach ($this->fields as $f) {
             if ($f->is_static) {
                 continue;
             }
             if (!$root->subtreeWritesField($f->name)) {
                 $set[$f->name] = true;
+            } elseif ($diag !== false && $diag !== '' && !$this->writtenAfterConstruction($f->name)) {
+                // rejected by the strict rule although no assignment outside construction: say why
+                fwrite(STDERR, "[co-diag] " . $this->fqcn . "::$" . $f->name . " " . $root->whySubtreeWrites($f->name) . "\n");
             }
         }
         return $this->construction_only = $set;
     }
+
+    /** The first reason the strict construction-only rule rejects `$field` in this subtree (diagnostics). */
+    private function whySubtreeWrites(string $field): string
+    {
+        if ($this->ownWritesFieldsDynamically()) {
+            return 'dynamic-name write in ' . $this->fqcn;
+        }
+        if (isset($this->ext_written_fields[$field])) {
+            return 'external write recorded on ' . $this->fqcn;
+        }
+        $writes = $this->ownNonConstructionWrites();
+        if (isset($writes[$field])) {
+            return ($this->own_write_kinds[$field] ?? 'write') . ' in ' . $this->fqcn;
+        }
+        foreach ($this->children as $child) {
+            $why = $child->whySubtreeWrites($field);
+            if ($why !== '') {
+                return $why;
+            }
+        }
+        return '';
+    }
+
+    /** @var array<string, string> field => kind of the first non-construction write found (diagnostics) */
+    private array $own_write_kinds = [];
 
     /** Whether this class or any class below it writes `$field` after construction (or dynamically). */
     private function subtreeWritesField(string $field): bool
@@ -515,6 +544,7 @@ final class ClassModel
             }
             foreach ($finder->find($m->node->stmts ?? [], static fn(\PhpParser\Node $n): bool => true) as $n) {
                 $targets = [];
+                $kind = $n->getType() . ' in ' . $lc . '()';
                 if ($n instanceof \PhpParser\Node\Expr\Assign || $n instanceof \PhpParser\Node\Expr\AssignOp) {
                     $targets[] = $n->var;
                 } elseif ($n instanceof \PhpParser\Node\Expr\AssignRef) {
@@ -552,12 +582,14 @@ final class ClassModel
                         foreach ($t->items as $item) {
                             if ($item !== null && ($fname = self::thisPropName($item->value)) !== null) {
                                 $set[$fname] = true;
+                                $this->own_write_kinds[$fname] ??= $kind;
                             }
                         }
                         continue;
                     }
                     if (($fname = self::thisPropName($t)) !== null) {
                         $set[$fname] = true;
+                        $this->own_write_kinds[$fname] ??= $kind;
                     }
                 }
             }
