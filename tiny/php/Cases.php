@@ -1928,6 +1928,7 @@ function run_all(): string
         . check('value_factory', case_value_factory(), 'TF3:T')
         . check('value_named', case_value_named(), 'A&B|A&B&C|self->Foo|k:A&B|static:1')
         . check('value_nonleaf', case_value_nonleaf(), 'G<int>|Foo<int>|Foo&B<int>|1|self->Foo')
+        . check('borrow_local', case_borrow_local(), '6:3:a,b,c:x')
         . check('data_file', case_data_file(), 'a1x-,b2y3.5|a,b')
         . check('elseif_assign', case_elseif_assign(), 'none,a5,skip|1')
         . check('json_encode', case_json_encode(), '{"a":1,"b":[1,2,3],"c":null,"d":true,"e":1.5,"f":"x\\"y"}|[{"x":1,"label":null},{"x":2,"label":"p"}]|{"a":1,"b":"two","c":[3,4]}|{"3":"a","5":"b"}|[]|' . "{\n    \"k\": [\n        1,\n        \"z\"\n    ]\n}")
@@ -3759,4 +3760,47 @@ function case_value_nonleaf_inner(): string
     $k4 = $st instanceof NNamed && $st->is_static ? '1' : '0';
     $plain = n_expand(new NNamed('self'), 'Foo', false);
     return $k1 . '|' . $k2 . '|' . $k3 . '|' . $k4 . '|self->' . $plain->getKey();
+}
+
+/**
+ * A borrowed local: `$items = $this->items` in an immutable leaf class reads the list as a `&List` for the whole
+ * method (no clone), used as a loop subject, a count argument and a method receiver.
+ *
+ * @psalm-immutable
+ */
+final class BList
+{
+    /**
+     * @param list<int> $items
+     * @param array<string, string> $names
+     */
+    public function __construct(public readonly array $items, public readonly array $names, public readonly ?BList $inner = null)
+    {
+    }
+
+    public function sum(): int
+    {
+        $items = $this->items;
+        $n = 0;
+        foreach ($items as $i) {
+            $n += $i;
+        }
+        return $n;
+    }
+
+    public function describe(): string
+    {
+        $names = $this->names;
+        $items = $this->items;
+        $inner = $this->inner;
+        $keys = implode(',', array_keys($names));
+        $extra = $inner !== null ? $inner->describe() : 'x';
+        return count($items) . ':' . $keys . ':' . $extra;
+    }
+}
+
+function case_borrow_local(): string
+{
+    $l = new BList([1, 2, 3], ['a' => 'A', 'b' => 'B', 'c' => 'C'], null);
+    return $l->sum() . ':' . $l->describe();
 }

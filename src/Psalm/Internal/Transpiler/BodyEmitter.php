@@ -8,6 +8,7 @@ use PhpParser\Node;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\ArrowFunction;
 use PhpParser\NodeFinder;
+use PhpParser\Node\Identifier;
 use PhpParser\Node\Expr\Closure;
 use PhpParser\Node\Stmt;
 use PhpParser\Node\Stmt\ClassMethod;
@@ -61,6 +62,13 @@ final class BodyEmitter
 
     /** @var array<string, true> plain locals declared without an initializer (definitely assigned before every read) */
     public array $uninit = [];
+
+    /**
+     * @var array<string, true> locals assigned exactly once, at the top level of the body, from a field chain of
+     *   `$this` in an immutable leaf class, and only read afterwards: the assignment statement binds them as a
+     *   `&T` into the object (BodyEmitter::$borrow) instead of cloning the value (LValueTrait::assignStmt)
+     */
+    public array $borrow_locals = [];
 
     /** @var array<string, bool> params passed as `&mut T` */
     public array $byref = [];
@@ -824,6 +832,134 @@ final class BodyEmitter
             foreach (DefiniteAssignment::plainLocals($stmts, $cands) as $name => $_) {
                 $this->late[$name] = false;
                 $this->uninit[$name] = true;
+            }
+        }
+        $this->findBorrowLocals($stmts, $params);
+    }
+
+    /**
+     * Borrowed locals (see $borrow_locals): `$x = $this->f` / `$this->f->g` at the top level of an immutable leaf
+     * class' `&self` method, `$x` bound nowhere else, never written through, never captured, mentioned only in
+     * later statements. The read of the chain is then a plain `&T` place valid for the whole method (nothing can
+     * write the object), so `$x` needs no clone of a List/Map/Str/handle.
+     *
+     * @param list<Stmt> $stmts
+     * @param array<string, RustType> $params
+     */
+    private function findBorrowLocals(array $stmts, array $params): void
+    {
+        $nb = getenv('NO_BORROW_LOCALS');
+        if (!($nb === false || $nb === '' || $nb === '0')) {
+            return;
+        }
+        $cls = $this->class;
+        $node = $this->record->node;
+        if ($cls === null || !$cls->immutable() || !$cls->isLeaf() || !$node instanceof ClassMethod || $node->isStatic()
+            || $cls->isImmutableCtorMethod(strtolower($node->name->name)) || $stmts === []
+        ) {
+            return;
+        }
+        $finder = new NodeFinder();
+        foreach ($stmts as $i => $s) {
+            if (!$s instanceof Stmt\Expression || !$s->expr instanceof Expr\Assign
+                || !$s->expr->var instanceof Expr\Variable || !is_string($s->expr->var->name)
+            ) {
+                continue;
+            }
+            $name = $s->expr->var->name;
+            if ($name === 'this' || isset($params[$name]) || !isset($this->vars[$name]) || isset($this->predeclared[$name])
+                || !empty($this->byref[$name]) || !empty($this->cells[$name]) || !empty($this->refvars[$name])
+                || !empty($this->globals[$name]) || !empty($this->move_captured[$name]) || $this->vars[$name]->isCopy()
+            ) {
+                continue;
+            }
+            // the right side: a chain of plain fields rooted at $this, each step's class an immutable leaf
+            $rhs = $s->expr->expr;
+            $chain = [];
+            $e = $rhs;
+            while ($e instanceof Expr\PropertyFetch && $e->name instanceof Identifier) {
+                array_unshift($chain, $e->name->name);
+                $e = $e->var;
+            }
+            if ($chain === [] || !$e instanceof Expr\Variable || $e->name !== 'this') {
+                continue;
+            }
+            $c = $cls;
+            $ok = true;
+            foreach ($chain as $k => $fname) {
+                $f = $c->fields[$fname] ?? null;
+                if ($f === null || $c->cellKind($f) !== '' || !$c->immutable() || !$c->isLeaf()) {
+                    $ok = false;
+                    break;
+                }
+                if ($k < count($chain) - 1) {
+                    $c = $f->type->kind === RustType::CLASS_ ? $this->program->classOf($f->type) : null;
+                    if ($c === null) {
+                        $ok = false;
+                        break;
+                    }
+                }
+            }
+            if (!$ok) {
+                continue;
+            }
+            // every other mention of $name: another binding, a write through it, a capture, a by-reference use,
+            // isset/empty/unset, or any mention before this statement, disqualifies it
+            $others = 0;
+            $bad = false;
+            foreach ($stmts as $j => $t) {
+                foreach ($finder->findInstanceOf([$t], Expr\Variable::class) as $v) {
+                    if ($v->name !== $name) {
+                        continue;
+                    }
+                    if ($j < $i || ($j === $i && $v !== $s->expr->var)) {
+                        $bad = true;
+                        break 2;
+                    }
+                    if ($j > $i) {
+                        $others++;
+                    }
+                }
+            }
+            if ($bad || $others === 0) {
+                continue;
+            }
+            $disq = $finder->findFirst($stmts, static function (\PhpParser\Node $n) use ($name, $s): bool {
+                $isvar = static fn(mixed $x): bool => $x instanceof Expr\Variable && $x->name === $name;
+                $base = static function (mixed $x) use ($isvar): bool {
+                    while ($x instanceof Expr\ArrayDimFetch || $x instanceof Expr\PropertyFetch) {
+                        $x = $x->var;
+                    }
+                    return $isvar($x);
+                };
+                if ($n instanceof Expr\Assign) {
+                    return $n !== $s->expr && $base($n->var);
+                }
+                if ($n instanceof Expr\AssignOp || $n instanceof Expr\AssignRef || $n instanceof Expr\PreInc
+                    || $n instanceof Expr\PreDec || $n instanceof Expr\PostInc || $n instanceof Expr\PostDec
+                ) {
+                    return $base($n->var);
+                }
+                if ($n instanceof Stmt\Foreach_) {
+                    return $isvar($n->valueVar) || $isvar($n->keyVar) || ($n->byRef && $base($n->expr));
+                }
+                if ($n instanceof Expr\Closure || $n instanceof Expr\ArrowFunction || $n instanceof Stmt\Global_
+                    || $n instanceof Stmt\Static_ || $n instanceof Stmt\Unset_ || $n instanceof Expr\Isset_
+                    || $n instanceof Expr\Empty_ || $n instanceof Stmt\Catch_ || $n instanceof Expr\List_
+                ) {
+                    return (new NodeFinder())->findFirst([$n], static fn(\PhpParser\Node $x): bool => $x instanceof Expr\Variable && $x->name === $name) !== null;
+                }
+                if ($n instanceof \PhpParser\Node\Arg) {
+                    return $n->byRef && $base($n->value);
+                }
+                return false;
+            });
+            if ($disq !== null) {
+                continue;
+            }
+            $this->borrow_locals[$name] = true;
+            if (getenv('BORROW_DIAG') !== false && getenv('BORROW_DIAG') !== '') {
+                \fwrite(\STDERR, '[borrow-local] ' . $cls->fqcn . '::' . $node->name->name . ' $' . $name . "\n");
             }
         }
     }

@@ -1141,6 +1141,21 @@ trait LValueTrait
         if ($target instanceof Expr\List_ || $target instanceof Expr\Array_) {
             return $this->destructure($target, $this->expr($e->expr));
         }
+        if ($target instanceof Expr\Variable && is_string($target->name) && isset($this->borrow_locals[$target->name])) {
+            // a borrowed local (BodyEmitter::findBorrowLocals): bound as a `&T` into the object it reads
+            $name = $target->name;
+            unset($this->borrow_locals[$name]);
+            $rhs = $this->expr($e->expr);
+            if (getenv('BORROW_DIAG') !== false && getenv('BORROW_DIAG') !== '') {
+                \fwrite(\STDERR, '[borrow-local-rhs] $' . $name . ' place=' . var_export($rhs->place, true) . ' temp=' . var_export($rhs->temp, true) . ' guard=' . var_export($rhs->guard, true) . ' type=' . $rhs->type->toRust() . ' var=' . $this->vars[$name]->toRust() . "\n");
+            }
+            if ($rhs->place !== null && !$rhs->temp && $rhs->guard === null && $rhs->type->toRust() === $this->vars[$name]->toRust()) {
+                $this->borrow[$name] = true;
+                return 'let ' . Names::var($name) . ': &' . $rhs->type->toRust() . ' = &' . $rhs->place . ';';
+            }
+            $place = $this->place($target);
+            return $place->write($this->casts->convert($rhs->code, $rhs->type, $place->type));
+        }
         $place = $this->place($target);
         if ($target instanceof Expr\Variable && is_string($target->name) && self::isMixedLocal($place->type)) {
             // a Psalm-mixed local: the value's static type is a retyping candidate (see BodyEmitter::emitBodyInner)
