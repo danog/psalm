@@ -1318,6 +1318,19 @@ final class ClassModel
         ) {
             return true;
         }
+        // The same, tolerating memo writes (nullable lazily computed values, bool flags): as an Rc<T> those fields
+        // become Cell/RefCell (interiorMutFields), so the write stays visible to every holder of the handle, while
+        // every other field is a plain `&T` read (Psalm\Internal\Clause: 8 M clone reads of $possibilities per run
+        // with the RefCell layout). NO_IMMUTABLE_MEMO=1 keeps the strict rule.
+        $nim = getenv('NO_IMMUTABLE_MEMO');
+        if ($this->parent === null
+            && !$this->externally_written
+            && ($nim === false || $nim === '' || $nim === '0')
+            && $this->memoOnlyPostConstructionWrites()
+            && $this->noHelperConstructionWrites()
+        ) {
+            return true;
+        }
         if (($diag = getenv('IMMUTABLE_DIAG')) !== false && $diag !== '' && str_contains(strtolower($this->fqcn), strtolower($diag))) {
             fwrite(STDERR, "[immutable-diag] " . $this->fqcn
                 . " parent=" . ($this->parent === null ? 'none' : $this->parent->fqcn)
