@@ -272,15 +272,17 @@ impl Str {
             if h == 0 {
                 h = 1;
             }
-            let layout = Layout::from_size_align(8 + b.len(), 8).unwrap();
+            // record: [map hash u64][lowercase twin ptr, 0 until computed][bytes]
+            let layout = Layout::from_size_align(16 + b.len(), 8).unwrap();
             let base = unsafe { alloc(layout) };
             if base.is_null() {
                 handle_alloc_error(layout);
             }
             let text = unsafe {
                 (base as *mut u64).write(h);
-                std::ptr::copy_nonoverlapping(b.as_ptr(), base.add(8), b.len());
-                std::slice::from_raw_parts(base.add(8) as *const u8, b.len())
+                (base as *mut usize).add(1).write(0);
+                std::ptr::copy_nonoverlapping(b.as_ptr(), base.add(16), b.len());
+                std::slice::from_raw_parts(base.add(16) as *const u8, b.len())
             };
             t.insert(text, text.as_ptr() as usize);
             Str { r: Repr { stat: StaticRef { ptr: text.as_ptr(), len: b.len() as u32, _pad: [0; 3], tag: TAG_INTERNED } } }
@@ -395,7 +397,7 @@ impl Str {
     pub fn hash_cached(&self, f: impl FnOnce(&[u8]) -> u64) -> u64 {
         if self.tag() == TAG_INTERNED {
             // the map hash stored in front of the interned text (`f` is that hash function)
-            return unsafe { (self.r.stat.ptr as *const u64).sub(1).read() };
+            return unsafe { (self.r.stat.ptr as *const u64).sub(2).read() };
         }
         match self.heap() {
             Some(h) => h.cached_hash(f),
@@ -486,6 +488,24 @@ impl Str {
     pub fn to_lowercase(&self) -> Str {
         crate::stats::bump(crate::stats::STR_LOWER);
         let b = self.as_bytes();
+        if self.tag() == TAG_INTERNED {
+            // an interned name remembers its lowercase twin (itself when already lowercase): no hashing again
+            let slot = unsafe { (self.r.stat.ptr as *const usize).sub(1) as *mut usize };
+            let twin = unsafe { slot.read() };
+            if twin != 0 {
+                return Str { r: Repr { stat: StaticRef { ptr: twin as *const u8, len: b.len() as u32, _pad: [0; 3], tag: TAG_INTERNED } } };
+            }
+            let lower = if b.iter().any(|c| c.is_ascii_uppercase()) {
+                let mut buf = [0u8; INTERN_CAP];
+                buf[..b.len()].copy_from_slice(b);
+                buf[..b.len()].make_ascii_lowercase();
+                Str::intern(&buf[..b.len()])
+            } else {
+                self.clone()
+            };
+            unsafe { slot.write(lower.r.stat.ptr as usize) };
+            return lower;
+        }
         // a lowercased name of a class, method, property or variable is a map key somewhere: interned (see intern)
         if b.len() > INLINE_CAP && b.len() <= INTERN_CAP {
             let mut buf = [0u8; INTERN_CAP];
