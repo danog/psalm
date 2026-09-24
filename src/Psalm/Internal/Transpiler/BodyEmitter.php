@@ -59,6 +59,9 @@ final class BodyEmitter
     /** @var array<string, bool> locals stored as Late<T> */
     public array $late = [];
 
+    /** @var array<string, true> plain locals declared without an initializer (definitely assigned before every read) */
+    public array $uninit = [];
+
     /** @var array<string, bool> params passed as `&mut T` */
     public array $byref = [];
 
@@ -612,7 +615,9 @@ final class BodyEmitter
                 $this->w->line('let mut ' . $rn . ': PhpRef<' . $type->toRust() . '> = PhpRef::detached();');
                 continue;
             }
-            if (!empty($this->late[$name])) {
+            if (!empty($this->uninit[$name])) {
+                $this->w->line('let mut ' . $rn . ': ' . $type->toRust() . ';');
+            } elseif (!empty($this->late[$name])) {
                 $this->w->line('let mut ' . $rn . ': Late<' . $type->toRust() . '> = Late::uninit();');
             } else {
                 $this->w->line('let mut ' . $rn . ': ' . $type->toRust() . ' = Default::default();');
@@ -800,6 +805,25 @@ final class BodyEmitter
                 $t = $pt !== null ? $this->types()->map($pt) : RustType::mixed();
                 $this->vars[$name] = $t;
                 $this->late[$name] = !$t->hasDefault();
+            }
+        }
+        // definite assignment: a Late local (a type without Default) that is assigned before every read is a plain
+        // uninitialized binding (`let mut x: T;`), which rustc checks again: no Option test on each read, no drop of
+        // an old value on each write. NO_DEFINITE_ASSIGN=1 keeps every such local a Late cell.
+        $nda = getenv('NO_DEFINITE_ASSIGN');
+        if ($nda === false || $nda === '' || $nda === '0') {
+            $cands = [];
+            foreach ($this->late as $name => $is_late) {
+                if ($is_late && isset($this->vars[$name]) && !isset($params[$name]) && empty($this->cells[$name])
+                    && empty($this->refvars[$name]) && empty($this->byref[$name]) && empty($this->globals[$name])
+                    && !isset($this->predeclared[$name]) && empty($this->move_captured[$name])
+                ) {
+                    $cands[$name] = true;
+                }
+            }
+            foreach (DefiniteAssignment::plainLocals($stmts, $cands) as $name => $_) {
+                $this->late[$name] = false;
+                $this->uninit[$name] = true;
             }
         }
     }
