@@ -350,6 +350,21 @@ final class Program
                 || $n instanceof \PhpParser\Node\Expr\PostInc || $n instanceof \PhpParser\Node\Expr\PostDec
             ) {
                 $t = $n->var;
+            } elseif ($n instanceof \PhpParser\Node\Stmt\Unset_) {
+                // `unset($obj->prop[$k])` writes the property too (Union::parent_nodes was pruned this way)
+                $t = null;
+                foreach ($n->vars as $v) {
+                    while ($v instanceof \PhpParser\Node\Expr\ArrayDimFetch) {
+                        $v = $v->var;
+                    }
+                    if ($v instanceof \PhpParser\Node\Expr\PropertyFetch) {
+                        $t = $v;
+                        break;
+                    }
+                }
+                if ($t === null) {
+                    return null;
+                }
             } else {
                 return null;
             }
