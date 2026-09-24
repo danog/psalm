@@ -1782,10 +1782,18 @@ trait ExprTrait
                         $va = $narrowed;
                     }
                 }
+                // `$x === []` is an emptiness test: no literal to build, no element-wise walk
+                $empty = $b->items === [] && in_array($va->type->kind === RustType::OPTION ? $va->type->inner()->kind : $va->type->kind, [RustType::LIST, RustType::MAP], true);
                 if (in_array($va->type->kind, $containers, true)) {
+                    if ($empty) {
+                        return $va->applyOwned('.is_empty()');
+                    }
                     return 'identical(' . $va->borrow() . ', ' . $this->exprToVal($b, $va->type)->borrow() . ')';
                 }
                 if ($va->type->kind === RustType::OPTION && in_array($va->type->inner()->kind, $containers, true)) {
+                    if ($empty) {
+                        return '(match ' . $va->borrow() . ' { Some(__e) => __e.is_empty(), None => false })';
+                    }
                     return 'identical(' . $va->borrow() . ', &Some(' . $this->exprTo($b, $va->type->inner()) . '))';
                 }
                 $u = $va->type->kind === RustType::OPTION ? $va->type->inner() : $va->type;
