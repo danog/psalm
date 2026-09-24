@@ -1752,6 +1752,13 @@ trait UnionTrait
             if ($other_atomic === null || ($other_atomic !== $atomic && !$atomic->equals($other_atomic, false))) {
                 return false;
             }
+            // a named object's id carries what its key and equals() do not (`&static`, intersections): cheap to
+            // compare, unlike a keyed array's
+            if ($other_atomic !== $atomic && $atomic instanceof TNamedObject
+                && $atomic->getId() !== $other_atomic->getId()
+            ) {
+                return false;
+            }
         }
         return true;
     }
