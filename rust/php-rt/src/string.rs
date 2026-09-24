@@ -717,9 +717,33 @@ pub fn find_bytes(hay: &[u8], needle: &[u8], from: usize) -> Option<usize> {
         return Some(from);
     }
     if needle.len() == 1 {
-        return hay[from..].iter().position(|&c| c == needle[0]).map(|p| p + from);
+        return memchr::memchr(needle[0], &hay[from..]).map(|p| p + from);
     }
-    memchr::memmem::find(&hay[from..], needle).map(|p| p + from)
+    let h = &hay[from..];
+    if h.len() < needle.len() {
+        return None;
+    }
+    if h.len() <= 64 {
+        // short haystacks (variable ids, class names): scan for the first byte and compare, without building
+        // memmem's searcher (its setup cost more than the search itself: 200 instructions per call)
+        let (first, rest) = (needle[0], &needle[1..]);
+        let last_start = h.len() - needle.len();
+        let mut i = 0;
+        while i <= last_start {
+            match memchr::memchr(first, &h[i..=last_start]) {
+                None => return None,
+                Some(p) => {
+                    let at = i + p;
+                    if &h[at + 1..at + needle.len()] == rest {
+                        return Some(at + from);
+                    }
+                    i = at + 1;
+                }
+            }
+        }
+        return None;
+    }
+    memchr::memmem::find(h, needle).map(|p| p + from)
 }
 
 pub fn rfind_bytes(hay: &[u8], needle: &[u8], end: usize) -> Option<usize> {
@@ -807,6 +831,12 @@ mod tests {
         assert!(a == Str::from("abcd"));
         assert!(Str::from("abcd") != Str::from("abce"));
         assert!(Str::from("abc") != Str::from("abc\0"));
+        assert_eq!(super::find_bytes(b"a->b->c", b"->", 0), Some(1));
+        assert_eq!(super::find_bytes(b"a->b->c", b"->", 2), Some(4));
+        assert_eq!(super::find_bytes(b"abc", b"bc", 0), Some(1));
+        assert_eq!(super::find_bytes(b"abc", b"bcd", 0), None);
+        assert_eq!(super::find_bytes(b"aab", b"ab", 0), Some(1));
+        assert_eq!(super::find_bytes(b"ab", b"ab", 1), None);
         assert_eq!(std::mem::size_of::<HeapStr>(), 8);
         assert!(Str::from_bytes(b"short").is_inline());
         assert!(Str::from_bytes(b"exactly fifteen").is_inline());
