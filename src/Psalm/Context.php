@@ -500,14 +500,14 @@ final class Context
         $redefined_vars = [];
 
         foreach ($this->vars_in_scope as $var_id => $this_type) {
-            if (!isset($new_vars_in_scope[$var_id])) {
+            // one lookup per variable (isset + a read were two)
+            $new_type = $new_vars_in_scope[$var_id] ?? null;
+            if ($new_type === null) {
                 if ($include_new_vars) {
                     $redefined_vars[$var_id] = $this_type;
                 }
                 continue;
             }
-
-            $new_type = $new_vars_in_scope[$var_id];
 
             if (!$this_type->equals(
                 $new_type,
@@ -531,10 +531,11 @@ final class Context
         $redefined_var_ids = [];
 
         foreach ($new_context->vars_in_scope as $var_id => $context_type) {
-            if (!isset($original_context->vars_in_scope[$var_id])
+            $original_type = $original_context->vars_in_scope[$var_id] ?? null;
+            if ($original_type === null
                 || ($original_context->assigned_var_ids[$var_id] ?? 0)
                     !== ($new_context->assigned_var_ids[$var_id] ?? 0)
-                || !$original_context->vars_in_scope[$var_id]->equals($context_type)
+                || !$original_type->equals($context_type)
             ) {
                 $redefined_var_ids[] = $var_id;
             }
