@@ -2860,11 +2860,6 @@
                 $template_result,
                 $codebase,
             )]]></code>
-      <code><![CDATA[TemplateInferredTypeReplacer::replace(
-                $property,
-                $template_result,
-                $codebase,
-            )]]></code>
       <code><![CDATA[TemplateStandinTypeReplacer::replace(
                 $property,
                 $template_result,
