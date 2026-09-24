@@ -8,6 +8,7 @@ use Closure;
 use LogicException;
 use Psalm\CodeLocation;
 use Psalm\Context;
+use Psalm\Internal\Interner;
 use Psalm\Storage\ClassLikeStorage;
 use Psalm\Storage\FunctionLikeStorage;
 use Psalm\Storage\MethodStorage;
@@ -107,14 +108,14 @@ final class CodeUseGraph
     /**
      * Forward edges: source node id => target node id => edge type
      *
-     * @var array<string, array<string, string>>
+     * @var array<int, array<int, string>>
      */
     private array $forward_edges = [];
 
     /**
      * Backward edges: target node id => source node id => edge type
      *
-     * @var array<string, array<string, string>>
+     * @var array<int, array<int, string>>
      */
     private array $backward_edges = [];
 
@@ -122,7 +123,7 @@ final class CodeUseGraph
      * The file each source node was seen in, used to compute file-level
      * references in `--diff` mode and to prune stale edges.
      *
-     * @var array<string, string>
+     * @var array<int, string>
      */
     private array $node_files = [];
 
@@ -130,7 +131,7 @@ final class CodeUseGraph
      * Node id => location hash => location of the references to the node.
      * Only populated when $collect_locations is true.
      *
-     * @var array<string, array<string, CodeLocation>>
+     * @var array<int, array<string, CodeLocation>>
      */
     private array $locations = [];
 
@@ -138,7 +139,7 @@ final class CodeUseGraph
      * Source node => target node => location hash => true. This lets references
      * and their locations be removed together when a source is invalidated.
      *
-     * @var array<string, array<string, array<string, true>>>
+     * @var array<int, array<int, array<string, true>>>
      */
     private array $source_locations = [];
 
@@ -147,21 +148,21 @@ final class CodeUseGraph
      * can be shared by trait analyses, so it is retained until every source
      * that recorded it has been invalidated.
      *
-     * @var array<string, array<string, array<string, true>>>
+     * @var array<int, array<int, array<string, true>>>
      */
     private array $location_sources = [];
 
     /**
      * Set of used node ids, null until resolved.
      *
-     * @var array<string, true>|null
+     * @var array<int, true>|null
      */
     private ?array $used = null;
 
     /**
      * Cached reverse index of $node_files (file => node ids), rebuilt on demand.
      *
-     * @var array<string, array<string, true>>|null
+     * @var array<string, array<int, true>>|null
      */
     private ?array $file_nodes = null;
 
@@ -169,7 +170,7 @@ final class CodeUseGraph
      * Cached index of the nodes referencing any member of a class
      * (lowercase class name => node ids), rebuilt on demand.
      *
-     * @var array<lowercase-string, array<string, true>>|null
+     * @var array<lowercase-string, array<int, true>>|null
      */
     private ?array $class_referencing_nodes = null;
 
@@ -177,7 +178,7 @@ final class CodeUseGraph
      * The mutations performed by each analysed function-like and the
      * unannotated function-likes it calls, resolved by MutationLevelResolver.
      *
-     * @var array<string, MutationInfo>
+     * @var array<int, MutationInfo>
      */
     private array $mutation_info = [];
 
@@ -193,14 +194,14 @@ final class CodeUseGraph
 
     /**
      * @param lowercase-string $fq_class_name_lc
-     * @psalm-pure
+     * @psalm-mutation-free
      */
-    public static function classNode(string $fq_class_name_lc): string
+    public static function classNode(string $fq_class_name_lc): int
     {
-        return self::KIND_CLASS . ' ' . $fq_class_name_lc;
+        return Interner::intern(self::KIND_CLASS . ' ' . $fq_class_name_lc);
     }
 
-    /** @var array<int, string> the class node of each storage id, built once */
+    /** @var array<int, int> the class node of each storage id, built once */
     private static array $class_nodes_by_id = [];
 
     /**
@@ -208,65 +209,65 @@ final class CodeUseGraph
      *
      * @psalm-external-mutation-free
      */
-    public static function classNodeFor(ClassLikeStorage $storage): string
+    public static function classNodeFor(ClassLikeStorage $storage): int
     {
-        return self::$class_nodes_by_id[$storage->id] ??= self::KIND_CLASS . ' ' . strtolower($storage->name);
+        return self::$class_nodes_by_id[$storage->id] ??= Interner::intern(self::KIND_CLASS . ' ' . strtolower($storage->name));
     }
 
     /**
      * @param lowercase-string $function_id_lc a method id (`class::method`) or a function id
-     * @psalm-pure
+     * @psalm-mutation-free
      */
-    public static function functionLikeNode(string $function_id_lc): string
+    public static function functionLikeNode(string $function_id_lc): int
     {
-        return self::KIND_FUNCTION_LIKE . ' ' . $function_id_lc;
+        return Interner::intern(self::KIND_FUNCTION_LIKE . ' ' . $function_id_lc);
     }
 
     /**
      * @param lowercase-string $function_id_lc
-     * @psalm-pure
+     * @psalm-mutation-free
      */
-    public static function functionLikeReturnNode(string $function_id_lc): string
+    public static function functionLikeReturnNode(string $function_id_lc): int
     {
-        return self::KIND_RETURN . ' ' . $function_id_lc;
+        return Interner::intern(self::KIND_RETURN . ' ' . $function_id_lc);
     }
 
     /**
      * @param lowercase-string $fq_class_name_lc
      * @param string $property_name the property name, without the leading `$`
-     * @psalm-pure
+     * @psalm-mutation-free
      */
-    public static function propertyNode(string $fq_class_name_lc, string $property_name): string
+    public static function propertyNode(string $fq_class_name_lc, string $property_name): int
     {
-        return self::KIND_PROPERTY . ' ' . $fq_class_name_lc . '::$' . $property_name;
+        return Interner::intern(self::KIND_PROPERTY . ' ' . $fq_class_name_lc . '::$' . $property_name);
     }
 
     /**
      * @param lowercase-string $fq_class_name_lc
-     * @psalm-pure
+     * @psalm-mutation-free
      */
-    public static function classConstantNode(string $fq_class_name_lc, string $const_name): string
+    public static function classConstantNode(string $fq_class_name_lc, string $const_name): int
     {
-        return self::KIND_CONSTANT . ' ' . $fq_class_name_lc . '::' . $const_name;
+        return Interner::intern(self::KIND_CONSTANT . ' ' . $fq_class_name_lc . '::' . $const_name);
     }
 
     /**
      * @param lowercase-string $method_id_lc
-     * @psalm-pure
+     * @psalm-mutation-free
      */
-    public static function missingMethodNode(string $method_id_lc): string
+    public static function missingMethodNode(string $method_id_lc): int
     {
-        return self::KIND_MISSING_METHOD . ' ' . $method_id_lc;
+        return Interner::intern(self::KIND_MISSING_METHOD . ' ' . $method_id_lc);
     }
 
     /**
      * @param lowercase-string $fq_class_name_lc
      * @param string $property_name the property name, without the leading `$`
-     * @psalm-pure
+     * @psalm-mutation-free
      */
-    public static function missingPropertyNode(string $fq_class_name_lc, string $property_name): string
+    public static function missingPropertyNode(string $fq_class_name_lc, string $property_name): int
     {
-        return self::KIND_MISSING_PROPERTY . ' ' . $fq_class_name_lc . '::$' . $property_name;
+        return Interner::intern(self::KIND_MISSING_PROPERTY . ' ' . $fq_class_name_lc . '::$' . $property_name);
     }
 
     /**
@@ -275,7 +276,7 @@ final class CodeUseGraph
      *
      * @psalm-mutation-free
      */
-    public static function functionLikeNodeForStorage(FunctionLikeStorage $storage): ?string
+    public static function functionLikeNodeForStorage(FunctionLikeStorage $storage): ?int
     {
         if ($storage instanceof MethodStorage) {
             if ($storage->defining_fqcln === null || $storage->cased_name === null) {
@@ -296,29 +297,30 @@ final class CodeUseGraph
      * A node representing a `use` import alias in a given file: methods
      * referencing the alias get invalidated when the import changes.
      *
-     * @psalm-pure
+     * @psalm-mutation-free
      */
-    public static function useAliasNode(string $alias, string $file_path): string
+    public static function useAliasNode(string $alias, string $file_path): int
     {
         // do NOT change this to hash, it will fail on Windows for whatever reason
-        return self::KIND_USE_ALIAS . ' use:' . $alias . ':' . md5($file_path);
+        return Interner::intern(self::KIND_USE_ALIAS . ' use:' . $alias . ':' . md5($file_path));
     }
 
     /**
      * A node representing the top-level code of a file.
      *
-     * @psalm-pure
+     * @psalm-mutation-free
      */
-    public static function fileNode(string $file_path): string
+    public static function fileNode(string $file_path): int
     {
-        return self::KIND_FILE . ' ' . $file_path;
+        return Interner::intern(self::KIND_FILE . ' ' . $file_path);
     }
 
     /**
      * @psalm-pure
      */
-    private static function getKind(string $node_id): string
+    private static function getKind(int $node): string
     {
+        $node_id = Interner::lookup($node);
         $pos = strpos($node_id, ' ');
 
         return $pos === false ? $node_id : substr($node_id, 0, $pos);
@@ -328,10 +330,11 @@ final class CodeUseGraph
      * Returns the class member id (`class::member`) for nodes representing class
      * members, in the same format used by the statement differ, or null.
      *
-     * @psalm-pure
+     * @psalm-mutation-free
      */
-    public static function getMemberId(string $node_id): ?string
+    public static function getMemberId(int $node): ?string
     {
+        $node_id = Interner::lookup($node);
         $pos = strpos($node_id, ' ');
 
         if ($pos === false) {
@@ -350,10 +353,11 @@ final class CodeUseGraph
      * nodes that don't belong to a class (files, free functions, roots).
      *
      * @return lowercase-string|null
-     * @psalm-pure
+     * @psalm-mutation-free
      */
-    public static function getOwnerClass(string $node_id): ?string
+    public static function getOwnerClass(int $node): ?string
     {
+        $node_id = Interner::lookup($node);
         $pos = strpos($node_id, ' ');
 
         if ($pos === false) {
@@ -385,11 +389,11 @@ final class CodeUseGraph
     /**
      * Whether a node is a root of the usage search: a root is always alive.
      *
-     * @param Closure(string): bool $is_external whether a node belongs to code outside of the project
+     * @param Closure(int): bool $is_external whether a node belongs to code outside of the project
      */
-    private static function isRoot(string $node_id, Closure $is_external): bool
+    private static function isRoot(int $node_id, Closure $is_external): bool
     {
-        if ($node_id === self::PUBLIC_API) {
+        if ($node_id === self::publicApiNode()) {
             return true;
         }
 
@@ -400,11 +404,17 @@ final class CodeUseGraph
         }
 
         // Psalm never reports unused free functions, so they're entry points
-        if ($kind === self::KIND_FUNCTION_LIKE && !str_contains($node_id, '::')) {
+        if ($kind === self::KIND_FUNCTION_LIKE && !str_contains(Interner::lookup($node_id), '::')) {
             return true;
         }
 
         return $is_external($node_id);
+    }
+
+    /** The node every public-API node hangs off (interned once). */
+    private static function publicApiNode(): int
+    {
+        return Interner::intern(self::PUBLIC_API);
     }
 
     // Building
@@ -414,7 +424,7 @@ final class CodeUseGraph
      *
      * @psalm-external-mutation-free
      */
-    public function addEdge(string $source_node, string $target_node, string $type = self::EDGE_USE): void
+    public function addEdge(int $source_node, int $target_node, string $type = self::EDGE_USE): void
     {
         if ($source_node === $target_node) {
             return;
@@ -446,7 +456,7 @@ final class CodeUseGraph
      * @psalm-external-mutation-free
      */
     public function addReference(
-        string $target_node,
+        int $target_node,
         ?Context $context,
         ?CodeLocation $location = null,
         string $type = self::EDGE_USE,
@@ -471,7 +481,7 @@ final class CodeUseGraph
      * @psalm-external-mutation-free
      */
     public function addReferenceFrom(
-        string $target_node,
+        int $target_node,
         ?string $calling_method_id,
         ?string $calling_function_id,
         ?string $self,
@@ -511,9 +521,9 @@ final class CodeUseGraph
     /**
      * @psalm-external-mutation-free
      */
-    public function markAsPublicApi(string $node_id): void
+    public function markAsPublicApi(int $node_id): void
     {
-        $this->addEdge(self::PUBLIC_API, $node_id, self::EDGE_PUBLIC_API);
+        $this->addEdge(self::publicApiNode(), $node_id, self::EDGE_PUBLIC_API);
     }
 
     /**
@@ -579,13 +589,13 @@ final class CodeUseGraph
      *
      * @psalm-external-mutation-free
      */
-    public function addMutationInfo(string $node_id, MutationInfo $info): void
+    public function addMutationInfo(int $node_id, MutationInfo $info): void
     {
         $this->mutation_info[$node_id] = $info;
     }
 
     /**
-     * @return array<string, MutationInfo>
+     * @return array<int, MutationInfo>
      * @psalm-mutation-free
      */
     public function getMutationInfo(): array
@@ -599,7 +609,7 @@ final class CodeUseGraph
      *
      * @psalm-external-mutation-free
      */
-    public function markMutationInfoStale(string $node_id): void
+    public function markMutationInfoStale(int $node_id): void
     {
         if (isset($this->mutation_info[$node_id])) {
             $this->mutation_info[$node_id]->fresh = false;
@@ -614,15 +624,15 @@ final class CodeUseGraph
      *
      * Must be called before isUsed(), and again after the graph changes.
      *
-     * @param Closure(string): bool $is_external whether a node (with outgoing
+     * @param Closure(int): bool $is_external whether a node (with outgoing
      *        edges) belongs to code outside of the project, e.g. a vendor class
      *        or a caller made up by a plugin: such code is never reported as
      *        unused, so what it references is used.
      */
     public function resolve(Closure $is_external): void
     {
-        $used = [self::PUBLIC_API => true];
-        $queue = [self::PUBLIC_API];
+        $used = [self::publicApiNode() => true];
+        $queue = [self::publicApiNode()];
 
         foreach ($this->forward_edges as $node_id => $_) {
             if (!isset($used[$node_id]) && self::isRoot($node_id, $is_external)) {
@@ -684,7 +694,7 @@ final class CodeUseGraph
      * Override edges whose target's class is not used yet, by class node: the empty starting point of resolve(),
      * typed here because a local's type comes from what is assigned to it.
      *
-     * @return array<string, list<string>>
+     * @return array<int, list<int>>
      * @psalm-pure
      */
     private static function noDeferredOverrides(): array
@@ -695,7 +705,7 @@ final class CodeUseGraph
     /**
      * @psalm-mutation-free
      */
-    public function isUsed(string $node_id): bool
+    public function isUsed(int $node_id): bool
     {
         if ($this->used === null) {
             throw new LogicException('The graph must be resolved before checking usage');
@@ -710,7 +720,7 @@ final class CodeUseGraph
      *
      * @psalm-mutation-free
      */
-    public function isReferenced(string $node_id): bool
+    public function isReferenced(int $node_id): bool
     {
         if ($this->used === null) {
             throw new LogicException('The graph must be resolved before checking usage');
@@ -734,10 +744,10 @@ final class CodeUseGraph
      * Returns the nodes referencing $node_id, optionally only through edges
      * of the given type.
      *
-     * @return array<string, true>
+     * @return array<int, true>
      * @psalm-mutation-free
      */
-    public function getReferencingNodes(string $node_id, ?string $type = null): array
+    public function getReferencingNodes(int $node_id, ?string $type = null): array
     {
         $references = [];
 
@@ -753,10 +763,10 @@ final class CodeUseGraph
     /**
      * Returns only references made by code that is reachable from an entry point.
      *
-     * @return array<string, true>
+     * @return array<int, true>
      * @psalm-mutation-free
      */
-    public function getUsedReferencingNodes(string $node_id, ?string $type = null): array
+    public function getUsedReferencingNodes(int $node_id, ?string $type = null): array
     {
         if ($this->used === null) {
             throw new LogicException('The graph must be resolved before checking usage');
@@ -769,7 +779,7 @@ final class CodeUseGraph
      * @return array<string, CodeLocation>
      * @psalm-mutation-free
      */
-    public function getReferenceLocations(string $node_id): array
+    public function getReferenceLocations(int $node_id): array
     {
         return $this->locations[$node_id] ?? [];
     }
@@ -777,7 +787,7 @@ final class CodeUseGraph
     /**
      * Target node id => referencing node id => true
      *
-     * @return array<string, array<string, true>>
+     * @return array<int, array<int, true>>
      * @psalm-mutation-free
      */
     public function getAllReferences(): array
@@ -785,8 +795,10 @@ final class CodeUseGraph
         $result = [];
 
         foreach ($this->backward_edges as $target_node => $sources) {
+            $target = Interner::lookup($target_node);
+
             foreach ($sources as $source_node => $_) {
-                $result[$target_node][$source_node] = true;
+                $result[$target][Interner::lookup($source_node)] = true;
             }
         }
 
@@ -798,7 +810,7 @@ final class CodeUseGraph
      * format), the ids of the function-likes referencing it. Used to find the
      * methods to re-analyse when a member changes.
      *
-     * @return array<string, array<string, true>>
+     * @return array<int, array<int, true>>
      * @psalm-mutation-free
      */
     public function getFunctionLikeReferencesToMembers(): array
@@ -816,7 +828,7 @@ final class CodeUseGraph
                 if (($type === self::EDGE_USE || $type === self::EDGE_WRITE)
                     && self::getKind($source_node) === self::KIND_FUNCTION_LIKE
                 ) {
-                    $result[$member_id][substr($source_node, 5)] = true;
+                    $result[$member_id][substr(Interner::lookup($source_node), 5)] = true;
                 }
             }
         }
@@ -830,7 +842,7 @@ final class CodeUseGraph
      * file of the node's owner class, if any (see getOwnerClass()).
      *
      * @param lowercase-string $fq_class_name_lc
-     * @return array<string, true>
+     * @return array<int, true>
      * @psalm-external-mutation-free
      */
     public function getNodesReferencingClass(string $fq_class_name_lc): array
@@ -859,10 +871,10 @@ final class CodeUseGraph
      *
      * @psalm-mutation-free
      */
-    public function getNodeFile(string $node_id): ?string
+    public function getNodeFile(int $node_id): ?string
     {
         if (self::getKind($node_id) === self::KIND_FILE) {
-            return substr($node_id, 5);
+            return substr(Interner::lookup($node_id), 5);
         }
 
         return $this->node_files[$node_id] ?? null;
@@ -876,7 +888,7 @@ final class CodeUseGraph
      *
      * @psalm-external-mutation-free
      */
-    public function removeReferencesFrom(string $node_id): void
+    public function removeReferencesFrom(int $node_id): void
     {
         foreach ($this->source_locations[$node_id] ?? [] as $target_node => $location_hashes) {
             foreach ($location_hashes as $location_hash => $_) {
@@ -952,7 +964,7 @@ final class CodeUseGraph
      * Removes all the references made by the nodes seen in a file, except the
      * nodes in $keep_nodes.
      *
-     * @param array<string, true> $keep_nodes
+     * @param array<int, true> $keep_nodes
      * @psalm-external-mutation-free
      */
     public function removeReferencesFromFile(string $file_path, array $keep_nodes = []): void
@@ -991,7 +1003,7 @@ final class CodeUseGraph
         foreach ($this->forward_edges as $source_node => $targets) {
             foreach ($targets as $target_node => $type) {
                 if (!isset(self::STRUCTURAL_EDGES[$type])) {
-                    $edges[$source_node][$target_node] = $type;
+                    $edges[Interner::lookup($source_node)][Interner::lookup($target_node)] = $type;
                 }
             }
         }
@@ -1001,12 +1013,17 @@ final class CodeUseGraph
         foreach ($this->mutation_info as $node_id => $info) {
             $stale = clone $info;
             $stale->fresh = false;
-            $mutation_info[$node_id] = $stale;
+            $mutation_info[Interner::lookup($node_id)] = $stale;
+        }
+
+        $node_files = [];
+        foreach ($this->node_files as $node_id => $file_path) {
+            $node_files[Interner::lookup($node_id)] = $file_path;
         }
 
         return [
             'edges' => $edges,
-            'node_files' => $this->node_files,
+            'node_files' => $node_files,
             'mutation_info' => $mutation_info,
         ];
     }
@@ -1024,18 +1041,22 @@ final class CodeUseGraph
     public function loadCacheData(array $data): void
     {
         foreach ($data['edges'] as $source_node => $targets) {
+            $source = Interner::intern((string) $source_node);
             foreach ($targets as $target_node => $type) {
-                $this->addEdge($source_node, $target_node, $type);
+                $this->addEdge($source, Interner::intern((string) $target_node), $type);
             }
         }
 
         foreach ($data['node_files'] as $node_id => $file_path) {
-            if (!isset($this->node_files[$node_id])) {
-                $this->node_files[$node_id] = $file_path;
+            $node = Interner::intern((string) $node_id);
+            if (!isset($this->node_files[$node])) {
+                $this->node_files[$node] = $file_path;
             }
         }
 
-        $this->mutation_info += $data['mutation_info'] ?? [];
+        foreach ($data['mutation_info'] ?? [] as $node_id => $info) {
+            $this->mutation_info[Interner::intern((string) $node_id)] ??= $info;
+        }
 
         $this->file_nodes = null;
     }

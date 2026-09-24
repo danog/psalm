@@ -1136,7 +1136,7 @@ final class ClassLikes
             }
         }
 
-        $code_use_graph->resolve(function (string $node_id): bool {
+        $code_use_graph->resolve(function (int $node_id): bool {
             $owner_class = CodeUseGraph::getOwnerClass($node_id);
 
             if ($owner_class === null) {

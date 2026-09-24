@@ -1842,7 +1842,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
      *
      * @psalm-mutation-free
      */
-    public function getMutationNodeId(): ?string
+    public function getMutationNodeId(): ?int
     {
         return CodeUseGraph::functionLikeNodeForStorage($this->storage);
     }

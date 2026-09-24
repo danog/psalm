@@ -255,7 +255,7 @@ abstract class SourceAnalyzer implements StatementsSource
         int $mutation_level,
         ?FunctionLikeStorage $storage = null,
         bool $callee_internal_mutations_ok = false,
-        ?string $callee_id = null,
+        ?int $callee_id = null,
     ): void {
         $src = $this instanceof FunctionLikeAnalyzer
             ? $this
@@ -328,7 +328,7 @@ abstract class SourceAnalyzer implements StatementsSource
         bool $overrideMsg = false,
         ?FunctionLikeStorage $storage = null,
         bool $callee_internal_mutations_ok = false,
-        ?string $callee_id = null,
+        ?int $callee_id = null,
     ): void {
         if ($context->inside_attribute) {
             return;

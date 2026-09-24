@@ -60,7 +60,7 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
      * @psalm-mutation-free
      */
     #[Override]
-    public function getMutationNodeId(): string
+    public function getMutationNodeId(): int
     {
         return CodeUseGraph::functionLikeNode($this->closure_id);
     }
