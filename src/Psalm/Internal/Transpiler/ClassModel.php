@@ -1000,6 +1000,24 @@ final class ClassModel
                 return $this->value_type = false;
             }
         }
+        // VALUE_TYPES_INCLUDE: when set, ONLY the listed classes (matched on the class or any of its ancestors, so a
+        // whole hierarchy follows its root) become values; everything else stays on the Rc path (targeted
+        // experiments: `VALUE_TYPES=1 VALUE_TYPES_INCLUDE=PhpToken` for the parser's tokens)
+        $inc = (string) getenv('VALUE_TYPES_INCLUDE');
+        if ($inc !== '') {
+            $listed = false;
+            for ($c = $this; $c !== null && !$listed; $c = $c->parent) {
+                foreach (explode(',', $inc) as $in) {
+                    if ($in !== '' && strcasecmp(trim($in), $c->fqcn) === 0) {
+                        $listed = true;
+                        break;
+                    }
+                }
+            }
+            if (!$listed) {
+                return $this->value_type = false;
+            }
+        }
         if (self::$program->identityObserved($this)) {
             if (getenv('IMMUTABLE_DIAG') !== false && getenv('IMMUTABLE_DIAG') !== '') {
                 fwrite(STDERR, "[value-identity] " . $this->fqcn . " stays Rc: its identity is observed\n");
