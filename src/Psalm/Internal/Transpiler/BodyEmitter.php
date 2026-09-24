@@ -868,7 +868,7 @@ final class BodyEmitter
         } elseif ($cls->isLeaf() && isset($cls->constructionOnlyFields()[$field->name])) {
             $kind = 'ref'; // construction-only field outside the RefCell: `p_f()` is a plain `&T`
         } elseif (!$cls->isLeaf() && $cls->allConcreteImmutable()) {
-            $kind = 'owned'; // the enum getter hands back a copy (PropRef::Owned): nothing to borrow
+            $kind = 'guard'; // the enum getter hands back a PropRef (a plain `&T`, a RefCell guard or a Cell copy)
         }
         $get = '.' . $acc . '()';
         if ($kind === 'ref') {

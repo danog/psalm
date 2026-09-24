@@ -336,7 +336,16 @@ final class ClassEmitter
             // The mutator accessors (rn_mut/set_rn) are OMITTED: an @psalm-immutable base is never mutated through
             // the handle (verified by Program::computeExternalWrites — else the hierarchy would not have converted),
             // and the leaf set_/mut are `&mut self` which cannot be called on the `&LeafHandle` a `&self` match binds.
-            $w->line('#[inline] pub fn ' . $rn . '(&self) -> PropRef<\'_, ' . $t . '> { match self { ' . $arms('PropRef::Owned(__h.' . $rn . '_get())', 'PropRef::Owned(' . $dyn_get . ')') . ' } }');
+            // each member's own getter decides the arm: a plain field reads as `&T` (PropRef::Plain), a RefCell
+            // field through its guard (PropRef::Borrowed), a Cell field by value (PropRef::Owned) -- no clone
+            // of a Str/List/Map/handle just to look at it
+            $ref_arms = implode(', ', array_map(function (ClassModel $c) use ($h, $rn, $f): string {
+                $ck = $this->cellKind($c, $f);
+                $get = $ck === 'Cell' ? 'PropRef::Owned(__h.' . $rn . '_get())'
+                    : ($ck === 'RefCell' ? 'PropRef::Borrowed(__h.' . $rn . '())' : 'PropRef::Plain(__h.' . $rn . '())');
+                return $h . '::' . $c->variant() . '(__h) => ' . $get;
+            }, $cls->concrete)) . ($cls->concrete ? ', ' : '') . ($cls->has_downstream ? $h . '::Other__(__m) => PropRef::Owned(' . $dyn_get . '), ' : '') . '_ => unreachable!()';
+            $w->line('#[inline] pub fn ' . $rn . '(&self) -> PropRef<\'_, ' . $t . '> { match self { ' . $ref_arms . ' } }');
             $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { match self { ' . $arms('__h.' . $rn . '_get()', $dyn_get) . ' } }');
             $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { match self { ' . $arms('__h.' . $rn . '_opt()', 'php_rt::other_obj(__m).get_prop(' . $name . ').map(|__v| ' . $this->casts->convert('__v', RustType::mixed(), $f->type) . ')') . ' } }');
             // INTERIOR-MUT (Cell/RefCell) fields keep their mutators even on an immutable enum: the leaf set_/mut are
