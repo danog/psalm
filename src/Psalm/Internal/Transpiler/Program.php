@@ -585,7 +585,12 @@ final class Program
                 if ($a->expr instanceof \PhpParser\Node\Expr\StaticCall) {
                     /** @var \PhpParser\Node\Identifier $mn */
                     $mn = $a->expr->name;
-                    $helper = $ctx?->cls !== null ? $this->findMethod($ctx->cls, $mn->name) : null;
+                    // the helper may be a private static of an ancestor (an inherited factory such as
+                    // Atomic::create is scanned once per subclass): resolve it up the parent chain
+                    $helper = null;
+                    for ($hc = $ctx?->cls; $hc !== null && $helper === null; $hc = $hc->parent) {
+                        $helper = $this->findMethod($hc, $mn->name);
+                    }
                     if ($helper === null || !$helper->isStatic()
                         || $helper->storage->visibility === \Psalm\Internal\Analyzer\ClassLikeAnalyzer::VISIBILITY_PUBLIC
                     ) {
