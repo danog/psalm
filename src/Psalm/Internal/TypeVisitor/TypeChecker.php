@@ -96,6 +96,7 @@ final class TypeChecker extends TypeVisitor
         }
 
         if ($type instanceof Union) {
+            /** @psalm-suppress UnusedMethodCall a memo write */
             $type->markChecked();
         } else {
             /** @psalm-suppress InaccessibleProperty Doesn't affect anything else */
