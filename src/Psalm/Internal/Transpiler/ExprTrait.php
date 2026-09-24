@@ -1824,6 +1824,14 @@ trait ExprTrait
         if ($t->isCopy() && $t->kind !== RustType::OPTION) {
             return '(' . $l->code . ' == ' . $r->code . ')';
         }
+        if (getenv('IMMUTABLE_DIAG') !== false && getenv('IMMUTABLE_DIAG') !== '') {
+            // PHP identity on value types is structural: list the sites whose meaning may change
+            $vt = $t->kind === RustType::OPTION ? $t->inner() : $t;
+            $vc = $vt->kind === RustType::CLASS_ ? $this->program->classOf($vt) : null;
+            if ($vc !== null && ($vc->isLeaf() ? $vc->valueType() : array_filter($vc->concrete, static fn(ClassModel $c): bool => $c->valueType()) !== [])) {
+                fwrite(STDERR, "[value-identical] " . $vt->toRust() . " @ " . $this->record->file_path . ":" . $left->getStartLine() . "\n");
+            }
+        }
         return 'identical(' . $l->borrow() . ', ' . $r->borrow() . ')';
     }
 

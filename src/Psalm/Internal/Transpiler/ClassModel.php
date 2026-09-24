@@ -888,6 +888,9 @@ final class ClassModel
             return $this->value_type = false;
         }
         $this->inline_size = $size;
+        if (getenv('IMMUTABLE_DIAG') !== false && getenv('IMMUTABLE_DIAG') !== '') {
+            fwrite(STDERR, "[value-type] " . $this->fqcn . " ~" . $size . " bytes" . ($boxed !== [] ? " boxed=" . implode(',', array_keys($boxed)) : '') . "\n");
+        }
         return $this->value_type = true;
     }
 
