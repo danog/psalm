@@ -143,6 +143,19 @@ abstract class Atomic implements TypeNode, Stringable
     /**
      * @return static
      */
+    public function setSpan(?SourceSpan $span): self
+    {
+        if ($span === $this->span) {
+            return $this;
+        }
+        $cloned = clone $this;
+        $cloned->span = $span;
+        return $cloned;
+    }
+
+    /**
+     * @return static
+     */
     public function setFromDocblock(bool $from_docblock): self
     {
         if ($from_docblock === $this->from_docblock) {

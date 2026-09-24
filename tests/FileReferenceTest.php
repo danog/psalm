@@ -509,6 +509,7 @@ final class FileReferenceTest extends TestCase
                     }',
                 [
                     'class ns\\a' => [
+                        'file /var/www/somefile.php' => true,
                         'func ns\\c::bar' => true,
                     ],
                     'class ns\\t' => [
