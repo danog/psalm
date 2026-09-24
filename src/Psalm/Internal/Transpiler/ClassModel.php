@@ -853,11 +853,100 @@ final class ClassModel
                 return $this->value_type = false;
             }
         }
+        // pzoom keeps TAtomic at 40 bytes and TUnion at 64 (big variants boxed): a value copied on every
+        // by-value pass must stay small, or the copies cost more than the Rc bump they replace and deep
+        // recursion overflows the stack (c113). Classes above the cap stay Rc handles.
+        $cap = (int) (getenv('VALUE_TYPES_CAP') ?: '96');
+        $size = 0;
+        $sizing = [$this->lc() => true];
+        foreach ($this->fields as $f) {
+            if (!$f->is_static) {
+                $size += self::inlineSize($f->type, $sizing);
+            }
+        }
+        if ($size > $cap) {
+            if (getenv('IMMUTABLE_DIAG') !== false && getenv('IMMUTABLE_DIAG') !== '') {
+                fwrite(STDERR, "[value-size] " . $this->fqcn . " stays Rc: ~" . $size . " bytes > cap " . $cap . "\n");
+            }
+            return $this->value_type = false;
+        }
+        $this->inline_size = $size;
         return $this->value_type = true;
     }
 
     /** @var ?bool memo of valueType() */
     private ?bool $value_type = null;
+    /** @var ?int estimated inline byte size once valueType() is true */
+    private ?int $inline_size = null;
+
+    /**
+     * Estimated inline byte size of a value of type $t: handles 8, Str/List 16, Map 8, options +8, a value
+     * class its fields, a hierarchy enum 8 + its largest inline member. Rough, for the value-type cap only.
+     *
+     * @param array<string, true> $sizing classes being sized (a cycle counts as a handle)
+     */
+    public static function inlineSize(RustType $t, array &$sizing): int
+    {
+        switch ($t->kind) {
+            case RustType::BOOL:
+                return 1;
+            case RustType::UNIT:
+            case RustType::NEVER:
+                return 0;
+            case RustType::INT:
+            case RustType::FLOAT:
+            case RustType::SYM:
+            case RustType::MAP:
+            case RustType::ANY_OBJECT:
+            case RustType::RESOURCE:
+            case RustType::GENERIC:
+                return 8;
+            case RustType::STR:
+            case RustType::LIST:
+            case RustType::CLOSURE:
+            case RustType::DYN_CALLABLE:
+            case RustType::RT_GENERIC:
+                return 16;
+            case RustType::ARRAY_KEY:
+            case RustType::MIXED:
+                return 24;
+            case RustType::OPTION:
+                return 8 + self::inlineSize($t->inner(), $sizing);
+            case RustType::TUPLE:
+                $n = 0;
+                foreach ($t->params as $p) {
+                    $n += self::inlineSize($p, $sizing);
+                }
+                return $n;
+            case RustType::SHAPE:
+                $n = 0;
+                foreach ($t->fields as $p) {
+                    $n += self::inlineSize($p, $sizing);
+                }
+                return $n;
+            case RustType::UNION:
+                $max = 0;
+                foreach ($t->params as $p) {
+                    $max = max($max, self::inlineSize($p, $sizing));
+                }
+                return 8 + $max;
+            case RustType::CLASS_:
+                $c = self::$program?->classOf($t);
+                if ($c === null || isset($sizing[$c->lc()])) {
+                    return 8;
+                }
+                if ($c->isLeaf()) {
+                    return $c->valueType() ? ($c->inline_size ?? 8) : 8;
+                }
+                // a hierarchy handle: an enum over its concrete members
+                $max = 0;
+                foreach ($c->concrete as $m) {
+                    $max = max($max, $m->valueType() ? ($m->inline_size ?? 8) : 8);
+                }
+                return 8 + $max;
+        }
+        return 8;
+    }
 
     /** The program, for class lookups from field types (set once by Program). */
     public static ?Program $program = null;
