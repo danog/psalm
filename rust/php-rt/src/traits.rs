@@ -650,6 +650,14 @@ pub fn identical<T: Identical>(a: &T, b: &T) -> bool {
     a.identical(b)
 }
 
+/// A boxed value (a large field of a value type, a large payload in a hierarchy enum) compares as the value.
+impl<T: Identical> Identical for Box<T> {
+    #[inline]
+    fn identical(&self, other: &Self) -> bool {
+        (**self).identical(&**other)
+    }
+}
+
 // ---------------------------------------------------------------- loose equality (==) and ordering
 
 /// PHP 8 `<=>` / `==` between two PHP scalar values.
@@ -688,6 +696,13 @@ pub trait PhpCmp {
     fn php_cmp(&self, other: &Self) -> Ordering;
     fn loose_eq(&self, other: &Self) -> bool {
         self.php_cmp(other) == Ordering::Equal
+    }
+}
+
+impl<T: PhpCmp> PhpCmp for Box<T> {
+    #[inline]
+    fn php_cmp(&self, other: &Self) -> Ordering {
+        (**self).php_cmp(&**other)
     }
 }
 impl PhpCmp for i64 {
@@ -903,6 +918,13 @@ pub fn count<T: Len>(v: T) -> i64 {
 /// `clone $x` (generated for classes).
 pub trait PhpClone {
     fn php_clone(&self) -> Self;
+}
+
+impl<T: PhpClone> PhpClone for Box<T> {
+    #[inline]
+    fn php_clone(&self) -> Self {
+        Box::new((**self).php_clone())
+    }
 }
 
 // ---------------------------------------------------------------- tuples
