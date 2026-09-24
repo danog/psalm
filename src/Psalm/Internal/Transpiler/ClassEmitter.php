@@ -179,7 +179,7 @@ final class ClassEmitter
     private function emitAccessors(FieldModel $f, Writer $w, bool $immut = false, string $cell = '', bool $value = false, bool $written_after_ctor = true, bool $construction_only = false): void
     {
         // census: reads of never-written fields could be plain borrows instead of clones
-        $bump = 'php_rt::stats::bump(php_rt::stats::' . ($written_after_ctor ? 'PROP_GET_CLONE' : 'PROP_GET_CLONE_IMMUT') . ');';
+        $bump = 'php_rt::stats::bump(php_rt::stats::' . ($written_after_ctor ? 'PROP_GET_CLONE' : 'PROP_GET_CLONE_IMMUT') . '); php_rt::stats::bump_named(' . Names::rustStringLiteral($f->declaring->fqcn . '::$' . $f->name) . ');';
         $fld = $f->rustName();
         $rn = $f->acc();
         $t = $f->type->toRust();
