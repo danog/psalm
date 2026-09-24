@@ -622,7 +622,7 @@ final class Program
                     // Atomic::create is scanned once per subclass): resolve it up the parent chain
                     $helper = null;
                     for ($hc = $ctx?->cls; $hc !== null && $helper === null; $hc = $hc->parent) {
-                        $helper = $this->findMethod($hc, $mn->name);
+                        $helper = $this->findMethod($hc, strtolower($mn->name));
                     }
                     if ($helper === null || !$helper->isStatic()
                         || $helper->storage->visibility === \Psalm\Internal\Analyzer\ClassLikeAnalyzer::VISIBILITY_PUBLIC
