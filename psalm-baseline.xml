@@ -2661,12 +2661,6 @@
     <ImpurePropertyAssignment>
       <code><![CDATA[$result->from_docblock]]></code>
       <code><![CDATA[$result->from_docblock]]></code>
-      <code><![CDATA[$result->offset_end]]></code>
-      <code><![CDATA[$result->offset_end]]></code>
-      <code><![CDATA[$result->offset_start]]></code>
-      <code><![CDATA[$result->offset_start]]></code>
-      <code><![CDATA[$result->text]]></code>
-      <code><![CDATA[$result->text]]></code>
     </ImpurePropertyAssignment>
     <PossiblyUndefinedIntArrayOffset>
       <code><![CDATA[array_keys($template_type_map[$value])[0]]]></code>
