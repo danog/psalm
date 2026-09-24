@@ -54,7 +54,7 @@ final class ClassEmitter
                 }
                 $st = $f->storageType();
                 if (isset($boxed_fields[$f->name])) {
-                    $st = 'Box<' . $st . '>';
+                    $st = 'Rc<' . $st . '>'; // copy-on-write: a copy of the value bumps a count instead of deep-cloning
                 }
                 if (($ck = $this->cellKind($cls, $f)) !== '') {
                     $st = ($ck === 'Cell' ? 'php_rt::support::SyncCell' : 'RefCell') . '<' . $st . '>';
@@ -251,12 +251,12 @@ final class ClassEmitter
                 $w->line('#[inline] pub fn ' . $rn . '_mut(&mut self) -> &mut ' . $t . ' { ' . $mut_obj . '.' . $fld . ($f->type->hasDefault() ? '.get_or_default_mut()' : '.get_mut()') . ' }');
                 $w->line('#[inline] pub fn set_' . $rn . '(&mut self, v: ' . $t . ') { ' . $mut_obj . '.' . $fld . '.set(v); }');
             } elseif ($boxed) {
-                // a large field of a value type lives in a Box: the accessors deref it, a write reuses the allocation
+                // a large field of a value type lives behind a copy-on-write Rc: reads deref it, a write makes it unique
                 $w->line('#[inline] pub fn ' . $rn . '(&self) -> &' . $t . ' { &*self.0.' . $fld . ' }');
                 $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { (*self.0.' . $fld . ').clone() }');
                 $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { Some((*self.0.' . $fld . ').clone()) }');
-                $w->line('#[inline] pub fn ' . $rn . '_mut(&mut self) -> &mut ' . $t . ' { &mut *' . $mut_obj . '.' . $fld . ' }');
-                $w->line('#[inline] pub fn set_' . $rn . '(&mut self, v: ' . $t . ') { *' . $mut_obj . '.' . $fld . ' = v; }');
+                $w->line('#[inline] pub fn ' . $rn . '_mut(&mut self) -> &mut ' . $t . ' { Rc::make_mut(&mut ' . $mut_obj . '.' . $fld . ') }');
+                $w->line('#[inline] pub fn set_' . $rn . '(&mut self, v: ' . $t . ') { *Rc::make_mut(&mut ' . $mut_obj . '.' . $fld . ') = v; }');
             } else {
                 $w->line('#[inline] pub fn ' . $rn . '(&self) -> &' . $t . ' { &self.0.' . $fld . ' }');
                 $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { self.0.' . $fld . '.clone() }');
@@ -457,7 +457,7 @@ final class ClassEmitter
         foreach ($cls->fields as $f) {
             $init = $this->fieldInit($f, $body);
             if (isset($boxed_fields[$f->name])) {
-                $init = 'Box::new(' . $init . ')';
+                $init = 'Rc::new(' . $init . ')';
             }
             if (isset($co[$f->name])) {
                 $co_inits[] = $f->rustName() . ': ' . ($f->default !== null ? 'php_rt::late::Init::new(' . $body->constExpr($f->default, $f->type) . ')' : 'php_rt::late::Init::uninit()') . ',';

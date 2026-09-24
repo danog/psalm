@@ -1033,10 +1033,22 @@ final class ClassModel
     /** @var array<string, true> fields of a value type stored as `Box<T>` (see valueType()) */
     private array $boxed_fields = [];
 
-    /** VALUE_BOX_CAP: a field of a value type, or a value's payload in its hierarchy enum, above this many bytes is boxed. */
+    /**
+     * VALUE_BOX_CAP: a field of a value type above this many bytes lives behind a copy-on-write Rc (a cheap
+     * clone; pzoom's Box<TUnion> inside its atomics).
+     */
     public static function boxCap(): int
     {
         return (int) (getenv('VALUE_BOX_CAP') ?: '40');
+    }
+
+    /**
+     * VALUE_VARIANT_BOX_CAP: a value's payload in its hierarchy enum above this many bytes is a Box (the enum
+     * stays the size of its inline members; an atomic of ~80 bytes stays inline by default).
+     */
+    public static function variantBoxCap(): int
+    {
+        return (int) (getenv('VALUE_VARIANT_BOX_CAP') ?: '96');
     }
 
     /** @return array<string, true> the fields stored as `Box<T>` (only a value type has any) */
@@ -1049,7 +1061,7 @@ final class ClassModel
     /** Whether this value's payload in its hierarchy enum is a `Box<Own>` (its inline size is above the box cap). */
     public function boxedVariant(): bool
     {
-        return $this->valueType() && ($this->inline_size ?? 0) > self::boxCap();
+        return $this->valueType() && ($this->inline_size ?? 0) > self::variantBoxCap();
     }
 
     /** The estimated inline size of a value of this type, or 8 for a handle. */
