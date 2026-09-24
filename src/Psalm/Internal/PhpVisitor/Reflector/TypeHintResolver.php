@@ -19,6 +19,7 @@ use Psalm\IssueBuffer;
 use Psalm\Storage\ClassLikeStorage;
 use Psalm\Storage\FileStorage;
 use Psalm\Type;
+use Psalm\Type\Atomic\SourceSpan;
 use Psalm\Type\Atomic\TNull;
 use Psalm\Type\Union;
 use UnexpectedValueException;
@@ -167,7 +168,7 @@ final class TypeHintResolver
         if ($type_string) {
             $atomic_type = $type->getSingleAtomic();
             /** @psalm-suppress InaccessibleProperty We just created this type */
-            $atomic_type->text = $type_string;
+            $atomic_type->span = new SourceSpan(null, null, $type_string);
         }
 
         if ($is_nullable) {
