@@ -3074,12 +3074,6 @@
     </ImpureMethodCall>
     <RiskyTruthyFalsyComparison>
       <code><![CDATA[!$php_type]]></code>
-      <code><![CDATA[$other_type->exact_id]]></code>
-      <code><![CDATA[$other_type->id]]></code>
-      <code><![CDATA[$this->exact_id]]></code>
-      <code><![CDATA[$this->exact_id]]></code>
-      <code><![CDATA[$this->id]]></code>
-      <code><![CDATA[$this->id]]></code>
       <code><![CDATA[strpos($type, ' as ')]]></code>
     </RiskyTruthyFalsyComparison>
   </file>

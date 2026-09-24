@@ -9,6 +9,7 @@ use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\Type\TypeCombiner;
 use Psalm\Internal\TypeVisitor\FromDocblockSetter;
 use Psalm\Type;
+use Psalm\Type\Atomic\IdMemo;
 use Psalm\Type\Atomic\Scalar;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TClassString;
@@ -138,15 +139,8 @@ final class MutableUnion implements TypeNode
 
     public bool $has_mutations = true;
 
-    /**
-     * This is a cache of getId on non-exact mode
-     */
-    private ?string $id = null;
-
-    /**
-     * This is a cache of getId on exact mode
-     */
-    private ?string $exact_id = null;
+    /** The memoized getId(true) / getId(false) strings (IdMemo::$id / IdMemo::$inexact_id), allocated on first use */
+    private ?IdMemo $memo = null;
 
     /**
      * @var array<string, DataFlowNode>
@@ -354,8 +348,7 @@ final class MutableUnion implements TypeNode
      */
     public function bustCache(): void
     {
-        $this->id = null;
-        $this->exact_id = null;
+        $this->memo = null;
     }
 
     /**

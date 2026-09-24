@@ -18,6 +18,7 @@ use Psalm\Internal\TypeVisitor\TypeChecker;
 use Psalm\Internal\TypeVisitor\TypeScanner;
 use Psalm\StatementsSource;
 use Psalm\Storage\FileStorage;
+use Psalm\Type\Atomic\IdMemo;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TArrayKey;
 use Psalm\Type\Atomic\TCallable;
@@ -177,8 +178,7 @@ trait UnionTrait
             $this->parent_nodes = $properties['parent_nodes'];
         }
         $this->checked = false;
-        $this->id = null;
-        $this->exact_id = null;
+        $this->memo = null;
 
         $this->types = self::listOfTypes($types);
 
@@ -489,10 +489,13 @@ trait UnionTrait
      */
     public function getId(bool $exact = true): string
     {
-        if ($exact && $this->exact_id) {
-            return $this->exact_id;
-        } elseif (!$exact && $this->id) {
-            return $this->id;
+        $memo = $this->memo;
+        if ($memo !== null) {
+            if ($exact && $memo->id !== null) {
+                return $memo->id;
+            } elseif (!$exact && $memo->inexact_id !== null) {
+                return $memo->inexact_id;
+            }
         }
 
         $types = [];
@@ -512,12 +515,14 @@ trait UnionTrait
 
         $id = implode('|', $types);
 
+        /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
+        $memo = $this->memo ??= new IdMemo();
         if ($exact) {
-            /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
-            $this->exact_id = $id;
+            /** @psalm-suppress ImpurePropertyAssignment Cache */
+            $memo->id = $id;
         } else {
-            /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
-            $this->id = $id;
+            /** @psalm-suppress ImpurePropertyAssignment Cache */
+            $memo->inexact_id = $id;
         }
 
         return $id;
@@ -1766,12 +1771,16 @@ trait UnionTrait
             return true;
         }
 
-        if ($other_type->id && $this->id && $other_type->id !== $this->id) {
-            return false;
-        }
+        $memo = $this->memo;
+        $other_memo = $other_type->memo;
+        if ($memo !== null && $other_memo !== null) {
+            if ($other_memo->inexact_id !== null && $memo->inexact_id !== null && $other_memo->inexact_id !== $memo->inexact_id) {
+                return false;
+            }
 
-        if ($other_type->exact_id && $this->exact_id && $other_type->exact_id !== $this->exact_id) {
-            return false;
+            if ($other_memo->id !== null && $memo->id !== null && $other_memo->id !== $memo->id) {
+                return false;
+            }
         }
 
         if ($this->possibly_undefined !== $other_type->possibly_undefined && $ensure_possibly_undefined_equality) {
