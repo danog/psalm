@@ -155,8 +155,7 @@ final class FunctionLikeDocblockScanner
                 || !in_array($file_storage->file_path, $codebase->config->internal_stubs)
             )
         ) {
-            /** @psalm-suppress InaccessibleProperty We just created this type */
-            $storage->return_type->ignore_nullable_issues = true;
+            $storage->return_type = $storage->return_type->setProperties(['ignore_nullable_issues' => true]);
         }
 
         // we make sure we only add ignore flag for internal stubs if the config is set to true
@@ -166,8 +165,7 @@ final class FunctionLikeDocblockScanner
                 || !in_array($file_storage->file_path, $codebase->config->internal_stubs)
             )
         ) {
-            /** @psalm-suppress InaccessibleProperty We just created this type */
-            $storage->return_type->ignore_falsable_issues = true;
+            $storage->return_type = $storage->return_type->setProperties(['ignore_falsable_issues' => true]);
         }
 
         if ($docblock_info->stub_override && !$is_functionlike_override) {
@@ -899,8 +897,7 @@ final class FunctionLikeDocblockScanner
             }
 
             if ($all_typehint_types_match) {
-                /** @psalm-suppress InaccessibleProperty We just created this type */
-                $new_param_type->from_docblock = false;
+                $new_param_type = $new_param_type->setProperties(['from_docblock' => false]);
             }
 
             if ($existing_param_type_nullable && !$new_param_type->isNullable()) {
@@ -1006,8 +1003,7 @@ final class FunctionLikeDocblockScanner
                 }
 
                 if ($all_typehint_types_match) {
-                    /** @psalm-suppress InaccessibleProperty We just created this type */
-                    $storage->return_type->from_docblock = false;
+                    $storage->return_type = $storage->return_type->setProperties(['from_docblock' => false]);
 
                     if ($storage instanceof MethodStorage) {
                         $storage->has_docblock_return_type = true;
@@ -1050,8 +1046,7 @@ final class FunctionLikeDocblockScanner
                 || !in_array($file_storage->file_path, $codebase->config->internal_stubs)
             )
         ) {
-            /** @psalm-suppress InaccessibleProperty We just created this type */
-            $storage->return_type->ignore_nullable_issues = true;
+            $storage->return_type = $storage->return_type->setProperties(['ignore_nullable_issues' => true]);
         }
 
         // we make sure we only add ignore flag for internal stubs if the config is set to true
@@ -1061,13 +1056,11 @@ final class FunctionLikeDocblockScanner
                 || !in_array($file_storage->file_path, $codebase->config->internal_stubs)
             )
         ) {
-            /** @psalm-suppress InaccessibleProperty We just created this type */
-            $storage->return_type->ignore_falsable_issues = true;
+            $storage->return_type = $storage->return_type->setProperties(['ignore_falsable_issues' => true]);
         }
 
         if ($stmt->returnsByRef() && $storage->return_type) {
-            /** @psalm-suppress InaccessibleProperty We just created this type */
-            $storage->return_type->by_ref = true;
+            $storage->return_type = $storage->return_type->setProperties(['by_ref' => true]);
         }
 
         $storage->return_type_description = $docblock_info->return_type_description;

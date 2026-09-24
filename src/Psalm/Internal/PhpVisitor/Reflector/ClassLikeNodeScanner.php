@@ -890,8 +890,7 @@ final class ClassLikeNodeScanner
                 $property_id = $fq_classlike_name . '::$' . $property_name;
 
                 if ($property_id === 'DateInterval::$days') {
-                    /** @psalm-suppress InaccessibleProperty We just parsed this type */
-                    $property_type->ignore_falsable_issues = true;
+                    $property_type = $property_type->setProperties(['ignore_falsable_issues' => true]);
                 }
 
                 $classlike_storage->properties[Interner::intern($property_name)]->type = $property_type;

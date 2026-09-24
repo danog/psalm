@@ -789,12 +789,9 @@ class Reconciler
                         } elseif ($existing_key_type_part instanceof TNull
                             || $existing_key_type_part instanceof TFalse
                         ) {
-                            $new_base_type_candidate = Type::getNull();
-
-                            if ($existing_keys[$base_key]->ignore_nullable_issues) {
-                                /** @psalm-suppress InaccessibleProperty We just created this type */
-                                $new_base_type_candidate->ignore_nullable_issues = true;
-                            }
+                            $new_base_type_candidate = $existing_keys[$base_key]->ignore_nullable_issues
+                                ? new Union([new TNull()], ['ignore_nullable_issues' => true])
+                                : Type::getNull();
                         } elseif ($existing_key_type_part instanceof TClassStringMap) {
                             return Type::getMixed();
                         } elseif ($existing_key_type_part instanceof TNever

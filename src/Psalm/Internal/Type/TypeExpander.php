@@ -57,9 +57,6 @@ use function strtolower;
  */
 final class TypeExpander
 {
-    /**
-     * @psalm-suppress InaccessibleProperty We just created the type
-     */
     public static function expandUnion(
         Codebase $codebase,
         Union $return_type,
@@ -110,7 +107,8 @@ final class TypeExpander
             if (count($new_return_type_parts) === 2 && $new_return_type_parts[0] instanceof TNull) {
                 $new_return_type_parts = [$new_return_type_parts[1], $new_return_type_parts[0]];
             }
-            $fresh = new Union($new_return_type_parts, [
+            // (an explicit from_docblock is exact: an expansion keeps the original union's)
+            return new Union($new_return_type_parts, [
                 'from_docblock' => $return_type->from_docblock,
                 'ignore_nullable_issues' => $return_type->ignore_nullable_issues,
                 'ignore_falsable_issues' => $return_type->ignore_falsable_issues,
@@ -124,31 +122,26 @@ final class TypeExpander
                 'had_template' => $return_type->had_template,
                 'parent_nodes' => $return_type->parent_nodes,
             ]);
-            // the constructor derives from_docblock from the atomics; an expansion keeps the original union's
-            $fresh->from_docblock = $return_type->from_docblock;
-
-            return $fresh;
         }
 
-        $fleshed_out_type = TypeCombiner::combine(
+        return TypeCombiner::combine(
             $new_return_type_parts,
             $codebase,
+            properties: [
+                'from_docblock' => $return_type->from_docblock,
+                'ignore_nullable_issues' => $return_type->ignore_nullable_issues,
+                'ignore_falsable_issues' => $return_type->ignore_falsable_issues,
+                'possibly_undefined' => $return_type->possibly_undefined,
+                'possibly_undefined_from_try' => $return_type->possibly_undefined_from_try,
+                'by_ref' => $return_type->by_ref,
+                'initialized' => $return_type->initialized,
+                'from_property' => $return_type->from_property,
+                'from_static_property' => $return_type->from_static_property,
+                'explicit_never' => $return_type->explicit_never,
+                'had_template' => $return_type->had_template,
+                'parent_nodes' => $return_type->parent_nodes,
+            ],
         );
-
-        $fleshed_out_type->from_docblock = $return_type->from_docblock;
-        $fleshed_out_type->ignore_nullable_issues = $return_type->ignore_nullable_issues;
-        $fleshed_out_type->ignore_falsable_issues = $return_type->ignore_falsable_issues;
-        $fleshed_out_type->possibly_undefined = $return_type->possibly_undefined;
-        $fleshed_out_type->possibly_undefined_from_try = $return_type->possibly_undefined_from_try;
-        $fleshed_out_type->by_ref = $return_type->by_ref;
-        $fleshed_out_type->initialized = $return_type->initialized;
-        $fleshed_out_type->from_property = $return_type->from_property;
-        $fleshed_out_type->from_static_property = $return_type->from_static_property;
-        $fleshed_out_type->explicit_never = $return_type->explicit_never;
-        $fleshed_out_type->had_template = $return_type->had_template;
-        $fleshed_out_type->parent_nodes = $return_type->parent_nodes;
-
-        return $fleshed_out_type;
     }
 
     /**

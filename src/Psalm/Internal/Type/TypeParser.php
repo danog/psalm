@@ -1532,7 +1532,7 @@ final class TypeParser
             }
 
             if ($property_maybe_undefined) {
-                $property_type->possibly_undefined = true;
+                $property_type = $property_type->setPossiblyUndefined(true);
                 $had_optional = true;
             }
 

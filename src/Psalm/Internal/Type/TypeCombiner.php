@@ -72,6 +72,7 @@ use function substr;
 
 /**
  * @internal
+ * @psalm-import-type TProperties from Union
  */
 final class TypeCombiner
 {
@@ -89,6 +90,7 @@ final class TypeCombiner
      * @param  non-empty-list<Atomic>    $types
      * @param  int    $literal_limit any greater number of literal types than this
      *                               will be merged to a scalar
+     * @param TProperties $properties the union's properties (applied over the derived ones)
      */
     public static function combine(
         array $types,
@@ -96,9 +98,10 @@ final class TypeCombiner
         bool $overwrite_empty_array = false,
         bool $allow_mixed_union = true,
         int $literal_limit = 500,
+        array $properties = [],
     ): Union {
         if (count($types) === 1) {
-            return new Union([$types[0]]);
+            return new Union([$types[0]], $properties);
         }
 
         $combination = new TypeCombination();
@@ -383,6 +386,9 @@ final class TypeCombiner
         if ($has_never) {
             $union_properties['explicit_never'] = true;
         }
+
+        // the caller's properties win over the derived ones
+        $union_properties = $properties + $union_properties;
 
         if ($union_properties !== []) {
             return $union_type->setProperties($union_properties);
