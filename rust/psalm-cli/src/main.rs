@@ -44,7 +44,8 @@ fn main() {
             let argv: php_rt::list::List<php_rt::string::Str> = php_rt::list::List::from_vec(
                 args.iter().map(|a| php_rt::string::Str::from_string(a.clone())).collect(),
             );
-            psalm_mono::psalm::internal::cli::psalm::Psalm::run(argv);
+            // the owned/borrowed analysis takes read-only static parameters by reference
+            psalm_mono::psalm::internal::cli::psalm::Psalm::run(&argv);
         })
         .expect("spawn");
 
