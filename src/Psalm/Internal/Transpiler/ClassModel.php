@@ -792,6 +792,32 @@ final class ClassModel
      * (PropRef::Owned getters, no set_/mut, no magic__construct dispatch) — see ClassEmitter::emitEnumAccessors /
      * the enum method dispatch. False for an empty hierarchy or any mutable/mixed member.
      */
+    /**
+     * Whether every concrete member of this hierarchy reads $name through a plain `&T`: construction-only in a
+     * RefCell member, a plain (non-cell, non-Late) field in an immutable member. The enum accessor is then
+     * `PropRef::Plain` in every arm, so a read through the enum is a place for the rest of its expression.
+     */
+    public function plainAcrossHierarchy(string $name): bool
+    {
+        if ($this->concrete === []) {
+            return false;
+        }
+        foreach ($this->concrete as $c) {
+            $f = $c->fields[$name] ?? null;
+            if ($f === null || $f->isLate()) {
+                return false;
+            }
+            if ($c->immutable()) {
+                if ($c->cellKind($f) !== '') {
+                    return false;
+                }
+            } elseif (!isset($c->constructionOnlyFields()[$name])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public function allConcreteImmutable(): bool
     {
         if ($this->concrete === []) {

@@ -867,10 +867,23 @@ final class BodyEmitter
             $kind = $cell === '' ? 'ref' : ($cell === 'Cell' ? 'owned' : 'guard');
         } elseif ($cls->isLeaf() && isset($cls->constructionOnlyFields()[$field->name])) {
             $kind = 'ref'; // construction-only field outside the RefCell: `p_f()` is a plain `&T`
+        } elseif (!$cls->isLeaf() && $cls->plainAcrossHierarchy($field->name)) {
+            // every member hands back a plain reference (PropRef::Plain): the deref of the accessor's PropRef
+            // temporary is a place for the rest of the expression (a receiver, an argument, a loop subject)
+            $kind = 'reftemp';
         } elseif (!$cls->isLeaf() && $cls->allConcreteImmutable()) {
             $kind = 'guard'; // the enum getter hands back a PropRef (a plain `&T`, a RefCell guard or a Cell copy)
         }
         $get = '.' . $acc . '()';
+        if ($kind === 'reftemp') {
+            if ($base->place !== null) {
+                return new Val($code, $ft, '(*' . $base->place . $get . ')', null, null, true);
+            }
+            if ($base->guard !== null) {
+                return new Val($code, $ft, null, $base->guard, '(*' . $base->gplace . $get . ')');
+            }
+            return new Val($code, $ft, '(*' . $base->code . $get . ')', null, null, true);
+        }
         if ($kind === 'ref') {
             if ($base->place !== null) {
                 return new Val($code, $ft, '(*' . $base->place . $get . ')', null, null, $base->temp);
