@@ -443,9 +443,10 @@ final class ClassModel
             }
             if (!$root->subtreeWritesField($f->name)) {
                 $set[$f->name] = true;
-            } elseif ($diag !== false && $diag !== '' && !$this->writtenAfterConstruction($f->name)) {
-                // rejected by the strict rule although no assignment outside construction: say why
-                fwrite(STDERR, "[co-diag] " . $this->fqcn . "::$" . $f->name . " " . $root->whySubtreeWrites($f->name) . "\n");
+            } elseif ($diag !== false && $diag !== '') {
+                // rejected by the strict rule: say why (`plain-write` = an assignment outside construction too)
+                fwrite(STDERR, "[co-diag] " . $this->fqcn . "::$" . $f->name . " " . $root->whySubtreeWrites($f->name)
+                    . ($this->writtenAfterConstruction($f->name) ? ' (written after construction)' : '') . "\n");
             }
         }
         return $this->construction_only = $set;
