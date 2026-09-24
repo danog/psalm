@@ -751,7 +751,7 @@ trait ExprTrait
         // the receiver of a property fetch narrowed to a SUB-ENUM (`$atomic->value` after `instanceof
         // TNamedObject`): the field's accessor exists on the dispatch enum the value already is (a wrong
         // variant is the same panic the downcast would raise), so no re-wrapped copy is built
-        if ($this->in_prop_receiver && $this->prop_receiver_name !== null
+        if ($this->in_prop_receiver && $this->prop_receiver_name !== null && $e === $this->prop_receiver_expr
             && $v->type->kind === RustType::CLASS_ && $inf->kind === RustType::CLASS_
         ) {
             $vc = $this->program->classOf($v->type);

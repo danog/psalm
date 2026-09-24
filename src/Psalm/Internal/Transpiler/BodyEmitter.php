@@ -632,6 +632,9 @@ final class BodyEmitter
     /** The property being fetched while $in_prop_receiver (the dispatch enum must carry its accessor). */
     public ?string $prop_receiver_name = null;
 
+    /** The receiver expression of that fetch: only IT may stay un-narrowed, not expressions nested inside it. */
+    public ?Expr $prop_receiver_expr = null;
+
     /** Emit an expression used as a receiver (no clone for `$this`). */
     public function receiver(Expr $e): Val
     {
