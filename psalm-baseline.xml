@@ -2847,11 +2847,6 @@
   </file>
   <file src="src/Psalm/Type/Atomic/TKeyedArray.php">
     <ImpureMethodCall>
-      <code><![CDATA[TemplateInferredTypeReplacer::replace(
-                $property,
-                $template_result,
-                $codebase,
-            )]]></code>
       <code><![CDATA[TemplateStandinTypeReplacer::replace(
                 $property,
                 $template_result,
