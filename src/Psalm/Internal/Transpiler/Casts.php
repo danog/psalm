@@ -457,7 +457,7 @@ final class Casts
             foreach ($from->params as $i => $p) {
                 $parts[] = $this->convert($t . '.' . $i, $p, $to->inner());
             }
-            return '{ let ' . $t . ' = ' . $code . '; List::from_vec(vec![' . implode(', ', $parts) . ']) }';
+            return '{ let ' . $t . ' = ' . $code . '; List::from_array([' . implode(', ', $parts) . ']) }';
         }
         if ($fk === RustType::TUPLE && $tk === RustType::MAP) {
             $list = $this->convert($code, $from, RustType::list($to->params[1]));
