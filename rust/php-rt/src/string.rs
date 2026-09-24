@@ -583,9 +583,20 @@ impl Deref for Str {
 impl PartialEq for Str {
     #[inline]
     fn eq(&self, other: &Str) -> bool {
+        let (ta, tb) = (self.tag(), other.tag());
+        // two inline strings: the 16 bytes are the text, its length and zero padding (every inline constructor
+        // zero-fills and writes stay within the length), so equal texts are equal words: no memcmp call
+        if ta as usize <= INLINE_CAP && tb as usize <= INLINE_CAP {
+            let (a, b) = unsafe {
+                let pa = self as *const Str as *const [u64; 2];
+                let pb = other as *const Str as *const [u64; 2];
+                (pa.read(), pb.read())
+            };
+            return a == b;
+        }
         // two handles to the same interned record (the usual case for map keys) need no byte compare;
         // different records may still hold the same text (interning is per thread), so no fast inequality
-        if self.tag() == TAG_INTERNED && other.tag() == TAG_INTERNED && unsafe { self.r.stat.ptr == other.r.stat.ptr } {
+        if ta == TAG_INTERNED && tb == TAG_INTERNED && unsafe { self.r.stat.ptr == other.r.stat.ptr } {
             return true;
         }
         self.as_bytes() == other.as_bytes()
@@ -776,6 +787,11 @@ mod tests {
     fn size_invariant() {
         // Str must stay 16 bytes (niche-packed) so Mixed stays 24.
         assert_eq!(std::mem::size_of::<Str>(), 16);
+        let mut a = Str::from("ab");
+        a.push_bytes(b"cd");
+        assert!(a == Str::from("abcd"));
+        assert!(Str::from("abcd") != Str::from("abce"));
+        assert!(Str::from("abc") != Str::from("abc\0"));
         assert_eq!(std::mem::size_of::<HeapStr>(), 8);
         assert!(Str::from_bytes(b"short").is_inline());
         assert!(Str::from_bytes(b"exactly fifteen").is_inline());
