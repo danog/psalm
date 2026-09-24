@@ -976,12 +976,15 @@ final class AssignmentAnalyzer
             $context->decrementReferenceCount($lhs_var_id);
 
             // Remove old reference parent node so previously referenced variable usage doesn't count as reference usage
+            // ($lhs_var_id and the variable it references share one vars_in_scope slot, so the new union lands in both)
             $old_type = $context->vars_in_scope[$lhs_var_id];
+            $kept_parent_nodes = $old_type->parent_nodes;
             foreach ($old_type->parent_nodes as $old_parent_node_key => $old_parent_node) {
                 if (str_starts_with($old_parent_node->id, "$lhs_var_id from ")) {
-                    unset($old_type->parent_nodes[$old_parent_node_key]);
+                    unset($kept_parent_nodes[$old_parent_node_key]);
                 }
             }
+            $context->vars_in_scope[$lhs_var_id] = $old_type->setParentNodes($kept_parent_nodes);
         }
         // When assigning an existing reference as a reference it removes the
         // old reference, so it's no longer potentially from a confusing scope.
