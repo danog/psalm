@@ -1925,6 +1925,7 @@ function run_all(): string
         . check('value_hierarchy', case_value_hierarchy(), 'i1,s:a,l2,s:q!|i:1|9|k=i1:s:a:l2:s:q!')
         . check('value_containers', case_value_containers(), 'in:1,0|eq:1,0|u:i1,text|o:s:z,none|ref:i4')
         . check('identity_cycle', case_identity_cycle(), 'cycle@3:a')
+        . check('value_factory', case_value_factory(), 'TF3:T')
         . check('data_file', case_data_file(), 'a1x-,b2y3.5|a,b')
         . check('elseif_assign', case_elseif_assign(), 'none,a5,skip|1')
         . check('json_encode', case_json_encode(), '{"a":1,"b":[1,2,3],"c":null,"d":true,"e":1.5,"f":"x\\"y"}|[{"x":1,"label":null},{"x":2,"label":"p"}]|{"a":1,"b":"two","c":[3,4]}|{"3":"a","5":"b"}|[]|' . "{\n    \"k\": [\n        1,\n        \"z\"\n    ]\n}")
@@ -3510,4 +3511,58 @@ function case_identity_cycle(): string
 {
     $nodes = ['a' => new IdNode('a', 'b'), 'b' => new IdNode('b', 'c'), 'c' => new IdNode('c', 'a')];
     return id_walk($nodes, $nodes['a'], [], 0);
+}
+
+/**
+ * An immutable hierarchy whose base fills a plain field through a base-typed local after a private factory
+ * (Atomic::create) and withers it through a clone-local: both writes go through `&mut` on the local's binding.
+ *
+ * @psalm-immutable
+ */
+abstract class VBase
+{
+    public bool $flag = false;
+
+    public static function make(int $v, bool $flag): VBase
+    {
+        $r = self::inner($v);
+        /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty construction */
+        $r->flag = $flag;
+        return $r;
+    }
+
+    private static function inner(int $v): VBase
+    {
+        return new VLeaf($v);
+    }
+
+    /** @return static */
+    public function withFlag(bool $f): static
+    {
+        if ($f === $this->flag) {
+            return $this;
+        }
+        $c = clone $this;
+        /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty wither */
+        $c->flag = $f;
+        return $c;
+    }
+}
+
+/**
+ * @psalm-immutable
+ */
+final class VLeaf extends VBase
+{
+    public function __construct(public int $v)
+    {
+    }
+}
+
+function case_value_factory(): string
+{
+    $a = VBase::make(3, true);
+    $b = $a->withFlag(false);
+    $same = $a->withFlag(true);
+    return ($a->flag ? 'T' : 'F') . ($b->flag ? 'T' : 'F') . ($b instanceof VLeaf ? $b->v : 0) . ':' . ($same === $a ? 'T' : 'F');
 }

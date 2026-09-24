@@ -86,7 +86,9 @@ trait LValueTrait
                     // `$c = clone $this; $c->prop = x`), write/mut through the raw `let mut` binding so make_mut COWs
                     // `c` in place (exactly PHP clone-then-mutate). Reads still go through the owned `c.clone()`.
                     // Inert for current immutables (all write-free); unblocks withered immutable hierarchies.
-                    if ($cls !== null && $cls->immutable()
+                    // (also through a base-typed local of an all-immutable hierarchy: `$result = self::createInner(..);
+                    // $result->span = ..` in Atomic::create, where the enum setter of a plain field is `&mut self`)
+                    if ($cls !== null && ($cls->immutable() || (!$cls->isLeaf() && $cls->allConcreteImmutable()))
                         && $e->var instanceof Expr\Variable && is_string($e->var->name) && $e->var->name !== 'this'
                         && $this->isWritableLocal($e->var->name)
                     ) {
