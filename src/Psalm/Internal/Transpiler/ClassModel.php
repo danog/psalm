@@ -834,6 +834,12 @@ final class ClassModel
         if ($v === false || $v === '' || $v === '0' || !$this->immutable() || self::$program === null) {
             return $this->value_type = false;
         }
+        if (self::$program->identityObserved($this)) {
+            if (getenv('IMMUTABLE_DIAG') !== false && getenv('IMMUTABLE_DIAG') !== '') {
+                fwrite(STDERR, "[value-identity] " . $this->fqcn . " stays Rc: its identity is observed\n");
+            }
+            return $this->value_type = false;
+        }
         // while this class is being decided, a field reaching it inline means an infinite value: not a value type
         $this->value_type = false;
         $family = [];

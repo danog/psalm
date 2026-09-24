@@ -47,6 +47,18 @@ final class Program
     /** @var array<lowercase-string, FunctionModel> free functions by lowercase fully-qualified name */
     public array $functions = [];
 
+    /**
+     * Classes (lowercase, as declared at the observation site: a base or interface covers its whole subtree) whose
+     * object identity the program observes: `spl_object_id`/`spl_object_hash`, `SplObjectStorage`/`WeakMap` keys,
+     * `WeakReference::create`. Such a class can never be a value type (a copy would get a fresh identity:
+     * ConstantTypeResolver's cycle check keyed on spl_object_id looped until OOM under VALUE_TYPES).
+     *
+     * @var array<lowercase-string, true>
+     */
+    public array $identity_observed = [];
+    /** an identity observation on `object`/`mixed` covers every class */
+    public bool $identity_observed_all = false;
+
     public TypeMapper $types;
 
     /** @var array<string, MethodModel> cache keyed by "class::method" */
@@ -191,8 +203,127 @@ final class Program
         $this->computeResultable();
         $this->computeThrows();
         $this->computeExternalWrites();
+        $this->computeIdentityObserved();
         $this->computeHierarchyImmutable();
         $this->computeBorrowAgreement();
+    }
+
+    /** See $identity_observed: the object types reaching an identity-observing builtin. */
+    private function computeIdentityObserved(): void
+    {
+        $finder = new \PhpParser\NodeFinder();
+        $fn_names = ['spl_object_id' => true, 'spl_object_hash' => true];
+        $keyed_classes = ['splobjectstorage' => true, 'weakmap' => true];
+        $note = fn(?\Psalm\Type\Union $t, string $where) => $this->noteIdentityUnion($t, $where);
+        $scan = function (?array $stmts, $node_data, string $where) use ($finder, $fn_names, $keyed_classes, $note): void {
+            if ($stmts === null || $node_data === null) {
+                return;
+            }
+            foreach ($finder->findInstanceOf($stmts, \PhpParser\Node\Expr\FuncCall::class) as $call) {
+                if ($call->name instanceof \PhpParser\Node\Name && isset($fn_names[strtolower($call->name->toString())])) {
+                    foreach ($call->args as $arg) {
+                        if ($arg instanceof \PhpParser\Node\Arg) {
+                            $note($node_data->getType($arg->value), $where . ':' . $call->getStartLine());
+                        }
+                    }
+                }
+            }
+            foreach ($finder->findInstanceOf($stmts, \PhpParser\Node\Expr\StaticCall::class) as $call) {
+                if ($call->class instanceof \PhpParser\Node\Name && strtolower($call->class->toString()) === 'weakreference') {
+                    foreach ($call->args as $arg) {
+                        if ($arg instanceof \PhpParser\Node\Arg) {
+                            $note($node_data->getType($arg->value), $where . ':' . $call->getStartLine());
+                        }
+                    }
+                }
+            }
+            $keyed = static function (\PhpParser\Node\Expr $recv) use ($node_data, $keyed_classes): bool {
+                $t = $node_data->getType($recv);
+                if ($t === null) {
+                    return false;
+                }
+                foreach ($t->getAtomicTypes() as $atomic) {
+                    if ($atomic instanceof \Psalm\Type\Atomic\TNamedObject && isset($keyed_classes[strtolower($atomic->value)])) {
+                        return true;
+                    }
+                }
+                return false;
+            };
+            foreach ($finder->findInstanceOf($stmts, \PhpParser\Node\Expr\MethodCall::class) as $call) {
+                if ($keyed($call->var)) {
+                    foreach ($call->args as $arg) {
+                        if ($arg instanceof \PhpParser\Node\Arg) {
+                            $note($node_data->getType($arg->value), $where . ':' . $call->getStartLine());
+                        }
+                    }
+                }
+            }
+            // `$storage[$obj]`, `isset($storage[$obj])`, `$storage[$obj] = ..`, `unset($storage[$obj])`
+            foreach ($finder->findInstanceOf($stmts, \PhpParser\Node\Expr\ArrayDimFetch::class) as $fetch) {
+                if ($fetch->dim !== null && $keyed($fetch->var)) {
+                    $note($node_data->getType($fetch->dim), $where . ':' . $fetch->getStartLine());
+                }
+            }
+        };
+        foreach ($this->uniqueClasses() as $model) {
+            foreach ($model->methods as $m) {
+                if ($m->node === null || $m->record === null) {
+                    continue;
+                }
+                $scan($m->node->stmts ?? [], $m->record->node_data, $model->fqcn . '::' . $m->name);
+            }
+        }
+        foreach ($this->functions as $fn) {
+            if ($fn->record->node !== null) {
+                $scan($fn->record->node->stmts ?? [], $fn->record->node_data, $fn->fq_name);
+            }
+        }
+        fwrite(STDERR, "[program] identity-observed classes: " . count($this->identity_observed)
+            . ($this->identity_observed_all ? " (+all)" : "") . "\n");
+    }
+
+    /** Records the object types of $t as identity-observed (a template parameter through its bound). */
+    private function noteIdentityUnion(?\Psalm\Type\Union $t, string $where): void
+    {
+        if ($t === null) {
+            return;
+        }
+        foreach ($t->getAtomicTypes() as $atomic) {
+            if ($atomic instanceof \Psalm\Type\Atomic\TTemplateParam) {
+                $this->noteIdentityUnion($atomic->as, $where);
+            } elseif ($atomic instanceof \Psalm\Type\Atomic\TNamedObject) {
+                $this->identity_observed[strtolower($atomic->value)] = true;
+            } elseif ($atomic instanceof \Psalm\Type\Atomic\TObject || $atomic instanceof \Psalm\Type\Atomic\TMixed) {
+                if (!$this->identity_observed_all) {
+                    fwrite(STDERR, "[identity] untyped object identity observed @ " . $where . ": every class stays a handle\n");
+                }
+                $this->identity_observed_all = true;
+            }
+        }
+    }
+
+    /** Whether the program observes the identity of $cls or of any class/interface it descends from. */
+    public function identityObserved(ClassModel $cls): bool
+    {
+        if ($this->identity_observed_all) {
+            return true;
+        }
+        for ($m = $cls; $m !== null; $m = $m->parent) {
+            if (isset($this->identity_observed[$m->lc()])) {
+                return true;
+            }
+        }
+        foreach ($cls->storage->parent_classes as $lc => $_) {
+            if (isset($this->identity_observed[$lc])) {
+                return true;
+            }
+        }
+        foreach ($cls->storage->class_implements as $lc => $_) {
+            if (isset($this->identity_observed[$lc])) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

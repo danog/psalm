@@ -1924,6 +1924,7 @@ function run_all(): string
         . check('nested_receiver_narrowing', case_nested_receiver_narrowing(), '7:x')
         . check('value_hierarchy', case_value_hierarchy(), 'i1,s:a,l2,s:q!|i:1|9|k=i1:s:a:l2:s:q!')
         . check('value_containers', case_value_containers(), 'in:1,0|eq:1,0|u:i1,text|o:s:z,none|ref:i4')
+        . check('identity_cycle', case_identity_cycle(), 'cycle@3:a')
         . check('data_file', case_data_file(), 'a1x-,b2y3.5|a,b')
         . check('elseif_assign', case_elseif_assign(), 'none,a5,skip|1')
         . check('json_encode', case_json_encode(), '{"a":1,"b":[1,2,3],"c":null,"d":true,"e":1.5,"f":"x\\"y"}|[{"x":1,"label":null},{"x":2,"label":"p"}]|{"a":1,"b":"two","c":[3,4]}|{"3":"a","5":"b"}|[]|' . "{\n    \"k\": [\n        1,\n        \"z\"\n    ]\n}")
@@ -3474,4 +3475,39 @@ function generic_or_empty(array $items, bool $empty): array
 function case_generic_empty_return(): string
 {
     return count(generic_or_empty(['a', 'b'], true)) . ':' . count(generic_or_empty(['a', 'b'], false));
+}
+
+/**
+ * Identity observed through spl_object_id: must stay a handle under VALUE_TYPES (a copy would get a fresh id and
+ * the visited-set cycle check below would never fire: ConstantTypeResolver looped until OOM this way).
+ *
+ * @psalm-immutable
+ */
+final class IdNode
+{
+    public function __construct(public readonly string $name, public readonly string $next)
+    {
+    }
+}
+
+/**
+ * @param array<string, IdNode> $nodes
+ * @param array<int, true> $visited
+ */
+function id_walk(array $nodes, IdNode $n, array $visited, int $depth): string
+{
+    $id = spl_object_id($n);
+    if (isset($visited[$id])) {
+        return 'cycle@' . $depth . ':' . $n->name;
+    }
+    if ($depth > 20) {
+        return 'deep';
+    }
+    return id_walk($nodes, $nodes[$n->next], $visited + [$id => true], $depth + 1);
+}
+
+function case_identity_cycle(): string
+{
+    $nodes = ['a' => new IdNode('a', 'b'), 'b' => new IdNode('b', 'c'), 'c' => new IdNode('c', 'a')];
+    return id_walk($nodes, $nodes['a'], [], 0);
 }
