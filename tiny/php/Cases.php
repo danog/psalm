@@ -1919,6 +1919,7 @@ function run_all(): string
         . check('defined_constants', case_defined_constants(), 'max9223372036854775807,eall,eol,pi')
         . check('defined_fold', case_defined_fold(), 'rt=1,cls=1,nocls=0,unknown=0,dyn=1')
         . check('memo_immutable', case_memo_immutable(), 'v7:v7:1|v7:1|n:1')
+        . check('memo_trait_immutable', case_memo_trait_immutable(), 'k3:k3:1')
         . check('data_file', case_data_file(), 'a1x-,b2y3.5|a,b')
         . check('elseif_assign', case_elseif_assign(), 'none,a5,skip|1')
         . check('json_encode', case_json_encode(), '{"a":1,"b":[1,2,3],"c":null,"d":true,"e":1.5,"f":"x\\"y"}|[{"x":1,"label":null},{"x":2,"label":"p"}]|{"a":1,"b":"two","c":[3,4]}|{"3":"a","5":"b"}|[]|' . "{\n    \"k\": [\n        1,\n        \"z\"\n    ]\n}")
@@ -2028,6 +2029,69 @@ final class MemoBox
         $c->v = $v;
         return $c;
     }
+}
+
+interface TraitBoxNode
+{
+    public function key(): string;
+}
+
+trait MemoBoxTrait
+{
+    private ?string $key = null;
+
+    private bool $checked = false;
+
+    public function __construct(public int $k)
+    {
+        $this->checked = false;
+        $this->key = null;
+    }
+
+    public function key(): string
+    {
+        if ($this->key === null) {
+            /** @psalm-suppress ImpurePropertyAssignment memo */
+            $this->key = 'k' . $this->k;
+        }
+        return $this->key;
+    }
+
+    /** @psalm-external-mutation-free */
+    public function markChecked(): void
+    {
+        /** @psalm-suppress ImpurePropertyAssignment memo */
+        $this->checked = true;
+    }
+
+    public function isChecked(): bool
+    {
+        return $this->checked;
+    }
+}
+
+/**
+ * @psalm-immutable
+ */
+final class TraitMemoBox implements TraitBoxNode
+{
+    use MemoBoxTrait;
+
+    /** @param array<string, mixed> $properties */
+    public function __unserialize(array $properties): void
+    {
+        foreach ($properties as $name => $value) {
+            $this->$name = $value;
+        }
+    }
+}
+
+function case_memo_trait_immutable(): string
+{
+    $a = new TraitMemoBox(3);
+    $first = $a->key();
+    $a->markChecked();
+    return $first . ':' . $a->key() . ':' . (int) $a->isChecked();
 }
 
 function case_memo_immutable(): string

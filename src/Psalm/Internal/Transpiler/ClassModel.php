@@ -657,6 +657,17 @@ final class ClassModel
         ) {
             return true;
         }
+        if (($diag = getenv('IMMUTABLE_DIAG')) !== false && $diag !== '' && str_contains(strtolower($this->fqcn), strtolower($diag))) {
+            fwrite(STDERR, "[immutable-diag] " . $this->fqcn
+                . " parent=" . ($this->parent === null ? 'none' : $this->parent->fqcn)
+                . " ext_written=" . var_export($this->externally_written, true)
+                . " ext_fields=" . implode(',', array_keys($this->ext_written_fields))
+                . " post_ctor=" . implode(',', array_keys($this->postConstructionWrittenFields()))
+                . " helper_ok=" . var_export($this->noHelperConstructionWrites(), true)
+                . " memo_only=" . var_export($this->memoOnlyPostConstructionWrites(), true)
+                . " leaf=" . var_export($this->isLeaf(), true)
+                . "\n");
+        }
         // Memoizing standalone leaves (Type\Union: id/exact_id/checked): the memo fields become per-field
         // Cell/RefCell through interiorMutFields(), every other field is a plain `&T` read.
         if ($this->parent === null
