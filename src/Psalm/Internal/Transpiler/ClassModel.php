@@ -979,6 +979,15 @@ final class ClassModel
         if ($v === false || $v === '' || $v === '0' || !$this->immutable() || self::$program === null) {
             return $this->value_type = false;
         }
+        // `@rust-handle` on the class: kept a shared (Rc) object by request of the source (Psalm\Type\Atomic\SourceSpan:
+        // an optional field of every atomic, cheaper as an 8-byte handle than as an inline value)
+        $doc = $this->node?->getDocComment()?->getText() ?? '';
+        if (str_contains($doc, '@rust-handle')) {
+            if (getenv('IMMUTABLE_DIAG') !== false && getenv('IMMUTABLE_DIAG') !== '') {
+                fwrite(STDERR, "[value-excluded] " . $this->fqcn . " stays Rc: @rust-handle\n");
+            }
+            return $this->value_type = false;
+        }
         // VALUE_TYPES_EXCLUDE: comma-separated class names kept on the Rc path. A value that is copied into many
         // containers (Union: every scope map) costs more in copies than the handle it replaces (c118: +2.5% wall,
         // +15% peak memory); pzoom shares its unions through Rc in scopes and inlines only the atomics.
