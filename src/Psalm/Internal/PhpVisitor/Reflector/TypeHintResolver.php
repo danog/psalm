@@ -166,9 +166,8 @@ final class TypeHintResolver
         );
 
         if ($type_string) {
-            $atomic_type = $type->getSingleAtomic();
-            /** @psalm-suppress InaccessibleProperty We just created this type */
-            $atomic_type->span = new SourceSpan(null, null, $type_string);
+            // the text as written (an import alias): recorded through the wither, a type is never written in place
+            $type = $type->setTypes([$type->getSingleAtomic()->setSpan(new SourceSpan(null, null, $type_string))]);
         }
 
         if ($is_nullable) {
