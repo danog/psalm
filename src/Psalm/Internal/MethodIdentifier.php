@@ -36,7 +36,15 @@ final class MethodIdentifier implements Stringable
     /**
      * Takes any valid reference to a method id and converts
      * it into a MethodIdentifier
+     * Memo of __toString (the identifier is stringified as a map key on most hot paths); public so the
+     * cache serializer sees it like every other property.
      *
+     * @internal
+     */
+    public ?string $string_memo = null;
+
+    /**
+     * @param lowercase-string $method_name
      * @psalm-pure
      */
     public static function wrap(string|MethodIdentifier $method_id): self
@@ -70,6 +78,11 @@ final class MethodIdentifier implements Stringable
     #[Override]
     public function __toString(): string
     {
-        return $this->fq_class_name . '::' . $this->method_name;
+        if ($this->string_memo !== null) {
+            return $this->string_memo;
+        }
+        /** @psalm-suppress ImpurePropertyAssignment Cache */
+        $this->string_memo = $this->fq_class_name . '::' . $this->method_name;
+        return $this->string_memo;
     }
 }
