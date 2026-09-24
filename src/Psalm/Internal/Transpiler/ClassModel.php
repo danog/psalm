@@ -938,6 +938,17 @@ final class ClassModel
         if ($v === false || $v === '' || $v === '0' || !$this->immutable() || self::$program === null) {
             return $this->value_type = false;
         }
+        // VALUE_TYPES_EXCLUDE: comma-separated class names kept on the Rc path. A value that is copied into many
+        // containers (Union: every scope map) costs more in copies than the handle it replaces (c118: +2.5% wall,
+        // +15% peak memory); pzoom shares its unions through Rc in scopes and inlines only the atomics.
+        foreach (explode(',', (string) getenv('VALUE_TYPES_EXCLUDE')) as $ex) {
+            if ($ex !== '' && strcasecmp(trim($ex), $this->fqcn) === 0) {
+                if (getenv('IMMUTABLE_DIAG') !== false && getenv('IMMUTABLE_DIAG') !== '') {
+                    fwrite(STDERR, "[value-excluded] " . $this->fqcn . " stays Rc: VALUE_TYPES_EXCLUDE\n");
+                }
+                return $this->value_type = false;
+            }
+        }
         if (self::$program->identityObserved($this)) {
             if (getenv('IMMUTABLE_DIAG') !== false && getenv('IMMUTABLE_DIAG') !== '') {
                 fwrite(STDERR, "[value-identity] " . $this->fqcn . " stays Rc: its identity is observed\n");
