@@ -304,6 +304,9 @@ final class TemplateInferredTypeReplacer
                 $template_type = $template_type->getBuilder()->setTypes($resolved_template_types)->freeze();
 
                 $types = [];
+                // the intersection types still to hand out (an `object` template atomic takes the first one;
+                // the atomic being replaced is not modified)
+                $extra_types = $atomic_type->extra_types;
                 foreach ($template_type->getAtomicTypes() as $atomic_template_type) {
                     if ($atomic_template_type instanceof TNamedObject
                         || $atomic_template_type instanceof TTemplateParam
@@ -311,15 +314,15 @@ final class TemplateInferredTypeReplacer
                         || $atomic_template_type instanceof TObjectWithProperties
                     ) {
                         $types []= $atomic_template_type->setIntersectionTypes(array_merge(
-                            $atomic_type->extra_types,
+                            $extra_types,
                             $atomic_template_type->extra_types,
                         ));
                     } elseif ($atomic_template_type instanceof TObject) {
-                        $first_atomic_type = array_shift($atomic_type->extra_types);
+                        $first_atomic_type = array_shift($extra_types);
                         assert($first_atomic_type !== null);
 
-                        if ($atomic_type->extra_types) {
-                            $first_atomic_type = $first_atomic_type->setIntersectionTypes($atomic_type->extra_types);
+                        if ($extra_types) {
+                            $first_atomic_type = $first_atomic_type->setIntersectionTypes($extra_types);
                         }
 
                         $types []= $first_atomic_type;
