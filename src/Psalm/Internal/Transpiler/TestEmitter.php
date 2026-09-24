@@ -303,7 +303,8 @@ final class TestEmitter
         } else {
             [$iter, $kt, $vt] = $rows;
             $body->line('let __t = ' . $new . ';');
-            $body->line('__t.' . Names::method('setDataName') . '(to_str(&__key));');
+            $set_name = $this->program->findMethod($cls, 'setdataname');
+            $body->line('__t.' . Names::method('setDataName') . '(' . ($set_name !== null && isset($set_name->borrow_params[0]) ? '&' : '') . 'to_str(&__key));');
             $args = [...$this->rowArgs($m, $vt, $first_dep_param), ...$dep_args];
             $this->emitInvocation($cls, $m, $body, $args, 'to_str(&__key)');
         }
@@ -477,7 +478,10 @@ final class TestEmitter
         $w->line('let __td = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| __t.' . $mm('runTearDown') . '()));');
         $w->open('match __outcome {');
         $w->line('Ok(_) => { if __t.' . $mm('expectsException') . '() { php_rt::do_throw(Throw::assertion(cat!(Str::from_static("Failed asserting that exception of type \\""), __t.' . $mm('expectedExceptionDescription') . '(), Str::from_static("\\" is thrown")))); } }');
-        $w->line('Err(__p) => { let __e: Throw = php_rt::take_thrown::<Throw>(__p); if __t.' . $mm('expectsException') . '() && !php_rt::testing::is_skip(&__e) { __t.' . $mm('verifyExpectedException') . '(__e); } else { php_rt::do_throw(__e); } }');
+        // verifyExpectedException(Throwable) is a fixture method like any other: it may borrow its parameter
+        $verify = $this->program->findMethod($cls, 'verifyexpectedexception');
+        $e_arg = $verify !== null && isset($verify->borrow_params[0]) ? '&__e' : '__e';
+        $w->line('Err(__p) => { let __e: Throw = php_rt::take_thrown::<Throw>(__p); if __t.' . $mm('expectsException') . '() && !php_rt::testing::is_skip(&__e) { __t.' . $mm('verifyExpectedException') . '(' . $e_arg . '); } else { php_rt::do_throw(__e); } }');
         $w->close();
         $w->line('if let Err(__p) = __td { std::panic::resume_unwind(__p); }');
         $w->close('});');
