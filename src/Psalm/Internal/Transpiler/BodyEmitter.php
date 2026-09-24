@@ -629,6 +629,9 @@ final class BodyEmitter
      */
     public bool $in_prop_receiver = false;
 
+    /** The property being fetched while $in_prop_receiver (the dispatch enum must carry its accessor). */
+    public ?string $prop_receiver_name = null;
+
     /** Emit an expression used as a receiver (no clone for `$this`). */
     public function receiver(Expr $e): Val
     {
