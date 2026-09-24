@@ -1926,6 +1926,8 @@ function run_all(): string
         . check('value_containers', case_value_containers(), 'in:1,0|eq:1,0|u:i1,text|o:s:z,none|ref:i4')
         . check('identity_cycle', case_identity_cycle(), 'cycle@3:a')
         . check('value_factory', case_value_factory(), 'TF3:T')
+        . check('value_named', case_value_named(), 'A&B|A&B&C|self->Foo|k:A&B|static:1')
+        . check('value_nonleaf', case_value_nonleaf(), 'G<int>|Foo<int>|Foo&B<int>|1|self->Foo')
         . check('data_file', case_data_file(), 'a1x-,b2y3.5|a,b')
         . check('elseif_assign', case_elseif_assign(), 'none,a5,skip|1')
         . check('json_encode', case_json_encode(), '{"a":1,"b":[1,2,3],"c":null,"d":true,"e":1.5,"f":"x\\"y"}|[{"x":1,"label":null},{"x":2,"label":"p"}]|{"a":1,"b":"two","c":[3,4]}|{"3":"a","5":"b"}|[]|' . "{\n    \"k\": [\n        1,\n        \"z\"\n    ]\n}")
@@ -3565,4 +3567,196 @@ function case_value_factory(): string
     $b = $a->withFlag(false);
     $same = $a->withFlag(true);
     return ($a->flag ? 'T' : 'F') . ($b->flag ? 'T' : 'F') . ($b instanceof VLeaf ? $b->v : 0) . ':' . ($same === $a ? 'T' : 'F');
+}
+
+/**
+ * A TNamedObject-like value: a name, an intersection map of atoms, a memoized key, withers, and an expander
+ * that narrows an enum-typed parameter and reassigns it with wither results.
+ *
+ * @psalm-immutable
+ */
+class NAtom
+{
+    private ?string $key_memo = null;
+
+    protected function computeKey(): string
+    {
+        return 'atom';
+    }
+
+    public function getKey(): string
+    {
+        if ($this->key_memo === null) {
+            /** @psalm-suppress ImpurePropertyAssignment memo */
+            $this->key_memo = $this->computeKey();
+        }
+        return $this->key_memo;
+    }
+
+    /**
+     * @psalm-mutation-free
+     */
+    protected function __clone()
+    {
+        /** @psalm-suppress ImpurePropertyAssignment memo */
+        $this->key_memo = null;
+    }
+}
+
+/**
+ * @psalm-immutable
+ */
+class NNamed extends NAtom
+{
+    /** @param array<string, NAtom> $extra_types */
+    public function __construct(public string $value, public array $extra_types = [], public bool $is_static = false)
+    {
+    }
+
+    protected function computeKey(): string
+    {
+        $k = $this->value;
+        foreach ($this->extra_types as $t) {
+            $k .= '&' . $t->getKey();
+        }
+        return $k;
+    }
+
+    /** @param array<string, NAtom> $extra */
+    public function setIntersectionTypes(array $extra): self
+    {
+        if ($extra === $this->extra_types) {
+            return $this;
+        }
+        $c = clone $this;
+        /** @psalm-suppress ImpurePropertyAssignment wither */
+        $c->extra_types = $extra;
+        return $c;
+    }
+
+    public function setValue(string $v): self
+    {
+        if ($v === $this->value) {
+            return $this;
+        }
+        $c = clone $this;
+        /** @psalm-suppress ImpurePropertyAssignment wither */
+        $c->value = $v;
+        return $c;
+    }
+
+    public function setIsStatic(bool $s): self
+    {
+        if ($s === $this->is_static) {
+            return $this;
+        }
+        $c = clone $this;
+        /** @psalm-suppress ImpurePropertyAssignment wither */
+        $c->is_static = $s;
+        return $c;
+    }
+}
+
+/**
+ * @psalm-immutable
+ */
+final class NInt extends NAtom
+{
+    protected function computeKey(): string
+    {
+        return 'int';
+    }
+}
+
+function n_expand(NAtom $t, ?string $self_class, bool $make_static): NAtom
+{
+    if ($t instanceof NNamed) {
+        if ($t->value === 'self' && $self_class !== null) {
+            $t = $t->setValue($self_class);
+        }
+        if ($t->extra_types !== []) {
+            $extra = [];
+            foreach ($t->extra_types as $e) {
+                $e = n_expand($e, $self_class, false);
+                $extra[$e->getKey()] = $e;
+            }
+            $t = $t->setIntersectionTypes($extra);
+        }
+        if ($make_static) {
+            $t = $t->setIsStatic(true);
+        }
+    }
+    return $t;
+}
+
+function case_value_named(): string
+{
+    $b = new NNamed('B');
+    $a = new NNamed('A', ['B' => $b]);
+    $k1 = $a->getKey();
+    $c = $a->setIntersectionTypes($a->extra_types + ['C' => new NNamed('C')]);
+    $k2 = $c->getKey();
+    $s = n_expand(new NNamed('self'), 'Foo', false);
+    $k3 = 'self->' . $s->getKey();
+    /** @var array<string, NAtom> $map */
+    $map = [$a->getKey() => $a, 'int' => new NInt()];
+    $found = '';
+    foreach ($map as $key => $atom) {
+        if ($atom instanceof NNamed && $atom->extra_types !== []) {
+            $found = 'k:' . $key;
+        }
+    }
+    $st = n_expand($a, null, true);
+    $k5 = 'static:' . ($st instanceof NNamed && $st->is_static ? '1' : '0');
+    return $k1 . '|' . $k2 . '|' . $k3 . '|' . $found . '|' . $k5;
+}
+
+/**
+ * A concrete non-leaf value (NNamed) with a value subclass adding a field (NGeneric, like TGenericObject): the
+ * inherited withers run on the subclass instance, narrowing from the base, and self-resolution on both.
+ *
+ * @psalm-immutable
+ */
+final class NGeneric extends NNamed
+{
+    /**
+     * @param list<NAtom> $type_params
+     * @param array<string, NAtom> $extra_types
+     */
+    public function __construct(string $value, public array $type_params, array $extra_types = [], bool $is_static = false)
+    {
+        parent::__construct($value, $extra_types, $is_static);
+    }
+
+    protected function computeKey(): string
+    {
+        $k = parent::computeKey() . '<';
+        foreach ($this->type_params as $i => $p) {
+            $k .= ($i > 0 ? ',' : '') . $p->getKey();
+        }
+        return $k . '>';
+    }
+}
+
+function case_value_nonleaf(): string
+{
+    try {
+        return case_value_nonleaf_inner();
+    } catch (\Throwable $e) {
+        return 'EXC:' . $e::class . ':' . $e->getMessage();
+    }
+}
+
+function case_value_nonleaf_inner(): string
+{
+    $g = new NGeneric('G', [new NInt()]);
+    $k1 = $g->getKey();
+    $f = n_expand(new NGeneric('self', [new NInt()]), 'Foo', false);
+    $k2 = $f->getKey();
+    $h = $f instanceof NNamed ? $f->setIntersectionTypes(['B' => new NNamed('B')]) : $f;
+    $k3 = $h->getKey();
+    $st = n_expand($h, null, true);
+    $k4 = $st instanceof NNamed && $st->is_static ? '1' : '0';
+    $plain = n_expand(new NNamed('self'), 'Foo', false);
+    return $k1 . '|' . $k2 . '|' . $k3 . '|' . $k4 . '|self->' . $plain->getKey();
 }

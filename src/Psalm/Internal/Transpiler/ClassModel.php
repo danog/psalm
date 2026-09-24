@@ -703,6 +703,47 @@ final class ClassModel
     /** @var ?bool memo of familyHasCacheWrites() */
     private ?bool $family_cache_writes = null;
 
+    /** @var array<string, bool> memo of methodWritesThis() by method name */
+    private array $method_writes_this = [];
+
+    /**
+     * Whether the method's body writes a field of `$this` (an assignment, compound assignment, increment,
+     * decrement or unset through `$this->f`, or an element/property of one). For a value type such a method
+     * (a memo write, `__clone` resetting a memo) must run on the value itself: the own-handle wrapper that
+     * forwards to the hierarchy `__impl` on a temporary copy would lose the write.
+     */
+    public function methodWritesThis(MethodModel $m): bool
+    {
+        $key = $m->lc();
+        if (isset($this->method_writes_this[$key])) {
+            return $this->method_writes_this[$key];
+        }
+        if ($m->node === null) {
+            return $this->method_writes_this[$key] = false;
+        }
+        $finder = new \PhpParser\NodeFinder();
+        $found = $finder->findFirst($m->node->stmts ?? [], static function (\PhpParser\Node $n): bool {
+            if ($n instanceof \PhpParser\Node\Expr\Assign || $n instanceof \PhpParser\Node\Expr\AssignOp
+                || $n instanceof \PhpParser\Node\Expr\AssignRef
+                || $n instanceof \PhpParser\Node\Expr\PreInc || $n instanceof \PhpParser\Node\Expr\PreDec
+                || $n instanceof \PhpParser\Node\Expr\PostInc || $n instanceof \PhpParser\Node\Expr\PostDec
+            ) {
+                $t = $n->var;
+            } elseif ($n instanceof \PhpParser\Node\Stmt\Unset_) {
+                foreach ($n->vars as $v) {
+                    if (self::thisPropName($v) !== null) {
+                        return true;
+                    }
+                }
+                return false;
+            } else {
+                return false;
+            }
+            return self::thisPropName($t) !== null;
+        }) !== null;
+        return $this->method_writes_this[$key] = $found;
+    }
+
     /** @var ?bool cache for noHelperConstructionWrites() */
     private ?bool $no_helper_ctor_writes = null;
 

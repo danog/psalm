@@ -604,6 +604,18 @@ final class ClassEmitter
             }
             return;
         }
+        // A value type: a `&self` method that writes a field of `$this` (a memo, `__clone` resetting one) runs IN
+        // PLACE on the own handle. The forwarding wrapper below builds the hierarchy enum from `self.clone()`, which
+        // shares an Rc object but COPIES a value, so the write would land on the copy (a wither's clone kept its
+        // stale key memo: `Foo<int>` instead of `Foo&B<int>` for `setIntersectionTypes` on a TGenericObject).
+        if ($cls->valueType() && !$m->isAbstract() && $declaring !== null && $cls->methodWritesThis($m)
+            && !$cls->isImmutableCtorMethod($m->lc())
+        ) {
+            $w->line('pub fn ' . $rn . $sig . ' {');
+            $w->raw($this->body($cls, $m));
+            $w->line('}');
+            return;
+        }
         if ($declaring === $cls) {
             if ($m->isAbstract()) {
                 return;
