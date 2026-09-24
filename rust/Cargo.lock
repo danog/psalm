@@ -182,6 +182,7 @@ dependencies = [
  "mimalloc",
  "parking_lot",
  "pcre2",
+ "smallvec",
 ]
 
 [[package]]

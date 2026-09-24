@@ -466,14 +466,22 @@ pub fn strnatcmp(a: &Str, b: &Str) -> i64 {
 pub fn strnatcasecmp(a: &Str, b: &Str) -> i64 {
     strnatcmp_impl(a.as_bytes(), b.as_bytes(), true)
 }
-pub fn strcasecmp(a: &Str, b: &Str) -> i64 {
-    let x = a.as_bytes().to_ascii_lowercase();
-    let y = b.as_bytes().to_ascii_lowercase();
-    match x.cmp(&y) {
+/// Byte-wise ASCII case-insensitive comparison without lowercase copies (PHP's zend_binary_strcasecmp).
+fn casecmp_bytes(x: &[u8], y: &[u8]) -> i64 {
+    for (p, q) in x.iter().zip(y.iter()) {
+        let (p, q) = (p.to_ascii_lowercase(), q.to_ascii_lowercase());
+        if p != q {
+            return if p < q { -1 } else { 1 };
+        }
+    }
+    match x.len().cmp(&y.len()) {
         std::cmp::Ordering::Less => -1,
         std::cmp::Ordering::Equal => 0,
         std::cmp::Ordering::Greater => 1,
     }
+}
+pub fn strcasecmp(a: &Str, b: &Str) -> i64 {
+    casecmp_bytes(a.as_bytes(), b.as_bytes())
 }
 pub fn strncmp(a: &Str, b: &Str, n: i64) -> i64 {
     let n = n.max(0) as usize;
@@ -486,7 +494,8 @@ pub fn strncmp(a: &Str, b: &Str, n: i64) -> i64 {
     }
 }
 pub fn strncasecmp(a: &Str, b: &Str, n: i64) -> i64 {
-    strncmp(&a.to_lowercase(), &b.to_lowercase(), n)
+    let n = n.max(0) as usize;
+    casecmp_bytes(&a.as_bytes()[..n.min(a.len())], &b.as_bytes()[..n.min(b.len())])
 }
 pub fn substr_compare(a: &Str, b: &Str, offset: i64, length: Option<i64>, ci: bool) -> i64 {
     let sub = substr(a, offset, length);
