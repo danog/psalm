@@ -623,6 +623,12 @@ final class BodyEmitter
     /** True while emitting a receiver: a downcast to Psalm's narrower class resolves members there. */
     public bool $in_receiver = false;
 
+    /**
+     * True while emitting the receiver of a PROPERTY fetch: a field read resolves on the dispatch enum itself
+     * (every member's fields have an accessor there), so a downcast to a sub-enum is not needed.
+     */
+    public bool $in_prop_receiver = false;
+
     /** Emit an expression used as a receiver (no clone for `$this`). */
     public function receiver(Expr $e): Val
     {

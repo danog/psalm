@@ -752,7 +752,13 @@ trait LValueTrait
         }
         $name = $e->name->name;
         // the receiver of `?->` is read with its declared type: Psalm narrows it to non-null for the fetch itself
-        $base = $nullsafe ? $this->rawValue($e->var) : $this->receiver($e->var);
+        $saved_prop_receiver = $this->in_prop_receiver;
+        $this->in_prop_receiver = !$nullsafe;
+        try {
+            $base = $nullsafe ? $this->rawValue($e->var) : $this->receiver($e->var);
+        } finally {
+            $this->in_prop_receiver = $saved_prop_receiver;
+        }
         $bt = $base->type;
         // a generic-typed receiver (`T` returned by a generic call) is read as the concrete type Psalm resolved
         if ($bt->hasGeneric()) {
