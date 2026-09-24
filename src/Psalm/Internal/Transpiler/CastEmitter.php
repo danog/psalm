@@ -884,9 +884,11 @@ final class CastEmitter
             $w->line('impl php_rt::PhpKind for ' . $h . ' { fn php_kind(&self) -> php_rt::Kind { php_rt::Kind::Obj } fn php_class_name(&self) -> Option<&\'static str> { Some(php_rt::PhpObject::class_name(self)) } }');
             $w->line('impl php_rt::InstanceOfName for ' . $h . ' { fn php_instance_of(&self, __n: &[u8]) -> bool { php_rt::PhpObject::class_ancestors(self).iter().any(|a| a.as_bytes().eq_ignore_ascii_case(__n)) } }');
             $w->line('impl php_rt::Truthy for ' . $h . ' { fn truthy(&self) -> bool { ' . $truthy_body . ' } }');
+            $members_by_value = !$cls->isLeaf() && $cls->concrete !== []
+                && array_all($cls->concrete, static fn(ClassModel $c): bool => $c->valueType());
             if ($cls->valueType() && $cls->isLeaf()) {
                 $w->line('impl php_rt::Identical for ' . $h . ' { fn identical(&self, o: &Self) -> bool { ' . $this->structuralIdentical($cls) . ' } }');
-            } elseif ($cls->valueType()) {
+            } elseif ($members_by_value) {
                 // a closed hierarchy of values: the same variant with identical payloads
                 $varms = array_map(fn(ClassModel $c) => '(' . $h . '::' . $c->variant() . '(a), ' . $h . '::' . $c->variant() . '(b)) => identical(a, b)', $cls->concrete);
                 $w->line('impl php_rt::Identical for ' . $h . ' { fn identical(&self, o: &Self) -> bool { match (self, o) { ' . implode(', ', $varms) . ($varms ? ', ' : '') . '_ => false } } }');
