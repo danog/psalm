@@ -785,10 +785,9 @@ final class CodeUseGraph
     }
 
     /**
-     * Target node id => referencing node id => true
+     * The spelled-out node ids (a diagnostic view): target node id => source node ids.
      *
-     * @return array<int, array<int, true>>
-     * @psalm-mutation-free
+     * @return array<string, array<string, true>>
      */
     public function getAllReferences(): array
     {
@@ -810,7 +809,7 @@ final class CodeUseGraph
      * format), the ids of the function-likes referencing it. Used to find the
      * methods to re-analyse when a member changes.
      *
-     * @return array<int, array<int, true>>
+     * @return array<string, array<string, true>>
      * @psalm-mutation-free
      */
     public function getFunctionLikeReferencesToMembers(): array
