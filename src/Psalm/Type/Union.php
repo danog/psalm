@@ -242,6 +242,54 @@ final class Union implements TypeNode
             return true;
         }
 
+        return $this->hasCombineEquivalentAtomics($other)
+            && $this->from_docblock === $other->from_docblock
+            && $this->from_calculation === $other->from_calculation
+            && $this->ignore_nullable_issues === $other->ignore_nullable_issues
+            && $this->ignore_falsable_issues === $other->ignore_falsable_issues
+            && $this->reference_free === $other->reference_free
+            && $this->allow_mutations === $other->allow_mutations
+            && $this->initialized === $other->initialized
+            && $this->explicit_never === $other->explicit_never
+            && $this->had_template === $other->had_template
+            && $this->failed_reconciliation === $other->failed_reconciliation
+            && $this->possibly_undefined === $other->possibly_undefined
+            && $this->possibly_undefined_from_try === $other->possibly_undefined_from_try
+            && $this->by_ref === $other->by_ref
+            && $this->hasSameParentNodes($other);
+    }
+
+    /**
+     * The same data-flow nodes: a node is its id (the graphs key by it), so two unions carrying nodes with the
+     * same ids in the same order are equally sourced even when the node objects differ (a property fetch makes
+     * a fresh node for the same id on every visit).
+     *
+     * @psalm-mutation-free
+     */
+    public function hasSameParentNodes(Union $other): bool
+    {
+        if ($this->parent_nodes === $other->parent_nodes) {
+            return true;
+        }
+        if (count($this->parent_nodes) !== count($other->parent_nodes)) {
+            return false;
+        }
+        foreach ($this->parent_nodes as $key => $_) {
+            if (!isset($other->parent_nodes[$key])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * The atomics half of isCombineEquivalent(): the same atomic types by id (containers structurally), with
+     * the same per-atomic docblock provenance when $same_docblock is set (the combiner ORs it per atomic).
+     *
+     * @psalm-mutation-free
+     */
+    public function hasCombineEquivalentAtomics(Union $other, bool $same_docblock = false): bool
+    {
         if ($this->types !== $other->types) {
             if (count($this->types) !== count($other->types)) {
                 return false;
@@ -278,24 +326,14 @@ final class Union implements TypeNode
                     } elseif ($theirs->getId() !== $atomic->getId()) {
                         return false;
                     }
+                    if ($same_docblock && $theirs->from_docblock !== $atomic->from_docblock) {
+                        return false;
+                    }
                 }
             }
         }
 
-        return $this->from_docblock === $other->from_docblock
-            && $this->from_calculation === $other->from_calculation
-            && $this->ignore_nullable_issues === $other->ignore_nullable_issues
-            && $this->ignore_falsable_issues === $other->ignore_falsable_issues
-            && $this->reference_free === $other->reference_free
-            && $this->allow_mutations === $other->allow_mutations
-            && $this->initialized === $other->initialized
-            && $this->explicit_never === $other->explicit_never
-            && $this->had_template === $other->had_template
-            && $this->failed_reconciliation === $other->failed_reconciliation
-            && $this->possibly_undefined === $other->possibly_undefined
-            && $this->possibly_undefined_from_try === $other->possibly_undefined_from_try
-            && $this->by_ref === $other->by_ref
-            && $this->parent_nodes === $other->parent_nodes;
+        return true;
     }
 
     public function setProperties(array $properties): self
