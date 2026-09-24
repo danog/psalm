@@ -423,7 +423,7 @@ pub fn preg_split(pattern: &Str, subject: &Str, limit: i64, flags: i64) -> Resul
     let no_empty = flags & 1 != 0;
     let delim_capture = flags & 2 != 0;
     let limit = if limit == 0 { -1 } else { limit };
-    let mut out: Vec<Str> = Vec::new();
+    let mut out: crate::list::Inner<Str> = crate::list::Inner::new();
     let mut last = 0usize;
     let mut pieces = 0i64;
     let mut it = c.re.captures_iter(subject);
@@ -464,13 +464,13 @@ pub fn preg_split(pattern: &Str, subject: &Str, limit: i64, flags: i64) -> Resul
     if !(no_empty && rest.is_empty()) {
         out.push(Str::from_bytes(rest));
     }
-    Ok(List::from_vec(out))
+    Ok(List::from_inner(out))
 }
 
 pub fn preg_split_offsets(pattern: &Str, subject: &Str, limit: i64, flags: i64) -> Result<List<(Str, i64)>, RtError> {
     let c = compile(pattern)?;
     let no_empty = flags & 1 != 0;
-    let mut out: Vec<(Str, i64)> = Vec::new();
+    let mut out: crate::list::Inner<(Str, i64)> = crate::list::Inner::new();
     let mut last = 0usize;
     let mut pieces = 0i64;
     for caps in c.re.captures_iter(subject) {
@@ -490,7 +490,7 @@ pub fn preg_split_offsets(pattern: &Str, subject: &Str, limit: i64, flags: i64) 
     if !(no_empty && rest.is_empty()) {
         out.push((Str::from_bytes(rest), last as i64));
     }
-    Ok(List::from_vec(out))
+    Ok(List::from_inner(out))
 }
 
 /// `flags`: PREG_GREP_INVERT (1) keeps the entries that do NOT match.
@@ -579,7 +579,7 @@ pub fn preg_match_all_offsets(pattern: &Str, subject: &Str, flags: i64) -> Resul
 /// PREG_SET_ORDER without offsets: one map of captures per match.
 pub fn preg_match_all_sets(pattern: &Str, subject: &Str, flags: i64) -> Result<(i64, List<Map<ArrayKey, Str>>), RtError> {
     let (n, m) = preg_match_all(pattern, subject, (flags | 2) & !256)?;
-    let mut out: Vec<Map<ArrayKey, Str>> = Vec::new();
+    let mut out: crate::list::Inner<Map<ArrayKey, Str>> = crate::list::Inner::new();
     for (_, set) in m.iter() {
         let mut row: Map<ArrayKey, Str> = Map::new();
         if let Mixed::Arr(a) = set {
@@ -589,13 +589,13 @@ pub fn preg_match_all_sets(pattern: &Str, subject: &Str, flags: i64) -> Result<(
         }
         out.push(row);
     }
-    Ok((n, List::from_vec(out)))
+    Ok((n, List::from_inner(out)))
 }
 
 /// PREG_SET_ORDER | PREG_OFFSET_CAPTURE: one map of (capture, offset) per match.
 pub fn preg_match_all_sets_offsets(pattern: &Str, subject: &Str, flags: i64) -> Result<(i64, List<Map<ArrayKey, (Str, i64)>>), RtError> {
     let (n, m) = preg_match_all(pattern, subject, flags | 2 | 256)?;
-    let mut out: Vec<Map<ArrayKey, (Str, i64)>> = Vec::new();
+    let mut out: crate::list::Inner<Map<ArrayKey, (Str, i64)>> = crate::list::Inner::new();
     for (_, set) in m.iter() {
         let mut row: Map<ArrayKey, (Str, i64)> = Map::new();
         if let Mixed::Arr(a) = set {
@@ -605,5 +605,5 @@ pub fn preg_match_all_sets_offsets(pattern: &Str, subject: &Str, flags: i64) -> 
         }
         out.push(row);
     }
-    Ok((n, List::from_vec(out)))
+    Ok((n, List::from_inner(out)))
 }

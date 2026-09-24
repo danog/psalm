@@ -32,7 +32,6 @@ pub struct OrderedMap<K, V> {
     table: HashTable<usize>,
     len: usize,
     next_index: i64,
-    /// PHP's internal array pointer (an index into `entries`).
     /// PHP references between elements (`$a[$x] = &$a[$y]`): alias key => key of the entry that holds the
     /// shared value. Aliases are resolved by every keyed access and listed after the entries when iterating.
     aliases: Option<Box<Vec<(K, K)>>>,

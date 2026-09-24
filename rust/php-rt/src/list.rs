@@ -64,6 +64,16 @@ impl<T> List<T> {
         }
         List(Some(Rc::new(Inner::from_vec(v))))
     }
+    /// A list from a built inline vector: the buffer is kept (no copy, no intermediate Vec).
+    #[inline]
+    pub fn from_inner(v: Inner<T>) -> List<T> {
+        #[cfg(feature = "stats")]
+        crate::stats::bump(match v.len() { 0 => crate::stats::LIST_FROM_VEC_0, 1 => crate::stats::LIST_FROM_VEC_1, 2 => crate::stats::LIST_FROM_VEC_2, 3 | 4 => crate::stats::LIST_FROM_VEC_3_4, 5..=8 => crate::stats::LIST_FROM_VEC_5_8, _ => crate::stats::LIST_FROM_VEC_MORE });
+        if v.is_empty() {
+            return List(None);
+        }
+        List(Some(Rc::new(v)))
+    }
     /// A list from an array literal: one allocation, no intermediate Vec.
     #[inline]
     pub fn from_array<const N: usize>(a: [T; N]) -> List<T> {
@@ -265,17 +275,58 @@ impl<T: Clone> List<T> {
         v.insert_many(start, repl);
         List::from_vec(removed)
     }
-    /// Map elements into a new list (used for element casts).
+    /// Map elements into a new list (used for element casts): no intermediate Vec, a small result stays inline.
     pub fn map_elems<U, F: FnMut(T) -> U>(self, f: F) -> List<U> {
-        List::from_vec(self.into_vec().into_iter().map(f).collect())
+        List::from_inner(self.into_iter().map(f).collect())
     }
 }
 
+/// Owned iteration without allocating: a uniquely held list is drained in place (its inline buffer included),
+/// a shared one is walked by index cloning each element (PHP's foreach-over-a-copy).
+pub enum ListIntoIter<T> {
+    Empty,
+    Owned(smallvec::IntoIter<[T; 2]>),
+    Shared(Rc<Inner<T>>, usize),
+}
+
+impl<T: Clone> Iterator for ListIntoIter<T> {
+    type Item = T;
+    #[inline]
+    fn next(&mut self) -> Option<T> {
+        match self {
+            ListIntoIter::Empty => None,
+            ListIntoIter::Owned(it) => it.next(),
+            ListIntoIter::Shared(rc, i) => {
+                let v = rc.get(*i)?;
+                *i += 1;
+                Some(v.clone())
+            }
+        }
+    }
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let n = match self {
+            ListIntoIter::Empty => 0,
+            ListIntoIter::Owned(it) => it.len(),
+            ListIntoIter::Shared(rc, i) => rc.len() - *i,
+        };
+        (n, Some(n))
+    }
+}
+impl<T: Clone> ExactSizeIterator for ListIntoIter<T> {}
+
 impl<T: Clone> IntoIterator for List<T> {
     type Item = T;
-    type IntoIter = std::vec::IntoIter<T>;
+    type IntoIter = ListIntoIter<T>;
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
-        self.into_vec().into_iter()
+        match self.0 {
+            None => ListIntoIter::Empty,
+            Some(rc) => match Rc::try_unwrap(rc) {
+                Ok(v) => ListIntoIter::Owned(v.into_iter()),
+                Err(rc) => ListIntoIter::Shared(rc, 0),
+            },
+        }
     }
 }
 impl<'a, T> IntoIterator for &'a List<T> {
@@ -286,8 +337,9 @@ impl<'a, T> IntoIterator for &'a List<T> {
     }
 }
 impl<T> FromIterator<T> for List<T> {
+    /// Collects straight into the inline vector: a result of up to two elements never touches the heap twice.
     fn from_iter<I: IntoIterator<Item = T>>(it: I) -> List<T> {
-        List::from_vec(it.into_iter().collect())
+        List::from_inner(it.into_iter().collect())
     }
 }
 impl<T> From<Vec<T>> for List<T> {
