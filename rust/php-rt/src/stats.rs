@@ -40,7 +40,8 @@ pub const MAP_REACH_65: usize = 31;
 pub const PROP_GET_CLONE: usize = 32;
 pub const STR_HEAP_ALLOC_LE_23: usize = 33;
 pub const PROP_GET_CLONE_IMMUT: usize = 34;
-const N: usize = 35;
+pub const STR_INTERN_NEW: usize = 35;
+const N: usize = 36;
 
 const NAMES: [&str; N] = [
     "List::new (empty)", "List::with_capacity", "List::from_vec len=0", "List::from_vec len=1", "List::from_vec len=2",
@@ -51,7 +52,7 @@ const NAMES: [&str; N] = [
     "Str concat", "Str COW grow (shared push)", "object new",
     "Map reached 1 entry", "Map reached 2 entries", "Map reached 3", "Map reached 5", "Map reached 9", "Map reached 17", "Map reached 65",
     "property read cloning a non-Copy value (Rc/Str/List/Map)", "Str heap alloc <=23B (would fit a 24-byte inline Str)",
-    "property read cloning a field never written after construction",
+    "property read cloning a field never written after construction", "Str interned (new record)",
 ];
 
 #[cfg(feature = "stats")]

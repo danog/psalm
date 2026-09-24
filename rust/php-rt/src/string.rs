@@ -168,8 +168,13 @@ impl Drop for HeapStr {
 
 /// Bytes an inline string holds without an allocation (the 16-byte value minus the tag byte).
 pub const INLINE_CAP: usize = 15;
+/// Longest text `to_lowercase` interns (longer results are ordinary heap strings).
+pub const INTERN_CAP: usize = 64;
 const TAG_HEAP: u8 = 0xFE;
 const TAG_STATIC: u8 = 0xFF;
+/// An interned string: the same pointer/length layout as `TAG_STATIC`, into a never-freed arena record
+/// whose 8 bytes before the text hold the map hash of the text (see [`Str::intern`]).
+const TAG_INTERNED: u8 = 0xFD;
 
 /// The three layouts share the last byte as a tag: `0..=INLINE_CAP` is an inline string of that
 /// length (bytes at the front), `TAG_STATIC` a `&'static [u8]` (pointer, then a u32 length),
@@ -239,6 +244,47 @@ impl Str {
     }
     pub fn is_static(&self) -> bool {
         self.tag() == TAG_STATIC
+    }
+    pub fn is_interned(&self) -> bool {
+        self.tag() == TAG_INTERNED
+    }
+    /// A static literal or an interned string: borrowed bytes that live forever (copied before any mutation).
+    #[inline]
+    fn is_borrowed(&self) -> bool {
+        matches!(self.tag(), TAG_STATIC | TAG_INTERNED)
+    }
+    /// The interned copy of `b`: one arena record per distinct text on this thread, with the map hash stored
+    /// in front of the bytes. Cloning and dropping an interned string is a copy of 16 bytes, its map hash is
+    /// read instead of computed, and two interned handles to the same record compare by pointer. Lowercased
+    /// names (class, method, property and variable ids, the keys of the hottest maps) are interned by
+    /// `to_lowercase`; anything else stays as it is. Never freed: the vocabulary of a run is bounded.
+    pub fn intern(b: &[u8]) -> Str {
+        thread_local! {
+            static INTERNED: std::cell::RefCell<crate::FastMap<&'static [u8], usize>> = std::cell::RefCell::new(crate::fast_map());
+        }
+        INTERNED.with(|t| {
+            let mut t = t.borrow_mut();
+            if let Some(&p) = t.get(b) {
+                return Str { r: Repr { stat: StaticRef { ptr: p as *const u8, len: b.len() as u32, _pad: [0; 3], tag: TAG_INTERNED } } };
+            }
+            crate::stats::bump(crate::stats::STR_INTERN_NEW);
+            let mut h = crate::map::hash_bytes(b);
+            if h == 0 {
+                h = 1;
+            }
+            let layout = Layout::from_size_align(8 + b.len(), 8).unwrap();
+            let base = unsafe { alloc(layout) };
+            if base.is_null() {
+                handle_alloc_error(layout);
+            }
+            let text = unsafe {
+                (base as *mut u64).write(h);
+                std::ptr::copy_nonoverlapping(b.as_ptr(), base.add(8), b.len());
+                std::slice::from_raw_parts(base.add(8) as *const u8, b.len())
+            };
+            t.insert(text, text.as_ptr() as usize);
+            Str { r: Repr { stat: StaticRef { ptr: text.as_ptr(), len: b.len() as u32, _pad: [0; 3], tag: TAG_INTERNED } } }
+        })
     }
     pub fn is_heap(&self) -> bool {
         self.tag() == TAG_HEAP
@@ -335,7 +381,7 @@ impl Str {
         unsafe {
             if tag as usize <= INLINE_CAP {
                 &self.r.inline.data[..tag as usize]
-            } else if tag == TAG_STATIC {
+            } else if tag == TAG_STATIC || tag == TAG_INTERNED {
                 std::slice::from_raw_parts(self.r.stat.ptr, self.r.stat.len as usize)
             } else {
                 self.r.heap.ptr.as_bytes()
@@ -347,6 +393,10 @@ impl Str {
     /// short). Used by map lookups keyed on strings.
     #[inline]
     pub fn hash_cached(&self, f: impl FnOnce(&[u8]) -> u64) -> u64 {
+        if self.tag() == TAG_INTERNED {
+            // the map hash stored in front of the interned text (`f` is that hash function)
+            return unsafe { (self.r.stat.ptr as *const u64).sub(1).read() };
+        }
         match self.heap() {
             Some(h) => h.cached_hash(f),
             None => f(self.as_bytes()),
@@ -393,7 +443,7 @@ impl Str {
             *self = Str::from_heap(h);
             return;
         }
-        if tag == TAG_STATIC {
+        if tag == TAG_STATIC || tag == TAG_INTERNED {
             let s = self.as_bytes();
             let mut h = HeapStr::with_capacity(s.len() + b.len());
             h.push_slice(s);
@@ -420,7 +470,7 @@ impl Str {
             }
             return;
         }
-        if tag == TAG_STATIC {
+        if tag == TAG_STATIC || tag == TAG_INTERNED {
             *self = Str::from_heap(HeapStr::from_slice(self.as_bytes()));
         }
         self.heap_mut().set_byte(idx, c);
@@ -436,6 +486,13 @@ impl Str {
     pub fn to_lowercase(&self) -> Str {
         crate::stats::bump(crate::stats::STR_LOWER);
         let b = self.as_bytes();
+        // a lowercased name of a class, method, property or variable is a map key somewhere: interned (see intern)
+        if b.len() > INLINE_CAP && b.len() <= INTERN_CAP {
+            let mut buf = [0u8; INTERN_CAP];
+            buf[..b.len()].copy_from_slice(b);
+            buf[..b.len()].make_ascii_lowercase();
+            return Str::intern(&buf[..b.len()]);
+        }
         match b.iter().position(|c| c.is_ascii_uppercase()) {
             None => self.clone(),
             Some(first) => Str::mapped_from(b, first, |c| c.to_ascii_lowercase()),
@@ -506,6 +563,11 @@ impl Deref for Str {
 impl PartialEq for Str {
     #[inline]
     fn eq(&self, other: &Str) -> bool {
+        // two handles to the same interned record (the usual case for map keys) need no byte compare;
+        // different records may still hold the same text (interning is per thread), so no fast inequality
+        if self.tag() == TAG_INTERNED && other.tag() == TAG_INTERNED && unsafe { self.r.stat.ptr == other.r.stat.ptr } {
+            return true;
+        }
         self.as_bytes() == other.as_bytes()
     }
 }
@@ -586,7 +648,7 @@ impl Str {
         if end - start == 1 {
             return crate::ops::single_byte_str(b[start]);
         }
-        if self.is_static() && end - start > INLINE_CAP {
+        if self.is_borrowed() && end - start > INLINE_CAP {
             // a long slice of a static literal stays a static reference
             return unsafe { Str::from_static_bytes(std::slice::from_raw_parts(b.as_ptr().add(start), end - start)) };
         }
@@ -660,6 +722,27 @@ macro_rules! sfmt {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn interned_strings_share_a_record_and_compare() {
+        let a = Str::intern(b"a lowercased class name here");
+        let b = Str::intern(b"a lowercased class name here");
+        assert!(a.is_interned() && b.is_interned());
+        assert_eq!(a, b);
+        assert_eq!(a.as_bytes(), b"a lowercased class name here");
+        assert_eq!(a.hash_cached(crate::map::hash_bytes), crate::map::hash_bytes(b"a lowercased class name here"));
+        let heap = Str::from_bytes(b"a lowercased class name here");
+        assert_eq!(a, heap);
+        assert_eq!(heap, a);
+        assert_ne!(a, Str::intern(b"a lowercased class name herf"));
+        let lower = Str::from_bytes(b"Some\\Namespace\\ClassName").to_lowercase();
+        assert!(lower.is_interned());
+        assert_eq!(lower.as_bytes(), b"some\\namespace\\classname");
+        let mut m = lower.clone();
+        m.push_bytes(b"!");
+        assert_eq!(m.as_bytes(), b"some\\namespace\\classname!");
+        assert!(lower.is_interned());
+    }
+
     #[test]
     fn from_int_matches_display() {
         for i in [0i64, 1, -1, 7, 10, 12345, -12345, i64::MAX, i64::MIN, 999_999_999_999_999, -999_999_999_999_99] {
