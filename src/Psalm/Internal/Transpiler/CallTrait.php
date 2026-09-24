@@ -42,6 +42,12 @@ trait CallTrait
      * by-reference arguments borrow their place mutably, so the other arguments (which may read the
      * same variable) are evaluated into temporaries first.
      */
+    /** The OWNED result of a call: a borrowed-return getter (MethodModel::$returns_borrow_field) is cloned out. */
+    private function ownedCall(string $call, MethodModel $m): string
+    {
+        return $m->returns_borrow_field !== null ? '(*' . $call . ').clone()' : $call;
+    }
+
     public function finishCall(string $call): string
     {
         [$pre, $post] = array_pop($this->pending_pre) ?? ['', ''];
@@ -475,7 +481,7 @@ trait CallTrait
             $m = $cls !== null ? $this->program->findMethod($cls, '__invoke') : null;
             if ($m !== null) {
                 $argc = $this->args($args, $m->storage, $m->param_types, $m->declaring, $m->name, $m->borrow_params);
-                return $this->bindGenericResult(new Val($this->finishCall($callee->code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')' . ($m->throws ? '?' : '')), $m->return_type), $site, $m->param_types);
+                return $this->bindGenericResult(new Val($this->finishCall($this->ownedCall($callee->code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')', $m) . ($m->throws ? '?' : '')), $m->return_type), $site, $m->param_types);
             }
         }
         $this->warn('call of ' . $t->toRust(), $site);
@@ -728,7 +734,7 @@ trait CallTrait
                     continue;
                 }
                 $argc = $this->args($args, $m->storage, $m->param_types, $m->declaring, $m->name, $m->borrow_params);
-                $call = $this->finishCall('__o.' . $m->rustName() . '(' . implode(', ', $argc) . ')' . ($m->throws ? '?' : ''));
+                $call = $this->finishCall($this->ownedCall('__o.' . $m->rustName() . '(' . implode(', ', $argc) . ')', $m) . ($m->throws ? '?' : ''));
                 $arms[] = $rt->mangle() . '::' . $member->variantName() . '(__o) => ' . $this->casts->convert($call, $m->return_type, $res);
             }
             if ($arms !== []) {
@@ -847,7 +853,7 @@ trait CallTrait
             return $this->dead('instance method called statically', $m->return_type);
         }
         if ($kind === 'static') {
-            return new Val($this->finishCall($this->this_expr . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')' . ($m->throws ? '?' : '')), $m->return_type);
+            return new Val($this->finishCall($this->ownedCall($this->this_expr . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')', $m) . ($m->throws ? '?' : '')), $m->return_type);
         }
         // Immutable Rc<T>: a self::/parent:: call to a construction method (writes $this) must mutate THIS object in
         // place. The generic path casts `self.clone()` to the declaring class and calls `__impl`, but for Rc<T> the
@@ -899,7 +905,7 @@ trait CallTrait
             if ($m->isStatic() || $recv === null) {
                 return new Val($this->finishCall($path . '::' . $m->rustName() . '(' . implode(', ', $argc) . ')'), $m->return_type);
             }
-            return new Val($this->finishCall($recv->code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')'), $m->return_type);
+            return new Val($this->finishCall($this->ownedCall($recv->code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')', $m)), $m->return_type);
         }
         $this->warn('unknown enum method ' . $lc, $e);
         return $this->dead('unknown enum method', $this->inferredOrMixed($e));
