@@ -47,12 +47,20 @@ final class FunctionLikeParameter implements HasAttributesInterface, TypeNode
      * TypeExpander::expandUnion() of $type per (self, static, parent, final): a parameter type is expanded on
      * every call of its function (pzoom expands storages once), so the expansion is remembered.
      *
+     * Public because the storages travel between the forked workers through igbinary, whose __unserialize hook
+     * cannot restore private properties.
+     *
      * @var array<string, Union>
+     * @internal
      */
-    private array $expanded_types = [];
+    public array $expanded_types = [];
 
-    /** the $type the memo above was built for (a scanner may replace the type) */
-    private ?Union $expanded_for = null;
+    /**
+     * The $type the memo above was built for (a scanner may replace the type).
+     *
+     * @internal
+     */
+    public ?Union $expanded_for = null;
 
     /**
      * @param string $name parameter name, without the "$" prefix
