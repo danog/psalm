@@ -608,6 +608,101 @@ final class ClassModel
         return (!$f->isLate() && $f->type->isCopy()) ? 'Cell' : 'RefCell';
     }
 
+    /**
+     * An immutable class stored BY VALUE (pzoom's `TAtomic` inside `Vec<TAtomic>`): the handle struct owns its
+     * fields inline instead of an `Rc`, so a hierarchy enum carries the payload inline, a list of them is one
+     * contiguous allocation, and reads never chase a pointer. Copies are copies (PHP identity becomes structural
+     * equality, as in pzoom). Gated by VALUE_TYPES=1 until measured.
+     */
+    public function valueType(): bool
+    {
+        if ($this->value_type !== null) {
+            return $this->value_type;
+        }
+        $v = getenv('VALUE_TYPES');
+        if ($v === false || $v === '' || $v === '0' || !$this->immutable() || self::$program === null) {
+            return $this->value_type = false;
+        }
+        // while this class is being decided, a field reaching it inline means an infinite value: not a value type
+        $this->value_type = false;
+        $family = [];
+        $root = $this;
+        while ($root->parent !== null) {
+            $root = $root->parent;
+        }
+        $family[$root->lc()] = true;
+        foreach ($root->concrete as $c) {
+            for ($m = $c; $m !== null; $m = $m->parent) {
+                $family[$m->lc()] = true;
+            }
+        }
+        $visiting = [$this->lc() => true];
+        foreach ($this->fields as $f) {
+            if (self::inlineReaches($f->type, $family, $visiting)) {
+                return $this->value_type = false;
+            }
+        }
+        return $this->value_type = true;
+    }
+
+    /** @var ?bool memo of valueType() */
+    private ?bool $value_type = null;
+
+    /** The program, for class lookups from field types (set once by Program). */
+    public static ?Program $program = null;
+
+    /**
+     * Whether a value of type $t stored inline (no Rc/List/Map between) can contain a member of $family: an
+     * option, tuple, union or shape stores its members inline; a value class stores its fields inline.
+     *
+     * @param array<string, true> $family
+     * @param array<string, true> $visiting
+     */
+    private static function inlineReaches(RustType $t, array $family, array &$visiting): bool
+    {
+        switch ($t->kind) {
+            case RustType::OPTION:
+            case RustType::TUPLE:
+            case RustType::UNION:
+                foreach ($t->params as $p) {
+                    if (self::inlineReaches($p, $family, $visiting)) {
+                        return true;
+                    }
+                }
+                return false;
+            case RustType::SHAPE:
+                foreach ($t->fields as $p) {
+                    if (self::inlineReaches($p, $family, $visiting)) {
+                        return true;
+                    }
+                }
+                return false;
+            case RustType::CLASS_:
+                $c = self::$program?->classOf($t);
+                if ($c === null) {
+                    return false;
+                }
+                if (isset($family[$c->lc()])) {
+                    return true;
+                }
+                if (isset($visiting[$c->lc()])) {
+                    return true; // a cycle through another class being decided: conservative
+                }
+                if (!$c->immutable()) {
+                    return false; // an Rc<RefCell> handle: an indirection
+                }
+                $visiting[$c->lc()] = true;
+                foreach ($c->fields as $f) {
+                    if (self::inlineReaches($f->type, $family, $visiting)) {
+                        return true;
+                    }
+                }
+                return false;
+            default:
+                return false;
+        }
+    }
+
     public function immutable(): bool
     {
         // @psalm-immutable == LEVEL_INTERNAL_READ (no internal writes post-construction, safe for Rc<T>);

@@ -1922,6 +1922,7 @@ function run_all(): string
         . check('memo_trait_immutable', case_memo_trait_immutable(), 'k3:k3:1')
         . check('variant_field_read', case_variant_field_read(), '7|x|-')
         . check('nested_receiver_narrowing', case_nested_receiver_narrowing(), '7:x')
+        . check('value_hierarchy', case_value_hierarchy(), 'i1,s:a,l2,s:q!|i:1|9|k=i1:s:a:l2:s:q!')
         . check('data_file', case_data_file(), 'a1x-,b2y3.5|a,b')
         . check('elseif_assign', case_elseif_assign(), 'none,a5,skip|1')
         . check('json_encode', case_json_encode(), '{"a":1,"b":[1,2,3],"c":null,"d":true,"e":1.5,"f":"x\\"y"}|[{"x":1,"label":null},{"x":2,"label":"p"}]|{"a":1,"b":"two","c":[3,4]}|{"3":"a","5":"b"}|[]|' . "{\n    \"k\": [\n        1,\n        \"z\"\n    ]\n}")
@@ -2201,6 +2202,126 @@ function case_variant_field_read(): string
         }
     }
     return implode('|', $out);
+}
+
+/**
+ * @psalm-immutable
+ */
+abstract class VAtom
+{
+    private ?string $key_memo = null;
+
+    abstract protected function computeKey(): string;
+
+    public function getKey(): string
+    {
+        if ($this->key_memo === null) {
+            /** @psalm-suppress ImpurePropertyAssignment memo */
+            $this->key_memo = $this->computeKey();
+        }
+        return $this->key_memo;
+    }
+}
+
+/**
+ * @psalm-immutable
+ */
+final class VInt extends VAtom
+{
+    public function __construct(public int $v)
+    {
+    }
+
+    protected function computeKey(): string
+    {
+        return 'i' . $this->v;
+    }
+
+    public function withV(int $v): self
+    {
+        $c = clone $this;
+        /** @psalm-suppress ImpurePropertyAssignment wither */
+        $c->v = $v;
+        return $c;
+    }
+}
+
+/**
+ * @psalm-immutable
+ */
+class VStr extends VAtom
+{
+    public function __construct(public string $s)
+    {
+    }
+
+    protected function computeKey(): string
+    {
+        return 's:' . $this->s;
+    }
+}
+
+/**
+ * A concrete non-leaf member's subclass: the hierarchy takes the same immutability path as Type\Atomic.
+ *
+ * @psalm-immutable
+ */
+final class VLitStr extends VStr
+{
+    protected function computeKey(): string
+    {
+        return 's:' . $this->s . '!';
+    }
+}
+
+/**
+ * @psalm-immutable
+ */
+final class VList extends VAtom
+{
+    /** @param list<VAtom> $items */
+    public function __construct(public array $items)
+    {
+    }
+
+    protected function computeKey(): string
+    {
+        return 'l' . count($this->items);
+    }
+}
+
+/** @return list<VAtom> */
+function v_atoms(): array
+{
+    return [new VInt(1), new VStr('a'), new VList([new VInt(2), new VStr('b')]), new VLitStr('q')];
+}
+
+function case_value_hierarchy(): string
+{
+    $keys = [];
+    $ints = [];
+    $bumped = '';
+    foreach (v_atoms() as $a) {
+        $keys[] = $a->getKey();
+        if ($a instanceof VInt) {
+            $ints[] = 'i:' . $a->v;
+            // a clone copies the key memo too (PHP): read the new field, not the key
+            $bumped = (string) $a->withV($a->v + 8)->v;
+        } elseif ($a instanceof VList) {
+            foreach ($a->items as $inner) {
+                if ($inner instanceof VStr && $inner->s === 'zzz') {
+                    $ints[] = 'never';
+                }
+            }
+        }
+    }
+    $same = v_atoms();
+    $byKey = [];
+    foreach ($same as $a) {
+        $byKey[$a->getKey()] = $a;
+    }
+    $collected = implode(':', array_keys($byKey));
+    return implode(',', $keys) . '|' . implode(',', $ints) . '|' . $bumped . '|k=' . $collected;
 }
 
 function case_memo_immutable(): string

@@ -69,6 +69,7 @@ final class Program
         public readonly Codebase $codebase,
         public readonly Transpiler $transpiler,
     ) {
+        ClassModel::$program = $this;
         $this->types = new TypeMapper($codebase, $this);
         $this->build();
     }

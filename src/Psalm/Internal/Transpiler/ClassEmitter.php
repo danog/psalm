@@ -56,7 +56,7 @@ final class ClassEmitter
             $w->close();
             $w->line('#[derive(Clone)]');
             // @psalm-immutable pilot classes drop the RefCell: reads are direct, writes copy-on-write via make_mut
-            $w->line('pub struct ' . $own . '(pub ' . ($cls->immutable() ? 'Rc<' . $obj . '>' : 'Rc<RefCell<' . $obj . '>>') . ');');
+            $w->line('pub struct ' . $own . '(pub ' . ($cls->valueType() ? $obj : ($cls->immutable() ? 'Rc<' . $obj . '>' : 'Rc<RefCell<' . $obj . '>>')) . ');');
         }
 
         // ---- dispatch enum for non-leaf classes and interfaces
@@ -81,7 +81,7 @@ final class ClassEmitter
         if ($concrete) {
             $w->open('impl ' . $own . ' {');
             foreach ($cls->fields as $f) {
-                $this->emitAccessors($f, $w, $cls->immutable(), $this->cellKind($cls, $f));
+                $this->emitAccessors($f, $w, $cls->immutable(), $this->cellKind($cls, $f), $cls->valueType());
             }
             $this->emitConstructor($cls, $w);
             foreach ($cls->methods as $m) {
@@ -149,7 +149,7 @@ final class ClassEmitter
         return $cls->cellKind($f);
     }
 
-    private function emitAccessors(FieldModel $f, Writer $w, bool $immut = false, string $cell = ''): void
+    private function emitAccessors(FieldModel $f, Writer $w, bool $immut = false, string $cell = '', bool $value = false): void
     {
         $fld = $f->rustName();
         $rn = $f->acc();
@@ -182,18 +182,20 @@ final class ClassEmitter
         }
         if ($immut) {
             // Rc<T> (no RefCell): reads are direct borrows; writes (construction / wither clones only) copy-on-write
+            // a value type writes its own fields; an Rc<T> copies-on-write
+            $mut_obj = $value ? 'self.0' : 'Rc::make_mut(&mut self.0)';
             if ($f->isLate()) {
                 $w->line('#[inline] pub fn ' . $rn . '(&self) -> &' . $t . ' { self.0.' . $fld . '.get() }');
                 $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { self.0.' . $fld . '.get().clone() }');
                 $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { self.0.' . $fld . '.as_option().cloned() }');
-                $w->line('#[inline] pub fn ' . $rn . '_mut(&mut self) -> &mut ' . $t . ' { Rc::make_mut(&mut self.0).' . $fld . ($f->type->hasDefault() ? '.get_or_default_mut()' : '.get_mut()') . ' }');
-                $w->line('#[inline] pub fn set_' . $rn . '(&mut self, v: ' . $t . ') { Rc::make_mut(&mut self.0).' . $fld . '.set(v); }');
+                $w->line('#[inline] pub fn ' . $rn . '_mut(&mut self) -> &mut ' . $t . ' { ' . $mut_obj . '.' . $fld . ($f->type->hasDefault() ? '.get_or_default_mut()' : '.get_mut()') . ' }');
+                $w->line('#[inline] pub fn set_' . $rn . '(&mut self, v: ' . $t . ') { ' . $mut_obj . '.' . $fld . '.set(v); }');
             } else {
                 $w->line('#[inline] pub fn ' . $rn . '(&self) -> &' . $t . ' { &self.0.' . $fld . ' }');
                 $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { self.0.' . $fld . '.clone() }');
                 $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { Some(self.0.' . $fld . '.clone()) }');
-                $w->line('#[inline] pub fn ' . $rn . '_mut(&mut self) -> &mut ' . $t . ' { &mut Rc::make_mut(&mut self.0).' . $fld . ' }');
-                $w->line('#[inline] pub fn set_' . $rn . '(&mut self, v: ' . $t . ') { Rc::make_mut(&mut self.0).' . $fld . ' = v; }');
+                $w->line('#[inline] pub fn ' . $rn . '_mut(&mut self) -> &mut ' . $t . ' { &mut ' . $mut_obj . '.' . $fld . ' }');
+                $w->line('#[inline] pub fn set_' . $rn . '(&mut self, v: ' . $t . ') { ' . $mut_obj . '.' . $fld . ' = v; }');
             }
             return;
         }
@@ -376,9 +378,10 @@ final class ClassEmitter
         // (ReflectionClass::newInstanceWithoutConstructor, unserialize)
         // immutable (Rc<T>) classes drop the RefCell; `this` is mut so the constructor can make_mut its fields
         $immut = $cls->immutable();
-        $cell_open = $immut ? 'Rc::new(' : 'Rc::new(RefCell::new(';
-        $cell_close_uninit = $immut ? '}))' : '})))';
-        $cell_close_new = $immut ? '}));' : '})));';
+        $value = $cls->valueType();
+        $cell_open = $value ? '' : ($immut ? 'Rc::new(' : 'Rc::new(RefCell::new(');
+        $cell_close_uninit = $value ? '})' : ($immut ? '}))' : '})))');
+        $cell_close_new = $value ? '});' : ($immut ? '}));' : '})));');
         $w->open('pub fn new_uninit() -> ' . $own . ' {');
         $w->open($own . '(' . $cell_open . $obj . ' {');
         foreach ($inits as $line) {
@@ -900,7 +903,8 @@ final class ClassEmitter
         $w->line('fn class_ancestors(&self) -> &\'static [&\'static str] { ' . $this->ancestorsLiteral($cls) . ' }');
         $w->line('fn class_id(&self) -> u32 { ' . $this->program->classId($cls) . ' }');
         $w->line('fn class_ancestor_ids(&self) -> &\'static [u32] { ' . $this->ancestorIdsLiteral($cls) . ' }');
-        $w->line('fn obj_id(&self) -> usize { Rc::as_ptr(&self.0) as *const u8 as usize }');
+        // a value type has no identity of its own: its address stands in (Debug output, SplObjectStorage keys)
+        $w->line('fn obj_id(&self) -> usize { ' . ($cls->valueType() ? 'self as *const Self as *const u8 as usize' : 'Rc::as_ptr(&self.0) as *const u8 as usize') . ' }');
         $w->line('fn as_any(&self) -> &dyn std::any::Any { self }');
         $w->line('fn php_clone_dyn(&self) -> AnyObj { Rc::new(self.php_clone()) }');
         $ts = $this->program->findMethod($cls, '__tostring');
@@ -969,7 +973,8 @@ final class ClassEmitter
                 : $this->casts->convert('c.clone()', RustType::class($cls->fqcn), RustType::class($clone->declaring->fqcn));
             $clone_call = 'let _ = ' . $recv . '.' . $clone->rustName() . '(); ';
         }
-        $clone_cell = $cls->immutable() ? $own . '(Rc::new((*self.0).clone()))' : $own . '(Rc::new(RefCell::new(self.0.borrow().clone())))';
+        $clone_cell = $cls->valueType() ? $own . '(self.0.clone())'
+            : ($cls->immutable() ? $own . '(Rc::new((*self.0).clone()))' : $own . '(Rc::new(RefCell::new(self.0.borrow().clone())))');
         $w->line('impl php_rt::PhpClone for ' . $own . ' { fn php_clone(&self) -> Self { let ' . ($cls->immutable() && $clone_call !== '' ? 'mut ' : '') . 'c = ' . $clone_cell . '; ' . $clone_call . 'c } }');
         $w->line('impl Clone for ' . $cls->objStruct() . ' { fn clone(&self) -> Self { ' . $cls->objStruct() . ' { ' . implode(', ', array_map(fn(FieldModel $f) => $f->rustName() . ': self.' . $f->rustName() . '.clone()', $cls->fields)) . ' } } }');
     }
