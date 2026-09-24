@@ -2332,9 +2332,17 @@ final class Program
      * For the construction-only field analysis: whether argument $i of $call is passed by reference, or the
      * callee cannot be resolved (then it might be).
      */
-    public function argMayBeByRef(\PhpParser\Node $call, int $i, \PhpParser\Node\Arg $arg, ?ClassModel $cls): bool
+    public function argMayBeByRef(\PhpParser\Node $call, int $i, \PhpParser\Node\Arg $arg, ?ClassModel $cls, ?MethodModel $in = null): bool
     {
-        $ctx = new BorrowContext($cls, null, []);
+        $param_types = [];
+        if ($in !== null) {
+            foreach ($in->storage->params as $pi => $p) {
+                if (isset($in->param_types[$pi])) {
+                    $param_types[$p->name] = $in->param_types[$pi];
+                }
+            }
+        }
+        $ctx = new BorrowContext($cls, $in?->record, $param_types);
         if ($call instanceof \PhpParser\Node\Expr\FuncCall && $call->name instanceof \PhpParser\Node\Name) {
             $lc = strtolower($call->name->getLast());
             if (isset(self::BUILTIN_BY_REF[$lc]) && $this->getFunction((string) ($call->name->getAttribute('resolvedName') ?? $call->name->toString())) === null) {
@@ -2413,7 +2421,10 @@ final class Program
             return $target !== null ? $this->findMethod($target, strtolower($call->name->name)) : null;
         }
         if ($call instanceof \PhpParser\Node\Expr\New_ && $call->class instanceof \PhpParser\Node\Name) {
-            $target = $this->getClass((string) ($call->class->getAttribute('resolvedName') ?? $call->class->toString()));
+            $cn = strtolower($call->class->toString());
+            $target = in_array($cn, ['self', 'static'], true) ? $ctx->cls
+                : ($cn === 'parent' ? $ctx->cls?->parent
+                    : $this->getClass((string) ($call->class->getAttribute('resolvedName') ?? $call->class->toString())));
             return $target !== null ? $this->findMethod($target, '__construct') : null;
         }
         return null;

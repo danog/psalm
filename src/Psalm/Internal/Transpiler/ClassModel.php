@@ -539,7 +539,8 @@ final class ClassModel
         $finder = new \PhpParser\NodeFinder();
         $program = self::$program;
         foreach ($this->methods as $lc => $m) {
-            if ($m->node === null || $lc === '__construct' || $lc === '__unserialize' || $lc === '__wakeup') {
+            // __destruct runs when nothing else holds the object: its writes cannot race a read
+            if ($m->node === null || $lc === '__construct' || $lc === '__unserialize' || $lc === '__wakeup' || $lc === '__destruct') {
                 continue;
             }
             foreach ($finder->find($m->node->stmts ?? [], static fn(\PhpParser\Node $n): bool => true) as $n) {
@@ -571,7 +572,7 @@ final class ClassModel
                     }
                     foreach ($n->getArgs() as $i => $arg) {
                         if (self::thisPropName($arg->value) !== null
-                            && ($program === null || $program->argMayBeByRef($n, $i, $arg, $this))
+                            && ($program === null || $program->argMayBeByRef($n, $i, $arg, $this, $m))
                         ) {
                             $targets[] = $arg->value;
                         }
