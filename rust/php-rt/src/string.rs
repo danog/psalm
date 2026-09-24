@@ -43,6 +43,7 @@ impl HeapStr {
         #[cfg(feature = "stats")]
         {
             crate::stats::bump(crate::stats::STR_HEAP_ALLOC);
+            if cap <= 23 { crate::stats::bump(crate::stats::STR_HEAP_ALLOC_LE_23); }
             if cap <= 32 { crate::stats::bump(crate::stats::STR_HEAP_ALLOC_LE_32); } else if cap <= 128 { crate::stats::bump(crate::stats::STR_HEAP_ALLOC_LE_128); }
         }
         let l = Self::layout(cap);
