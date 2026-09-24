@@ -196,7 +196,8 @@ final class CodeUseGraph
      */
     public static function classNode(string $fq_class_name_lc): string
     {
-        return self::KIND_CLASS . ' ' . $fq_class_name_lc;
+        /** @psalm-suppress ImpureStaticProperty Cache */
+        // self::KIND_CLASS . ' ' . $fq_class_name_lc;
     }
 
     /**
