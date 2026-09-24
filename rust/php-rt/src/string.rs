@@ -22,6 +22,9 @@ struct Hdr {
     hash: Cell<u64>,
     /// Number of live bytes (mutated in place only while uniquely owned -- COW).
     len: Cell<usize>,
+    /// The interned lowercase copy of these bytes (`to_lowercase` of a name: a class name held in storage is
+    /// lowercased on every lookup), or 0 until computed; cleared with the hash on any in-place mutation.
+    lower: Cell<usize>,
     /// Bytes of inline capacity available after the header (fixed per allocation).
     cap: usize,
 }
@@ -52,7 +55,7 @@ impl HeapStr {
             if p.is_null() {
                 handle_alloc_error(l);
             }
-            ptr::write(p, Hdr { strong: Cell::new(1), hash: Cell::new(0), len: Cell::new(0), cap });
+            ptr::write(p, Hdr { strong: Cell::new(1), hash: Cell::new(0), len: Cell::new(0), lower: Cell::new(0), cap });
             NonNull::new_unchecked(p)
         }
     }
@@ -104,6 +107,7 @@ impl HeapStr {
         let len = self.hdr().len.get();
         if self.is_unique() && needed <= self.hdr().cap {
             self.hdr().hash.set(0);
+            self.hdr().lower.set(0);
             return;
         }
         crate::stats::bump(crate::stats::STR_COW_GROW);
@@ -508,10 +512,21 @@ impl Str {
         }
         // a lowercased name of a class, method, property or variable is a map key somewhere: interned (see intern)
         if b.len() > INLINE_CAP && b.len() <= INTERN_CAP {
+            let heap = self.heap();
+            if let Some(h) = heap {
+                let twin = h.hdr().lower.get();
+                if twin != 0 {
+                    return Str { r: Repr { stat: StaticRef { ptr: twin as *const u8, len: b.len() as u32, _pad: [0; 3], tag: TAG_INTERNED } } };
+                }
+            }
             let mut buf = [0u8; INTERN_CAP];
             buf[..b.len()].copy_from_slice(b);
             buf[..b.len()].make_ascii_lowercase();
-            return Str::intern(&buf[..b.len()]);
+            let lower = Str::intern(&buf[..b.len()]);
+            if let Some(h) = heap {
+                h.hdr().lower.set(unsafe { lower.r.stat.ptr } as usize);
+            }
+            return lower;
         }
         match b.iter().position(|c| c.is_ascii_uppercase()) {
             None => self.clone(),
