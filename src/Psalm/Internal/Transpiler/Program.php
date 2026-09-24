@@ -1830,11 +1830,11 @@ final class Program
      *
      * @return list<list<MethodModel>>
      */
-    /** STATIC_BORROW=1: public/protected static methods take part in the owned/borrowed parameter analysis. */
+    /** Public/protected static methods take part in the owned/borrowed parameter analysis (STATIC_BORROW=0 disables). */
     public static function staticBorrow(): bool
     {
         $v = getenv('STATIC_BORROW');
-        return $v !== false && $v !== '' && $v !== '0';
+        return $v !== '0';
     }
 
     private function dispatchGroups(): array
