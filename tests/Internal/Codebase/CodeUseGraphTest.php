@@ -13,7 +13,7 @@ final class CodeUseGraphTest extends TestCase
     /**
      * Nothing is treated as external code in these unit tests.
      *
-     * @return Closure(string): bool
+     * @return Closure(int): bool
      */
     private static function notExternal(): Closure
     {

@@ -90,6 +90,8 @@ final class TaintFlowGraph extends DataFlowGraph
     /**
      * The taint graph keys its edges by the spelled-out id: it parses ids (specializations) and its
      * bookkeeping maps hold ids as values.
+     *
+     * @psalm-external-mutation-free
      */
     #[Override]
     public function addPath(
@@ -120,6 +122,9 @@ final class TaintFlowGraph extends DataFlowGraph
         $this->forward_edges[$from_id][$to_id] = new Path($path_type, $length, $added_taints, $removed_taints);
     }
 
+    /**
+     * @psalm-external-mutation-free
+     */
     #[Override]
     public function addNode(DataFlowNode $node): void
     {
@@ -497,10 +502,10 @@ final class TaintFlowGraph extends DataFlowGraph
         $reverse = [];
 
         foreach ($this->forward_edges as $from_id => $destinations) {
-            $this->linkSpecialization($reverse, $from_id);
+            $this->linkSpecialization($reverse, (string) $from_id);
 
             foreach ($destinations as $to_id => $_) {
-                $reverse[$to_id][$from_id] = true;
+                $reverse[(string) $to_id][(string) $from_id] = true;
                 $this->linkSpecialization($reverse, $to_id);
             }
         }

@@ -479,7 +479,7 @@ final class MethodCallReturnTypeFetcher
                 $taint_flow_graph->addNode($method_call_node);
 
                 $return_type_candidate = $return_type_candidate->setParentNodes([
-                    $method_call_node->id => $method_call_node,
+                    $method_call_node->key => $method_call_node,
                 ]);
             }
 
@@ -514,7 +514,7 @@ final class MethodCallReturnTypeFetcher
             $graph->addNode($method_call_node);
 
             $return_type_candidate = $return_type_candidate->setParentNodes([
-                $method_call_node->id => $method_call_node,
+                $method_call_node->key => $method_call_node,
             ]);
         }
 

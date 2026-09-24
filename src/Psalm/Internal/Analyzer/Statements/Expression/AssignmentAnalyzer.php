@@ -1547,7 +1547,7 @@ final class AssignmentAnalyzer
 
                             $context->vars_in_scope[$list_var_id] =
                                 $context->vars_in_scope[$list_var_id]->setParentNodes([
-                                    $assignment_node->id => $assignment_node,
+                                    $assignment_node->key => $assignment_node,
                                 ])
                             ;
                         } else {

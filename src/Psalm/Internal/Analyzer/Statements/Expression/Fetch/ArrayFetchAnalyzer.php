@@ -1133,7 +1133,7 @@ final class ArrayFetchAnalyzer
                 }
 
                 $statements_analyzer->node_data->setType($stmt->var, $stmt_var_type->setParentNodes([
-                    $new_parent_node->id => $new_parent_node,
+                    $new_parent_node->key => $new_parent_node,
                 ]));
             }
         }

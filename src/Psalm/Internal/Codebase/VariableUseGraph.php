@@ -159,6 +159,7 @@ final class VariableUseGraph extends DataFlowGraph
         }
 
         foreach ($this->forward_edges[$generated_source->key] as $to_id => $path) {
+            $to_id = (int) $to_id; // the base graph's edges are keyed by array-key (the taint graph keys by id)
             $path_type = $path->type;
 
             if ($path_type === 'variable-use'
@@ -217,6 +218,7 @@ final class VariableUseGraph extends DataFlowGraph
 
         $had = false;
         foreach ($this->backward_edges[$destination->key] as $from_id => $_) {
+            $from_id = (int) $from_id;
             if (isset($visited_source_ids[$from_id])) {
                 continue;
             }

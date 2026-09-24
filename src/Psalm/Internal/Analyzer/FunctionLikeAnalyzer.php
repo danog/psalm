@@ -152,7 +152,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
      * (graph node => whether mutations of the callee's own instance are fine),
      * whose levels are only known after analysis.
      *
-     * @var array<string, bool>
+     * @var array<int, bool>
      */
     public array $deferred_callees = [];
 

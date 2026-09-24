@@ -152,7 +152,7 @@ abstract class DataFlowGraph
     }
 
     /**
-     * @psalm-return list<list<string>>
+     * @psalm-return list<list<array-key>>
      * @psalm-mutation-free
      */
     public function summarizeEdges(): array

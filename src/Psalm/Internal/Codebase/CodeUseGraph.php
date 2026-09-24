@@ -148,7 +148,7 @@ final class CodeUseGraph
      * can be shared by trait analyses, so it is retained until every source
      * that recorded it has been invalidated.
      *
-     * @var array<int, array<int, array<string, true>>>
+     * @var array<int, array<string, array<int, true>>>
      */
     private array $location_sources = [];
 
@@ -316,7 +316,7 @@ final class CodeUseGraph
     }
 
     /**
-     * @psalm-pure
+     * @psalm-mutation-free
      */
     private static function getKind(int $node): string
     {
@@ -411,7 +411,11 @@ final class CodeUseGraph
         return $is_external($node_id);
     }
 
-    /** The node every public-API node hangs off (interned once). */
+    /**
+     * The node every public-API node hangs off (interned once).
+     *
+     * @psalm-mutation-free
+     */
     private static function publicApiNode(): int
     {
         return Interner::intern(self::PUBLIC_API);
@@ -788,6 +792,7 @@ final class CodeUseGraph
      * The spelled-out node ids (a diagnostic view): target node id => source node ids.
      *
      * @return array<string, array<string, true>>
+     * @psalm-mutation-free
      */
     public function getAllReferences(): array
     {
@@ -1040,21 +1045,21 @@ final class CodeUseGraph
     public function loadCacheData(array $data): void
     {
         foreach ($data['edges'] as $source_node => $targets) {
-            $source = Interner::intern((string) $source_node);
+            $source = Interner::intern($source_node);
             foreach ($targets as $target_node => $type) {
-                $this->addEdge($source, Interner::intern((string) $target_node), $type);
+                $this->addEdge($source, Interner::intern($target_node), $type);
             }
         }
 
         foreach ($data['node_files'] as $node_id => $file_path) {
-            $node = Interner::intern((string) $node_id);
+            $node = Interner::intern($node_id);
             if (!isset($this->node_files[$node])) {
                 $this->node_files[$node] = $file_path;
             }
         }
 
         foreach ($data['mutation_info'] ?? [] as $node_id => $info) {
-            $this->mutation_info[Interner::intern((string) $node_id)] ??= $info;
+            $this->mutation_info[Interner::intern($node_id)] ??= $info;
         }
 
         $this->file_nodes = null;
