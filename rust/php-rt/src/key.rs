@@ -64,7 +64,7 @@ impl ArrayKey {
     }
     pub fn to_str(&self) -> Str {
         match self {
-            ArrayKey::Int(i) => Str::from_string(i.to_string()),
+            ArrayKey::Int(i) => Str::from_int(*i),
             ArrayKey::Str(s) => s.clone(),
         }
     }

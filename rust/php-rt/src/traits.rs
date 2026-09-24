@@ -227,7 +227,7 @@ impl ToStr for Str {
 }
 impl ToStr for i64 {
     fn to_php_str(&self) -> Str {
-        Str::from_string(self.to_string())
+        Str::from_int(*self)
     }
 }
 impl ToStr for f64 {

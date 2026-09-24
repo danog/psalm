@@ -80,7 +80,7 @@ impl CastTo<i64> for ArrayKey {
 }
 impl CastTo<Str> for i64 {
     fn cast_to(self) -> Str {
-        Str::from_string(self.to_string())
+        Str::from_int(self)
     }
 }
 impl CastTo<Str> for f64 {

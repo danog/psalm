@@ -300,6 +300,28 @@ impl Str {
         Str::from_heap(HeapStr::from_slice(v))
     }
     #[inline]
+    /// The decimal text of an integer, inline (no heap: an i64 has at most 20 characters, and the common
+    /// small keys of `(string)$int` fit the inline buffer).
+    pub fn from_int(i: i64) -> Str {
+        let mut buf = [0u8; 20];
+        let mut n = buf.len();
+        let neg = i < 0;
+        let mut u = i.unsigned_abs();
+        loop {
+            n -= 1;
+            buf[n] = b'0' + (u % 10) as u8;
+            u /= 10;
+            if u == 0 {
+                break;
+            }
+        }
+        if neg {
+            n -= 1;
+            buf[n] = b'-';
+        }
+        Str::from_bytes(&buf[n..])
+    }
+
     pub fn from_string(s: String) -> Str {
         Str::from_bytes(s.as_bytes())
     }
@@ -638,6 +660,13 @@ macro_rules! sfmt {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn from_int_matches_display() {
+        for i in [0i64, 1, -1, 7, 10, 12345, -12345, i64::MAX, i64::MIN, 999_999_999_999_999, -999_999_999_999_99] {
+            assert_eq!(super::Str::from_int(i).as_bytes(), i.to_string().as_bytes(), "{i}");
+        }
+        assert!(super::Str::from_int(-999_999_999_999_99).is_inline());
+    }
     use super::*;
 
     #[test]
