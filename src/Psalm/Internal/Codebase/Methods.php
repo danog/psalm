@@ -282,7 +282,7 @@ final class Methods
 
         // functions
         if (InternalCallMapHandler::inCallMap((string) $callmap_id)) {
-            $class_storage = $this->classlike_storage_provider->get($callmap_id->fq_class_name);
+            $class_storage = $this->classlike_storage_provider->getById($callmap_id->class_id);
 
             $declaring_method_name = $declaring_method_id->method_name ?? $method_name;
             $declaring_method_name_id = Interner::intern($declaring_method_name);
@@ -667,7 +667,7 @@ final class Methods
                 }
 
                 $overridden_class_storage =
-                    $this->classlike_storage_provider->get($overridden_method_id->fq_class_name);
+                    $this->classlike_storage_provider->getById($overridden_method_id->class_id);
 
                 $overridden_storage_return_type = TypeExpander::expandUnion(
                     $codebase,
@@ -848,7 +848,7 @@ final class Methods
             return false;
         }
 
-        $fq_class_storage = $this->classlike_storage_provider->get($method_id->fq_class_name);
+        $fq_class_storage = $this->classlike_storage_provider->getById($method_id->class_id);
 
         if (!$fq_class_storage->user_defined && InternalCallMapHandler::inCallMap((string) $method_id)) {
             return false;
@@ -1143,7 +1143,7 @@ final class Methods
     public function hasStorage(MethodIdentifier $method_id): bool
     {
         try {
-            $class_storage = $this->classlike_storage_provider->get($method_id->fq_class_name);
+            $class_storage = $this->classlike_storage_provider->getById($method_id->class_id);
         } catch (InvalidArgumentException) {
             return false;
         }

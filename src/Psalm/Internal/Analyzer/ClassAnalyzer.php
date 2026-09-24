@@ -1772,8 +1772,8 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
 
                 if ($declaring_method_id && $declaring_method_storage->abstract) {
                     $implementer_method_storage = $codebase->methods->getStorage($declaring_method_id);
-                    $declaring_storage = $codebase->classlike_storage_provider->get(
-                        $actual_method_id->fq_class_name,
+                    $declaring_storage = $codebase->classlike_storage_provider->getById(
+                        $actual_method_id->class_id,
                     );
 
                     MethodComparator::compare(

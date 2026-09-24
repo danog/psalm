@@ -17,6 +17,7 @@ use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\TemplateBound;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
@@ -101,8 +102,8 @@ final class MethodCallReturnTypeFetcher
             && $premixin_method_id->fq_class_name !== RuntimeException::class
             && $premixin_method_id->fq_class_name !== PDOException::class
             && (
-                $codebase->classImplements($premixin_method_id->fq_class_name, Throwable::class)
-                || $codebase->interfaceExtends($premixin_method_id->fq_class_name, Throwable::class)
+                $codebase->classImplementsById($premixin_method_id->class_id, Sym::THROWABLE)
+                || $codebase->interfaceExtendsById($premixin_method_id->class_id, Sym::THROWABLE)
             )
         ) {
             return Type::getInt();

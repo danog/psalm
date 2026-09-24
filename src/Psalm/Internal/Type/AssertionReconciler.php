@@ -659,8 +659,8 @@ final class AssertionReconciler extends Reconciler
 
         if ($type_1_atomic instanceof TNamedObject
             && $type_2_atomic instanceof TNamedObject
-            && ($codebase->interfaceExists($type_1_atomic->value)
-                || $codebase->interfaceExists($type_2_atomic->value))
+            && ($codebase->interfaceExistsById($type_1_atomic->name)
+                || $codebase->interfaceExistsById($type_2_atomic->name))
         ) {
             return $type_2_atomic->addIntersectionType($type_1_atomic);
         }
@@ -1634,7 +1634,7 @@ final class AssertionReconciler extends Reconciler
                 foreach ($existing_var_type->getAtomicTypes() as $existing_type_part) {
                     if ($existing_type_part instanceof TClassString
                         && $existing_type_part->as_type
-                        && $codebase->interfaceExists($existing_type_part->as_type->value)
+                        && $codebase->interfaceExistsById($existing_type_part->as_type->name)
                     ) {
                         $old_type_has_interface_string = true;
                         break;

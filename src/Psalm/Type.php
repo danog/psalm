@@ -1082,8 +1082,8 @@ abstract class Type
             /** @psalm-suppress TypeDoesNotContainType */
             if ($type_1_atomic instanceof TNamedObject && $type_2_atomic instanceof TNamedObject) {
                 try {
-                    $first = $codebase->classlike_storage_provider->get($type_1_atomic->value);
-                    $second = $codebase->classlike_storage_provider->get($type_2_atomic->value);
+                    $first = $codebase->classlike_storage_provider->getById($type_1_atomic->name);
+                    $second = $codebase->classlike_storage_provider->getById($type_2_atomic->name);
                     $first_is_class = !$first->is_interface && !$first->is_trait;
                     $second_is_class = !$second->is_interface && !$second->is_trait;
                     if ($first_is_class && $second_is_class) {

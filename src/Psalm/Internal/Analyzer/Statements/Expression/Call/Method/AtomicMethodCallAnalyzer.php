@@ -778,8 +778,8 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
                                 $method_name_lc,
                             );
 
-                            $mixin_class_storage = $codebase->classlike_storage_provider->get(
-                                $lhs_type_part_new->value,
+                            $mixin_class_storage = $codebase->classlike_storage_provider->getById(
+                                $lhs_type_part_new->name,
                             );
 
                             if ($codebase->methodExists(

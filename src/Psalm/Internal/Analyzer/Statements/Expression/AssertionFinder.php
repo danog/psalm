@@ -4269,7 +4269,7 @@ final class AssertionFinder
                 return 'Variable ' . $name . ' is not an object so the assertion cannot be applied';
             }
 
-            $class_definition = $class_provider->get($type->value);
+            $class_definition = $class_provider->getById($type->name);
             $property_definition = $class_definition->properties[Interner::intern($property)] ?? null;
 
             if (!$property_definition instanceof PropertyStorage) {

@@ -7,6 +7,7 @@ namespace Psalm\Type;
 use InvalidArgumentException;
 use Override;
 use Psalm\Codebase;
+use Psalm\Internal\Sym;
 use UnexpectedValueException;
 use Psalm\Exception\TypeParseTreeException;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
@@ -634,12 +635,12 @@ abstract class Atomic implements TypeNode, Stringable
             && (
                 strtolower($this->value) === 'traversable'
                 || ($codebase->classOrInterfaceExistsById($this->name)
-                    && ($codebase->classExtendsOrImplements(
-                        $this->value,
-                        'Traversable',
-                    ) || $codebase->interfaceExtends(
-                        $this->value,
-                        'Traversable',
+                    && ($codebase->classExtendsOrImplementsById(
+                        $this->name,
+                        Sym::TRAVERSABLE,
+                    ) || $codebase->interfaceExtendsById(
+                        $this->name,
+                        Sym::TRAVERSABLE,
                     )))
                 || (
                     $this->extra_types
@@ -657,12 +658,12 @@ abstract class Atomic implements TypeNode, Stringable
             && (
                 strtolower($this->value) === 'countable'
                 || ($codebase->classOrInterfaceExistsById($this->name)
-                    && ($codebase->classExtendsOrImplements(
-                        $this->value,
-                        'Countable',
-                    ) || $codebase->interfaceExtends(
-                        $this->value,
-                        'Countable',
+                    && ($codebase->classExtendsOrImplementsById(
+                        $this->name,
+                        Sym::COUNTABLE,
+                    ) || $codebase->interfaceExtendsById(
+                        $this->name,
+                        Sym::COUNTABLE,
                     )))
                 || (
                     $this->extra_types
@@ -695,12 +696,12 @@ abstract class Atomic implements TypeNode, Stringable
             && (
                 strtolower($this->value) === 'arrayaccess'
                 || ($codebase->classOrInterfaceExistsById($this->name)
-                    && ($codebase->classExtendsOrImplements(
-                        $this->value,
-                        'ArrayAccess',
-                    ) || $codebase->interfaceExtends(
-                        $this->value,
-                        'ArrayAccess',
+                    && ($codebase->classExtendsOrImplementsById(
+                        $this->name,
+                        Sym::ARRAY_ACCESS,
+                    ) || $codebase->interfaceExtendsById(
+                        $this->name,
+                        Sym::ARRAY_ACCESS,
                     )))
                 || (
                     $this->extra_types

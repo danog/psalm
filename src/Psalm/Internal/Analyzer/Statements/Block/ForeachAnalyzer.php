@@ -22,6 +22,7 @@ use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\Scope\LoopScope;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\AssertionReconciler;
 use Psalm\Internal\Type\Comparator\AtomicTypeComparator;
 use Psalm\Internal\Type\TypeExpander;
@@ -727,15 +728,15 @@ final class ForeachAnalyzer
 
             if ($iterator_atomic_type instanceof TIterable
                 || (strtolower($iterator_atomic_type->value) === 'traversable'
-                    || $codebase->classImplements(
-                        $iterator_atomic_type->value,
-                        'Traversable',
+                    || $codebase->classImplementsById(
+                        $iterator_atomic_type->name,
+                        Sym::TRAVERSABLE,
                     ) ||
                     (
                         $codebase->interfaceExistsById($iterator_atomic_type->name, null, $context)
-                        && $codebase->interfaceExtends(
-                            $iterator_atomic_type->value,
-                            'Traversable',
+                        && $codebase->interfaceExtendsById(
+                            $iterator_atomic_type->name,
+                            Sym::TRAVERSABLE,
                         )
                     ))
             ) {
@@ -812,13 +813,13 @@ final class ForeachAnalyzer
                             } else {
                                 if ($array_atomic_type instanceof TNamedObject
                                     && $codebase->classExistsById($array_atomic_type->name, null, $context)
-                                    && $codebase->classImplements(
-                                        $array_atomic_type->value,
-                                        'Traversable',
+                                    && $codebase->classImplementsById(
+                                        $array_atomic_type->name,
+                                        Sym::TRAVERSABLE,
                                     )
                                 ) {
-                                    $generic_storage = $codebase->classlike_storage_provider->get(
-                                        $array_atomic_type->value,
+                                    $generic_storage = $codebase->classlike_storage_provider->getById(
+                                        $array_atomic_type->name,
                                     );
 
                                     // The collection might be an iterator, in which case
@@ -849,14 +850,14 @@ final class ForeachAnalyzer
                                 if ($array_atomic_type instanceof TIterable
                                     || ($array_atomic_type instanceof TNamedObject
                                         && ($array_atomic_type->value === 'Traversable'
-                                            || ($codebase->classOrInterfaceExists(
-                                                $array_atomic_type->value,
+                                            || ($codebase->classOrInterfaceExistsById(
+                                                $array_atomic_type->name,
                                                 null,
                                                 $context,
                                             )
-                                                && $codebase->classImplements(
-                                                    $array_atomic_type->value,
-                                                    'Traversable',
+                                                && $codebase->classImplementsById(
+                                                    $array_atomic_type->name,
+                                                    Sym::TRAVERSABLE,
                                                 ))))
                                 ) {
                                     self::getKeyValueParamsForTraversableObject(
@@ -998,18 +999,18 @@ final class ForeachAnalyzer
 
         if ($iterator_atomic_type instanceof TNamedObject
             && (
-                $codebase->classImplements(
-                    $iterator_atomic_type->value,
-                    'Traversable',
+                $codebase->classImplementsById(
+                    $iterator_atomic_type->name,
+                    Sym::TRAVERSABLE,
                 )
-                || $codebase->interfaceExtends(
-                    $iterator_atomic_type->value,
-                    'Traversable',
+                || $codebase->interfaceExtendsById(
+                    $iterator_atomic_type->name,
+                    Sym::TRAVERSABLE,
                 )
             )
         ) {
-            $generic_storage = $codebase->classlike_storage_provider->get(
-                $iterator_atomic_type->value,
+            $generic_storage = $codebase->classlike_storage_provider->getById(
+                $iterator_atomic_type->name,
             );
 
             if (!isset($generic_storage->template_extended_params['Traversable'])) {

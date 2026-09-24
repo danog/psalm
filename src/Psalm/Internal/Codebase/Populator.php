@@ -1098,8 +1098,8 @@ final class Populator
                     // across a real class boundary, so it must not be recorded as "overridden" here -- doing
                     // so produced a MissingOverrideAttribute false positive whenever a subclass re-declared
                     // (or re-imported via the same trait) a same-named private method.
-                    $declaring_class_storage = $this->classlike_storage_provider->get(
-                        $declaring_method_id->fq_class_name,
+                    $declaring_class_storage = $this->classlike_storage_provider->getById(
+                        $declaring_method_id->class_id,
                     );
                     $declaring_method_storage = $declaring_class_storage->methods[$method_name_lc_id] ?? null;
 
@@ -1145,8 +1145,8 @@ final class Populator
                 if (isset($storage->declaring_method_ids[$aliased_method_name_id])) {
                     $implementing_method_id = $storage->declaring_method_ids[$aliased_method_name_id];
 
-                    $implementing_class_storage = $this->classlike_storage_provider->get(
-                        $implementing_method_id->fq_class_name,
+                    $implementing_class_storage = $this->classlike_storage_provider->getById(
+                        $implementing_method_id->class_id,
                     );
 
                     $method = $implementing_class_storage->methods[$implementing_method_id->name_id]

@@ -2143,13 +2143,13 @@ final class ClassLikes
                     if ($method_storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PRIVATE) {
                         $has_parent_references = false;
 
-                        if ($codebase->classImplements($classlike_storage->name, 'Serializable')
+                        if ($codebase->classImplementsById($classlike_storage->id, Sym::SERIALIZABLE)
                             && ($method_name === 'serialize' || $method_name === 'unserialize')
                         ) {
                             continue;
                         }
 
-                        if ($codebase->classImplements($classlike_storage->name, 'JsonSerializable')
+                        if ($codebase->classImplementsById($classlike_storage->id, Sym::JSON_SERIALIZABLE)
                             && ($method_name === 'jsonserialize')
                         ) {
                             continue;

@@ -954,10 +954,10 @@ final class NewAnalyzer extends CallAnalyzer
                     $new_types []= new Union([$new_type_part]);
 
                     if ($lhs_type_part->as_type
-                        && $codebase->classlikes->classExists($lhs_type_part->as_type->value, null, $context)
+                        && $codebase->classlikes->classExistsById($lhs_type_part->as_type->name, null, $context)
                     ) {
-                        $as_storage = $codebase->classlike_storage_provider->get(
-                            $lhs_type_part->as_type->value,
+                        $as_storage = $codebase->classlike_storage_provider->getById(
+                            $lhs_type_part->as_type->name,
                         );
 
                         if (!$as_storage->preserve_constructor_signature) {
@@ -1003,10 +1003,10 @@ final class NewAnalyzer extends CallAnalyzer
                         }
 
                         if ($lhs_type_part->as_type
-                            && $codebase->classlikes->classExists($lhs_type_part->as_type->value, null, $context)
+                            && $codebase->classlikes->classExistsById($lhs_type_part->as_type->name, null, $context)
                         ) {
-                            $as_storage = $codebase->classlike_storage_provider->get(
-                                $lhs_type_part->as_type->value,
+                            $as_storage = $codebase->classlike_storage_provider->getById(
+                                $lhs_type_part->as_type->name,
                             );
 
                             if (!$as_storage->preserve_constructor_signature) {

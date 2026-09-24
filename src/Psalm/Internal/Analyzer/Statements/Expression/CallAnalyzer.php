@@ -204,8 +204,8 @@ abstract class CallAnalyzer
                 $appearing_method_id = $codebase->methods->getAppearingMethodId($method_id);
 
                 if ($appearing_method_id) {
-                    $appearing_class_storage = $codebase->classlike_storage_provider->get(
-                        $appearing_method_id->fq_class_name,
+                    $appearing_class_storage = $codebase->classlike_storage_provider->getById(
+                        $appearing_method_id->class_id,
                     );
 
                     if (isset($appearing_class_storage->trait_final_map[$method_name_lc])) {

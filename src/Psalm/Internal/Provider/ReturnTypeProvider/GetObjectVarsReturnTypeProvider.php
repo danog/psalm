@@ -12,6 +12,7 @@ use Psalm\Internal\Analyzer\SourceAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\AtomicPropertyFetchAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Interner;
+use Psalm\Internal\Sym;
 use Psalm\Plugin\EventHandler\Event\FunctionReturnTypeProviderEvent;
 use Psalm\Plugin\EventHandler\FunctionReturnTypeProviderInterface;
 use Psalm\Type;
@@ -151,7 +152,7 @@ final class GetObjectVarsReturnTypeProvider implements FunctionReturnTypeProvide
                     null,
                     $class_storage->final
                         || $class_storage->name === UnitEnum::class
-                        || $codebase->interfaceExtends($class_storage->name, UnitEnum::class)
+                        || $codebase->interfaceExtendsById($class_storage->id, Sym::UNIT_ENUM)
                             ? null
                             : [Type::getString(), Type::getMixed()],
                 );
