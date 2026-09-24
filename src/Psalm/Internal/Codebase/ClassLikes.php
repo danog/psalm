@@ -2752,7 +2752,7 @@ final class ClassLikes
             $types[$enum_case_name] = new TEnumCase($class_like_storage->name, $enum_case_name);
         }
 
-        return new Union($types);
+        return new Union(array_values($types));
     }
 
     /**

@@ -336,7 +336,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
 
         if (($storage->templatedMixins || $storage->namedMixins)
             && $storage->mixin_declaring_fqcln === $storage->name) {
-            /** @var non-empty-array<int, TTemplateParam|TNamedObject> $mixins */
+            /** @var non-empty-list<TTemplateParam|TNamedObject> $mixins */
             $mixins = array_merge($storage->templatedMixins, $storage->namedMixins);
             $union = new Union($mixins);
 

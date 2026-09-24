@@ -105,7 +105,7 @@ trait UnionTrait
     /**
      * Constructs a Union instance
      *
-     * @param non-empty-list<Atomic>|non-empty-array<string, Atomic>     $types
+     * @param non-empty-list<Atomic> $types
      * @param TProperties $properties
      * @psalm-mutation-free
      */
@@ -200,14 +200,14 @@ trait UnionTrait
      * The atomics as a list holding one type per key (pzoom's `Vec<TAtomic>`; Psalm's map kept one atomic
      * per getKey(), the later one winning, and that stays true). A single atomic needs no keys at all.
      *
-     * @param non-empty-array<array-key, Atomic> $types
+     * @param non-empty-list<Atomic> $types
      * @return non-empty-list<Atomic>
      * @psalm-pure
      */
     private static function listOfTypes(array $types): array
     {
         if (count($types) === 1) {
-            return [reset($types)];
+            return $types; // kept as it is: no copy
         }
         $by_key = [];
         foreach ($types as $type) {
@@ -1741,17 +1741,19 @@ trait UnionTrait
             return true;
         }
 
-        $ids = [];
+        // the same atomics on both sides: one atomic per key in a union (same count), each of ours must have its
+        // structural equal under the same key (pzoom compares TUnion::types structurally; id strings of large
+        // keyed arrays were 1.7 G instructions per run here)
+        if (count($this->types) !== count($other_type->types)) {
+            return false;
+        }
         foreach ($this->types as $atomic) {
-            $ids[$atomic->getId()] = true;
+            $other_atomic = $other_type->find($atomic->getKey());
+            if ($other_atomic === null || ($other_atomic !== $atomic && !$atomic->equals($other_atomic, false))) {
+                return false;
+            }
         }
-
-        $other_ids = [];
-        foreach ($other_type->types as $atomic) {
-            $other_ids[$atomic->getId()] = true;
-        }
-
-        return $ids == $other_ids;
+        return true;
     }
 
     public function equals(

@@ -210,17 +210,16 @@ final class CodeUseGraph
     }
 
     /**
-     * @param lowercase-string $function_id_lc
-     * @psalm-pure
-     */
+     * @var array<string, int> class node by lowercase-string $function_id_lc
+     * (the name is the key: one lookup, not two) */
     public static function functionLikeReturnNode(string $function_id_lc): string
     {
         return self::KIND_RETURN . ' ' . $function_id_lc;
     }
 
     /**
-     * @param lowercase-string $fq_class_name_lc
-     * @param string $property_name the property name, without the leading `$`
+     * @var array<string, int> lowercase-string $fq_class_name_lc
+     * @param lowercase the property name, without the leading `$`
      * @psalm-pure
      */
     public static function propertyNode(string $fq_class_name_lc, string $property_name): string

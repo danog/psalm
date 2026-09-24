@@ -159,7 +159,7 @@ final class MutableUnion implements TypeNode
     public function setTypes(array $types): self
     {
         $this->checked = false;
-        $this->types = self::listOfTypes($types);
+        $this->types = self::listOfTypes(array_values($types));
 
         $from_docblock = false;
         foreach ($this->types as $type) {
