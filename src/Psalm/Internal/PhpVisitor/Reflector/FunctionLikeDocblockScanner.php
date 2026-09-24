@@ -877,24 +877,29 @@ final class FunctionLikeDocblockScanner
             $storage_param_atomic_types = $storage_param->type->getAtomicTypesByKey();
 
             $all_typehint_types_match = true;
+            $new_atomic_types = [];
 
             foreach ($new_param_type->getAtomicTypes() as $type) {
                 $key = $type->getKey();
                 if (isset($storage_param_atomic_types[$key])) {
-                    /** @psalm-suppress InaccessibleProperty We just created this type */
-                    $type->from_docblock = false;
+                    $type = $type->setFromDocblock(false);
 
                     if ($storage_param_atomic_types[$key] instanceof TArray
                         && $type instanceof TArray
                         && $type->type_params[0]->hasArrayKey()
                     ) {
-                        /** @psalm-suppress InaccessibleProperty We just created this type */
-                        $type->type_params[0]->from_docblock = false;
+                        $type = $type->setTypeParams([
+                            $type->type_params[0]->setProperties(['from_docblock' => false]),
+                            $type->type_params[1],
+                        ]);
                     }
                 } else {
                     $all_typehint_types_match = false;
                 }
+                $new_atomic_types[] = $type;
             }
+
+            $new_param_type = $new_param_type->setTypes($new_atomic_types);
 
             if ($all_typehint_types_match) {
                 $new_param_type = $new_param_type->setProperties(['from_docblock' => false]);

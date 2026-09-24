@@ -1788,8 +1788,7 @@ final class ClassLikeNodeScanner
                     }
 
                     if ($all_typehint_types_match) {
-                        /** @psalm-suppress InaccessibleProperty We just created this type */
-                        $property_storage->type->from_docblock = false;
+                        $property_storage->type = $property_storage->type->setProperties(['from_docblock' => false]);
                     }
 
                     if ($property_storage->signature_type->isNullable()

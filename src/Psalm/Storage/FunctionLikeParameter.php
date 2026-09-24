@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Psalm\Storage;
 
 use Override;
+use Psalm\Codebase;
 use Psalm\CodeLocation;
+use Psalm\Internal\Type\TypeExpander;
 use Psalm\Internal\Scanner\UnresolvedConstantComponent;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeNode;
@@ -42,6 +44,17 @@ final class FunctionLikeParameter implements HasAttributesInterface, TypeNode
     public ?string $description = null;
 
     /**
+     * TypeExpander::expandUnion() of $type per (self, static, parent, final): a parameter type is expanded on
+     * every call of its function (pzoom expands storages once), so the expansion is remembered.
+     *
+     * @var array<string, Union>
+     */
+    private array $expanded_types = [];
+
+    /** the $type the memo above was built for (a scanner may replace the type) */
+    private ?Union $expanded_for = null;
+
+    /**
      * @param string $name parameter name, without the "$" prefix
      * @psalm-mutation-free
      */
@@ -59,6 +72,40 @@ final class FunctionLikeParameter implements HasAttributesInterface, TypeNode
         public ?Union $out_type = null,
     ) {
         $this->signature_type_location = $type_location;
+    }
+
+    /**
+     * $type expanded the way an argument check needs it (class constants, generics; no conditional types).
+     *
+     * @psalm-external-mutation-free
+     */
+    public function getExpandedType(
+        Codebase $codebase,
+        ?string $self_class,
+        ?string $static_class,
+        ?string $parent_class,
+        bool $final,
+    ): ?Union {
+        if ($this->type === null) {
+            return null;
+        }
+        if ($this->expanded_for !== $this->type) {
+            $this->expanded_types = [];
+            $this->expanded_for = $this->type;
+        }
+        $key = ($self_class ?? '') . "\0" . ($static_class ?? '') . "\0" . ($parent_class ?? '') . ($final ? "\0f" : '');
+
+        return $this->expanded_types[$key] ??= TypeExpander::expandUnion(
+            $codebase,
+            $this->type,
+            $self_class,
+            $static_class,
+            $parent_class,
+            true,
+            false,
+            $final,
+            true,
+        );
     }
 
     /** @psalm-mutation-free */
