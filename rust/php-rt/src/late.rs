@@ -1,5 +1,6 @@
 //! Late-initialized field: a typed property without a default value.
 
+use std::cell::UnsafeCell;
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 
@@ -84,5 +85,76 @@ impl<T: fmt::Debug> fmt::Debug for Late<T> {
             Some(v) => v.fmt(f),
             None => write!(f, "<uninit>"),
         }
+    }
+}
+
+/// A field written only while its object is being constructed (the transpiler's construction-only analysis:
+/// no assignment, by-reference use or external write after the constructor and its init helpers), stored
+/// outside the object's RefCell so that a read through a shared handle is a plain `&T`: no borrow flag, no
+/// clone, no refcount. The writes (constructor, `__unserialize`, init helpers) go through `&self`; the
+/// analysis guarantees no read borrow is live across them.
+pub struct Init<T>(UnsafeCell<Late<T>>);
+
+impl<T> Init<T> {
+    #[inline]
+    pub const fn uninit() -> Init<T> {
+        Init(UnsafeCell::new(Late::uninit()))
+    }
+    #[inline]
+    pub fn new(v: T) -> Init<T> {
+        Init(UnsafeCell::new(Late::new(v)))
+    }
+    #[inline]
+    fn inner(&self) -> &Late<T> {
+        unsafe { &*self.0.get() }
+    }
+    #[inline]
+    #[allow(clippy::mut_from_ref)]
+    fn inner_mut(&self) -> &mut Late<T> {
+        unsafe { &mut *self.0.get() }
+    }
+    #[inline]
+    pub fn set(&self, v: T) {
+        self.inner_mut().set(v);
+    }
+    #[inline]
+    pub fn is_init(&self) -> bool {
+        self.inner().is_init()
+    }
+    #[inline]
+    pub fn get(&self) -> &T {
+        self.inner().get()
+    }
+    #[inline]
+    #[allow(clippy::mut_from_ref)]
+    pub fn get_mut(&self) -> &mut T {
+        self.inner_mut().get_mut()
+    }
+    #[inline]
+    #[allow(clippy::mut_from_ref)]
+    pub fn get_or_default_mut(&self) -> &mut T
+    where
+        T: Default,
+    {
+        self.inner_mut().get_or_default_mut()
+    }
+    #[inline]
+    pub fn as_option(&self) -> Option<&T> {
+        self.inner().as_option()
+    }
+}
+impl<T: Clone> Clone for Init<T> {
+    fn clone(&self) -> Init<T> {
+        Init(UnsafeCell::new(self.inner().clone()))
+    }
+}
+impl<T> Default for Init<T> {
+    fn default() -> Init<T> {
+        Init::uninit()
+    }
+}
+impl<T: fmt::Debug> fmt::Debug for Init<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(self.inner(), f)
     }
 }
