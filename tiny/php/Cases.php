@@ -1917,6 +1917,7 @@ function run_all(): string
         . check('phpunit', case_phpunit(), '1,failed,skip:later,expects,verified,mismatch,testThrows with data set "ds"')
         . check('object_eq', case_object_eq(), 'eq,ne,ne,notsame,eq,eq,ne')
         . check('defined_constants', case_defined_constants(), 'max9223372036854775807,eall,eol,pi')
+        . check('defined_fold', case_defined_fold(), 'rt=1,cls=1,nocls=0,unknown=0,dyn=1')
         . check('data_file', case_data_file(), 'a1x-,b2y3.5|a,b')
         . check('elseif_assign', case_elseif_assign(), 'none,a5,skip|1')
         . check('json_encode', case_json_encode(), '{"a":1,"b":[1,2,3],"c":null,"d":true,"e":1.5,"f":"x\\"y"}|[{"x":1,"label":null},{"x":2,"label":"p"}]|{"a":1,"b":"two","c":[3,4]}|{"3":"a","5":"b"}|[]|' . "{\n    \"k\": [\n        1,\n        \"z\"\n    ]\n}")
@@ -1971,6 +1972,27 @@ final class ConstTable
         }
         return self::$map;
     }
+}
+
+final class FoldConsts
+{
+    public const HERE = 1;
+}
+
+/** @psalm-pure */
+function fold_name(): string
+{
+    return 'PHP_EOL';
+}
+
+function case_defined_fold(): string
+{
+    $dyn = fold_name();
+    return 'rt=' . (int) \defined('PSALM_COMPILED')
+        . ',cls=' . (int) \defined('Tiny\\FoldConsts::HERE')
+        . ',nocls=' . (int) \defined('Tiny\\FoldConsts::NOPE')
+        . ',unknown=' . (int) \defined('SURELY_NOT_A_CONSTANT')
+        . ',dyn=' . (int) \defined($dyn);
 }
 
 function case_defined_constants(): string

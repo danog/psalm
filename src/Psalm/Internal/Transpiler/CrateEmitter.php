@@ -866,7 +866,7 @@ final class CrateEmitter
         $names = [];
         foreach ($this->program->constants as $c) {
             if ($this->program->crateOfRecord($c->record) === $crate) {
-                $names[] = Names::byteStrLiteral($c->name);
+                $names[] = $c->name;
             }
         }
         foreach ($classes as $lc => $cls) {
@@ -874,11 +874,13 @@ final class CrateEmitter
                 continue;
             }
             foreach ($cls->constants as $c) {
-                $names[] = Names::byteStrLiteral($cls->fqcn . '::' . $c->name);
+                $names[] = $cls->fqcn . '::' . $c->name;
             }
         }
-        $w->line('static CONSTANT_NAMES: &[&[u8]] = &[' . implode(', ', array_unique($names)) . '];');
-        $w->line('pub fn constant_defined(name: &Str) -> bool { CONSTANT_NAMES.iter().any(|n| *n == name.as_bytes()) || ' . ($up !== null ? $up . 'constant_defined(name)' : 'php_rt::builtins::misc::builtin_constant_defined(name)') . ' }');
+        $names = array_values(array_unique($names));
+        sort($names, SORT_STRING); // byte order, for the binary search below
+        $w->line('static CONSTANT_NAMES: &[&[u8]] = &[' . implode(', ', array_map(fn(string $n): string => Names::byteStrLiteral($n), $names)) . '];');
+        $w->line('pub fn constant_defined(name: &Str) -> bool { CONSTANT_NAMES.binary_search(&name.as_bytes()).is_ok() || ' . ($up !== null ? $up . 'constant_defined(name)' : 'php_rt::builtins::misc::builtin_constant_defined(name)') . ' }');
         if ($this->program->uses_constant_fn) {
             $arms = [];
             foreach ($this->program->constants as $c) {

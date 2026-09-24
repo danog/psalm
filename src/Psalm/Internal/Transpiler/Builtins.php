@@ -60,7 +60,7 @@ final class Builtins
         'DEBUG_BACKTRACE_IGNORE_ARGS' => 'int', 'PHP_OUTPUT_HANDLER_STDFLAGS' => 'int', 'CURLOPT_URL' => 'int',
         'LIBXML_NONET' => 'int', 'LIBXML_NOBLANKS' => 'int', 'LIBXML_NOENT' => 'int', 'LIBXML_NOERROR' => 'int', 'LIBXML_NOWARNING' => 'int', 'LIBXML_ERR_ERROR' => 'int', 'LIBXML_ERR_WARNING' => 'int', 'LIBXML_ERR_FATAL' => 'int',
         'XML_ELEMENT_NODE' => 'int', 'XML_TEXT_NODE' => 'int',
-        'PSALM_VERSION' => 'str', 'PHP_PARSER_VERSION' => 'str',
+        'PSALM_VERSION' => 'str', 'PHP_PARSER_VERSION' => 'str', 'PSALM_COMPILED' => 'bool',
     ];
 
     /** Tokenizer T_* constants exist as `consts::T_*` in the runtime. */
@@ -75,6 +75,7 @@ final class Builtins
         return match ($k) {
             'str' => RustType::str(),
             'float' => RustType::float(),
+            'bool' => RustType::bool(),
             'resource' => RustType::resource(),
             default => RustType::int(),
         };
@@ -118,7 +119,10 @@ final class Builtins
     {
         $method = 'f_' . $name;
         if (method_exists($this, $method)) {
-            return $this->$method($b, $call, $args);
+            $folded = $this->$method($b, $call, $args);
+            if ($folded !== null) {
+                return $folded;
+            }
         }
         if (isset(self::SIMPLE[$name])) {
             return $this->simple($b, $call, $args, self::SIMPLE[$name]);
@@ -2539,6 +2543,32 @@ final class Builtins
         }
         $m = $b->casts->convert($v->code, $t, RustType::mixed());
         return new Val($obj_check($m), RustType::bool());
+    }
+
+    /**
+     * `defined('NAME')` with a literal name is a fact about the compiled program (there is no runtime
+     * define()): answered at transpile time so the dead branch folds away instead of scanning the constant
+     * table on every call (Interner::hash asked this per interned string).
+     */
+    private function f_defined(BodyEmitter $b, Expr\FuncCall $call, array $args): ?Val
+    {
+        $name = $args[0]->value ?? null;
+        if (!$name instanceof Scalar\String_ || count($args) !== 1) {
+            return null;
+        }
+        $n = ltrim($name->value, '\\');
+        if ($this->hasConstant($n) || $b->program->getConstant($n) !== null) {
+            return new Val('true', RustType::bool());
+        }
+        if (str_contains($n, '::')) {
+            [$cls_name, $const] = explode('::', $n, 2);
+            $cls = $b->program->getClass($cls_name);
+            if ($cls !== null && $cls->is_project && isset($cls->constants[$const])) {
+                return new Val('true', RustType::bool());
+            }
+            return null;
+        }
+        return null;
     }
 
     private function f_define(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
