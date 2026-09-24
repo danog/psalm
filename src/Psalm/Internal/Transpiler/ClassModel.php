@@ -863,13 +863,24 @@ final class ClassModel
         // by-value pass must stay small, or the copies cost more than the Rc bump they replace and deep
         // recursion overflows the stack (c113). Classes above the cap stay Rc handles.
         $cap = (int) (getenv('VALUE_TYPES_CAP') ?: '96');
+        $box_cap = self::boxCap();
         $size = 0;
         $sizing = [$this->lc() => true];
+        $boxed = [];
         foreach ($this->fields as $f) {
-            if (!$f->is_static) {
-                $size += self::inlineSize($f->type, $sizing);
+            if ($f->is_static) {
+                continue;
             }
+            $fs = self::inlineSize($f->type, $sizing);
+            // pzoom boxes the unions inside its atomics (`Box<TUnion>`): a large field of a value is a Box,
+            // so the value itself stays small enough to copy (the field's accessors deref transparently)
+            if ($fs > $box_cap && !$f->isLate() && !isset($this->interiorMutFields()[$f->name])) {
+                $boxed[$f->name] = true;
+                $fs = 8;
+            }
+            $size += $fs;
         }
+        $this->boxed_fields = $boxed;
         if ($size > $cap) {
             if (getenv('IMMUTABLE_DIAG') !== false && getenv('IMMUTABLE_DIAG') !== '') {
                 fwrite(STDERR, "[value-size] " . $this->fqcn . " stays Rc: ~" . $size . " bytes > cap " . $cap . "\n");
@@ -884,6 +895,33 @@ final class ClassModel
     private ?bool $value_type = null;
     /** @var ?int estimated inline byte size once valueType() is true */
     private ?int $inline_size = null;
+    /** @var array<string, true> fields of a value type stored as `Box<T>` (see valueType()) */
+    private array $boxed_fields = [];
+
+    /** VALUE_BOX_CAP: a field of a value type, or a value's payload in its hierarchy enum, above this many bytes is boxed. */
+    public static function boxCap(): int
+    {
+        return (int) (getenv('VALUE_BOX_CAP') ?: '40');
+    }
+
+    /** @return array<string, true> the fields stored as `Box<T>` (only a value type has any) */
+    public function boxedFields(): array
+    {
+        $this->valueType();
+        return $this->boxed_fields;
+    }
+
+    /** Whether this value's payload in its hierarchy enum is a `Box<Own>` (its inline size is above the box cap). */
+    public function boxedVariant(): bool
+    {
+        return $this->valueType() && ($this->inline_size ?? 0) > self::boxCap();
+    }
+
+    /** The estimated inline size of a value of this type, or 8 for a handle. */
+    public function payloadSize(): int
+    {
+        return $this->valueType() && !$this->boxedVariant() ? ($this->inline_size ?? 8) : 8;
+    }
 
     /**
      * Estimated inline byte size of a value of type $t: handles 8, Str/List 16, Map 8, options +8, a value
@@ -944,10 +982,10 @@ final class ClassModel
                 if ($c->isLeaf()) {
                     return $c->valueType() ? ($c->inline_size ?? 8) : 8;
                 }
-                // a hierarchy handle: an enum over its concrete members
+                // a hierarchy handle: an enum over its concrete members (a large value payload is boxed)
                 $max = 0;
                 foreach ($c->concrete as $m) {
-                    $max = max($max, $m->valueType() ? ($m->inline_size ?? 8) : 8);
+                    $max = max($max, $m->payloadSize());
                 }
                 return 8 + $max;
         }

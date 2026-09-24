@@ -45,6 +45,7 @@ final class ClassEmitter
         // ---- data struct
         if ($concrete) {
             $co = $cls->constructionOnlyFields();
+            $boxed_fields = $cls->boxedFields();
             $w->line('pub struct ' . $obj . ' {');
             $w->indent();
             foreach ($cls->fields as $f) {
@@ -52,6 +53,9 @@ final class ClassEmitter
                     continue; // lives in the box, outside the RefCell
                 }
                 $st = $f->storageType();
+                if (isset($boxed_fields[$f->name])) {
+                    $st = 'Box<' . $st . '>';
+                }
                 if (($ck = $this->cellKind($cls, $f)) !== '') {
                     $st = ($ck === 'Cell' ? 'php_rt::support::SyncCell' : 'RefCell') . '<' . $st . '>';
                 }
@@ -80,7 +84,7 @@ final class ClassEmitter
             $w->line('#[derive(Clone)]');
             $w->open('pub enum ' . $handle . ' {');
             foreach ($cls->concrete as $c) {
-                $w->line($c->variant() . '(' . $c->ownPath() . '),');
+                $w->line($c->variant() . '(' . ($c->boxedVariant() ? 'Box<' . $c->ownPath() . '>' : $c->ownPath()) . '),');
             }
             if ($cls->has_downstream) {
                 // escape hatch for downstream-crate subclasses the enum can't name (dynamic dispatch)
@@ -97,7 +101,7 @@ final class ClassEmitter
         if ($concrete) {
             $w->open('impl ' . $own . ' {');
             foreach ($cls->fields as $f) {
-                $this->emitAccessors($f, $w, $cls->immutable(), $this->cellKind($cls, $f), $cls->valueType(), $cls->writtenAfterConstruction($f->name), isset($cls->constructionOnlyFields()[$f->name]));
+                $this->emitAccessors($f, $w, $cls->immutable(), $this->cellKind($cls, $f), $cls->valueType(), $cls->writtenAfterConstruction($f->name), isset($cls->constructionOnlyFields()[$f->name]), isset($cls->boxedFields()[$f->name]));
             }
             $this->emitConstructor($cls, $w);
             foreach ($cls->methods as $m) {
@@ -124,7 +128,7 @@ final class ClassEmitter
                 $this->emitMethodOnEnum($cls, $m, $w);
             }
             if ($concrete) {
-                $w->line('pub fn new' . $this->ctorSig($cls) . ' -> ' . $handle . ' { ' . $handle . '::' . $cls->variant() . '(' . $own . '::new(' . $this->ctorArgs($cls) . ')) }');
+                $w->line('pub fn new' . $this->ctorSig($cls) . ' -> ' . $handle . ' { ' . $this->wrapOwn($cls, $own . '::new(' . $this->ctorArgs($cls) . ')') . ' }');
             }
             $w->line('pub fn new_same_class' . $this->ctorSig($cls, true) . ' -> ' . $handle . ' { match self { ' . implode(', ', array_map(fn(ClassModel $c) => $handle . '::' . $c->variant() . '(__h) => ' . $this->casts->convert('__h.new_same_class(' . $this->ctorArgsFor($cls, $c) . ')', RustType::class($c->fqcn), RustType::class($cls->fqcn)), $cls->concrete)) . ($cls->concrete ? ', ' : '') . '_ => unreachable!() } }');
         }
@@ -154,7 +158,19 @@ final class ClassEmitter
         if ($cls->isLeaf()) {
             return $code;
         }
-        return $cls->handle() . '::' . $cls->variant() . '(' . $code . ')';
+        return $cls->handle() . '::' . $cls->variant() . '(' . ($cls->boxedVariant() ? 'Box::new(' . $code . ')' : $code) . ')';
+    }
+
+    /** An `Own` value `$code` as a variant payload (boxed when the variant is). */
+    public static function payloadIn(ClassModel $c, string $code): string
+    {
+        return $c->boxedVariant() ? 'Box::new(' . $code . ')' : $code;
+    }
+
+    /** A variant's bound payload `$h` as a `&Own` (a boxed payload derefs). */
+    public static function payloadRef(ClassModel $c, string $h): string
+    {
+        return $c->boxedVariant() ? '(&**' . $h . ')' : $h;
     }
 
     // ------------------------------------------------------------------ accessors
@@ -176,7 +192,7 @@ final class ClassEmitter
         return $cls->objStruct() . 'Box_';
     }
 
-    private function emitAccessors(FieldModel $f, Writer $w, bool $immut = false, string $cell = '', bool $value = false, bool $written_after_ctor = true, bool $construction_only = false): void
+    private function emitAccessors(FieldModel $f, Writer $w, bool $immut = false, string $cell = '', bool $value = false, bool $written_after_ctor = true, bool $construction_only = false, bool $boxed = false): void
     {
         // census: reads of never-written fields could be plain borrows instead of clones
         $bump = 'php_rt::stats::bump(php_rt::stats::' . ($written_after_ctor ? 'PROP_GET_CLONE' : 'PROP_GET_CLONE_IMMUT') . '); php_rt::stats::bump_named(' . Names::rustStringLiteral($f->declaring->fqcn . '::$' . $f->name) . ');';
@@ -228,6 +244,13 @@ final class ClassEmitter
                 $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { ' . $bump . ' self.0.' . $fld . '.as_option().cloned() }');
                 $w->line('#[inline] pub fn ' . $rn . '_mut(&mut self) -> &mut ' . $t . ' { ' . $mut_obj . '.' . $fld . ($f->type->hasDefault() ? '.get_or_default_mut()' : '.get_mut()') . ' }');
                 $w->line('#[inline] pub fn set_' . $rn . '(&mut self, v: ' . $t . ') { ' . $mut_obj . '.' . $fld . '.set(v); }');
+            } elseif ($boxed) {
+                // a large field of a value type lives in a Box: the accessors deref it, a write reuses the allocation
+                $w->line('#[inline] pub fn ' . $rn . '(&self) -> &' . $t . ' { &*self.0.' . $fld . ' }');
+                $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { (*self.0.' . $fld . ').clone() }');
+                $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { Some((*self.0.' . $fld . ').clone()) }');
+                $w->line('#[inline] pub fn ' . $rn . '_mut(&mut self) -> &mut ' . $t . ' { &mut *' . $mut_obj . '.' . $fld . ' }');
+                $w->line('#[inline] pub fn set_' . $rn . '(&mut self, v: ' . $t . ') { *' . $mut_obj . '.' . $fld . ' = v; }');
             } else {
                 $w->line('#[inline] pub fn ' . $rn . '(&self) -> &' . $t . ' { &self.0.' . $fld . ' }');
                 $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { self.0.' . $fld . '.clone() }');
@@ -414,9 +437,13 @@ final class ClassEmitter
         $body = $this->constExprEmitter($cls);
         $inits = [];
         $co = $cls->constructionOnlyFields();
+        $boxed_fields = $cls->boxedFields();
         $co_inits = [];
         foreach ($cls->fields as $f) {
             $init = $this->fieldInit($f, $body);
+            if (isset($boxed_fields[$f->name])) {
+                $init = 'Box::new(' . $init . ')';
+            }
             if (isset($co[$f->name])) {
                 $co_inits[] = $f->rustName() . ': ' . ($f->default !== null ? 'php_rt::late::Init::new(' . $body->constExpr($f->default, $f->type) . ')' : 'php_rt::late::Init::uninit()') . ',';
                 continue;
@@ -573,7 +600,7 @@ final class ClassEmitter
             } else {
                 // body is on the enum as `__impl` (or as the method itself when private); the own handle forwards
                 $impl = $m->isPrivate() ? $rn : $rn . '__impl';
-                $w->line('pub fn ' . $rn . $sig . ' { ' . $cls->path() . '::' . $cls->variant() . '(self.clone()).' . $impl . '(' . $this->argNames($m) . ') }');
+                $w->line('pub fn ' . $rn . $sig . ' { ' . $this->wrapOwn($cls, 'self.clone()') . '.' . $impl . '(' . $this->argNames($m) . ') }');
             }
             return;
         }
@@ -1192,8 +1219,8 @@ final class ClassEmitter
         }
         $to_string_arms = implode(', ', array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => __h.to_php_string()', $cls->concrete)) . ($cls->concrete ? ', ' : '') . ($cls->has_downstream ? $h . '::Other__(__m) => to_str(__m), ' : '') . '_ => unreachable!()';
         $w->line('impl ' . $h . ' { pub fn to_php_string(&self) -> Str { match self { ' . $to_string_arms . ' } } }');
-        $w->line('impl ' . $h . ' { pub fn inner_any(&self) -> &dyn std::any::Any { match self { ' . implode(', ', array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => __h', $cls->concrete)) . ($cls->concrete ? ', ' : '') . ($cls->has_downstream ? $h . '::Other__(__m) => __m, ' : '') . '_ => unreachable!() } } }');
-        $w->line('impl php_rt::PhpClone for ' . $h . ' { fn php_clone(&self) -> Self { match self { ' . implode(', ', array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => ' . $h . '::' . $c->variant() . '(__h.php_clone())', $cls->concrete)) . ($cls->concrete ? ', ' : '') . ($cls->has_downstream ? $h . '::Other__(__m) => ' . $h . '::Other__(__m.clone()), ' : '') . '_ => unreachable!() } } }');
+        $w->line('impl ' . $h . ' { pub fn inner_any(&self) -> &dyn std::any::Any { match self { ' . implode(', ', array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => ' . self::payloadRef($c, '__h'), $cls->concrete)) . ($cls->concrete ? ', ' : '') . ($cls->has_downstream ? $h . '::Other__(__m) => __m, ' : '') . '_ => unreachable!() } } }');
+        $w->line('impl php_rt::PhpClone for ' . $h . ' { fn php_clone(&self) -> Self { match self { ' . implode(', ', array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(__h) => ' . $h . '::' . $c->variant() . '(' . self::payloadIn($c, self::payloadRef($c, '__h') . '.php_clone()') . ')', $cls->concrete)) . ($cls->concrete ? ', ' : '') . ($cls->has_downstream ? $h . '::Other__(__m) => ' . $h . '::Other__(__m.clone()), ' : '') . '_ => unreachable!() } } }');
     }
 
     // ------------------------------------------------------------------ enums

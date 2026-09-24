@@ -801,7 +801,7 @@ final class CastEmitter
                 // a hierarchy handle: each concrete class encodes itself
                 $arms = [];
                 foreach ($cls->concrete as $c) {
-                    $arms[] = $cls->handle() . '::' . $c->variant() . '(v) => ' . $enc(RustType::class($c->fqcn), 'v');
+                    $arms[] = $cls->handle() . '::' . $c->variant() . '(v) => ' . $enc(RustType::class($c->fqcn), self::payloadOut($c, 'v'));
                 }
                 if ($cls->has_downstream) {
                     $arms[] = $cls->handle() . '::Other__(m) => php_rt::json::ToJson::encode_json(m, flags, depth, max_depth, out)';
@@ -850,7 +850,7 @@ final class CastEmitter
             $w->line('impl php_rt::CastTo<AnyObject> for ' . $h . ' { fn cast_to(self) -> AnyObject { AnyObject(Rc::new(self)) } }');
         } else {
             // every variant (PHP enums included) is a PhpObject: erased directly; a downstream object is already erased
-            $arms = array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(v) => AnyObject(Rc::new(v))', $cls->concrete);
+            $arms = array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(v) => AnyObject(Rc::new(' . self::payloadOut($c, 'v') . '))', $cls->concrete);
             if (!$closed) {
                 $arms[] = $h . '::Other__(m) => AnyObject::from_mixed(m)';
             }
@@ -890,7 +890,7 @@ final class CastEmitter
                 $w->line('impl php_rt::Identical for ' . $h . ' { fn identical(&self, o: &Self) -> bool { ' . $this->structuralIdentical($cls) . ' } }');
             } elseif ($members_by_value) {
                 // a closed hierarchy of values: the same variant with identical payloads
-                $varms = array_map(fn(ClassModel $c) => '(' . $h . '::' . $c->variant() . '(a), ' . $h . '::' . $c->variant() . '(b)) => identical(a, b)', $cls->concrete);
+                $varms = array_map(fn(ClassModel $c) => '(' . $h . '::' . $c->variant() . '(a), ' . $h . '::' . $c->variant() . '(b)) => identical(' . ClassEmitter::payloadRef($c, 'a') . ', ' . ClassEmitter::payloadRef($c, 'b') . ')', $cls->concrete);
                 $w->line('impl php_rt::Identical for ' . $h . ' { fn identical(&self, o: &Self) -> bool { match (self, o) { ' . implode(', ', $varms) . ($varms ? ', ' : '') . '_ => false } } }');
             } else {
                 $w->line('impl php_rt::Identical for ' . $h . ' { fn identical(&self, o: &Self) -> bool { self.obj_id() == o.obj_id() } }');
@@ -1019,7 +1019,7 @@ final class CastEmitter
             $w->line('impl php_rt::CastTo<Mixed> for ' . $h . ' { fn cast_to(self) -> Mixed { Mixed::Obj(Rc::new(self)) } }');
             return;
         }
-        $arms = array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(v) => Mixed::Obj(Rc::new(v))', $cls->concrete);
+        $arms = array_map(fn(ClassModel $c) => $h . '::' . $c->variant() . '(v) => Mixed::Obj(Rc::new(' . self::payloadOut($c, 'v') . '))', $cls->concrete);
         if ($this->openHandle($cls)) {
             $arms[] = $h . '::Other__(m) => m';
         }
@@ -1075,7 +1075,13 @@ final class CastEmitter
                 ? $cls->path() . '::Other__(Mixed::Obj(Rc::new(' . $code . ')))'
                 : 'panic!(' . Names::rustStringLiteral('unexpected downstream subclass in closed hierarchy ' . $cls->fqcn) . ')';
         }
-        return $cls->path() . '::' . $c->variant() . '(' . $code . ')';
+        return $cls->path() . '::' . $c->variant() . '(' . ($c->boxedVariant() ? 'Box::new(' . $code . ')' : $code) . ')';
+    }
+
+    /** A variant's payload `$v`, bound by value, as an `Own` (a boxed payload is moved out of its Box). */
+    public static function payloadOut(ClassModel $c, string $v): string
+    {
+        return $c->boxedVariant() ? '(*' . $v . ')' : $v;
     }
 
     /** Emit all cast/instanceof impls between generated types recorded during body emission. */
@@ -1312,7 +1318,7 @@ final class CastEmitter
                         }
                         if ($target !== null) {
                             $tc = $this->program->classOf($target);
-                            $arms[] = $from->toRust() . '::' . $c->variant() . '(v) => ' . $to->mangle() . '::' . $target->variantName() . '(' . ($tc !== null ? $this->wrapConcrete($tc, $c, 'v') : 'v') . ')';
+                            $arms[] = $from->toRust() . '::' . $c->variant() . '(v) => ' . $to->mangle() . '::' . $target->variantName() . '(' . ($tc !== null ? $this->wrapConcrete($tc, $c, self::payloadOut($c, 'v')) : self::payloadOut($c, 'v')) . ')';
                         } else {
                             $arms[] = $from->toRust() . '::' . $c->variant() . '(_) => panic!("' . $c->fqcn . ' is not a member of union ' . $to->mangle() . '")';
                         }
@@ -1593,11 +1599,11 @@ final class CastEmitter
         // node upcast/downcast dominated the profile of the parser traversal
         foreach ($fc->concrete as $c) {
             if ($c->isSubclassOf($tc)) {
-                $arms[] = $fh . '::' . $c->variant() . '(v) => ' . $this->wrapConcrete($tc, $c, 'v');
+                $arms[] = $fh . '::' . $c->variant() . '(v) => ' . $this->wrapConcrete($tc, $c, self::payloadOut($c, 'v'));
             } elseif ($this->openHandle($tc)) {
                 // not an instance of the target: carried through its escape variant
                 $this->casts->noteErasure(RustType::class($c->fqcn));
-                $arms[] = $fh . '::' . $c->variant() . '(v) => ' . $th . '::Other__(Mixed::Obj(Rc::new(v)))';
+                $arms[] = $fh . '::' . $c->variant() . '(v) => ' . $th . '::Other__(Mixed::Obj(Rc::new(' . self::payloadOut($c, 'v') . ')))';
             } else {
                 $arms[] = $fh . '::' . $c->variant() . '(_) => panic!(' . Names::rustStringLiteral('cannot cast ' . $c->fqcn . ' to ' . $tc->fqcn) . ')';
             }
@@ -1622,7 +1628,7 @@ final class CastEmitter
         }
         $arms = [];
         foreach ($cls->concrete as $c) {
-            $arms[] = '(' . $h . '::' . $c->variant() . '(a), ' . $h . '::' . $c->variant() . '(b)) => a.php_cmp(b)';
+            $arms[] = '(' . $h . '::' . $c->variant() . '(a), ' . $h . '::' . $c->variant() . '(b)) => ' . ClassEmitter::payloadRef($c, 'a') . '.php_cmp(' . ClassEmitter::payloadRef($c, 'b') . ')';
         }
         if ($this->openHandle($cls)) {
             // downstream subclasses travel erased (their erasure is recorded where they are wrapped)
