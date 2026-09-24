@@ -2117,7 +2117,10 @@ final class Program
             return self::USE_ESCAPE;
         }
         if ($parent instanceof \PhpParser\Node\ArrayItem) {
-            return $parent->byRef ? self::USE_UNSAFE : self::USE_ESCAPE;
+            if ($parent->byRef || self::isDestructuringTarget($parent)) {
+                return self::USE_UNSAFE; // `[$a, $p] = ...` writes the parameter
+            }
+            return self::USE_ESCAPE;
         }
         if ($parent instanceof \PhpParser\Node\Arg) {
             if ($parent->byRef || $parent->unpack) {
@@ -2135,6 +2138,23 @@ final class Program
             return self::USE_UNSAFE;
         }
         return self::USE_UNSAFE;
+    }
+
+    /** Whether an array item belongs to an array/list literal that is the target of an assignment or foreach binding. */
+    private static function isDestructuringTarget(\PhpParser\Node\ArrayItem $item): bool
+    {
+        $node = $item;
+        $parent = $node->getAttribute('parent');
+        while ($parent instanceof \PhpParser\Node\Expr\Array_ || $parent instanceof \PhpParser\Node\Expr\List_
+            || $parent instanceof \PhpParser\Node\ArrayItem
+        ) {
+            $node = $parent;
+            $parent = $node->getAttribute('parent');
+        }
+        if (($parent instanceof \PhpParser\Node\Expr\Assign || $parent instanceof \PhpParser\Node\Expr\AssignRef) && $parent->var === $node) {
+            return true;
+        }
+        return $parent instanceof \PhpParser\Node\Stmt\Foreach_ && ($parent->valueVar === $node || $parent->keyVar === $node);
     }
 
     /**
