@@ -2667,8 +2667,6 @@
       <code><![CDATA[$result->offset_start]]></code>
       <code><![CDATA[$result->text]]></code>
       <code><![CDATA[$result->text]]></code>
-      <code><![CDATA[$type->is_enum]]></code>
-      <code><![CDATA[$type->is_interface]]></code>
     </ImpurePropertyAssignment>
     <PossiblyUndefinedIntArrayOffset>
       <code><![CDATA[array_keys($template_type_map[$value])[0]]]></code>
@@ -2857,11 +2855,6 @@
   </file>
   <file src="src/Psalm/Type/Atomic/TKeyedArray.php">
     <ImpureMethodCall>
-      <code><![CDATA[TemplateInferredTypeReplacer::replace(
-                $property,
-                $template_result,
-                $codebase,
-            )]]></code>
       <code><![CDATA[TemplateInferredTypeReplacer::replace(
                 $property,
                 $template_result,

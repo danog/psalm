@@ -439,6 +439,7 @@ final class TKeyedArray extends Atomic
             }
         }
 
+        /** @psalm-suppress ImpureMethodCall the combination only reads its inputs */
         $key_type = TypeCombiner::combine($key_types, properties: ['possibly_undefined' => $possibly_undefined]);
 
         if ($this->fallback_params === null) {

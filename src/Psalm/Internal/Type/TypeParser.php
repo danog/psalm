@@ -104,7 +104,6 @@ use function strtr;
 use function substr;
 
 /**
- * @psalm-suppress InaccessibleProperty Allowed during construction
  * @internal
  */
 final class TypeParser
