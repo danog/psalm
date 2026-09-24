@@ -39,6 +39,7 @@ final class MethodIdentifier implements Stringable
      * cache serializer sees it like every other property.
      *
      * @internal
+     * @var non-empty-string|null
      */
     public ?string $string_memo = null;
 
@@ -82,8 +83,9 @@ final class MethodIdentifier implements Stringable
         if ($this->string_memo !== null) {
             return $this->string_memo;
         }
-        /** @psalm-suppress ImpurePropertyAssignment Cache */
-        $this->string_memo = $this->fq_class_name . '::' . $this->method_name;
-        return $this->string_memo;
+        $string = $this->fq_class_name . '::' . $this->method_name;
+        /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
+        $this->string_memo = $string;
+        return $string;
     }
 }

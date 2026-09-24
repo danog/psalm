@@ -198,6 +198,7 @@ final class CodeUseGraph
      */
     public static function classNode(string $fq_class_name_lc): int
     {
+        /** @psalm-suppress ImpureStaticProperty Cache */
         // node ids are built once per interned name: the concatenation and the second hashing were
         // 1.6 M string allocations per run
         return self::$class_nodes[Interner::intern($fq_class_name_lc)]
@@ -230,6 +231,7 @@ final class CodeUseGraph
      */
     public static function functionLikeNode(string $function_id_lc): int
     {
+        /** @psalm-suppress ImpureStaticProperty Cache */
         return self::$function_like_nodes[Interner::intern($function_id_lc)]
             ??= Interner::intern(self::KIND_FUNCTION_LIKE . ' ' . $function_id_lc);
     }
@@ -240,6 +242,7 @@ final class CodeUseGraph
      */
     public static function functionLikeReturnNode(string $function_id_lc): int
     {
+        /** @psalm-suppress ImpureStaticProperty Cache */
         return self::$return_nodes[Interner::intern($function_id_lc)]
             ??= Interner::intern(self::KIND_RETURN . ' ' . $function_id_lc);
     }
