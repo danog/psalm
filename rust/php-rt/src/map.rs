@@ -27,8 +27,12 @@ pub(crate) fn hash_i64(i: i64) -> u64 {
     h.finish()
 }
 
+/// Entry slots; the first two live inside the map's own allocation (one allocation per small map: the census
+/// showed 8.8 M one-entry and 2 M two-entry maps per run against 2.1 M that reach three).
+pub type Entries<K, V> = smallvec::SmallVec<[Option<(K, V)>; 2]>;
+
 pub struct OrderedMap<K, V> {
-    entries: Vec<Option<(K, V)>>,
+    entries: Entries<K, V>,
     table: HashTable<usize>,
     len: usize,
     next_index: i64,
@@ -53,11 +57,11 @@ const SMALL: usize = 8;
 
 impl<K: MapKey, V> OrderedMap<K, V> {
     fn new() -> Self {
-        OrderedMap { entries: Vec::new(), table: HashTable::new(), len: 0, next_index: 0, aliases: None, packed: true, base: 0 }
+        OrderedMap { entries: Entries::new(), table: HashTable::new(), len: 0, next_index: 0, aliases: None, packed: true, base: 0 }
     }
     fn with_capacity(n: usize) -> Self {
         let table = if n > SMALL { HashTable::with_capacity(n) } else { HashTable::new() };
-        OrderedMap { entries: Vec::with_capacity(n), table, len: 0, next_index: 0, aliases: None, packed: true, base: 0 }
+        OrderedMap { entries: Entries::with_capacity(n), table, len: 0, next_index: 0, aliases: None, packed: true, base: 0 }
     }
     /// Whether the hash table is in use (it indexes every live entry once there are more than `SMALL` slots).
     #[inline]
