@@ -256,6 +256,12 @@ final class ClassModel
 
     /** @var ?array<string, true> cache for constructionMethods() */
     private ?array $construction_methods = null;
+    /** @var ?array<string, true> memo of constructionOnlyFields() */
+    private ?array $construction_only = null;
+    /** @var ?bool memo of ownWritesFieldsDynamically() */
+    private ?bool $dynamic_field_writes = null;
+    /** @var ?array<string, true> memo of ownNonConstructionWrites() */
+    private ?array $own_non_ctor_writes = null;
 
     /**
      * Lowercase names of methods reachable from `__construct` via `$this->m()` calls (init helpers). Their
@@ -274,6 +280,9 @@ final class ClassModel
     public function invalidateMethodMemos(): void
     {
         $this->construction_methods = null;
+        $this->construction_only = null;
+        $this->dynamic_field_writes = null;
+        $this->own_non_ctor_writes = null;
         $this->post_ctor_written = null;
         $this->no_helper_ctor_writes = null;
         $this->interior_mut_fields = null;
@@ -403,6 +412,157 @@ final class ClassModel
             }
         }
         return false;
+    }
+
+    /**
+     * Fields of a RefCell-layout class that nothing writes after construction (only `__construct`,
+     * `__unserialize` and `__wakeup` may assign them; no by-reference use, no external write, no write in any
+     * class of the hierarchy, no dynamic-name property write). They are stored outside the RefCell as
+     * `php_rt::late::Init<T>` so a read through a shared handle is a plain `&T`. CO_FIELDS=0 disables.
+     *
+     * @return array<string, true>
+     */
+    public function constructionOnlyFields(): array
+    {
+        if ($this->construction_only !== null) {
+            return $this->construction_only;
+        }
+        $v = getenv('CO_FIELDS');
+        if ($v === '0' || !$this->isConcrete() || $this->immutable() || $this->valueType()) {
+            return $this->construction_only = [];
+        }
+        $root = $this;
+        while ($root->parent !== null) {
+            $root = $root->parent;
+        }
+        $set = [];
+        foreach ($this->fields as $f) {
+            if ($f->is_static) {
+                continue;
+            }
+            if (!$root->subtreeWritesField($f->name)) {
+                $set[$f->name] = true;
+            }
+        }
+        return $this->construction_only = $set;
+    }
+
+    /** Whether this class or any class below it writes `$field` after construction (or dynamically). */
+    private function subtreeWritesField(string $field): bool
+    {
+        if (isset($this->ownNonConstructionWrites()[$field]) || isset($this->ext_written_fields[$field])
+            || $this->ownWritesFieldsDynamically()
+        ) {
+            return true;
+        }
+        foreach ($this->children as $child) {
+            if ($child->subtreeWritesField($field)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** `$this->{$expr} = ...` anywhere in the class: every field may be written. */
+    private function ownWritesFieldsDynamically(): bool
+    {
+        if ($this->dynamic_field_writes !== null) {
+            return $this->dynamic_field_writes;
+        }
+        $finder = new \PhpParser\NodeFinder();
+        foreach ($this->methods as $m) {
+            if ($m->node === null) {
+                continue;
+            }
+            $hit = $finder->findFirst($m->node->stmts ?? [], static function (\PhpParser\Node $n): bool {
+                if (!($n instanceof \PhpParser\Node\Expr\Assign || $n instanceof \PhpParser\Node\Expr\AssignOp
+                    || $n instanceof \PhpParser\Node\Expr\AssignRef)) {
+                    return false;
+                }
+                $t = $n->var;
+                while ($t instanceof \PhpParser\Node\Expr\ArrayDimFetch) {
+                    $t = $t->var;
+                }
+                return $t instanceof \PhpParser\Node\Expr\PropertyFetch
+                    && $t->var instanceof \PhpParser\Node\Expr\Variable && $t->var->name === 'this'
+                    && !$t->name instanceof \PhpParser\Node\Identifier;
+            });
+            if ($hit !== null) {
+                return $this->dynamic_field_writes = true;
+            }
+        }
+        return $this->dynamic_field_writes = false;
+    }
+
+    /**
+     * Fields this class's methods (own, inherited and trait methods, flattened) write outside `__construct`,
+     * `__unserialize` and `__wakeup`: assignments, compound assignments, reference assignments (either side),
+     * increments, unset, by-reference foreach, list destructuring targets and by-reference call arguments.
+     *
+     * @return array<string, true>
+     */
+    private function ownNonConstructionWrites(): array
+    {
+        if ($this->own_non_ctor_writes !== null) {
+            return $this->own_non_ctor_writes;
+        }
+        $set = [];
+        $finder = new \PhpParser\NodeFinder();
+        $program = self::$program;
+        foreach ($this->methods as $lc => $m) {
+            if ($m->node === null || $lc === '__construct' || $lc === '__unserialize' || $lc === '__wakeup') {
+                continue;
+            }
+            foreach ($finder->find($m->node->stmts ?? [], static fn(\PhpParser\Node $n): bool => true) as $n) {
+                $targets = [];
+                if ($n instanceof \PhpParser\Node\Expr\Assign || $n instanceof \PhpParser\Node\Expr\AssignOp) {
+                    $targets[] = $n->var;
+                } elseif ($n instanceof \PhpParser\Node\Expr\AssignRef) {
+                    $targets[] = $n->var;
+                    $targets[] = $n->expr;
+                } elseif ($n instanceof \PhpParser\Node\Expr\PreInc || $n instanceof \PhpParser\Node\Expr\PreDec
+                    || $n instanceof \PhpParser\Node\Expr\PostInc || $n instanceof \PhpParser\Node\Expr\PostDec
+                ) {
+                    $targets[] = $n->var;
+                } elseif ($n instanceof \PhpParser\Node\Stmt\Unset_) {
+                    foreach ($n->vars as $v) {
+                        $targets[] = $v;
+                    }
+                } elseif ($n instanceof \PhpParser\Node\Stmt\Foreach_) {
+                    if ($n->byRef) {
+                        $targets[] = $n->expr;
+                    }
+                } elseif ($n instanceof \PhpParser\Node\Expr\FuncCall || $n instanceof \PhpParser\Node\Expr\MethodCall
+                    || $n instanceof \PhpParser\Node\Expr\StaticCall || $n instanceof \PhpParser\Node\Expr\New_
+                    || $n instanceof \PhpParser\Node\Expr\NullsafeMethodCall
+                ) {
+                    if ($n->isFirstClassCallable()) {
+                        continue;
+                    }
+                    foreach ($n->getArgs() as $i => $arg) {
+                        if (self::thisPropName($arg->value) !== null
+                            && ($program === null || $program->argMayBeByRef($n, $i, $arg, $this))
+                        ) {
+                            $targets[] = $arg->value;
+                        }
+                    }
+                }
+                foreach ($targets as $t) {
+                    if ($t instanceof \PhpParser\Node\Expr\List_ || $t instanceof \PhpParser\Node\Expr\Array_) {
+                        foreach ($t->items as $item) {
+                            if ($item !== null && ($fname = self::thisPropName($item->value)) !== null) {
+                                $set[$fname] = true;
+                            }
+                        }
+                        continue;
+                    }
+                    if (($fname = self::thisPropName($t)) !== null) {
+                        $set[$fname] = true;
+                    }
+                }
+            }
+        }
+        return $this->own_non_ctor_writes = $set;
     }
 
     private function postConstructionWrittenFields(): array

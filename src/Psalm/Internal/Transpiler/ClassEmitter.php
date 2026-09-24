@@ -44,9 +44,13 @@ final class ClassEmitter
 
         // ---- data struct
         if ($concrete) {
+            $co = $cls->constructionOnlyFields();
             $w->line('pub struct ' . $obj . ' {');
             $w->indent();
             foreach ($cls->fields as $f) {
+                if (isset($co[$f->name])) {
+                    continue; // lives in the box, outside the RefCell
+                }
                 $st = $f->storageType();
                 if (($ck = $this->cellKind($cls, $f)) !== '') {
                     $st = ($ck === 'Cell' ? 'php_rt::support::SyncCell' : 'RefCell') . '<' . $st . '>';
@@ -54,9 +58,21 @@ final class ClassEmitter
                 $w->line('pub ' . $f->rustName() . ': ' . $st . ',');
             }
             $w->close();
+            if ($this->boxed($cls)) {
+                // RefCell layout: construction-only fields sit beside the cell (plain `&T` reads), the rest inside it
+                $w->line('pub struct ' . $this->boxStruct($cls) . ' {');
+                $w->indent();
+                foreach ($cls->fields as $f) {
+                    if (isset($co[$f->name])) {
+                        $w->line('pub ' . $f->rustName() . ': php_rt::late::Init<' . $f->type->toRust() . '>,');
+                    }
+                }
+                $w->line('pub m__: RefCell<' . $obj . '>,');
+                $w->close();
+            }
             $w->line('#[derive(Clone)]');
             // @psalm-immutable pilot classes drop the RefCell: reads are direct, writes copy-on-write via make_mut
-            $w->line('pub struct ' . $own . '(pub ' . ($cls->valueType() ? $obj : ($cls->immutable() ? 'Rc<' . $obj . '>' : 'Rc<RefCell<' . $obj . '>>')) . ');');
+            $w->line('pub struct ' . $own . '(pub ' . ($cls->valueType() ? $obj : ($cls->immutable() ? 'Rc<' . $obj . '>' : 'Rc<' . $this->boxStruct($cls) . '>')) . ');');
         }
 
         // ---- dispatch enum for non-leaf classes and interfaces
@@ -81,7 +97,7 @@ final class ClassEmitter
         if ($concrete) {
             $w->open('impl ' . $own . ' {');
             foreach ($cls->fields as $f) {
-                $this->emitAccessors($f, $w, $cls->immutable(), $this->cellKind($cls, $f), $cls->valueType(), $cls->writtenAfterConstruction($f->name));
+                $this->emitAccessors($f, $w, $cls->immutable(), $this->cellKind($cls, $f), $cls->valueType(), $cls->writtenAfterConstruction($f->name), isset($cls->constructionOnlyFields()[$f->name]));
             }
             $this->emitConstructor($cls, $w);
             foreach ($cls->methods as $m) {
@@ -149,13 +165,33 @@ final class ClassEmitter
         return $cls->cellKind($f);
     }
 
-    private function emitAccessors(FieldModel $f, Writer $w, bool $immut = false, string $cell = '', bool $value = false, bool $written_after_ctor = true): void
+    /** RefCell-layout classes wrap the cell in a box struct that also holds the construction-only fields. */
+    private function boxed(ClassModel $cls): bool
+    {
+        return !$cls->immutable() && !$cls->valueType();
+    }
+
+    private function boxStruct(ClassModel $cls): string
+    {
+        return $cls->objStruct() . 'Box_';
+    }
+
+    private function emitAccessors(FieldModel $f, Writer $w, bool $immut = false, string $cell = '', bool $value = false, bool $written_after_ctor = true, bool $construction_only = false): void
     {
         // census: reads of never-written fields could be plain borrows instead of clones
         $bump = 'php_rt::stats::bump(php_rt::stats::' . ($written_after_ctor ? 'PROP_GET_CLONE' : 'PROP_GET_CLONE_IMMUT') . ');';
         $fld = $f->rustName();
         $rn = $f->acc();
         $t = $f->type->toRust();
+        if ($construction_only) {
+            // outside the RefCell (php_rt::late::Init): reads are plain references, writes happen during construction
+            $w->line('#[inline] pub fn ' . $rn . '(&self) -> &' . $t . ' { self.0.' . $fld . '.get() }');
+            $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { self.0.' . $fld . '.get().clone() }');
+            $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { self.0.' . $fld . '.as_option().cloned() }');
+            $w->line('#[inline] pub fn ' . $rn . '_mut(&self) -> &mut ' . $t . ' { self.0.' . $fld . ($f->type->hasDefault() ? '.get_or_default_mut()' : '.get_mut()') . ' }');
+            $w->line('#[inline] pub fn set_' . $rn . '(&self, v: ' . $t . ') { self.0.' . $fld . '.set(v); }');
+            return;
+        }
         if ($cell === 'Cell') {
             // Copy field with per-field interior mutability: get/set through &self, no borrow guard.
             $w->line('#[inline] pub fn ' . $rn . '(&self) -> ' . $t . ' { self.0.' . $fld . '.get() }');
@@ -202,17 +238,17 @@ final class ClassEmitter
             return;
         }
         if ($f->isLate()) {
-            $w->line('#[inline] pub fn ' . $rn . '(&self) -> Ref<\'_, ' . $t . '> { Ref::map(self.0.borrow(), |o| o.' . $fld . '.get()) }');
-            $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { self.0.borrow().' . $fld . '.get().clone() }');
-            $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { self.0.borrow().' . $fld . '.as_option().cloned() }');
-            $w->line('#[inline] pub fn ' . $rn . '_mut(&self) -> RefMut<\'_, ' . $t . '> { RefMut::map(self.0.borrow_mut(), |o| o.' . $fld . ($f->type->hasDefault() ? '.get_or_default_mut()' : '.get_mut()') . ') }');
-            $w->line('#[inline] pub fn set_' . $rn . '(&self, v: ' . $t . ') { self.0.borrow_mut().' . $fld . '.set(v); }');
+            $w->line('#[inline] pub fn ' . $rn . '(&self) -> Ref<\'_, ' . $t . '> { Ref::map(self.0.m__.borrow(), |o| o.' . $fld . '.get()) }');
+            $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { self.0.m__.borrow().' . $fld . '.get().clone() }');
+            $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { self.0.m__.borrow().' . $fld . '.as_option().cloned() }');
+            $w->line('#[inline] pub fn ' . $rn . '_mut(&self) -> RefMut<\'_, ' . $t . '> { RefMut::map(self.0.m__.borrow_mut(), |o| o.' . $fld . ($f->type->hasDefault() ? '.get_or_default_mut()' : '.get_mut()') . ') }');
+            $w->line('#[inline] pub fn set_' . $rn . '(&self, v: ' . $t . ') { self.0.m__.borrow_mut().' . $fld . '.set(v); }');
         } else {
-            $w->line('#[inline] pub fn ' . $rn . '(&self) -> Ref<\'_, ' . $t . '> { Ref::map(self.0.borrow(), |o| &o.' . $fld . ') }');
-            $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { self.0.borrow().' . $fld . '.clone() }');
-            $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { Some(self.0.borrow().' . $fld . '.clone()) }');
-            $w->line('#[inline] pub fn ' . $rn . '_mut(&self) -> RefMut<\'_, ' . $t . '> { RefMut::map(self.0.borrow_mut(), |o| &mut o.' . $fld . ') }');
-            $w->line('#[inline] pub fn set_' . $rn . '(&self, v: ' . $t . ') { self.0.borrow_mut().' . $fld . ' = v; }');
+            $w->line('#[inline] pub fn ' . $rn . '(&self) -> Ref<\'_, ' . $t . '> { Ref::map(self.0.m__.borrow(), |o| &o.' . $fld . ') }');
+            $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { self.0.m__.borrow().' . $fld . '.clone() }');
+            $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { Some(self.0.m__.borrow().' . $fld . '.clone()) }');
+            $w->line('#[inline] pub fn ' . $rn . '_mut(&self) -> RefMut<\'_, ' . $t . '> { RefMut::map(self.0.m__.borrow_mut(), |o| &mut o.' . $fld . ') }');
+            $w->line('#[inline] pub fn set_' . $rn . '(&self, v: ' . $t . ') { self.0.m__.borrow_mut().' . $fld . ' = v; }');
         }
     }
 
@@ -307,10 +343,18 @@ final class ClassEmitter
             }
             return;
         }
-        $w->line('#[inline] pub fn ' . $rn . '(&self) -> PropRef<\'_, ' . $t . '> { match self { ' . $arms('PropRef::Borrowed(__h.' . $rn . '())', 'PropRef::Owned(' . $dyn_get . ')') . ' } }');
+        // a construction-only field (uniform across the hierarchy, see ClassModel::constructionOnlyFields): the
+        // leaf accessors are plain references
+        $co = $cls->concrete !== [];
+        foreach ($cls->concrete as $c) {
+            if (!isset($c->constructionOnlyFields()[$f->name])) {
+                $co = false;
+            }
+        }
+        $w->line('#[inline] pub fn ' . $rn . '(&self) -> PropRef<\'_, ' . $t . '> { match self { ' . $arms(($co ? 'PropRef::Plain' : 'PropRef::Borrowed') . '(__h.' . $rn . '())', 'PropRef::Owned(' . $dyn_get . ')') . ' } }');
         $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { match self { ' . $arms('__h.' . $rn . '_get()', $dyn_get) . ' } }');
         $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { match self { ' . $arms('__h.' . $rn . '_opt()', 'php_rt::other_obj(__m).get_prop(' . $name . ').map(|__v| ' . $this->casts->convert('__v', RustType::mixed(), $f->type) . ')') . ' } }');
-        $w->line('#[inline] pub fn ' . $rn . '_mut(&self) -> PropMut<\'_, ' . $t . '> { match self { ' . $arms('PropMut::Borrowed(__h.' . $rn . '_mut())', '{ let __o = php_rt::other_obj(__m); PropMut::owned(' . $dyn_get . ', Box::new(move |__v: ' . $t . '| { __o.set_prop(' . $name . ', ' . $this->casts->convert('__v', $f->type, RustType::mixed()) . '); })) }') . ' } }');
+        $w->line('#[inline] pub fn ' . $rn . '_mut(&self) -> PropMut<\'_, ' . $t . '> { match self { ' . $arms(($co ? 'PropMut::Plain' : 'PropMut::Borrowed') . '(__h.' . $rn . '_mut())', '{ let __o = php_rt::other_obj(__m); PropMut::owned(' . $dyn_get . ', Box::new(move |__v: ' . $t . '| { __o.set_prop(' . $name . ', ' . $this->casts->convert('__v', $f->type, RustType::mixed()) . '); })) }') . ' } }');
         $w->line('#[inline] pub fn set_' . $rn . '(&self, v: ' . $t . ') { match self { ' . $arms('__h.set_' . $rn . '(v)', '{ php_rt::other_obj(__m).set_prop(' . $name . ', ' . $this->casts->convert('v', $f->type, RustType::mixed()) . '); }') . ' } }');
     }
 
@@ -369,8 +413,14 @@ final class ClassEmitter
         $obj = $cls->objStruct();
         $body = $this->constExprEmitter($cls);
         $inits = [];
+        $co = $cls->constructionOnlyFields();
+        $co_inits = [];
         foreach ($cls->fields as $f) {
             $init = $this->fieldInit($f, $body);
+            if (isset($co[$f->name])) {
+                $co_inits[] = $f->rustName() . ': ' . ($f->default !== null ? 'php_rt::late::Init::new(' . $body->constExpr($f->default, $f->type) . ')' : 'php_rt::late::Init::uninit()') . ',';
+                continue;
+            }
             if (($ck = $this->cellKind($cls, $f)) !== '') {
                 $init = ($ck === 'Cell' ? 'php_rt::support::SyncCell' : 'RefCell') . '::new(' . $init . ')';
             }
@@ -381,9 +431,9 @@ final class ClassEmitter
         // immutable (Rc<T>) classes drop the RefCell; `this` is mut so the constructor can make_mut its fields
         $immut = $cls->immutable();
         $value = $cls->valueType();
-        $cell_open = $value ? '' : ($immut ? 'Rc::new(' : 'Rc::new(RefCell::new(');
-        $cell_close_uninit = $value ? '})' : ($immut ? '}))' : '})))');
-        $cell_close_new = $value ? '});' : ($immut ? '}));' : '})));');
+        $cell_open = $value ? '' : ($immut ? 'Rc::new(' : 'Rc::new(' . $this->boxStruct($cls) . ' { ' . implode(' ', $co_inits) . ' m__: RefCell::new(');
+        $cell_close_uninit = $value ? '})' : ($immut ? '}))' : '}) }))');
+        $cell_close_new = $value ? '});' : ($immut ? '}));' : '}) }));');
         $w->open('pub fn new_uninit() -> ' . $own . ' {');
         $w->open($own . '(' . $cell_open . $obj . ' {');
         foreach ($inits as $line) {
@@ -975,10 +1025,12 @@ final class ClassEmitter
                 : $this->casts->convert('c.clone()', RustType::class($cls->fqcn), RustType::class($clone->declaring->fqcn));
             $clone_call = 'let _ = ' . $recv . '.' . $clone->rustName() . '(); ';
         }
+        $co = $cls->constructionOnlyFields();
+        $co_clones = implode(' ', array_map(fn(FieldModel $f) => $f->rustName() . ': self.0.' . $f->rustName() . '.clone(),', array_filter($cls->fields, fn(FieldModel $f) => isset($co[$f->name]))));
         $clone_cell = $cls->valueType() ? $own . '(self.0.clone())'
-            : ($cls->immutable() ? $own . '(Rc::new((*self.0).clone()))' : $own . '(Rc::new(RefCell::new(self.0.borrow().clone())))');
+            : ($cls->immutable() ? $own . '(Rc::new((*self.0).clone()))' : $own . '(Rc::new(' . $this->boxStruct($cls) . ' { ' . $co_clones . ' m__: RefCell::new(self.0.m__.borrow().clone()) }))');
         $w->line('impl php_rt::PhpClone for ' . $own . ' { fn php_clone(&self) -> Self { let ' . ($cls->immutable() && $clone_call !== '' ? 'mut ' : '') . 'c = ' . $clone_cell . '; ' . $clone_call . 'c } }');
-        $w->line('impl Clone for ' . $cls->objStruct() . ' { fn clone(&self) -> Self { ' . $cls->objStruct() . ' { ' . implode(', ', array_map(fn(FieldModel $f) => $f->rustName() . ': self.' . $f->rustName() . '.clone()', $cls->fields)) . ' } } }');
+        $w->line('impl Clone for ' . $cls->objStruct() . ' { fn clone(&self) -> Self { ' . $cls->objStruct() . ' { ' . implode(', ', array_map(fn(FieldModel $f) => $f->rustName() . ': self.' . $f->rustName() . '.clone()', array_filter($cls->fields, fn(FieldModel $f) => !isset($co[$f->name])))) . ' } } }');
     }
 
     /**

@@ -2295,6 +2295,26 @@ final class Program
      * Whether argument $i of $call is passed by reference (a PHP builtin from the table, else the callee model's
      * parameter; unknown callees are not by-ref).
      */
+    /**
+     * For the construction-only field analysis: whether argument $i of $call is passed by reference, or the
+     * callee cannot be resolved (then it might be).
+     */
+    public function argMayBeByRef(\PhpParser\Node $call, int $i, \PhpParser\Node\Arg $arg, ?ClassModel $cls): bool
+    {
+        $ctx = new BorrowContext($cls, null, []);
+        if ($call instanceof \PhpParser\Node\Expr\FuncCall && $call->name instanceof \PhpParser\Node\Name) {
+            $lc = strtolower($call->name->getLast());
+            if (isset(self::BUILTIN_BY_REF[$lc]) && $this->getFunction((string) ($call->name->getAttribute('resolvedName') ?? $call->name->toString())) === null) {
+                return in_array($i, self::BUILTIN_BY_REF[$lc], true);
+            }
+        }
+        if ($this->calleeModel($call, $ctx) === null) {
+            return !($call instanceof \PhpParser\Node\Expr\FuncCall && $call->name instanceof \PhpParser\Node\Name
+                && $this->getFunction((string) ($call->name->getAttribute('resolvedName') ?? $call->name->toString())) === null);
+        }
+        return $this->argIsByRef($call, $i, $arg, $ctx);
+    }
+
     private function argIsByRef(\PhpParser\Node $call, int $i, \PhpParser\Node\Arg $arg, BorrowContext $ctx): bool
     {
         if ($call instanceof \PhpParser\Node\Expr\FuncCall && $call->name instanceof \PhpParser\Node\Name) {
