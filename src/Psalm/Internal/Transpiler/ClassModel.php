@@ -658,6 +658,51 @@ final class ClassModel
         return array_values(array_unique($out));
     }
 
+    /**
+     * Whether any class of this hierarchy (root, intermediates, concrete members) writes a field of `$this` after
+     * construction inside a mutation-free method: a suppressed cache write, the only write a mutation-free callee
+     * can ever perform on an object of the family. Without any, a guard on a member's cell can stay across a
+     * mutation-free call (nothing that call runs can borrow the cell mutably).
+     */
+    public function familyHasCacheWrites(): bool
+    {
+        if ($this->family_cache_writes !== null) {
+            return $this->family_cache_writes;
+        }
+        $root = $this;
+        while ($root->parent !== null) {
+            $root = $root->parent;
+        }
+        $members = [$root->fqcn => $root, $this->fqcn => $this];
+        foreach ($root->concrete as $c) {
+            $members[$c->fqcn] = $c;
+            for ($a = $c->parent; $a !== null; $a = $a->parent) {
+                $members[$a->fqcn] = $a;
+            }
+        }
+        $finder = new \PhpParser\NodeFinder();
+        foreach ($members as $m) {
+            $ctor_methods = $m->constructionMethods();
+            foreach ($m->methods as $meth) {
+                if ($meth->node === null || isset($ctor_methods[$meth->lc()])
+                    || $meth->storage->allowed_mutations > \Psalm\Storage\Mutations::LEVEL_INTERNAL_READ
+                ) {
+                    continue;
+                }
+                if ($finder->findFirst($meth->node->stmts ?? [], static fn(\PhpParser\Node $n): bool =>
+                    ($n instanceof \PhpParser\Node\Expr\Assign || $n instanceof \PhpParser\Node\Expr\AssignOp)
+                    && self::thisPropName($n->var) !== null) !== null
+                ) {
+                    return $this->family_cache_writes = true;
+                }
+            }
+        }
+        return $this->family_cache_writes = false;
+    }
+
+    /** @var ?bool memo of familyHasCacheWrites() */
+    private ?bool $family_cache_writes = null;
+
     /** @var ?bool cache for noHelperConstructionWrites() */
     private ?bool $no_helper_ctor_writes = null;
 

@@ -897,14 +897,16 @@ final class BodyEmitter
         }
         if ($kind === 'guard') {
             $g = $this->tmp('__g');
+            // an outer guard on another object stays unknown (null): only a single-level guard names its cell's class
+            $gc = $base->guard === null ? $cls : null;
             if ($base->place !== null && !$base->temp) {
-                return new Val($code, $ft, null, 'let ' . $g . ' = ' . $base->place . $get . ';', '(*' . $g . ')');
+                return new Val($code, $ft, null, 'let ' . $g . ' = ' . $base->place . $get . ';', '(*' . $g . ')', false, $gc);
             }
             if ($base->guard !== null) {
                 return new Val($code, $ft, null, $base->guard . ' let ' . $g . ' = ' . $base->gplace . $get . ';', '(*' . $g . ')');
             }
             $o = $this->tmp('__o');
-            return new Val($code, $ft, null, 'let ' . $o . ' = ' . $base->code . '; let ' . $g . ' = ' . $o . $get . ';', '(*' . $g . ')');
+            return new Val($code, $ft, null, 'let ' . $o . ' = ' . $base->code . '; let ' . $g . ' = ' . $o . $get . ';', '(*' . $g . ')', false, $gc);
         }
         return new Val($code, $ft);
     }

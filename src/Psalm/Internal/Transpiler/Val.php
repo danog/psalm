@@ -30,6 +30,9 @@ final class Val
      * @param ?string $gplace the place inside `$guard` (requires `$guard`)
      * @param bool    $temp   the place runs through a temporary of the enclosing expression: usable as an
      *                        argument, a receiver or a loop subject, but not bound by a `let` (dropped at its `;`)
+     * @param ?ClassModel $guard_cls the class whose cell `$guard` borrows (a field read of a RefCell object), when
+     *                        known: a `&self` call on the guarded value may keep the guard when nothing the callee
+     *                        can run writes that cell (CallTrait::guardedReceiver)
      */
     public function __construct(
         public readonly string $code,
@@ -38,6 +41,7 @@ final class Val
         public readonly ?string $guard = null,
         public readonly ?string $gplace = null,
         public readonly bool $temp = false,
+        public readonly ?ClassModel $guard_cls = null,
     ) {
     }
 

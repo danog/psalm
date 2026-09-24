@@ -573,6 +573,39 @@ trait CallTrait
         return $this->methodCallOn($recv, $name, $e);
     }
 
+    /**
+     * Whether a `&self` call of `$lc` on the guarded value `$recv` may keep the guard for the call: the guard's
+     * cell belongs to a class family without cache writes (so no mutation-free method can borrow it mutably),
+     * every implementation the call can dispatch to is mutation-free (Psalm: no writes anywhere, only its own
+     * suppressed cache writes, which the first condition rules out for the guarded cell), the hierarchy is
+     * closed, and the arguments are plain reads (an argument expression runs inside the guard too).
+     *
+     * @param list<\PhpParser\Node\Arg|\PhpParser\Node\VariadicPlaceholder> $args
+     */
+    private function guardedReceiverSafe(Val $recv, ClassModel $cls, string $lc, array $args): bool
+    {
+        $gc = $recv->guard_cls;
+        if ($gc === null || $gc->has_downstream || $cls->has_downstream || $gc->familyHasCacheWrites()) {
+            return false;
+        }
+        foreach ($args as $a) {
+            if (!$a instanceof \PhpParser\Node\Arg || $a->byRef || !BodyEmitter::isPureRead($a->value)) {
+                return false;
+            }
+        }
+        $impls = $cls->isLeaf() ? [$cls] : $cls->concrete;
+        if ($impls === []) {
+            return false;
+        }
+        foreach ($impls as $c) {
+            $im = $this->program->findMethod($c, $lc);
+            if ($im === null || $im->storage->allowed_mutations > \Psalm\Storage\Mutations::LEVEL_INTERNAL_READ) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private function methodCallOn(Val $recv, string $name, Expr $e): Val
     {
         $lc = strtolower($name);
@@ -598,6 +631,11 @@ trait CallTrait
                 $recv_code = $recv->code;
                 if (!($m->declaring->immutable() && isset($m->declaring->constructionMethods()[$m->lc()]))) {
                     $recv_code = $recv->recv();
+                    // a guarded receiver (a field of a RefCell object) calls through its guard instead of a clone of
+                    // the handle when nothing the callee can run writes the guarded cell
+                    if ($recv->place === null && $recv->guard !== null && $this->guardedReceiverSafe($recv, $cls, $lc, $args)) {
+                        return $this->bindGenericResult(new Val($this->finishCall($recv->applyOwned('.' . $m->rustName() . '(' . implode(', ', $argc) . ')' . ($m->throws ? '?' : ''))), $m->return_type), $e, $m->param_types);
+                    }
                 }
                 return $this->bindGenericResult(new Val($this->finishCall($recv_code . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')' . ($m->throws ? '?' : '')), $m->return_type), $e, $m->param_types);
             }
