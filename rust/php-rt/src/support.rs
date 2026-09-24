@@ -934,6 +934,8 @@ impl<T: std::fmt::Debug> std::fmt::Debug for RwCell<T> {
 pub enum PropRef<'a, T> {
     Borrowed(CellRef<'a, T>),
     Owned(T),
+    /// a construction-only field (php_rt::late::Init): a plain reference, no guard
+    Plain(&'a T),
 }
 impl<T> std::ops::Deref for PropRef<'_, T> {
     type Target = T;
@@ -941,6 +943,7 @@ impl<T> std::ops::Deref for PropRef<'_, T> {
         match self {
             PropRef::Borrowed(r) => r,
             PropRef::Owned(v) => v,
+            PropRef::Plain(r) => r,
         }
     }
 }
@@ -950,6 +953,8 @@ impl<T> std::ops::Deref for PropRef<'_, T> {
 pub enum PropMut<'a, T> {
     Borrowed(CellRefMut<'a, T>),
     Owned { value: Option<T>, write: Option<Box<dyn FnOnce(T) + 'a>> },
+    /// a construction-only field (php_rt::late::Init): a plain mutable reference, no guard
+    Plain(&'a mut T),
 }
 impl<'a, T> PropMut<'a, T> {
     pub fn owned(value: T, write: Box<dyn FnOnce(T) + 'a>) -> Self {
@@ -962,6 +967,7 @@ impl<T> std::ops::Deref for PropMut<'_, T> {
         match self {
             PropMut::Borrowed(r) => r,
             PropMut::Owned { value, .. } => value.as_ref().unwrap(),
+            PropMut::Plain(r) => r,
         }
     }
 }
@@ -970,6 +976,7 @@ impl<T> std::ops::DerefMut for PropMut<'_, T> {
         match self {
             PropMut::Borrowed(r) => r,
             PropMut::Owned { value, .. } => value.as_mut().unwrap(),
+            PropMut::Plain(r) => r,
         }
     }
 }
