@@ -652,7 +652,59 @@ abstract class Type
                 ? $type_1->setPossiblyUndefined($possibly_undefined)
                 : $type_1;
         }
+        // the same atomics under different flags or data-flow sources: the combination is those atomics
+        // (combining a set with itself is the set) under the merged flags -- what the slow path computes,
+        // without running the combiner
+        if ($type_1->failed_reconciliation === $type_2->failed_reconciliation
+            && !$type_1->isVanillaMixed()
+            && $type_1->hasCombineEquivalentAtomics($type_2, true)
+        ) {
+            return self::combineSameAtomics($type_1, $type_2, $possibly_undefined);
+        }
         return self::combineUnionTypesSlow($type_1, $type_2, $codebase, $overwrite_empty_array, $allow_mixed_union, $literal_limit, $possibly_undefined);
+    }
+
+    /**
+     * combineUnionTypesSlow() for two unions with the same atomics: the flags the combiner's fresh union would
+     * carry (its defaults, then the merges the slow path applies), on $type_1's atomics.
+     */
+    private static function combineSameAtomics(Union $type_1, Union $type_2, ?bool $possibly_undefined): Union
+    {
+        $from_docblock = $type_1->from_docblock || $type_2->from_docblock;
+        if (!$from_docblock) {
+            // a fresh union derives it from its atomics
+            foreach ($type_1->getAtomicTypes() as $atomic) {
+                if ($atomic->from_docblock) {
+                    $from_docblock = true;
+                    break;
+                }
+            }
+        }
+
+        return $type_1->setProperties([
+            'from_docblock' => $from_docblock,
+            'from_calculation' => $type_1->from_calculation || $type_2->from_calculation,
+            'from_property' => false,
+            'from_static_property' => false,
+            'initialized' => $type_1->initialized && $type_2->initialized,
+            'initialized_class' => null,
+            'checked' => false,
+            'failed_reconciliation' => $type_1->failed_reconciliation,
+            'ignore_nullable_issues' => $type_1->ignore_nullable_issues || $type_2->ignore_nullable_issues,
+            'ignore_falsable_issues' => $type_1->ignore_falsable_issues || $type_2->ignore_falsable_issues,
+            'ignore_isset' => false,
+            'possibly_undefined' => $possibly_undefined ?? ($type_1->possibly_undefined || $type_2->possibly_undefined),
+            'possibly_undefined_from_try' => $type_1->possibly_undefined_from_try || $type_2->possibly_undefined_from_try,
+            'explicit_never' => $type_1->explicit_never || $type_2->explicit_never,
+            'had_template' => $type_1->had_template && $type_2->had_template,
+            'from_template_default' => false,
+            'by_ref' => $type_1->by_ref || $type_2->by_ref,
+            'reference_free' => $type_1->reference_free && $type_2->reference_free,
+            'allow_mutations' => true,
+            'has_mutations' => true,
+            'different' => false,
+            'parent_nodes' => $type_1->parent_nodes + $type_2->parent_nodes,
+        ]);
     }
 
     private static function combineUnionTypesSlow(
