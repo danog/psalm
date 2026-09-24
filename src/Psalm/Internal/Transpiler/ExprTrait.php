@@ -758,13 +758,46 @@ trait ExprTrait
             $ic = $this->program->classOf($inf);
             if ($vc !== null && $ic !== null && $ic !== $vc && !$ic->isLeaf() && !$vc->isLeaf()
                 && $ic->isSubclassOf($vc) && $ic->crate === $vc->crate && !$ic->has_downstream
-                && (isset($vc->fields[$this->prop_receiver_name])
-                    || $this->program->variantField($vc, $this->prop_receiver_name) !== null)
+                && $this->rootEnumServesField($vc, $ic, $this->prop_receiver_name)
             ) {
                 return $v;
             }
         }
         return $this->casts->convertVal($v, $inf);
+    }
+
+    /**
+     * Whether a read of `$name` through the root enum `$root` answers exactly what the narrowed sub-hierarchy
+     * `$sub` would: every concrete member of `$sub` carries the field, and every member of `$root` that carries
+     * it stores the same Rust type (so the root accessor has an arm for each of `$sub`'s variants and returns the
+     * field's own type). Requests the root accessor.
+     */
+    private function rootEnumServesField(ClassModel $root, ClassModel $sub, string $name): bool
+    {
+        if (isset($root->fields[$name])) {
+            return true;
+        }
+        $type = null;
+        foreach ($root->concrete as $c) {
+            $cf = $c->fields[$name] ?? null;
+            if ($cf === null) {
+                continue;
+            }
+            if ($type === null) {
+                $type = $cf->type->toRust();
+            } elseif ($cf->type->toRust() !== $type) {
+                return false;
+            }
+        }
+        if ($type === null) {
+            return false;
+        }
+        foreach ($sub->concrete as $c) {
+            if (!isset($c->fields[$name])) {
+                return false;
+            }
+        }
+        return $this->program->variantField($root, $name) !== null;
     }
 
     /** True when converting from => to only adds information (Option wrapping, union wrapping, upcast). */
