@@ -81,10 +81,6 @@ final class TypeChecker extends TypeVisitor
             return null;
         }
 
-        if ($type->checked) {
-            return self::DONT_TRAVERSE_CHILDREN;
-        }
-
         if ($type instanceof TNamedObject) {
             $this->checkNamedObject($type);
         } elseif ($type instanceof TClassConstant) {
@@ -93,14 +89,6 @@ final class TypeChecker extends TypeVisitor
             $this->checkTemplateParam($type);
         } elseif ($type instanceof TResource) {
             $this->checkResource($type);
-        }
-
-        if ($type instanceof Union) {
-            /** @psalm-suppress UnusedMethodCall a memo write */
-            $type->markChecked();
-        } else {
-            /** @psalm-suppress InaccessibleProperty Doesn't affect anything else */
-            $type->checked = true;
         }
 
         return null;

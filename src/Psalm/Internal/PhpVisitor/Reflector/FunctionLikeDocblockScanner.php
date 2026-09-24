@@ -998,14 +998,18 @@ final class FunctionLikeDocblockScanner
                 $all_typehint_types_match = true;
                 $signature_return_type = $storage->signature_return_type;
 
-                foreach ($storage->return_type->getAtomicTypes() as $type) {
+                // the atomics the signature also declares are not docblock-only: rebuilt through the wither
+                // (a type is a value, never written in place)
+                $types = [];
+                foreach ($storage->return_type->getAtomicTypes() as $key => $type) {
                     if ($signature_return_type->has($type->getKey())) {
-                        /** @psalm-suppress InaccessibleProperty We just created this atomic type */
-                        $type->from_docblock = false;
+                        $types[$key] = $type->setFromDocblock(false);
                     } else {
                         $all_typehint_types_match = false;
+                        $types[$key] = $type;
                     }
                 }
+                $storage->return_type = $storage->return_type->setTypes($types);
 
                 if ($all_typehint_types_match) {
                     $storage->return_type = $storage->return_type->setProperties(['from_docblock' => false]);
