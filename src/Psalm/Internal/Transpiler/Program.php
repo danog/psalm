@@ -2119,6 +2119,9 @@ final class Program
      */
     private static function borrowableParamType(RustType $t): bool
     {
+        if ($t->hasGeneric()) {
+            return false; // a `&Map<K, G_T>` would pin the type variable to the cast argument (inference across args)
+        }
         if ($t->kind === RustType::OPTION) {
             return self::borrowableParamType($t->inner());
         }
