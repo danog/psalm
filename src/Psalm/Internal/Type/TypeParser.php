@@ -250,12 +250,12 @@ final class TypeParser
                 $from_docblock,
             );
 
-            $callable_type->return_type = $return_type instanceof Union
-                ? $return_type
-                : new Union([$return_type], ['from_docblock' => $from_docblock])
-            ;
-
-            return $callable_type;
+            return $callable_type->replace(
+                $callable_type->params,
+                $return_type instanceof Union
+                    ? $return_type
+                    : new Union([$return_type], ['from_docblock' => $from_docblock]),
+            );
         }
 
         if ($parse_tree instanceof CallableTree) {

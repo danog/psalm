@@ -411,14 +411,10 @@ abstract class Atomic implements TypeNode, Stringable
                 return new TClassString();
 
             case 'interface-string':
-                $type = new TClassString();
-                $type->is_interface = true;
-                return $type;
+                return new TClassString(is_interface: true);
 
             case 'enum-string':
-                $type = new TClassString();
-                $type->is_enum = true;
-                return $type;
+                return new TClassString(is_enum: true);
 
             case 'trait-string':
                 return new TTraitString();
