@@ -3,7 +3,10 @@
 declare(strict_types=1);
 
 /**
- * A PHP token as produced by the tokenizer (implemented natively in the Rust runtime).
+ * A PHP token as produced by the tokenizer (implemented natively in the Rust runtime). Never written after
+ * construction (the lexer's emulators replace tokens instead), so a token is a value.
+ *
+ * @psalm-immutable
  */
 class PhpToken implements Stringable
 {
