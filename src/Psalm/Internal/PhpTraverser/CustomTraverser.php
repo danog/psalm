@@ -98,7 +98,7 @@ final class CustomTraverser extends NodeTraverser
      * @param list<Node|null> $nodes Array to traverse
      * @return list<Node|null> Result of traversal (may be original array or changed one)
      */
-    protected function traverseArray(array $nodes): array
+    public function traverseArray(array $nodes): array
     {
         $doNodes = [];
 
