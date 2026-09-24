@@ -1920,6 +1920,7 @@ function run_all(): string
         . check('defined_fold', case_defined_fold(), 'rt=1,cls=1,nocls=0,unknown=0,dyn=1')
         . check('memo_immutable', case_memo_immutable(), 'v7:v7:1|v7:1|n:1')
         . check('memo_trait_immutable', case_memo_trait_immutable(), 'k3:k3:1')
+        . check('variant_field_read', case_variant_field_read(), '7|x|-')
         . check('data_file', case_data_file(), 'a1x-,b2y3.5|a,b')
         . check('elseif_assign', case_elseif_assign(), 'none,a5,skip|1')
         . check('json_encode', case_json_encode(), '{"a":1,"b":[1,2,3],"c":null,"d":true,"e":1.5,"f":"x\\"y"}|[{"x":1,"label":null},{"x":2,"label":"p"}]|{"a":1,"b":"two","c":[3,4]}|{"3":"a","5":"b"}|[]|' . "{\n    \"k\": [\n        1,\n        \"z\"\n    ]\n}")
@@ -2092,6 +2093,53 @@ function case_memo_trait_immutable(): string
     $first = $a->key();
     $a->markChecked();
     return $first . ':' . $a->key() . ':' . (int) $a->isChecked();
+}
+
+abstract class VfBase
+{
+}
+
+class VfMid extends VfBase
+{
+    public function __construct(public int $name)
+    {
+    }
+}
+
+final class VfMidChild extends VfMid
+{
+}
+
+final class VfOther extends VfBase
+{
+    public function __construct(public string $name)
+    {
+    }
+}
+
+final class VfNone extends VfBase
+{
+}
+
+/** @return list<VfBase> */
+function vf_values(): array
+{
+    return [new VfMidChild(7), new VfOther('x'), new VfNone()];
+}
+
+function case_variant_field_read(): string
+{
+    $out = [];
+    foreach (vf_values() as $v) {
+        if ($v instanceof VfMid) {
+            $out[] = (string) $v->name;
+        } elseif ($v instanceof VfOther) {
+            $out[] = $v->name;
+        } else {
+            $out[] = '-';
+        }
+    }
+    return implode('|', $out);
 }
 
 function case_memo_immutable(): string

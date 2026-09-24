@@ -750,6 +750,9 @@ final class ClassEmitter
      */
     public function emitEnumFieldAccessor(ClassModel $enum, FieldModel $f, RustType $ft, Writer $w): void
     {
+        if (getenv('EFA_DIAG')) {
+            fwrite(STDERR, "[efa] " . $enum->fqcn . '::$' . $f->name . ' as ' . $ft->toRust() . "\n");
+        }
         $this->program->types->context = '<variant field accessor> ' . $enum->fqcn . '::$' . $f->name;
         $h = $enum->handle();
         $t = $ft->toRust();
@@ -767,8 +770,10 @@ final class ClassEmitter
             // a variant whose field is a UNION (or whose requested type is one) still answers the read: the
             // conversion narrows it, and only a value no member admits fails — dropping the variant instead
             // made every read of it an "on wrong variant" panic
+            // an int|string join is an ArrayKey: both members convert into it
+            $key_join = $ft->kind === RustType::ARRAY_KEY && in_array($cf->type->kind, [RustType::INT, RustType::STR], true);
             if ($this->casts->fits($cf->type, $ft) || $narrowing($cf->type, $ft)
-                || $cf->type->kind === RustType::UNION || $ft->kind === RustType::UNION
+                || $cf->type->kind === RustType::UNION || $ft->kind === RustType::UNION || $key_join
             ) {
                 $get[] = $h . '::' . $c->variant() . '(__h) => ' . $this->casts->convert('__h.' . $cf->acc() . '_get()', $cf->type, $ft);
             }
