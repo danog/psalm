@@ -1850,7 +1850,7 @@ final class AssignmentAnalyzer
         }
 
         $parent_nodes = [
-            $assignment_node->id => $assignment_node,
+            $assignment_node->key => $assignment_node,
         ];
 
         if ($context->inside_try) {

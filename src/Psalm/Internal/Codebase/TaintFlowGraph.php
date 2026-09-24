@@ -486,6 +486,25 @@ final class TaintFlowGraph extends DataFlowGraph
     }
 
     /**
+     * @return list<list<string>>
+     */
+    #[Override]
+    public function summarizeEdges(): array
+    {
+        $edges = [];
+
+        foreach ($this->forward_edges as $source => $destinations) {
+            $edge = [(string) $source];
+            foreach ($destinations as $to_id => $_) {
+                $edge[] = (string) $to_id;
+            }
+            $edges[] = $edge;
+        }
+
+        return $edges;
+    }
+
+    /**
      * Computes the set of node ids from which at least one sink is reachable.
      *
      * The search runs backwards from the sinks over the forward edges, treating
@@ -506,7 +525,7 @@ final class TaintFlowGraph extends DataFlowGraph
 
             foreach ($destinations as $to_id => $_) {
                 $reverse[(string) $to_id][(string) $from_id] = true;
-                $this->linkSpecialization($reverse, $to_id);
+                $this->linkSpecialization($reverse, (string) $to_id);
             }
         }
 
@@ -616,6 +635,7 @@ final class TaintFlowGraph extends DataFlowGraph
         $specialized_calls_key = json_encode($generated_source->specialized_calls, JSON_THROW_ON_ERROR);
 
         foreach ($this->forward_edges[$generated_source->id] as $to_id => $path) {
+            $to_id = (string) $to_id; // this graph keys its edges by spelled-out id
             if (!isset($this->nodes[$to_id])) {
                 continue;
             }

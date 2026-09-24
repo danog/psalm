@@ -218,7 +218,6 @@ final class VariableUseGraph extends DataFlowGraph
 
         $had = false;
         foreach ($this->backward_edges[$destination->key] as $from_id => $_) {
-            $from_id = (int) $from_id;
             if (isset($visited_source_ids[$from_id])) {
                 continue;
             }
