@@ -67,12 +67,36 @@ pub fn bump(i: usize) {
     let _ = i;
 }
 
+#[cfg(feature = "stats")]
+thread_local! {
+    static NAMED: std::cell::RefCell<std::collections::HashMap<&'static str, u64>> = std::cell::RefCell::new(std::collections::HashMap::new());
+}
+
+/// A named counter (a property accessor, a call site kind): printed as a top-60 list.
+#[inline(always)]
+pub fn bump_named(name: &'static str) {
+    #[cfg(feature = "stats")]
+    NAMED.with(|m| *m.borrow_mut().entry(name).or_insert(0) += 1);
+    #[cfg(not(feature = "stats"))]
+    let _ = name;
+}
+
 pub fn print() {
     #[cfg(feature = "stats")]
     COUNTERS.with(|c| {
         eprintln!("=== php-rt census (this thread) ===");
         for (i, name) in NAMES.iter().enumerate() {
             eprintln!("{:>14}  {}", c[i].get(), name);
+        }
+    });
+    #[cfg(feature = "stats")]
+    NAMED.with(|m| {
+        let m = m.borrow();
+        let mut rows: Vec<(&&'static str, &u64)> = m.iter().collect();
+        rows.sort_by(|a, b| b.1.cmp(a.1));
+        eprintln!("=== named counters (top 80 of {}) ===", rows.len());
+        for (name, n) in rows.iter().take(80) {
+            eprintln!("{:>14}  {}", n, name);
         }
     });
 }
