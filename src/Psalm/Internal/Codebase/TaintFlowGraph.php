@@ -487,6 +487,7 @@ final class TaintFlowGraph extends DataFlowGraph
 
     /**
      * @return list<list<string>>
+     * @psalm-mutation-free
      */
     #[Override]
     public function summarizeEdges(): array
