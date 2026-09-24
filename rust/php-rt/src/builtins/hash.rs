@@ -336,7 +336,7 @@ mod xxh3_tests {
 }
 
 #[cfg(test)]
-mod xxh3_tests {
+mod xxh3_php_vectors {
     use super::xxh3_64;
     #[test]
     fn matches_php_hash_xxh3() {
