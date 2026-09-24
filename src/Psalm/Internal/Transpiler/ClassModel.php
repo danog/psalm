@@ -265,6 +265,20 @@ final class ClassModel
      * (writes $this->types) from its memoizing getId (writes $this->id post-construction).
      * @return array<string, true>
      */
+    /**
+     * Forget the memos that depend on the method set (construction methods and the write scans built on them):
+     * they may have been asked for while the methods were still being attached (Program::buildMethods asks
+     * constructionMethods() of a method's declaring class per method), and an answer memoized before the
+     * constructor was attached counts every constructor write as post-construction.
+     */
+    public function invalidateMethodMemos(): void
+    {
+        $this->construction_methods = null;
+        $this->post_ctor_written = null;
+        $this->no_helper_ctor_writes = null;
+        $this->interior_mut_fields = null;
+    }
+
     public function constructionMethods(): array
     {
         if ($this->construction_methods !== null) {

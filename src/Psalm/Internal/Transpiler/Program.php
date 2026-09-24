@@ -891,6 +891,7 @@ final class Program
                     $c->methods[$lc] = $imp;
                 }
             }
+            $c->invalidateMethodMemos();
             foreach ($c->children as $child) {
                 if ($child->crate === $root->crate && $child->parent === $c) {
                     $apply($child);
@@ -1485,6 +1486,7 @@ final class Program
                 $model->methods[$lc_name] = $method;
             }
         }
+        $model->invalidateMethodMemos();
         // abstract classes: methods of implemented interfaces are dispatched too
         if (!$model->isConcrete() && !$model->isInterface()) {
             foreach ($model->ancestors as $iface) {
