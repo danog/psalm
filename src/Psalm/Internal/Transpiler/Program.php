@@ -533,7 +533,73 @@ final class Program
             }
             // a local holding an object this method just created (`$r = new X(..)`, `$r = self::createInner(..)`
             // through a non-public static helper of the class itself) is being constructed: its writes are
-            // construction, not external mutation of a shared object (Atomic::create sets span/from_docblock this way)
+            // construction, not external mutation of a shared object (Atomic::create sets span/from_docblock this way).
+            // Only a name bound that way and NEVER otherwise (no other assignment, no foreach/list/catch/by-ref
+            // binding, not a parameter): the docblock scanner binds `$storage_param` both to a fresh parameter and
+            // to existing ones, and its `has_docblock_type = true` writes are external mutation.
+            $bound_otherwise = [];
+            foreach ($finder->find($stmts, static fn(\PhpParser\Node $n): bool =>
+                $n instanceof \PhpParser\Node\Expr\Assign || $n instanceof \PhpParser\Node\Expr\AssignRef
+                || $n instanceof \PhpParser\Node\Expr\AssignOp || $n instanceof \PhpParser\Node\Stmt\Foreach_
+                || $n instanceof \PhpParser\Node\Stmt\Catch_ || $n instanceof \PhpParser\Node\Expr\ClosureUse
+                || $n instanceof \PhpParser\Node\Stmt\Global_ || $n instanceof \PhpParser\Node\Stmt\Static_
+                || $n instanceof \PhpParser\Node\Expr\List_ || $n instanceof \PhpParser\Node\Expr\Array_
+                || $n instanceof \PhpParser\Node\Arg) as $n
+            ) {
+                $vars = [];
+                if ($n instanceof \PhpParser\Node\Expr\Assign) {
+                    if ($n->var instanceof \PhpParser\Node\Expr\Variable
+                        && ($n->expr instanceof \PhpParser\Node\Expr\New_
+                            || ($n->expr instanceof \PhpParser\Node\Expr\StaticCall && $n->expr->class instanceof \PhpParser\Node\Name
+                                && in_array(strtolower($n->expr->class->toString()), ['self', 'static'], true)))
+                    ) {
+                        continue; // a fresh binding
+                    }
+                    $vars[] = $n->var;
+                } elseif ($n instanceof \PhpParser\Node\Expr\AssignRef || $n instanceof \PhpParser\Node\Expr\AssignOp) {
+                    $vars[] = $n->var;
+                } elseif ($n instanceof \PhpParser\Node\Stmt\Foreach_) {
+                    $vars[] = $n->valueVar;
+                    if ($n->keyVar !== null) {
+                        $vars[] = $n->keyVar;
+                    }
+                } elseif ($n instanceof \PhpParser\Node\Stmt\Catch_) {
+                    if ($n->var !== null) {
+                        $vars[] = $n->var;
+                    }
+                } elseif ($n instanceof \PhpParser\Node\Expr\ClosureUse) {
+                    if ($n->byRef) {
+                        $vars[] = $n->var;
+                    }
+                } elseif ($n instanceof \PhpParser\Node\Stmt\Global_) {
+                    $vars = $n->vars;
+                } elseif ($n instanceof \PhpParser\Node\Stmt\Static_) {
+                    foreach ($n->vars as $sv) {
+                        $vars[] = $sv->var;
+                    }
+                } elseif ($n instanceof \PhpParser\Node\Expr\List_ || $n instanceof \PhpParser\Node\Expr\Array_) {
+                    foreach ($n->items as $item) {
+                        if ($item !== null) {
+                            $vars[] = $item->value;
+                        }
+                    }
+                } elseif ($n instanceof \PhpParser\Node\Arg) {
+                    if ($n->byRef) {
+                        $vars[] = $n->value;
+                    }
+                }
+                foreach ($vars as $v) {
+                    // `$r->f = ..` / `$r[..] = ..` write INTO the object: not a rebinding of $r
+                    if ($v instanceof \PhpParser\Node\Expr\Variable && is_string($v->name)) {
+                        $bound_otherwise[$v->name] = true;
+                    }
+                }
+            }
+            if ($ctx !== null) {
+                foreach ($ctx->record?->storage->params ?? [] as $p) {
+                    $bound_otherwise[$p->name] = true;
+                }
+            }
             foreach ($finder->find($stmts, static fn(\PhpParser\Node $n): bool =>
                 $n instanceof \PhpParser\Node\Expr\Assign
                 && $n->var instanceof \PhpParser\Node\Expr\Variable && is_string($n->var->name)
@@ -546,6 +612,9 @@ final class Program
                 /** @var \PhpParser\Node\Expr\Assign $a */
                 /** @var \PhpParser\Node\Expr\Variable $v */
                 $v = $a->var;
+                if (isset($bound_otherwise[$v->name])) {
+                    continue;
+                }
                 if ($a->expr instanceof \PhpParser\Node\Expr\StaticCall) {
                     /** @var \PhpParser\Node\Identifier $mn */
                     $mn = $a->expr->name;
