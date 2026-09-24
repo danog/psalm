@@ -89,6 +89,8 @@ impl<K: MapKey, V> OrderedMap<K, V> {
         K: Borrow<Q>,
     {
         crate::stats::bump(crate::stats::MAP_FIND);
+        #[cfg(feature = "stats")]
+        crate::stats::bump_named(std::any::type_name::<OrderedMap<K, V>>());
         self.find_direct_inner(q)
     }
     fn find_direct_inner<Q: ?Sized + Hash + Eq + KeyQuery>(&self, q: &Q) -> Option<usize>
@@ -127,6 +129,8 @@ impl<K: MapKey, V> OrderedMap<K, V> {
     }
     fn insert_new(&mut self, key: K, value: V) -> usize {
         crate::stats::bump(crate::stats::MAP_INSERT);
+        #[cfg(feature = "stats")]
+        crate::stats::bump_named(std::any::type_name::<OrderedMap<K, V>>());
         if let Some(i) = key.int_value() {
             if i >= self.next_index {
                 self.next_index = i.wrapping_add(1);
