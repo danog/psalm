@@ -156,6 +156,17 @@ impl<K: MapKey, V> OrderedMap<K, V> {
                 });
             }
         }
+        #[cfg(feature = "stats")]
+        match self.entries.len() {
+            1 => crate::stats::bump(crate::stats::MAP_REACH_1),
+            2 => crate::stats::bump(crate::stats::MAP_REACH_2),
+            3 => crate::stats::bump(crate::stats::MAP_REACH_3),
+            5 => crate::stats::bump(crate::stats::MAP_REACH_5),
+            9 => crate::stats::bump(crate::stats::MAP_REACH_9),
+            17 => crate::stats::bump(crate::stats::MAP_REACH_17),
+            65 => crate::stats::bump(crate::stats::MAP_REACH_65),
+            _ => {}
+        }
         idx
     }
     fn remove_at(&mut self, idx: usize) -> (K, V) {

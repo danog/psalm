@@ -5,8 +5,10 @@ use std::fmt;
 use std::ops::{Deref, Index};
 use std::rc::Rc;
 
-/// The second field is PHP's internal array pointer (`current()`/`next()`...), copied with the value.
-pub struct List<T>(Rc<Vec<T>>, usize);
+/// `None` is the empty list (the census showed 37% of all allocations were `[]` boxes); the second field is
+/// PHP's internal array pointer (`current()`/`next()`...), copied with the value.
+pub struct List<T>(Option<Rc<Vec<T>>>, usize);
+
 
 impl<T> Clone for List<T> {
     #[inline]
@@ -26,82 +28,96 @@ impl<T> Deref for List<T> {
     type Target = [T];
     #[inline]
     fn deref(&self) -> &[T] {
-        self.0.as_slice()
+        self.v()
     }
 }
 
 impl<T> List<T> {
+    /// The elements (an empty slice for the unallocated list).
     #[inline]
-    pub fn new() -> List<T> {
-        crate::stats::bump(crate::stats::LIST_NEW_EMPTY);
-        List(Rc::new(Vec::new()), 0)
+    fn v(&self) -> &[T] {
+        match &self.0 {
+            Some(rc) => rc.as_slice(),
+            None => &[],
+        }
+    }
+    #[inline]
+    pub const fn new() -> List<T> {
+        List(None, 0)
     }
     pub fn with_capacity(n: usize) -> List<T> {
         crate::stats::bump(crate::stats::LIST_WITH_CAP);
-        List(Rc::new(Vec::with_capacity(n)), 0)
+        List(Some(Rc::new(Vec::with_capacity(n))), 0)
     }
     #[inline]
     pub fn from_vec(v: Vec<T>) -> List<T> {
         #[cfg(feature = "stats")]
         crate::stats::bump(match v.len() { 0 => crate::stats::LIST_FROM_VEC_0, 1 => crate::stats::LIST_FROM_VEC_1, 2 => crate::stats::LIST_FROM_VEC_2, 3 | 4 => crate::stats::LIST_FROM_VEC_3_4, 5..=8 => crate::stats::LIST_FROM_VEC_5_8, _ => crate::stats::LIST_FROM_VEC_MORE });
-        List(Rc::new(v), 0)
+        if v.is_empty() {
+            return List(None, 0);
+        }
+        List(Some(Rc::new(v)), 0)
     }
     /// `current()`: element at the internal pointer.
     pub fn ptr_current(&self) -> Option<&T> {
-        self.0.get(self.1)
+        self.v().get(self.1)
     }
     /// `key()`: index at the internal pointer.
     pub fn ptr_key(&self) -> Option<i64> {
-        if self.1 < self.0.len() { Some(self.1 as i64) } else { None }
+        if self.1 < self.v().len() { Some(self.1 as i64) } else { None }
     }
     /// `next()`: advance the internal pointer and return the element there.
     pub fn ptr_next(&mut self) -> Option<&T> {
-        if self.1 < self.0.len() {
+        if self.1 < self.v().len() {
             self.1 += 1;
         }
-        self.0.get(self.1)
+        self.v().get(self.1)
     }
     /// `prev()`
     pub fn ptr_prev(&mut self) -> Option<&T> {
-        if self.1 == 0 || self.1 > self.0.len() {
-            self.1 = self.0.len();
+        if self.1 == 0 || self.1 > self.v().len() {
+            self.1 = self.v().len();
             return None;
         }
         self.1 -= 1;
-        self.0.get(self.1)
+        self.v().get(self.1)
     }
     /// `reset()`
     pub fn ptr_reset(&mut self) -> Option<&T> {
         self.1 = 0;
-        self.0.first()
+        self.v().first()
     }
     /// `end()`
     pub fn ptr_end(&mut self) -> Option<&T> {
-        self.1 = self.0.len().saturating_sub(1);
-        self.0.last()
+        self.1 = self.v().len().saturating_sub(1);
+        self.v().last()
     }
     #[inline]
     pub fn len(&self) -> usize {
-        self.0.len()
+        self.v().len()
     }
     #[inline]
     pub fn count(&self) -> i64 {
-        self.0.len() as i64
+        self.v().len() as i64
     }
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.v().is_empty()
     }
     #[inline]
     pub fn ptr_eq(&self, other: &List<T>) -> bool {
-        Rc::ptr_eq(&self.0, &other.0)
+        match (&self.0, &other.0) {
+            (Some(a), Some(b)) => Rc::ptr_eq(a, b),
+            (None, None) => true,
+            _ => false,
+        }
     }
     #[inline]
     pub fn get(&self, i: i64) -> Option<&T> {
         if i < 0 {
             None
         } else {
-            self.0.get(i as usize)
+            self.v().get(i as usize)
         }
     }
     /// Indexing that panics with a PHP-like message on a missing offset.
@@ -113,19 +129,19 @@ impl<T> List<T> {
         }
     }
     pub fn has(&self, i: i64) -> bool {
-        i >= 0 && (i as usize) < self.0.len()
+        i >= 0 && (i as usize) < self.v().len()
     }
     pub fn first(&self) -> Option<&T> {
-        self.0.first()
+        self.v().first()
     }
     pub fn last(&self) -> Option<&T> {
-        self.0.last()
+        self.v().last()
     }
     pub fn iter(&self) -> std::slice::Iter<'_, T> {
-        self.0.iter()
+        self.v().iter()
     }
     pub fn as_slice(&self) -> &[T] {
-        self.0.as_slice()
+        self.v()
     }
 }
 
@@ -133,10 +149,12 @@ impl<T: Clone> List<T> {
     #[inline]
     pub fn make_mut(&mut self) -> &mut Vec<T> {
         #[cfg(feature = "stats")]
-        if Rc::strong_count(&self.0) > 1 {
-            crate::stats::bump(crate::stats::LIST_COW_CLONE);
+        if let Some(rc) = &self.0 {
+            if Rc::strong_count(rc) > 1 {
+                crate::stats::bump(crate::stats::LIST_COW_CLONE);
+            }
         }
-        Rc::make_mut(&mut self.0)
+        Rc::make_mut(self.0.get_or_insert_with(|| Rc::new(Vec::new())))
     }
     #[inline]
     pub fn push(&mut self, v: T) {
@@ -148,13 +166,13 @@ impl<T: Clone> List<T> {
         vec.push(v);
     }
     pub fn pop(&mut self) -> Option<T> {
-        if self.0.is_empty() {
+        if self.v().is_empty() {
             return None;
         }
         self.make_mut().pop()
     }
     pub fn shift(&mut self) -> Option<T> {
-        if self.0.is_empty() {
+        if self.v().is_empty() {
             return None;
         }
         Some(self.make_mut().remove(0))
@@ -170,7 +188,7 @@ impl<T: Clone> List<T> {
     }
     /// `$list[$i] = $v`; appending at len() is allowed (PHP keeps it a list).
     pub fn set(&mut self, i: i64, v: T) {
-        let n = self.0.len();
+        let n = self.v().len();
         if i >= 0 && (i as usize) < n {
             self.make_mut()[i as usize] = v;
         } else if i >= 0 && i as usize == n {
@@ -182,7 +200,7 @@ impl<T: Clone> List<T> {
     /// Write through a by-reference element: a reference to an element that has since been removed
     /// writes nowhere, as PHP's does.
     pub fn replace(&mut self, i: i64, v: T) {
-        if i >= 0 && (i as usize) < self.0.len() {
+        if i >= 0 && (i as usize) < self.v().len() {
             self.make_mut()[i as usize] = v;
         }
     }
@@ -194,7 +212,7 @@ impl<T: Clone> List<T> {
         self.make_mut().get_mut(i as usize)
     }
     pub fn idx_mut(&mut self, i: i64) -> &mut T {
-        let n = self.0.len();
+        let n = self.v().len();
         if i >= 0 && (i as usize) < n {
             &mut self.make_mut()[i as usize]
         } else {
@@ -205,16 +223,19 @@ impl<T: Clone> List<T> {
         self.make_mut().extend(it);
     }
     pub fn into_vec(self) -> Vec<T> {
-        match Rc::try_unwrap(self.0) {
-            Ok(v) => v,
-            Err(rc) => (*rc).clone(),
+        match self.0 {
+            None => Vec::new(),
+            Some(rc) => match Rc::try_unwrap(rc) {
+                Ok(v) => v,
+                Err(rc) => (*rc).clone(),
+            },
         }
     }
     pub fn to_vec(&self) -> Vec<T> {
-        (*self.0).clone()
+        self.v().to_vec()
     }
     pub fn to_map(&self) -> Map<i64, T> {
-        self.0.iter().enumerate().map(|(i, v)| (i as i64, v.clone())).collect()
+        self.v().iter().enumerate().map(|(i, v)| (i as i64, v.clone())).collect()
     }
     pub fn reverse(&mut self) {
         self.make_mut().reverse();
@@ -229,9 +250,9 @@ impl<T: Clone> List<T> {
         self.make_mut().truncate(n);
     }
     pub fn slice(&self, start: usize, end: usize) -> List<T> {
-        let end = end.min(self.0.len());
+        let end = end.min(self.v().len());
         let start = start.min(end);
-        List::from_vec(self.0[start..end].to_vec())
+        List::from_vec(self.v()[start..end].to_vec())
     }
     pub fn clear(&mut self) {
         *self = List::new();
@@ -260,7 +281,7 @@ impl<'a, T> IntoIterator for &'a List<T> {
     type Item = &'a T;
     type IntoIter = std::slice::Iter<'a, T>;
     fn into_iter(self) -> Self::IntoIter {
-        self.0.iter()
+        self.v().iter()
     }
 }
 impl<T> FromIterator<T> for List<T> {
@@ -276,17 +297,17 @@ impl<T> From<Vec<T>> for List<T> {
 impl<T> Index<usize> for List<T> {
     type Output = T;
     fn index(&self, i: usize) -> &T {
-        &self.0[i]
+        &self.v()[i]
     }
 }
 impl<T: fmt::Debug> fmt::Debug for List<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_list().entries(self.0.iter()).finish()
+        f.debug_list().entries(self.v().iter()).finish()
     }
 }
 impl<T: PartialEq> PartialEq for List<T> {
     fn eq(&self, other: &List<T>) -> bool {
-        Rc::ptr_eq(&self.0, &other.0) || *self.0 == *other.0
+        self.ptr_eq(other) || self.v() == other.v()
     }
 }
 impl<T: Eq> Eq for List<T> {}
