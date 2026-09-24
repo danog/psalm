@@ -381,12 +381,12 @@ final class Program
             $clone_locals = [];
             if ($skip_withers) {
                 foreach ($finder->find($stmts, static fn(\PhpParser\Node $n): bool =>
-                    $n instanceof \PhpParser\Node\Expr\Assign
+                    ($n instanceof \PhpParser\Node\Expr\Assign || $n instanceof \PhpParser\Node\Expr\AssignOp\Coalesce)
                     && $n->expr instanceof \PhpParser\Node\Expr\Clone_
                     && $n->var instanceof \PhpParser\Node\Expr\Variable
                     && is_string($n->var->name)) as $a
                 ) {
-                    /** @var \PhpParser\Node\Expr\Assign $a */
+                    /** @var \PhpParser\Node\Expr\Assign|\PhpParser\Node\Expr\AssignOp\Coalesce $a  (`$c = clone $x` or `$c ??= clone $x`) */
                     /** @var \PhpParser\Node\Expr\Variable $v */
                     $v = $a->var;
                     $clone_locals[$v->name] = true;
