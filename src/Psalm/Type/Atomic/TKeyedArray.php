@@ -439,7 +439,6 @@ final class TKeyedArray extends Atomic
             }
         }
 
-        /** @psalm-suppress ImpureMethodCall combine is external-mutation-free (Psalm reports the multi-argument call only) */
         $key_type = TypeCombiner::combine($key_types, properties: ['possibly_undefined' => $possibly_undefined]);
 
         if ($this->fallback_params === null) {

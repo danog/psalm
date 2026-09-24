@@ -86,6 +86,7 @@ final class FunctionLikeParameter implements HasAttributesInterface, TypeNode
      * $type expanded the way an argument check needs it (class constants, generics; no conditional types).
      *
      * @psalm-external-mutation-free
+     * @psalm-suppress ImpureMethodCall the expansion only reads the codebase
      */
     public function getExpandedType(
         Codebase $codebase,
