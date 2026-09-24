@@ -156,59 +156,59 @@ final class ClassEmitter
         $t = $f->type->toRust();
         if ($cell === 'Cell') {
             // Copy field with per-field interior mutability: get/set through &self, no borrow guard.
-            $w->line('pub fn ' . $rn . '(&self) -> ' . $t . ' { self.0.' . $fld . '.get() }');
-            $w->line('pub fn ' . $rn . '_get(&self) -> ' . $t . ' { self.0.' . $fld . '.get() }');
-            $w->line('pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { Some(self.0.' . $fld . '.get()) }');
-            $w->line('pub fn set_' . $rn . '(&self, v: ' . $t . ') { self.0.' . $fld . '.set(v); }');
+            $w->line('#[inline] pub fn ' . $rn . '(&self) -> ' . $t . ' { self.0.' . $fld . '.get() }');
+            $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { self.0.' . $fld . '.get() }');
+            $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { Some(self.0.' . $fld . '.get()) }');
+            $w->line('#[inline] pub fn set_' . $rn . '(&self, v: ' . $t . ') { self.0.' . $fld . '.set(v); }');
             return;
         }
         if ($cell === 'RefCell') {
             if ($f->isLate()) {
                 // memoized deferred-init field: RefCell<Late<T>>. Borrow through &self, then through Late.
-                $w->line('pub fn ' . $rn . '(&self) -> Ref<\'_, ' . $t . '> { Ref::map(self.0.' . $fld . '.borrow(), |__l| __l.get()) }');
-                $w->line('pub fn ' . $rn . '_get(&self) -> ' . $t . ' { self.0.' . $fld . '.borrow().get().clone() }');
-                $w->line('pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { self.0.' . $fld . '.borrow().as_option().cloned() }');
-                $w->line('pub fn ' . $rn . '_mut(&self) -> RefMut<\'_, ' . $t . '> { RefMut::map(self.0.' . $fld . '.borrow_mut(), |__l| __l.' . ($f->type->hasDefault() ? 'get_or_default_mut()' : 'get_mut()') . ') }');
-                $w->line('pub fn set_' . $rn . '(&self, v: ' . $t . ') { self.0.' . $fld . '.borrow_mut().set(v); }');
+                $w->line('#[inline] pub fn ' . $rn . '(&self) -> Ref<\'_, ' . $t . '> { Ref::map(self.0.' . $fld . '.borrow(), |__l| __l.get()) }');
+                $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { self.0.' . $fld . '.borrow().get().clone() }');
+                $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { self.0.' . $fld . '.borrow().as_option().cloned() }');
+                $w->line('#[inline] pub fn ' . $rn . '_mut(&self) -> RefMut<\'_, ' . $t . '> { RefMut::map(self.0.' . $fld . '.borrow_mut(), |__l| __l.' . ($f->type->hasDefault() ? 'get_or_default_mut()' : 'get_mut()') . ') }');
+                $w->line('#[inline] pub fn set_' . $rn . '(&self, v: ' . $t . ') { self.0.' . $fld . '.borrow_mut().set(v); }');
                 return;
             }
             // non-Copy field with per-field interior mutability (e.g. memoized Option<Str>): borrow through &self.
-            $w->line('pub fn ' . $rn . '(&self) -> Ref<\'_, ' . $t . '> { self.0.' . $fld . '.borrow() }');
-            $w->line('pub fn ' . $rn . '_get(&self) -> ' . $t . ' { self.0.' . $fld . '.borrow().clone() }');
-            $w->line('pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { Some(self.0.' . $fld . '.borrow().clone()) }');
-            $w->line('pub fn ' . $rn . '_mut(&self) -> RefMut<\'_, ' . $t . '> { self.0.' . $fld . '.borrow_mut() }');
-            $w->line('pub fn set_' . $rn . '(&self, v: ' . $t . ') { *self.0.' . $fld . '.borrow_mut() = v; }');
+            $w->line('#[inline] pub fn ' . $rn . '(&self) -> Ref<\'_, ' . $t . '> { self.0.' . $fld . '.borrow() }');
+            $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { self.0.' . $fld . '.borrow().clone() }');
+            $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { Some(self.0.' . $fld . '.borrow().clone()) }');
+            $w->line('#[inline] pub fn ' . $rn . '_mut(&self) -> RefMut<\'_, ' . $t . '> { self.0.' . $fld . '.borrow_mut() }');
+            $w->line('#[inline] pub fn set_' . $rn . '(&self, v: ' . $t . ') { *self.0.' . $fld . '.borrow_mut() = v; }');
             return;
         }
         if ($immut) {
             // Rc<T> (no RefCell): reads are direct borrows; writes (construction / wither clones only) copy-on-write
             if ($f->isLate()) {
-                $w->line('pub fn ' . $rn . '(&self) -> &' . $t . ' { self.0.' . $fld . '.get() }');
-                $w->line('pub fn ' . $rn . '_get(&self) -> ' . $t . ' { self.0.' . $fld . '.get().clone() }');
-                $w->line('pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { self.0.' . $fld . '.as_option().cloned() }');
-                $w->line('pub fn ' . $rn . '_mut(&mut self) -> &mut ' . $t . ' { Rc::make_mut(&mut self.0).' . $fld . ($f->type->hasDefault() ? '.get_or_default_mut()' : '.get_mut()') . ' }');
-                $w->line('pub fn set_' . $rn . '(&mut self, v: ' . $t . ') { Rc::make_mut(&mut self.0).' . $fld . '.set(v); }');
+                $w->line('#[inline] pub fn ' . $rn . '(&self) -> &' . $t . ' { self.0.' . $fld . '.get() }');
+                $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { self.0.' . $fld . '.get().clone() }');
+                $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { self.0.' . $fld . '.as_option().cloned() }');
+                $w->line('#[inline] pub fn ' . $rn . '_mut(&mut self) -> &mut ' . $t . ' { Rc::make_mut(&mut self.0).' . $fld . ($f->type->hasDefault() ? '.get_or_default_mut()' : '.get_mut()') . ' }');
+                $w->line('#[inline] pub fn set_' . $rn . '(&mut self, v: ' . $t . ') { Rc::make_mut(&mut self.0).' . $fld . '.set(v); }');
             } else {
-                $w->line('pub fn ' . $rn . '(&self) -> &' . $t . ' { &self.0.' . $fld . ' }');
-                $w->line('pub fn ' . $rn . '_get(&self) -> ' . $t . ' { self.0.' . $fld . '.clone() }');
-                $w->line('pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { Some(self.0.' . $fld . '.clone()) }');
-                $w->line('pub fn ' . $rn . '_mut(&mut self) -> &mut ' . $t . ' { &mut Rc::make_mut(&mut self.0).' . $fld . ' }');
-                $w->line('pub fn set_' . $rn . '(&mut self, v: ' . $t . ') { Rc::make_mut(&mut self.0).' . $fld . ' = v; }');
+                $w->line('#[inline] pub fn ' . $rn . '(&self) -> &' . $t . ' { &self.0.' . $fld . ' }');
+                $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { self.0.' . $fld . '.clone() }');
+                $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { Some(self.0.' . $fld . '.clone()) }');
+                $w->line('#[inline] pub fn ' . $rn . '_mut(&mut self) -> &mut ' . $t . ' { &mut Rc::make_mut(&mut self.0).' . $fld . ' }');
+                $w->line('#[inline] pub fn set_' . $rn . '(&mut self, v: ' . $t . ') { Rc::make_mut(&mut self.0).' . $fld . ' = v; }');
             }
             return;
         }
         if ($f->isLate()) {
-            $w->line('pub fn ' . $rn . '(&self) -> Ref<\'_, ' . $t . '> { Ref::map(self.0.borrow(), |o| o.' . $fld . '.get()) }');
-            $w->line('pub fn ' . $rn . '_get(&self) -> ' . $t . ' { self.0.borrow().' . $fld . '.get().clone() }');
-            $w->line('pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { self.0.borrow().' . $fld . '.as_option().cloned() }');
-            $w->line('pub fn ' . $rn . '_mut(&self) -> RefMut<\'_, ' . $t . '> { RefMut::map(self.0.borrow_mut(), |o| o.' . $fld . ($f->type->hasDefault() ? '.get_or_default_mut()' : '.get_mut()') . ') }');
-            $w->line('pub fn set_' . $rn . '(&self, v: ' . $t . ') { self.0.borrow_mut().' . $fld . '.set(v); }');
+            $w->line('#[inline] pub fn ' . $rn . '(&self) -> Ref<\'_, ' . $t . '> { Ref::map(self.0.borrow(), |o| o.' . $fld . '.get()) }');
+            $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { self.0.borrow().' . $fld . '.get().clone() }');
+            $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { self.0.borrow().' . $fld . '.as_option().cloned() }');
+            $w->line('#[inline] pub fn ' . $rn . '_mut(&self) -> RefMut<\'_, ' . $t . '> { RefMut::map(self.0.borrow_mut(), |o| o.' . $fld . ($f->type->hasDefault() ? '.get_or_default_mut()' : '.get_mut()') . ') }');
+            $w->line('#[inline] pub fn set_' . $rn . '(&self, v: ' . $t . ') { self.0.borrow_mut().' . $fld . '.set(v); }');
         } else {
-            $w->line('pub fn ' . $rn . '(&self) -> Ref<\'_, ' . $t . '> { Ref::map(self.0.borrow(), |o| &o.' . $fld . ') }');
-            $w->line('pub fn ' . $rn . '_get(&self) -> ' . $t . ' { self.0.borrow().' . $fld . '.clone() }');
-            $w->line('pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { Some(self.0.borrow().' . $fld . '.clone()) }');
-            $w->line('pub fn ' . $rn . '_mut(&self) -> RefMut<\'_, ' . $t . '> { RefMut::map(self.0.borrow_mut(), |o| &mut o.' . $fld . ') }');
-            $w->line('pub fn set_' . $rn . '(&self, v: ' . $t . ') { self.0.borrow_mut().' . $fld . ' = v; }');
+            $w->line('#[inline] pub fn ' . $rn . '(&self) -> Ref<\'_, ' . $t . '> { Ref::map(self.0.borrow(), |o| &o.' . $fld . ') }');
+            $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { self.0.borrow().' . $fld . '.clone() }');
+            $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { Some(self.0.borrow().' . $fld . '.clone()) }');
+            $w->line('#[inline] pub fn ' . $rn . '_mut(&self) -> RefMut<\'_, ' . $t . '> { RefMut::map(self.0.borrow_mut(), |o| &mut o.' . $fld . ') }');
+            $w->line('#[inline] pub fn set_' . $rn . '(&self, v: ' . $t . ') { self.0.borrow_mut().' . $fld . ' = v; }');
         }
     }
 
@@ -273,9 +273,9 @@ final class ClassEmitter
             // The mutator accessors (rn_mut/set_rn) are OMITTED: an @psalm-immutable base is never mutated through
             // the handle (verified by Program::computeExternalWrites — else the hierarchy would not have converted),
             // and the leaf set_/mut are `&mut self` which cannot be called on the `&LeafHandle` a `&self` match binds.
-            $w->line('pub fn ' . $rn . '(&self) -> PropRef<\'_, ' . $t . '> { match self { ' . $arms('PropRef::Owned(__h.' . $rn . '_get())', 'PropRef::Owned(' . $dyn_get . ')') . ' } }');
-            $w->line('pub fn ' . $rn . '_get(&self) -> ' . $t . ' { match self { ' . $arms('__h.' . $rn . '_get()', $dyn_get) . ' } }');
-            $w->line('pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { match self { ' . $arms('__h.' . $rn . '_opt()', 'php_rt::other_obj(__m).get_prop(' . $name . ').map(|__v| ' . $this->casts->convert('__v', RustType::mixed(), $f->type) . ')') . ' } }');
+            $w->line('#[inline] pub fn ' . $rn . '(&self) -> PropRef<\'_, ' . $t . '> { match self { ' . $arms('PropRef::Owned(__h.' . $rn . '_get())', 'PropRef::Owned(' . $dyn_get . ')') . ' } }');
+            $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { match self { ' . $arms('__h.' . $rn . '_get()', $dyn_get) . ' } }');
+            $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { match self { ' . $arms('__h.' . $rn . '_opt()', 'php_rt::other_obj(__m).get_prop(' . $name . ').map(|__v| ' . $this->casts->convert('__v', RustType::mixed(), $f->type) . ')') . ' } }');
             // INTERIOR-MUT (Cell/RefCell) fields keep their mutators even on an immutable enum: the leaf set_/mut are
             // `&self` (Cell.set / RefCell.borrow_mut), dispatchable on the `&LeafHandle` a `&self` match binds — no COW.
             // Plain immutable fields' set_/mut are `&mut self` (make_mut) and stay omitted.
@@ -290,24 +290,24 @@ final class ClassEmitter
                 }
             }
             if ($interior) {
-                $w->line('pub fn set_' . $rn . '(&self, v: ' . $t . ') { match self { ' . $arms('__h.set_' . $rn . '(v)', '{ php_rt::other_obj(__m).set_prop(' . $name . ', ' . $this->casts->convert('v', $f->type, RustType::mixed()) . '); }') . ' } }');
+                $w->line('#[inline] pub fn set_' . $rn . '(&self, v: ' . $t . ') { match self { ' . $arms('__h.set_' . $rn . '(v)', '{ php_rt::other_obj(__m).set_prop(' . $name . ', ' . $this->casts->convert('v', $f->type, RustType::mixed()) . '); }') . ' } }');
                 if ($interior_refcell) {
-                    $w->line('pub fn ' . $rn . '_mut(&self) -> PropMut<\'_, ' . $t . '> { match self { ' . $arms('PropMut::Borrowed(__h.' . $rn . '_mut())', '{ let __o = php_rt::other_obj(__m); PropMut::owned(' . $dyn_get . ', Box::new(move |__v: ' . $t . '| { __o.set_prop(' . $name . ', ' . $this->casts->convert('__v', $f->type, RustType::mixed()) . '); })) }') . ' } }');
+                    $w->line('#[inline] pub fn ' . $rn . '_mut(&self) -> PropMut<\'_, ' . $t . '> { match self { ' . $arms('PropMut::Borrowed(__h.' . $rn . '_mut())', '{ let __o = php_rt::other_obj(__m); PropMut::owned(' . $dyn_get . ', Box::new(move |__v: ' . $t . '| { __o.set_prop(' . $name . ', ' . $this->casts->convert('__v', $f->type, RustType::mixed()) . '); })) }') . ' } }');
                 }
             } else {
                 // Plain immutable field: an `&mut self` enum set_ dispatching to each leaf's `&mut self` make_mut setter
                 // (`&mut self` match binds __h as `&mut LeafHandle`). Usable only on a mut/owned enum — construction and
                 // wither clone-locals (`$c = clone $this; $c->field = v`), never a shared &self handle (which has no
                 // external writes, or the class would not have converted). Lets concrete-base withers write plain fields.
-                $w->line('pub fn set_' . $rn . '(&mut self, v: ' . $t . ') { match self { ' . $arms('__h.set_' . $rn . '(v)', '{ php_rt::other_obj(__m).set_prop(' . $name . ', ' . $this->casts->convert('v', $f->type, RustType::mixed()) . '); }') . ' } }');
+                $w->line('#[inline] pub fn set_' . $rn . '(&mut self, v: ' . $t . ') { match self { ' . $arms('__h.set_' . $rn . '(v)', '{ php_rt::other_obj(__m).set_prop(' . $name . ', ' . $this->casts->convert('v', $f->type, RustType::mixed()) . '); }') . ' } }');
             }
             return;
         }
-        $w->line('pub fn ' . $rn . '(&self) -> PropRef<\'_, ' . $t . '> { match self { ' . $arms('PropRef::Borrowed(__h.' . $rn . '())', 'PropRef::Owned(' . $dyn_get . ')') . ' } }');
-        $w->line('pub fn ' . $rn . '_get(&self) -> ' . $t . ' { match self { ' . $arms('__h.' . $rn . '_get()', $dyn_get) . ' } }');
-        $w->line('pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { match self { ' . $arms('__h.' . $rn . '_opt()', 'php_rt::other_obj(__m).get_prop(' . $name . ').map(|__v| ' . $this->casts->convert('__v', RustType::mixed(), $f->type) . ')') . ' } }');
-        $w->line('pub fn ' . $rn . '_mut(&self) -> PropMut<\'_, ' . $t . '> { match self { ' . $arms('PropMut::Borrowed(__h.' . $rn . '_mut())', '{ let __o = php_rt::other_obj(__m); PropMut::owned(' . $dyn_get . ', Box::new(move |__v: ' . $t . '| { __o.set_prop(' . $name . ', ' . $this->casts->convert('__v', $f->type, RustType::mixed()) . '); })) }') . ' } }');
-        $w->line('pub fn set_' . $rn . '(&self, v: ' . $t . ') { match self { ' . $arms('__h.set_' . $rn . '(v)', '{ php_rt::other_obj(__m).set_prop(' . $name . ', ' . $this->casts->convert('v', $f->type, RustType::mixed()) . '); }') . ' } }');
+        $w->line('#[inline] pub fn ' . $rn . '(&self) -> PropRef<\'_, ' . $t . '> { match self { ' . $arms('PropRef::Borrowed(__h.' . $rn . '())', 'PropRef::Owned(' . $dyn_get . ')') . ' } }');
+        $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { match self { ' . $arms('__h.' . $rn . '_get()', $dyn_get) . ' } }');
+        $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { match self { ' . $arms('__h.' . $rn . '_opt()', 'php_rt::other_obj(__m).get_prop(' . $name . ').map(|__v| ' . $this->casts->convert('__v', RustType::mixed(), $f->type) . ')') . ' } }');
+        $w->line('#[inline] pub fn ' . $rn . '_mut(&self) -> PropMut<\'_, ' . $t . '> { match self { ' . $arms('PropMut::Borrowed(__h.' . $rn . '_mut())', '{ let __o = php_rt::other_obj(__m); PropMut::owned(' . $dyn_get . ', Box::new(move |__v: ' . $t . '| { __o.set_prop(' . $name . ', ' . $this->casts->convert('__v', $f->type, RustType::mixed()) . '); })) }') . ' } }');
+        $w->line('#[inline] pub fn set_' . $rn . '(&self, v: ' . $t . ') { match self { ' . $arms('__h.set_' . $rn . '(v)', '{ php_rt::other_obj(__m).set_prop(' . $name . ', ' . $this->casts->convert('v', $f->type, RustType::mixed()) . '); }') . ' } }');
     }
 
     // ------------------------------------------------------------------ constructor
@@ -597,7 +597,7 @@ final class ClassEmitter
                 if ($cls->has_downstream) {
                     $arms[] = $cls->handle() . '::Other__(__m) => ' . $this->dynamicCall($m);
                 }
-                $w->line('pub fn ' . $rn . '__static' . $this->signature($m, true) . ' { match self { ' . ($arms ? implode(', ', $arms) . ', ' : '') . '_ => unreachable!() } }');
+                $w->line('#[inline] pub fn ' . $rn . '__static' . $this->signature($m, true) . ' { match self { ' . ($arms ? implode(', ', $arms) . ', ' : '') . '_ => unreachable!() } }');
             }
             return;
         }
@@ -606,7 +606,7 @@ final class ClassEmitter
             // method through this handle (Program::$dispatch_demands); the shared body stays here
             $this->program->pending_dispatch[$cls->lc() . '::' . $m->lc()] = [$cls, $m];
             if ($m->declaring === $cls && !$m->isAbstract()) {
-                $w->line('pub fn ' . $rn . '__impl' . $this->signature($m, true) . ' {');
+                $w->line('#[inline] pub fn ' . $rn . '__impl' . $this->signature($m, true) . ' {');
                 $w->raw($this->body($cls, $m));
                 $w->line('}');
             }
@@ -634,13 +634,13 @@ final class ClassEmitter
         $arms[] = '_ => ' . ($shared ?? 'unreachable!()');
         $w->line('pub fn ' . $rn . $this->signature($m, true) . ' { match self { ' . implode(', ', $arms) . ' } }');
         if ($m->declaring === $cls && !$m->isAbstract() && !$force_dispatch) {
-            $w->line('pub fn ' . $rn . '__impl' . $this->signature($m, true) . ' {');
+            $w->line('#[inline] pub fn ' . $rn . '__impl' . $this->signature($m, true) . ' {');
             $w->raw($this->body($cls, $m));
             $w->line('}');
         } elseif ($m->declaring !== $cls && !$m->isAbstract() && !$m->declaring->isLeaf()) {
             // make `__impl` reachable through this handle too (parent::foo() from grandchildren)
             $up = $this->casts->convert('self.clone()', RustType::class($cls->fqcn), RustType::class($m->declaring->fqcn));
-            $w->line('pub fn ' . $rn . '__impl' . $this->signature($m, true) . ' { ' . $up . '.' . $rn . '__impl(' . $this->argNames($m) . ') }');
+            $w->line('#[inline] pub fn ' . $rn . '__impl' . $this->signature($m, true) . ' { ' . $up . '.' . $rn . '__impl(' . $this->argNames($m) . ') }');
         }
     }
 
@@ -789,9 +789,9 @@ final class ClassEmitter
         }
         $ot = $ft->kind === RustType::OPTION ? $t : 'Option<' . $t . '>';
         $w->line('impl ' . $h . ' {');
-        $w->line('pub fn set_' . $rn . '(&mut self, v: ' . $t . ') { match self { ' . $arms($set) . '_ => unreachable!("set_' . $rn . ' on wrong ' . $h . ' variant") } }');
-        $w->line('pub fn ' . $rn . '_get(&self) -> ' . $t . ' { match self { ' . $arms($get) . '_ => unreachable!("' . $rn . '_get on wrong ' . $h . ' variant") } }');
-        $w->line('pub fn ' . $rn . '_get_opt(&self) -> ' . $ot . ' { match self { ' . $arms($opt) . '#[allow(unreachable_patterns)] _ => None } }');
+        $w->line('#[inline] pub fn set_' . $rn . '(&mut self, v: ' . $t . ') { match self { ' . $arms($set) . '_ => unreachable!("set_' . $rn . ' on wrong ' . $h . ' variant") } }');
+        $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { match self { ' . $arms($get) . '_ => unreachable!("' . $rn . '_get on wrong ' . $h . ' variant") } }');
+        $w->line('#[inline] pub fn ' . $rn . '_get_opt(&self) -> ' . $ot . ' { match self { ' . $arms($opt) . '#[allow(unreachable_patterns)] _ => None } }');
         $w->line('}');
     }
 
@@ -854,15 +854,15 @@ final class ClassEmitter
         $rn = $c->rustName();
         $t = $c->type;
         if ($c->expr === null) {
-            $w->line('pub fn ' . $rn . '() -> ' . $t->toRust() . ' { ' . $this->casts->defaultOf($t) . ' }');
+            $w->line('#[inline] pub fn ' . $rn . '() -> ' . $t->toRust() . ' { ' . $this->casts->defaultOf($t) . ' }');
             return;
         }
         $body = $this->constExprEmitter($cls);
         $code = $body->constExpr($c->expr, $t);
         if ($t->isCopy() || $t->kind === RustType::STR) {
-            $w->line('pub fn ' . $rn . '() -> ' . $t->toRust() . ' { ' . $code . ' }');
+            $w->line('#[inline] pub fn ' . $rn . '() -> ' . $t->toRust() . ' { ' . $code . ' }');
         } else {
-            $w->line('pub fn ' . $rn . '() -> ' . $t->toRust() . ' { thread_local! { static V: ' . $t->toRust() . ' = ' . $code . '; } V.with(|v| v.clone()) }');
+            $w->line('#[inline] pub fn ' . $rn . '() -> ' . $t->toRust() . ' { thread_local! { static V: ' . $t->toRust() . ' = ' . $code . '; } V.with(|v| v.clone()) }');
         }
     }
 
