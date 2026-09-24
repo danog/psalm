@@ -167,6 +167,7 @@ impl<T: StrPart + ?Sized> StrPart for &T {
 
 /// `$a . $b . $c ...` in one allocation.
 pub fn concat_parts(parts: &[&dyn StrPart]) -> Str {
+    crate::stats::bump(crate::stats::STR_CONCAT);
     let cap: usize = parts.iter().map(|p| p.part_len()).sum();
     let mut out = Str::with_capacity(cap);
     for p in parts {
