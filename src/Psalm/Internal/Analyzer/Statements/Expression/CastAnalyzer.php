@@ -856,7 +856,8 @@ final class CastAnalyzer
                             );
 
                             if ($statements_analyzer->data_flow_graph) {
-                                $parent_nodes = array_merge($return_type->parent_nodes, $parent_nodes);
+                                // keyed by node key: a union of maps, not array_merge (which renumbers int keys)
+                                $parent_nodes = $return_type->parent_nodes + $parent_nodes;
                             }
 
                             $castable_types = [...$castable_types, ...$return_type->getAtomicTypes()];
