@@ -1572,7 +1572,11 @@ final class Builtins
         return $b->narrow(new Val('array_key_last_m(' . $c->borrow() . ')', RustType::option($c->type->params[0])), $call);
     }
 
-    /** `current($a)`, `key($a)`: reads at the internal array pointer */
+    /**
+     * `current($a)`, `key($a)`, `reset($a)`, `end($a)`: PHP's internal array pointer is not modeled (pzoom-faithful:
+     * nothing in the program moves it), so these read the first (`end`: last) element through a borrow; the
+     * argument is not a by-reference write (Program::BUILTIN_BY_REF), so `reset($obj->field)` is a plain read.
+     */
     private function pointerRead(BodyEmitter $b, Expr\FuncCall $call, array $args, string $method): Val
     {
         $c = $this->container($b, $args[0]->value);
@@ -1582,48 +1586,24 @@ final class Builtins
         }
         if ($method === 'ptr_key') {
             $kt = $c->type->kind === RustType::LIST ? RustType::int() : $c->type->params[0];
-            $code = $c->type->kind === RustType::LIST ? $c->code . '.ptr_key()' : $c->code . '.ptr_key().cloned()';
+            $code = $c->applyOwned($c->type->kind === RustType::LIST ? '.ptr_key()' : '.ptr_key().cloned()');
             return $b->narrow(new Val($code, RustType::option($kt)), $call);
         }
         $vt = $c->type->kind === RustType::LIST ? $c->type->inner() : $c->type->params[1];
-        return $b->narrow(new Val($c->code . '.' . $method . '().cloned()', RustType::option($vt)), $call);
+        return $b->narrow(new Val($c->applyOwned('.' . $method . '().cloned()'), RustType::option($vt)), $call);
     }
 
-    /** `next($a)`, `prev($a)`, `reset($a)`, `end($a)`: move the internal array pointer of the place */
+    /** `next($a)`, `prev($a)`: would move the internal array pointer, which is not modeled */
     private function pointerMove(BodyEmitter $b, Expr\FuncCall $call, array $args, string $method): Val
     {
-        // `reset($this->field)` on an immutable (Rc<T>) class reads the FIRST value; there's no interior
-        // mutability to move a pointer through &self, so emit a non-mutating Map::first()/List index instead of
-        // ptr_reset() (which needs &mut). Callers of reset() here use only the return value, not the moved pointer.
-        $arg = $args[0]->value;
-        if ($method === 'ptr_reset' && $arg instanceof Expr\PropertyFetch && $arg->name instanceof Identifier) {
-            $recvT = ($arg->var instanceof Expr\Variable && $arg->var->name === 'this')
-                ? $b->this_type
-                : $b->inferred($arg->var);
-            $recvC = $recvT !== null ? $b->program->classOf($recvT) : null;
-            if ($recvC !== null && $recvC->immutable()) {
-                $ip = $this->arrayPlace($b, $b->place($arg));
-                if ($ip->type->kind === RustType::MAP) {
-                    return $b->narrow(new Val('{ let __m = ' . $ip->read() . '; __m.first().map(|(_, __v)| __v.clone()) }', RustType::option($ip->type->params[1])), $call);
-                }
-                if ($ip->type->kind === RustType::LIST) {
-                    return $b->narrow(new Val('{ let __m = ' . $ip->read() . '; __m.get(0).cloned() }', RustType::option($ip->type->inner())), $call);
-                }
-            }
-        }
-        $place = $this->arrayPlace($b, $b->place($args[0]->value));
-        $pt = $place->type;
-        if ($pt->kind !== RustType::LIST && $pt->kind !== RustType::MAP) {
-            $b->warn($method . ' on ' . $pt->toRust(), $call);
-            return new Val('None::<Mixed>', RustType::option(RustType::mixed()));
-        }
-        $vt = $pt->kind === RustType::LIST ? $pt->inner() : $pt->params[1];
-        return $b->narrow(new Val('{ let __r = ' . $place->modifyValue(fn(string $p) => $p . '.' . $method . '().cloned()') . '; __r }', RustType::option($vt)), $call);
+        $c = $this->container($b, $args[0]->value);
+        $b->warn($method . ': the internal array pointer is not modeled', $call);
+        return new Val('{ let _ = ' . $c->code . '; panic!(' . Names::rustStringLiteral($method . '(): the internal array pointer is not modeled') . ') }', RustType::option(RustType::mixed()));
     }
 
     private function f_reset(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
-        return $this->pointerMove($b, $call, $args, 'ptr_reset');
+        return $this->pointerRead($b, $call, $args, 'ptr_reset');
     }
 
     private function f_current(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
@@ -1633,7 +1613,7 @@ final class Builtins
 
     private function f_end(BodyEmitter $b, Expr\FuncCall $call, array $args): Val
     {
-        return $this->pointerMove($b, $call, $args, 'ptr_end');
+        return $this->pointerRead($b, $call, $args, 'ptr_end');
     }
 
     private function f_key(BodyEmitter $b, Expr\FuncCall $call, array $args): Val

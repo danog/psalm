@@ -2575,7 +2575,7 @@ final class Program
         'sort' => [0], 'rsort' => [0], 'usort' => [0], 'uasort' => [0], 'uksort' => [0], 'ksort' => [0], 'krsort' => [0],
         'asort' => [0], 'arsort' => [0], 'natsort' => [0], 'natcasesort' => [0], 'shuffle' => [0], 'array_multisort' => [0],
         'array_shift' => [0], 'array_pop' => [0], 'array_push' => [0], 'array_unshift' => [0], 'array_splice' => [0],
-        'array_walk' => [0], 'array_walk_recursive' => [0], 'end' => [0], 'reset' => [0], 'next' => [0], 'prev' => [0],
+        'array_walk' => [0], 'array_walk_recursive' => [0], 'end' => [], 'reset' => [], 'next' => [], 'prev' => [],
         'each' => [0], 'settype' => [0], 'preg_match' => [2], 'preg_match_all' => [2], 'preg_replace' => [4],
         'preg_replace_callback' => [4], 'str_replace' => [3], 'str_ireplace' => [3], 'similar_text' => [2], 'sscanf' => [2],
         'openssl_sign' => [1], 'getimagesize' => [1], 'exec' => [1, 2], 'system' => [1], 'passthru' => [1], 'proc_open' => [2],

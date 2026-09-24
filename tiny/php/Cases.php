@@ -1930,6 +1930,7 @@ function run_all(): string
         . check('value_nonleaf', case_value_nonleaf(), 'G<int>|Foo<int>|Foo&B<int>|1|self->Foo')
         . check('borrow_local', case_borrow_local(), '6:3:a,b,c:x')
         . check('borrow_return', case_borrow_return(), '2:9:3:2:1:1:v:null')
+        . check('ptr_reads', case_ptr_reads(), '4:5:A:a:4:9:4:v:x')
         . check('data_file', case_data_file(), 'a1x-,b2y3.5|a,b')
         . check('elseif_assign', case_elseif_assign(), 'none,a5,skip|1')
         . check('json_encode', case_json_encode(), '{"a":1,"b":[1,2,3],"c":null,"d":true,"e":1.5,"f":"x\\"y"}|[{"x":1,"label":null},{"x":2,"label":"p"}]|{"a":1,"b":"two","c":[3,4]}|{"3":"a","5":"b"}|[]|' . "{\n    \"k\": [\n        1,\n        \"z\"\n    ]\n}")
@@ -3827,6 +3828,38 @@ function case_borrow_local(): string
  * Borrowed getter returns: `getItems()` returns `&List` (a place into the receiver) and is used as a count
  * argument, a foreach subject, an owned local (clone), an array-key lookup and a nullable chain.
  */
+/**
+ * PHP's internal array pointer is not modeled: reset()/current()/key() read the first element, end() the last, on
+ * locals, on fields of immutable and mutable objects, and on temporaries; none of them is a write of the argument.
+ */
+final class PtrBag
+{
+    /** @param list<int> $items */
+    public function __construct(public array $items)
+    {
+    }
+}
+
+function case_ptr_reads(): string
+{
+    $l = new BList([4, 5], ['a' => 'A', 'k' => 'v'], null);
+    $bag = new PtrBag([4, 9]);
+    $arr = [4, 5];
+    $first = reset($arr);
+    $last = end($arr);
+    $names = $l->names;
+    $cur = current($names);
+    $key = key($names);
+    $a = reset($bag->items);
+    $b = end($bag->items);
+    $c = reset($l->items);
+    $d = current($l->names);
+    $e = reset($l->getNames());
+    $empty = [];
+    $none = reset($empty) === false ? 'x' : 'y';
+    return $first . ':' . $last . ':' . $cur . ':' . $key . ':' . $a . ':' . $b . ':' . $c . ':' . ($d === 'A' ? 'v' : 'w') . ':' . ($e === 'A' ? $none : 'z');
+}
+
 function case_borrow_return(): string
 {
     $l = new BList([4, 5], ['k' => 'v'], new BList([9], [], null));
