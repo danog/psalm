@@ -21,6 +21,8 @@ fn main() {
         .stack_size(512 * 1024 * 1024)
         .spawn(move || {
             php_rt::support::set_src_root(&src_root);
+            // census printed when this thread ends (php-rt `stats` feature; no-op otherwise)
+            let _census = php_rt::stats::PrintOnDrop;
             psalm_mono::init();
 
             // `PSALM_RS_TRACE_EXIT=1`: print where a PHP exit() with a non-zero status is raised,

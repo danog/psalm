@@ -88,6 +88,13 @@ impl<K: MapKey, V> OrderedMap<K, V> {
     where
         K: Borrow<Q>,
     {
+        crate::stats::bump(crate::stats::MAP_FIND);
+        self.find_direct_inner(q)
+    }
+    fn find_direct_inner<Q: ?Sized + Hash + Eq + KeyQuery>(&self, q: &Q) -> Option<usize>
+    where
+        K: Borrow<Q>,
+    {
         if self.packed {
             let i = q.packed_index()?.wrapping_sub(self.base);
             return if i >= 0 && (i as usize) < self.entries.len() { Some(i as usize) } else { None };
@@ -119,6 +126,7 @@ impl<K: MapKey, V> OrderedMap<K, V> {
         None
     }
     fn insert_new(&mut self, key: K, value: V) -> usize {
+        crate::stats::bump(crate::stats::MAP_INSERT);
         if let Some(i) = key.int_value() {
             if i >= self.next_index {
                 self.next_index = i.wrapping_add(1);
@@ -406,6 +414,12 @@ impl<K: MapKey, V> Map<K, V> {
 impl<K: MapKey, V: Clone> Map<K, V> {
     #[inline]
     fn data(&mut self) -> &mut OrderedMap<K, V> {
+        #[cfg(feature = "stats")]
+        match &self.0 {
+            None => crate::stats::bump(crate::stats::MAP_ALLOC),
+            Some(rc) if Rc::strong_count(rc) > 1 => crate::stats::bump(crate::stats::MAP_COW_CLONE),
+            _ => {}
+        }
         Rc::make_mut(self.0.get_or_insert_with(|| Rc::new(OrderedMap::new())))
     }
     pub fn make_mut(&mut self) -> &mut OrderedMap<K, V> {

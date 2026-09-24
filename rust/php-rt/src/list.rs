@@ -17,9 +17,10 @@ impl<T> Clone for List<T> {
 
 impl<T> Default for List<T> {
     fn default() -> List<T> {
-        List(Rc::new(Vec::new()), 0)
+        List::new()
     }
 }
+
 
 impl<T> Deref for List<T> {
     type Target = [T];
@@ -32,13 +33,17 @@ impl<T> Deref for List<T> {
 impl<T> List<T> {
     #[inline]
     pub fn new() -> List<T> {
+        crate::stats::bump(crate::stats::LIST_NEW_EMPTY);
         List(Rc::new(Vec::new()), 0)
     }
     pub fn with_capacity(n: usize) -> List<T> {
+        crate::stats::bump(crate::stats::LIST_WITH_CAP);
         List(Rc::new(Vec::with_capacity(n)), 0)
     }
     #[inline]
     pub fn from_vec(v: Vec<T>) -> List<T> {
+        #[cfg(feature = "stats")]
+        crate::stats::bump(match v.len() { 0 => crate::stats::LIST_FROM_VEC_0, 1 => crate::stats::LIST_FROM_VEC_1, 2 => crate::stats::LIST_FROM_VEC_2, 3 | 4 => crate::stats::LIST_FROM_VEC_3_4, 5..=8 => crate::stats::LIST_FROM_VEC_5_8, _ => crate::stats::LIST_FROM_VEC_MORE });
         List(Rc::new(v), 0)
     }
     /// `current()`: element at the internal pointer.
@@ -127,11 +132,20 @@ impl<T> List<T> {
 impl<T: Clone> List<T> {
     #[inline]
     pub fn make_mut(&mut self) -> &mut Vec<T> {
+        #[cfg(feature = "stats")]
+        if Rc::strong_count(&self.0) > 1 {
+            crate::stats::bump(crate::stats::LIST_COW_CLONE);
+        }
         Rc::make_mut(&mut self.0)
     }
     #[inline]
     pub fn push(&mut self, v: T) {
-        self.make_mut().push(v);
+        let vec = self.make_mut();
+        #[cfg(feature = "stats")]
+        if vec.len() == vec.capacity() {
+            crate::stats::bump(crate::stats::LIST_GROW);
+        }
+        vec.push(v);
     }
     pub fn pop(&mut self) -> Option<T> {
         if self.0.is_empty() {

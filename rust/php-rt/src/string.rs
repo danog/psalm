@@ -40,6 +40,11 @@ impl HeapStr {
     }
     /// Allocate a block with `cap` bytes of inline capacity, refcount 1, length 0, uncached hash.
     fn alloc_with(cap: usize) -> NonNull<Hdr> {
+        #[cfg(feature = "stats")]
+        {
+            crate::stats::bump(crate::stats::STR_HEAP_ALLOC);
+            if cap <= 32 { crate::stats::bump(crate::stats::STR_HEAP_ALLOC_LE_32); } else if cap <= 128 { crate::stats::bump(crate::stats::STR_HEAP_ALLOC_LE_128); }
+        }
         let l = Self::layout(cap);
         unsafe {
             let p = alloc(l) as *mut Hdr;
@@ -84,6 +89,7 @@ impl HeapStr {
         if cur != 0 {
             return cur;
         }
+        crate::stats::bump(crate::stats::STR_HASH_COMPUTE);
         let mut v = f(self.as_bytes());
         if v == 0 {
             v = 1;
@@ -99,6 +105,7 @@ impl HeapStr {
             self.hdr().hash.set(0);
             return;
         }
+        crate::stats::bump(crate::stats::STR_COW_GROW);
         let new_cap = needed.max(self.hdr().cap.saturating_mul(2)).max(needed);
         let np = Self::alloc_with(new_cap);
         unsafe {
@@ -404,6 +411,7 @@ impl Str {
         self.as_bytes().is_empty()
     }
     pub fn to_lowercase(&self) -> Str {
+        crate::stats::bump(crate::stats::STR_LOWER);
         let b = self.as_bytes();
         match b.iter().position(|c| c.is_ascii_uppercase()) {
             None => self.clone(),

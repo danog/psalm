@@ -2,6 +2,7 @@
 #![allow(clippy::all)]
 #![allow(non_snake_case, non_camel_case_types, dead_code, unused_imports, ambiguous_glob_reexports, hidden_glob_reexports)]
 
+pub mod stats;
 pub mod string;
 pub mod sym;
 pub mod token_kind;
