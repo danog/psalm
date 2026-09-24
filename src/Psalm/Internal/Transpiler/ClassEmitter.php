@@ -239,14 +239,14 @@ final class ClassEmitter
         }
         if ($f->isLate()) {
             $w->line('#[inline] pub fn ' . $rn . '(&self) -> Ref<\'_, ' . $t . '> { Ref::map(self.0.m__.borrow(), |o| o.' . $fld . '.get()) }');
-            $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { self.0.m__.borrow().' . $fld . '.get().clone() }');
-            $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { self.0.m__.borrow().' . $fld . '.as_option().cloned() }');
+            $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { ' . $bump . ' self.0.m__.borrow().' . $fld . '.get().clone() }');
+            $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { ' . $bump . ' self.0.m__.borrow().' . $fld . '.as_option().cloned() }');
             $w->line('#[inline] pub fn ' . $rn . '_mut(&self) -> RefMut<\'_, ' . $t . '> { RefMut::map(self.0.m__.borrow_mut(), |o| o.' . $fld . ($f->type->hasDefault() ? '.get_or_default_mut()' : '.get_mut()') . ') }');
             $w->line('#[inline] pub fn set_' . $rn . '(&self, v: ' . $t . ') { self.0.m__.borrow_mut().' . $fld . '.set(v); }');
         } else {
             $w->line('#[inline] pub fn ' . $rn . '(&self) -> Ref<\'_, ' . $t . '> { Ref::map(self.0.m__.borrow(), |o| &o.' . $fld . ') }');
-            $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { self.0.m__.borrow().' . $fld . '.clone() }');
-            $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { Some(self.0.m__.borrow().' . $fld . '.clone()) }');
+            $w->line('#[inline] pub fn ' . $rn . '_get(&self) -> ' . $t . ' { ' . $bump . ' self.0.m__.borrow().' . $fld . '.clone() }');
+            $w->line('#[inline] pub fn ' . $rn . '_opt(&self) -> Option<' . $t . '> { ' . $bump . ' Some(self.0.m__.borrow().' . $fld . '.clone()) }');
             $w->line('#[inline] pub fn ' . $rn . '_mut(&self) -> RefMut<\'_, ' . $t . '> { RefMut::map(self.0.m__.borrow_mut(), |o| &mut o.' . $fld . ') }');
             $w->line('#[inline] pub fn set_' . $rn . '(&self, v: ' . $t . ') { self.0.m__.borrow_mut().' . $fld . ' = v; }');
         }
