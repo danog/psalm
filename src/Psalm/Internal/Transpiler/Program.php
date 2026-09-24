@@ -385,9 +385,37 @@ final class Program
         // an Option-narrowed clone-local — is fixed (varType-based unwrap in LValueTrait::place). Env var can still
         // force-disable for A/B: WITHER_FIX=0.
         $skip_withers = getenv('WITHER_FIX') !== '0';
-        $scan = function (?array $stmts, $node_data, string $where = '') use ($finder, $is_ext_write, $skip_withers): void {
+        $scan = function (?array $stmts, $node_data, string $where = '', ?BorrowContext $ctx = null) use ($finder, $is_ext_write, $skip_withers): void {
             if ($stmts === null || $node_data === null) {
                 return;
+            }
+            // an argument in a by-reference position writes what it names: `sort($obj->prop)`,
+            // `array_shift($atomic->extra_types)`, `preg_match($p, $s, $obj->matches)`
+            $by_ref_targets = [];
+            if ($ctx !== null) {
+                foreach ($finder->find($stmts, static fn(\PhpParser\Node $n): bool =>
+                    $n instanceof \PhpParser\Node\Expr\FuncCall || $n instanceof \PhpParser\Node\Expr\MethodCall
+                    || $n instanceof \PhpParser\Node\Expr\StaticCall || $n instanceof \PhpParser\Node\Expr\New_) as $call
+                ) {
+                    /** @var \PhpParser\Node\Expr\FuncCall|\PhpParser\Node\Expr\MethodCall|\PhpParser\Node\Expr\StaticCall|\PhpParser\Node\Expr\New_ $call */
+                    if ($call->isFirstClassCallable()) {
+                        continue;
+                    }
+                    foreach ($call->getArgs() as $i => $arg) {
+                        $v = $arg->value;
+                        while ($v instanceof \PhpParser\Node\Expr\ArrayDimFetch) {
+                            $v = $v->var;
+                        }
+                        if (!$v instanceof \PhpParser\Node\Expr\PropertyFetch || !$v->name instanceof \PhpParser\Node\Identifier
+                            || ($v->var instanceof \PhpParser\Node\Expr\Variable && $v->var->name === 'this')
+                        ) {
+                            continue;
+                        }
+                        if ($this->argIsByRef($call, $i, $arg, $ctx)) {
+                            $by_ref_targets[] = $v;
+                        }
+                    }
+                }
             }
             // locals assigned `clone ...` in this method are WITHER copies: a write to `$c->prop` where `$c = clone $x`
             // is the class constructing a modified copy of itself (handled by the LValueTrait make_mut-in-place
@@ -407,8 +435,14 @@ final class Program
                     $clone_locals[$v->name] = true;
                 }
             }
+            $targets = [];
             foreach ($finder->find($stmts, static fn(\PhpParser\Node $n): bool => $is_ext_write($n) !== null) as $n) {
-                $target = $is_ext_write($n);
+                $targets[] = [$is_ext_write($n), $n];
+            }
+            foreach ($by_ref_targets as $t) {
+                $targets[] = [$t, $t];
+            }
+            foreach ($targets as [$target, $n]) {
                 if ($target->var instanceof \PhpParser\Node\Expr\Variable && is_string($target->var->name)
                     && isset($clone_locals[$target->var->name])
                 ) {
@@ -440,12 +474,12 @@ final class Program
                 if ($m->node === null || $m->record === null) {
                     continue;
                 }
-                $scan($m->node->stmts ?? [], $m->record->node_data, $model->fqcn . '::' . $m->name);
+                $scan($m->node->stmts ?? [], $m->record->node_data, $model->fqcn . '::' . $m->name, new BorrowContext($model, $m->record, $m->param_types));
             }
         }
         foreach ($this->functions as $fn) {
             if ($fn->record->node !== null) {
-                $scan($fn->record->node->stmts ?? [], $fn->record->node_data, $fn->fq_name);
+                $scan($fn->record->node->stmts ?? [], $fn->record->node_data, $fn->fq_name, new BorrowContext(null, $fn->record, $fn->param_types));
             }
         }
         // diagnostics: total externally-written classes, and how many NEW classes auto-widen would add
@@ -2243,6 +2277,52 @@ final class Program
      * The model of the callee of a call, when it resolves statically (see receiverClasses): a user function or
      * method. For a dispatched method every runtime class must agree on by-reference parameters.
      */
+    /** PHP builtins whose listed argument positions are by-reference (0-based). */
+    private const BUILTIN_BY_REF = [
+        'sort' => [0], 'rsort' => [0], 'usort' => [0], 'uasort' => [0], 'uksort' => [0], 'ksort' => [0], 'krsort' => [0],
+        'asort' => [0], 'arsort' => [0], 'natsort' => [0], 'natcasesort' => [0], 'shuffle' => [0], 'array_multisort' => [0],
+        'array_shift' => [0], 'array_pop' => [0], 'array_push' => [0], 'array_unshift' => [0], 'array_splice' => [0],
+        'array_walk' => [0], 'array_walk_recursive' => [0], 'end' => [0], 'reset' => [0], 'next' => [0], 'prev' => [0],
+        'each' => [0], 'settype' => [0], 'preg_match' => [2], 'preg_match_all' => [2], 'preg_replace' => [4],
+        'preg_replace_callback' => [4], 'str_replace' => [3], 'str_ireplace' => [3], 'similar_text' => [2], 'sscanf' => [2],
+        'openssl_sign' => [1], 'getimagesize' => [1], 'exec' => [1, 2], 'system' => [1], 'passthru' => [1], 'proc_open' => [2],
+        'stream_select' => [0, 1, 2], 'socket_select' => [0, 1, 2], 'mb_parse_str' => [1], 'parse_str' => [1],
+        'array_key_last' => [], 'array_key_first' => [], 'current' => [], 'key' => [],
+    ];
+
+    /**
+     * Whether argument $i of $call is passed by reference (a PHP builtin from the table, else the callee model's
+     * parameter; unknown callees are not by-ref).
+     */
+    private function argIsByRef(\PhpParser\Node $call, int $i, \PhpParser\Node\Arg $arg, BorrowContext $ctx): bool
+    {
+        if ($call instanceof \PhpParser\Node\Expr\FuncCall && $call->name instanceof \PhpParser\Node\Name) {
+            $lc = strtolower($call->name->getLast());
+            if (isset(self::BUILTIN_BY_REF[$lc]) && $this->getFunction((string) ($call->name->getAttribute('resolvedName') ?? $call->name->toString())) === null) {
+                return in_array($i, self::BUILTIN_BY_REF[$lc], true);
+            }
+        }
+        $callee = $this->calleeModel($call, $ctx);
+        if ($callee === null) {
+            return false;
+        }
+        $params = $callee instanceof MethodModel ? $callee->storage->params : $callee->record->storage->params;
+        if ($arg->name !== null) {
+            foreach ($params as $p) {
+                if ($p->name === $arg->name->name) {
+                    return $p->by_ref;
+                }
+            }
+            return false;
+        }
+        $p = $params[$i] ?? null;
+        if ($p === null) {
+            $last = $params !== [] ? $params[count($params) - 1] : null;
+            return $last !== null && $last->is_variadic && $last->by_ref;
+        }
+        return $p->by_ref;
+    }
+
     private function calleeModel(\PhpParser\Node $call, BorrowContext $ctx): FunctionModel|MethodModel|null
     {
         if ($call instanceof \PhpParser\Node\Expr\FuncCall && $call->name instanceof \PhpParser\Node\Name) {
