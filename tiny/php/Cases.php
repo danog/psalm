@@ -1929,6 +1929,7 @@ function run_all(): string
         . check('value_named', case_value_named(), 'A&B|A&B&C|self->Foo|k:A&B|static:1')
         . check('value_nonleaf', case_value_nonleaf(), 'G<int>|Foo<int>|Foo&B<int>|1|self->Foo')
         . check('borrow_local', case_borrow_local(), '6:3:a,b,c:x')
+        . check('borrow_return', case_borrow_return(), '2:9:3:2:1:1:v:null')
         . check('data_file', case_data_file(), 'a1x-,b2y3.5|a,b')
         . check('elseif_assign', case_elseif_assign(), 'none,a5,skip|1')
         . check('json_encode', case_json_encode(), '{"a":1,"b":[1,2,3],"c":null,"d":true,"e":1.5,"f":"x\\"y"}|[{"x":1,"label":null},{"x":2,"label":"p"}]|{"a":1,"b":"two","c":[3,4]}|{"3":"a","5":"b"}|[]|' . "{\n    \"k\": [\n        1,\n        \"z\"\n    ]\n}")
@@ -3778,6 +3779,23 @@ final class BList
     {
     }
 
+    /** @return list<int> */
+    public function getItems(): array
+    {
+        return $this->items;
+    }
+
+    /** @return array<string, string> */
+    public function getNames(): array
+    {
+        return $this->names;
+    }
+
+    public function getInner(): ?BList
+    {
+        return $this->inner;
+    }
+
     public function sum(): int
     {
         $items = $this->items;
@@ -3803,4 +3821,26 @@ function case_borrow_local(): string
 {
     $l = new BList([1, 2, 3], ['a' => 'A', 'b' => 'B', 'c' => 'C'], null);
     return $l->sum() . ':' . $l->describe();
+}
+
+/**
+ * Borrowed getter returns: `getItems()` returns `&List` (a place into the receiver) and is used as a count
+ * argument, a foreach subject, an owned local (clone), an array-key lookup and a nullable chain.
+ */
+function case_borrow_return(): string
+{
+    $l = new BList([4, 5], ['k' => 'v'], new BList([9], [], null));
+    $n = count($l->getItems());
+    $s = 0;
+    foreach ($l->getItems() as $i) {
+        $s += $i;
+    }
+    $owned = $l->getItems();
+    $owned[] = 6;
+    $names = $l->getNames();
+    $inner = $l->getInner();
+    $in = $inner !== null ? count($inner->getItems()) : -1;
+    $k = $l->getNames()['k'];
+    return $n . ':' . $s . ':' . count($owned) . ':' . count($l->getItems()) . ':' . count($names) . ':' . $in . ':' . $k
+        . ':' . ($l->getInner()?->getInner() === null ? 'null' : 'obj');
 }

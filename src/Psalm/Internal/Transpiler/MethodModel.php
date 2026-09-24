@@ -33,6 +33,13 @@ final class MethodModel
 
     public RustType $return_type;
 
+    /**
+     * Borrowed return: the method is `return $this->f;` of a plain field of a leaf class (a field read as `&T`), so
+     * it is emitted as `-> &T` and a call site uses the result as a place into the receiver instead of a clone
+     * (Union::getAtomicTypes: 10 M map clones per run). Set by Program::computeBorrowedReturns.
+     */
+    public ?string $returns_borrow_field = null;
+
     /** static method whose body refers to `static` (needs a copy per calling class) */
     public bool $uses_lsb = false;
 

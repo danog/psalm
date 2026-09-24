@@ -565,6 +565,9 @@ final class ClassEmitter
     /** Axis-8: `Result<T, Throw>` for throwing methods (default), bare `T` for provably non-throwing ones. */
     private function retType(MethodModel $m): string
     {
+        if ($m->returns_borrow_field !== null) {
+            return '&' . $m->return_type->toRust();
+        }
         return $m->throws ? 'Result<' . $m->return_type->toRust() . ', Throw>' : $m->return_type->toRust();
     }
 
@@ -618,6 +621,12 @@ final class ClassEmitter
         }
         if ($declaring === $cls) {
             if ($m->isAbstract()) {
+                return;
+            }
+            if ($m->returns_borrow_field !== null) {
+                // a borrowed-return getter (Program::computeBorrowedReturns): the field's `&T` accessor itself
+                $f = $cls->fields[$m->returns_borrow_field];
+                $w->line('pub fn ' . $rn . $sig . ' { self.' . $f->acc() . '() }');
                 return;
             }
             if ($cls->isLeaf() || $cls->isImmutableCtorMethod($m->lc())) {

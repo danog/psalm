@@ -205,6 +205,69 @@ final class Program
         $this->computeIdentityObserved();
         $this->computeHierarchyImmutable();
         $this->computeBorrowAgreement();
+        $this->computeBorrowedReturns();
+    }
+
+    /**
+     * See MethodModel::$returns_borrow_field. Only a leaf class' own method that no ancestor or interface declares
+     * (its callers all resolve statically to this one implementation), without generics, not throwing, not on the
+     * dynamic-dispatch list, whose whole body is `return $this->f;` for a plain field (`&T` accessor: a plain field
+     * of an immutable class, a construction-only field otherwise) of a non-Copy type equal to the return type.
+     */
+    private function computeBorrowedReturns(): void
+    {
+        $nbr = getenv('NO_BORROW_RETURNS');
+        if (!($nbr === false || $nbr === '' || $nbr === '0')) {
+            return;
+        }
+        $n = 0;
+        foreach ($this->uniqueClasses() as $cls) {
+            if (!$cls->isLeaf() || !$cls->isConcrete()) {
+                continue;
+            }
+            foreach ($cls->methods as $m) {
+                if ($m->declaring !== $cls || $m->node === null || $m->isStatic() || $m->isAbstract() || $m->generics !== []
+                    || $m->throws || isset(ClassEmitter::DYN_DISPATCH_METHODS[$m->lc()])
+                    || $cls->isImmutableCtorMethod($m->lc())
+                ) {
+                    continue;
+                }
+                $declared_above = false;
+                foreach ($cls->ancestors as $a) {
+                    if (isset($a->methods[$m->lc()])) {
+                        $declared_above = true;
+                        break;
+                    }
+                }
+                if ($declared_above) {
+                    continue;
+                }
+                $stmts = $m->node->stmts ?? [];
+                if (count($stmts) !== 1 || !$stmts[0] instanceof \PhpParser\Node\Stmt\Return_) {
+                    continue;
+                }
+                $e = $stmts[0]->expr;
+                if (!$e instanceof \PhpParser\Node\Expr\PropertyFetch || !$e->name instanceof \PhpParser\Node\Identifier
+                    || !$e->var instanceof \PhpParser\Node\Expr\Variable || $e->var->name !== 'this'
+                ) {
+                    continue;
+                }
+                $f = $cls->fields[$e->name->name] ?? null;
+                if (getenv("BORROW_DIAG")) { fwrite(STDERR, "[borrow-return?] " . $cls->fqcn . "::" . $m->name . " f=" . ($f === null ? "null" : ($f->type->toRust() . " late=" . var_export($f->isLate(), true) . " copy=" . var_export($f->type->isCopy(), true) . " cell=" . $cls->cellKind($f) . " co=" . var_export(isset($cls->constructionOnlyFields()[$f->name]), true))) . " ret=" . $m->return_type->toRust() . "\n"); }
+                if ($f === null || $f->is_static || $f->type->isCopy()
+                    || $f->type->toRust() !== $m->return_type->toRust()
+                ) {
+                    continue;
+                }
+                $plain = $cls->immutable() ? $cls->cellKind($f) === '' : isset($cls->constructionOnlyFields()[$f->name]);
+                if (!$plain) {
+                    continue;
+                }
+                $m->returns_borrow_field = $f->name;
+                $n++;
+            }
+        }
+        fwrite(STDERR, "[program] borrowed-return getters: $n\n");
     }
 
     /**

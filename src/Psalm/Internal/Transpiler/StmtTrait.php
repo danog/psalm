@@ -468,9 +468,12 @@ trait StmtTrait
         if ($subject->place === null) {
             return null;
         }
-        // the local the subject is rooted in (`$x`, `$x[$i]`, `$x->items`): the body must not write it
+        // the local the subject is rooted in (`$x`, `$x[$i]`, `$x->items`, `$x->getItems()` for a borrowed-return
+        // getter, whose place borrows the receiver): the body must not write it
         $e = $s->expr;
-        while ($e instanceof Expr\ArrayDimFetch || $e instanceof Expr\PropertyFetch) {
+        while ($e instanceof Expr\ArrayDimFetch || $e instanceof Expr\PropertyFetch
+            || ($subject->temp && ($e instanceof Expr\MethodCall || $e instanceof Expr\NullsafeMethodCall))
+        ) {
             $e = $e->var;
         }
         if ($e instanceof Expr\Variable && is_string($e->name) && $e->name !== 'this') {

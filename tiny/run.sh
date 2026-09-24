@@ -11,7 +11,7 @@ echo "=== TRANSPILE ==="
 rm -rf "$OUT/src"
 php -d memory_limit=4000M ../psalm -c psalm-tiny.xml --no-cache --no-progress \
   --threads=1 --transpile-rust="$OUT" --transpile-rust-data="php/data/*.php" 2>&1 \
-  | grep -E "wrote |Transpiler crashed|Fatal error|Uncaught|\[mixed|Mixed roots|\[dyn|lazy-dispatch" || true
+  | grep -E "wrote |Transpiler crashed|Fatal error|Uncaught|\[mixed|Mixed roots|\[dyn|lazy-dispatch|borrowed-return" || true
 echo "Mixed in generated: $(grep -rho "\bMixed\b" "$OUT/src" | wc -l)"
 
 # Keep php-rt pointed at the vendored copy (transpiler re-emits its path each run).

@@ -629,6 +629,12 @@ trait CallTrait
                 // borrow is confined to the call. Only for &self (not immutable construction methods, which are &mut
                 // self and must own a fresh value); &self allows any number of concurrent borrows so args can't conflict.
                 $recv_code = $recv->code;
+                if ($m->returns_borrow_field !== null) {
+                    // a borrowed-return getter: the call is a place into the receiver for the rest of the
+                    // statement (a temporary place: never bound by a `let`, an owned use clones out of it)
+                    $call = $recv->recv() . '.' . $m->rustName() . '(' . implode(', ', $argc) . ')';
+                    return new Val('(*' . $call . ').clone()', $m->return_type, '(*' . $call . ')', null, null, true);
+                }
                 if (!($m->declaring->immutable() && isset($m->declaring->constructionMethods()[$m->lc()]))) {
                     $recv_code = $recv->recv();
                     // a guarded receiver (a field of a RefCell object) calls through its guard instead of a clone of
