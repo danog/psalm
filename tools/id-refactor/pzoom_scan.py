@@ -15,7 +15,7 @@ field_re = re.compile(r'^\s*(?:pub(?:\([a-z]+\))?\s+)?([a-z_][a-z0-9_]*)\s*:\s*(
 fn_re = re.compile(r'\bfn\s+([a-z_][a-z0-9_]*)\s*(?:<[^>]*>)?\s*\(')
 param_re = re.compile(r'([a-z_][a-z0-9_]*)\s*:\s*([^,()]+(?:\([^)]*\))?[^,()]*)')
 BOUNDARY = {
-    'intern': re.compile(r'\.intern\(|\binterner\.intern\b|StrId::from_str|intern_str\('),
+    'intern': re.compile(r'\.intern\(|\binterner\.intern\b|StrId::from_str|intern_str\(|interner\(\)\.find\(|interner\.find\('),
     'lookup': re.compile(r'\.lookup\(|\.get_str\(|interner\.lookup\b|\.resolve_str\('),
     'casefold': re.compile(r'to_ascii_lowercase\(|to_lowercase\(|eq_ignore_ascii_case\(|make_ascii_lowercase\('),
 }
