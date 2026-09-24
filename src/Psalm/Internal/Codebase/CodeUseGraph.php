@@ -201,15 +201,15 @@ final class CodeUseGraph
         /** @psalm-suppress ImpureStaticProperty Cache */
         // node ids are built once per interned name: the concatenation and the second hashing were
         // 1.6 M string allocations per run
-        return self::$class_nodes[Interner::intern($fq_class_name_lc)]
+        return self::$class_nodes[$fq_class_name_lc]
             ??= Interner::intern(self::KIND_CLASS . ' ' . $fq_class_name_lc);
     }
 
-    /** @var array<int, int> class node by interned lowercase class name */
+    /** @var array<string, int> class node by lowercase class name (the name is the key: one lookup, not two) */
     private static array $class_nodes = [];
-    /** @var array<int, int> function-like node by interned lowercase function id */
+    /** @var array<string, int> function-like node by lowercase function id */
     private static array $function_like_nodes = [];
-    /** @var array<int, int> return node by interned lowercase function id */
+    /** @var array<string, int> return node by lowercase function id */
     private static array $return_nodes = [];
 
     /** @var array<int, int> the class node of each storage id, built once */
@@ -232,7 +232,7 @@ final class CodeUseGraph
     public static function functionLikeNode(string $function_id_lc): int
     {
         /** @psalm-suppress ImpureStaticProperty Cache */
-        return self::$function_like_nodes[Interner::intern($function_id_lc)]
+        return self::$function_like_nodes[$function_id_lc]
             ??= Interner::intern(self::KIND_FUNCTION_LIKE . ' ' . $function_id_lc);
     }
 
@@ -243,7 +243,7 @@ final class CodeUseGraph
     public static function functionLikeReturnNode(string $function_id_lc): int
     {
         /** @psalm-suppress ImpureStaticProperty Cache */
-        return self::$return_nodes[Interner::intern($function_id_lc)]
+        return self::$return_nodes[$function_id_lc]
             ??= Interner::intern(self::KIND_RETURN . ' ' . $function_id_lc);
     }
 

@@ -1027,10 +1027,10 @@ final class AtomicPropertyFetchAnalyzer
             $stmt,
             empty($relevant_enum_case_names)
                 ? Type::getNonEmptyString()
-                : new Union(array_map(
+                : new Union(array_values(array_map(
                     static fn(string $name): TString => Type::getAtomicStringFromLiteral($name),
                     $relevant_enum_case_names,
-                )),
+                ))),
         );
     }
 
@@ -1067,10 +1067,9 @@ final class AtomicPropertyFetchAnalyzer
             $case_values[] = $case_value ?? new TMixed();
         }
 
-        /** @psalm-suppress ArgumentTypeCoercion */
         $statements_analyzer->node_data->setType(
             $stmt,
-            new Union($case_values),
+            $case_values === [] ? Type::getMixed() : new Union($case_values),
         );
     }
 

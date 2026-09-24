@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Internal;
 
 use Override;
+use Psalm\Internal\Interner;
 use Psalm\Storage\Assertion;
 use Psalm\Storage\ImmutableNonCloneableTrait;
 use Psalm\Type\Atomic\TClassConstant;
@@ -86,9 +87,6 @@ final class Clause implements Stringable
      */
     public int $keys_bloom = 0;
 
-    /** @var array<string, int> interned variable and assertion keys (pzoom interns names as StrIds) */
-    private static array $key_ids = [];
-
     /**
      * @param array<string, non-empty-array<int, Assertion>>  $possibilities
      * @param array<string, bool> $redefined_vars
@@ -102,8 +100,16 @@ final class Clause implements Stringable
         public bool $generated = false,
         public array $redefined_vars = [],
     ) {
-        // pzoom keeps possibilities in a BTreeMap: sorted by variable
-        ksort($possibilities);
+        // pzoom keeps possibilities in a BTreeMap: sorted by variable. Most arrive sorted (one variable, or built
+        // from a sorted clause): only an unsorted array is sorted (a copy of the shared array otherwise).
+        $prev = null;
+        foreach ($possibilities as $var => $_) {
+            if ($prev !== null && $prev > $var) {
+                ksort($possibilities);
+                break;
+            }
+            $prev = $var;
+        }
 
         // One pass over interned ids (variables here, assertions by Assertion::getHash()) computes both the hash and the bloom (pzoom's compute_hash /
         // compute_keys_bloom). Within a variable the assertions are combined by a sum, so their order does not
@@ -140,12 +146,13 @@ final class Clause implements Stringable
     }
 
     /**
-     * @psalm-external-mutation-free
-     * @psalm-suppress ImpureStaticProperty the table only grows; an id never changes meaning
+     * @psalm-pure
      */
     private static function keyId(string $key): int
     {
-        return self::$key_ids[$key] ??= count(self::$key_ids);
+        // a stable 31-bit hash of the variable (xxh3, native in the compiled program): no table, no lookup, the
+        // same value on every thread. 31 bits keep the mixing products below 2^63.
+        return Interner::hash($key) & 0x7FFFFFFF;
     }
 
     /**

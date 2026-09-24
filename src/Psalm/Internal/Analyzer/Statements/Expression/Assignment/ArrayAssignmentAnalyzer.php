@@ -689,7 +689,7 @@ final class ArrayAssignmentAnalyzer
                 ) {
                     $atomic_root_types['array'] =
                         $atomic_root_type_array->setCount($atomic_root_type_array->count+1);
-                    $new_child_type = new Union($atomic_root_types);
+                    $new_child_type = new Union(array_values($atomic_root_types));
                 } elseif ($atomic_root_type_array instanceof TKeyedArray
                     && $atomic_root_type_array->is_list) {
                     $properties = $atomic_root_type_array->properties;
@@ -709,7 +709,7 @@ final class ArrayAssignmentAnalyzer
                     $atomic_root_types['array'] =
                         $atomic_root_type_array->setProperties($properties);
 
-                    $new_child_type = new Union($atomic_root_types);
+                    $new_child_type = new Union(array_values($atomic_root_types));
                 }
             }
         }

@@ -525,7 +525,7 @@ final class SimpleAssertionReconciler extends Reconciler
                         unset($types[$k]);
                         $atomic_type = $atomic_type->replaceAs(new Union([$assertion_type]));
                         $types[$atomic_type->getKey()] = $atomic_type;
-                        return new Union($types);
+                        return new Union(array_values($types));
                     }
                 }
             }

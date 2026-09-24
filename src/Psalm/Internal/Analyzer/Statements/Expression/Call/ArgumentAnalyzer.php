@@ -1057,7 +1057,7 @@ final class ArgumentAnalyzer
                 static fn(Atomic $atomic) => !$atomic->isCallableType(),
             );
             $param_type_without_callable = [] !== $param_types_without_callable
-                ? new Union($param_types_without_callable)
+                ? new Union(array_values($param_types_without_callable))
                 : null;
 
             foreach ($input_type->getAtomicTypes() as $input_type_part) {
