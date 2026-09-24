@@ -4,10 +4,15 @@ use crate::map::Map;
 use std::fmt;
 use std::ops::{Deref, Index};
 use std::rc::Rc;
+use smallvec::SmallVec;
+
+/// Up to two elements live inside the Rc box (one allocation): the census showed len 1-2 lists are 86% of
+/// all non-empty lists.
+pub type Inner<T> = SmallVec<[T; 2]>;
 
 /// `None` is the empty list (the census showed 37% of all allocations were `[]` boxes); the second field is
 /// PHP's internal array pointer (`current()`/`next()`...), copied with the value.
-pub struct List<T>(Option<Rc<Vec<T>>>, usize);
+pub struct List<T>(Option<Rc<Inner<T>>>, usize);
 
 
 impl<T> Clone for List<T> {
@@ -47,7 +52,7 @@ impl<T> List<T> {
     }
     pub fn with_capacity(n: usize) -> List<T> {
         crate::stats::bump(crate::stats::LIST_WITH_CAP);
-        List(Some(Rc::new(Vec::with_capacity(n))), 0)
+        List(Some(Rc::new(Inner::with_capacity(n))), 0)
     }
     #[inline]
     pub fn from_vec(v: Vec<T>) -> List<T> {
@@ -56,7 +61,15 @@ impl<T> List<T> {
         if v.is_empty() {
             return List(None, 0);
         }
-        List(Some(Rc::new(v)), 0)
+        List(Some(Rc::new(Inner::from_vec(v))), 0)
+    }
+    /// A list from an array literal: one allocation, no intermediate Vec.
+    #[inline]
+    pub fn from_array<const N: usize>(a: [T; N]) -> List<T> {
+        if N == 0 {
+            return List(None, 0);
+        }
+        List(Some(Rc::new(Inner::from_iter(a))), 0)
     }
     /// `current()`: element at the internal pointer.
     pub fn ptr_current(&self) -> Option<&T> {
@@ -147,14 +160,14 @@ impl<T> List<T> {
 
 impl<T: Clone> List<T> {
     #[inline]
-    pub fn make_mut(&mut self) -> &mut Vec<T> {
+    pub fn make_mut(&mut self) -> &mut Inner<T> {
         #[cfg(feature = "stats")]
         if let Some(rc) = &self.0 {
             if Rc::strong_count(rc) > 1 {
                 crate::stats::bump(crate::stats::LIST_COW_CLONE);
             }
         }
-        Rc::make_mut(self.0.get_or_insert_with(|| Rc::new(Vec::new())))
+        Rc::make_mut(self.0.get_or_insert_with(|| Rc::new(Inner::new())))
     }
     #[inline]
     pub fn push(&mut self, v: T) {
@@ -226,8 +239,8 @@ impl<T: Clone> List<T> {
         match self.0 {
             None => Vec::new(),
             Some(rc) => match Rc::try_unwrap(rc) {
-                Ok(v) => v,
-                Err(rc) => (*rc).clone(),
+                Ok(v) => v.into_vec(),
+                Err(rc) => rc.to_vec(),
             },
         }
     }
@@ -243,8 +256,8 @@ impl<T: Clone> List<T> {
     pub fn sort_by<F: FnMut(&T, &T) -> std::cmp::Ordering>(&mut self, f: F) {
         self.make_mut().sort_by(f);
     }
-    pub fn retain<F: FnMut(&T) -> bool>(&mut self, f: F) {
-        self.make_mut().retain(f);
+    pub fn retain<F: FnMut(&T) -> bool>(&mut self, mut f: F) {
+        self.make_mut().retain(|v| f(v));
     }
     pub fn truncate(&mut self, n: usize) {
         self.make_mut().truncate(n);
@@ -261,7 +274,8 @@ impl<T: Clone> List<T> {
         let v = self.make_mut();
         let start = start.min(v.len());
         let end = (start + len).min(v.len());
-        let removed: Vec<T> = v.splice(start..end, repl).collect();
+        let removed: Vec<T> = v.drain(start..end).collect();
+        v.insert_many(start, repl);
         List::from_vec(removed)
     }
     /// Map elements into a new list (used for element casts).
@@ -315,5 +329,5 @@ impl<T: Eq> Eq for List<T> {}
 #[macro_export]
 macro_rules! list {
     () => { $crate::List::new() };
-    ($($x:expr),+ $(,)?) => { $crate::List::from_vec(vec![$($x),+]) };
+    ($($x:expr),+ $(,)?) => { $crate::List::from_array([$($x),+]) };
 }
