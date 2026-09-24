@@ -625,6 +625,39 @@ final class ClassModel
         return $this->post_ctor_written = $set;
     }
 
+    /**
+     * `Method::$field` for every post-construction `$this->field` write that is not a cache write: one inside a
+     * method that may mutate (Psalm's allowed_mutations above LEVEL_INTERNAL_READ). A write inside a
+     * mutation-free method is a suppressed memo write, which a value type may lose.
+     *
+     * @return list<string>
+     */
+    private function nonCachePostConstructionWrites(): array
+    {
+        $out = [];
+        $ctor_methods = $this->constructionMethods();
+        $finder = new \PhpParser\NodeFinder();
+        foreach ($this->methods as $m) {
+            if ($m->node === null || isset($ctor_methods[$m->lc()])) {
+                continue;
+            }
+            if ($m->storage->allowed_mutations <= \Psalm\Storage\Mutations::LEVEL_INTERNAL_READ) {
+                continue;
+            }
+            foreach ($finder->find($m->node->stmts ?? [], static fn(\PhpParser\Node $n): bool =>
+                ($n instanceof \PhpParser\Node\Expr\Assign || $n instanceof \PhpParser\Node\Expr\AssignOp)
+                && self::thisPropName($n->var) !== null) as $assign
+            ) {
+                /** @var \PhpParser\Node\Expr\Assign|\PhpParser\Node\Expr\AssignOp $assign */
+                $fname = self::thisPropName($assign->var);
+                if ($fname !== null && isset($this->fields[$fname])) {
+                    $out[] = $m->name . '::$' . $fname;
+                }
+            }
+        }
+        return array_values(array_unique($out));
+    }
+
     /** @var ?bool cache for noHelperConstructionWrites() */
     private ?bool $no_helper_ctor_writes = null;
 
@@ -837,6 +870,34 @@ final class ClassModel
         if (self::$program->identityObserved($this)) {
             if (getenv('IMMUTABLE_DIAG') !== false && getenv('IMMUTABLE_DIAG') !== '') {
                 fwrite(STDERR, "[value-identity] " . $this->fqcn . " stays Rc: its identity is observed\n");
+            }
+            return $this->value_type = false;
+        }
+        // a value is copied on every read: a write through a copy is lost. An Rc<T> with Cell fields shares such
+        // writes (`$type->from_docblock = false` on an atomic taken out of a union), a value cannot, so only
+        // recomputable cache writes (suppressed writes inside mutation-free methods) are tolerated: no field may
+        // be written from outside the class (through any base- or interface-typed handle either) and every own
+        // post-construction write must sit in a mutation-free method.
+        $ext = [];
+        for ($m = $this; $m !== null; $m = $m->parent) {
+            foreach ($m->ext_written_fields as $fld => $_) {
+                $ext[$fld] = true;
+            }
+        }
+        foreach ($this->storage->class_implements as $lc => $_) {
+            foreach ((self::$program->classes[$lc] ?? null)?->ext_written_fields ?? [] as $fld => $_) {
+                $ext[$fld] = true;
+            }
+        }
+        if ($ext !== []) {
+            if (getenv('IMMUTABLE_DIAG') !== false && getenv('IMMUTABLE_DIAG') !== '') {
+                fwrite(STDERR, "[value-extwrite] " . $this->fqcn . " stays Rc: written from outside: " . implode(',', array_keys($ext)) . "\n");
+            }
+            return $this->value_type = false;
+        }
+        if (($w = $this->nonCachePostConstructionWrites()) !== []) {
+            if (getenv('IMMUTABLE_DIAG') !== false && getenv('IMMUTABLE_DIAG') !== '') {
+                fwrite(STDERR, "[value-writes] " . $this->fqcn . " stays Rc: written after construction outside mutation-free methods: " . implode(',', $w) . "\n");
             }
             return $this->value_type = false;
         }
