@@ -17,6 +17,17 @@ pub fn cast<T>(f: impl CastTo<T>) -> T {
     f.cast_to()
 }
 
+/// A narrowing view: `&Base` seen as `&Leaf` without cloning the handle (the generated enums implement it
+/// for their leaf variants; a class handle implements it for itself).
+pub trait CastRef<T> {
+    fn cast_ref(&self) -> &T;
+}
+
+#[inline]
+pub fn cast_ref<T>(f: &(impl CastRef<T> + ?Sized)) -> &T {
+    f.cast_ref()
+}
+
 macro_rules! identity_cast {
     ($($t:ty),*) => { $(impl CastTo<$t> for $t { #[inline] fn cast_to(self) -> $t { self } })* };
 }

@@ -47,7 +47,7 @@ pub fn fast_map<K, V>() -> FastMap<K, V> {
 pub use error::{RtError, Flow, R, Never, never, dead, uncaught, do_throw, take_thrown, take_thrown_opt, install_throw_panic_hook, PhpThrow, PhpThrowable};
 pub use traits::*;
 pub use ops::*;
-pub use cast::{CastTo, cast, PhpValue, gcast};
+pub use cast::{CastTo, CastRef, cast, cast_ref, PhpValue, gcast};
 pub use support::*;
 pub use containers::*;
 pub use conv::{Num, OptValue, Scalar};
@@ -65,7 +65,7 @@ pub mod prelude {
     pub use crate::{list, map, cat, sfmt, sprintf, impl_enum_handle};
     pub use crate::traits::*;
     pub use crate::ops::*;
-    pub use crate::cast::{CastTo, cast};
+    pub use crate::cast::{CastTo, CastRef, cast, cast_ref};
     pub use crate::support::*;
     pub use crate::containers::*;
     pub use crate::output::*;
