@@ -770,8 +770,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
                             true,
                         );
 
-                        /** @psalm-suppress InaccessibleProperty We just created this type */
-                        $check_type->possibly_undefined = $possibly_undefined;
+                        $check_type = $check_type->setPossiblyUndefined($possibly_undefined);
 
                         if ($check_type->possibly_undefined !== $checked_type->possibly_undefined
                             || !UnionTypeComparator::isContainedBy($codebase, $checked_type, $check_type)

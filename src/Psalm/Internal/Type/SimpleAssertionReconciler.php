@@ -2870,16 +2870,7 @@ final class SimpleAssertionReconciler extends Reconciler
         if (!$types) {
             throw new AssertionError("We must have some types here!");
         }
-        $new = $existing_var_type->setTypes($types);
-        if ($new === $existing_var_type && ($new->possibly_undefined || $new->possibly_undefined_from_try)) {
-            $new = $existing_var_type->setPossiblyUndefined(false, false);
-        } else {
-            /** @psalm-suppress InaccessibleProperty We just created this type */
-            $new->possibly_undefined = false;
-            /** @psalm-suppress InaccessibleProperty We just created this type */
-            $new->possibly_undefined_from_try = false;
-        }
-        return $new;
+        return $existing_var_type->setTypes($types)->setPossiblyUndefined(false, false);
     }
 
     /**

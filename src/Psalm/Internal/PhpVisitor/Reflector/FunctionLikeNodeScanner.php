@@ -411,8 +411,7 @@ final class FunctionLikeNodeScanner
             );
 
             if ($stmt->returnsByRef()) {
-                /** @psalm-suppress InaccessibleProperty We just created this type */
-                $storage->return_type->by_ref = true;
+                $storage->return_type = $storage->return_type->setProperties(['by_ref' => true]);
             }
 
             $storage->signature_return_type = $storage->return_type;

@@ -608,8 +608,6 @@ abstract class Type
      * @param  int    $literal_limit any greater number of literal types than this
      *                               will be merged to a scalar
      * @psalm-external-mutation-free
-     * @psalm-suppress ImpurePropertyAssignment We're not mutating external instances
-     * @psalm-suppress InaccessibleProperty We're not mutating external instances
      */
     public static function combineUnionTypes(
         ?Union $type_1,
@@ -667,6 +665,8 @@ abstract class Type
     /**
      * combineUnionTypesSlow() for two unions with the same atomics: the flags the combiner's fresh union would
      * carry (its defaults, then the merges the slow path applies), on $type_1's atomics.
+     *
+     * @psalm-external-mutation-free
      */
     private static function combineSameAtomics(Union $type_1, Union $type_2, ?bool $possibly_undefined): Union
     {
@@ -737,7 +737,63 @@ abstract class Type
                 ]);
             }
 
-            $combined_type = TypeCombiner::combine(
+            $properties = [];
+
+            if (!$type_1->initialized || !$type_2->initialized) {
+                $properties['initialized'] = false;
+            }
+
+            if ($type_1->from_docblock || $type_2->from_docblock) {
+                $properties['from_docblock'] = true;
+            }
+
+            if ($type_1->from_calculation || $type_2->from_calculation) {
+                $properties['from_calculation'] = true;
+            }
+
+            if ($type_1->ignore_nullable_issues || $type_2->ignore_nullable_issues) {
+                $properties['ignore_nullable_issues'] = true;
+            }
+
+            if ($type_1->ignore_falsable_issues || $type_2->ignore_falsable_issues) {
+                $properties['ignore_falsable_issues'] = true;
+            }
+
+            if ($type_1->explicit_never || $type_2->explicit_never) {
+                $properties['explicit_never'] = true;
+            }
+
+            if ($type_1->had_template && $type_2->had_template) {
+                $properties['had_template'] = true;
+            }
+
+            if ($type_1->reference_free && $type_2->reference_free) {
+                $properties['reference_free'] = true;
+            }
+
+            if ($both_failed_reconciliation) {
+                $properties['failed_reconciliation'] = true;
+            }
+
+            if ($possibly_undefined !== null) {
+                $properties['possibly_undefined'] = $possibly_undefined;
+            } elseif ($type_1->possibly_undefined || $type_2->possibly_undefined) {
+                $properties['possibly_undefined'] = true;
+            }
+
+            if ($type_1->possibly_undefined_from_try || $type_2->possibly_undefined_from_try) {
+                $properties['possibly_undefined_from_try'] = true;
+            }
+
+            if ($type_1->parent_nodes || $type_2->parent_nodes) {
+                $properties['parent_nodes'] = $type_1->parent_nodes + $type_2->parent_nodes;
+            }
+
+            if ($type_1->by_ref || $type_2->by_ref) {
+                $properties['by_ref'] = true;
+            }
+
+            return TypeCombiner::combine(
                 array_merge(
                     $type_1->getAtomicTypes(),
                     $type_2->getAtomicTypes(),
@@ -746,64 +802,32 @@ abstract class Type
                 $overwrite_empty_array,
                 $allow_mixed_union,
                 $literal_limit,
+                $properties,
             );
-
-            if (!$type_1->initialized || !$type_2->initialized) {
-                $combined_type->initialized = false;
-            }
-
-            if ($type_1->from_docblock || $type_2->from_docblock) {
-                $combined_type->from_docblock = true;
-            }
-
-            if ($type_1->from_calculation || $type_2->from_calculation) {
-                $combined_type->from_calculation = true;
-            }
-
-            if ($type_1->ignore_nullable_issues || $type_2->ignore_nullable_issues) {
-                $combined_type->ignore_nullable_issues = true;
-            }
-
-            if ($type_1->ignore_falsable_issues || $type_2->ignore_falsable_issues) {
-                $combined_type->ignore_falsable_issues = true;
-            }
-
-            if ($type_1->explicit_never || $type_2->explicit_never) {
-                $combined_type->explicit_never = true;
-            }
-
-            if ($type_1->had_template && $type_2->had_template) {
-                $combined_type->had_template = true;
-            }
-
-            if ($type_1->reference_free && $type_2->reference_free) {
-                $combined_type->reference_free = true;
-            }
-
-            if ($both_failed_reconciliation) {
-                $combined_type->failed_reconciliation = true;
-            }
         }
 
+        // both vanilla mixed: a fresh mixed under the merged flags
+        $properties = [];
+
         if ($possibly_undefined !== null) {
-            $combined_type->possibly_undefined = $possibly_undefined;
+            $properties['possibly_undefined'] = $possibly_undefined;
         } elseif ($type_1->possibly_undefined || $type_2->possibly_undefined) {
-            $combined_type->possibly_undefined = true;
+            $properties['possibly_undefined'] = true;
         }
 
         if ($type_1->possibly_undefined_from_try || $type_2->possibly_undefined_from_try) {
-            $combined_type->possibly_undefined_from_try = true;
+            $properties['possibly_undefined_from_try'] = true;
         }
 
         if ($type_1->parent_nodes || $type_2->parent_nodes) {
-            $combined_type->parent_nodes = $type_1->parent_nodes + $type_2->parent_nodes;
+            $properties['parent_nodes'] = $type_1->parent_nodes + $type_2->parent_nodes;
         }
 
         if ($type_1->by_ref || $type_2->by_ref) {
-            $combined_type->by_ref = true;
+            $properties['by_ref'] = true;
         }
 
-        return $combined_type;
+        return $properties === [] ? $combined_type : $combined_type->setProperties($properties);
     }
 
     /**

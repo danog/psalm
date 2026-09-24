@@ -182,6 +182,8 @@ trait UnionTrait
 
         $this->types = self::listOfTypes($types);
 
+        // an explicit from_docblock is exact; otherwise a union is from a docblock when any of its atomics is
+        $exact_from_docblock = array_key_exists('from_docblock', $properties);
         $from_docblock = $this->from_docblock;
         foreach ($this->types as $type) {
             if ($type instanceof TNever) {
@@ -189,7 +191,9 @@ trait UnionTrait
             }
             $from_docblock = $from_docblock || $type->from_docblock;
         }
-        $this->from_docblock = $from_docblock;
+        if (!$exact_from_docblock) {
+            $this->from_docblock = $from_docblock;
+        }
     }
 
     /**

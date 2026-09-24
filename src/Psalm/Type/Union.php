@@ -225,10 +225,6 @@ final class Union implements TypeNode
     }
 
     /**
-     * @param TProperties $properties
-     * @return static
-     */
-    /**
      * pzoom's `TUnion::eq`, as combineUnionTypes uses it: the same atomics (compared first, since most pairs
      * differ there; a wither's clone shares the atomics array, so `===` is a pointer comparison, else an
      * element-wise identity check in C, then a per-key id comparison) and the same flags a combination merges.
@@ -336,10 +332,23 @@ final class Union implements TypeNode
         return true;
     }
 
+    /**
+     * The type has been checked (TypeChecker): a memo that affects nothing else.
+     */
+    public function markChecked(): void
+    {
+        /** @psalm-suppress InaccessibleProperty, ImpurePropertyAssignment Does not affect anything else */
+        $this->checked = true;
+    }
+
+    /**
+     * @param TProperties $properties
+     * @return static
+     * @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty We just cloned this object
+     */
     public function setProperties(array $properties): self
     {
         $obj = null;
-        /** @psalm-suppress ImpurePropertyAssignment We just cloned this object */
         if (array_key_exists('from_docblock', $properties) && $this->from_docblock !== $properties['from_docblock']) {
             $obj ??= clone $this;
             $obj->from_docblock = $properties['from_docblock'];

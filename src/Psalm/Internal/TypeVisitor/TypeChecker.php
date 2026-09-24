@@ -95,8 +95,12 @@ final class TypeChecker extends TypeVisitor
             $this->checkResource($type);
         }
 
-        /** @psalm-suppress InaccessibleProperty Doesn't affect anything else */
-        $type->checked = true;
+        if ($type instanceof Union) {
+            $type->markChecked();
+        } else {
+            /** @psalm-suppress InaccessibleProperty Doesn't affect anything else */
+            $type->checked = true;
+        }
 
         return null;
     }
