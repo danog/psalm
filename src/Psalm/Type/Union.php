@@ -47,7 +47,7 @@ use function get_object_vars;
  *      allow_mutations?: bool,
  *      has_mutations?: bool,
  *      different?: bool,
- *      parent_nodes?: array<string, DataFlowNode>
+ *      parent_nodes?: array<int, DataFlowNode>
  * }
  * @api
  */
@@ -174,7 +174,7 @@ final class Union implements TypeNode
 
 
     /**
-     * @var array<string, DataFlowNode>
+     * @var array<int, DataFlowNode>
      */
     public array $parent_nodes = [];
 
@@ -407,7 +407,7 @@ final class Union implements TypeNode
     }
 
     /**
-     * @param array<string, DataFlowNode> $parent_nodes
+     * @param array<int, DataFlowNode> $parent_nodes
      * @return static
      */
     public function setParentNodes(array $parent_nodes, bool $propagate_changes = false): self
@@ -423,7 +423,7 @@ final class Union implements TypeNode
 
 
     /**
-     * @param array<string, DataFlowNode> $parent_nodes
+     * @param array<int, DataFlowNode> $parent_nodes
      * @return static
      */
     public function addParentNodes(array $parent_nodes): self

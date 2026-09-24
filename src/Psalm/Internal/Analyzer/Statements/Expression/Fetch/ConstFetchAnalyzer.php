@@ -152,7 +152,7 @@ final class ConstFetchAnalyzer
         $source = DataFlowNode::getForTaint('STDIN', $location, $taints);
         $graph->addSource($source);
 
-        $type = $type->setParentNodes([$source->id => $source]);
+        $type = $type->setParentNodes([$source->key => $source]);
     }
 
     public static function getGlobalConstType(

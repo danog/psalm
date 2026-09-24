@@ -10,6 +10,7 @@ use Psalm\Codebase;
 use Psalm\Config;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\DataFlow\Path;
 use Psalm\Issue\TaintedCallable;
 use Psalm\Issue\TaintedCookie;
 use Psalm\Issue\TaintedCustom;
@@ -37,6 +38,7 @@ use Psalm\Progress\Progress;
 use Psalm\Type\TaintKind;
 use Webmozart\Assert\Assert;
 
+use function abs;
 use function array_pop;
 use function array_unshift;
 use function count;
@@ -85,6 +87,39 @@ final class TaintFlowGraph extends DataFlowGraph
     /**
      * @psalm-external-mutation-free
      */
+    /**
+     * The taint graph keys its edges by the spelled-out id: it parses ids (specializations) and its
+     * bookkeeping maps hold ids as values.
+     */
+    #[Override]
+    public function addPath(
+        DataFlowNode $from,
+        DataFlowNode $to,
+        string $path_type,
+        int $added_taints = 0,
+        int $removed_taints = 0,
+    ): void {
+        $from_id = $from->id;
+        $to_id = $to->id;
+
+        if ($from_id === $to_id) {
+            return;
+        }
+
+        $length = 0;
+
+        if ($from->code_location
+            && $to->code_location
+            && $from->code_location->file_path === $to->code_location->file_path
+        ) {
+            $to_line = $to->code_location->raw_line_number;
+            $from_line = $from->code_location->raw_line_number;
+            $length = abs($to_line - $from_line);
+        }
+
+        $this->forward_edges[$from_id][$to_id] = new Path($path_type, $length, $added_taints, $removed_taints);
+    }
+
     #[Override]
     public function addNode(DataFlowNode $node): void
     {

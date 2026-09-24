@@ -7,6 +7,7 @@ namespace Psalm\Internal\DataFlow;
 use Override;
 use Psalm\CodeLocation;
 use Psalm\Internal\Codebase\Methods;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Storage\FunctionLikeParameter;
 use Psalm\Storage\FunctionLikeStorage;
@@ -46,6 +47,12 @@ use function substr;
 final class DataFlowNode implements Stringable
 {
     /**
+     * The id interned: what the graphs key their maps by (pzoom keys by a structured id; the spelling stays in
+     * $id for messages and for the taint graph, which parses it).
+     */
+    public readonly int $key;
+
+    /**
      * @psalm-mutation-free
      */
     private function __construct(
@@ -63,6 +70,7 @@ final class DataFlowNode implements Stringable
          */
         public readonly array $specialized_calls = [],
     ) {
+        $this->key = Interner::intern($id);
     }
 
     /**

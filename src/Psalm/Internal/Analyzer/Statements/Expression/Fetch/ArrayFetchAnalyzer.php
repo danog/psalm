@@ -466,10 +466,10 @@ final class ArrayFetchAnalyzer
                 }
             }
 
-            $stmt_type = $stmt_type->setParentNodes([$new_parent_node->id => $new_parent_node]);
+            $stmt_type = $stmt_type->setParentNodes([$new_parent_node->key => $new_parent_node]);
 
             if ($array_key_node) {
-                $offset_type = $offset_type->setParentNodes([$array_key_node->id => $array_key_node]);
+                $offset_type = $offset_type->setParentNodes([$array_key_node->key => $array_key_node]);
             }
         }
     }

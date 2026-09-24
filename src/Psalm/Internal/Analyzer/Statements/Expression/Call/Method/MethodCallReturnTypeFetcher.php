@@ -374,7 +374,7 @@ final class MethodCallReturnTypeFetcher
                         $node_location,
                     );
 
-                    $method_call_nodes[$method_call_node->id] = $method_call_node;
+                    $method_call_nodes[$method_call_node->key] = $method_call_node;
                 }
 
                 foreach ($parent_nodes as $parent_node) {
@@ -403,7 +403,7 @@ final class MethodCallReturnTypeFetcher
                         $removed_taints,
                     );
 
-                    $method_call_nodes[$method_call_node->id] = $method_call_node;
+                    $method_call_nodes[$method_call_node->key] = $method_call_node;
                 }
 
                 if (!$method_call_nodes) {
@@ -446,7 +446,7 @@ final class MethodCallReturnTypeFetcher
                 $return_type_candidate = $return_type_candidate->setParentNodes($method_call_nodes);
 
                 $stmt_var_type = $context->vars_in_scope[$var_id]->setParentNodes(
-                    [$var_node->id => $var_node],
+                    [$var_node->key => $var_node],
                 );
 
                 $context->vars_in_scope[$var_id] = $stmt_var_type;

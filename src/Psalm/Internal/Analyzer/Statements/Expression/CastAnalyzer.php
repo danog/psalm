@@ -950,7 +950,7 @@ final class CastAnalyzer
      * stays intact in every mode; the removed_taints on the edge is ignored by the
      * variable-use graph and only takes effect for taint analysis.
      *
-     * @param array<string, DataFlowNode> $parent_nodes
+     * @param array<int, DataFlowNode> $parent_nodes
      */
     private static function stripCastTaints(
         StatementsAnalyzer $statements_analyzer,
@@ -982,7 +982,7 @@ final class CastAnalyzer
                 );
             }
 
-            $parent_nodes = [$cast_node->id => $cast_node];
+            $parent_nodes = [$cast_node->key => $cast_node];
         }
 
         return $result_type->setParentNodes($parent_nodes);

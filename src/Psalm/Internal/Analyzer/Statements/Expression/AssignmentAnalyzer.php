@@ -825,7 +825,7 @@ final class AssignmentAnalyzer
 
         $new_parent_node = DataFlowNode::getForAssignment($var_id, $var_location);
         $flow_graph->addNode($new_parent_node);
-        $new_parent_nodes = [$new_parent_node->id => $new_parent_node];
+        $new_parent_nodes = [$new_parent_node->key => $new_parent_node];
 
         // If taints get added (e.g. due to plugin) this assignment needs to
         // become a new taint source
@@ -977,9 +977,9 @@ final class AssignmentAnalyzer
 
             // Remove old reference parent node so previously referenced variable usage doesn't count as reference usage
             $old_type = $context->vars_in_scope[$lhs_var_id];
-            foreach ($old_type->parent_nodes as $old_parent_node_id => $_) {
-                if (str_starts_with($old_parent_node_id, "$lhs_var_id from ")) {
-                    unset($old_type->parent_nodes[$old_parent_node_id]);
+            foreach ($old_type->parent_nodes as $old_parent_node_key => $old_parent_node) {
+                if (str_starts_with($old_parent_node->id, "$lhs_var_id from ")) {
+                    unset($old_type->parent_nodes[$old_parent_node_key]);
                 }
             }
         }
@@ -1029,7 +1029,7 @@ final class AssignmentAnalyzer
         $lhs_node = DataFlowNode::getForAssignment($lhs_var_id, $lhs_location);
 
         $context->vars_in_scope[$lhs_var_id] =
-            $context->vars_in_scope[$lhs_var_id]->addParentNodes([$lhs_node->id => $lhs_node]);
+            $context->vars_in_scope[$lhs_var_id]->addParentNodes([$lhs_node->key => $lhs_node]);
 
         if ($stmt->var instanceof ArrayDimFetch && $stmt->var->dim !== null) {
             // Analyze offset so that variables in the offset get marked as used
@@ -1917,7 +1917,7 @@ final class AssignmentAnalyzer
             }
 
             $assign_value_type = $assign_value_type->setParentNodes(
-                [$new_parent_node->id => $new_parent_node],
+                [$new_parent_node->key => $new_parent_node],
             );
         }
     }

@@ -149,7 +149,7 @@ final class MutableUnion implements TypeNode
     private ?string $exact_id = null;
 
     /**
-     * @var array<string, DataFlowNode>
+     * @var array<int, DataFlowNode>
      */
     public array $parent_nodes = [];
 

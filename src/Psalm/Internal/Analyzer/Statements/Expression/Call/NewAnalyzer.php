@@ -786,7 +786,7 @@ final class NewAnalyzer extends CallAnalyzer
 
             $statements_analyzer->taint_flow_graph->addNode($method_source);
 
-            $stmt_type = $stmt_type->setParentNodes([$method_source->id => $method_source]);
+            $stmt_type = $stmt_type->setParentNodes([$method_source->key => $method_source]);
             $statements_analyzer->node_data->setType($stmt, $stmt_type);
         }
     }

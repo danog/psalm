@@ -8,6 +8,7 @@ use Override;
 use Psalm\CodeLocation;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\DataFlow\Path;
+use Psalm\Internal\Interner;
 
 use function abs;
 use function count;
@@ -17,13 +18,13 @@ use function count;
  */
 final class VariableUseGraph extends DataFlowGraph
 {
-    /** @var array<string, array<string, true>> */
+    /** @var array<int, array<int, true>> */
     private array $backward_edges = [];
 
-    /** @var array<string, DataFlowNode> */
+    /** @var array<int, DataFlowNode> */
     private array $nodes = [];
 
-    /** @var array<string, list<CodeLocation>> */
+    /** @var array<int, list<CodeLocation>> */
     private array $origin_locations_by_id = [];
 
     /**
@@ -32,7 +33,7 @@ final class VariableUseGraph extends DataFlowGraph
     #[Override]
     public function addNode(DataFlowNode $node): void
     {
-        $this->nodes[$node->id] = $node;
+        $this->nodes[$node->key] = $node;
     }
 
     /**
@@ -46,8 +47,8 @@ final class VariableUseGraph extends DataFlowGraph
         int $added_taints = 0,
         int $removed_taints = 0,
     ): void {
-        $from_id = $from->id;
-        $to_id = $to->id;
+        $from_id = $from->key;
+        $to_id = $to->key;
 
         if ($from_id === $to_id) {
             return;
@@ -78,7 +79,7 @@ final class VariableUseGraph extends DataFlowGraph
             $new_child_nodes = [];
 
             foreach ($sources as $source) {
-                $visited_source_ids[$source->id] = true;
+                $visited_source_ids[$source->key] = true;
 
                 if ($this->getChildNodes(
                     $new_child_nodes,
@@ -100,8 +101,8 @@ final class VariableUseGraph extends DataFlowGraph
      */
     public function getOriginLocations(DataFlowNode $assignment_node): array
     {
-        if (isset($this->origin_locations_by_id[$assignment_node->id])) {
-            return $this->origin_locations_by_id[$assignment_node->id];
+        if (isset($this->origin_locations_by_id[$assignment_node->key])) {
+            return $this->origin_locations_by_id[$assignment_node->key];
         }
 
         $visited_child_ids = [];
@@ -114,7 +115,7 @@ final class VariableUseGraph extends DataFlowGraph
             $new_parent_nodes = [];
 
             foreach ($child_nodes as $child_node) {
-                $visited_child_ids[$child_node->id] = true;
+                $visited_child_ids[$child_node->key] = true;
 
                 $had_parent_nodes = $this->getParentNodes(
                     $new_parent_nodes,
@@ -134,26 +135,26 @@ final class VariableUseGraph extends DataFlowGraph
             $child_nodes = $new_parent_nodes;
         }
 
-        $this->origin_locations_by_id[$assignment_node->id] = $origin_locations;
+        $this->origin_locations_by_id[$assignment_node->key] = $origin_locations;
 
         return $origin_locations;
     }
 
     /**
-     * @param array<string, bool> $visited_source_ids
-     * @param array<string, DataFlowNode> $child_nodes
-     * @param-out array<string, DataFlowNode> $child_nodes
+     * @param array<int, bool> $visited_source_ids
+     * @param array<int, DataFlowNode> $child_nodes
+     * @param-out array<int, DataFlowNode> $child_nodes
      */
     private function getChildNodes(
         array &$child_nodes,
         DataFlowNode $generated_source,
         array $visited_source_ids,
     ): bool {
-        if (!isset($this->forward_edges[$generated_source->id])) {
+        if (!isset($this->forward_edges[$generated_source->key])) {
             return false;
         }
 
-        foreach ($this->forward_edges[$generated_source->id] as $to_id => $path) {
+        foreach ($this->forward_edges[$generated_source->key] as $to_id => $path) {
             $path_type = $path->type;
 
             if ($path_type === 'variable-use'
@@ -188,7 +189,7 @@ final class VariableUseGraph extends DataFlowGraph
 
             $path_types = $generated_source->path_types;
             $path_types []= $path_type;
-            $new_destination = DataFlowNode::getForVariableUseDestination($to_id, $path_types);
+            $new_destination = DataFlowNode::getForVariableUseDestination(Interner::lookup($to_id), $path_types);
 
             $child_nodes[$to_id] = $new_destination;
         }
@@ -197,7 +198,7 @@ final class VariableUseGraph extends DataFlowGraph
     }
 
     /**
-     * @param array<string, bool> $visited_source_ids
+     * @param array<int, bool> $visited_source_ids
      * @param list<DataFlowNode> $new_parent_nodes
      * @param-out list<DataFlowNode> $new_parent_nodes
      */
@@ -206,12 +207,12 @@ final class VariableUseGraph extends DataFlowGraph
         DataFlowNode $destination,
         array $visited_source_ids,
     ): bool {
-        if (!isset($this->backward_edges[$destination->id])) {
+        if (!isset($this->backward_edges[$destination->key])) {
             return false;
         }
 
         $had = false;
-        foreach ($this->backward_edges[$destination->id] as $from_id => $_) {
+        foreach ($this->backward_edges[$destination->key] as $from_id => $_) {
             if (isset($visited_source_ids[$from_id])) {
                 continue;
             }
