@@ -10,15 +10,16 @@ use smallvec::SmallVec;
 /// all non-empty lists.
 pub type Inner<T> = SmallVec<[T; 2]>;
 
-/// `None` is the empty list (the census showed 37% of all allocations were `[]` boxes); the second field is
-/// PHP's internal array pointer (`current()`/`next()`...), copied with the value.
-pub struct List<T>(Option<Rc<Inner<T>>>, usize);
+/// `None` is the empty list (the census showed 37% of all allocations were `[]` boxes). PHP's internal array
+/// pointer is NOT modeled (pzoom-faithful): nothing in the transpiled program moves it, so `current()`/`key()`/
+/// `reset()` read the first element and `end()` the last, all through `&self`.
+pub struct List<T>(Option<Rc<Inner<T>>>);
 
 
 impl<T> Clone for List<T> {
     #[inline]
     fn clone(&self) -> List<T> {
-        List(self.0.clone(), self.1)
+        List(self.0.clone())
     }
 }
 
@@ -48,61 +49,47 @@ impl<T> List<T> {
     }
     #[inline]
     pub const fn new() -> List<T> {
-        List(None, 0)
+        List(None)
     }
     pub fn with_capacity(n: usize) -> List<T> {
         crate::stats::bump(crate::stats::LIST_WITH_CAP);
-        List(Some(Rc::new(Inner::with_capacity(n))), 0)
+        List(Some(Rc::new(Inner::with_capacity(n))))
     }
     #[inline]
     pub fn from_vec(v: Vec<T>) -> List<T> {
         #[cfg(feature = "stats")]
         crate::stats::bump(match v.len() { 0 => crate::stats::LIST_FROM_VEC_0, 1 => crate::stats::LIST_FROM_VEC_1, 2 => crate::stats::LIST_FROM_VEC_2, 3 | 4 => crate::stats::LIST_FROM_VEC_3_4, 5..=8 => crate::stats::LIST_FROM_VEC_5_8, _ => crate::stats::LIST_FROM_VEC_MORE });
         if v.is_empty() {
-            return List(None, 0);
+            return List(None);
         }
-        List(Some(Rc::new(Inner::from_vec(v))), 0)
+        List(Some(Rc::new(Inner::from_vec(v))))
     }
     /// A list from an array literal: one allocation, no intermediate Vec.
     #[inline]
     pub fn from_array<const N: usize>(a: [T; N]) -> List<T> {
         if N == 0 {
-            return List(None, 0);
+            return List(None);
         }
-        List(Some(Rc::new(Inner::from_iter(a))), 0)
+        List(Some(Rc::new(Inner::from_iter(a))))
     }
-    /// `current()`: element at the internal pointer.
+    /// `current()` / `reset()`: the first element (the internal pointer is never moved).
+    #[inline]
     pub fn ptr_current(&self) -> Option<&T> {
-        self.v().get(self.1)
+        self.v().first()
     }
-    /// `key()`: index at the internal pointer.
+    /// `key()`: the first index.
+    #[inline]
     pub fn ptr_key(&self) -> Option<i64> {
-        if self.1 < self.v().len() { Some(self.1 as i64) } else { None }
-    }
-    /// `next()`: advance the internal pointer and return the element there.
-    pub fn ptr_next(&mut self) -> Option<&T> {
-        if self.1 < self.v().len() {
-            self.1 += 1;
-        }
-        self.v().get(self.1)
-    }
-    /// `prev()`
-    pub fn ptr_prev(&mut self) -> Option<&T> {
-        if self.1 == 0 || self.1 > self.v().len() {
-            self.1 = self.v().len();
-            return None;
-        }
-        self.1 -= 1;
-        self.v().get(self.1)
+        if self.v().is_empty() { None } else { Some(0) }
     }
     /// `reset()`
-    pub fn ptr_reset(&mut self) -> Option<&T> {
-        self.1 = 0;
+    #[inline]
+    pub fn ptr_reset(&self) -> Option<&T> {
         self.v().first()
     }
     /// `end()`
-    pub fn ptr_end(&mut self) -> Option<&T> {
-        self.1 = self.v().len().saturating_sub(1);
+    #[inline]
+    pub fn ptr_end(&self) -> Option<&T> {
         self.v().last()
     }
     #[inline]
