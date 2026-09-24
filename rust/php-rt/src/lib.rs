@@ -42,6 +42,14 @@ pub use mixed::{Mixed, AnyObj, PhpObject, erase_dyn, unerase_dyn};
 /// (the FxHashMap-style axis; the ordered PHP `array` map lives in `map.rs`). Uses foldhash.
 pub type FastMap<K, V> = std::collections::HashMap<K, V, foldhash::fast::FixedState>;
 #[inline]
+/// The identity stamp of a freshly constructed (or cloned) value-type object: PHP object identity for a value that
+/// is copied by every read. Starts far above any heap address so it never collides with the address-based ids of
+/// Rc objects in a map keyed by spl_object_id.
+pub fn next_obj_id() -> u64 {
+    thread_local! { static NEXT: std::cell::Cell<u64> = const { std::cell::Cell::new(1u64 << 62) }; }
+    NEXT.with(|n| { let v = n.get(); n.set(v + 1); v })
+}
+
 pub fn fast_map<K, V>() -> FastMap<K, V> {
     std::collections::HashMap::with_hasher(foldhash::fast::FixedState::with_seed(0x5eed_1234_abcd_9876))
 }
