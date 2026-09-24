@@ -308,32 +308,6 @@ final class CastEmitter
         return $m->kind === RustType::INT ? 'php_rt::Num::Int(*' . $var . ')' : 'php_rt::Num::Float(*' . $var . ')';
     }
 
-    /** One arm of the pairwise union comparison: the rules of php-rt's `PhpCmp for Mixed`, per member kind. */
-    /**
-     * `===` of two values of an immutable value class: every field identical, PHP's `===` per field (memo cells
-     * and closures are not part of the value).
-     */
-    private function structuralIdentical(ClassModel $cls): string
-    {
-        $parts = [];
-        foreach ($cls->fields as $f) {
-            $rn = $f->rustName();
-            $ck = $cls->cellKind($f);
-            if ($ck === 'RefCell') {
-                continue; // a memo
-            }
-            if ($ck === 'Cell') {
-                $parts[] = 'self.0.' . $rn . '.get() == o.0.' . $rn . '.get()';
-                continue;
-            }
-            if (in_array($f->type->kind, [RustType::CLOSURE, RustType::DYN_CALLABLE, RustType::RT_GENERIC, RustType::UNIT, RustType::NEVER], true)) {
-                continue;
-            }
-            $parts[] = 'identical(&self.0.' . $rn . ', &o.0.' . $rn . ')';
-        }
-        return $parts === [] ? '{ let _ = o; true }' : implode(' && ', $parts);
-    }
-
     private function unionCmpArm(string $name, RustType $a, RustType $b): string
     {
         $pat = '(' . $this->memberPat($name, $a, 'a') . ', ' . $this->memberPat($name, $b, 'b') . ') => ';
@@ -887,7 +861,8 @@ final class CastEmitter
             $members_by_value = !$cls->isLeaf() && $cls->concrete !== []
                 && array_all($cls->concrete, static fn(ClassModel $c): bool => $c->valueType());
             if ($cls->valueType() && $cls->isLeaf()) {
-                $w->line('impl php_rt::Identical for ' . $h . ' { fn identical(&self, o: &Self) -> bool { ' . $this->structuralIdentical($cls) . ' } }');
+                // a value carries its identity stamp: `===` is PHP object identity, never a content compare
+                $w->line('impl php_rt::Identical for ' . $h . ' { fn identical(&self, o: &Self) -> bool { self.0.__id == o.0.__id } }');
             } elseif ($members_by_value) {
                 // a closed hierarchy of values: the same variant with identical payloads
                 $varms = array_map(fn(ClassModel $c) => '(' . $h . '::' . $c->variant() . '(a), ' . $h . '::' . $c->variant() . '(b)) => identical(' . ClassEmitter::payloadRef($c, 'a') . ', ' . ClassEmitter::payloadRef($c, 'b') . ')', $cls->concrete);
@@ -912,7 +887,7 @@ final class CastEmitter
             $w->line('impl php_rt::Truthy for ' . $own . ' { fn truthy(&self) -> bool { ' . $truthy_body . ' } }');
             $w->line('impl php_rt::PhpKind for ' . $own . ' { fn php_kind(&self) -> php_rt::Kind { php_rt::Kind::Obj } fn php_class_name(&self) -> Option<&\'static str> { Some(php_rt::PhpObject::class_name(self)) } }');
             $w->line('impl php_rt::InstanceOfName for ' . $own . ' { fn php_instance_of(&self, __n: &[u8]) -> bool { php_rt::PhpObject::class_ancestors(self).iter().any(|a| a.as_bytes().eq_ignore_ascii_case(__n)) } }');
-            $w->line('impl php_rt::Identical for ' . $own . ' { fn identical(&self, o: &Self) -> bool { ' . ($cls->valueType() ? $this->structuralIdentical($cls) : 'self.obj_id() == o.obj_id()') . ' } }');
+            $w->line('impl php_rt::Identical for ' . $own . ' { fn identical(&self, o: &Self) -> bool { ' . ($cls->valueType() ? 'self.0.__id == o.0.__id' : 'self.obj_id() == o.obj_id()') . ' } }');
         }
         // from Mixed: downcast to any concrete descendant
         $arms = [];

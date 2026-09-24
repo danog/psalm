@@ -48,10 +48,9 @@ final class Program
     public array $functions = [];
 
     /**
-     * Classes (lowercase, as declared at the observation site: a base or interface covers its whole subtree) whose
-     * object identity the program observes: `spl_object_id`/`spl_object_hash`, `SplObjectStorage`/`WeakMap` keys,
-     * `WeakReference::create`. Such a class can never be a value type (a copy would get a fresh identity:
-     * ConstantTypeResolver's cycle check keyed on spl_object_id looped until OOM under VALUE_TYPES).
+     * Classes (lowercase, as declared at the observation site: a base or interface covers its whole subtree) held
+     * by a `WeakReference`: such a class can never be a value type (a weak handle needs an allocation to observe).
+     * Every other identity use (spl_object_id, `===`, SplObjectStorage/WeakMap keys) reads a value's identity stamp.
      *
      * @var array<lowercase-string, true>
      */
@@ -208,60 +207,25 @@ final class Program
         $this->computeBorrowAgreement();
     }
 
-    /** See $identity_observed: the object types reaching an identity-observing builtin. */
+    /**
+     * See $identity_observed. spl_object_id/spl_object_hash and identity-keyed containers (SplObjectStorage,
+     * WeakMap) read a value's identity stamp (ClassEmitter: `__id`), so only `WeakReference::create` (a handle
+     * that must observe deallocation) keeps a class on the Rc path.
+     */
     private function computeIdentityObserved(): void
     {
         $finder = new \PhpParser\NodeFinder();
-        $fn_names = ['spl_object_id' => true, 'spl_object_hash' => true];
-        $keyed_classes = ['splobjectstorage' => true, 'weakmap' => true];
-        $note = fn(?\Psalm\Type\Union $t, string $where) => $this->noteIdentityUnion($t, $where);
-        $scan = function (?array $stmts, $node_data, string $where) use ($finder, $fn_names, $keyed_classes, $note): void {
+        $scan = function (?array $stmts, $node_data, string $where) use ($finder): void {
             if ($stmts === null || $node_data === null) {
                 return;
-            }
-            foreach ($finder->findInstanceOf($stmts, \PhpParser\Node\Expr\FuncCall::class) as $call) {
-                if ($call->name instanceof \PhpParser\Node\Name && isset($fn_names[strtolower($call->name->toString())])) {
-                    foreach ($call->args as $arg) {
-                        if ($arg instanceof \PhpParser\Node\Arg) {
-                            $note($node_data->getType($arg->value), $where . ':' . $call->getStartLine());
-                        }
-                    }
-                }
             }
             foreach ($finder->findInstanceOf($stmts, \PhpParser\Node\Expr\StaticCall::class) as $call) {
                 if ($call->class instanceof \PhpParser\Node\Name && strtolower($call->class->toString()) === 'weakreference') {
                     foreach ($call->args as $arg) {
                         if ($arg instanceof \PhpParser\Node\Arg) {
-                            $note($node_data->getType($arg->value), $where . ':' . $call->getStartLine());
+                            $this->noteIdentityUnion($node_data->getType($arg->value), $where . ':' . $call->getStartLine());
                         }
                     }
-                }
-            }
-            $keyed = static function (\PhpParser\Node\Expr $recv) use ($node_data, $keyed_classes): bool {
-                $t = $node_data->getType($recv);
-                if ($t === null) {
-                    return false;
-                }
-                foreach ($t->getAtomicTypes() as $atomic) {
-                    if ($atomic instanceof \Psalm\Type\Atomic\TNamedObject && isset($keyed_classes[strtolower($atomic->value)])) {
-                        return true;
-                    }
-                }
-                return false;
-            };
-            foreach ($finder->findInstanceOf($stmts, \PhpParser\Node\Expr\MethodCall::class) as $call) {
-                if ($keyed($call->var)) {
-                    foreach ($call->args as $arg) {
-                        if ($arg instanceof \PhpParser\Node\Arg) {
-                            $note($node_data->getType($arg->value), $where . ':' . $call->getStartLine());
-                        }
-                    }
-                }
-            }
-            // `$storage[$obj]`, `isset($storage[$obj])`, `$storage[$obj] = ..`, `unset($storage[$obj])`
-            foreach ($finder->findInstanceOf($stmts, \PhpParser\Node\Expr\ArrayDimFetch::class) as $fetch) {
-                if ($fetch->dim !== null && $keyed($fetch->var)) {
-                    $note($node_data->getType($fetch->dim), $where . ':' . $fetch->getStartLine());
                 }
             }
         };

@@ -61,6 +61,12 @@ final class ClassEmitter
                 }
                 $w->line('pub ' . $f->rustName() . ': ' . $st . ',');
             }
+            if ($cls->valueType()) {
+                // PHP object identity for a value: a stamp taken at construction and on `clone`, kept by every
+                // copy (a copy is what a PHP reference to the same object is), so `===`, spl_object_id and
+                // identity-keyed structures behave as in PHP instead of comparing contents
+                $w->line('pub __id: u64,');
+            }
             $w->close();
             if ($this->boxed($cls)) {
                 // RefCell layout: construction-only fields sit beside the cell (plain `&T` reads), the rest inside it
@@ -467,6 +473,9 @@ final class ClassEmitter
         // immutable (Rc<T>) classes drop the RefCell; `this` is mut so the constructor can make_mut its fields
         $immut = $cls->immutable();
         $value = $cls->valueType();
+        if ($value) {
+            $inits[] = '__id: php_rt::next_obj_id(),';
+        }
         $cell_open = $value ? '' : ($immut ? 'Rc::new(' : 'Rc::new(' . $this->boxStruct($cls) . ' { ' . implode(' ', $co_inits) . ' m__: RefCell::new(');
         $cell_close_uninit = $value ? '})' : ($immut ? '}))' : '}) }))');
         $cell_close_new = $value ? '});' : ($immut ? '}));' : '}) }));');
@@ -992,7 +1001,7 @@ final class ClassEmitter
         $w->line('fn class_id(&self) -> u32 { ' . $this->program->classId($cls) . ' }');
         $w->line('fn class_ancestor_ids(&self) -> &\'static [u32] { ' . $this->ancestorIdsLiteral($cls) . ' }');
         // a value type has no identity of its own: its address stands in (Debug output, SplObjectStorage keys)
-        $w->line('fn obj_id(&self) -> usize { ' . ($cls->valueType() ? 'self as *const Self as *const u8 as usize' : 'Rc::as_ptr(&self.0) as *const u8 as usize') . ' }');
+        $w->line('fn obj_id(&self) -> usize { ' . ($cls->valueType() ? 'self.0.__id as usize' : 'Rc::as_ptr(&self.0) as *const u8 as usize') . ' }');
         $w->line('fn as_any(&self) -> &dyn std::any::Any { self }');
         $w->line('fn php_clone_dyn(&self) -> AnyObj { Rc::new(self.php_clone()) }');
         $ts = $this->program->findMethod($cls, '__tostring');
@@ -1063,10 +1072,10 @@ final class ClassEmitter
         }
         $co = $cls->constructionOnlyFields();
         $co_clones = implode(' ', array_map(fn(FieldModel $f) => $f->rustName() . ': self.0.' . $f->rustName() . '.clone(),', array_filter($cls->fields, fn(FieldModel $f) => isset($co[$f->name]))));
-        $clone_cell = $cls->valueType() ? $own . '(self.0.clone())'
+        $clone_cell = $cls->valueType() ? $own . '({ let mut __v = self.0.clone(); __v.__id = php_rt::next_obj_id(); __v })'
             : ($cls->immutable() ? $own . '(Rc::new((*self.0).clone()))' : $own . '(Rc::new(' . $this->boxStruct($cls) . ' { ' . $co_clones . ' m__: RefCell::new(self.0.m__.borrow().clone()) }))');
         $w->line('impl php_rt::PhpClone for ' . $own . ' { fn php_clone(&self) -> Self { let ' . ($cls->immutable() && $clone_call !== '' ? 'mut ' : '') . 'c = ' . $clone_cell . '; ' . $clone_call . 'c } }');
-        $w->line('impl Clone for ' . $cls->objStruct() . ' { fn clone(&self) -> Self { ' . $cls->objStruct() . ' { ' . implode(', ', array_map(fn(FieldModel $f) => $f->rustName() . ': self.' . $f->rustName() . '.clone()', array_filter($cls->fields, fn(FieldModel $f) => !isset($co[$f->name])))) . ' } } }');
+        $w->line('impl Clone for ' . $cls->objStruct() . ' { fn clone(&self) -> Self { ' . $cls->objStruct() . ' { ' . implode(', ', array_map(fn(FieldModel $f) => $f->rustName() . ': self.' . $f->rustName() . '.clone()', array_filter($cls->fields, fn(FieldModel $f) => !isset($co[$f->name])))) . ($cls->valueType() ? ($cls->fields === [] ? '' : ', ') . '__id: self.__id' : '') . ' } } }');
     }
 
     /**
