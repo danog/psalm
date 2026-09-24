@@ -12,6 +12,7 @@ use Psalm\Context;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\ClassLikeNameOptions;
 use Psalm\Internal\Analyzer\MethodAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TemplateBound;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
@@ -153,10 +154,10 @@ final class TypeChecker extends TypeVisitor
         $fq_class_name_lc = strtolower($atomic->value);
 
         if (!$this->inherited
-            && $codebase->classlike_storage_provider->has($fq_class_name_lc)
+            && $codebase->classlike_storage_provider->has(Interner::intern($fq_class_name_lc))
             && $this->source->getFQCLN() !== $atomic->value
         ) {
-            $class_storage = $codebase->classlike_storage_provider->get($fq_class_name_lc);
+            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name_lc));
 
             if ($class_storage->deprecated) {
                 if ($class_storage->is_interface) {
@@ -191,7 +192,7 @@ final class TypeChecker extends TypeVisitor
         $codebase = $this->source->getCodebase();
 
         try {
-            $class_storage = $codebase->classlike_storage_provider->get(strtolower($atomic->value));
+            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern(strtolower($atomic->value)));
         } catch (InvalidArgumentException) {
             return;
         }
@@ -341,7 +342,7 @@ final class TypeChecker extends TypeVisitor
         ) {
             $codebase = $this->source->getCodebase();
 
-            $class_storage = $codebase->classlike_storage_provider->get($atomic->defining_class);
+            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($atomic->defining_class));
 
             $template_offset = $class_storage->template_types
                 ? array_search($atomic->param_name, array_keys($class_storage->template_types), true)

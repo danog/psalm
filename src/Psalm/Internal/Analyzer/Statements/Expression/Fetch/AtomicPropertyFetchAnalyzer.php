@@ -186,8 +186,8 @@ final class AtomicPropertyFetchAnalyzer
 
         $codebase = $statements_analyzer->getCodebase();
 
-        if (!$codebase->classExistsById($lhs_type_part->name, null, $context)
-            && !$codebase->classlikes->enumExistsById($lhs_type_part->name, null, $context)
+        if (!$codebase->classExists($lhs_type_part->name, null, $context)
+            && !$codebase->classlikes->enumExists($lhs_type_part->name, null, $context)
         ) {
             $interface_exists = false;
 
@@ -210,7 +210,7 @@ final class AtomicPropertyFetchAnalyzer
             $class_exists = true;
         }
 
-        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
         $config = $statements_analyzer->getProjectAnalyzer()->getConfig();
 
@@ -272,7 +272,7 @@ final class AtomicPropertyFetchAnalyzer
                     $new_property_id = $mixin->value . '::$' . $prop_name;
 
                     try {
-                        $new_class_storage = $codebase->classlike_storage_provider->getById($mixin->name);
+                        $new_class_storage = $codebase->classlike_storage_provider->get($mixin->name);
                     } catch (InvalidArgumentException) {
                         $new_class_storage = null;
                     }
@@ -366,7 +366,7 @@ final class AtomicPropertyFetchAnalyzer
         if (!$naive_property_exists
             && $fq_class_name !== $context->self
             && $context->self
-            && $codebase->classlikes->classExtends($fq_class_name, $context->self)
+            && $codebase->classlikes->classExtends(Interner::intern($fq_class_name), Interner::intern($context->self))
             && $codebase->propertyExists(
                 $context->self . '::$' . $prop_name,
                 true,
@@ -453,7 +453,7 @@ final class AtomicPropertyFetchAnalyzer
         }
 
         $declaring_class_storage = $codebase->classlike_storage_provider->get(
-            $declaring_property_class,
+            Interner::intern($declaring_property_class),
         );
 
         if (isset($declaring_class_storage->properties[$prop_name_id])) {
@@ -569,7 +569,7 @@ final class AtomicPropertyFetchAnalyzer
         $property_id = $declaring_property_class . '::$' . $prop_name;
         $codebase = $statements_analyzer->getCodebase();
         $declaring_class_storage = $codebase->classlike_storage_provider->get(
-            $declaring_property_class,
+            Interner::intern($declaring_property_class),
         );
 
         if (isset($declaring_class_storage->properties[$prop_name_id])) {
@@ -655,7 +655,7 @@ final class AtomicPropertyFetchAnalyzer
                         $class_storage,
                         $declaring_property_class
                             ? $codebase->classlike_storage_provider->get(
-                                $declaring_property_class,
+                                Interner::intern($declaring_property_class),
                             ) : $class_storage,
                     );
 
@@ -1148,9 +1148,9 @@ final class AtomicPropertyFetchAnalyzer
         string &$fq_class_name,
         bool &$override_property_visibility,
     ): void {
-        if ($codebase->interfaceExistsById($lhs_type_part->name)) {
+        if ($codebase->interfaceExists($lhs_type_part->name)) {
             $interface_exists = true;
-            $interface_storage = $codebase->classlike_storage_provider->getById($lhs_type_part->name);
+            $interface_storage = $codebase->classlike_storage_provider->get($lhs_type_part->name);
 
             $override_property_visibility = $interface_storage->override_property_visibility;
 
@@ -1158,7 +1158,7 @@ final class AtomicPropertyFetchAnalyzer
 
             foreach ($intersection_types as $intersection_type) {
                 if ($intersection_type instanceof TNamedObject
-                    && $codebase->classExistsById($intersection_type->name)
+                    && $codebase->classExists($intersection_type->name)
                 ) {
                     $fq_class_name = $intersection_type->value;
                     $class_exists = true;
@@ -1260,7 +1260,7 @@ final class AtomicPropertyFetchAnalyzer
                     $class_storage,
                     $declaring_property_class
                         ? $codebase->classlike_storage_provider->get(
-                            $declaring_property_class,
+                            Interner::intern($declaring_property_class),
                         ) : $class_storage,
                 );
 

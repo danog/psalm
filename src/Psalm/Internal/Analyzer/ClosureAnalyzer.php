@@ -10,6 +10,7 @@ use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\Internal\Codebase\CodeUseGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\Interner;
 use Psalm\Internal\PhpVisitor\ShortClosureVisitor;
 use Psalm\Issue\DuplicateParam;
 use Psalm\Issue\ImpureFunctionCall;
@@ -118,8 +119,8 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
             if ($context->collect_mutations &&
                 $context->self &&
                 $codebase->classExtends(
-                    $context->self,
-                    (string)$statements_analyzer->getFQCLN(),
+                    Interner::intern($context->self),
+                    Interner::intern((string)$statements_analyzer->getFQCLN()),
                 )
             ) {
                 /** @psalm-suppress PossiblyUndefinedStringArrayOffset */
@@ -138,7 +139,7 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
         }
 
         if ($context->self) {
-            $self_class_storage = $codebase->classlike_storage_provider->get($context->self);
+            $self_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($context->self));
 
             ClassAnalyzer::addContextProperties(
                 $statements_analyzer,

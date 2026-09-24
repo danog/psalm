@@ -102,8 +102,8 @@ final class MethodCallReturnTypeFetcher
             && $premixin_method_id->fq_class_name !== RuntimeException::class
             && $premixin_method_id->fq_class_name !== PDOException::class
             && (
-                $codebase->classImplementsById($premixin_method_id->class_id, Sym::THROWABLE)
-                || $codebase->interfaceExtendsById($premixin_method_id->class_id, Sym::THROWABLE)
+                $codebase->classImplements($premixin_method_id->class_id, Sym::THROWABLE)
+                || $codebase->interfaceExtends($premixin_method_id->class_id, Sym::THROWABLE)
             )
         ) {
             return Type::getInt();
@@ -196,7 +196,7 @@ final class MethodCallReturnTypeFetcher
                         true,
                         false,
                         $static_type instanceof TNamedObject
-                        && $codebase->classlike_storage_provider->getById($static_type->name)->final,
+                        && $codebase->classlike_storage_provider->get($static_type->name)->final,
                         true,
                     );
                 }
@@ -218,7 +218,7 @@ final class MethodCallReturnTypeFetcher
                     true,
                     false,
                     $static_type instanceof TNamedObject
-                    && $codebase->classlike_storage_provider->getById($static_type->name)->final,
+                    && $codebase->classlike_storage_provider->get($static_type->name)->final,
                     true,
                 );
 

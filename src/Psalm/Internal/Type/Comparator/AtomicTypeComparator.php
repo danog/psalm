@@ -632,12 +632,12 @@ final class AtomicTypeComparator
         if ($container_type_part instanceof TString || $container_type_part instanceof TScalar) {
             if ($input_type_part instanceof TNamedObject) {
                 // check whether the object has a __toString method
-                if ($codebase->classOrInterfaceExistsById($input_type_part->name)) {
+                if ($codebase->classOrInterfaceExists($input_type_part->name)) {
                     if ($codebase->analysis_php_version_id >= 8_00_00
                         && ($input_type_part->value === 'Stringable'
-                            || ($codebase->classlikes->classExistsById($input_type_part->name)
-                                && $codebase->classlikes->classImplementsById($input_type_part->name, Sym::STRINGABLE))
-                            || $codebase->classlikes->interfaceExtendsById($input_type_part->name, Sym::STRINGABLE))
+                            || ($codebase->classlikes->classExists($input_type_part->name)
+                                && $codebase->classlikes->classImplements($input_type_part->name, Sym::STRINGABLE))
+                            || $codebase->classlikes->interfaceExtends($input_type_part->name, Sym::STRINGABLE))
                     ) {
                         if ($atomic_comparison_result) {
                             $atomic_comparison_result->to_string_cast = true;
@@ -687,7 +687,7 @@ final class AtomicTypeComparator
                 || $input_type_part instanceof TKeyedArray
                 || (
                     $input_type_part instanceof TNamedObject &&
-                    $codebase->classOrInterfaceExistsById($input_type_part->name) &&
+                    $codebase->classOrInterfaceExists($input_type_part->name) &&
                     $codebase->methodExists(new MethodIdentifier($input_type_part->value, '__invoke'))
                 )
             )
@@ -740,19 +740,19 @@ final class AtomicTypeComparator
 
         if ($container_type_part instanceof TNamedObject
             && $input_type_part instanceof TNamedObject
-            && $codebase->classOrInterfaceOrEnumExistsById($input_type_part->name)
+            && $codebase->classOrInterfaceOrEnumExists($input_type_part->name)
             && (
                 (
-                    $codebase->classExistsById($container_type_part->name)
-                    && $codebase->classExtendsOrImplementsById(
+                    $codebase->classExists($container_type_part->name)
+                    && $codebase->classExtendsOrImplements(
                         $container_type_part->name,
                         $input_type_part->name,
                     )
                 )
                 ||
                 (
-                    $codebase->interfaceExistsById($container_type_part->name)
-                    && $codebase->interfaceExtendsById(
+                    $codebase->interfaceExists($container_type_part->name)
+                    && $codebase->interfaceExtends(
                         $container_type_part->name,
                         $input_type_part->name,
                     )

@@ -1835,8 +1835,8 @@ final class ArrayFetchAnalyzer
     ): void {
         $codebase = $statements_analyzer->getCodebase();
         if (strtolower($type->value) === 'simplexmlelement'
-            || ($codebase->classExistsById($type->name, null, $context)
-                && $codebase->classExtendsOrImplementsById($type->name, Sym::SIMPLE_XML_ELEMENT))
+            || ($codebase->classExists($type->name, null, $context)
+                && $codebase->classExtendsOrImplements($type->name, Sym::SIMPLE_XML_ELEMENT))
         ) {
             $call_array_access_type = new Union([new TNull(), new TNamedObject('SimpleXMLElement')]);
         } elseif (strtolower($type->value) === 'domnodelist' && $stmt->dim) {

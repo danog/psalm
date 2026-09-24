@@ -62,7 +62,7 @@ final class StaticCallAnalyzer extends CallAnalyzer
                     $child_fq_class_name = $context->self;
 
                     $class_storage = $child_fq_class_name
-                        ? $codebase->classlike_storage_provider->get($child_fq_class_name)
+                        ? $codebase->classlike_storage_provider->get(Interner::intern($child_fq_class_name))
                         : null;
 
                     if (!$class_storage || !$class_storage->parent_class) {
@@ -79,7 +79,7 @@ final class StaticCallAnalyzer extends CallAnalyzer
 
                     $fq_class_name = $codebase->classlikes->getUnAliasedName($fq_class_name);
 
-                    $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+                    $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
                     $fq_class_name = $class_storage->name;
 
@@ -88,7 +88,7 @@ final class StaticCallAnalyzer extends CallAnalyzer
                         && $stmt->name->name === '__construct'
                         && isset($class_storage->declaring_method_ids[Sym::CONSTRUCT])) {
                         $construct_fq_class_name = $class_storage->declaring_method_ids[Sym::CONSTRUCT]->fq_class_name;
-                        $construct_class_storage = $codebase->classlike_storage_provider->get($construct_fq_class_name);
+                        $construct_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($construct_fq_class_name));
                         $construct_fq_class_name = $construct_class_storage->name;
 
                         foreach ($construct_class_storage->properties as $property_name_id => $property_storage) {
@@ -150,7 +150,7 @@ final class StaticCallAnalyzer extends CallAnalyzer
                 $does_class_exist = false;
 
                 if ($context->self) {
-                    $self_storage = $codebase->classlike_storage_provider->get($context->self);
+                    $self_storage = $codebase->classlike_storage_provider->get(Interner::intern($context->self));
 
                     if (isset($self_storage->used_traits[strtolower($fq_class_name)])) {
                         $fq_class_name = $context->self;

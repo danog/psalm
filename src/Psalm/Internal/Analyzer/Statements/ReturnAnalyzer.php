@@ -19,6 +19,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\Call\ClassTemplateParamCollect
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
@@ -313,7 +314,7 @@ final class ReturnAnalyzer
                         // `self` and `static` bind to that class and the trait's template params resolve
                         // to their bounds
                         $using_class = $context->self;
-                        $using_storage = $codebase->classlike_storage_provider->get($using_class);
+                        $using_storage = $codebase->classlike_storage_provider->get(Interner::intern($using_class));
                         $local_return_type = TypeExpander::expandUnion(
                             $codebase,
                             $declared_return_type->replaceClassLike(strtolower($trait_name), $using_class),
@@ -336,7 +337,7 @@ final class ReturnAnalyzer
                     if ($storage instanceof MethodStorage) {
                         [$fq_class_name, $method_name] = explode('::', $cased_method_id);
 
-                        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+                        $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
                         $found_generic_params = ClassTemplateParamCollector::collect(
                             $codebase,

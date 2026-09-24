@@ -520,7 +520,7 @@ final class TemplateStandinTypeReplacer
             ) {
                 try {
                     $classlike_storage =
-                        $codebase->classlike_storage_provider->getById($atomic_input_type->name);
+                        $codebase->classlike_storage_provider->get($atomic_input_type->name);
 
                     if (!empty($classlike_storage->template_extended_params[$base_type->as_type->value])) {
                         $atomic_input_type = new TClassString(
@@ -571,7 +571,7 @@ final class TemplateStandinTypeReplacer
 
                 try {
                     $classlike_storage =
-                        $codebase->classlike_storage_provider->getById($atomic_input_type->name);
+                        $codebase->classlike_storage_provider->get($atomic_input_type->name);
 
                     if ($atomic_input_type instanceof TGenericObject
                         && isset($classlike_storage->template_extended_params[$base_type->value])
@@ -1282,8 +1282,8 @@ final class TemplateStandinTypeReplacer
     ): array {
         if ($input_type_part instanceof TGenericObject || $input_type_part instanceof TIterable) {
             $input_type_params = $input_type_part->type_params;
-        } elseif ($codebase->classlike_storage_provider->hasById($input_type_part->name)) {
-            $class_storage = $codebase->classlike_storage_provider->getById($input_type_part->name);
+        } elseif ($codebase->classlike_storage_provider->has($input_type_part->name)) {
+            $class_storage = $codebase->classlike_storage_provider->get($input_type_part->name);
 
             $container_class = $container_type_part->value;
 
@@ -1298,12 +1298,12 @@ final class TemplateStandinTypeReplacer
             $input_type_params = [];
         }
 
-        $input_class_storage = $codebase->classlike_storage_provider->hasById($input_type_part->name)
-            ? $codebase->classlike_storage_provider->getById($input_type_part->name)
+        $input_class_storage = $codebase->classlike_storage_provider->has($input_type_part->name)
+            ? $codebase->classlike_storage_provider->get($input_type_part->name)
             : null;
 
-        $container_type_params_covariant = $codebase->classlike_storage_provider->hasById($container_type_part->name)
-            ? $codebase->classlike_storage_provider->getById($container_type_part->name)->template_covariants
+        $container_type_params_covariant = $codebase->classlike_storage_provider->has($container_type_part->name)
+            ? $codebase->classlike_storage_provider->get($container_type_part->name)->template_covariants
             : null;
 
         if ($input_type_part->value !== $container_type_part->value

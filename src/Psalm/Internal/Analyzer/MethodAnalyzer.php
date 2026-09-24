@@ -10,6 +10,7 @@ use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Context;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Issue\InvalidEnumMethod;
 use Psalm\Issue\InvalidStaticInvocation;
@@ -74,7 +75,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
             try {
                 $storage = $codebase->methods->getStorage($method_id);
             } catch (UnexpectedValueException $e) {
-                $class_storage = $codebase->classlike_storage_provider->get($source_fqcln_lc);
+                $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($source_fqcln_lc));
 
                 if (!$class_storage->parent_classes) {
                     throw $e;
@@ -324,13 +325,13 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
                 }
 
                 if ($appearing_method_class
-                    && $codebase->classExtends($appearing_method_class, $context->self)
+                    && $codebase->classExtends(Interner::intern($appearing_method_class), Interner::intern($context->self))
                 ) {
                     return true;
                 }
 
                 if ($appearing_method_class
-                    && !$codebase->classExtends($context->self, $appearing_method_class)
+                    && !$codebase->classExtends(Interner::intern($context->self), Interner::intern($appearing_method_class))
                 ) {
                     return false;
                 }

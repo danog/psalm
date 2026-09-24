@@ -19,6 +19,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\CallAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Codebase\AssertionsFromInheritanceResolver;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TemplateBound;
@@ -99,7 +100,7 @@ final class ExistingAtomicStaticCallAnalyzer
 
             $appearing_method_class_name = $appearing_method_id->fq_class_name;
 
-            if ($codebase->classExtends($context->self, $appearing_method_class_name)) {
+            if ($codebase->classExtends(Interner::intern($context->self), Interner::intern($appearing_method_class_name))) {
                 $old_context_include_location = $context->include_location;
                 $old_self = $context->self;
                 $context->include_location = new CodeLocation($statements_analyzer->getSource(), $stmt);
@@ -159,7 +160,7 @@ final class ExistingAtomicStaticCallAnalyzer
             && $stmt->class instanceof PhpParser\Node\Name
             && $stmt->class->getParts() === ['parent']
             && $context->self
-            && ($self_class_storage = $codebase->classlike_storage_provider->get($context->self))
+            && ($self_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($context->self)))
             && $self_class_storage->template_extended_params
         ) {
             foreach ($self_class_storage->template_extended_params as $template_fq_class_name => $extended_types) {
@@ -533,7 +534,7 @@ final class ExistingAtomicStaticCallAnalyzer
                 && $context->self
             ) {
                 $static_type = $context->self;
-                $context_final = $codebase->classlike_storage_provider->get($context->self)->final;
+                $context_final = $codebase->classlike_storage_provider->get(Interner::intern($context->self))->final;
             } elseif ($context->calling_method_id !== null) {
                 // differentiate between these cases:
                 //   1. "static" comes from the CALLED static method - use $fq_class_name.

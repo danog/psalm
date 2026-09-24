@@ -6,6 +6,7 @@ namespace Psalm\Tests\Internal\Codebase;
 
 use Override;
 use Psalm\Internal\Codebase\ClassLikes;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
 use Psalm\Storage\ClassLikeStorage;
 use Psalm\Tests\TestCase;
@@ -30,10 +31,12 @@ final class ClassLikesTest extends TestCase
 
         $classStorage = new ClassLikeStorage('Baz');
         $classStorage->class_implements['bar'] = 'Bar';
+        // what the populator records: implemented names by canonical id (the alias resolves to Foo)
+        $classStorage->class_implements_ids[$this->storage_provider->canonicalId(Interner::intern('Bar'))] = true;
 
         $this->storage_provider->addMore(['baz' => $classStorage]);
 
-        self::assertTrue($this->classlikes->classImplements('Baz', 'Foo'));
+        self::assertTrue($this->classlikes->classImplements(Interner::intern('Baz'), Interner::intern('Foo')));
     }
 
     public function testWillResolveAliasedAliases(): void

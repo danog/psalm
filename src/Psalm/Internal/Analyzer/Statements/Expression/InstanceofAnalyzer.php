@@ -10,6 +10,7 @@ use Psalm\Context;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Type;
 
 use function implode;
@@ -58,7 +59,7 @@ final class InstanceofAnalyzer
                     $codebase->analyzer->addNodeReference(
                         $statements_analyzer->getFilePath(),
                         $stmt->class,
-                        $codebase->classlikes->classOrInterfaceOrEnumExists($fq_class_name, null, $context)
+                        $codebase->classlikes->classOrInterfaceOrEnumExists(Interner::intern($fq_class_name), null, $context)
                             ? $fq_class_name
                             : '*'
                                 . ($stmt->class instanceof PhpParser\Node\Name\FullyQualified

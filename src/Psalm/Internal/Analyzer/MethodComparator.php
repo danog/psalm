@@ -271,7 +271,7 @@ final class MethodComparator
 
                     $overridden_fq_class_name = $overridden_method_id->fq_class_name;
 
-                    $parent_storage = $codebase->classlike_storage_provider->get($overridden_fq_class_name);
+                    $parent_storage = $codebase->classlike_storage_provider->get(Interner::intern($overridden_fq_class_name));
 
                     self::compare(
                         $codebase,
@@ -825,7 +825,7 @@ final class MethodComparator
 
         if ($implementer_classlike_storage->is_trait) {
             $implementer_called_class_storage = $codebase->classlike_storage_provider->get(
-                $implementer_called_class_name,
+                Interner::intern($implementer_called_class_name),
             );
 
             if (isset(
@@ -1120,7 +1120,7 @@ final class MethodComparator
 
         if ($implementer_classlike_storage->is_trait) {
             $implementer_called_class_storage = $codebase->classlike_storage_provider->get(
-                $implementer_called_class_name,
+                Interner::intern($implementer_called_class_name),
             );
 
             if ($implementer_called_class_storage->template_extended_params) {

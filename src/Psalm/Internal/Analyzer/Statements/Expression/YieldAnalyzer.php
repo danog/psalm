@@ -17,6 +17,7 @@ use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\TypeExpander;
 use Psalm\Issue\InvalidDocblock;
 use Psalm\Issue\UnnecessaryVarAnnotation;
@@ -158,17 +159,17 @@ final class YieldAnalyzer
             if (!$expression_atomic_type instanceof TNamedObject) {
                 continue;
             }
-            if (!$codebase->classlikes->classOrInterfaceExistsById($expression_atomic_type->name, null, $context)) {
+            if (!$codebase->classlikes->classOrInterfaceExists($expression_atomic_type->name, null, $context)) {
                 continue;
             }
 
-            $classlike_storage = $codebase->classlike_storage_provider->getById($expression_atomic_type->name);
+            $classlike_storage = $codebase->classlike_storage_provider->get($expression_atomic_type->name);
 
             if (!$classlike_storage->yield) {
                 continue;
             }
             $declaring_classlike_storage = $classlike_storage->declaring_yield_fqcn
-                ? $codebase->classlike_storage_provider->get($classlike_storage->declaring_yield_fqcn)
+                ? $codebase->classlike_storage_provider->get(Interner::intern($classlike_storage->declaring_yield_fqcn))
                 : $classlike_storage;
 
             $yield_candidate_type = $classlike_storage->yield;

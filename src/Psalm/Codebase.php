@@ -1072,164 +1072,62 @@ final class Codebase
     }
 
     /**
-     * Check whether a class/interface exists
+     * By interned names (pzoom's StrId lookups).
      *
-     * @psalm-external-mutation-free
+     * @psalm-mutation-free
      */
+    public function classExtendsOrImplements(int $name, int $possible_parent): bool
+    {
+        return $this->classlikes->classExtends($name, $possible_parent)
+            || $this->classlikes->classImplements($name, $possible_parent);
+    }
+
+    /** @psalm-mutation-free */
+    public function classExtends(int $name, int $possible_parent): bool
+    {
+        return $this->classlikes->classExtends($name, $possible_parent, true);
+    }
+
+    /** @psalm-mutation-free */
+    public function classImplements(int $name, int $interface): bool
+    {
+        return $this->classlikes->classImplements($name, $interface);
+    }
+
+    /** @psalm-mutation-free */
+    public function interfaceExtends(int $name, int $possible_parent): bool
+    {
+        return $this->classlikes->interfaceExtends($name, $possible_parent);
+    }
+
+    /** @psalm-external-mutation-free */
+    public function classExists(int $name, ?CodeLocation $code_location = null, ?Context $context = null): bool
+    {
+        return $this->classlikes->classExists($name, $code_location, $context);
+    }
+
+    /** @psalm-external-mutation-free */
+    public function interfaceExists(int $name, ?CodeLocation $code_location = null, ?Context $context = null): bool
+    {
+        return $this->classlikes->interfaceExists($name, $code_location, $context);
+    }
+
+    /** @psalm-external-mutation-free */
     public function classOrInterfaceExists(
-        string $fq_class_name,
+        int $name,
         ?CodeLocation $code_location = null,
         ?Context $context = null,
     ): bool {
-        return $this->classlikes->classOrInterfaceExists(
-            $fq_class_name,
-            $code_location,
-            $context,
-        );
+        return $this->classlikes->classOrInterfaceExists($name, $code_location, $context);
     }
 
-    /**
-     * Check whether a class/interface exists
-     *
-     * @psalm-assert-if-true class-string|interface-string|enum-string $fq_class_name
-     * @psalm-external-mutation-free
-     */
+    /** @psalm-external-mutation-free */
     public function classOrInterfaceOrEnumExists(
-        string $fq_class_name,
-        ?CodeLocation $code_location = null,
-        ?Context $context = null,
-    ): bool {
-        return $this->classlikes->classOrInterfaceOrEnumExists(
-            $fq_class_name,
-            $code_location,
-            $context,
-        );
-    }
-
-    /** @psalm-mutation-free */
-    public function classExtendsOrImplements(string $fq_class_name, string $possible_parent): bool
-    {
-        return $this->classlikes->classExtends($fq_class_name, $possible_parent)
-            || $this->classlikes->classImplements($fq_class_name, $possible_parent);
-    }
-
-    /** By interned names (pzoom's StrId lookups); see the string forms for the semant     *
-     * @psalm-mutation-free
-     */
-    public function classExtendsOrImplementsById(int $name, int $possible_parent): bool
-    {
-        return $this->classlikes->classExtendsById($name, $possible_parent)
-            || $this->classlikes->classImplementsById($name, $possible_parent);
-    }
-
-    /** @psalm-mutation-free */
-    public function classExtendsById(int $name, int $possible_parent): bool
-    {
-        return $this->classlikes->classExtendsById($name, $possible_parent, true);
-    }
-
-    /** @psalm-mutation-free */
-    public function classImplementsById(int $name, int $interface): bool
-    {
-        return $this->classlikes->classImplementsById($name, $interface);
-    }
-
-    /** @psalm-mutation-free */
-    public function interfaceExtendsById(int $name, int $possible_parent): bool
-    {
-        return $this->classlikes->interfaceExtendsById($name, $possible_parent);
-    }
-
-    /** @psalm-external-mutation-free */
-    public function classExistsById(int $name, ?CodeLocation $code_location = null, ?Context $context = null): bool
-    {
-        return $this->classlikes->classExistsById($name, $code_location, $context);
-    }
-
-    /** @psalm-external-mutation-free */
-    public function interfaceExistsById(int $name, ?CodeLocation $code_location = null, ?Context $context = null): bool
-    {
-        return $this->classlikes->interfaceExistsById($name, $code_location, $context);
-    }
-
-    /** @psalm-external-mutation-free */
-    public function classOrInterfaceExistsById(
         int $name,
         ?CodeLocation $code_location = null,
         ?Context $context = null,
     ): bool {
-        return $this->classlikes->classOrInterfaceExistsById($name, $code_location, $context);
-    }
-
-    /** @psalm-external-mutation-free */
-    public function classOrInterfaceOrEnumExistsById(
-        int $name,
-        ?CodeLocation $code_location = null,
-        ?Context $context = null,
-    ): bool {
-        return $this->classlikes->classOrInterfaceOrEnumExistsById($name, $code_location, $context);
-    }
-
-    /**
-     * Determine whether or not a given class exists
-     *
-     * @psalm-external-mutation-free
-     */
-    public function classExists(
-        string $fq_class_name,
-        ?CodeLocation $code_location = null,
-        ?Context $context = null,
-    ): bool {
-        return $this->classlikes->classExists(
-            $fq_class_name,
-            $code_location,
-            $context,
-        );
-    }
-
-    /**
-     * Determine whether or not a class extends a parent
-     *
-     * @throws UnpopulatedClasslikeException when called on unpopulated class
-     * @throws InvalidArgumentException when class does not exist
-     * @psalm-mutation-free
-     */
-    public function classExtends(string $fq_class_name, string $possible_parent): bool
-    {
-        return $this->classlikes->classExtends($fq_class_name, $possible_parent, true);
-    }
-
-    /**
-     * Check whether a class implements an interface
-     *
-     * @psalm-mutation-free
-     */
-    public function classImplements(string $fq_class_name, string $interface): bool
-    {
-        return $this->classlikes->classImplements($fq_class_name, $interface);
-    }
-
-    /**
-     * @psalm-external-mutation-free
-     */
-    public function interfaceExists(
-        string $fq_interface_name,
-        ?CodeLocation $code_location = null,
-        ?Context $context = null,
-    ): bool {
-        return $this->classlikes->interfaceExists(
-            $fq_interface_name,
-            $code_location,
-            $context,
-        );
-    }
-
-    /**
-     * @psalm-mutation-free
-     */
-    public function interfaceExtends(string $interface_name, string $possible_parent): bool
-    {
-        return $this->classlikes->interfaceExtends($interface_name, $possible_parent);
+        return $this->classlikes->classOrInterfaceOrEnumExists($name, $code_location, $context);
     }
 
     /**
@@ -1542,7 +1440,7 @@ final class Codebase
                 //Get Real Properties
                 if (isset($class_storage->declaring_property_ids[Interner::intern($property_name)])) {
                     $declaring_property_class = $class_storage->declaring_property_ids[Interner::intern($property_name)];
-                    $declaring_class_storage = $this->classlike_storage_provider->get($declaring_property_class);
+                    $declaring_class_storage = $this->classlike_storage_provider->get(Interner::intern($declaring_property_class));
 
                     if (isset($declaring_class_storage->properties[Interner::intern($property_name)])) {
                         $storage = $declaring_class_storage->properties[Interner::intern($property_name)];
@@ -1643,7 +1541,7 @@ final class Codebase
 
         try {
             $storage = $this->classlike_storage_provider->get(
-                $reference->symbol,
+                Interner::intern($reference->symbol),
             );
             return new PHPMarkdownContent(
                 ($storage->abstract ? 'abstract ' : '') .
@@ -1797,7 +1695,7 @@ final class Codebase
             }
 
             return $this->classlike_storage_provider->get(
-                $reference->symbol,
+                Interner::intern($reference->symbol),
             )->location;
         } catch (UnexpectedValueException $e) {
             error_log($e->getMessage());
@@ -2179,7 +2077,7 @@ final class Codebase
         foreach ($type->getAtomicTypes() as $atomic_type) {
             if ($atomic_type instanceof TNamedObject) {
                 try {
-                    $class_storage = $this->classlike_storage_provider->getById($atomic_type->name);
+                    $class_storage = $this->classlike_storage_provider->get($atomic_type->name);
 
                     $method_storages = [];
                     foreach ($class_storage->declaring_method_ids as $declaring_method_id) {
@@ -2378,7 +2276,7 @@ final class Codebase
 
         foreach ($file_storage->classlikes_in_file as $fq_class_name => $_) {
             try {
-                $class_storage = $this->classlike_storage_provider->get($fq_class_name);
+                $class_storage = $this->classlike_storage_provider->get(Interner::intern($fq_class_name));
             } catch (Exception) {
                 continue;
             }
@@ -2452,7 +2350,7 @@ final class Codebase
             }
 
             try {
-                $class_storage = $this->classlike_storage_provider->get($fq_class_name);
+                $class_storage = $this->classlike_storage_provider->get(Interner::intern($fq_class_name));
                 $description = $class_storage->description;
             } catch (Exception) {
                 $description = null;

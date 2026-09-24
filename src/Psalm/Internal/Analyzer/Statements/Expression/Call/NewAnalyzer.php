@@ -123,7 +123,7 @@ final class NewAnalyzer extends CallAnalyzer
             } elseif ($context->self !== null) {
                 switch ($stmt->class->getFirst()) {
                     case 'self':
-                        $class_storage = $codebase->classlike_storage_provider->get($context->self);
+                        $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($context->self));
                         $fq_class_name = $class_storage->name;
                         break;
 
@@ -133,7 +133,7 @@ final class NewAnalyzer extends CallAnalyzer
 
                     case 'static':
                         // @todo maybe we can do better here
-                        $class_storage = $codebase->classlike_storage_provider->get($context->self);
+                        $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($context->self));
                         $fq_class_name = $class_storage->name;
 
                         if (!$class_storage->final) {
@@ -153,7 +153,7 @@ final class NewAnalyzer extends CallAnalyzer
                 $codebase->analyzer->addNodeReference(
                     $statements_analyzer->getFilePath(),
                     $stmt->class,
-                    $codebase->classlikes->classExists($fq_class_name, null, $context)
+                    $codebase->classlikes->classExists(Interner::intern($fq_class_name), null, $context)
                         ? $fq_class_name
                         : '*'
                             . ($stmt->class instanceof PhpParser\Node\Name\FullyQualified
@@ -229,7 +229,7 @@ final class NewAnalyzer extends CallAnalyzer
                     return true;
                 }
 
-                if ($codebase->interfaceExists($fq_class_name, null, $context)) {
+                if ($codebase->interfaceExists(Interner::intern($fq_class_name), null, $context)) {
                     IssueBuffer::maybeAdd(
                         new InterfaceInstantiation(
                             'Interface ' . $fq_class_name . ' cannot be instantiated',
@@ -267,7 +267,7 @@ final class NewAnalyzer extends CallAnalyzer
             }
 
             if (strtolower($fq_class_name) !== 'stdclass' &&
-                $codebase->classlikes->classExists($fq_class_name, null, $context)
+                $codebase->classlikes->classExists(Interner::intern($fq_class_name), null, $context)
             ) {
                 self::analyzeNamedConstructor(
                     $statements_analyzer,
@@ -289,7 +289,7 @@ final class NewAnalyzer extends CallAnalyzer
                     $context,
                 );
 
-                if ($codebase->classlikes->enumExists($fq_class_name, null, $context)) {
+                if ($codebase->classlikes->enumExists(Interner::intern($fq_class_name), null, $context)) {
                     IssueBuffer::maybeAdd(new UndefinedClass(
                         'Enums cannot be instantiated',
                         new CodeLocation($statements_analyzer, $stmt),
@@ -316,7 +316,7 @@ final class NewAnalyzer extends CallAnalyzer
         bool $can_extend,
         ?TemplateResult $template_result = null,
     ): void {
-        $storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
         if ($from_static) {
             if (!$storage->preserve_constructor_signature) {
@@ -954,9 +954,9 @@ final class NewAnalyzer extends CallAnalyzer
                     $new_types []= new Union([$new_type_part]);
 
                     if ($lhs_type_part->as_type
-                        && $codebase->classlikes->classExistsById($lhs_type_part->as_type->name, null, $context)
+                        && $codebase->classlikes->classExists($lhs_type_part->as_type->name, null, $context)
                     ) {
-                        $as_storage = $codebase->classlike_storage_provider->getById(
+                        $as_storage = $codebase->classlike_storage_provider->get(
                             $lhs_type_part->as_type->name,
                         );
 
@@ -1003,9 +1003,9 @@ final class NewAnalyzer extends CallAnalyzer
                         }
 
                         if ($lhs_type_part->as_type
-                            && $codebase->classlikes->classExistsById($lhs_type_part->as_type->name, null, $context)
+                            && $codebase->classlikes->classExists($lhs_type_part->as_type->name, null, $context)
                         ) {
-                            $as_storage = $codebase->classlike_storage_provider->getById(
+                            $as_storage = $codebase->classlike_storage_provider->get(
                                 $lhs_type_part->as_type->name,
                             );
 

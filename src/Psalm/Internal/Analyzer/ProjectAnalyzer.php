@@ -591,7 +591,7 @@ final class ProjectAnalyzer
                     );
                 }
 
-                $source_class_storage = $this->codebase->classlike_storage_provider->get($source_parts[0]);
+                $source_class_storage = $this->codebase->classlike_storage_provider->get(Interner::intern($source_parts[0]));
 
                 $destination_parts = explode('\\', $destination, -1);
                 $destination_ns = implode('\\', $destination_parts);
@@ -633,7 +633,7 @@ final class ProjectAnalyzer
                     );
                 }
 
-                if (!$this->codebase->classlikes->classExists($destination_parts[0])) {
+                if (!$this->codebase->classlikes->classExists(Interner::intern($destination_parts[0]))) {
                     throw new RefactorException(
                         'Destination class ' . $destination_parts[0] . ' doesn’t exist',
                     );
@@ -643,7 +643,7 @@ final class ProjectAnalyzer
                 if (strtolower($source_parts[0]) !== strtolower($destination_parts[0])) {
                     $source_method_storage = $this->codebase->methods->getStorage($source_method_id);
                     $destination_class_storage
-                        = $this->codebase->classlike_storage_provider->get($destination_parts[0]);
+                        = $this->codebase->classlike_storage_provider->get(Interner::intern($destination_parts[0]));
 
                     if (!$source_method_storage->is_static
                         && !isset(
@@ -684,7 +684,7 @@ final class ProjectAnalyzer
                     );
                 }
 
-                if (!$this->codebase->classlikes->classExists($destination_parts[0])) {
+                if (!$this->codebase->classlikes->classExists(Interner::intern($destination_parts[0]))) {
                     throw new RefactorException(
                         'Destination class ' . $destination_parts[0] . ' doesn’t exist',
                     );
@@ -811,7 +811,7 @@ final class ProjectAnalyzer
 
         if ($this->codebase->classes_to_move) {
             foreach ($this->codebase->classes_to_move as $source => $destination) {
-                $source_class_storage = $this->codebase->classlike_storage_provider->get($source);
+                $source_class_storage = $this->codebase->classlike_storage_provider->get(Interner::intern($source));
 
                 if (!$source_class_storage->location) {
                     continue;
@@ -1273,7 +1273,7 @@ final class ProjectAnalyzer
 
         $appearing_fq_class_name = $appearing_method_id->fq_class_name;
 
-        $appearing_class_storage = $this->classlike_storage_provider->get($appearing_fq_class_name);
+        $appearing_class_storage = $this->classlike_storage_provider->get(Interner::intern($appearing_fq_class_name));
 
         if (!$appearing_class_storage->user_defined) {
             return;

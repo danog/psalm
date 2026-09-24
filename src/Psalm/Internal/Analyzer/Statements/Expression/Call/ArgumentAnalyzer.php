@@ -20,6 +20,7 @@ use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\Codebase\ConstantTypeResolver;
 use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\Comparator\CallableTypeComparator;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
@@ -318,12 +319,12 @@ final class ArgumentAnalyzer
         $static_classlike_storage = null;
 
         if ($self_fq_class_name) {
-            $classlike_storage = $codebase->classlike_storage_provider->get($self_fq_class_name);
+            $classlike_storage = $codebase->classlike_storage_provider->get(Interner::intern($self_fq_class_name));
             $parent_class = $classlike_storage->parent_class;
             $static_classlike_storage = $classlike_storage;
 
             if ($static_fq_class_name && $static_fq_class_name !== $self_fq_class_name) {
-                $static_classlike_storage = $codebase->classlike_storage_provider->get($static_fq_class_name);
+                $static_classlike_storage = $codebase->classlike_storage_provider->get(Interner::intern($static_fq_class_name));
             }
         }
 
@@ -1633,7 +1634,7 @@ final class ArgumentAnalyzer
                                 );
 
                                 if (!$codebase->classOrInterfaceOrEnumExists(
-                                    $callable_fq_class_name,
+                                    Interner::intern($callable_fq_class_name),
                                     null,
                                     $context,
                                 )) {
@@ -1889,11 +1890,11 @@ final class ArgumentAnalyzer
             $fq_classlike_name = $method_id->fq_class_name;
             $cased_method_name = explode('::', $cased_method_id)[1];
 
-            $class_storage = $codebase->classlike_storage_provider->get($fq_classlike_name);
+            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_classlike_name));
 
             foreach ($class_storage->dependent_classlikes as $dependent_classlike_lc => $_) {
                 $dependent_classlike_storage = $codebase->classlike_storage_provider->get(
-                    $dependent_classlike_lc,
+                    Interner::intern($dependent_classlike_lc),
                 );
 
                 // Resolve the declaring method's storage (a dependent class usually inherits the

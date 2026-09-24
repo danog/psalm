@@ -714,7 +714,7 @@ class Reconciler
             if (strpos($base_key, '::')) {
                 [$fq_class_name, $const_name] = explode('::', $base_key);
 
-                if (!$codebase->classlikes->classOrInterfaceExists($fq_class_name)) {
+                if (!$codebase->classlikes->classOrInterfaceExists(Interner::intern($fq_class_name))) {
                     return null;
                 }
 
@@ -878,7 +878,7 @@ class Reconciler
                         ) {
                             $class_property_type = Type::getMixed();
                         } elseif ($existing_key_type_part instanceof TNamedObject) {
-                            if (!$codebase->classOrInterfaceExistsById($existing_key_type_part->name)) {
+                            if (!$codebase->classOrInterfaceExists($existing_key_type_part->name)) {
                                 $class_property_type = Type::getMixed();
                             } else {
                                 if (str_ends_with($property_name, '()')) {
@@ -974,7 +974,7 @@ class Reconciler
 
         if (!$codebase->propertyExists($property_id, true)) {
             $declaring_class_storage = $codebase->classlike_storage_provider->get(
-                $fq_class_name,
+                Interner::intern($fq_class_name),
             );
 
             return $declaring_class_storage->pseudo_property_get_types[Interner::intern('$' . $property_name)] ?? null;
@@ -997,7 +997,7 @@ class Reconciler
         );
 
         $declaring_class_storage = $codebase->classlike_storage_provider->get(
-            $declaring_property_class,
+            Interner::intern($declaring_property_class),
         );
 
         if ($class_property_type) {

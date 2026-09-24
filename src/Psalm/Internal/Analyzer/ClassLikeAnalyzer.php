@@ -103,7 +103,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         $this->source = $source;
         $this->file_analyzer = $source->getFileAnalyzer();
         $codebase = $source->getCodebase();
-        $this->storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $this->storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
     }
 
     /**
@@ -178,7 +178,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
 
                     $trait_file_analyzer = $project_analyzer->getFileAnalyzerForClassLike($fq_trait_name);
                     $trait_node = $codebase->classlikes->getTraitNode($fq_trait_name);
-                    $trait_storage = $codebase->classlike_storage_provider->get($fq_trait_name);
+                    $trait_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_trait_name));
                     $trait_aliases = $trait_storage->aliases;
 
                     if ($trait_aliases === null) {
@@ -300,7 +300,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
 
         // one storage lookup answers the three kinds (pzoom's single get_class); the string checks remain
         // for a name without storage (registered but not scanned, special types, aliases)
-        $found_storage = $codebase->classlike_storage_provider->findById(Interner::intern($fq_class_name));
+        $found_storage = $codebase->classlike_storage_provider->find(Interner::intern($fq_class_name));
         if ($found_storage !== null) {
             $class_exists = !$found_storage->is_interface && !$found_storage->is_trait && !$found_storage->is_enum;
             $interface_exists = $found_storage->is_interface;
@@ -314,19 +314,19 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
             }
         } else {
             $class_exists = $codebase->classlikes->classExists(
-                $fq_class_name,
+                Interner::intern($fq_class_name),
                 !$options->inferred ? $code_location : null,
                 $context,
             );
 
             $interface_exists = $codebase->classlikes->interfaceExists(
-                $fq_class_name,
+                Interner::intern($fq_class_name),
                 !$options->inferred ? $code_location : null,
                 $context,
             );
 
             $enum_exists = $codebase->classlikes->enumExists(
-                $fq_class_name,
+                Interner::intern($fq_class_name),
                 !$options->inferred ? $code_location : null,
                 $context,
             );
@@ -340,8 +340,8 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                 || ($interface_exists && !$codebase->interfaceHasCorrectCasing($fq_class_name))
                 || ($enum_exists && !$codebase->classlikes->enumHasCorrectCasing($fq_class_name)))
         ) {
-            $incorrect_casing_of = $codebase->classlike_storage_provider->has($fq_class_name)
-                ? $codebase->classlike_storage_provider->get($fq_class_name)->name
+            $incorrect_casing_of = $codebase->classlike_storage_provider->has(Interner::intern($fq_class_name))
+                ? $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name))->name
                 : null;
             $class_exists = false;
             $interface_exists = false;
@@ -407,7 +407,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         );
 
         try {
-            $class_storage = $codebase->classlike_storage_provider->get($aliased_name);
+            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($aliased_name));
         } catch (InvalidArgumentException $e) {
             if (!$options->inferred) {
                 throw $e;
@@ -419,7 +419,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         foreach ($class_storage->invalid_dependencies as $dependency_class_name => $_) {
             // if the implemented/extended class is stubbed, it may not yet have
             // been hydrated
-            if ($codebase->classlike_storage_provider->has($dependency_class_name)) {
+            if ($codebase->classlike_storage_provider->has(Interner::intern($dependency_class_name))) {
                 continue;
             }
 
@@ -643,7 +643,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
             return $emit_issues ? null : true;
         }
 
-        $class_storage = $codebase->classlike_storage_provider->get($declaring_property_class);
+        $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($declaring_property_class));
 
         if (!isset($class_storage->properties[Interner::intern($property_name)])) {
             throw new UnexpectedValueException('$storage should not be null for ' . $property_id);
@@ -682,11 +682,11 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                     return null;
                 }
 
-                if ($codebase->classExtends($appearing_property_class, $context->self)) {
+                if ($codebase->classExtends(Interner::intern($appearing_property_class), Interner::intern($context->self))) {
                     return $emit_issues ? null : true;
                 }
 
-                if (!$codebase->classExtends($context->self, $appearing_property_class)) {
+                if (!$codebase->classExtends(Interner::intern($context->self), Interner::intern($appearing_property_class))) {
                     if ($emit_issues) {
                         IssueBuffer::maybeAdd(
                             new InaccessibleProperty(

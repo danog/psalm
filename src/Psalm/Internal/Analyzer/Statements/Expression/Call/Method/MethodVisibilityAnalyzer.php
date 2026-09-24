@@ -9,6 +9,7 @@ use Psalm\Context;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Issue\InaccessibleMethod;
 use Psalm\IssueBuffer;
@@ -102,7 +103,7 @@ final class MethodVisibilityAnalyzer
                 return null;
             }
 
-            $appearing_class_storage = $codebase->classlike_storage_provider->get($appearing_method_class);
+            $appearing_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($appearing_method_class));
         }
 
         $declaring_method_class = $declaring_method_id->fq_class_name;
@@ -179,14 +180,14 @@ final class MethodVisibilityAnalyzer
                 }
 
                 if ($oldest_ancestor_declaring_method_class !== null
-                    && $codebase_classlikes->classExtends($oldest_ancestor_declaring_method_class, $context->self)
+                    && $codebase_classlikes->classExtends(Interner::intern($oldest_ancestor_declaring_method_class), Interner::intern($context->self))
                 ) {
                     return null;
                 }
 
                 if ($oldest_ancestor_declaring_method_class !== null
-                    && !$codebase_classlikes->classExtends($context->self, $oldest_ancestor_declaring_method_class)
-                    && !$codebase_classlikes->classExtends($declaring_method_class, $context->self)
+                    && !$codebase_classlikes->classExtends(Interner::intern($context->self), Interner::intern($oldest_ancestor_declaring_method_class))
+                    && !$codebase_classlikes->classExtends(Interner::intern($declaring_method_class), Interner::intern($context->self))
                 ) {
                     if (IssueBuffer::accepts(
                         new InaccessibleMethod(

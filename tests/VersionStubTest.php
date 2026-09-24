@@ -30,11 +30,11 @@ final class VersionStubTest extends TestCase
         $codebase->config->visitStubFiles($codebase);
 
         $this->assertTrue(
-            $codebase->classlikes->classExists('Attribute'),
+            $codebase->classlikes->classExists(Interner::intern('Attribute')),
             'Attribute is declared by stubs/CoreGenericClasses.phpstub',
         );
 
-        $storage = $codebase->classlike_storage_provider->get('Attribute');
+        $storage = $codebase->classlike_storage_provider->get(Interner::intern('Attribute'));
 
         $this->assertTrue(
             isset($storage->methods[Sym::CONSTRUCT]),
@@ -53,11 +53,11 @@ final class VersionStubTest extends TestCase
         $codebase->config->visitStubFiles($codebase);
 
         $this->assertTrue(
-            $codebase->classlikes->classExists('Attribute'),
+            $codebase->classlikes->classExists(Interner::intern('Attribute')),
             'Attribute is declared by stubs/CoreGenericClasses.phpstub',
         );
 
-        $storage = $codebase->classlike_storage_provider->get('Attribute');
+        $storage = $codebase->classlike_storage_provider->get(Interner::intern('Attribute'));
 
         $this->assertTrue(
             isset($storage->methods[Sym::CONSTRUCT]),
@@ -77,7 +77,7 @@ final class VersionStubTest extends TestCase
         $codebase->config->visitPreloadedStubFiles($codebase);
         $codebase->config->visitStubFiles($codebase);
 
-        $storage = $codebase->classlike_storage_provider->get('IteratorAggregate');
+        $storage = $codebase->classlike_storage_provider->get(Interner::intern('IteratorAggregate'));
 
         $method = $storage->methods[Sym::GET_ITERATOR] ?? null;
 
@@ -138,7 +138,7 @@ final class VersionStubTest extends TestCase
 
         $stringable = $codebase->methods->getStorage(new MethodIdentifier('Stringable', '__tostring'));
 
-        $stringable_storage = $codebase->classlike_storage_provider->get('Stringable');
+        $stringable_storage = $codebase->classlike_storage_provider->get(Interner::intern('Stringable'));
 
         $this->assertNull(
             $stringable->signature_return_type,
@@ -187,7 +187,7 @@ final class VersionStubTest extends TestCase
         $codebase->config->visitStubFiles($codebase);
 
         foreach (['ReflectionClass', 'ReflectionFunction', 'ReflectionMethod', 'ReflectionProperty'] as $name) {
-            $storage = $codebase->classlike_storage_provider->get($name);
+            $storage = $codebase->classlike_storage_provider->get(Interner::intern($name));
 
             $this->assertTrue(
                 $codebase->methods->methodExists($codebase, new MethodIdentifier($name, 'getattributes')),
@@ -211,7 +211,7 @@ final class VersionStubTest extends TestCase
         $codebase->config->visitPreloadedStubFiles($codebase);
         $codebase->config->visitStubFiles($codebase);
 
-        $storage = $codebase->classlike_storage_provider->get('ReflectionClass');
+        $storage = $codebase->classlike_storage_provider->get(Interner::intern('ReflectionClass'));
 
         $this->assertTrue(
             isset($storage->methods[Interner::intern('newlazyghost')]),
@@ -249,13 +249,13 @@ final class VersionStubTest extends TestCase
         $codebase->scanner->queueClassLikeForScanning('Stringable');
         $codebase->scanFiles();
 
-        $reflected = $codebase->classlike_storage_provider->get('Stringable');
+        $reflected = $codebase->classlike_storage_provider->get(Interner::intern('Stringable'));
         $reflected_file = $reflected->location?->file_path ?? 'none';
         $reflected_signature = ($reflected->methods[Sym::TO_STRING] ?? null)?->signature_return_type;
 
         $codebase->config->visitStubFiles($codebase);
 
-        $storage = $codebase->classlike_storage_provider->get('Stringable');
+        $storage = $codebase->classlike_storage_provider->get(Interner::intern('Stringable'));
         $method = $storage->methods[Sym::TO_STRING] ?? null;
 
         $this->assertNull(

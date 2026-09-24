@@ -6,6 +6,7 @@ namespace Psalm\Internal\Type;
 
 use InvalidArgumentException;
 use Psalm\Codebase;
+use Psalm\Internal\Interner;
 use Psalm\Type;
 use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\Scalar;
@@ -847,39 +848,39 @@ final class TypeCombiner
                 return null;
             }
 
-            if (!$codebase->classlikes->classOrInterfaceOrEnumExists($type_key)) {
+            if (!$codebase->classlikes->classOrInterfaceOrEnumExists(Interner::intern($type_key))) {
                 // write this to the main list
                 $combination->value_types[$type_key] = $type;
 
                 return null;
             }
 
-            $is_class = $codebase->classExists($type_key);
+            $is_class = $codebase->classExists(Interner::intern($type_key));
 
             foreach ($combination->named_object_types as $key => $_) {
-                if ($codebase->classExists($key)) {
-                    if ($codebase->classExtendsOrImplements($key, $type_key)) {
+                if ($codebase->classExists(Interner::intern($key))) {
+                    if ($codebase->classExtendsOrImplements(Interner::intern($key), Interner::intern($type_key))) {
                         unset($combination->named_object_types[$key]);
                         continue;
                     }
 
                     if ($is_class) {
-                        if ($codebase->classExtends($type_key, $key)) {
+                        if ($codebase->classExtends(Interner::intern($type_key), Interner::intern($key))) {
                             return null;
                         }
                     }
                 } else {
-                    if ($codebase->interfaceExtends($key, $type_key)) {
+                    if ($codebase->interfaceExtends(Interner::intern($key), Interner::intern($type_key))) {
                         unset($combination->named_object_types[$key]);
                         continue;
                     }
 
                     if ($is_class) {
-                        if ($codebase->classImplements($type_key, $key)) {
+                        if ($codebase->classImplements(Interner::intern($type_key), Interner::intern($key))) {
                             return null;
                         }
                     } else {
-                        if ($codebase->interfaceExtends($type_key, $key)) {
+                        if ($codebase->interfaceExtends(Interner::intern($type_key), Interner::intern($key))) {
                             return null;
                         }
                     }
@@ -1406,7 +1407,7 @@ final class TypeCombiner
     private static function getClassLikes(Codebase $codebase, string $fq_classlike_name): array
     {
         try {
-            $class_storage = $codebase->classlike_storage_provider->get($fq_classlike_name);
+            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_classlike_name));
         } catch (InvalidArgumentException) {
             return [];
         }

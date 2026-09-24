@@ -365,7 +365,7 @@ final class InstancePropertyFetchAnalyzer
 
             foreach ($stmt_var_type->getAtomicTypes() as $lhs_type_part) {
                 if ($lhs_type_part instanceof TNamedObject) {
-                    if (!$codebase->classExistsById($lhs_type_part->name, null, $context)) {
+                    if (!$codebase->classExists($lhs_type_part->name, null, $context)) {
                         continue;
                     }
 
@@ -413,14 +413,14 @@ final class InstancePropertyFetchAnalyzer
             // log the appearance
             foreach ($stmt_var_type->getAtomicTypes() as $lhs_type_part) {
                 if ($lhs_type_part instanceof TNamedObject) {
-                    if (!$codebase->classExistsById($lhs_type_part->name, null, $context)) {
+                    if (!$codebase->classExists($lhs_type_part->name, null, $context)) {
                         continue;
                     }
 
                     $property_id = $lhs_type_part->value . '::$' . $stmt->name->name;
 
 
-                    $class_storage = $codebase->classlike_storage_provider->getById($lhs_type_part->name);
+                    $class_storage = $codebase->classlike_storage_provider->get($lhs_type_part->name);
 
                     AtomicPropertyFetchAnalyzer::processTaints(
                         $statements_analyzer,

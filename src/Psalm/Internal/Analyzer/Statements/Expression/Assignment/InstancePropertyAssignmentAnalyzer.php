@@ -129,7 +129,7 @@ final class InstancePropertyAssignmentAnalyzer
             }
 
             if ($class_property_type) {
-                $class_storage = $codebase->classlike_storage_provider->get($context->self);
+                $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($context->self));
 
                 $class_property_type = self::getExpandedPropertyType(
                     $codebase,
@@ -402,7 +402,7 @@ final class InstancePropertyAssignmentAnalyzer
             $can_set_readonly_property = $context->self
                 && $context->calling_method_id
                 && ($appearing_property_class === $context->self
-                    || $codebase->classExtends($context->self, $appearing_property_class))
+                    || $codebase->classExtends(Interner::intern($context->self), Interner::intern($appearing_property_class)))
                 && (str_ends_with($context->calling_method_id, '::__construct')
                     || str_ends_with($context->calling_method_id, '::unserialize')
                     || str_ends_with($context->calling_method_id, '::__unserialize')
@@ -998,18 +998,18 @@ final class InstancePropertyAssignmentAnalyzer
         $class_exists = false;
         $interface_exists = false;
 
-        if (!$codebase->classExistsById($lhs_type_part->name, null, $context)) {
-            if ($codebase->interfaceExistsById($lhs_type_part->name, null, $context)) {
+        if (!$codebase->classExists($lhs_type_part->name, null, $context)) {
+            if ($codebase->interfaceExists($lhs_type_part->name, null, $context)) {
                 $interface_exists = true;
                 $interface_storage = $codebase->classlike_storage_provider->get(
-                    strtolower($lhs_type_part->value),
+                    Interner::intern(strtolower($lhs_type_part->value)),
                 );
 
                 $override_property_visibility = $interface_storage->override_property_visibility;
 
                 foreach ($intersection_types as $intersection_type) {
                     if ($intersection_type instanceof TNamedObject
-                        && $codebase->classExistsById($intersection_type->name, null, $context)
+                        && $codebase->classExists($intersection_type->name, null, $context)
                     ) {
                         $fq_class_name = $intersection_type->value;
                         $class_exists = true;
@@ -1095,7 +1095,7 @@ final class InstancePropertyAssignmentAnalyzer
             )
         ) {
             $has_magic_setter = true;
-            $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
             if ($var_id) {
                 if (isset($class_storage->pseudo_property_set_types[Interner::intern('$' . $prop_name)])) {
@@ -1198,7 +1198,7 @@ final class InstancePropertyAssignmentAnalyzer
             && !$context->collect_initializations
             && !$context->collect_mutations
         ) {
-            $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
             self::taintProperty(
                 $statements_analyzer,
@@ -1310,7 +1310,7 @@ final class InstancePropertyAssignmentAnalyzer
             $statements_analyzer->getFilePath(),
         );
 
-        $declaring_class_storage = $codebase->classlike_storage_provider->get($declaring_property_class);
+        $declaring_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($declaring_property_class));
 
         if (isset($declaring_class_storage->properties[$prop_name_id])) {
             $property_storage = $declaring_class_storage->properties[$prop_name_id];
@@ -1383,7 +1383,7 @@ final class InstancePropertyAssignmentAnalyzer
         }
 
         if (!$class_property_type->isMixed()) {
-            $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
             $class_property_type = TypeExpander::expandUnion(
                 $codebase,
@@ -1507,7 +1507,7 @@ final class InstancePropertyAssignmentAnalyzer
             return null;
         }
 
-        $property_class_storage = $codebase->classlike_storage_provider->get($property_class_name);
+        $property_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($property_class_name));
 
         $property_storage = $property_class_storage->properties[$property_name_id];
 

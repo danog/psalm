@@ -190,7 +190,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
             return;
         }
 
-        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
         $result->check_visibility = $result->check_visibility && !$class_storage->override_method_visibility;
 
@@ -376,7 +376,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
 
             if ($class_storage->abstract && $class_storage->class_implements) {
                 foreach ($class_storage->class_implements as $interface_fqcln_lc => $_) {
-                    $interface_storage = $codebase->classlike_storage_provider->get($interface_fqcln_lc);
+                    $interface_storage = $codebase->classlike_storage_provider->get(Interner::intern($interface_fqcln_lc));
 
                     if (isset($interface_storage->methods[$method_name_lc_id])) {
                         $interface_has_method = true;
@@ -472,7 +472,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
                 $codebase,
                 $stmt,
                 $method_id,
-                $codebase->interfaceExists($fq_class_name, null, $context),
+                $codebase->interfaceExists(Interner::intern($fq_class_name), null, $context),
                 $context,
                 $codebase->config,
                 $all_intersection_return_type,
@@ -778,7 +778,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
                                 $method_name_lc,
                             );
 
-                            $mixin_class_storage = $codebase->classlike_storage_provider->getById(
+                            $mixin_class_storage = $codebase->classlike_storage_provider->get(
                                 $lhs_type_part_new->name,
                             );
 
@@ -865,13 +865,13 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
                 $context->insideUse(),
             )) {
                 $mixin_declaring_class_storage = $codebase->classlike_storage_provider->get(
-                    $class_storage->mixin_declaring_fqcln,
+                    Interner::intern($class_storage->mixin_declaring_fqcln),
                 );
 
                 $mixin_class_template_params = ClassTemplateParamCollector::collect(
                     $codebase,
                     $mixin_declaring_class_storage,
-                    $codebase->classlike_storage_provider->get($fq_class_name),
+                    $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name)),
                     null,
                     $lhs_type_part,
                     $lhs_var_id === '$this',
@@ -899,7 +899,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
                     $lhs_type_part = $new_lhs_type_part;
                 }
 
-                $mixin_class_storage = $codebase->classlike_storage_provider->getById($mixin->name);
+                $mixin_class_storage = $codebase->classlike_storage_provider->get($mixin->name);
 
                 $fq_class_name = $mixin_class_storage->name;
                 $mixin_class_storage->mixin_declaring_fqcln = $class_storage->mixin_declaring_fqcln;

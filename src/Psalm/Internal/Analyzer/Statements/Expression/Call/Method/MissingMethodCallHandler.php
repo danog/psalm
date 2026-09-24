@@ -258,7 +258,7 @@ final class MissingMethodCallHandler
         $fq_class_name = $method_id->fq_class_name;
         $method_name_lc = $method_id->method_name;
 
-        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
         $found_method_and_class_storage = self::findPseudoMethodAndClassStorages(
             $codebase,

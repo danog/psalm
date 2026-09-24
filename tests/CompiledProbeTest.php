@@ -247,7 +247,7 @@ final class CompiledProbeTest extends TestCase
         $context = new Context();
         $this->analyzeFile($file_path, $context);
 
-        $storage = $this->project_analyzer->getCodebase()->classlike_storage_provider->get('datetime');
+        $storage = $this->project_analyzer->getCodebase()->classlike_storage_provider->get(Interner::intern('datetime'));
 
         $actual = [
             'user_defined' => $storage->user_defined ? 'yes' : 'no',
@@ -377,7 +377,7 @@ final class CompiledProbeTest extends TestCase
         $this->analyzeFile($file_path, new Context());
 
         $codebase = $this->project_analyzer->getCodebase();
-        $c = $codebase->classlike_storage_provider->get('C');
+        $c = $codebase->classlike_storage_provider->get(Interner::intern('C'));
         $item = $c->properties[Interner::intern('items')]->type?->getSingleAtomic();
         $value = $item instanceof TArray ? $item->type_params[1] : null;
 

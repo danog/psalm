@@ -43,11 +43,11 @@ final class AssertionsFromInheritanceResolver
         $inherited_classes_and_interfaces = array_values(array_filter([
             ...$called_class->parent_classes,
             ...$called_class->class_implements,
-        ], fn(string $classOrInterface) => $this->codebase->classOrInterfaceOrEnumExists($classOrInterface)));
+        ], fn(string $classOrInterface) => $this->codebase->classOrInterfaceOrEnumExists(Interner::intern($classOrInterface))));
 
         foreach ($inherited_classes_and_interfaces as $potential_assertion_providing_class) {
             $potential_assertion_providing_classlike_storage = $this->codebase->classlike_storage_provider->get(
-                $potential_assertion_providing_class,
+                Interner::intern($potential_assertion_providing_class),
             );
             if (!isset($potential_assertion_providing_classlike_storage->methods[$method_name_lc_id])) {
                 continue;

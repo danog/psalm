@@ -143,13 +143,13 @@ final class ClassConstAnalyzer
                 );
             }
 
-            if ($codebase->classlikes->classExists($fq_class_name, null, $context)) {
+            if ($codebase->classlikes->classExists(Interner::intern($fq_class_name), null, $context)) {
                 $fq_class_name = $codebase->classlikes->getUnAliasedName($fq_class_name);
             }
 
             if ($stmt->name instanceof PhpParser\Node\Identifier && $stmt->name->name === 'class') {
-                if ($codebase->classlikes->classExists($fq_class_name, null, $context)) {
-                    $const_class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+                if ($codebase->classlikes->classExists(Interner::intern($fq_class_name), null, $context)) {
+                    $const_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
                     $fq_class_name = $const_class_storage->name;
 
                     if ($const_class_storage->deprecated && $fq_class_name !== $context->self) {
@@ -192,7 +192,7 @@ final class ClassConstAnalyzer
             }
 
             // if we're ignoring that the class doesn't exist, exit anyway
-            if (!$codebase->classlikes->classOrInterfaceOrEnumExists($fq_class_name, null, $context)) {
+            if (!$codebase->classlikes->classOrInterfaceOrEnumExists(Interner::intern($fq_class_name), null, $context)) {
                 return true;
             }
 
@@ -242,7 +242,7 @@ final class ClassConstAnalyzer
                 );
             }
 
-            $const_class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+            $const_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
             if ($const_class_storage->is_enum) {
                 $case = $const_class_storage->enum_cases[Interner::intern((string)$stmt->name)] ?? null;
                 if ($case && $case->deprecated) {
@@ -264,8 +264,8 @@ final class ClassConstAnalyzer
             ) {
                 $class_visibility = ReflectionProperty::IS_PRIVATE;
             } elseif ($context->self &&
-                ($codebase->classlikes->classExtends($context->self, $fq_class_name)
-                    || $codebase->classlikes->classExtends($fq_class_name, $context->self))
+                ($codebase->classlikes->classExtends(Interner::intern($context->self), Interner::intern($fq_class_name))
+                    || $codebase->classlikes->classExtends(Interner::intern($fq_class_name), Interner::intern($context->self)))
             ) {
                 $class_visibility = ReflectionProperty::IS_PROTECTED;
             } else {
@@ -512,7 +512,7 @@ final class ClassConstAnalyzer
                 return true;
             }
 
-            if ($codebase->classlikes->classExists($fq_class_name, null, $context)) {
+            if ($codebase->classlikes->classExists(Interner::intern($fq_class_name), null, $context)) {
                 $fq_class_name = $codebase->classlikes->getUnAliasedName($fq_class_name);
             }
 
@@ -529,7 +529,7 @@ final class ClassConstAnalyzer
             }
 
             // if we're ignoring that the class doesn't exist, exit anyway
-            if (!$codebase->classlikes->classOrInterfaceOrEnumExists($fq_class_name, null, $context)) {
+            if (!$codebase->classlikes->classOrInterfaceOrEnumExists(Interner::intern($fq_class_name), null, $context)) {
                 return true;
             }
 
@@ -561,7 +561,7 @@ final class ClassConstAnalyzer
                 );
             }
 
-            $const_class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+            $const_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
             if ($fq_class_name === $context->self
                 || (
@@ -571,8 +571,8 @@ final class ClassConstAnalyzer
             ) {
                 $class_visibility = ReflectionProperty::IS_PRIVATE;
             } elseif ($context->self &&
-                ($codebase->classlikes->classExtends($context->self, $fq_class_name)
-                    || $codebase->classlikes->classExtends($fq_class_name, $context->self))
+                ($codebase->classlikes->classExtends(Interner::intern($context->self), Interner::intern($fq_class_name))
+                    || $codebase->classlikes->classExtends(Interner::intern($fq_class_name), Interner::intern($context->self)))
             ) {
                 $class_visibility = ReflectionProperty::IS_PROTECTED;
             } else {
@@ -717,7 +717,7 @@ final class ClassConstAnalyzer
         Context $context,
     ): void {
         assert($context->self !== null);
-        $class_storage = $statements_analyzer->getCodebase()->classlike_storage_provider->get($context->self);
+        $class_storage = $statements_analyzer->getCodebase()->classlike_storage_provider->get(Interner::intern($context->self));
 
         if ($class_storage->has_visitor_issues) {
             return;
@@ -867,7 +867,7 @@ final class ClassConstAnalyzer
         $parent_classlike_storage = $interface_const_storage = $parent_const_storage = null;
         $interface_overrides = [];
         foreach ($class_storage->class_implements ?: $class_storage->direct_interface_parents as $interface) {
-            $interface_storage = $codebase->classlike_storage_provider->get($interface);
+            $interface_storage = $codebase->classlike_storage_provider->get(Interner::intern($interface));
             $parent_const_storage = $interface_storage->constants[$const_name_id] ?? null;
             if ($parent_const_storage !== null) {
                 if ($const_storage->location
@@ -903,7 +903,7 @@ final class ClassConstAnalyzer
         }
 
         foreach ($class_storage->parent_classes as $parent_class) {
-            $parent_class_storage = $codebase->classlike_storage_provider->get($parent_class);
+            $parent_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($parent_class));
             $parent_const_storage = $parent_class_storage->constants[$const_name_id] ?? null;
             if ($parent_const_storage !== null) {
                 if ($const_storage->location !== null && $interface_const_storage !== null) {

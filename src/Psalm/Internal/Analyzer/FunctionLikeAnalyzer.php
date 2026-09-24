@@ -322,7 +322,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                     $this->getAliases(),
                 );
 
-                if ($codebase->classOrInterfaceExists($fq_classlike_name, null, $context)) {
+                if ($codebase->classOrInterfaceExists(Interner::intern($fq_classlike_name), null, $context)) {
                     IssueBuffer::maybeAdd(
                         new ReservedWord(
                             'Cannot use ' . $param_name . ' as template name since the class already exists',
@@ -834,10 +834,10 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             foreach ($storage->throws as $expected_exception => $_) {
                 if ($expected_exception === $possibly_thrown_exception
                     || (
-                        $codebase->classOrInterfaceExists($possibly_thrown_exception, null, $context)
+                        $codebase->classOrInterfaceExists(Interner::intern($possibly_thrown_exception), null, $context)
                         && (
-                            $codebase->interfaceExtends($possibly_thrown_exception, $expected_exception)
-                            || $codebase->classExtendsOrImplements($possibly_thrown_exception, $expected_exception)
+                            $codebase->interfaceExtends(Interner::intern($possibly_thrown_exception), Interner::intern($expected_exception))
+                            || $codebase->classExtendsOrImplements(Interner::intern($possibly_thrown_exception), Interner::intern($expected_exception))
                         )
                     )
                 ) {
@@ -1616,7 +1616,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
         $fqcln = $this->source->getFQCLN();
 
         if ($fqcln !== null && $this instanceof MethodAnalyzer) {
-            $class_storage = $codebase->classlike_storage_provider->get($fqcln);
+            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fqcln));
             $is_final = $this->function->isFinal() || $class_storage->final;
         }
 
@@ -1977,7 +1977,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             $method_id = $this->getMethodId($context->self);
 
             $fq_class_name = (string)$context->self;
-            $appearing_class_storage = $classlike_storage_provider->get($fq_class_name);
+            $appearing_class_storage = $classlike_storage_provider->get(Interner::intern($fq_class_name));
 
             if ($add_mutations) {
                 if (!$context->collect_initializations) {
@@ -2102,7 +2102,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 && $codebase->config->ensure_override_attribute
                 && $overridden_method_ids
                 && ($storage->defining_fqcln === null
-                    || !$codebase->classlike_storage_provider->get($storage->defining_fqcln)->is_trait
+                    || !$codebase->classlike_storage_provider->get(Interner::intern($storage->defining_fqcln))->is_trait
                 ) && $storage->cased_name !== '__construct'
                 && ($storage->cased_name !== '__toString'
                     || isset($appearing_class_storage->direct_class_interfaces['stringable']))
@@ -2136,7 +2136,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
                     $overridden_fq_class_name = $overridden_method_id->fq_class_name;
 
-                    $parent_storage = $classlike_storage_provider->get($overridden_fq_class_name);
+                    $parent_storage = $classlike_storage_provider->get(Interner::intern($overridden_fq_class_name));
 
                     if ($this->function->name->name === '__construct'
                         && !$parent_storage->preserve_constructor_signature
@@ -2160,11 +2160,11 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                         $declaring_fq_class_name = $implementer_declaring_method_id->fq_class_name;
 
                         $appearing_class_storage = $classlike_storage_provider->get(
-                            $appearing_fq_class_name,
+                            Interner::intern($appearing_fq_class_name),
                         );
 
                         $declaring_class_storage = $classlike_storage_provider->get(
-                            $declaring_fq_class_name,
+                            Interner::intern($declaring_fq_class_name),
                         );
 
                         if (isset($appearing_class_storage->trait_visibility_map[$appearing_method_name])) {
@@ -2305,7 +2305,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
             $fq_class_name = (string)$context->self;
 
-            $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
             $method_name_lc = strtolower($storage->cased_name);
             $method_name_lc_id = Interner::intern($method_name_lc);

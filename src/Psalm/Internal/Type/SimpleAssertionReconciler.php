@@ -889,7 +889,7 @@ final class SimpleAssertionReconciler extends Reconciler
 
         foreach ($existing_var_atomic_types as $type) {
             if ($type instanceof TNamedObject
-                && $codebase->classOrInterfaceExistsById($type->name)
+                && $codebase->classOrInterfaceExists($type->name)
             ) {
                 if (!$codebase->methodExists(new MethodIdentifier($type->value, strtolower($method_name)))) {
                     $match_found = false;
@@ -897,7 +897,7 @@ final class SimpleAssertionReconciler extends Reconciler
                     $extra_types = $type->extra_types;
                     foreach ($type->extra_types as $k => $extra_type) {
                         if ($extra_type instanceof TNamedObject
-                            && $codebase->classOrInterfaceExistsById($extra_type->name)
+                            && $codebase->classOrInterfaceExists($extra_type->name)
                             && $codebase->methodExists(new MethodIdentifier($extra_type->value, strtolower($method_name)))
                         ) {
                             $match_found = true;
@@ -2609,7 +2609,7 @@ final class SimpleAssertionReconciler extends Reconciler
                 $callable_types[] = new TCallableObject();
                 $redundant = false;
             } elseif ($type instanceof TNamedObject
-                && $codebase->classExistsById($type->name)
+                && $codebase->classExists($type->name)
                 && $codebase->methodExists(new MethodIdentifier($type->value, '__invoke'))
             ) {
                 $callable_types[] = $type;
@@ -2885,7 +2885,7 @@ final class SimpleAssertionReconciler extends Reconciler
         int &$failed_reconciliation,
     ): Union {
         $class_name = $class_constant_expression->fq_classlike_name;
-        if (!$codebase->classlike_storage_provider->has($class_name)) {
+        if (!$codebase->classlike_storage_provider->has(Interner::intern($class_name))) {
             return $existing_type;
         }
 
@@ -2927,11 +2927,11 @@ final class SimpleAssertionReconciler extends Reconciler
                 return null;
             }
 
-            if (!$codebase->classOrInterfaceOrEnumExists($class_name)) {
+            if (!$codebase->classOrInterfaceOrEnumExists(Interner::intern($class_name))) {
                 return null;
             }
 
-            $class_storage = $codebase->classlike_storage_provider->get($class_name);
+            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($class_name));
             if (!$class_storage->is_enum) {
                 return null;
             }
@@ -2982,11 +2982,11 @@ final class SimpleAssertionReconciler extends Reconciler
             return true;
         }
 
-        if (!$type instanceof TNamedObject || !$codebase->classlike_storage_provider->hasById($type->name)) {
+        if (!$type instanceof TNamedObject || !$codebase->classlike_storage_provider->has($type->name)) {
             return false;
         }
 
-        $class_storage = $codebase->classlike_storage_provider->getById($type->name);
+        $class_storage = $codebase->classlike_storage_provider->get($type->name);
 
         return !$class_storage->final;
     }

@@ -634,11 +634,11 @@ abstract class Atomic implements TypeNode, Stringable
         return $this instanceof TNamedObject
             && (
                 strtolower($this->value) === 'traversable'
-                || ($codebase->classOrInterfaceExistsById($this->name)
-                    && ($codebase->classExtendsOrImplementsById(
+                || ($codebase->classOrInterfaceExists($this->name)
+                    && ($codebase->classExtendsOrImplements(
                         $this->name,
                         Sym::TRAVERSABLE,
-                    ) || $codebase->interfaceExtendsById(
+                    ) || $codebase->interfaceExtends(
                         $this->name,
                         Sym::TRAVERSABLE,
                     )))
@@ -657,11 +657,11 @@ abstract class Atomic implements TypeNode, Stringable
         return $this instanceof TNamedObject
             && (
                 strtolower($this->value) === 'countable'
-                || ($codebase->classOrInterfaceExistsById($this->name)
-                    && ($codebase->classExtendsOrImplementsById(
+                || ($codebase->classOrInterfaceExists($this->name)
+                    && ($codebase->classExtendsOrImplements(
                         $this->name,
                         Sym::COUNTABLE,
-                    ) || $codebase->interfaceExtendsById(
+                    ) || $codebase->interfaceExtends(
                         $this->name,
                         Sym::COUNTABLE,
                     )))
@@ -695,11 +695,11 @@ abstract class Atomic implements TypeNode, Stringable
         return $this instanceof TNamedObject
             && (
                 strtolower($this->value) === 'arrayaccess'
-                || ($codebase->classOrInterfaceExistsById($this->name)
-                    && ($codebase->classExtendsOrImplementsById(
+                || ($codebase->classOrInterfaceExists($this->name)
+                    && ($codebase->classExtendsOrImplements(
                         $this->name,
                         Sym::ARRAY_ACCESS,
-                    ) || $codebase->interfaceExtendsById(
+                    ) || $codebase->interfaceExtends(
                         $this->name,
                         Sym::ARRAY_ACCESS,
                     )))

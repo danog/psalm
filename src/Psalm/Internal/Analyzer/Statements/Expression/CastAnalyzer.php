@@ -13,6 +13,7 @@ use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\TypeCombiner;
 use Psalm\Internal\Type\TypeVariableTracker;
@@ -434,15 +435,15 @@ final class CastAnalyzer
                     }
 
                     // prevent "Could not get class storage for mixed"
-                    if (!$codebase->classExistsById($intersection_type->name)) {
+                    if (!$codebase->classExists($intersection_type->name)) {
                         continue;
                     }
 
                     foreach (self::PSEUDO_CASTABLE_CLASSES as $pseudo_castable_class) {
                         if (strtolower($intersection_type->value) === strtolower($pseudo_castable_class)
                             || $codebase->classExtends(
-                                $intersection_type->value,
-                                $pseudo_castable_class,
+                                $intersection_type->name,
+                                Interner::intern($pseudo_castable_class),
                             )
                         ) {
                             $castable_types[] = new TInt();
@@ -633,15 +634,15 @@ final class CastAnalyzer
                     }
 
                     // prevent "Could not get class storage for mixed"
-                    if (!$codebase->classExistsById($intersection_type->name)) {
+                    if (!$codebase->classExists($intersection_type->name)) {
                         continue;
                     }
 
                     foreach (self::PSEUDO_CASTABLE_CLASSES as $pseudo_castable_class) {
                         if (strtolower($intersection_type->value) === strtolower($pseudo_castable_class)
                             || $codebase->classExtends(
-                                $intersection_type->value,
-                                $pseudo_castable_class,
+                                $intersection_type->name,
+                                Interner::intern($pseudo_castable_class),
                             )
                         ) {
                             $castable_types[] = new TFloat();

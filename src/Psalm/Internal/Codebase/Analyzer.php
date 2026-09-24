@@ -505,7 +505,7 @@ final class Analyzer
                             } else {
                                 try {
                                     $referencing_storage = $codebase->classlike_storage_provider->get(
-                                        $referencing_base_classlike,
+                                        Interner::intern($referencing_base_classlike),
                                     );
                                 } catch (InvalidArgumentException) {
                                     // Workaround for #3671
@@ -684,7 +684,7 @@ final class Analyzer
             $code_use_graph->removeReferencesFrom(CodeUseGraph::classNode($fq_class_name_lc));
 
             try {
-                $classlike_storage = $codebase->classlike_storage_provider->get($fq_class_name_lc);
+                $classlike_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name_lc));
             } catch (InvalidArgumentException) {
                 continue;
             }

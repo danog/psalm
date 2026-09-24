@@ -624,7 +624,7 @@ final class ArgumentsAnalyzer
 
             if ($declaring_method_id && (string)$declaring_method_id !== (string)$method_id) {
                 $self_fq_class_name = $declaring_method_id->fq_class_name;
-                $class_storage = $codebase->classlike_storage_provider->get($self_fq_class_name);
+                $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($self_fq_class_name));
             }
 
             $appearing_method_id = $codebase->methods->getAppearingMethodId($method_id);
@@ -1337,7 +1337,7 @@ final class ArgumentsAnalyzer
         );
 
         try {
-            $declaring_class_storage = $codebase->classlike_storage_provider->get($declaring_property_class);
+            $declaring_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($declaring_property_class));
         } catch (InvalidArgumentException) {
             return;
         }

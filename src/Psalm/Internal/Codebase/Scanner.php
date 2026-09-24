@@ -521,8 +521,9 @@ final class Scanner
         $storage->populated = false;
         $this->codebase->classlike_storage_provider->makeNew($lc);
         foreach ($storage->dependent_classlikes as $dependent_lc => $_) {
-            if ($this->codebase->classlike_storage_provider->has($dependent_lc)) {
-                $this->unpopulate($this->codebase->classlike_storage_provider->get($dependent_lc), $seen);
+            $dependent_storage = $this->codebase->classlike_storage_provider->findDeclared(Interner::intern($dependent_lc));
+            if ($dependent_storage !== null) {
+                $this->unpopulate($dependent_storage, $seen);
             }
         }
     }
@@ -588,8 +589,9 @@ final class Scanner
                 $provider = $this->codebase->classlike_storage_provider;
                 // re-registering the stub's definition means exhuming it from the class cache: without one
                 // (a test that builds its own providers) whatever is registered has to stand
-                if ($this->codebase->register_stub_files && $provider->cache !== null && $provider->has($fq_classlike_name)) {
-                    $replaced = $provider->get($fq_classlike_name);
+                $declared = $provider->findDeclared(Interner::intern($fq_classlike_name));
+                if ($this->codebase->register_stub_files && $provider->cache !== null && $declared !== null) {
+                    $replaced = $declared;
                     if (!$replaced->stubbed
                         && $replaced->stmt_location
                         && $this->config->isInProjectDirs($replaced->stmt_location->file_path)
@@ -618,20 +620,21 @@ final class Scanner
                         continue;
                     }
 
-                    $stub_storage = $provider->get($fq_classlike_name);
+                    $stub_storage = $provider->get(Interner::intern($fq_classlike_name));
                     if ($stub_storage !== $replaced && $this->mergeReflectedMembers($stub_storage, $replaced)) {
                         // the stub storage and everything populated from it inherit the new members
                         $this->unpopulate($stub_storage, []);
                     }
                     foreach ($replaced->dependent_classlikes as $dependent_name_lc => $_) {
-                        if ($provider->has($dependent_name_lc)) {
-                            $provider->get($dependent_name_lc)->populated = false;
+                        $dependent_storage = $provider->findDeclared(Interner::intern($dependent_name_lc));
+                        if ($dependent_storage !== null) {
+                            $dependent_storage->populated = false;
                             $provider->makeNew($dependent_name_lc);
                         }
                     }
                     continue;
                 }
-                if ($provider->has($fq_classlike_name) || $provider->cache !== null) {
+                if ($provider->findDeclared(Interner::intern($fq_classlike_name)) !== null || $provider->cache !== null) {
                     // in memory already, or re-readable from the cache; with neither there is nothing to
                     // exhume and the class stays as the scan of this file left it
                     try {

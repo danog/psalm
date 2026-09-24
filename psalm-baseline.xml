@@ -206,7 +206,7 @@
       <code><![CDATA[ClassTemplateParamCollector::collect(
                 $codebase,
                 $class_storage,
-                $codebase->classlike_storage_provider->get($original_fq_classlike_name),
+                $codebase->classlike_storage_provider->get(Interner::intern($original_fq_classlike_name)),
                 strtolower($stmt->name->name),
                 $this_object_type,
             )]]></code>
@@ -2636,9 +2636,9 @@
   </file>
   <file src="src/Psalm/Type/Atomic.php">
     <ImpureMethodCall>
-      <code><![CDATA[$codebase->classOrInterfaceExistsById($this->name)]]></code>
-      <code><![CDATA[$codebase->classOrInterfaceExistsById($this->name)]]></code>
-      <code><![CDATA[$codebase->classOrInterfaceExistsById($this->name)]]></code>
+      <code><![CDATA[$codebase->classOrInterfaceExists($this->name)]]></code>
+      <code><![CDATA[$codebase->classOrInterfaceExists($this->name)]]></code>
+      <code><![CDATA[$codebase->classOrInterfaceExists($this->name)]]></code>
       <code><![CDATA[TemplateStandinTypeReplacer::getMappedGenericTypeParams(
                 $codebase,
                 $this,

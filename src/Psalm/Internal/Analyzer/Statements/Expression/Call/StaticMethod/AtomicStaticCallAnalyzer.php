@@ -353,7 +353,7 @@ final class AtomicStaticCallAnalyzer
             }
         }
 
-        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
         $naive_method_exists = $codebase->methodExists(
             $method_id,
@@ -444,7 +444,7 @@ final class AtomicStaticCallAnalyzer
                         }
 
                         $mixin_declaring_class_storage = $codebase->classlike_storage_provider->get(
-                            $class_storage->mixin_declaring_fqcln,
+                            Interner::intern($class_storage->mixin_declaring_fqcln),
                         );
 
                         $new_mixin_candidate_type = AtomicPropertyFetchAnalyzer::localizePropertyType(
@@ -580,7 +580,7 @@ final class AtomicStaticCallAnalyzer
                 && (
                     !$context->self
                     || $statements_analyzer->isStatic()
-                    || !$codebase->classExtends($context->self, $fq_class_name)
+                    || !$codebase->classExtends(Interner::intern($context->self), Interner::intern($fq_class_name))
                 )
             ) {
                 MethodAnalyzer::checkStatic(
@@ -813,7 +813,7 @@ final class AtomicStaticCallAnalyzer
             return true;
         }
 
-        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
         if ($class_storage->deprecated && $fq_class_name !== $context->self) {
             IssueBuffer::maybeAdd(

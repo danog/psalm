@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Internal\Type\Comparator;
 
 use Psalm\Codebase;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Sym;
 use Psalm\Storage\ClassLikeStorage;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
@@ -111,8 +112,8 @@ final class ObjectComparator
             $container_type_is_interface = $intersection_container_type instanceof TTemplateParam
                 ? false
                 : ($intersection_container_type_lower === null
-                    ? $codebase->interfaceExistsById($intersection_container_type->name)
-                    : $codebase->interfaceExists($intersection_container_type_lower));
+                    ? $codebase->interfaceExists($intersection_container_type->name)
+                    : $codebase->interfaceExists(Interner::intern($intersection_container_type_lower)));
 
             foreach ($intersection_input_types as $input_type_key => $intersection_input_type) {
                 if ($allow_interface_equality
@@ -230,7 +231,7 @@ final class ObjectComparator
                 }
 
                 $input_class_storage = $codebase->classlike_storage_provider->get(
-                    $intersection_input_type->defining_class,
+                    Interner::intern($intersection_input_type->defining_class),
                 );
 
                 if (isset($input_class_storage->template_extended_params
@@ -284,8 +285,8 @@ final class ObjectComparator
             if ($intersection_container_type_lower === null && $intersection_container_type instanceof TNamedObject) {
                 // both are named class-likes: compared by interned name (pzoom's StrId path) when both have a
                 // storage; an undefined class or an alias takes the spelled path below
-                $input_storage = $codebase->classlike_storage_provider->findById($intersection_input_type->name);
-                $container_storage = $codebase->classlike_storage_provider->findById(
+                $input_storage = $codebase->classlike_storage_provider->find($intersection_input_type->name);
+                $container_storage = $codebase->classlike_storage_provider->find(
                     $intersection_container_type->name,
                 );
 
@@ -341,15 +342,15 @@ final class ObjectComparator
 
         if ($intersection_container_type_lower === 'iterable') {
             if ($intersection_input_type_lower === 'traversable'
-                || ($codebase->classlikes->classExists($intersection_input_type_lower)
+                || ($codebase->classlikes->classExists(Interner::intern($intersection_input_type_lower))
                     && $codebase->classlikes->classImplements(
-                        $intersection_input_type_lower,
-                        'Traversable',
+                        Interner::intern($intersection_input_type_lower),
+                        Sym::TRAVERSABLE,
                     ))
-                || ($codebase->classlikes->interfaceExists($intersection_input_type_lower)
+                || ($codebase->classlikes->interfaceExists(Interner::intern($intersection_input_type_lower))
                     && $codebase->classlikes->interfaceExtends(
-                        $intersection_input_type_lower,
-                        'Traversable',
+                        Interner::intern($intersection_input_type_lower),
+                        Sym::TRAVERSABLE,
                     ))
             ) {
                 return true;
@@ -362,8 +363,8 @@ final class ObjectComparator
             return true;
         }
 
-        $input_type_is_interface = $codebase->interfaceExists($intersection_input_type_lower);
-        $container_type_is_interface = $codebase->interfaceExists($intersection_container_type_lower);
+        $input_type_is_interface = $codebase->interfaceExists(Interner::intern($intersection_input_type_lower));
+        $container_type_is_interface = $codebase->interfaceExists(Interner::intern($intersection_container_type_lower));
 
         if ($allow_interface_equality
             && $container_type_is_interface
@@ -372,12 +373,12 @@ final class ObjectComparator
             return true;
         }
 
-        if (($codebase->classExists($intersection_input_type_lower)
-                || $codebase->classlikes->enumExists($intersection_input_type_lower))
-            && $codebase->classOrInterfaceExists($intersection_container_type_lower)
+        if (($codebase->classExists(Interner::intern($intersection_input_type_lower))
+                || $codebase->classlikes->enumExists(Interner::intern($intersection_input_type_lower)))
+            && $codebase->classOrInterfaceExists(Interner::intern($intersection_container_type_lower))
             && $codebase->classExtendsOrImplements(
-                $intersection_input_type_lower,
-                $intersection_container_type_lower,
+                Interner::intern($intersection_input_type_lower),
+                Interner::intern($intersection_container_type_lower),
             )
         ) {
             if ($container_was_static && !$input_was_static) {
@@ -393,8 +394,8 @@ final class ObjectComparator
 
         if ($input_type_is_interface
             && $codebase->interfaceExtends(
-                $intersection_input_type_lower,
-                $intersection_container_type_lower,
+                Interner::intern($intersection_input_type_lower),
+                Interner::intern($intersection_container_type_lower),
             )
         ) {
             return true;
@@ -440,8 +441,8 @@ final class ObjectComparator
             return true;
         }
 
-        $input_type_is_interface = $codebase->interfaceExistsById($input_id);
-        $container_type_is_interface = $codebase->interfaceExistsById($container_id);
+        $input_type_is_interface = $codebase->interfaceExists($input_id);
+        $container_type_is_interface = $codebase->interfaceExists($container_id);
 
         if ($allow_interface_equality
             && $container_type_is_interface
@@ -450,10 +451,10 @@ final class ObjectComparator
             return true;
         }
 
-        if (($codebase->classExistsById($input_id)
-                || $codebase->classlikes->enumExistsById($input_id))
-            && $codebase->classOrInterfaceExistsById($container_id)
-            && $codebase->classExtendsOrImplementsById($input_id, $container_id)
+        if (($codebase->classExists($input_id)
+                || $codebase->classlikes->enumExists($input_id))
+            && $codebase->classOrInterfaceExists($container_id)
+            && $codebase->classExtendsOrImplements($input_id, $container_id)
         ) {
             if ($container_was_static && !$input_was_static) {
                 if ($atomic_comparison_result) {
@@ -467,7 +468,7 @@ final class ObjectComparator
         }
 
         if ($input_type_is_interface
-            && $codebase->interfaceExtendsById($input_id, $container_id)
+            && $codebase->interfaceExtends($input_id, $container_id)
         ) {
             return true;
         }

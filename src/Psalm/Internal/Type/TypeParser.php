@@ -11,6 +11,7 @@ use Psalm\Exception\TypeParseTreeException;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\ArrayAnalyzer;
 use Psalm\Internal\Codebase\ConstantMap;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\ParseTree\CallableParamTree;
 use Psalm\Internal\Type\ParseTree\CallableTree;
 use Psalm\Internal\Type\ParseTree\CallableWithReturnTypeTree;
@@ -1722,7 +1723,7 @@ final class TypeParser
         $modified = false;
         foreach ($intersection_types as $intersection_type) {
             if (!$intersection_type instanceof TTypeAlias
-                || !$codebase->classlike_storage_provider->has($intersection_type->declaring_fq_classlike_name)
+                || !$codebase->classlike_storage_provider->has(Interner::intern($intersection_type->declaring_fq_classlike_name))
             ) {
                 $normalized_intersection_types[] = [$intersection_type];
                 continue;

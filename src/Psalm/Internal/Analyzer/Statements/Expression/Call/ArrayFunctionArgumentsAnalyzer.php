@@ -15,6 +15,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\ExpressionIdentifier;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\ArrayType;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
@@ -791,7 +792,7 @@ final class ArrayFunctionArgumentsAnalyzer
                                 $callable_fq_class_name = $container_class;
                         }
 
-                        if (!$codebase->classOrInterfaceExists($callable_fq_class_name, null, $context)) {
+                        if (!$codebase->classOrInterfaceExists(Interner::intern($callable_fq_class_name), null, $context)) {
                             return;
                         }
 

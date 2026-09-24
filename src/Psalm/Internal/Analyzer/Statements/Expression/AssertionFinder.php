@@ -4150,7 +4150,7 @@ final class AssertionFinder
                         && $inside_negation
                         && $source instanceof StatementsAnalyzer
                     ) {
-                        if ($codebase->interfaceExistsById($instanceof_type->name)) {
+                        if ($codebase->interfaceExists($instanceof_type->name)) {
                             continue;
                         }
 
@@ -4269,7 +4269,7 @@ final class AssertionFinder
                 return 'Variable ' . $name . ' is not an object so the assertion cannot be applied';
             }
 
-            $class_definition = $class_provider->getById($type->name);
+            $class_definition = $class_provider->get($type->name);
             $property_definition = $class_definition->properties[Interner::intern($property)] ?? null;
 
             if (!$property_definition instanceof PropertyStorage) {

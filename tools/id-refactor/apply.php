@@ -4,29 +4,32 @@
 declare(strict_types=1);
 $in = $argv[1] ?? exit("usage: apply.php out.jsonl [--dry]\n");
 $dry = in_array('--dry', $argv, true);
-$sites = []; $syms = []; $skips = []; $errors = 0;
+$sites = []; $syms = []; $skips = []; $manual = []; $errors = 0; $wrapped = 0;
 foreach (file($in, FILE_IGNORE_NEW_LINES) as $line) {
     $r = json_decode($line, true);
-    if ($r['kind'] === 'edit') { $sites[$r['file']][$r['site'] . json_encode($r['edits'])] = $r['edits']; }
+    if ($r['kind'] === 'edit') { $k = $r['site'] . json_encode($r['edits']); if (!isset($sites[$r['file']][$k])) { $wrapped += $r['wrapped'] ?? 0; } $sites[$r['file']][$k] = $r['edits']; }
     elseif ($r['kind'] === 'sym') { $syms[$r['name']] = $r['value']; }
     elseif ($r['kind'] === 'skip') { $skips[$r['site']] = $r['args']; }
+    elseif ($r['kind'] === 'manual') { $manual[$r['site']] = $r['why']; }
     else { $errors++; }
 }
 $n = 0;
 foreach ($sites as $file => $group) {
     $edits = [];
-    foreach ($group as $site_edits) { foreach ($site_edits as $e) { $edits[$e[0] . ':' . $e[1]] = $e; } }
-    usort($edits, fn($a, $b) => $b[0] <=> $a[0]);
+    // one record per call site (Psalm analyzes loop bodies more than once); nested sites keep all their edits
+    foreach ($group as $rk => $site_edits) { foreach ($site_edits as $i => $e) { $edits[$rk . '#' . $i] = $e; } }
+    usort($edits, fn($a, $b) => [$b[0], $b[1]] <=> [$a[0], $a[1]]);
     $src = file_get_contents($file); $prev = PHP_INT_MAX;
     foreach ($edits as [$s, $e, $t]) {
         if ($e > $prev) { fwrite(STDERR, "overlap in $file at $s\n"); continue; }
         $src = substr($src, 0, $s) . $t . substr($src, $e); $prev = $s; $n++;
     }
-    // the Sym import, in alphabetical position among the use statements
-    if (str_contains($src, 'Sym::') && !preg_match('/^use Psalm\\\\Internal\\\\Sym;$/m', $src)
+    // the Sym / Interner imports, in alphabetical position among the use statements
+    foreach (['Sym', 'Interner'] as $imp) {
+    if (str_contains($src, $imp . '::') && !preg_match('/^use Psalm\\\\Internal\\\\' . $imp . ';$/m', $src)
         && !preg_match('/^namespace Psalm\\\\Internal;$/m', $src)
     ) {
-        $line = "use Psalm\\Internal\\Sym;";
+        $line = "use Psalm\\Internal\\" . $imp . ";";
         preg_match_all('/^use [A-Z][^;(]*;$/m', $src, $m, PREG_OFFSET_CAPTURE);
         $at = null;
         foreach ($m[0] as [$u, $off]) {
@@ -38,6 +41,7 @@ foreach ($sites as $file => $group) {
             $at = $last ?? (strpos($src, "\n", strpos($src, 'namespace ')) + 1);
         }
         $src = substr($src, 0, $at) . $line . "\n" . substr($src, $at);
+    }
     }
     if (!$dry) { file_put_contents($file, $src); }
 }
@@ -53,5 +57,6 @@ if (!$dry && $added) { file_put_contents($symfile, $sym_src); }
 $shapes = [];
 foreach ($skips as $site => $args) { foreach ($args as $a) { $shapes[($a['node'] ?? $a['why']) . ' : ' . ($a['type'] ?? '')][] = $site; } }
 uasort($shapes, fn($a, $b) => count($b) <=> count($a));
+printf("manual sites %d, intern() wraps %d\n", count($manual), $wrapped); foreach ($manual as $ms => $mw) { echo "  MANUAL $ms: $mw\n"; }
 printf("files %d, edits %d, sym constants added %d, skipped sites %d, plugin errors %d\n", count($sites), $n, $added, count($skips), $errors);
 foreach (array_slice($shapes, 0, 25, true) as $shape => $list) { printf("%5d  %s   e.g. %s\n", count($list), $shape, $list[0]); }

@@ -15,6 +15,7 @@ use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Codebase\TaintFlowGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\Comparator\CallableTypeComparator;
 use Psalm\Internal\Type\TemplateBound;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
@@ -359,8 +360,8 @@ final class FunctionCallReturnTypeFetcher
                     ]);
 
                 case 'get_parent_class':
-                    if ($context->self && $codebase->classExists($context->self, null, $context)) {
-                        $classlike_storage = $codebase->classlike_storage_provider->get($context->self);
+                    if ($context->self && $codebase->classExists(Interner::intern($context->self), null, $context)) {
+                        $classlike_storage = $codebase->classlike_storage_provider->get(Interner::intern($context->self));
 
                         if ($classlike_storage->parent_classes) {
                             return new Union([

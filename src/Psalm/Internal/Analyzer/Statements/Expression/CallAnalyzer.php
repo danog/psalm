@@ -97,8 +97,8 @@ abstract class CallAnalyzer
             (
                 $context->self === $fq_class_name ||
                 $codebase->classExtends(
-                    $context->self,
-                    $fq_class_name,
+                    Interner::intern($context->self),
+                    Interner::intern($fq_class_name),
                 )
             )
         ) {
@@ -128,8 +128,8 @@ abstract class CallAnalyzer
             (
                 $context->self === $fq_class_name
                 || $codebase->classlikes->classExtends(
-                    $context->self,
-                    $fq_class_name,
+                    Interner::intern($context->self),
+                    Interner::intern($fq_class_name),
                 )
             ) &&
             $source->getMethodName() !== $method_name
@@ -204,7 +204,7 @@ abstract class CallAnalyzer
                 $appearing_method_id = $codebase->methods->getAppearingMethodId($method_id);
 
                 if ($appearing_method_id) {
-                    $appearing_class_storage = $codebase->classlike_storage_provider->getById(
+                    $appearing_class_storage = $codebase->classlike_storage_provider->get(
                         $appearing_method_id->class_id,
                     );
 
@@ -299,7 +299,7 @@ abstract class CallAnalyzer
 
         $fq_class_name = strtolower($codebase->classlikes->getUnAliasedName($fq_class_name));
 
-        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
         $method_storage = null;
 
@@ -309,7 +309,7 @@ abstract class CallAnalyzer
             $declaring_fq_class_name = $declaring_method_id->fq_class_name;
 
             if ($declaring_fq_class_name !== $fq_class_name) {
-                $declaring_class_storage = $codebase->classlike_storage_provider->get($declaring_fq_class_name);
+                $declaring_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($declaring_fq_class_name));
             } else {
                 $declaring_class_storage = $class_storage;
             }

@@ -337,7 +337,7 @@ final class ConstantTypeResolver
         }
 
         if ($c instanceof EnumPropertyFetch) {
-            if ($classlikes->enumExists($c->fqcln)) {
+            if ($classlikes->enumExists(Interner::intern($c->fqcln))) {
                 $enum_storage = $classlikes->getStorageFor($c->fqcln);
                 if (isset($enum_storage->enum_cases[Interner::intern($c->case)])) {
                     if ($c instanceof EnumValueFetch) {

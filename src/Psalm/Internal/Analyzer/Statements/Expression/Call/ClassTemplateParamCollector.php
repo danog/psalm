@@ -65,7 +65,7 @@ final class ClassTemplateParamCollector
 
                 $fq_overridden_class = $overridden_method_id->fq_class_name;
 
-                $overridden_class_storage = $codebase->classlike_storage_provider->get($fq_overridden_class);
+                $overridden_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_overridden_class));
 
                 $overridden_template_types = $overridden_class_storage->template_types;
 

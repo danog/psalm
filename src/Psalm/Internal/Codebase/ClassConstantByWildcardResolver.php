@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Internal\Codebase;
 
 use Psalm\Codebase;
+use Psalm\Internal\Interner;
 use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\TMixed;
 
@@ -33,11 +34,11 @@ final class ClassConstantByWildcardResolver
      */
     public function resolve(string $class_name, string $constant_pattern): ?array
     {
-        if (!$this->codebase->classlike_storage_provider->has($class_name)) {
+        if (!$this->codebase->classlike_storage_provider->has(Interner::intern($class_name))) {
             return null;
         }
 
-        $classlike_storage = $this->codebase->classlike_storage_provider->get($class_name);
+        $classlike_storage = $this->codebase->classlike_storage_provider->get(Interner::intern($class_name));
 
         $constants = $this->resolver->resolveConstants(
             $classlike_storage,

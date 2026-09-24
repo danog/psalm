@@ -318,7 +318,7 @@ final class TypeExpander
                 );
             }
 
-            if ($evaluate_class_constants && $codebase->classOrInterfaceOrEnumExists($return_type->fq_classlike_name)) {
+            if ($evaluate_class_constants && $codebase->classOrInterfaceOrEnumExists(Interner::intern($return_type->fq_classlike_name))) {
                 if (strtolower($return_type->const_name) === 'class') {
                     return [new TLiteralClassString($return_type->fq_classlike_name)];
                 }
@@ -363,7 +363,7 @@ final class TypeExpander
                 return [$return_type];
             }
 
-            $class_storage = $codebase->classlike_storage_provider->get($declaring_fq_classlike_name);
+            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($declaring_fq_classlike_name));
 
             $type_alias_name = $return_type->alias_name;
 
@@ -672,15 +672,15 @@ final class TypeExpander
         if ($expand_generic
             && $return_type::class === TNamedObject::class
             && !$return_type->extra_types
-            && $codebase->classOrInterfaceExistsById($return_type->name)
+            && $codebase->classOrInterfaceExists($return_type->name)
             // a class can exist without having been scanned, and then there is nothing to expand (an alias
             // has no storage under its own name: the spelled path resolves it)
-            && ($container_class_storage = $codebase->classlike_storage_provider->findById($return_type->name)
+            && ($container_class_storage = $codebase->classlike_storage_provider->find($return_type->name)
                 ?? ($codebase->classlike_storage_provider->has(
-                    $codebase->classlikes->getUnAliasedName($return_type->value),
+                    Interner::intern($codebase->classlikes->getUnAliasedName($return_type->value)),
                 )
                     ? $codebase->classlike_storage_provider->get(
-                        $codebase->classlikes->getUnAliasedName($return_type->value),
+                        Interner::intern($codebase->classlikes->getUnAliasedName($return_type->value)),
                     )
                     : null)) !== null
         ) {
@@ -742,7 +742,7 @@ final class TypeExpander
             && !$return_type->is_static_resolved
             && $return_type::class === TNamedObject::class
             && $static_class_type instanceof TNamedObject
-            && $codebase->classExtendsById($static_class_type->name, $return_type->name)
+            && $codebase->classExtends($static_class_type->name, $return_type->name)
         ) {
             // The called class already includes the declaring class's constraints.
             $return_type = $static_class_type->setIntersectionTypes(
@@ -773,8 +773,8 @@ final class TypeExpander
             && (
                 $return_type->value === $self_class
                 || ($self_class !== null &&
-                    ($codebase->classExtends($return_type->value, $self_class)
-                        || $codebase->classExtends($self_class, $return_type->value)
+                    ($codebase->classExtends($return_type->name, Interner::intern($self_class))
+                        || $codebase->classExtends(Interner::intern($self_class), $return_type->name)
                     )
                 )
             )
@@ -787,7 +787,7 @@ final class TypeExpander
             $return_type = $return_type->setValue($self_class);
         } elseif ($parent_class && $return_type_lc === 'parent') {
             $return_type = $return_type->setValue($parent_class);
-        } elseif (!$codebase->classlike_storage_provider->hasById($return_type->name)) {
+        } elseif (!$codebase->classlike_storage_provider->has($return_type->name)) {
             // a name with a storage is already unaliased (getUnAliasedName keeps the spelling of a known name)
             $new_value = $codebase->classlikes->getUnAliasedName($return_type->value);
             $return_type = $return_type->setValue($new_value);
@@ -1028,12 +1028,12 @@ final class TypeExpander
         }
 
         $class_storage = null;
-        if ($codebase->classExistsById($return_type->classlike_type->name)) {
-            $class_storage = $codebase->classlike_storage_provider->getById($return_type->classlike_type->name);
+        if ($codebase->classExists($return_type->classlike_type->name)) {
+            $class_storage = $codebase->classlike_storage_provider->get($return_type->classlike_type->name);
         } else {
             foreach ($return_type->classlike_type->extra_types as $type) {
-                if ($type instanceof TNamedObject && $codebase->classExistsById($type->name)) {
-                    $class_storage = $codebase->classlike_storage_provider->getById($type->name);
+                if ($type instanceof TNamedObject && $codebase->classExists($type->name)) {
+                    $class_storage = $codebase->classlike_storage_provider->get($type->name);
                     break;
                 }
             }
@@ -1046,10 +1046,10 @@ final class TypeExpander
         $all_sealed = true;
         $properties = [];
         foreach ([$class_storage->name, ...array_values($class_storage->parent_classes)] as $class) {
-            if (!$codebase->classExists($class)) {
+            if (!$codebase->classExists(Interner::intern($class))) {
                 continue;
             }
-            $storage = $codebase->classlike_storage_provider->get($class);
+            $storage = $codebase->classlike_storage_provider->get(Interner::intern($class));
             if (!$storage->final) {
                 $all_sealed = false;
             }
@@ -1133,7 +1133,7 @@ final class TypeExpander
             }
 
             if ($throw_on_unresolvable_constant
-                && !$codebase->classOrInterfaceOrEnumExists($type_param->fq_classlike_name)
+                && !$codebase->classOrInterfaceOrEnumExists(Interner::intern($type_param->fq_classlike_name))
             ) {
                 throw new UnresolvableConstantException($type_param->fq_classlike_name, $type_param->const_name);
             }

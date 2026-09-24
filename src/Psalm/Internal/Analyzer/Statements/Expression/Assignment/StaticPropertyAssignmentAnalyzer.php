@@ -14,6 +14,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\ExpressionIdentifier;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TypeExpander;
@@ -192,7 +193,7 @@ final class StaticPropertyAssignmentAnalyzer
                 }
             }
 
-            $class_storage = $codebase->classlike_storage_provider->get($declaring_property_class);
+            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($declaring_property_class));
 
             if ($var_id) {
                 $context->vars_in_scope[$var_id] = $assignment_value_type;

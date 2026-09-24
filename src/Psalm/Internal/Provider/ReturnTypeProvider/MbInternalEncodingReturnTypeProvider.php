@@ -64,7 +64,7 @@ final class MbInternalEncodingReturnTypeProvider implements FunctionReturnTypePr
 
         foreach ($first_arg_type->getAtomicTypes() as $atomic_type) {
             if ($atomic_type instanceof Type\Atomic\TNamedObject
-                && $codebase->classlikes->classImplementsById($atomic_type->name, Sym::STRINGABLE)
+                && $codebase->classlikes->classImplements($atomic_type->name, Sym::STRINGABLE)
             ) {
                 $has_stringable = true;
                 continue;
