@@ -735,6 +735,19 @@ trait ExprTrait
             $place = '(*' . $v->place . '.as_ref().unwrap())';
             return new Val($place . '.clone()', $inf, $place, null, null, $v->temp);
         }
+        // a handle narrowed to a LEAF subclass (`$atomic->value` after `instanceof TLiteralInt`) is a borrowed
+        // view into the dispatch enum's variant: the place `(*cast_ref::<Leaf>(&x))` auto-refs as a receiver,
+        // so the handle is not cloned and dropped around every member access (5k such casts in the port)
+        if ($v->place !== null && $v->type->kind === RustType::CLASS_ && $inf->kind === RustType::CLASS_) {
+            $vc = $this->program->classOf($v->type);
+            $ic = $this->program->classOf($inf);
+            if ($vc !== null && $ic !== null && $ic !== $vc && $ic->isLeaf() && $ic->is_project && !$vc->isLeaf()
+                && $ic->isSubclassOf($vc) && $ic->crate === $vc->crate
+            ) {
+                $place = '(*php_rt::cast_ref::<' . $inf->toRust() . '>(&' . $v->place . '))';
+                return new Val($place . '.clone()', $inf, $place, null, null, $v->temp);
+            }
+        }
         return $this->casts->convertVal($v, $inf);
     }
 

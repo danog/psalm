@@ -908,6 +908,9 @@ final class CastEmitter
             } else {
                 $w->line('impl<T: crate::Leaf__ + Clone + \'static> php_rt::CastTo<T> for ' . $h . ' { fn cast_to(self) -> T { if let Some(v) = self.inner_any().downcast_ref::<T>() { return v.clone(); } panic!(' . Names::rustStringLiteral('cannot narrow ' . $cls->fqcn . ' to the requested class') . ') } }');
             }
+            // the same narrowing as a borrowed view (a receiver narrowed by instanceof reads through it without
+            // cloning the handle); an Other__ (downstream) value has no in-place leaf, so the owned cast handles it
+            $w->line('impl<T: crate::Leaf__ + \'static> php_rt::CastRef<T> for ' . $h . ' { fn cast_ref(&self) -> &T { match self.inner_any().downcast_ref::<T>() { Some(v) => v, None => panic!(' . Names::rustStringLiteral('cannot narrow ' . $cls->fqcn . ' to the requested class') . ') } } }');
         }
         $this->emitLeafMarker($cls, $w);
     }
