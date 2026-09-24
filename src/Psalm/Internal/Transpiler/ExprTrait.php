@@ -2102,10 +2102,12 @@ trait ExprTrait
                 && ($bt0 = $this->inferred($e->var)) !== null && $bt0->kind === RustType::CLASS_
                 && ($f0 = $this->program->classOf($bt0)?->fields[$e->name->name] ?? null) !== null
                 && !$f0->isLate() && $f0->type->kind === RustType::OPTION
-                && $this->optionalValue($e->var) === null
             ) {
-                // a declared-optional field of a present object: the field read itself (a place or a borrow guard)
-                // is the optional value, so a presence test (`!== null`, isset) borrows it instead of cloning it
+                // a declared-optional field of an object Psalm knows to be present (a plain local, or a nullable one
+                // narrowed by an enclosing check: `$memo !== null && $memo->key !== null`): the field read itself (a
+                // place or a borrow guard) is the optional value, so a presence test (`!== null`, isset) borrows it
+                // instead of cloning it. A nullable base Psalm did not narrow has an Option type here and takes the
+                // Option chain below.
                 $fv = $this->expr($e);
                 if ($fv->type->kind === RustType::OPTION) {
                     return $fv;
