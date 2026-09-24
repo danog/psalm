@@ -43,11 +43,11 @@ pub fn array_search_m<K: MapKey, V: Identical>(needle: &V, hay: &Map<K, V>) -> O
     hay.iter().find(|(_, v)| v.identical(needle)).map(|(k, _)| k.clone())
 }
 pub fn array_merge_l<T: Clone>(parts: &[&List<T>]) -> List<T> {
-    let mut out = Vec::new();
+    let mut out = crate::list::Inner::new();
     for p in parts {
         out.extend(p.iter().cloned());
     }
-    List::from_vec(out)
+    List::from_inner(out)
 }
 /// array_merge for maps: string keys overwrite, int keys renumber.
 pub fn array_merge_m<K: MapKey, V: Clone>(parts: &[&Map<K, V>]) -> Map<K, V> {
@@ -220,11 +220,11 @@ pub fn array_splice_m<K: MapKey, V: Clone>(m: &mut Map<K, V>, offset: i64, lengt
     removed
 }
 pub fn array_map_l<T: Clone, U, F: FnMut(T) -> U>(l: &List<T>, mut f: F) -> List<U> {
-    let mut out = Vec::with_capacity(l.len());
+    let mut out = crate::list::Inner::with_capacity(l.len());
     for v in l.iter() {
         out.push(f(v.clone()));
     }
-    List::from_vec(out)
+    List::from_inner(out)
 }
 pub fn array_map_m<K: MapKey, V: Clone, U: Clone, F: FnMut(V) -> U>(m: &Map<K, V>, mut f: F) -> Map<K, U> {
     let mut out = Map::with_capacity(m.len());
@@ -235,13 +235,13 @@ pub fn array_map_m<K: MapKey, V: Clone, U: Clone, F: FnMut(V) -> U>(m: &Map<K, V
 }
 pub fn array_map2_l<A: Clone, B: Clone, U, F: FnMut(A, B) -> U>(a: &List<A>, b: &List<B>, mut f: F) -> List<U> {
     let n = a.len().max(b.len());
-    let mut out = Vec::with_capacity(n);
+    let mut out = crate::list::Inner::with_capacity(n);
     for i in 0..n {
         let x = a.get(i as i64).cloned().expect("array_map: arrays of different lengths");
         let y = b.get(i as i64).cloned().expect("array_map: arrays of different lengths");
         out.push(f(x, y));
     }
-    List::from_vec(out)
+    List::from_inner(out)
 }
 pub fn array_filter_l<T: Clone + Truthy>(l: &List<T>) -> Map<i64, T> {
     l.iter().enumerate().filter(|(_, v)| v.truthy()).map(|(i, v)| (i as i64, v.clone())).collect()
@@ -436,13 +436,13 @@ pub fn range_i(a: i64, b: i64, step: i64) -> List<i64> {
     if a <= b {
         (a..=b).step_by(step as usize).collect()
     } else {
-        let mut v = Vec::new();
+        let mut v = crate::list::Inner::new();
         let mut x = a;
         while x >= b {
             v.push(x);
             x -= step;
         }
-        List::from_vec(v)
+        List::from_inner(v)
     }
 }
 pub fn range_c(a: u8, b: u8) -> List<Str> {

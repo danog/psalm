@@ -316,7 +316,7 @@ pub fn explode(sep: &Str, s: &Str, limit: i64) -> Result<List<Str>, RtError> {
         return Err(RtError::value_error("explode(): Argument #1 ($separator) cannot be empty"));
     }
     let b = s.as_bytes();
-    let mut parts: Vec<Str> = Vec::new();
+    let mut parts: crate::list::Inner<Str> = crate::list::Inner::new();
     let mut pos = 0;
     if limit > 0 {
         while parts.len() + 1 < limit as usize {
@@ -344,7 +344,7 @@ pub fn explode(sep: &Str, s: &Str, limit: i64) -> Result<List<Str>, RtError> {
             }
         }
     }
-    Ok(List::from_vec(parts))
+    Ok(List::from_inner(parts))
 }
 pub fn implode<T: ToStr>(sep: &Str, parts: &[T]) -> Str {
     let mut out = Vec::new();
