@@ -567,6 +567,33 @@ final class Program
                     $clone_locals[$v->name] = true;
                 }
             }
+            // a local holding an object this method just created (`$r = new X(..)`, `$r = self::createInner(..)`
+            // through a non-public static helper of the class itself) is being constructed: its writes are
+            // construction, not external mutation of a shared object (Atomic::create sets span/from_docblock this way)
+            foreach ($finder->find($stmts, static fn(\PhpParser\Node $n): bool =>
+                $n instanceof \PhpParser\Node\Expr\Assign
+                && $n->var instanceof \PhpParser\Node\Expr\Variable && is_string($n->var->name)
+                && ($n->expr instanceof \PhpParser\Node\Expr\New_
+                    || ($n->expr instanceof \PhpParser\Node\Expr\StaticCall
+                        && $n->expr->class instanceof \PhpParser\Node\Name
+                        && in_array(strtolower($n->expr->class->toString()), ['self', 'static'], true)
+                        && $n->expr->name instanceof \PhpParser\Node\Identifier))) as $a
+            ) {
+                /** @var \PhpParser\Node\Expr\Assign $a */
+                /** @var \PhpParser\Node\Expr\Variable $v */
+                $v = $a->var;
+                if ($a->expr instanceof \PhpParser\Node\Expr\StaticCall) {
+                    /** @var \PhpParser\Node\Identifier $mn */
+                    $mn = $a->expr->name;
+                    $helper = $ctx?->cls !== null ? $this->findMethod($ctx->cls, $mn->name) : null;
+                    if ($helper === null || !$helper->isStatic()
+                        || $helper->storage->visibility === \Psalm\Internal\Analyzer\ClassLikeAnalyzer::VISIBILITY_PUBLIC
+                    ) {
+                        continue;
+                    }
+                }
+                $clone_locals[$v->name] = true;
+            }
             $targets = [];
             foreach ($finder->find($stmts, static fn(\PhpParser\Node $n): bool => $is_ext_write($n) !== null) as $n) {
                 $targets[] = [$is_ext_write($n), $n];
