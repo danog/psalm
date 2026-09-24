@@ -30,7 +30,14 @@ pub const STR_LOWER: usize = 21;
 pub const STR_CONCAT: usize = 22;
 pub const STR_COW_GROW: usize = 23;
 pub const OBJ_NEW: usize = 24;
-const N: usize = 25;
+pub const MAP_REACH_1: usize = 25;
+pub const MAP_REACH_2: usize = 26;
+pub const MAP_REACH_3: usize = 27;
+pub const MAP_REACH_5: usize = 28;
+pub const MAP_REACH_9: usize = 29;
+pub const MAP_REACH_17: usize = 30;
+pub const MAP_REACH_65: usize = 31;
+const N: usize = 32;
 
 const NAMES: [&str; N] = [
     "List::new (empty)", "List::with_capacity", "List::from_vec len=0", "List::from_vec len=1", "List::from_vec len=2",
@@ -39,6 +46,7 @@ const NAMES: [&str; N] = [
     "Map first allocation", "Map COW clone (shared write)", "Map find", "Map insert", "Map last-ref drop",
     "Str heap alloc", "Str heap alloc <=32B", "Str heap alloc <=128B", "Str hash computed", "Str to_lowercase",
     "Str concat", "Str COW grow (shared push)", "object new",
+    "Map reached 1 entry", "Map reached 2 entries", "Map reached 3", "Map reached 5", "Map reached 9", "Map reached 17", "Map reached 65",
 ];
 
 #[cfg(feature = "stats")]
