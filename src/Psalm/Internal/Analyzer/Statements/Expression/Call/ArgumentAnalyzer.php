@@ -327,7 +327,13 @@ final class ArgumentAnalyzer
             }
         }
 
-        $param_type = TypeExpander::expandUnion(
+        $param_type = $function_param->getExpandedType(
+            $codebase,
+            $classlike_storage->name ?? null,
+            $static_classlike_storage->name ?? null,
+            $parent_class,
+            $static_classlike_storage->final ?? false,
+        ) ?? TypeExpander::expandUnion(
             $codebase,
             $param_type,
             $classlike_storage->name ?? null,
