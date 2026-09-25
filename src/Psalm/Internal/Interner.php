@@ -165,4 +165,15 @@ final class Interner
     {
         return $string === null ? null : self::intern($string);
     }
+
+    /**
+     * The lowercase string an optional id of a lowercase string stands for.
+     *
+     * @psalm-pure
+     * @return ($id is null ? null : lowercase-string)
+     */
+    public static function lookupLcOrNull(?int $id): ?string
+    {
+        return $id === null ? null : self::lookupLc($id);
+    }
 }

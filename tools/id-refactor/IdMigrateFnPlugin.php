@@ -600,7 +600,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
             }
             // property fetches of a slot-typed object are reads too; method calls on the value are string uses
             IdMigratePlugin::out(['kind' => 'use', 'slot' => $slot, 'ctx' => 'other', 'file' => $this->file, 'r' => $this->range($n),
-                'nullable' => (bool) $this->types->getType($n)?->isNullable()]);
+                'nullable' => (bool) $this->types->getType($n)?->isNullable(), 'lc' => $this->isLc($n)]);
         }
         // returns of non-slot expressions into this method's own return slot
         foreach ($this->parent as $n) {
@@ -608,6 +608,23 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
                 $this->flow('R:' . $this->method, $n->expr);
             }
         }
+    }
+
+    /** Whether Psalm types the value as a lowercase string (its lookup then keeps that type: lookupLc). */
+    private function isLc(Expr $e): bool
+    {
+        $t = $this->types->getType($e);
+        if ($t === null) {
+            return false;
+        }
+        foreach ($t->getAtomicTypes() as $a) {
+            if (!$a instanceof \Psalm\Type\Atomic\TLowercaseString && !$a instanceof \Psalm\Type\Atomic\TNonEmptyLowercaseString
+                && !$a instanceof \Psalm\Type\Atomic\TNull
+            ) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private function isNull(Expr $e): bool
@@ -653,7 +670,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
         } elseif (($edit = $this->idForm($src)) !== null) {
             $c = ['k' => 'edit', 'e' => $edit[0], 'r' => $this->range($src)];
             if ($edit[1] !== null) {
-                IdMigratePlugin::out(['kind' => 'sym', 'name' => $edit[1][0], 'value' => $edit[1][1]]);
+                IdMigratePlugin::out(['kind' => 'sym', 'name' => $edit[1][0], 'value' => $edit[1][1], 'literal' => $edit[1][2] ?? null]);
             }
         } elseif ($src instanceof Expr\ConstFetch && strtolower($src->name->toString()) === 'null') {
             $c = ['k' => 'null'];
@@ -664,6 +681,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
             $c['named'] = $named;
         }
         $c['nullable'] = (bool) $this->types->getType($src)?->isNullable();
+        $c['lc'] = $this->isLc($src);
         IdMigratePlugin::out(['kind' => 'flow', 'slot' => $target, 'file' => $this->file, 'src' => $c]);
     }
 
@@ -728,27 +746,11 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
         if ($literal === null) {
             return null;
         }
-        $value = Interner::hash($literal);
-        if (self::$sym === null) {
-            self::$sym = [];
-            foreach ((new ReflectionClass(Sym::class))->getConstants() as $cn => $v) {
-                if (is_int($v)) {
-                    self::$sym[$v] = $cn;
-                }
-            }
-        }
         $range = [$e->getStartFilePos(), $e->getEndFilePos() + 1];
-        if (isset(self::$sym[$value])) {
-            return [[...$range, 'Sym::' . self::$sym[$value]], null];
+        if (!IdMigratePlugin::declaresIn($this->file)) {
+            return [[...$range, 'Interner::intern(' . var_export($literal, true) . ')'], null];
         }
-        $words = [];
-        foreach (explode('\\', $literal) as $p) {
-            $words[] = strtoupper((string) preg_replace('/(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])/', '_', $p));
-        }
-        $name = 'C_' . preg_replace('/[^A-Z0-9_]/', '_', implode('__', $words));
-        if ($name === 'C_') {
-            $name = 'C_EMPTY';
-        }
-        return [[...$range, 'Sym::' . $name], [$name, $value]];
+        [$text, $new] = SymNames::forLiteral($literal);
+        return [[...$range, $text], $new];
     }
 }

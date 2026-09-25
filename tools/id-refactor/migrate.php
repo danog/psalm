@@ -18,7 +18,7 @@ foreach (file($in, FILE_IGNORE_NEW_LINES) as $line) {
             $flows[$r['file'] . $r['slot'] . json_encode($r['src'])] = $r; break;
         case 'use': $uses[$r['file'] . $r['slot'] . json_encode($r['r']) . $r['ctx']] = $r; break;
         case 'block': $block[$r['slot']] = $r['why']; break;
-        case 'sym': $syms[$r['name']] = $r['value']; break;
+        case 'sym': $syms[$r['name']] = $r; break;
     }
 }
 $X = []; $why = [];
@@ -143,7 +143,7 @@ foreach (array_keys($X) as $s) {
             $fallbacks[] = $u;
             $n_lookup++;
         }
-        else { $wrap($u['file'], $u['r'], 'lookup', $nl && ($u['nullable'] ?? true)); $n_lookup++; }
+        else { $wrap($u['file'], $u['r'], !empty($u['lc']) ? 'lookupLc' : 'lookup', $nl && ($u['nullable'] ?? true)); $n_lookup++; }
     }
 }
 foreach ($flows as $f) {
@@ -157,7 +157,7 @@ foreach ($flows as $f) {
             if (preg_match('/^Sym::(\w+)$/', $src['e'][2], $m)) { $used_syms[$m[1]] = true; }
         } elseif (!$sin) { $wrap($file, $src['r'], 'intern', !empty($src['nullable'])); $n_intern_added++; }
     } elseif ($sin) {
-        $wrap($file, $src['r'], 'lookup', !empty($decl[$src['slot']]['nullable']) && ($src['nullable'] ?? true)); $n_lookup++;
+        $wrap($file, $src['r'], !empty($src['lc']) ? 'lookupLc' : 'lookup', !empty($decl[$src['slot']]['nullable']) && ($src['nullable'] ?? true)); $n_lookup++;
     }
 }
 // fallback rewrites copy their fallback's text: only where no other edit lands inside the expression
@@ -178,7 +178,7 @@ foreach ($edits as $file => $list) {
     fwrite($fh, json_encode(['kind' => 'edit', 'file' => $file, 'site' => $file, 'edits' => $list], JSON_UNESCAPED_SLASHES) . "\n");
 }
 foreach ($used_syms as $name => $_) {
-    if (isset($syms[$name])) { fwrite($fh, json_encode(['kind' => 'sym', 'name' => $name, 'value' => $syms[$name]]) . "\n"); }
+    if (isset($syms[$name])) { fwrite($fh, json_encode($syms[$name]) . "\n"); }
 }
 fclose($fh);
 $byk = []; foreach (array_keys($X) as $s) { $byk[$s[0]] = ($byk[$s[0]] ?? 0) + 1; }
