@@ -970,9 +970,9 @@ class Reconciler
         string $fq_class_name,
         string $property_name,
     ): ?Union {
-        $property_id = $fq_class_name . '::$' . $property_name;
+        $property_id_class = $fq_class_name; $property_id_name = $property_name;
 
-        if (!$codebase->propertyExists($property_id, true)) {
+        if (!$codebase->propertyExists($property_id_class, $property_id_name, true)) {
             $declaring_class_storage = $codebase->classlike_storage_provider->get(
                 Interner::intern($fq_class_name),
             );
@@ -981,7 +981,7 @@ class Reconciler
         }
 
         $declaring_property_class = $codebase->properties->getDeclaringClassForProperty(
-            $property_id,
+            $property_id_class, $property_id_name,
             true,
         );
 
@@ -990,7 +990,7 @@ class Reconciler
         }
 
         $class_property_type = $codebase->properties->getPropertyType(
-            $property_id,
+            $property_id_class, $property_id_name,
             false,
             null,
             null,

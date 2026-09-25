@@ -51,6 +51,10 @@ final class ParamSplitPlugin implements PluginEntryPointInterface, AfterFunction
     private SplObjectStorage $parent;
     /** @var list<array{int, int, string}> */
     private array $edits = [];
+    /** @var array<string, true> locals held as their two parts (every definition is `X . '::$' . Y`) */
+    private array $split_locals = [];
+    /** @var array<string, true> the function's parameters (not locals: callers pass them) */
+    private array $param_names = [];
 
     public function __invoke(RegistrationInterface $registration, ?SimpleXMLElement $config = null): void
     {
@@ -95,6 +99,11 @@ final class ParamSplitPlugin implements PluginEntryPointInterface, AfterFunction
                             $h->own = $c;
                         }
                     }
+                }
+            }
+            foreach ($stmt->getParams() as $prm) {
+                if ($prm->var instanceof Expr\Variable && is_string($prm->var->name)) {
+                    $h->param_names[$prm->var->name] = true;
                 }
             }
             $body = $stmt instanceof Expr\ArrowFunction ? [$stmt->expr] : ($stmt->getStmts() ?? []);
@@ -168,7 +177,10 @@ final class ParamSplitPlugin implements PluginEntryPointInterface, AfterFunction
         if ($param === null) {
             return;
         }
-        $this->edit($param, 'string $' . $cls . ', string $' . $name);
+        // one parameter per line, as the declaration had it
+        $ls = strrpos(substr($this->src, 0, $param->getStartFilePos()), "\n") + 1;
+        $sep = $ls < $m->name->getEndFilePos() ? ', ' : ",\n" . str_repeat(' ', strspn($this->src, ' ', $ls));
+        $this->edit($param, 'string $' . $cls . $sep . 'string $' . $name);
         // a docblock @param for it
         $doc = $m->getDocComment();
         if ($doc !== null && preg_match('/@param\s+\S+\s+\$' . preg_quote($pname, '/') . '\b[^\n]*/', $doc->getText(), $mm, PREG_OFFSET_CAPTURE)) {
@@ -291,8 +303,162 @@ final class ParamSplitPlugin implements PluginEntryPointInterface, AfterFunction
         return null;
     }
 
+    /**
+     * Locals passed to a split parameter whose every definition is a statement `$v = X . '::$' . Y;`: they are held as
+     * `$v_class` and `$v_name` (the parts pzoom passes), a string use reads `$v_class . '::$' . $v_name`.
+     */
+    private function splitLocals(): void
+    {
+        $cands = [];
+        foreach ($this->order as $n) {
+            if ($n instanceof Arg && $n->value instanceof Expr\Variable && is_string($n->value->name)
+                && $this->splitOf($this->parent[$n], $n) !== null
+                && ($this->own === null || $n->value->name !== $this->own[2])
+            ) {
+                $cands[$n->value->name] = true;
+            }
+        }
+        $cands = array_diff_key($cands, $this->param_names);
+        // copies of candidates are candidates (`$property_id = $new_property_id;`)
+        do {
+            $grew = false;
+            foreach ($this->order as $n) {
+                if ($n instanceof Expr\Assign && $n->var instanceof Expr\Variable && is_string($n->var->name)
+                    && $n->expr instanceof Expr\Variable && is_string($n->expr->name)
+                    && isset($cands[$n->var->name]) !== isset($cands[$n->expr->name])
+                ) {
+                    $cands[$n->var->name] = true;
+                    $cands[$n->expr->name] = true;
+                    $grew = true;
+                }
+            }
+        } while ($grew);
+        $cands = array_diff_key($cands, $this->param_names);
+        // drop every candidate with a definition or use that cannot be held as two parts (to a fixpoint: a copy of a
+        // dropped candidate drops too)
+        $defs = [];
+        foreach (array_keys($cands) as $v) {
+            foreach ($this->order as $n) {
+                if (!$n instanceof Expr\Variable || $n->name !== $v) {
+                    continue;
+                }
+                $p = $this->parent[$n];
+                if ($p instanceof Expr\Assign && $p->var === $n) {
+                    $defs[$v][] = $p;
+                    if (!$this->parent[$p] instanceof Stmt\Expression) {
+                        unset($cands[$v]);
+                    }
+                } elseif ((($p instanceof Expr\AssignOp || $p instanceof Expr\AssignRef) && $p->var === $n)
+                    || $p instanceof Node\Param || $p instanceof Expr\ClosureUse || $p instanceof Expr\Isset_
+                    || $p instanceof Stmt\Unset_ || $p instanceof Stmt\Foreach_ || $p instanceof Stmt\Global_
+                    || $p instanceof Stmt\Static_ || $p instanceof Node\ArrayItem
+                    || ($p instanceof Arg && ($p->byRef || $this->byRefArg($this->parent[$p], $p)))
+                ) {
+                    unset($cands[$v]);
+                }
+            }
+            foreach ($this->order as $n) {
+                if ($n instanceof Expr\ArrowFunction || $n instanceof Expr\Closure) {
+                    foreach ((new \PhpParser\NodeFinder())->find($n, static fn(Node $x): bool => $x instanceof Expr\Variable && $x->name === $v) as $_) {
+                        unset($cands[$v]);
+                    }
+                }
+            }
+            if (!isset($defs[$v])) {
+                unset($cands[$v]);
+            }
+        }
+        do {
+            $dropped = false;
+            foreach (array_keys($cands) as $v) {
+                foreach ($defs[$v] as $d) {
+                    $copy = $d->expr instanceof Expr\Variable && is_string($d->expr->name);
+                    if (($copy && !isset($cands[$d->expr->name])) || (!$copy && $this->parts($d->expr, 99) === null)) {
+                        unset($cands[$v]);
+                        $dropped = true;
+                        break;
+                    }
+                }
+            }
+        } while ($dropped);
+        $this->split_locals = $cands;
+        foreach (array_keys($cands) as $v) {
+            foreach ($defs[$v] as $d) {
+                if ($d->expr instanceof Expr\Variable && is_string($d->expr->name)) {
+                    $w = $d->expr->name;
+                    $this->edit($d, '$' . $v . '_class = $' . $w . '_class; $' . $v . '_name = $' . $w . '_name');
+                    continue;
+                }
+                [$c, $nm] = $this->parts($d->expr, 99);
+                $this->edit($d, '$' . $v . '_class = ' . $c . '; $' . $v . '_name = ' . $nm);
+            }
+            foreach ($this->order as $n) {
+                if (!$n instanceof Expr\Variable || $n->name !== $v) {
+                    continue;
+                }
+                $p = $this->parent[$n];
+                if ($p instanceof Expr\Assign && ($p->var === $n || ($p->expr === $n && $p->var instanceof Expr\Variable && isset($cands[$p->var->name])))) {
+                    continue;
+                }
+                if ($p instanceof Arg && $this->splitOf($this->parent[$p], $p) !== null) {
+                    continue; // calls() passes the parts
+                }
+                $this->replaceRead($n, '($' . $v . '_class . \'' . self::SEP . '\' . $' . $v . '_name)');
+            }
+        }
+    }
+
+    /** Whether the callee takes this argument by reference (a user method or function). */
+    private function byRefArg(Node $call, Arg $arg): bool
+    {
+        try {
+            $params = null;
+            if (($call instanceof Expr\MethodCall || $call instanceof Expr\NullsafeMethodCall) && $call->name instanceof Identifier) {
+                foreach ($this->types->getType($call->var)?->getAtomicTypes() ?? [] as $a) {
+                    if ($a instanceof TNamedObject) {
+                        $mid = $this->codebase->methods->getDeclaringMethodId(new \Psalm\Internal\MethodIdentifier($a->name, Interner::intern(strtolower($call->name->name))));
+                        $params = $mid !== null ? $this->codebase->methods->getStorage($mid)->params : $params;
+                    }
+                }
+            } elseif ($call instanceof Expr\StaticCall && $call->name instanceof Identifier && $call->class instanceof Name) {
+                $n = strtolower($call->class->toString());
+                $cls = in_array($n, ['self', 'static', 'parent'], true) ? $this->self_class
+                    : (Interner::lookupOrNull($call->class->attrs()->resolvedId) ?? $call->class->toString());
+                if ($cls !== null) {
+                    $mid = $this->codebase->methods->getDeclaringMethodId(new \Psalm\Internal\MethodIdentifier(Interner::intern($cls), Interner::intern(strtolower($call->name->name))));
+                    $params = $mid !== null ? $this->codebase->methods->getStorage($mid)->params : null;
+                }
+            } elseif ($call instanceof Expr\FuncCall && $call->name instanceof Name) {
+                $fn = strtolower(Interner::lookupOrNull($call->name->attrs()->resolvedId) ?? $call->name->toString());
+                if ($this->codebase->functions->functionExists(null, $fn)) {
+                    $params = $this->codebase->functions->getStorage(null, $fn)->params;
+                }
+            }
+            if ($params === null) {
+                return !($call instanceof Expr\MethodCall || $call instanceof Expr\StaticCall || $call instanceof Expr\FuncCall || $call instanceof Expr\New_)
+                    ? false : false;
+            }
+            foreach ($call->getArgs() as $i => $a) {
+                if ($a === $arg) {
+                    $ps = $a->name !== null ? null : ($params[$i] ?? end($params) ?: null);
+                    if ($a->name !== null) {
+                        foreach ($params as $pp) {
+                            if ($pp->name === $a->name->name) {
+                                $ps = $pp;
+                            }
+                        }
+                    }
+                    return $ps !== null && $ps->by_ref;
+                }
+            }
+        } catch (Throwable) {
+        }
+        return false;
+    }
+
     private function calls(): void
     {
+        $this->splitLocals();
         foreach ($this->order as $n) {
             if (!$n instanceof Arg) {
                 continue;
@@ -323,6 +489,9 @@ final class ParamSplitPlugin implements PluginEntryPointInterface, AfterFunction
         if ($v instanceof Expr\Variable && $this->own !== null && $v->name === $this->own[2]) {
             return ['$' . $this->own[3][0], '$' . $this->own[3][1]];
         }
+        if ($v instanceof Expr\Variable && is_string($v->name) && isset($this->split_locals[$v->name])) {
+            return ['$' . $v->name . '_class', '$' . $v->name . '_name'];
+        }
         $ops = $this->concatParts($v);
         if ($ops !== null) {
             $before = [];
@@ -343,6 +512,11 @@ final class ParamSplitPlugin implements PluginEntryPointInterface, AfterFunction
                 $txt = $p instanceof String_ ? var_export($p->value, true) : ($p instanceof Expr\Variable || $p instanceof Expr\PropertyFetch
                     || $p instanceof Expr\StaticCall || $p instanceof Expr\MethodCall || $p instanceof Expr\FuncCall
                     ? $this->text($p) : '(' . $this->text($p) . ')');
+                // concatenation converted it to a string (an identifier node, an int)
+                $pt = $p instanceof String_ ? null : $this->types->getType($p);
+                if (!$p instanceof String_ && ($pt === null || !$pt->isString())) {
+                    $txt = '(string) ' . $txt;
+                }
                 if ($p instanceof String_ && $p->value === '') {
                     continue;
                 }
@@ -367,7 +541,7 @@ final class ParamSplitPlugin implements PluginEntryPointInterface, AfterFunction
                 }
             }
             usort($defs, static fn(Expr\Assign $a, Expr\Assign $b): int => $b->getStartFilePos() <=> $a->getStartFilePos());
-            if ($defs !== []) {
+            if ($defs !== [] && $this->dominates($defs[0], $v) && !$this->redefinedInLoop($v)) {
                 // the parts must not be reassigned between the definition and the use
                 $p = $this->parts($defs[0]->expr, $depth + 1);
                 if ($p !== null && !$this->reassignedBetween($defs[0]->expr, $defs[0]->getEndFilePos(), $v->getStartFilePos())) {
@@ -376,6 +550,46 @@ final class ParamSplitPlugin implements PluginEntryPointInterface, AfterFunction
             }
         }
         return null;
+    }
+
+    /**
+     * Whether a definition statement runs before the use on every path: it is a statement of a block (a `stmts`
+     * list) that also holds, directly or nested, the use.
+     */
+    private function dominates(Expr\Assign $def, Expr $use): bool
+    {
+        $stmt = $this->parent[$def] ?? null;
+        if (!$stmt instanceof Stmt\Expression) {
+            return false;
+        }
+        $owner = $this->parent[$stmt] ?? null;
+        if ($owner === null || !property_exists($owner, 'stmts') || !is_array($owner->stmts) || !in_array($stmt, $owner->stmts, true)) {
+            return false;
+        }
+        for ($n = $use; isset($this->parent[$n]); $n = $this->parent[$n]) {
+            if ($this->parent[$n] === $owner) {
+                return in_array($n, $owner->stmts, true);
+            }
+        }
+        return false;
+    }
+
+    /** Whether the use sits in a loop that assigns the variable again after the use (a later iteration's value). */
+    private function redefinedInLoop(Expr\Variable $use): bool
+    {
+        for ($n = $use; isset($this->parent[$n]); $n = $this->parent[$n]) {
+            $l = $this->parent[$n];
+            if ($l instanceof Stmt\Foreach_ || $l instanceof Stmt\For_ || $l instanceof Stmt\While_ || $l instanceof Stmt\Do_) {
+                foreach ($this->order as $a) {
+                    if ($a instanceof Expr\Assign && $a->var instanceof Expr\Variable && $a->var->name === $use->name
+                        && $a->getStartFilePos() > $use->getEndFilePos() && $a->getEndFilePos() <= $l->getEndFilePos()
+                    ) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     private function reassignedBetween(Expr $def, int $from, int $to): bool

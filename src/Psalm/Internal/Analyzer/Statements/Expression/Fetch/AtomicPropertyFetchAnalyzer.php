@@ -257,7 +257,7 @@ final class AtomicPropertyFetchAnalyzer
         }
 
         $naive_property_exists = $codebase->propertyExists(
-            $property_id,
+            $fq_class_name, $prop_name,
             !$in_assignment,
             $statements_analyzer,
             $context,
@@ -270,7 +270,7 @@ final class AtomicPropertyFetchAnalyzer
         if (!$naive_property_exists) {
             if ($class_storage->namedMixins) {
                 foreach ($class_storage->namedMixins as $mixin) {
-                    $new_property_id = Interner::lookup($mixin->name) . '::$' . $prop_name;
+                    $new_property_id_class = Interner::lookup($mixin->name); $new_property_id_name = $prop_name;
 
                     try {
                         $new_class_storage = $codebase->classlike_storage_provider->get($mixin->name);
@@ -280,7 +280,7 @@ final class AtomicPropertyFetchAnalyzer
 
                     if ($new_class_storage
                         && ($codebase->propertyExists(
-                            $new_property_id,
+                            $new_property_id_class, $new_property_id_name,
                             !$in_assignment,
                             $statements_analyzer,
                             $context,
@@ -298,7 +298,7 @@ final class AtomicPropertyFetchAnalyzer
                             $naive_property_exists = true;
                         }
 
-                        $property_id = $new_property_id;
+                        $property_id = ($new_property_id_class . '::$' . $new_property_id_name);
                     }
                 }
             } elseif ($intersection_types !== [] && !$class_storage->final) {
@@ -326,7 +326,7 @@ final class AtomicPropertyFetchAnalyzer
         }
 
         $declaring_property_class = $codebase->properties->getDeclaringClassForProperty(
-            $property_id,
+            explode('::$', $property_id)[0], explode('::$', $property_id)[1],
             true,
             $statements_analyzer,
         );
@@ -369,7 +369,7 @@ final class AtomicPropertyFetchAnalyzer
             && ($context->self !== null)
             && $codebase->classlikes->classExtends(Interner::intern($fq_class_name), $context->self)
             && $codebase->propertyExists(
-                Interner::lookup($context->self) . '::$' . $prop_name,
+                Interner::lookup($context->self), $prop_name,
                 true,
                 $statements_analyzer,
                 $context,
@@ -382,8 +382,8 @@ final class AtomicPropertyFetchAnalyzer
         } elseif (!$naive_property_exists
             || (!$is_static_access
                 // when property existence is asserted by a plugin it doesn't necessarily has storage
-                && $codebase->properties->hasStorage($property_id)
-                && $codebase->properties->getStorage($property_id)->is_static
+                && $codebase->properties->hasStorage(explode('::$', $property_id)[0], explode('::$', $property_id)[1])
+                && $codebase->properties->getStorage(explode('::$', $property_id)[0], explode('::$', $property_id)[1])->is_static
             )
         ) {
             self::handleNonExistentProperty(
@@ -409,7 +409,7 @@ final class AtomicPropertyFetchAnalyzer
 
         if (!$override_property_visibility) {
             if (ClassLikeAnalyzer::checkPropertyVisibility(
-                $property_id,
+                explode('::$', $property_id)[0], explode('::$', $property_id)[1],
                 $context,
                 $statements_analyzer,
                 new CodeLocation($statements_analyzer->getSource(), $stmt),
@@ -423,7 +423,7 @@ final class AtomicPropertyFetchAnalyzer
         // Psalm\Tests\PropertyTypeTest::testValidCode with data set "callInParentContext"
         // fail
         $declaring_property_class = $codebase->properties->getDeclaringClassForProperty(
-            $property_id,
+            explode('::$', $property_id)[0], explode('::$', $property_id)[1],
             true,
             $statements_analyzer,
         );
@@ -612,7 +612,7 @@ final class AtomicPropertyFetchAnalyzer
                 || ($stmt_var_id !== '$this'
                     && $fq_class_name !== Interner::lookupOrNull($context->self)
                     && ClassLikeAnalyzer::checkPropertyVisibility(
-                        $property_id,
+                        explode('::$', $property_id)[0], explode('::$', $property_id)[1],
                         $context,
                         $statements_analyzer,
                         new CodeLocation($statements_analyzer->getSource(), $stmt),
@@ -1313,7 +1313,7 @@ final class AtomicPropertyFetchAnalyzer
         TNamedObject $lhs_type_part,
     ): Union {
         $class_property_type = $codebase->properties->getPropertyType(
-            $property_id,
+            explode('::$', $property_id)[0], explode('::$', $property_id)[1],
             false,
             $statements_analyzer,
             $context,

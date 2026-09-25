@@ -566,12 +566,12 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
         }
 
         $prop_name = $first_arg_value->value;
-        $property_id = $fq_class_name . '::$' . $prop_name;
+        $property_id_class = $fq_class_name; $property_id_name = $prop_name;
 
         $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
         $codebase->propertyExists(
-            $property_id,
+            $property_id_class, $property_id_name,
             $method_name === '__get',
             $statements_analyzer,
             $context,
@@ -587,9 +587,9 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                 ) {
                     IssueBuffer::maybeAdd(
                         new UndefinedThisPropertyAssignment(
-                            'Instance property ' . $property_id . ' is not defined',
+                            'Instance property ' . ($property_id_class . '::$' . $property_id_name) . ' is not defined',
                             new CodeLocation($statements_analyzer->getSource(), $stmt),
-                            $property_id,
+                            ($property_id_class . '::$' . $property_id_name),
                         ),
                         $statements_analyzer->getSuppressedIssues(),
                     );
@@ -628,7 +628,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                                     $prop_name . ' expects \'' . $pseudo_set_type->getId() . '\', '
                                         . ' parent type `' . $second_arg_type . '` provided',
                                     new CodeLocation($statements_analyzer->getSource(), $stmt),
-                                    $property_id,
+                                    ($property_id_class . '::$' . $property_id_name),
                                 ),
                                 $statements_analyzer->getSuppressedIssues(),
                             );
@@ -638,7 +638,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                                     $prop_name . ' expects \'' . $pseudo_set_type->getId() . '\', '
                                         . ' parent type `' . $second_arg_type . '` provided',
                                     new CodeLocation($statements_analyzer->getSource(), $stmt),
-                                    $property_id,
+                                    ($property_id_class . '::$' . $property_id_name),
                                 ),
                                 $statements_analyzer->getSuppressedIssues(),
                             );
@@ -657,7 +657,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                                     . $pseudo_set_type
                                     . '\' cannot be assigned possibly different type \'' . $second_arg_type . '\'',
                                     new CodeLocation($statements_analyzer->getSource(), $stmt),
-                                    $property_id,
+                                    ($property_id_class . '::$' . $property_id_name),
                                 ),
                                 $statements_analyzer->getSuppressedIssues(),
                             );
@@ -668,7 +668,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                                     . $pseudo_set_type
                                     . '\' cannot be assigned type \'' . $second_arg_type . '\'',
                                     new CodeLocation($statements_analyzer->getSource(), $stmt),
-                                    $property_id,
+                                    ($property_id_class . '::$' . $property_id_name),
                                 ),
                                 $statements_analyzer->getSuppressedIssues(),
                             );
@@ -685,9 +685,9 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                 ) {
                     IssueBuffer::maybeAdd(
                         new UndefinedThisPropertyFetch(
-                            'Instance property ' . $property_id . ' is not defined',
+                            'Instance property ' . ($property_id_class . '::$' . $property_id_name) . ' is not defined',
                             new CodeLocation($statements_analyzer->getSource(), $stmt),
-                            $property_id,
+                            ($property_id_class . '::$' . $property_id_name),
                         ),
                         $statements_analyzer->getSuppressedIssues(),
                     );

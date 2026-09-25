@@ -181,7 +181,7 @@ final class StaticPropertyFetchAnalyzer
             $statements_analyzer,
         );
 
-        $property_id = $fq_class_name . '::$' . $prop_name;
+        $property_id_class = $fq_class_name; $property_id_name = $prop_name;
 
         if ($codebase->store_node_types
             && !$context->collect_initializations
@@ -190,7 +190,7 @@ final class StaticPropertyFetchAnalyzer
             $codebase->analyzer->addNodeReference(
                 $statements_analyzer->getFilePath(),
                 $stmt->name,
-                $property_id,
+                ($property_id_class . '::$' . $property_id_name),
             );
         }
 
@@ -209,7 +209,7 @@ final class StaticPropertyFetchAnalyzer
                 $statements_analyzer,
                 $stmt,
                 $stmt_type,
-                $property_id,
+                ($property_id_class . '::$' . $property_id_name),
                 false,
                 0,
                 0,
@@ -221,7 +221,7 @@ final class StaticPropertyFetchAnalyzer
             if ($codebase->collect_references) {
                 // log the appearance
                 $codebase->propertyExists(
-                    $property_id,
+                    $property_id_class, $property_id_name,
                     true,
                     $statements_analyzer,
                     $context,
@@ -246,7 +246,7 @@ final class StaticPropertyFetchAnalyzer
         }
 
         if (!$codebase->propertyExists(
-            $property_id,
+            $property_id_class, $property_id_name,
             true,
             $statements_analyzer,
             $context,
@@ -261,9 +261,9 @@ final class StaticPropertyFetchAnalyzer
 
             IssueBuffer::maybeAdd(
                 new UndefinedPropertyFetch(
-                    'Static property ' . $property_id . ' is not defined',
+                    'Static property ' . ($property_id_class . '::$' . $property_id_name) . ' is not defined',
                     new CodeLocation($statements_analyzer->getSource(), $stmt),
-                    $property_id,
+                    ($property_id_class . '::$' . $property_id_name),
                 ),
                 $statements_analyzer->getSuppressedIssues(),
             );
@@ -272,7 +272,7 @@ final class StaticPropertyFetchAnalyzer
         }
 
         $declaring_property_class = $codebase->properties->getDeclaringClassForProperty(
-            $fq_class_name . '::$' . $prop_name,
+            $fq_class_name, $prop_name,
             true,
             $statements_analyzer,
         );
@@ -299,18 +299,18 @@ final class StaticPropertyFetchAnalyzer
             if ($context->inside_assignment) {
                 IssueBuffer::maybeAdd(
                     new UndefinedPropertyAssignment(
-                        'Static property ' . $property_id . ' is not defined',
+                        'Static property ' . ($property_id_class . '::$' . $property_id_name) . ' is not defined',
                         new CodeLocation($statements_analyzer->getSource(), $stmt),
-                        $property_id,
+                        ($property_id_class . '::$' . $property_id_name),
                     ),
                     $statements_analyzer->getSuppressedIssues(),
                 );
             } else {
                 IssueBuffer::maybeAdd(
                     new UndefinedPropertyFetch(
-                        'Static property ' . $property_id . ' is not defined',
+                        'Static property ' . ($property_id_class . '::$' . $property_id_name) . ' is not defined',
                         new CodeLocation($statements_analyzer->getSource(), $stmt),
-                        $property_id,
+                        ($property_id_class . '::$' . $property_id_name),
                     ),
                     $statements_analyzer->getSuppressedIssues(),
                 );
@@ -320,7 +320,7 @@ final class StaticPropertyFetchAnalyzer
         }
 
         if (ClassLikeAnalyzer::checkPropertyVisibility(
-            $property_id,
+            $property_id_class, $property_id_name,
             $context,
             $statements_analyzer,
             new CodeLocation($statements_analyzer->getSource(), $stmt),
@@ -394,7 +394,7 @@ final class StaticPropertyFetchAnalyzer
                 $statements_analyzer,
                 $stmt,
                 $stmt_type,
-                $property_id,
+                ($property_id_class . '::$' . $property_id_name),
                 false,
                 0,
                 0,

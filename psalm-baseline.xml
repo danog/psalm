@@ -44,6 +44,9 @@
       <code><![CDATA[$type]]></code>
       <code><![CDATA[$type]]></code>
     </ImplicitToStringCast>
+    <PossiblyUndefinedIntArrayOffset>
+      <code><![CDATA[explode('::$', $reference->symbol)[1]]]></code>
+    </PossiblyUndefinedIntArrayOffset>
     <RiskyTruthyFalsyComparison>
       <code><![CDATA[!$function_name]]></code>
       <code><![CDATA[$aliases->namespace]]></code>
@@ -179,7 +182,6 @@
       <code><![CDATA[$analyzed_method_id]]></code>
       <code><![CDATA[$const->name]]></code>
       <code><![CDATA[$fleshed_out_type]]></code>
-      <code><![CDATA[$prop->name]]></code>
       <code><![CDATA[$property_storage->signature_type]]></code>
     </ImplicitToStringCast>
     <PossiblyUndefinedIntArrayOffset>
@@ -209,9 +211,6 @@
     </RiskyTruthyFalsyComparison>
   </file>
   <file src="src/Psalm/Internal/Analyzer/ClassLikeAnalyzer.php">
-    <PossiblyUndefinedIntArrayOffset>
-      <code><![CDATA[$property_name]]></code>
-    </PossiblyUndefinedIntArrayOffset>
     <RiskyTruthyFalsyComparison>
       <code><![CDATA[$parent_storage->template_types]]></code>
       <code><![CDATA[$storage->template_covariants]]></code>
@@ -369,6 +368,9 @@
       <code><![CDATA[$destination_parts[1]]]></code>
       <code><![CDATA[$php_minor_version]]></code>
       <code><![CDATA[$source_parts[1]]]></code>
+      <code><![CDATA[explode('::$', $destination)[1]]]></code>
+      <code><![CDATA[explode('::$', $source)[1]]]></code>
+      <code><![CDATA[explode('::$', $source)[1]]]></code>
     </PossiblyUndefinedIntArrayOffset>
     <RiskyTruthyFalsyComparison>
       <code><![CDATA[$destination_pos = strpos($destination, '*')]]></code>
@@ -658,6 +660,10 @@
       <code><![CDATA[$stmt->name]]></code>
       <code><![CDATA[$stmt->name]]></code>
     </ImplicitToStringCast>
+    <PossiblyUndefinedIntArrayOffset>
+      <code><![CDATA[explode('::$', $property_id)[1]]]></code>
+      <code><![CDATA[explode('::$', $property_id)[1]]]></code>
+    </PossiblyUndefinedIntArrayOffset>
     <RiskyTruthyFalsyComparison>
       <code><![CDATA[$appearing_property_class]]></code>
       <code><![CDATA[$class_template_params]]></code>
@@ -683,7 +689,6 @@
     <ImplicitToStringCast>
       <code><![CDATA[$assignment_value_type]]></code>
       <code><![CDATA[$class_property_type]]></code>
-      <code><![CDATA[$prop_name]]></code>
       <code><![CDATA[$prop_name]]></code>
     </ImplicitToStringCast>
     <PossiblyUndefinedIntArrayOffset>
@@ -1142,6 +1147,15 @@
     <ImplicitToStringCast>
       <code><![CDATA[$stmt->name]]></code>
     </ImplicitToStringCast>
+    <PossiblyUndefinedIntArrayOffset>
+      <code><![CDATA[explode('::$', $property_id)[1]]]></code>
+      <code><![CDATA[explode('::$', $property_id)[1]]]></code>
+      <code><![CDATA[explode('::$', $property_id)[1]]]></code>
+      <code><![CDATA[explode('::$', $property_id)[1]]]></code>
+      <code><![CDATA[explode('::$', $property_id)[1]]]></code>
+      <code><![CDATA[explode('::$', $property_id)[1]]]></code>
+      <code><![CDATA[explode('::$', $property_id)[1]]]></code>
+    </PossiblyUndefinedIntArrayOffset>
     <ReferenceConstraintViolation>
       <code><![CDATA[$stmt_type]]></code>
     </ReferenceConstraintViolation>
@@ -1368,6 +1382,7 @@
       <code><![CDATA[$destination_name]]></code>
       <code><![CDATA[$source_const_name]]></code>
       <code><![CDATA[$stub]]></code>
+      <code><![CDATA[explode('::$', $source)[1]]]></code>
     </PossiblyUndefinedIntArrayOffset>
     <RiskyTruthyFalsyComparison>
       <code><![CDATA[!$insert_pos]]></code>
@@ -1457,14 +1472,6 @@
     </RiskyTruthyFalsyComparison>
   </file>
   <file src="src/Psalm/Internal/Codebase/Properties.php">
-    <PossiblyUndefinedIntArrayOffset>
-      <code><![CDATA[$property_name]]></code>
-      <code><![CDATA[$property_name]]></code>
-      <code><![CDATA[$property_name]]></code>
-      <code><![CDATA[$property_name]]></code>
-      <code><![CDATA[$property_name]]></code>
-      <code><![CDATA[$property_name]]></code>
-    </PossiblyUndefinedIntArrayOffset>
   </file>
   <file src="src/Psalm/Internal/Codebase/Scanner.php">
     <RiskyTruthyFalsyComparison>

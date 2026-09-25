@@ -18,6 +18,7 @@ use SimpleXMLElement;
 /**
  * Statement-level edits to a method body (env STMT_EDITS = JSON [[class, method, action, arg...]]):
  *   ["C", "m", "prepend", "<php statements>"]    insert statements at the start of the body
+ *   ["C", "m", "drop-assign", "var", "fn"]        remove top-level `$var = fn(...);` statements (with their comments)
  *   ["C", "m", "drop-call", "name", n]           remove the n-th (1-based) top-level statement of the body that is
  *                                                a call of a method named `name`
  */
@@ -50,6 +51,21 @@ final class StmtEditPlugin implements PluginEntryPointInterface, AfterClassLikeA
                 $at = $line_start($first->getComments() !== [] ? $first->getComments()[0]->getStartFilePos() : $first->getStartFilePos());
                 $text = implode('', array_map(static fn(string $l): string => ($l === '' ? '' : $indent . $l) . "\n", explode("\n", trim($e[3])))) . "\n";
                 $edits[] = [$at, $at, $text];
+            } elseif ($action === 'drop-assign') {
+                // top-level `$var = fn(...);` statements
+                foreach ($method->stmts as $st) {
+                    if ($st instanceof Stmt\Expression && $st->expr instanceof Expr\Assign && $st->expr->var instanceof Expr\Variable
+                        && $st->expr->var->name === $e[3] && $st->expr->expr instanceof Expr\FuncCall
+                        && $st->expr->expr->name instanceof Node\Name && strcasecmp($st->expr->expr->name->toString(), $e[4]) === 0
+                    ) {
+                        $s = $line_start($st->getComments() !== [] ? $st->getComments()[0]->getStartFilePos() : $st->getStartFilePos());
+                        $end = strpos($src, "\n", $st->getEndFilePos()) + 1;
+                        if (($src[$end] ?? '') === "\n") {
+                            $end++;
+                        }
+                        $edits[] = [$s, $end, ''];
+                    }
+                }
             } elseif ($action === 'drop-call') {
                 $n = 0;
                 foreach ($method->stmts as $st) {

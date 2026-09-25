@@ -1141,7 +1141,7 @@ final class ClassLikes
 
         foreach ($codebase->properties_to_move as $source => $destination) {
             try {
-                $source_property_storage = $properties->getStorage($source);
+                $source_property_storage = $properties->getStorage(explode('::$', $source)[0], explode('::$', $source)[1]);
             } catch (InvalidArgumentException) {
                 continue;
             }

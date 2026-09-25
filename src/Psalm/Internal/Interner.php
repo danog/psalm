@@ -87,12 +87,7 @@ final class Interner
      */
     public static function lookup(int $id): string
     {
-        if (!isset(self::$strings[$id])) {
-            // the preloaded names (Sym constants) resolve before any Codebase exists
-            self::merge(Sym::PRELOADED);
-        }
-        return self::$strings[$id]
-            ?? throw new UnexpectedValueException('Unknown interned id ' . $id);
+        return self::$strings[$id] ?? self::lookupMissing($id);
     }
 
     /**
@@ -164,5 +159,17 @@ final class Interner
     public static function internOrNull(?string $string): ?int
     {
         return $string === null ? null : self::intern($string);
+    }
+
+    /**
+     * An id not in the table yet: the preloaded names (Sym constants) resolve before any Codebase exists.
+     *
+     * @psalm-external-mutation-free
+     */
+    private static function lookupMissing(int $id): string
+    {
+        self::merge(Sym::PRELOADED);
+        return self::$strings[$id]
+            ?? throw new UnexpectedValueException('Unknown interned id ' . $id);
     }
 }

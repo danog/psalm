@@ -120,7 +120,7 @@ final class InstancePropertyAssignmentAnalyzer
 
             try {
                 $class_property_type = $codebase->properties->getPropertyType(
-                    $property_id,
+                    Interner::lookup($context->self), $prop_name,
                     true,
                     $statements_analyzer,
                     $context,
@@ -394,7 +394,7 @@ final class InstancePropertyAssignmentAnalyzer
             && $stmt_var_type->allow_mutations;
 
         $appearing_property_class = $codebase->properties->getAppearingClassForProperty(
-            $property_id,
+            explode('::$', $property_id)[0], explode('::$', $property_id)[1],
             true,
         );
 
@@ -670,7 +670,7 @@ final class InstancePropertyAssignmentAnalyzer
         }
 
         $declaring_property_class = Interner::lookupOrNull($codebase->properties->getDeclaringClassForProperty(
-            $property_id,
+            explode('::$', $property_id)[0], explode('::$', $property_id)[1],
             false,
             $statements_analyzer,
         ));
@@ -1064,17 +1064,17 @@ final class InstancePropertyAssignmentAnalyzer
             $class_exists = true;
         }
 
-        $property_id = Interner::lookup($fq_class_name) . '::$' . $prop_name;
+        $property_id_class = Interner::lookup($fq_class_name); $property_id_name = $prop_name;
 
         $has_magic_setter = false;
 
         $set_method_id = new MethodIdentifier($fq_class_name, Sym::SET);
 
-        if ((!$codebase->propertyExists($property_id, false, $statements_analyzer, $context)
+        if ((!$codebase->propertyExists($property_id_class, $property_id_name, false, $statements_analyzer, $context)
                 || ($lhs_var_id !== '$this'
                     && Interner::lookup($fq_class_name) !== Interner::lookupOrNull($context->self)
                     && ClassLikeAnalyzer::checkPropertyVisibility(
-                        $property_id,
+                        $property_id_class, $property_id_name,
                         $context,
                         $statements_analyzer,
                         new CodeLocation($statements_analyzer->getSource(), $stmt),
@@ -1114,7 +1114,7 @@ final class InstancePropertyAssignmentAnalyzer
                         self::taintProperty(
                             $statements_analyzer,
                             $stmt,
-                            $property_id,
+                            ($property_id_class . '::$' . $property_id_name),
                             $class_storage,
                             $assignment_value_type,
                             $context,
@@ -1123,7 +1123,7 @@ final class InstancePropertyAssignmentAnalyzer
 
                     return new AssignedProperty(
                         $class_property_type,
-                        $property_id,
+                        ($property_id_class . '::$' . $property_id_name),
                         $assignment_value_type,
                     );
                 }
@@ -1149,7 +1149,7 @@ final class InstancePropertyAssignmentAnalyzer
                     self::taintProperty(
                         $statements_analyzer,
                         $stmt,
-                        $property_id,
+                        ($property_id_class . '::$' . $property_id_name),
                         $class_storage,
                         $assignment_value_type,
                         $context,
@@ -1162,9 +1162,9 @@ final class InstancePropertyAssignmentAnalyzer
             if (!$class_exists) {
                 IssueBuffer::maybeAdd(
                     new UndefinedMagicPropertyAssignment(
-                        'Magic instance property ' . $property_id . ' is not defined',
+                        'Magic instance property ' . ($property_id_class . '::$' . $property_id_name) . ' is not defined',
                         new CodeLocation($statements_analyzer->getSource(), $stmt),
-                        $property_id,
+                        ($property_id_class . '::$' . $property_id_name),
                     ),
                     $statements_analyzer->getSuppressedIssues(),
                 );
@@ -1181,17 +1181,17 @@ final class InstancePropertyAssignmentAnalyzer
             && $stmt->var->name === 'this'
             && ($context->self !== null)
         ) {
-            $self_property_id = Interner::lookup($context->self) . '::$' . $prop_name;
+            $self_property_id_class = Interner::lookup($context->self); $self_property_id_name = $prop_name;
 
-            if ($self_property_id !== $property_id
+            if (($self_property_id_class . '::$' . $self_property_id_name) !== ($property_id_class . '::$' . $property_id_name)
                 && $codebase->propertyExists(
-                    $self_property_id,
+                    $self_property_id_class, $self_property_id_name,
                     false,
                     $statements_analyzer,
                     $context,
                 )
             ) {
-                $property_id = $self_property_id;
+                $property_id_class = $self_property_id_class; $property_id_name = $self_property_id_name;
             }
         }
 
@@ -1204,7 +1204,7 @@ final class InstancePropertyAssignmentAnalyzer
             self::taintProperty(
                 $statements_analyzer,
                 $stmt,
-                $property_id,
+                ($property_id_class . '::$' . $property_id_name),
                 $class_storage,
                 $assignment_value_type,
                 $context,
@@ -1212,15 +1212,15 @@ final class InstancePropertyAssignmentAnalyzer
         }
 
         if (!$codebase->propertyExists(
-            $property_id,
+            $property_id_class, $property_id_name,
             false,
             $statements_analyzer,
             $context,
             new CodeLocation($statements_analyzer->getSource(), $stmt),
         )
         // when property existence is asserted by a plugin it doesn't necessarily has storage
-        || ($codebase->properties->hasStorage($property_id)
-            && $codebase->properties->getStorage($property_id)->is_static
+        || ($codebase->properties->hasStorage($property_id_class, $property_id_name)
+            && $codebase->properties->getStorage($property_id_class, $property_id_name)->is_static
         )
         ) {
             if ($stmt->var instanceof PhpParser\Node\Expr\Variable && $stmt->var->name === 'this') {
@@ -1231,9 +1231,9 @@ final class InstancePropertyAssignmentAnalyzer
 
                 IssueBuffer::maybeAdd(
                     new UndefinedThisPropertyAssignment(
-                        'Instance property ' . $property_id . ' is not defined',
+                        'Instance property ' . ($property_id_class . '::$' . $property_id_name) . ' is not defined',
                         new CodeLocation($statements_analyzer->getSource(), $stmt),
-                        $property_id,
+                        ($property_id_class . '::$' . $property_id_name),
                     ),
                     $statements_analyzer->getSuppressedIssues(),
                 );
@@ -1241,18 +1241,18 @@ final class InstancePropertyAssignmentAnalyzer
                 if ($has_magic_setter) {
                     IssueBuffer::maybeAdd(
                         new UndefinedMagicPropertyAssignment(
-                            'Magic instance property ' . $property_id . ' is not defined',
+                            'Magic instance property ' . ($property_id_class . '::$' . $property_id_name) . ' is not defined',
                             new CodeLocation($statements_analyzer->getSource(), $stmt),
-                            $property_id,
+                            ($property_id_class . '::$' . $property_id_name),
                         ),
                         $statements_analyzer->getSuppressedIssues(),
                     );
                 } else {
                     IssueBuffer::maybeAdd(
                         new UndefinedPropertyAssignment(
-                            'Instance property ' . $property_id . ' is not defined',
+                            'Instance property ' . ($property_id_class . '::$' . $property_id_name) . ' is not defined',
                             new CodeLocation($statements_analyzer->getSource(), $stmt),
-                            $property_id,
+                            ($property_id_class . '::$' . $property_id_name),
                         ),
                         $statements_analyzer->getSuppressedIssues(),
                     );
@@ -1269,14 +1269,14 @@ final class InstancePropertyAssignmentAnalyzer
             $codebase->analyzer->addNodeReference(
                 $statements_analyzer->getFilePath(),
                 $stmt->name,
-                $property_id,
+                ($property_id_class . '::$' . $property_id_name),
             );
         }
 
         if (!$override_property_visibility) {
             if (!$context->collect_mutations) {
                 if (ClassLikeAnalyzer::checkPropertyVisibility(
-                    $property_id,
+                    $property_id_class, $property_id_name,
                     $context,
                     $statements_analyzer,
                     new CodeLocation($statements_analyzer->getSource(), $stmt),
@@ -1286,7 +1286,7 @@ final class InstancePropertyAssignmentAnalyzer
                 }
             } else {
                 if (ClassLikeAnalyzer::checkPropertyVisibility(
-                    $property_id,
+                    $property_id_class, $property_id_name,
                     $context,
                     $statements_analyzer,
                     new CodeLocation($statements_analyzer->getSource(), $stmt),
@@ -1299,7 +1299,7 @@ final class InstancePropertyAssignmentAnalyzer
         }
 
         $declaring_property_class = (string)Interner::lookupOrNull($codebase->properties->getDeclaringClassForProperty(
-            $property_id,
+            $property_id_class, $property_id_name,
             false,
         ));
 
@@ -1319,9 +1319,9 @@ final class InstancePropertyAssignmentAnalyzer
             if ($property_storage->deprecated) {
                 IssueBuffer::maybeAdd(
                     new DeprecatedProperty(
-                        $property_id . ' is marked deprecated',
+                        ($property_id_class . '::$' . $property_id_name) . ' is marked deprecated',
                         new CodeLocation($statements_analyzer->getSource(), $stmt),
-                        $property_id,
+                        ($property_id_class . '::$' . $property_id_name),
                     ),
                     $statements_analyzer->getSuppressedIssues(),
                 );
@@ -1330,10 +1330,10 @@ final class InstancePropertyAssignmentAnalyzer
             if (($context->self !== null) && !NamespaceAnalyzer::isWithinAny(Interner::lookup($context->self), $property_storage->internal)) {
                 IssueBuffer::maybeAdd(
                     new InternalProperty(
-                        $property_id . ' is internal to ' . InternalClass::listToPhrase($property_storage->internal)
+                        ($property_id_class . '::$' . $property_id_name) . ' is internal to ' . InternalClass::listToPhrase($property_storage->internal)
                             . ' but called from ' . Interner::lookup($context->self),
                         new CodeLocation($statements_analyzer->getSource(), $stmt),
-                        $property_id,
+                        ($property_id_class . '::$' . $property_id_name),
                     ),
                     $statements_analyzer->getSuppressedIssues(),
                 );
@@ -1342,7 +1342,7 @@ final class InstancePropertyAssignmentAnalyzer
             self::trackPropertyImpurity(
                 $statements_analyzer,
                 $stmt,
-                $property_id,
+                ($property_id_class . '::$' . $property_id_name),
                 $property_storage,
                 $declaring_class_storage,
                 $context,
@@ -1357,7 +1357,7 @@ final class InstancePropertyAssignmentAnalyzer
         }
 
         $class_property_type = $codebase->properties->getPropertyType(
-            $property_id,
+            $property_id_class, $property_id_name,
             true,
             $statements_analyzer,
             $context,
@@ -1456,7 +1456,7 @@ final class InstancePropertyAssignmentAnalyzer
 
         return new AssignedProperty(
             $class_property_type,
-            $property_id,
+            ($property_id_class . '::$' . $property_id_name),
             $assignment_value_type,
         );
     }
@@ -1500,7 +1500,7 @@ final class InstancePropertyAssignmentAnalyzer
     ): ?Union {
         $property_name_id = Interner::intern($property_name);
         $property_class_name = $codebase->properties->getDeclaringClassForProperty(
-            $fq_class_name . '::$' . $property_name,
+            $fq_class_name, $property_name,
             true,
         );
 

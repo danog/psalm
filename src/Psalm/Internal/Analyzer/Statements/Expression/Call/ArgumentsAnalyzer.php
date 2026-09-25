@@ -1327,11 +1327,11 @@ final class ArgumentsAnalyzer
         ?string $lhs_var_id,
     ): void {
         $prop_name_id = Interner::intern($prop_name);
-        $property_id = $fq_class_name . '::$' . $prop_name;
+        $property_id_class = $fq_class_name; $property_id_name = $prop_name;
 
         $codebase = $statements_analyzer->getCodebase();
         $declaring_property_class = Interner::intern((string) Interner::lookupOrNull($codebase->properties->getDeclaringClassForProperty(
-            $property_id,
+            $property_id_class, $property_id_name,
             true,
             $statements_analyzer,
         )));
@@ -1348,7 +1348,7 @@ final class ArgumentsAnalyzer
             InstancePropertyAssignmentAnalyzer::trackPropertyImpurity(
                 $statements_analyzer,
                 $stmt,
-                $property_id,
+                ($property_id_class . '::$' . $property_id_name),
                 $property_storage,
                 $declaring_class_storage,
                 $context,

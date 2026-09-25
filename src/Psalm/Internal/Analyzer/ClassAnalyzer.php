@@ -489,9 +489,9 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                     }
 
                     if ($codebase->alter_code) {
-                        $property_id = strtolower($this->fq_class_name) . '::$' . $prop->name;
+                        $property_id_class = strtolower($this->fq_class_name); $property_id_name = (string) $prop->name;
 
-                        $property_storage = $codebase->properties->getStorage($property_id);
+                        $property_storage = $codebase->properties->getStorage($property_id_class, $property_id_name);
 
                         if ($property_storage->type
                             && $property_storage->type_location
@@ -515,7 +515,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                         }
 
                         foreach ($codebase->properties_to_rename as $original_property_id => $new_property_name) {
-                            if ($property_id === $original_property_id) {
+                            if (($property_id_class . '::$' . $property_id_name) === $original_property_id) {
                                 $file_manipulations = [
                                     new FileManipulation(
                                         $prop->name->getStartFilePos(),
@@ -684,7 +684,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         foreach ($storage->appearing_property_ids as $property_name_id => $appearing_property_id) {
             $property_name = Interner::lookup($property_name_id);
             $property_class_name = $codebase->properties->getDeclaringClassForProperty(
-                (Interner::lookup($appearing_property_id) . '::$' . Interner::lookup($property_name_id)),
+                Interner::lookup($appearing_property_id), Interner::lookup($property_name_id),
                 true,
             );
 
@@ -1082,7 +1082,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         foreach ($storage->appearing_property_ids as $property_name_id => $appearing_property_id) {
             $property_name = Interner::lookup($property_name_id);
             $property_class_name = $codebase->properties->getDeclaringClassForProperty(
-                (Interner::lookup($appearing_property_id) . '::$' . Interner::lookup($property_name_id)),
+                Interner::lookup($appearing_property_id), Interner::lookup($property_name_id),
                 true,
             );
 
@@ -1576,10 +1576,10 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
 
         $codebase = $this->getCodebase();
 
-        $property_id = $fq_class_name . '::$' . $property_name;
+        $property_id_class = (string) $fq_class_name; $property_id_name = $property_name;
 
         $declaring_property_class = Interner::lookupOrNull($codebase->properties->getDeclaringClassForProperty(
-            $property_id,
+            $property_id_class, $property_id_name,
             true,
         ));
 
@@ -1590,7 +1590,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         $fq_class_name = $declaring_property_class;
 
         // gets inherited property type
-        $class_property_type = $codebase->properties->getPropertyType($property_id, false, $source, $context);
+        $class_property_type = $codebase->properties->getPropertyType($property_id_class, $property_id_name, false, $source, $context);
 
         $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
@@ -1609,7 +1609,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             return;
         }
 
-        $message = 'Property ' . $property_id . ' does not have a declared type';
+        $message = 'Property ' . ($property_id_class . '::$' . $property_id_name) . ' does not have a declared type';
 
         $suggested_type = $property_storage->suggested_type;
 
@@ -1660,7 +1660,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             new MissingPropertyType(
                 $message,
                 new CodeLocation($source, $stmt->props[0]->name),
-                $property_id,
+                ($property_id_class . '::$' . $property_id_name),
             ),
             $this->source->getSuppressedIssues() + $property_storage->suppressed_issues,
         );

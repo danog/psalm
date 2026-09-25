@@ -672,13 +672,13 @@ final class ProjectAnalyzer
                     );
                 }
 
-                if (!$this->codebase->propertyExists($source, true)) {
+                if (!$this->codebase->propertyExists(explode('::$', $source)[0], explode('::$', $source)[1], true)) {
                     throw new RefactorException(
                         'Property ' . $source . ' does not exist',
                     );
                 }
 
-                if ($this->codebase->propertyExists($destination, true)) {
+                if ($this->codebase->propertyExists(explode('::$', $destination)[0], explode('::$', $destination)[1], true)) {
                     throw new RefactorException(
                         'Destination property ' . $destination . ' already exists',
                     );
@@ -693,7 +693,7 @@ final class ProjectAnalyzer
                 $source_id = strtolower($source_parts[0]) . '::' . $source_parts[1];
 
                 if (strtolower($source_parts[0]) !== strtolower($destination_parts[0])) {
-                    $source_storage = $this->codebase->properties->getStorage($source);
+                    $source_storage = $this->codebase->properties->getStorage(explode('::$', $source)[0], explode('::$', $source)[1]);
 
                     if (!$source_storage->is_static) {
                         throw new RefactorException(

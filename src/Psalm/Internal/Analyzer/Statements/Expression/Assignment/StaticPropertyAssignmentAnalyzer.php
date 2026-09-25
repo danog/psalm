@@ -102,7 +102,7 @@ final class StaticPropertyAssignmentAnalyzer
                 return null;
             }
 
-            $property_id = $fq_class_name . '::$' . $prop_name;
+            $property_id_class = $fq_class_name; $property_id_name = (string) $prop_name;
 
             if ($codebase->store_node_types
                 && !$context->collect_initializations
@@ -117,16 +117,16 @@ final class StaticPropertyAssignmentAnalyzer
                 $codebase->analyzer->addNodeReference(
                     $statements_analyzer->getFilePath(),
                     $stmt->name,
-                    $property_id,
+                    ($property_id_class . '::$' . $property_id_name),
                 );
             }
 
-            if (!$codebase->propertyExists($property_id, false, $statements_analyzer, $context)) {
+            if (!$codebase->propertyExists($property_id_class, $property_id_name, false, $statements_analyzer, $context)) {
                 IssueBuffer::maybeAdd(
                     new UndefinedPropertyAssignment(
-                        'Static property ' . $property_id . ' is not defined',
+                        'Static property ' . ($property_id_class . '::$' . $property_id_name) . ' is not defined',
                         new CodeLocation($statements_analyzer->getSource(), $stmt),
-                        $property_id,
+                        ($property_id_class . '::$' . $property_id_name),
                     ),
                     $statements_analyzer->getSuppressedIssues(),
                 );
@@ -135,7 +135,7 @@ final class StaticPropertyAssignmentAnalyzer
             }
 
             if (ClassLikeAnalyzer::checkPropertyVisibility(
-                $property_id,
+                $property_id_class, $property_id_name,
                 $context,
                 $statements_analyzer,
                 new CodeLocation($statements_analyzer->getSource(), $stmt),
@@ -145,7 +145,7 @@ final class StaticPropertyAssignmentAnalyzer
             }
 
             $declaring_property_class = (string) Interner::lookupOrNull($codebase->properties->getDeclaringClassForProperty(
-                $fq_class_name . '::$' . $prop_name->name,
+                $fq_class_name, $prop_name->name,
                 false,
             ));
 
@@ -204,7 +204,7 @@ final class StaticPropertyAssignmentAnalyzer
                     $statements_analyzer,
                     $graph,
                     $stmt,
-                    $property_id,
+                    ($property_id_class . '::$' . $property_id_name),
                     $class_storage,
                     $assignment_value_type,
                     $context,
@@ -213,7 +213,7 @@ final class StaticPropertyAssignmentAnalyzer
             }
 
             $class_property_type = $codebase->properties->getPropertyType(
-                $property_id,
+                $property_id_class, $property_id_name,
                 true,
                 $statements_analyzer,
                 $context,
@@ -274,7 +274,7 @@ final class StaticPropertyAssignmentAnalyzer
                                 $assignment_value ?? $stmt,
                                 $context->include_location,
                             ),
-                            $property_id,
+                            ($property_id_class . '::$' . $property_id_name),
                         ),
                         $statements_analyzer->getSuppressedIssues(),
                     );
@@ -288,7 +288,7 @@ final class StaticPropertyAssignmentAnalyzer
                                 $assignment_value ?? $stmt,
                                 $context->include_location,
                             ),
-                            $property_id,
+                            ($property_id_class . '::$' . $property_id_name),
                         ),
                         $statements_analyzer->getSuppressedIssues(),
                     );
@@ -321,7 +321,7 @@ final class StaticPropertyAssignmentAnalyzer
                                 $statements_analyzer->getSource(),
                                 $assignment_value ?? $stmt,
                             ),
-                            $property_id,
+                            ($property_id_class . '::$' . $property_id_name),
                         ),
                         $statements_analyzer->getSuppressedIssues(),
                     )) {
@@ -337,7 +337,7 @@ final class StaticPropertyAssignmentAnalyzer
                                 $statements_analyzer->getSource(),
                                 $assignment_value ?? $stmt,
                             ),
-                            $property_id,
+                            ($property_id_class . '::$' . $property_id_name),
                         ),
                         $statements_analyzer->getSuppressedIssues(),
                     )) {

@@ -108,7 +108,7 @@ final class GetObjectVarsReturnTypeProvider implements FunctionReturnTypeProvide
                 foreach ($class_storage->appearing_property_ids as $name_id => $property_id) {
                     $name = Interner::lookup($name_id);
                     if (ClassAnalyzer::checkPropertyVisibility(
-                        (Interner::lookup($property_id) . '::$' . Interner::lookup($name_id)),
+                        Interner::lookup($property_id), Interner::lookup($name_id),
                         $context,
                         $statements_source,
                         $location,
@@ -116,7 +116,7 @@ final class GetObjectVarsReturnTypeProvider implements FunctionReturnTypeProvide
                         false,
                     ) === true) {
                         $property_type = $codebase->properties->getPropertyType(
-                            (Interner::lookup($property_id) . '::$' . Interner::lookup($name_id)),
+                            Interner::lookup($property_id), Interner::lookup($name_id),
                             false,
                             $statements_source,
                             $context,
