@@ -76,7 +76,7 @@ final class Properties
             }
         }
 
-        $class_storage = $this->classlikes->getStorageFor($fq_class_name);
+        $class_storage = $this->classlikes->getStorageFor(Interner::intern($fq_class_name));
 
         if (!$class_storage) {
             return false;
@@ -92,7 +92,7 @@ final class Properties
         }
 
         if (isset($class_storage->declaring_property_ids[Interner::intern($property_name)])) {
-            $declaring_property_class = strtolower($class_storage->declaring_property_ids[Interner::intern($property_name)]);
+            $declaring_property_class = strtolower(Interner::lookup($class_storage->declaring_property_ids[Interner::intern($property_name)]));
 
             $codebase->addReferenceToProperty(
                 $declaring_property_class,
@@ -135,10 +135,10 @@ final class Properties
             }
         }
 
-        $class_storage = $this->classlikes->getStorageFor($fq_class_name);
+        $class_storage = $this->classlikes->getStorageFor(Interner::intern($fq_class_name));
 
         if ($class_storage && isset($class_storage->declaring_property_ids[Interner::intern($property_name)])) {
-            return $class_storage->declaring_property_ids[Interner::intern($property_name)];
+            return Interner::lookup($class_storage->declaring_property_ids[Interner::intern($property_name)]);
         }
 
         return null;
@@ -166,10 +166,10 @@ final class Properties
             }
         }
 
-        $class_storage = $this->classlikes->getStorageFor($fq_class_name);
+        $class_storage = $this->classlikes->getStorageFor(Interner::intern($fq_class_name));
 
         if ($class_storage && isset($class_storage->appearing_property_ids[Interner::intern($property_name)])) {
-            $appearing_property_id = $class_storage->appearing_property_ids[Interner::intern($property_name)];
+            $appearing_property_id = (Interner::lookup($class_storage->appearing_property_ids[Interner::intern($property_name)]) . '::$' . Interner::lookup(Interner::intern($property_name)));
 
             return explode('::$', $appearing_property_id)[0];
         }
@@ -195,7 +195,7 @@ final class Properties
         }
 
         if (isset($class_storage->declaring_property_ids[Interner::intern($property_name)])) {
-            $declaring_property_class = Interner::intern($class_storage->declaring_property_ids[Interner::intern($property_name)]);
+            $declaring_property_class = $class_storage->declaring_property_ids[Interner::intern($property_name)];
             $declaring_class_storage = $this->classlike_storage_provider->get($declaring_property_class);
 
             if (isset($declaring_class_storage->properties[Interner::intern($property_name)])) {
@@ -219,7 +219,7 @@ final class Properties
         $class_storage = $this->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
         if (isset($class_storage->declaring_property_ids[Interner::intern($property_name)])) {
-            $declaring_property_class = Interner::intern($class_storage->declaring_property_ids[Interner::intern($property_name)]);
+            $declaring_property_class = $class_storage->declaring_property_ids[Interner::intern($property_name)];
             $declaring_class_storage = $this->classlike_storage_provider->get($declaring_property_class);
 
             return isset($declaring_class_storage->properties[Interner::intern($property_name)]);
@@ -252,10 +252,10 @@ final class Properties
             }
         }
 
-        $class_storage = $this->classlikes->getStorageFor($fq_class_name);
+        $class_storage = $this->classlikes->getStorageFor(Interner::intern($fq_class_name));
 
         if ($class_storage && isset($class_storage->declaring_property_ids[Interner::intern($property_name)])) {
-            $declaring_property_class = Interner::intern($class_storage->declaring_property_ids[Interner::intern($property_name)]);
+            $declaring_property_class = $class_storage->declaring_property_ids[Interner::intern($property_name)];
             $declaring_class_storage = $this->classlike_storage_provider->get($declaring_property_class);
 
             if (isset($declaring_class_storage->properties[Interner::intern($property_name)])) {
@@ -286,7 +286,7 @@ final class Properties
         }
 
         foreach ($class_storage->overridden_property_ids[Interner::intern($property_name)] as $overridden_property_id) {
-            $overridden_storage = $this->getStorage($overridden_property_id);
+            $overridden_storage = $this->getStorage((Interner::lookup($overridden_property_id) . '::$' . Interner::lookup(Interner::intern($property_name))));
 
             if ($overridden_storage->type) {
                 return $overridden_storage->type;

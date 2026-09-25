@@ -144,7 +144,7 @@ abstract class CallAnalyzer
                         if (Interner::lookup($fq_class_name) === Interner::lookup($atomic_type->name)) {
                             $alt_declaring_method_id = $declaring_method_id;
                         } else {
-                            $fq_class_name = Interner::intern(Interner::lookup($atomic_type->name));
+                            $fq_class_name = $atomic_type->name;
 
                             $method_id = new MethodIdentifier(
                                 $fq_class_name,
@@ -165,7 +165,7 @@ abstract class CallAnalyzer
 
                         foreach ($atomic_type->extra_types as $intersection_type) {
                             if ($intersection_type instanceof TNamedObject) {
-                                $fq_class_name = Interner::intern(Interner::lookup($intersection_type->name));
+                                $fq_class_name = $intersection_type->name;
                                 $method_id = new MethodIdentifier(
                                     $fq_class_name,
                                     $method_name_lc,
@@ -241,7 +241,7 @@ abstract class CallAnalyzer
                 if (Interner::lookup($fq_class_name) === $source->getFQCLN()) {
                     $class_analyzer->getMethodMutations(Interner::lookupLc($declaring_method_id->name_id), $context);
                 } else {
-                    $declaring_fq_class_name = Interner::intern(Interner::lookup($declaring_method_id->class_id));
+                    $declaring_fq_class_name = $declaring_method_id->class_id;
 
                     $old_self = $context->self;
                     $context->self = $declaring_fq_class_name;

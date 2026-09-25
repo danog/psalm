@@ -1433,11 +1433,11 @@ final class Codebase
                 $property_id = (string) preg_replace('/^\\\\/', '', $reference->symbol);
                 /** @psalm-suppress PossiblyUndefinedIntArrayOffset */
                 [$fq_class_name, $property_name] = explode('::$', $property_id);
-                $class_storage = $this->classlikes->getStorageFor($fq_class_name);
+                $class_storage = $this->classlikes->getStorageFor(Interner::intern($fq_class_name));
 
                 //Get Real Properties
                 if (isset($class_storage->declaring_property_ids[Interner::intern($property_name)])) {
-                    $declaring_property_class = Interner::intern($class_storage->declaring_property_ids[Interner::intern($property_name)]);
+                    $declaring_property_class = $class_storage->declaring_property_ids[Interner::intern($property_name)];
                     $declaring_class_storage = $this->classlike_storage_provider->get($declaring_property_class);
 
                     if (isset($declaring_class_storage->properties[Interner::intern($property_name)])) {
@@ -2164,7 +2164,7 @@ final class Codebase
                         $property_name = Interner::lookup($property_name_id);
                         try {
                             $property_storage = $this->properties->getStorage(
-                                $declaring_class . '::$' . $property_name,
+                                Interner::lookup($declaring_class) . '::$' . $property_name,
                             );
                         } catch (UnexpectedValueException $e) {
                             error_log($e->getMessage());

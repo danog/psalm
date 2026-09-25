@@ -72,7 +72,7 @@ final class MethodComparator
         bool $prevent_method_signature_mismatch = true,
     ): ?bool {
         $implementer_method_id = new MethodIdentifier(
-            Interner::intern(Interner::lookup($implementer_classlike_storage->id)),
+            $implementer_classlike_storage->id,
             Interner::intern(strtolower($guide_method_storage->cased_name ?: '')),
         );
 
@@ -254,7 +254,7 @@ final class MethodComparator
         foreach ($pseudo_methods as $pseudo_method_name_id => $pseudo_method_storage) {
             $pseudo_method_id = new MethodIdentifier(
                 Interner::intern($fq_class_name),
-                Interner::intern(Interner::lookupLc($pseudo_method_name_id)),
+                $pseudo_method_name_id,
             );
 
             $overridden_method_ids = $codebase->methods->getOverriddenMethodIds($pseudo_method_id);
@@ -269,7 +269,7 @@ final class MethodComparator
                 foreach ($overridden_method_ids as $overridden_method_id) {
                     $parent_method_storage = $codebase->methods->getStorage($overridden_method_id);
 
-                    $overridden_fq_class_name = Interner::intern(Interner::lookup($overridden_method_id->class_id));
+                    $overridden_fq_class_name = $overridden_method_id->class_id;
 
                     $parent_storage = $codebase->classlike_storage_provider->get($overridden_fq_class_name);
 

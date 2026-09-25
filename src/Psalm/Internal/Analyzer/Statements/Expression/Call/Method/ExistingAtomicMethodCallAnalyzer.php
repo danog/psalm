@@ -193,7 +193,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                 $trait_storage = $codebase->classlike_storage_provider->get($fq_trait_name_lc);
 
                 if (isset($trait_storage->methods[$method_id->name_id])) {
-                    $trait_method_id = new MethodIdentifier(Interner::intern(Interner::lookup($trait_storage->id)), Interner::intern($method_name_lc));
+                    $trait_method_id = new MethodIdentifier($trait_storage->id, Interner::intern($method_name_lc));
 
                     $class_template_params = ClassTemplateParamCollector::collect(
                         $codebase,

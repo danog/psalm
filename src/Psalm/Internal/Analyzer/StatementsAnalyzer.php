@@ -1059,7 +1059,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
                 continue;
             }
 
-            $class_storage = $codebase->classlikes->getStorageFor(Interner::lookup($atomic_type->name));
+            $class_storage = $codebase->classlikes->getStorageFor($atomic_type->name);
             while ($class_storage !== null) {
                 $destructor = $class_storage->methods[Sym::DESTRUCT] ?? null;
                 if ($destructor !== null) {
@@ -1073,7 +1073,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
 
                 $class_storage = $class_storage->parent_class === null
                     ? null
-                    : $codebase->classlikes->getStorageFor($class_storage->parent_class);
+                    : $codebase->classlikes->getStorageFor(Interner::intern($class_storage->parent_class));
             }
         }
 

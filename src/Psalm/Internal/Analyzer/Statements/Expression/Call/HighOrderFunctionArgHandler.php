@@ -252,7 +252,7 @@ final class HighOrderFunctionArgHandler
                 $input_arg_expr->name instanceof PhpParser\Node\Identifier
             ) {
                 $storage = $codebase->classlikes
-                    ->getStorageFor((string)Interner::lookupOrNull($input_arg_expr->class->attrs()->resolvedId));
+                    ->getStorageFor(Interner::intern((string)Interner::lookupOrNull($input_arg_expr->class->attrs()->resolvedId)));
 
                 $constant = null !== $storage
                     ? $storage->constants[Interner::intern($input_arg_expr->name->toString())] ?? null
@@ -267,7 +267,7 @@ final class HighOrderFunctionArgHandler
                 $input_arg_expr->class instanceof PhpParser\Node\Name
             ) {
                 $class_storage = $codebase->classlikes
-                    ->getStorageFor((string) Interner::lookupOrNull($input_arg_expr->class->attrs()->resolvedId));
+                    ->getStorageFor(Interner::intern((string) Interner::lookupOrNull($input_arg_expr->class->attrs()->resolvedId)));
 
                 $invoke_storage = $class_storage && isset($class_storage->methods[Sym::INVOKE])
                     ? $class_storage->methods[Sym::INVOKE]

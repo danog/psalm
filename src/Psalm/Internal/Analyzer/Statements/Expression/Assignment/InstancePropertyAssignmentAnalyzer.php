@@ -992,7 +992,7 @@ final class InstancePropertyAssignmentAnalyzer
 
         $intersection_types = $lhs_type_part->getIntersectionTypes() ?: [];
 
-        $fq_class_name = Interner::intern(Interner::lookup($lhs_type_part->name));
+        $fq_class_name = $lhs_type_part->name;
 
         $override_property_visibility = false;
 
@@ -1012,7 +1012,7 @@ final class InstancePropertyAssignmentAnalyzer
                     if ($intersection_type instanceof TNamedObject
                         && $codebase->classExists($intersection_type->name, null, $context)
                     ) {
-                        $fq_class_name = Interner::intern(Interner::lookup($intersection_type->name));
+                        $fq_class_name = $intersection_type->name;
                         $class_exists = true;
                         break;
                     }

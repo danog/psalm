@@ -662,12 +662,12 @@ final class FunctionLikeNodeScanner
                 switch ($param->flags & Modifiers::VISIBILITY_MASK) {
                     case Modifiers::PUBLIC:
                         $property_storage->visibility = ClassLikeAnalyzer::VISIBILITY_PUBLIC;
-                        $classlike_storage->inheritable_property_ids[Interner::intern($param_storage->name)] = $property_id;
+                        $classlike_storage->inheritable_property_ids[Interner::intern($param_storage->name)] = Interner::intern((string) $fq_classlike_name);
                         break;
 
                     case Modifiers::PROTECTED:
                         $property_storage->visibility = ClassLikeAnalyzer::VISIBILITY_PROTECTED;
-                        $classlike_storage->inheritable_property_ids[Interner::intern($param_storage->name)] = $property_id;
+                        $classlike_storage->inheritable_property_ids[Interner::intern($param_storage->name)] = Interner::intern((string) $fq_classlike_name);
                         break;
 
                     case Modifiers::PRIVATE:
@@ -679,8 +679,8 @@ final class FunctionLikeNodeScanner
 
                 $property_id = $fq_classlike_name . '::$' . $param_storage->name;
 
-                $classlike_storage->declaring_property_ids[Interner::intern($param_storage->name)] = $fq_classlike_name;
-                $classlike_storage->appearing_property_ids[Interner::intern($param_storage->name)] = $property_id;
+                $classlike_storage->declaring_property_ids[Interner::intern($param_storage->name)] = Interner::intern($fq_classlike_name);
+                $classlike_storage->appearing_property_ids[Interner::intern($param_storage->name)] = Interner::intern($fq_classlike_name);
                 $classlike_storage->initialized_properties[$param_storage->name] = true;
             }
 

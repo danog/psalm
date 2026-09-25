@@ -522,7 +522,7 @@ final class AtomicStaticCallAnalyzer
                         $codebase->methods->getStorage($declaring_method_id)->allowed_mutations,
                     )]);
                 } elseif ($codebase->methodExists(
-                    $call_static_method_id = new MethodIdentifier(Interner::intern(Interner::lookup($method_id->class_id)), Sym::CALL_STATIC),
+                    $call_static_method_id = new MethodIdentifier($method_id->class_id, Sym::CALL_STATIC),
                     null,
                     new CodeLocation($statements_analyzer, $stmt),
                     is_used: false,
@@ -1069,7 +1069,7 @@ final class AtomicStaticCallAnalyzer
         $ancestors = $static_class_storage->class_implements + $static_class_storage->parent_classes;
 
         foreach ($ancestors as $fq_class_name => $_) {
-            $class_storage = $codebase->classlikes->getStorageFor(strtolower(Interner::lookup($fq_class_name)));
+            $class_storage = $codebase->classlikes->getStorageFor($fq_class_name);
 
             if ($class_storage && isset($class_storage->pseudo_static_methods[$method_name_lc_id])) {
                 return [

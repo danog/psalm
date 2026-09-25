@@ -354,7 +354,7 @@ final class KeyedArrayComparator
         TNamedObject $input_type_part,
         TObjectWithProperties $container_type_part,
     ): ?TObjectWithProperties {
-        $storage = $codebase->classlikes->getStorageFor(Interner::lookup($input_type_part->name));
+        $storage = $codebase->classlikes->getStorageFor($input_type_part->name);
 
         if (!$storage) {
             return null;
@@ -385,8 +385,8 @@ final class KeyedArrayComparator
                 continue;
             }
 
-            $property_type = $codebase->properties->hasStorage($property_id)
-                ? $codebase->properties->getStorage($property_id)->type
+            $property_type = $codebase->properties->hasStorage((Interner::lookup($property_id) . '::$' . Interner::lookup($property_name_id)))
+                ? $codebase->properties->getStorage((Interner::lookup($property_id) . '::$' . Interner::lookup($property_name_id)))->type
                 : null;
 
             $properties[$property_name] = $property_type ?? Type::getMixed();

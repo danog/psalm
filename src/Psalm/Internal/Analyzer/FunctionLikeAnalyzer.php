@@ -2155,10 +2155,10 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                     if ($implementer_appearing_method_id
                         && $implementer_appearing_method_id !== $implementer_declaring_method_id
                     ) {
-                        $appearing_fq_class_name = Interner::intern(Interner::lookup($implementer_appearing_method_id->class_id));
+                        $appearing_fq_class_name = $implementer_appearing_method_id->class_id;
                         $appearing_method_name = Interner::lookupLc($implementer_appearing_method_id->name_id);
 
-                        $declaring_fq_class_name = Interner::intern(Interner::lookup($implementer_declaring_method_id->class_id));
+                        $declaring_fq_class_name = $implementer_declaring_method_id->class_id;
 
                         $appearing_class_storage = $classlike_storage_provider->get(
                             $appearing_fq_class_name,

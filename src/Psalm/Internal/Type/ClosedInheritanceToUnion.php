@@ -26,7 +26,7 @@ final class ClosedInheritanceToUnion
 
         foreach ($input->getAtomicTypes() as $atomic_type) {
             if ($atomic_type instanceof TNamedObject) {
-                $storage = $codebase->classlikes->getStorageFor(Interner::lookup($atomic_type->name));
+                $storage = $codebase->classlikes->getStorageFor($atomic_type->name);
 
                 if (null === $storage || null === $storage->inheritors) {
                     $new_types[] = $atomic_type;
@@ -67,7 +67,7 @@ final class ClosedInheritanceToUnion
             return new TemplateResult([], []);
         }
 
-        $storage = $codebase->classlikes->getStorageFor(Interner::lookup($object->name));
+        $storage = $codebase->classlikes->getStorageFor($object->name);
 
         if (null === $storage || null === $storage->template_types) {
             return new TemplateResult([], []);

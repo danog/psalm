@@ -469,13 +469,13 @@ final class Scanner
     {
         $changed = false;
         foreach ($reflected->methods as $method_name_lc_id => $method_storage) {
-            $method_name_lc = Interner::intern(Interner::lookupLc($method_name_lc_id));
+            $method_name_lc = $method_name_lc_id;
             if (isset($stub->methods[$method_name_lc_id])) {
                 continue;
             }
             $changed = true;
             $stub->methods[$method_name_lc_id] = $method_storage;
-            $method_id = new MethodIdentifier(Interner::intern(Interner::lookup($stub->id)), $method_name_lc);
+            $method_id = new MethodIdentifier($stub->id, $method_name_lc);
             $stub->declaring_method_ids[$method_name_lc_id] ??= $method_id;
             $stub->appearing_method_ids[$method_name_lc_id] ??= $method_id;
             if ($method_storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PRIVATE) {
@@ -491,10 +491,10 @@ final class Scanner
             $stub->properties[$property_name_id] = $property_storage;
             $property_id = Interner::lookup($stub->id) . '::$' . $property_name;
             // the declaring map holds the class, the other two hold the property id
-            $stub->declaring_property_ids[$property_name_id] ??= Interner::lookup($stub->id);
-            $stub->appearing_property_ids[$property_name_id] ??= $property_id;
+            $stub->declaring_property_ids[$property_name_id] ??= $stub->id;
+            $stub->appearing_property_ids[$property_name_id] ??= $stub->id;
             if ($property_storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PRIVATE) {
-                $stub->inheritable_property_ids[$property_name_id] ??= $property_id;
+                $stub->inheritable_property_ids[$property_name_id] ??= $stub->id;
             }
         }
         foreach ($reflected->constants as $const_name_id => $const_storage) {

@@ -348,7 +348,7 @@ final class Methods
                 return $params;
             }
 
-            $appearing_fq_class_name = Interner::intern(Interner::lookup($appearing_method_id->class_id));
+            $appearing_fq_class_name = $appearing_method_id->class_id;
             $appearing_method_name = Interner::lookupLc($appearing_method_id->name_id);
 
             $class_storage = $this->classlike_storage_provider->get($appearing_fq_class_name);
@@ -365,7 +365,7 @@ final class Methods
 
             $overridden_storage = $this->getStorage($overridden_method_id);
 
-            $overriding_fq_class_name = Interner::intern(Interner::lookup($overridden_method_id->class_id));
+            $overriding_fq_class_name = $overridden_method_id->class_id;
 
             foreach ($params as $i => $param) {
                 if (isset($overridden_storage->params[$i]->type)
@@ -512,7 +512,7 @@ final class Methods
             }
         }
 
-        $appearing_fq_class_name = Interner::intern(Interner::lookup($appearing_method_id->class_id));
+        $appearing_fq_class_name = $appearing_method_id->class_id;
         $appearing_method_name = Interner::lookupLc($appearing_method_id->name_id);
 
         $appearing_fq_class_storage = $this->classlike_storage_provider->get($appearing_fq_class_name);
@@ -787,7 +787,7 @@ final class Methods
                     continue;
                 }
 
-                $fq_overridden_class = Interner::intern(Interner::lookup($overridden_method_id->class_id));
+                $fq_overridden_class = $overridden_method_id->class_id;
 
                 $overridden_class_storage =
                     $this->classlike_storage_provider->get($fq_overridden_class);

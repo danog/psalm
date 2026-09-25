@@ -98,7 +98,7 @@ final class ExistingAtomicStaticCallAnalyzer
                 return;
             }
 
-            $appearing_method_class_name = Interner::intern(Interner::lookup($appearing_method_id->class_id));
+            $appearing_method_class_name = $appearing_method_id->class_id;
 
             if ($codebase->classExtends($context->self, $appearing_method_class_name)) {
                 $old_context_include_location = $context->include_location;

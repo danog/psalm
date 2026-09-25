@@ -132,11 +132,11 @@ final class Reflection
 
             $property_id = $class_property->class . '::$' . $property_name;
 
-            $storage->declaring_property_ids[$property_name_id] = $class_property->class;
-            $storage->appearing_property_ids[$property_name_id] = $property_id;
+            $storage->declaring_property_ids[$property_name_id] = Interner::intern($class_property->class);
+            $storage->appearing_property_ids[$property_name_id] = Interner::intern($class_property->class);
 
             if (!$class_property->isPrivate()) {
-                $storage->inheritable_property_ids[$property_name_id] = $property_id;
+                $storage->inheritable_property_ids[$property_name_id] = Interner::intern($class_property->class);
             }
         }
 
@@ -149,9 +149,9 @@ final class Reflection
                 $storage->properties[$property_name_id] = new PropertyStorage();
                 $storage->properties[$property_name_id]->visibility = ClassLikeAnalyzer::VISIBILITY_PUBLIC;
 
-                $storage->declaring_property_ids[$property_name_id] = $class_name;
-                $storage->appearing_property_ids[$property_name_id] = $property_id;
-                $storage->inheritable_property_ids[$property_name_id] = $property_id;
+                $storage->declaring_property_ids[$property_name_id] = Interner::intern($class_name);
+                $storage->appearing_property_ids[$property_name_id] = Interner::intern($class_name);
+                $storage->inheritable_property_ids[$property_name_id] = Interner::intern($class_name);
             }
 
             $type = Type::parseString($type_string);
@@ -561,7 +561,7 @@ final class Reflection
                 continue;
             }
 
-            $storage->declaring_property_ids[$property_name_id] = strtolower($declaring_property_class);
+            $storage->declaring_property_ids[$property_name_id] = $declaring_property_class;
         }
 
         // register where they're declared

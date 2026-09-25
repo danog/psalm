@@ -736,7 +736,7 @@ final class ClassLikeNodeScanner
                 }
 
                 if ($key === 0) {
-                    $storage->mixin_declaring_fqcln = Interner::intern(Interner::lookup($storage->id));
+                    $storage->mixin_declaring_fqcln = $storage->id;
                 }
             }
 
@@ -790,14 +790,14 @@ final class ClassLikeNodeScanner
                 }
             }
             if ($name_types !== []) {
-                $storage->declaring_property_ids[Interner::intern('name')] = Interner::lookup($storage->id);
-                $storage->appearing_property_ids[Interner::intern('name')] = "" . Interner::lookup($storage->id) . "::\$name";
+                $storage->declaring_property_ids[Interner::intern('name')] = $storage->id;
+                $storage->appearing_property_ids[Interner::intern('name')] = $storage->id;
                 $storage->properties[Interner::intern('name')] = new PropertyStorage();
                 $storage->properties[Interner::intern('name')]->type = new Union($name_types);
             }
             if ($values_types !== []) {
-                $storage->declaring_property_ids[Interner::intern('value')] = Interner::lookup($storage->id);
-                $storage->appearing_property_ids[Interner::intern('value')] = "" . Interner::lookup($storage->id) . "::\$value";
+                $storage->declaring_property_ids[Interner::intern('value')] = $storage->id;
+                $storage->appearing_property_ids[Interner::intern('value')] = $storage->id;
                 $storage->properties[Interner::intern('value')] = new PropertyStorage();
                 $storage->properties[Interner::intern('value')]->type = new Union($values_types);
             }
@@ -897,8 +897,8 @@ final class ClassLikeNodeScanner
 
                 $classlike_storage->properties[Interner::intern($property_name)]->type = $property_type;
 
-                $classlike_storage->declaring_property_ids[Interner::intern($property_name)] = $fq_classlike_name;
-                $classlike_storage->appearing_property_ids[Interner::intern($property_name)] = $property_id;
+                $classlike_storage->declaring_property_ids[Interner::intern($property_name)] = Interner::intern($fq_classlike_name);
+                $classlike_storage->appearing_property_ids[Interner::intern($property_name)] = Interner::intern($fq_classlike_name);
             }
         }
 
@@ -1283,7 +1283,7 @@ final class ClassLikeNodeScanner
         $storage->mutation_free_assumed = true;
 
         $class_storage->declaring_method_ids[Sym::CONSTRUCT] = new MethodIdentifier(
-            Interner::intern(Interner::lookup($class_storage->id)),
+            $class_storage->id,
             Sym::CONSTRUCT,
         );
 
@@ -1823,15 +1823,15 @@ final class ClassLikeNodeScanner
 
             $property_id = $fq_classlike_name . '::$' . $property->name->name;
 
-            $storage->declaring_property_ids[Interner::intern($property->name->name)] = $fq_classlike_name;
-            $storage->appearing_property_ids[Interner::intern($property->name->name)] = $property_id;
+            $storage->declaring_property_ids[Interner::intern($property->name->name)] = Interner::intern($fq_classlike_name);
+            $storage->appearing_property_ids[Interner::intern($property->name->name)] = Interner::intern($fq_classlike_name);
 
             if ($property_is_initialized) {
                 $storage->initialized_properties[$property->name->name] = true;
             }
 
             if (!$stmt->isPrivate()) {
-                $storage->inheritable_property_ids[Interner::intern($property->name->name)] = $property_id;
+                $storage->inheritable_property_ids[Interner::intern($property->name->name)] = Interner::intern($fq_classlike_name);
             }
 
             $attrs = $this->getAttributeStorageFromStatement(

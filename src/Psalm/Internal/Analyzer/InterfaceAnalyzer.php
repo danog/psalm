@@ -127,7 +127,7 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
 
         $class_union = new Union([new TNamedObject(Interner::lookup($fq_interface_name))]);
         foreach ($class_storage->direct_interface_parents as $parent_interface_id => $_) {
-            $parent_storage = $codebase->classlikes->getStorageFor(Interner::lookup($parent_interface_id));
+            $parent_storage = $codebase->classlikes->getStorageFor($parent_interface_id);
             if ($parent_storage && $parent_storage->inheritors) {
                 if (!UnionTypeComparator::isContainedBy($codebase, $class_union, $parent_storage->inheritors)) {
                     IssueBuffer::maybeAdd(

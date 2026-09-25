@@ -2923,7 +2923,7 @@ final class SimpleAssertionReconciler extends Reconciler
                 $class_name = Interner::intern($atomic_type->fq_classlike_name);
                 $enum_case_to_assert = $atomic_type->const_name;
             } elseif ($atomic_type instanceof TNamedObject) {
-                $class_name = Interner::intern(Interner::lookup($atomic_type->name));
+                $class_name = $atomic_type->name;
             } else {
                 return null;
             }

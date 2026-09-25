@@ -828,7 +828,7 @@ final class ClassLikes
 
                         if (isset($interface_storage->methods[$method_name_id])) {
                             $parent_method_ids[strtolower(Interner::lookup($fq_interface_name_lc))] = new MethodIdentifier(
-                                Interner::intern(Interner::lookup($interface_storage->id)),
+                                $interface_storage->id,
                                 Interner::intern($method_name),
                             );
                         }
@@ -1798,7 +1798,7 @@ final class ClassLikes
             } else {
                 $declaring_method_id = $classlike_storage->declaring_method_ids[$method_name_id];
 
-                $declaring_fq_classlike_name = Interner::intern(Interner::lookup($declaring_method_id->class_id));
+                $declaring_fq_classlike_name = $declaring_method_id->class_id;
                 $declaring_method_name = Interner::lookupLc($declaring_method_id->name_id);
 
                 try {
@@ -2070,7 +2070,7 @@ final class ClassLikes
             } else {
                 $declaring_method_id = $classlike_storage->declaring_method_ids[$method_name_id];
 
-                $declaring_fq_classlike_name = Interner::intern(Interner::lookup($declaring_method_id->class_id));
+                $declaring_fq_classlike_name = $declaring_method_id->class_id;
                 $declaring_method_name = Interner::lookupLc($declaring_method_id->name_id);
 
                 try {
@@ -2140,7 +2140,7 @@ final class ClassLikes
             } else {
                 $declaring_method_id = $classlike_storage->declaring_method_ids[$method_name_id];
 
-                $declaring_fq_classlike_name = Interner::intern(Interner::lookup($declaring_method_id->class_id));
+                $declaring_fq_classlike_name = $declaring_method_id->class_id;
                 $declaring_method_name = Interner::lookupLc($declaring_method_id->name_id);
 
                 try {
@@ -2525,15 +2525,9 @@ final class ClassLikes
     /**
      * @psalm-mutation-free
      */
-    public function getStorageFor(string $fq_class_name): ?ClassLikeStorage
+    public function getStorageFor(int $fq_class_name): ?ClassLikeStorage
     {
-        $fq_class_name = $this->getUnAliasedName($fq_class_name);
-
-        try {
-            return $this->classlike_storage_provider->get(Interner::intern($fq_class_name));
-        } catch (InvalidArgumentException) {
-            return null;
-        }
+        return $this->classlike_storage_provider->find($fq_class_name);
     }
 
     /**

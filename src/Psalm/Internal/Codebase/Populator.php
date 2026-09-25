@@ -128,8 +128,8 @@ final class Populator
 
         $all_properties = [];
         foreach ($storage->declaring_property_ids as $property_name_id => $declaring_class) {
-            $declaring_storage = $this->classlike_storage_provider->has(Interner::intern($declaring_class))
-                ? $this->classlike_storage_provider->get(Interner::intern($declaring_class))
+            $declaring_storage = $this->classlike_storage_provider->has($declaring_class)
+                ? $this->classlike_storage_provider->get($declaring_class)
                 : null;
             $property_storage = $declaring_storage?->properties[$property_name_id] ?? null;
             if ($property_storage !== null) {
@@ -352,8 +352,8 @@ final class Populator
             foreach ($implemented_interface_storage->methods as $method_name_id => $method) {
                 if ($method->visibility === ClassLikeAnalyzer::VISIBILITY_PUBLIC) {
                     $interface_method_implementers[$method_name_id][] = new MethodIdentifier(
-                        Interner::intern(Interner::lookup($implemented_interface_storage->id)),
-                        Interner::intern(Interner::lookupLc($method_name_id)),
+                        $implemented_interface_storage->id,
+                        $method_name_id,
                     );
                 }
             }
@@ -368,7 +368,7 @@ final class Populator
                         && !$method_storage->signature_return_type->isVoid()
                         && $method_storage->return_type === $method_storage->signature_return_type
                     ) {
-                        $interface_fqcln = Interner::intern(Interner::lookup($interface_method_ids[0]->class_id));
+                        $interface_fqcln = $interface_method_ids[0]->class_id;
                         $interface_storage = $storage_provider->get($interface_fqcln);
 
                         if (isset($interface_storage->methods[$method_name_id])) {
@@ -760,14 +760,14 @@ final class Populator
         $storage->parent_interfaces = ($parent_interface_storage->parent_interfaces + $storage->parent_interfaces);
 
         if (isset($storage->parent_interfaces[Sym::UNIT_ENUM])) {
-            $storage->declaring_property_ids[Interner::intern('name')] = Interner::lookup($storage->id);
-            $storage->appearing_property_ids[Interner::intern('name')] = "" . Interner::lookup($storage->id) . "::\$name";
+            $storage->declaring_property_ids[Interner::intern('name')] = $storage->id;
+            $storage->appearing_property_ids[Interner::intern('name')] = $storage->id;
             $storage->properties[Interner::intern('name')] = new PropertyStorage();
             $storage->properties[Interner::intern('name')]->type = new Union([new TNonEmptyString()]);
         }
         if (isset($storage->parent_interfaces[Sym::BACKED_ENUM])) {
-            $storage->declaring_property_ids[Interner::intern('value')] = Interner::lookup($storage->id);
-            $storage->appearing_property_ids[Interner::intern('value')] = "" . Interner::lookup($storage->id) . "::\$value";
+            $storage->declaring_property_ids[Interner::intern('value')] = $storage->id;
+            $storage->appearing_property_ids[Interner::intern('value')] = $storage->id;
             $storage->properties[Interner::intern('value')] = new PropertyStorage();
             $storage->properties[Interner::intern('value')]->type = new Union([new TInt(), new TString()]);
         }
@@ -1051,7 +1051,7 @@ final class Populator
                 || $parent_storage->preserve_constructor_signature
             ) {
                 if ($parent_storage->is_trait) {
-                    $declaring_class = Interner::intern(Interner::lookup($declaring_method_id->class_id));
+                    $declaring_class = $declaring_method_id->class_id;
                     $declaring_class_storage = $this->classlike_storage_provider->get($declaring_class);
 
                     if (isset($declaring_class_storage->methods[$method_name_lc_id])
@@ -1162,7 +1162,7 @@ final class Populator
             $implemented_property_id = Interner::lookup($storage->id) . '::$' . $property_name;
 
             $storage->appearing_property_ids[$property_name_id] =
-                $parent_storage->is_trait ? $implemented_property_id : $appearing_property_id;
+                ($parent_storage->is_trait ? $storage->id : $appearing_property_id);
         }
 
         // register where they're declared

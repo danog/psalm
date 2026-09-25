@@ -29,7 +29,7 @@ final class InternPeepholePlugin implements PluginEntryPointInterface, AfterExpr
     {
         if ($e instanceof Expr\StaticCall && $e->class instanceof Name && $e->name instanceof Identifier
             && strtolower($e->class->getLast()) === 'interner' && in_array(strtolower($e->name->name), $names, true)
-            && count($e->getArgs()) === 1 && !$e->getArgs()[0]->unpack
+            && !$e->isFirstClassCallable() && count($e->getArgs()) === 1 && !$e->getArgs()[0]->unpack
         ) {
             return $e->getArgs()[0]->value;
         }
@@ -42,6 +42,26 @@ final class InternPeepholePlugin implements PluginEntryPointInterface, AfterExpr
         $file = $event->getStatementsSource()->getFilePath();
         $roots = array_filter(explode(':', (string) getenv('ID_REFACTOR_ROOTS')));
         if (array_filter($roots, static fn(string $r): bool => str_starts_with($file, $r)) === []) {
+            return null;
+        }
+        // Interner::intern(strtolower(Interner::lookup(X))) as the argument of a call that resolves class names
+        // case-insensitively (env ID_REFACTOR_CI_CALLS, comma-separated method names) is X
+        $ci = array_filter(explode(',', strtolower((string) getenv('ID_REFACTOR_CI_CALLS'))));
+        if ($e instanceof Expr\MethodCall && $e->name instanceof Identifier && in_array(strtolower($e->name->name), $ci, true)) {
+            $src = (string) file_get_contents($file);
+            foreach ($e->getArgs() as $a) {
+                $arg = self::internerCall($a->value, ['intern']);
+                if ($arg instanceof Expr\FuncCall && $arg->name instanceof Name && strtolower($arg->name->toString()) === 'strtolower'
+                    && count($arg->getArgs()) === 1 && ($x = self::internerCall($arg->getArgs()[0]->value, ['lookup'])) !== null
+                ) {
+                    $v = $a->value;
+                    file_put_contents(getenv('ID_REFACTOR_OUT') ?: sys_get_temp_dir() . '/peephole.jsonl', json_encode([
+                        'kind' => 'edit', 'file' => $file, 'site' => $file . ':' . $v->getStartFilePos(),
+                        'edits' => [[$v->getStartFilePos(), $v->getEndFilePos() + 1,
+                            substr($src, $x->getStartFilePos(), $x->getEndFilePos() + 1 - $x->getStartFilePos())]],
+                    ], JSON_UNESCAPED_SLASHES) . "\n", FILE_APPEND | LOCK_EX);
+                }
+            }
             return null;
         }
         $inner = null;

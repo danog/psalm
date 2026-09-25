@@ -429,7 +429,7 @@ final class MissingMethodCallHandler
         $method_name_lc_id = Interner::intern($method_name_lc);
         if (isset($static_class_storage->declaring_pseudo_method_ids[$method_name_lc_id])) {
             $method_id = $static_class_storage->declaring_pseudo_method_ids[$method_name_lc_id];
-            $class_storage = $codebase->classlikes->getStorageFor(Interner::lookup($method_id->class_id));
+            $class_storage = $codebase->classlikes->getStorageFor($method_id->class_id);
 
             if ($class_storage && isset($class_storage->pseudo_methods[$method_name_lc_id])) {
                 return [$class_storage->pseudo_methods[$method_name_lc_id], $class_storage];
@@ -449,7 +449,7 @@ final class MissingMethodCallHandler
         }
 
         foreach ($ancestors as $fq_class_name => $_) {
-            $class_storage = $codebase->classlikes->getStorageFor(strtolower(Interner::lookup($fq_class_name)));
+            $class_storage = $codebase->classlikes->getStorageFor($fq_class_name);
 
             if ($class_storage && isset($class_storage->pseudo_methods[$method_name_lc_id])) {
                 return [
