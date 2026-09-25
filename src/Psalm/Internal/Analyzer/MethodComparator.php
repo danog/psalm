@@ -314,7 +314,7 @@ final class MethodComparator
         if ($implementer_visibility > $guide_visibility) {
             if ($trait_mismatches_are_fatal
                 || $guide_classlike_storage->is_trait === $implementer_classlike_storage->is_trait
-                || !in_array(Interner::lookup($guide_classlike_storage->id), $implementer_classlike_storage->used_traits)
+                || !isset($implementer_classlike_storage->used_traits[$guide_classlike_storage->id])
                 || $implementer_method_storage->defining_fqcln !== Interner::lookup($implementer_classlike_storage->id)
                 || (!$implementer_method_storage->abstract
                     && !$guide_method_storage->abstract)
@@ -719,7 +719,7 @@ final class MethodComparator
 
             if ($codebase->analysis_php_version_id >= 8_00_00
                 || $guide_classlike_storage->is_trait === $implementer_classlike_storage->is_trait
-                || !in_array(Interner::lookup($guide_classlike_storage->id), $implementer_classlike_storage->used_traits)
+                || !isset($implementer_classlike_storage->used_traits[$guide_classlike_storage->id])
                 || $implementer_method_storage->defining_fqcln !== Interner::lookup($implementer_classlike_storage->id)
                 || (!$implementer_method_storage->abstract
                     && !$guide_method_storage->abstract)
@@ -1028,7 +1028,7 @@ final class MethodComparator
                 // no error if return type will change and no signature set at all
             } elseif ($codebase->analysis_php_version_id >= 8_00_00
                       || $guide_classlike_storage->is_trait === $implementer_classlike_storage->is_trait
-                      || !in_array(Interner::lookup($guide_classlike_storage->id), $implementer_classlike_storage->used_traits)
+                      || !isset($implementer_classlike_storage->used_traits[$guide_classlike_storage->id])
                       || $implementer_method_storage->defining_fqcln !== Interner::lookup($implementer_classlike_storage->id)
                       || (!$implementer_method_storage->abstract
                           && !$guide_method_storage->abstract)

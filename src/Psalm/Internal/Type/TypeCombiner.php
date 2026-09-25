@@ -1416,16 +1416,16 @@ final class TypeCombiner
 
         $classlikes[$fq_classlike_name] = true;
 
-        foreach ($class_storage->parent_classes as $parent_class) {
-            $classlikes[$parent_class] = true;
+        foreach ($class_storage->parent_classes as $parent_class_id => $_) {
+            $classlikes[Interner::lookup($parent_class_id)] = true;
         }
 
-        foreach ($class_storage->parent_interfaces as $parent_interface) {
-            $classlikes[$parent_interface] = true;
+        foreach ($class_storage->parent_interfaces as $parent_interface_id => $_) {
+            $classlikes[Interner::lookup($parent_interface_id)] = true;
         }
 
-        foreach ($class_storage->class_implements as $interface) {
-            $classlikes[$interface] = true;
+        foreach ($class_storage->class_implements as $interface_id => $_) {
+            $classlikes[Interner::lookup($interface_id)] = true;
         }
 
         return $classlikes;

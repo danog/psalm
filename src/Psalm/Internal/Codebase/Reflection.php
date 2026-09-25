@@ -100,10 +100,7 @@ final class Reflection
 
             $storage->constants = $parent_storage->constants;
 
-            $storage->parent_classes = array_merge(
-                [Interner::lookupLc($parent_class_name_lc) => $parent_class_name],
-                $parent_storage->parent_classes,
-            );
+            $storage->parent_classes = ([Interner::intern($parent_class_name) => true] + $parent_storage->parent_classes);
 
             $storage->used_traits = $parent_storage->used_traits;
         }
@@ -204,9 +201,9 @@ final class Reflection
             $this->registerClass($interface);
 
             if ($reflected_class->isInterface()) {
-                $storage->parent_interfaces[strtolower($interface_name)] = $interface_name;
+                $storage->parent_interfaces[Interner::intern($interface_name)] = true;
             } else {
-                $storage->class_implements[strtolower($interface_name)] = $interface_name;
+                $storage->class_implements[Interner::intern($interface_name)] = true;
             }
         }
 

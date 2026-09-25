@@ -377,7 +377,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
 
             if ($class_storage->abstract && $class_storage->class_implements) {
                 foreach ($class_storage->class_implements as $interface_fqcln_lc => $_) {
-                    $interface_storage = $codebase->classlike_storage_provider->get(Interner::intern($interface_fqcln_lc));
+                    $interface_storage = $codebase->classlike_storage_provider->get($interface_fqcln_lc);
 
                     if (isset($interface_storage->methods[$method_name_lc_id])) {
                         $interface_has_method = true;

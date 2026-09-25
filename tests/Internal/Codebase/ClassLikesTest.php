@@ -31,9 +31,9 @@ final class ClassLikesTest extends TestCase
         $this->classlikes->addClassAlias('Foo', 'Bar');
 
         $classStorage = new ClassLikeStorage(Sym::C_BAZ);
-        $classStorage->class_implements['bar'] = 'Bar';
+        $classStorage->class_implements[Interner::intern('Bar')] = true;
         // what the populator records: implemented names by canonical id (the alias resolves to Foo)
-        $classStorage->class_implements_ids[$this->storage_provider->canonicalId(Interner::intern('Bar'))] = true;
+        $classStorage->class_implements[$this->storage_provider->canonicalId(Interner::intern('Bar'))] = true;
 
         $this->storage_provider->addMore(['baz' => $classStorage]);
 

@@ -30,6 +30,7 @@ use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\PhpVisitor\NodeCounterVisitor;
 use Psalm\Internal\Provider\NodeDataProvider;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
@@ -2105,7 +2106,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                     || !$codebase->classlike_storage_provider->get(Interner::intern($storage->defining_fqcln))->is_trait
                 ) && $storage->cased_name !== '__construct'
                 && ($storage->cased_name !== '__toString'
-                    || isset($appearing_class_storage->direct_class_interfaces['stringable']))
+                    || isset($appearing_class_storage->direct_class_interfaces[Sym::STRINGABLE]))
             ) {
                 IssueBuffer::maybeAdd(
                     new MissingOverrideAttribute(
@@ -2174,7 +2175,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                     }
 
                     // we've already checked this in the class checker
-                    if (!isset($appearing_class_storage->class_implements[strtolower($overridden_fq_class_name)])) {
+                    if (!isset($appearing_class_storage->class_implements[Interner::intern($overridden_fq_class_name)])) {
                         MethodComparator::compare(
                             $codebase,
                             count($overridden_method_ids) === 1 ? $this->function : null,

@@ -73,6 +73,8 @@ $names = [
     'C_LOCAL_STRINGABLE' => 'LocalStringable',
     'C_RENDER' => 'render',
     'C_GETATTRIBUTES' => 'getattributes',
+    // added by tools/id-refactor
+    'C_DS__COLLECTION' => 'Ds\\Collection',
 ];
 
 // Member (method, property, constant) names: the storages key their member maps by the id of the canonical

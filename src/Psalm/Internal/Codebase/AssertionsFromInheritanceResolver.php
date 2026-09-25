@@ -40,10 +40,7 @@ final class AssertionsFromInheritanceResolver
         $method_name_lc_id = $method_name_lc;
 
         $assertions = $method_storage->assertions;
-        $inherited_classes_and_interfaces = array_values(array_filter([
-            ...$called_class->parent_classes,
-            ...$called_class->class_implements,
-        ], fn(string $classOrInterface) => $this->codebase->classOrInterfaceOrEnumExists(Interner::intern($classOrInterface))));
+        $inherited_classes_and_interfaces = array_map(Interner::lookup(...), array_keys(array_fill_keys(array_filter(array_keys(($called_class->parent_classes + $called_class->class_implements)), fn(int $classOrInterface) => $this->codebase->classOrInterfaceOrEnumExists($classOrInterface)), true)));
 
         foreach ($inherited_classes_and_interfaces as $potential_assertion_providing_class) {
             $potential_assertion_providing_classlike_storage = $this->codebase->classlike_storage_provider->get(

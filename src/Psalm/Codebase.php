@@ -1131,7 +1131,7 @@ final class Codebase
     }
 
     /**
-     * @return array<string, string> all interfaces extended by $interface_name
+     * @return array<int, true> all interfaces extended by $interface_name
      * @psalm-mutation-free
      */
     public function getParentInterfaces(string $fq_interface_name): array

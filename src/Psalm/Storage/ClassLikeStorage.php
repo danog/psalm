@@ -84,28 +84,28 @@ final class ClassLikeStorage implements HasAttributesInterface
     /**
      * Interfaces this class implements directly
      *
-     * @var array<lowercase-string, string>
+     * @var array<int, true>
      */
     public array $direct_class_interfaces = [];
 
     /**
      * Interfaces this class implements explicitly and implicitly
      *
-     * @var array<lowercase-string, string>
+     * @var array<int, true>
      */
     public array $class_implements = [];
 
     /**
      * Parent interfaces listed explicitly
      *
-     * @var array<lowercase-string, string>
+     * @var array<int, true>
      */
     public array $direct_interface_parents = [];
 
     /**
      * Parent interfaces
      *
-     * @var  array<lowercase-string, string>
+     * @var  array<int, true>
      */
     public array $parent_interfaces = [];
 
@@ -117,7 +117,7 @@ final class ClassLikeStorage implements HasAttributesInterface
     /**
      * Parent classes
      *
-     * @var array<lowercase-string, string>
+     * @var array<int, true>
      */
     public array $parent_classes = [];
 
@@ -136,7 +136,7 @@ final class ClassLikeStorage implements HasAttributesInterface
     public bool $trait_used = false;
 
     /**
-     * @var array<lowercase-string, string>
+     * @var array<int, true>
      */
     public array $used_traits = [];
 
@@ -396,33 +396,6 @@ final class ClassLikeStorage implements HasAttributesInterface
     /**
      * @psalm-mutation-free
      */
-    /**
-     * The ids of every ancestor class (pzoom's `all_parent_classes`), derived from parent_classes at populate.
-     *
-     * @var array<int, true>
-     */
-    public array $parent_class_ids = [];
-
-    /**
-     * The ids of every implemented interface, transitively (pzoom's `all_parent_interfaces` for classes).
-     *
-     * @var array<int, true>
-     */
-    public array $class_implements_ids = [];
-
-    /**
-     * The ids of every parent interface, transitively (for interfaces).
-     *
-     * @var array<int, true>
-     */
-    public array $parent_interface_ids = [];
-
-    /**
-     * The ids of every used trait.
-     *
-     * @var array<int, true>
-     */
-    public array $used_trait_ids = [];
 
     /**
      * Every method callable on the class-like, own and inherited, by lowercased name: the declaring class's
@@ -493,12 +466,12 @@ final class ClassLikeStorage implements HasAttributesInterface
             return true;
         }
 
-        foreach ($this->parent_classes as $parent_class) {
+        foreach ($this->parent_classes as $parent_class_id => $_) {
             // skip missing dependencies
-            if (!$codebase->classlike_storage_provider->has(Interner::intern($parent_class))) {
+            if (!$codebase->classlike_storage_provider->has($parent_class_id)) {
                 continue;
             }
-            $parent_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($parent_class));
+            $parent_class_storage = $codebase->classlike_storage_provider->get($parent_class_id);
             if ($parent_class_storage->hasAttribute($fq_class_name)) {
                 return true;
             }

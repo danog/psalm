@@ -9,6 +9,7 @@ use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Codebase\Methods;
 use Psalm\Internal\Interner;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\Comparator\CallableTypeComparator;
 use Psalm\Internal\Type\Comparator\KeyedArrayComparator;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
@@ -591,7 +592,7 @@ final class TemplateStandinTypeReplacer
                         continue;
                     }
 
-                    if (in_array('Traversable', $classlike_storage->class_implements)
+                    if (isset($classlike_storage->class_implements[Sym::TRAVERSABLE])
                         && Interner::lookup($base_type->name) === 'Iterator'
                     ) {
                         $matching_atomic_types[$atomic_input_type->getId()] = $atomic_input_type;

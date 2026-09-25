@@ -152,7 +152,7 @@ final class StaticCallAnalyzer extends CallAnalyzer
                 if (($context->self !== null)) {
                     $self_storage = $codebase->classlike_storage_provider->get($context->self);
 
-                    if (isset($self_storage->used_traits[strtolower($fq_class_name)])) {
+                    if (isset($self_storage->used_traits[Interner::intern($fq_class_name)])) {
                         $fq_class_name = Interner::lookup($context->self);
                         $does_class_exist = true;
                     }

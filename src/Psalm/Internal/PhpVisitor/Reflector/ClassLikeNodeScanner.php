@@ -299,7 +299,7 @@ final class ClassLikeNodeScanner
                 );
                 $parent_fqcln_lc = strtolower($parent_fqcln);
                 $storage->parent_class = $parent_fqcln;
-                $storage->parent_classes[$parent_fqcln_lc] = $parent_fqcln;
+                $storage->parent_classes[Interner::intern($parent_fqcln)] = true;
                 $this->file_storage->required_classes[strtolower($parent_fqcln)] = $parent_fqcln;
             }
         } elseif ($node instanceof PhpParser\Node\Stmt\Interface_) {
@@ -311,8 +311,8 @@ final class ClassLikeNodeScanner
                 $interface_fqcln = $this->codebase->classlikes->getUnAliasedName($interface_fqcln);
                 $interface_fqcln_lc = strtolower($interface_fqcln);
                 $this->codebase->scanner->queueClassLikeForScanning($interface_fqcln);
-                $storage->parent_interfaces[$interface_fqcln_lc] = $interface_fqcln;
-                $storage->direct_interface_parents[$interface_fqcln_lc] = $interface_fqcln;
+                $storage->parent_interfaces[Interner::intern($interface_fqcln)] = true;
+                $storage->direct_interface_parents[Interner::intern($interface_fqcln)] = true;
                 $this->file_storage->required_interfaces[$interface_fqcln_lc] = $interface_fqcln;
             }
         } elseif ($node instanceof PhpParser\Node\Stmt\Trait_) {
@@ -325,8 +325,8 @@ final class ClassLikeNodeScanner
             if ($node->scalarType) {
                 if ($node->scalarType->name === 'string' || $node->scalarType->name === 'int') {
                     $storage->enum_type = $node->scalarType->name;
-                    $storage->class_implements['backedenum'] = 'BackedEnum';
-                    $storage->direct_class_interfaces['backedenum'] = 'BackedEnum';
+                    $storage->class_implements[Sym::BACKED_ENUM] = true;
+                    $storage->direct_class_interfaces[Sym::BACKED_ENUM] = true;
                     $this->file_storage->required_interfaces['backedenum'] = 'BackedEnum';
                     $this->codebase->scanner->queueClassLikeForScanning('BackedEnum');
                     $storage->declaring_method_ids[Sym::FROM] = new MethodIdentifier(Sym::BACKED_ENUM, Sym::FROM);
@@ -350,8 +350,8 @@ final class ClassLikeNodeScanner
             }
 
             $this->codebase->scanner->queueClassLikeForScanning('UnitEnum');
-            $storage->class_implements['unitenum'] = 'UnitEnum';
-            $storage->direct_class_interfaces['unitenum'] = 'UnitEnum';
+            $storage->class_implements[Sym::UNIT_ENUM] = true;
+            $storage->direct_class_interfaces[Sym::UNIT_ENUM] = true;
             $this->file_storage->required_interfaces['unitenum'] = 'UnitEnum';
             $storage->final = true;
 
@@ -371,8 +371,8 @@ final class ClassLikeNodeScanner
                 $interface_fqcln = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject($interface, $this->aliases));
                 $interface_fqcln_lc = strtolower($interface_fqcln);
                 $this->codebase->scanner->queueClassLikeForScanning($interface_fqcln);
-                $storage->class_implements[$interface_fqcln_lc] = $interface_fqcln;
-                $storage->direct_class_interfaces[$interface_fqcln_lc] = $interface_fqcln;
+                $storage->class_implements[Interner::intern($interface_fqcln)] = true;
+                $storage->direct_class_interfaces[Interner::intern($interface_fqcln)] = true;
                 $this->file_storage->required_interfaces[$interface_fqcln_lc] = $interface_fqcln;
             }
         }
@@ -979,7 +979,7 @@ final class ClassLikeNodeScanner
         foreach ($node->traits as $trait) {
             $trait_fqcln = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject($trait, $this->aliases));
             $this->codebase->scanner->queueClassLikeForScanning($trait_fqcln, $this->file_scanner->will_analyze);
-            $storage->used_traits[strtolower($trait_fqcln)] = $trait_fqcln;
+            $storage->used_traits[Interner::intern($trait_fqcln)] = true;
             $this->file_storage->required_classes[strtolower($trait_fqcln)] = $trait_fqcln;
         }
 
@@ -1071,8 +1071,8 @@ final class ClassLikeNodeScanner
 
             $generic_class_lc = strtolower(Interner::lookup($atomic_type->name));
 
-            if (!isset($storage->parent_classes[$generic_class_lc])
-                && !isset($storage->parent_interfaces[$generic_class_lc])
+            if (!isset($storage->parent_classes[$atomic_type->name])
+                && !isset($storage->parent_interfaces[$atomic_type->name])
             ) {
                 $storage->docblock_issues[] = new InvalidDocblock(
                     '@template-extends must include the name of an extended class,'
@@ -1157,7 +1157,7 @@ final class ClassLikeNodeScanner
 
             $generic_class_lc = strtolower(Interner::lookup($atomic_type->name));
 
-            if (!isset($storage->class_implements[$generic_class_lc])) {
+            if (!isset($storage->class_implements[$atomic_type->name])) {
                 $storage->docblock_issues[] = new InvalidDocblock(
                     '@template-implements must include the name of an implemented class,'
                         . ' got ' . $atomic_type->getId(),
@@ -1243,7 +1243,7 @@ final class ClassLikeNodeScanner
 
             $generic_class_lc = strtolower(Interner::lookup($atomic_type->name));
 
-            if (!isset($storage->used_traits[$generic_class_lc])) {
+            if (!isset($storage->used_traits[$atomic_type->name])) {
                 $storage->docblock_issues[] = new InvalidDocblock(
                     '@template-use must include the name of an used class,'
                         . ' got ' . $atomic_type->getId(),

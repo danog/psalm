@@ -114,10 +114,6 @@ final class Populator
      */
     private function fillNameIdSets(ClassLikeStorage $storage): void
     {
-        $storage->parent_class_ids = $this->nameIdSet($storage->parent_classes);
-        $storage->class_implements_ids = $this->nameIdSet($storage->class_implements);
-        $storage->parent_interface_ids = $this->nameIdSet($storage->parent_interfaces);
-        $storage->used_trait_ids = $this->nameIdSet($storage->used_traits);
 
         // the flattened member maps: the declaring storages' objects, shared
         $all_methods = [];
@@ -141,22 +137,6 @@ final class Populator
             }
         }
         $storage->all_properties = $all_properties;
-    }
-
-    /**
-     * @param array<lowercase-string, string> $names
-     * @return array<int, true>
-     * @psalm-mutation-free
-     */
-    private function nameIdSet(array $names): array
-    {
-        $ids = [];
-        foreach ($names as $cased) {
-            // the canonical id: the storage's when the name resolves (another casing or a class_alias), else
-            // the name its aliases lead to
-            $ids[$this->classlike_storage_provider->canonicalId(Interner::intern($cased))] = true;
-        }
-        return $ids;
     }
 
     /** @param array<string, bool> $dependent_classlikes */
@@ -190,7 +170,7 @@ final class Populator
         $dependent_classlikes[$fq_classlike_name_lc] = true;
 
         foreach ($storage->used_traits as $used_trait_lc => $_) {
-            $this->populateDataFromTrait($storage, $storage_provider, $dependent_classlikes, $used_trait_lc);
+            $this->populateDataFromTrait($storage, $storage_provider, $dependent_classlikes, strtolower(Interner::lookup($used_trait_lc)));
         }
 
         if ($storage->parent_classes) {
@@ -198,7 +178,7 @@ final class Populator
                 $storage,
                 $storage_provider,
                 $dependent_classlikes,
-                reset($storage->parent_classes),
+                Interner::lookup(array_key_first($storage->parent_classes)),
             );
         }
 
@@ -216,7 +196,7 @@ final class Populator
                 $storage,
                 $storage_provider,
                 $dependent_classlikes,
-                $parent_interface_lc,
+                strtolower(Interner::lookup($parent_interface_lc)),
             );
         }
 
@@ -225,30 +205,30 @@ final class Populator
                 $storage,
                 $storage_provider,
                 $dependent_classlikes,
-                $implemented_interface_lc,
+                strtolower(Interner::lookup($implemented_interface_lc)),
             );
         }
 
         if ($storage->location) {
             $file_path = $storage->location->file_path;
 
-            foreach ($storage->parent_interfaces as $parent_interface_lc) {
-                $this->file_reference_provider->addFileInheritanceToClass($file_path, $parent_interface_lc);
+            foreach ($storage->parent_interfaces as $parent_interface_lc_id => $_) {
+                $this->file_reference_provider->addFileInheritanceToClass($file_path, Interner::lookup($parent_interface_lc_id));
             }
 
             foreach ($storage->parent_classes as $parent_class_lc => $_) {
-                $this->file_reference_provider->addFileInheritanceToClass($file_path, $parent_class_lc);
+                $this->file_reference_provider->addFileInheritanceToClass($file_path, strtolower(Interner::lookup($parent_class_lc)));
             }
 
-            foreach ($storage->class_implements as $implemented_interface) {
+            foreach ($storage->class_implements as $implemented_interface_id => $_) {
                 $this->file_reference_provider->addFileInheritanceToClass(
                     $file_path,
-                    strtolower($implemented_interface),
+                    strtolower(Interner::lookup($implemented_interface_id)),
                 );
             }
 
             foreach ($storage->used_traits as $used_trait_lc => $_) {
-                $this->file_reference_provider->addFileInheritanceToClass($file_path, $used_trait_lc);
+                $this->file_reference_provider->addFileInheritanceToClass($file_path, strtolower(Interner::lookup($used_trait_lc)));
             }
         }
 
@@ -355,11 +335,11 @@ final class Populator
         ClassLikeStorageProvider $storage_provider,
     ): void {
         $interface_method_implementers = [];
-        foreach ($storage->class_implements as $interface) {
+        foreach ($storage->class_implements as $interface_id => $_) {
             try {
                 $implemented_interface = Interner::intern(strtolower(
                     $this->classlikes->getUnAliasedName(
-                        $interface,
+                        Interner::lookup($interface_id),
                     ),
                 ));
                 $implemented_interface_storage = $storage_provider->get($implemented_interface);
@@ -456,20 +436,14 @@ final class Populator
                             $storage->documenting_method_ids[$method_name_id] = $declaring_method_id;
                             $method_storage->inherited_return_type = true;
                         } else {
-                            if (in_array(
-                                Interner::lookup($storage->documenting_method_ids[$method_name_id]->class_id),
-                                $declaring_class_storage->parent_interfaces,
-                            )) {
+                            if (isset($declaring_class_storage->parent_interfaces[$storage->documenting_method_ids[$method_name_id]->class_id])) {
                                 $storage->documenting_method_ids[$method_name_id] = $declaring_method_id;
                                 $method_storage->inherited_return_type = true;
                             } else {
                                 $documenting_class_storage = $declaring_class_storages
                                     [Interner::lookup($storage->documenting_method_ids[$method_name_id]->class_id)];
 
-                                if (!in_array(
-                                    $declaring_class,
-                                    $documenting_class_storage->parent_interfaces,
-                                ) && $documenting_class_storage->is_interface
+                                if (!isset($documenting_class_storage->parent_interfaces[Interner::intern($declaring_class)]) && $documenting_class_storage->is_interface
                                 ) {
                                     unset($storage->documenting_method_ids[$method_name_id]);
                                     $method_storage->inherited_return_type = null;
@@ -593,14 +567,14 @@ final class Populator
 
         $this->populateClassLikeStorage($parent_storage, $dependent_classlikes);
 
-        $storage->parent_classes = [...$storage->parent_classes, ...$parent_storage->parent_classes];
+        $storage->parent_classes = ($storage->parent_classes + $parent_storage->parent_classes);
 
         self::extendTemplateParams($storage, $parent_storage, true);
 
         $this->inheritMethodsFromParent($storage, $parent_storage);
         $this->inheritPropertiesFromParent($storage, $parent_storage);
 
-        $storage->class_implements = [...$storage->class_implements, ...$parent_storage->class_implements];
+        $storage->class_implements = ($storage->class_implements + $parent_storage->class_implements);
         $storage->invalid_dependencies = [...$storage->invalid_dependencies, ...$parent_storage->invalid_dependencies];
 
         if ($parent_storage->has_visitor_issues) {
@@ -678,7 +652,7 @@ final class Populator
 
         self::extendTemplateParams($storage, $interface_storage, false);
 
-        $new_parents = array_keys($interface_storage->parent_interfaces);
+        $new_parents = array_map(static fn(int $id): string => strtolower(Interner::lookup($id)), array_keys($interface_storage->parent_interfaces));
         $new_parents[] = Interner::lookup($interface_storage->id);
         foreach ($new_parents as $new_parent) {
             try {
@@ -783,15 +757,15 @@ final class Populator
         $storage->pseudo_methods += $parent_interface_storage->pseudo_methods;
         $storage->declaring_pseudo_method_ids += $parent_interface_storage->declaring_pseudo_method_ids;
 
-        $storage->parent_interfaces = [...$parent_interface_storage->parent_interfaces, ...$storage->parent_interfaces];
+        $storage->parent_interfaces = ($parent_interface_storage->parent_interfaces + $storage->parent_interfaces);
 
-        if (isset($storage->parent_interfaces[strtolower(UnitEnum::class)])) {
+        if (isset($storage->parent_interfaces[Sym::UNIT_ENUM])) {
             $storage->declaring_property_ids[Interner::intern('name')] = Interner::lookup($storage->id);
             $storage->appearing_property_ids[Interner::intern('name')] = "" . Interner::lookup($storage->id) . "::\$name";
             $storage->properties[Interner::intern('name')] = new PropertyStorage();
             $storage->properties[Interner::intern('name')]->type = new Union([new TNonEmptyString()]);
         }
-        if (isset($storage->parent_interfaces[strtolower(BackedEnum::class)])) {
+        if (isset($storage->parent_interfaces[Sym::BACKED_ENUM])) {
             $storage->declaring_property_ids[Interner::intern('value')] = Interner::lookup($storage->id);
             $storage->appearing_property_ids[Interner::intern('value')] = "" . Interner::lookup($storage->id) . "::\$value";
             $storage->properties[Interner::intern('value')] = new PropertyStorage();
@@ -827,10 +801,7 @@ final class Populator
             $dependent_classlikes,
         );
 
-        $storage->class_implements = [
-            ...$storage->class_implements,
-            ...$implemented_interface_storage->parent_interfaces,
-        ];
+        $storage->class_implements = ($storage->class_implements + $implemented_interface_storage->parent_interfaces);
     }
 
     /**
@@ -896,9 +867,9 @@ final class Populator
                 continue;
             }
 
-            foreach ($classlike_storage->used_traits as $used_trait) {
+            foreach ($classlike_storage->used_traits as $used_trait_id => $_) {
                 try {
-                    $trait_storage = $this->classlike_storage_provider->get(Interner::intern($used_trait));
+                    $trait_storage = $this->classlike_storage_provider->get($used_trait_id);
                 } catch (InvalidArgumentException) {
                     continue;
                 }

@@ -300,13 +300,13 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         }
 
         $class_union = new Union([new TNamedObject($fq_class_name)]);
-        foreach ($storage->parent_classes + $storage->direct_class_interfaces as $parent_class) {
-            $parent_storage = $codebase->classlikes->getStorageFor($parent_class);
+        foreach ($storage->parent_classes + $storage->direct_class_interfaces as $parent_class_id => $_) {
+            $parent_storage = $codebase->classlikes->getStorageFor(Interner::lookup($parent_class_id));
             if ($parent_storage && $parent_storage->inheritors) {
                 if (!UnionTypeComparator::isContainedBy($codebase, $class_union, $parent_storage->inheritors)) {
                     IssueBuffer::maybeAdd(
                         new InheritorViolation(
-                            'Class ' . $fq_class_name . ' is not an allowed inheritor of parent class ' . $parent_class,
+                            'Class ' . $fq_class_name . ' is not an allowed inheritor of parent class ' . Interner::lookup($parent_class_id),
                             new CodeLocation($this, $this->class),
                         ),
                         $this->getSuppressedIssues(),
@@ -1471,7 +1471,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 $extension_requirement = $codebase->classlikes->getUnAliasedName(
                     $trait_storage->extension_requirement,
                 );
-                $extensionRequirementMet = in_array($extension_requirement, $storage->parent_classes);
+                $extensionRequirementMet = isset($storage->parent_classes[Interner::intern($extension_requirement)]);
 
                 if (!$extensionRequirementMet) {
                     IssueBuffer::maybeAdd(
@@ -1487,7 +1487,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
 
             foreach ($trait_storage->implementation_requirements as $implementation_requirement) {
                 $implementation_requirement = $codebase->classlikes->getUnAliasedName($implementation_requirement);
-                $implementationRequirementMet = in_array($implementation_requirement, $storage->class_implements);
+                $implementationRequirementMet = isset($storage->class_implements[Interner::intern($implementation_requirement)]);
 
                 if (!$implementationRequirementMet) {
                     IssueBuffer::maybeAdd(
@@ -2151,9 +2151,9 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             );
         }
 
-        foreach ($storage->class_implements as $fq_interface_name_lc => $fq_interface_name) {
+        foreach ($storage->class_implements as $fq_interface_name_lc => $_) {
             try {
-                $interface_storage = $classlike_storage_provider->get(Interner::intern($fq_interface_name_lc));
+                $interface_storage = $classlike_storage_provider->get($fq_interface_name_lc);
             } catch (InvalidArgumentException) {
                 return false;
             }
@@ -2165,14 +2165,14 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 true,
             );
 
-            if ($fq_interface_name_lc === 'traversable'
+            if (strtolower(Interner::lookup($fq_interface_name_lc)) === 'traversable'
                 && !$storage->abstract
-                && !isset($storage->class_implements['iteratoraggregate'])
-                && !isset($storage->class_implements['iterator'])
-                && !isset($storage->parent_classes['pdostatement'])
-                && !isset($storage->parent_classes['ds\collection'])
-                && !isset($storage->parent_classes['domnodelist'])
-                && !isset($storage->parent_classes['dateperiod'])
+                && !isset($storage->class_implements[Sym::ITERATOR_AGGREGATE])
+                && !isset($storage->class_implements[Sym::ITERATOR])
+                && !isset($storage->parent_classes[Sym::PDO_STATEMENT])
+                && !isset($storage->parent_classes[Sym::C_DS__COLLECTION])
+                && !isset($storage->parent_classes[Sym::DOM_NODE_LIST])
+                && !isset($storage->parent_classes[Sym::DATE_PERIOD])
             ) {
                 IssueBuffer::maybeAdd(
                     new InvalidTraversableImplementation(
@@ -2183,11 +2183,11 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 );
             }
 
-            if ($fq_interface_name_lc === 'throwable'
+            if (strtolower(Interner::lookup($fq_interface_name_lc)) === 'throwable'
                 && $codebase->analysis_php_version_id >= 7_00_00
                 && !$storage->abstract
-                && !isset($storage->parent_classes['exception'])
-                && !isset($storage->parent_classes['error'])
+                && !isset($storage->parent_classes[Sym::EXCEPTION])
+                && !isset($storage->parent_classes[Sym::ERROR])
             ) {
                 IssueBuffer::maybeAdd(
                     new InvalidInterfaceImplementation(
@@ -2198,14 +2198,14 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 );
             }
 
-            if (($fq_interface_name_lc === 'unitenum'
-                    || $fq_interface_name_lc === 'backedenum')
+            if ((strtolower(Interner::lookup($fq_interface_name_lc)) === 'unitenum'
+                    || strtolower(Interner::lookup($fq_interface_name_lc)) === 'backedenum')
                 && !$storage->is_enum
                 && $codebase->analysis_php_version_id >= 8_01_00
             ) {
                 IssueBuffer::maybeAdd(
                     new InvalidInterfaceImplementation(
-                        $fq_interface_name . ' cannot be implemented by classes',
+                        Interner::lookup($fq_interface_name_lc) . ' cannot be implemented by classes',
                         $code_location,
                         $fq_class_name,
                     ),
@@ -2215,9 +2215,9 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             if ($interface_storage->deprecated) {
                 IssueBuffer::maybeAdd(
                     new DeprecatedInterface(
-                        $fq_interface_name . ' is marked deprecated',
+                        Interner::lookup($fq_interface_name_lc) . ' is marked deprecated',
                         $code_location,
-                        $fq_interface_name,
+                        Interner::lookup($fq_interface_name_lc),
                     ),
                     $storage->suppressed_issues + $this->getSuppressedIssues(),
                 );
@@ -2228,7 +2228,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             ) {
                 IssueBuffer::maybeAdd(
                     new ImmutableDependency(
-                        $fq_interface_name . ' is marked with @'.Mutations::TO_ATTRIBUTE_CLASSLIKE[
+                        Interner::lookup($fq_interface_name_lc) . ' is marked with @'.Mutations::TO_ATTRIBUTE_CLASSLIKE[
                             $interface_storage->allowed_mutations
                         ].', but '
                         . $fq_class_name . ' is not',

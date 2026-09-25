@@ -507,8 +507,8 @@ final class ClassLikes
         if ($from_api && !$storage->populated) {
             throw new UnpopulatedClasslikeException(Interner::lookup($storage->id));
         }
-        return isset($storage->parent_class_ids[$possible_parent])
-            || isset($storage->parent_class_ids[$this->classlike_storage_provider->canonicalId($possible_parent)]);
+        return isset($storage->parent_classes[$possible_parent])
+            || isset($storage->parent_classes[$this->classlike_storage_provider->canonicalId($possible_parent)]);
     }
 
     /**
@@ -528,8 +528,8 @@ final class ClassLikes
         if ($interface === Sym::TRAVERSABLE && ($storage->id === Sym::GENERATOR || $storage->id === Sym::ITERATOR)) {
             return true;
         }
-        return isset($storage->class_implements_ids[$interface])
-            || isset($storage->class_implements_ids[$this->classlike_storage_provider->canonicalId($interface)]);
+        return isset($storage->class_implements[$interface])
+            || isset($storage->class_implements[$this->classlike_storage_provider->canonicalId($interface)]);
     }
 
     /**
@@ -543,14 +543,14 @@ final class ClassLikes
         if ($storage === null) {
             return false;
         }
-        return isset($storage->parent_interface_ids[$possible_parent])
-            || isset($storage->parent_interface_ids[$this->classlike_storage_provider->canonicalId($possible_parent)]);
+        return isset($storage->parent_interfaces[$possible_parent])
+            || isset($storage->parent_interfaces[$this->classlike_storage_provider->canonicalId($possible_parent)]);
     }
 
 
 
     /**
-     * @return array<lowercase-string, string>   all interfaces extended by $interface_name
+     * @return array<int, true>   all interfaces extended by $interface_name
      * @psalm-mutation-free
      */
     public function getParentInterfaces(string $fq_interface_name): array
@@ -819,15 +819,15 @@ final class ClassLikes
                 $parent_method_ids = $classlike_storage->overridden_method_ids[$method_name_id] ?? [];
 
                 foreach ($classlike_storage->class_implements as $fq_interface_name_lc => $_) {
-                    if (!isset($parent_method_ids[$fq_interface_name_lc])) {
+                    if (!isset($parent_method_ids[strtolower(Interner::lookup($fq_interface_name_lc))])) {
                         try {
-                            $interface_storage = $this->classlike_storage_provider->get(Interner::intern($fq_interface_name_lc));
+                            $interface_storage = $this->classlike_storage_provider->get($fq_interface_name_lc);
                         } catch (InvalidArgumentException) {
                             continue;
                         }
 
                         if (isset($interface_storage->methods[$method_name_id])) {
-                            $parent_method_ids[$fq_interface_name_lc] = new MethodIdentifier(
+                            $parent_method_ids[strtolower(Interner::lookup($fq_interface_name_lc))] = new MethodIdentifier(
                                 Interner::intern(Interner::lookup($interface_storage->id)),
                                 Interner::intern($method_name),
                             );
@@ -1897,9 +1897,9 @@ final class ClassLikes
                             }
                         }
 
-                        foreach ($classlike_storage->parent_classes as $parent_method_fqcln) {
+                        foreach ($classlike_storage->parent_classes as $parent_method_fqcln_id => $_) {
                             if ($codebase->analyzer->hasMixedMemberName(
-                                strtolower($parent_method_fqcln) . '::',
+                                strtolower(Interner::lookup($parent_method_fqcln_id)) . '::',
                             )) {
                                 $has_variable_calls = true;
                                 break;
@@ -1908,20 +1908,20 @@ final class ClassLikes
 
                         foreach ($classlike_storage->class_implements as $fq_interface_name_lc => $_) {
                             try {
-                                $interface_storage = $this->classlike_storage_provider->get(Interner::intern($fq_interface_name_lc));
+                                $interface_storage = $this->classlike_storage_provider->get($fq_interface_name_lc);
                             } catch (InvalidArgumentException) {
                                 continue;
                             }
 
                             if ($codebase->analyzer->hasMixedMemberName(
-                                $fq_interface_name_lc . '::',
+                                strtolower(Interner::lookup($fq_interface_name_lc)) . '::',
                             )) {
                                 $has_variable_calls = true;
                             }
 
                             if (isset($interface_storage->methods[$method_name_id])) {
                                 $interface_method_referenced = $codebase->code_use_graph->isUsed(
-                                    CodeUseGraph::functionLikeNode($fq_interface_name_lc . '::' . $method_name),
+                                    CodeUseGraph::functionLikeNode(strtolower(Interner::lookup($fq_interface_name_lc)) . '::' . $method_name),
                                 );
 
                                 if ($interface_method_referenced) {
@@ -2290,18 +2290,18 @@ final class ClassLikes
                     $has_variable_calls = $codebase->analyzer->hasMixedMemberName('$' . $property_name)
                         || $codebase->analyzer->hasMixedMemberName(strtolower(Interner::lookup($classlike_storage->id)) . '::$');
 
-                    foreach ($classlike_storage->parent_classes as $parent_method_fqcln) {
+                    foreach ($classlike_storage->parent_classes as $parent_method_fqcln_id => $_) {
                         if ($codebase->analyzer->hasMixedMemberName(
-                            strtolower($parent_method_fqcln) . '::$',
+                            strtolower(Interner::lookup($parent_method_fqcln_id)) . '::$',
                         )) {
                             $has_variable_calls = true;
                             break;
                         }
                     }
 
-                    foreach ($classlike_storage->class_implements as $fq_interface_name) {
+                    foreach ($classlike_storage->class_implements as $fq_interface_name_id => $_) {
                         if ($codebase->analyzer->hasMixedMemberName(
-                            strtolower($fq_interface_name) . '::$',
+                            strtolower(Interner::lookup($fq_interface_name_id)) . '::$',
                         )) {
                             $has_variable_calls = true;
                             break;

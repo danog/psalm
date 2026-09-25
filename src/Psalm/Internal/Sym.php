@@ -129,6 +129,8 @@ final class Sym
     public const C_RENDER = 1634736678115320266;
     /** `getattributes` */
     public const C_GETATTRIBUTES = 7952769968126523042;
+    /** `Ds\Collection` */
+    public const C_DS__COLLECTION = 2984005344395933713;
     /** `__construct` */
     public const CONSTRUCT = 3382564448877090733;
     /** `__destruct` */
@@ -264,6 +266,7 @@ final class Sym
         'LocalStringable',
         'render',
         'getattributes',
+        'Ds\\Collection',
         '__construct',
         '__destruct',
         '__call',

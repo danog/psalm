@@ -217,7 +217,7 @@ final class AtomicPropertyFetchAnalyzer
 
         $property_id = $fq_class_name . '::$' . $prop_name;
 
-        if ($class_storage->is_enum || in_array('UnitEnum', $codebase->getParentInterfaces($fq_class_name))) {
+        if ($class_storage->is_enum || isset($codebase->getParentInterfaces($fq_class_name)[Sym::UNIT_ENUM])) {
             if ($prop_name === 'value' && !$class_storage->is_enum) {
                 $has_valid_fetch_type = true;
                 $statements_analyzer->node_data->setType(
@@ -1167,7 +1167,7 @@ final class AtomicPropertyFetchAnalyzer
                 }
                 if ($intersection_type instanceof TNamedObject
                     && (in_array(Interner::lookup($intersection_type->name), ['UnitEnum', 'BackedEnum'], true)
-                        || in_array('UnitEnum', $codebase->getParentInterfaces(Interner::lookup($intersection_type->name))))
+                        || isset($codebase->getParentInterfaces(Interner::lookup($intersection_type->name))[Sym::UNIT_ENUM]))
                 ) {
                     $intersects_with_enum = true;
                 }
@@ -1175,7 +1175,7 @@ final class AtomicPropertyFetchAnalyzer
 
             // In PHP Core enum interfaces have properties
             $is_enum_interface = in_array($fq_class_name, ['UnitEnum', 'BackedEnum'], true)
-                || in_array('UnitEnum', $codebase->getParentInterfaces($fq_class_name))
+                || isset($codebase->getParentInterfaces($fq_class_name)[Sym::UNIT_ENUM])
                 || $intersects_with_enum;
 
             // Since PHP 8.4 interfaces can have hook properties

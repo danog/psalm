@@ -76,8 +76,8 @@ final class ClassLikeStubGenerator
             if ($storage->direct_interface_parents) {
                 $subnodes['extends'] = [];
 
-                foreach ($storage->direct_interface_parents as $direct_interface_parent) {
-                    $subnodes['extends'][] = new VirtualFullyQualified($direct_interface_parent);
+                foreach ($storage->direct_interface_parents as $direct_interface_parent_id => $_) {
+                    $subnodes['extends'][] = new VirtualFullyQualified(Interner::lookup($direct_interface_parent_id));
                 }
             }
 
@@ -102,8 +102,8 @@ final class ClassLikeStubGenerator
 
         if ($storage->direct_class_interfaces) {
             $subnodes['implements'] = [];
-            foreach ($storage->direct_class_interfaces as $direct_class_interface) {
-                $subnodes['implements'][] = new VirtualFullyQualified($direct_class_interface);
+            foreach ($storage->direct_class_interfaces as $direct_class_interface_id => $_) {
+                $subnodes['implements'][] = new VirtualFullyQualified(Interner::lookup($direct_class_interface_id));
             }
         }
 

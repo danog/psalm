@@ -647,7 +647,7 @@ final class ProjectAnalyzer
 
                     if (!$source_method_storage->is_static
                         && !isset(
-                            $destination_class_storage->parent_classes[strtolower(Interner::lookup($source_method_id->class_id))],
+                            $destination_class_storage->parent_classes[$source_method_id->class_id],
                         )
                     ) {
                         throw new RefactorException(

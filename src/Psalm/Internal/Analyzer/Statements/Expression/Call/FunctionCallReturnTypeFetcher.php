@@ -366,7 +366,7 @@ final class FunctionCallReturnTypeFetcher
                         if ($classlike_storage->parent_classes) {
                             return new Union([
                                 new TClassString(
-                                    array_values($classlike_storage->parent_classes)[0],
+                                    array_map(Interner::lookup(...), array_keys($classlike_storage->parent_classes))[0],
                                 ),
                             ]);
                         }

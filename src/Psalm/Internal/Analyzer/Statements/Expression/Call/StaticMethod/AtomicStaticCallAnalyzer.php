@@ -1069,7 +1069,7 @@ final class AtomicStaticCallAnalyzer
         $ancestors = $static_class_storage->class_implements + $static_class_storage->parent_classes;
 
         foreach ($ancestors as $fq_class_name => $_) {
-            $class_storage = $codebase->classlikes->getStorageFor($fq_class_name);
+            $class_storage = $codebase->classlikes->getStorageFor(strtolower(Interner::lookup($fq_class_name)));
 
             if ($class_storage && isset($class_storage->pseudo_static_methods[$method_name_lc_id])) {
                 return [

@@ -513,8 +513,8 @@ final class Analyzer
                                     $referencing_storage = null;
                                 }
 
-                                if (isset($referencing_storage->used_traits[$unchanged_signature_classlike])
-                                    || isset($referencing_storage->parent_classes[$unchanged_signature_classlike])
+                                if (isset($referencing_storage->used_traits[$codebase->classlike_storage_provider->canonicalId(Interner::intern($unchanged_signature_classlike))])
+                                    || isset($referencing_storage->parent_classes[$codebase->classlike_storage_provider->canonicalId(Interner::intern($unchanged_signature_classlike))])
                                 ) {
                                     $newly_invalidated_methods[$referencing_method_id] = true;
                                 }

@@ -28,6 +28,7 @@ use Psalm\Internal\PhpVisitor\Reflector\FunctionLikeNodeScanner;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\Scanner\FileScanner;
 use Psalm\Internal\Scanner\PhpStormMetaScanner;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\TypeAlias;
 use Psalm\Internal\Type\TypeParser;
 use Psalm\Issue\InvalidDocblock;
@@ -266,9 +267,9 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
                 && strtolower($node->name->name) === '__tostring'
             ) {
                 if ($classlike_storage->is_interface) {
-                    $classlike_storage->parent_interfaces['stringable'] = 'Stringable';
+                    $classlike_storage->parent_interfaces[Sym::STRINGABLE] = true;
                 } else {
-                    $classlike_storage->class_implements['stringable'] = 'Stringable';
+                    $classlike_storage->class_implements[Sym::STRINGABLE] = true;
                 }
 
                 $this->codebase->scanner->queueClassLikeForScanning('Stringable');

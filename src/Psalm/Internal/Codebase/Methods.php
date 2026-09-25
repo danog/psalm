@@ -229,8 +229,8 @@ final class Methods
             return true;
         }
 
-        foreach ($class_storage->parent_classes + $class_storage->used_traits as $potential_future_declaring_fqcln) {
-            $potential_id = strtolower($potential_future_declaring_fqcln) . '::' . $method_name;
+        foreach ($class_storage->parent_classes + $class_storage->used_traits as $potential_future_declaring_fqcln_id => $_) {
+            $potential_id = strtolower(Interner::lookup($potential_future_declaring_fqcln_id)) . '::' . $method_name;
 
             $codebase->addReferenceToMissingMethod(
                 $potential_id,
@@ -964,8 +964,8 @@ final class Methods
             $function_ids[] = $declaring_method_id_lc;
         }
 
-        foreach ($class_storage->class_implements as $fq_interface_name) {
-            $function_ids[] = strtolower($fq_interface_name . '::' . $method_name);
+        foreach ($class_storage->class_implements as $fq_interface_name_id => $_) {
+            $function_ids[] = strtolower(Interner::lookup($fq_interface_name_id) . '::' . $method_name);
         }
 
         $declaring_class_storage = $this->classlike_storage_provider->get($declaring_method_id->class_id);
