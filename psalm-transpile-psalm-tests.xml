@@ -1,0 +1,107 @@
+<?xml version="1.0"?>
+<psalm
+    disableVarParsing="true"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns="https://getpsalm.org/schema/config"
+    name="Transpile Psalm with tests"
+    errorLevel="8"
+    throwExceptionOnError="0"
+    findUnusedCode="false"
+    xsi:schemaLocation="https://getpsalm.org/schema/config config.xsd"
+    allFunctionsGlobal="true"
+    allConstantsGlobal="true"
+    usePhpDocMethodsWithoutMagicCall="true"
+    cacheDirectory="build/psalm-cache-psalm-tests"
+>
+    <stubs>
+        <file name="../psalm-transpiler/src/Psalm/Internal/Transpiler/runtime-stubs/rt.phpstub"/>
+        <file name="stubs/phpparser.phpstub"/>
+    </stubs>
+    <projectFiles>
+        <directory name="../psalm-transpiler/src/Psalm/Internal/Transpiler/runtime-stubs"/>
+        <directory name="../php-parser/lib"/>
+        <directory name="src"/>
+        <directory name="tests"/>
+        <directory name="examples/plugins"/>
+        <directory name="../phpunit-port/typed/src"/>
+        <directory name="vendor/composer/semver/src"/>
+        <directory name="vendor/psalm/plugin-phpunit/src"/>
+        <directory name="vendor/psalm/plugin-mockery"/>
+        <ignoreFiles>
+            <file name="src/Psalm/Internal/PluginInstantiator.php"/>
+            <directory name="vendor/psalm/plugin-mockery/stubs"/>
+            <file name="vendor/composer/semver/src/CompilingMatcher.php"/>
+            <file name="../php-parser/lib/PhpParser/JsonDecoder.php"/>
+            <directory name="tests/fixtures"/>
+            <directory name="tests/EndToEnd"/>
+            <directory name="tests/LanguageServer"/>
+            <file name="tests/autoload.php"/>
+            <file name="tests/ErrorBaselineTest.php"/>
+            <file name="tests/PsalmPluginTest.php"/>
+            <file name="tests/Config/PluginListTest.php"/>
+            <directory name="src/Psalm/Internal/LanguageServer/Client"/>
+            <file name="src/Psalm/Internal/LanguageServer/ClientConfiguration.php"/>
+            <file name="src/Psalm/Internal/LanguageServer/ClientHandler.php"/>
+            <file name="src/Psalm/Internal/LanguageServer/EmitterInterface.php"/>
+            <file name="src/Psalm/Internal/LanguageServer/EmitterTrait.php"/>
+            <file name="src/Psalm/Internal/LanguageServer/IdGenerator.php"/>
+            <file name="src/Psalm/Internal/LanguageServer/LanguageClient.php"/>
+            <file name="src/Psalm/Internal/LanguageServer/LanguageServer.php"/>
+            <file name="src/Psalm/Internal/LanguageServer/Message.php"/>
+            <file name="src/Psalm/Internal/LanguageServer/PathMapper.php"/>
+            <file name="src/Psalm/Internal/LanguageServer/Progress.php"/>
+            <file name="src/Psalm/Internal/LanguageServer/ProtocolReader.php"/>
+            <file name="src/Psalm/Internal/LanguageServer/ProtocolStreamReader.php"/>
+            <file name="src/Psalm/Internal/LanguageServer/ProtocolStreamWriter.php"/>
+            <file name="src/Psalm/Internal/LanguageServer/ProtocolWriter.php"/>
+            <directory name="src/Psalm/Internal/LanguageServer/Provider"/>
+            <directory name="src/Psalm/Internal/LanguageServer/Server"/>
+            <directory name="src/Psalm/Internal/Fork"/>
+            <directory name="src/Psalm/Internal/PluginManager/Command"/>
+            <file name="src/Psalm/Internal/Cli/Plugin.php"/>
+            <file name="src/Psalm/Internal/Cli/LanguageServer.php"/>
+            <file name="src/Psalm/Internal/Cli/Refactor.php"/>
+            <file name="src/Psalm/Internal/Cli/Review.php"/>
+            <directory name="vendor/amphp"/>
+            <directory name="vendor/symfony"/>
+            <file name="vendor/composer/autoload_classmap.php"/>
+            <file name="vendor/composer/autoload_files.php"/>
+            <file name="vendor/composer/autoload_namespaces.php"/>
+            <file name="vendor/composer/autoload_psr4.php"/>
+            <file name="vendor/composer/autoload_real.php"/>
+            <file name="vendor/composer/autoload_static.php"/>
+            <file name="vendor/composer/ClassLoader.php"/>
+            <file name="vendor/composer/installed.php"/>
+            <file name="vendor/composer/InstalledVersions.php"/>
+            <file name="vendor/composer/platform_check.php"/>
+            <directory name="vendor/composer/package-versions-deprecated"/>
+            <directory name="vendor/composer/xdebug-handler"/>
+            <directory name="vendor/composer/pcre"/>
+            <directory name="vendor/nikic"/>
+            <directory name="vendor/phpunit/phpunit/src/Framework/MockObject"/>
+            <directory name="vendor/phpunit/phpunit/src/TextUI"/>
+            <directory name="vendor/phpunit/phpunit/src/Runner"/>
+            <directory name="vendor/phpunit/phpunit/src/Util/Log"/>
+            <directory name="vendor/phpunit/phpunit/src/Util/TestDox"/>
+            <directory name="vendor/phpunit/phpunit/src/Util/PHP"/>
+            <directory name="vendor/phpunit/phpunit/src/Util/Xml"/>
+            <directory name="vendor/phpunit/phpunit/src/Util/Annotation"/>
+            <file name="vendor/phpunit/phpunit/src/Util/Xml.php"/>
+            <file name="vendor/phpunit/phpunit/src/Util/Test.php"/>
+            <file name="vendor/phpunit/phpunit/src/Util/Blacklist.php"/>
+            <file name="vendor/phpunit/phpunit/src/Util/ExcludeList.php"/>
+            <file name="vendor/phpunit/phpunit/src/Util/GlobalState.php"/>
+            <file name="vendor/phpunit/phpunit/src/Framework/TestResult.php"/>
+            <file name="vendor/phpunit/phpunit/src/Framework/TestSuite.php"/>
+            <file name="vendor/phpunit/phpunit/src/Framework/DataProviderTestSuite.php"/>
+            <file name="vendor/phpunit/phpunit/src/Framework/TestSuiteIterator.php"/>
+            <file name="vendor/phpunit/phpunit/src/Framework/TestBuilder.php"/>
+            <file name="vendor/phpunit/phpunit/src/Framework/TestListener.php"/>
+            <file name="vendor/phpunit/phpunit/src/Framework/TestListenerDefaultImplementation.php"/>
+        </ignoreFiles>
+    </projectFiles>
+    <disableExtensions>
+        <extension name="dom"/>
+        <extension name="simplexml"/>
+    </disableExtensions>
+</psalm>

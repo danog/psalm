@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<psalm
+    disableVarParsing="true"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns="https://getpsalm.org/schema/config"
+    name="Transpile php-parser (lib only, no phpunit-dependent tests)"
+    errorLevel="8"
+    throwExceptionOnError="0"
+    findUnusedCode="false"
+    xsi:schemaLocation="https://getpsalm.org/schema/config config.xsd"
+    allFunctionsGlobal="true"
+    allConstantsGlobal="true"
+    usePhpDocMethodsWithoutMagicCall="true"
+    cacheDirectory="build/psalm-cache-phpparser-lib"
+>
+    <stubs>
+        <file name="../psalm-transpiler/src/Psalm/Internal/Transpiler/runtime-stubs/rt.phpstub"/>
+    </stubs>
+    <projectFiles>
+        <directory name="../psalm-transpiler/src/Psalm/Internal/Transpiler/runtime-stubs"/>
+        <directory name="../php-parser/lib"/>
+        <ignoreFiles>
+            <file name="../psalm-transpiler/src/Psalm/Internal/Transpiler/runtime-stubs/fork.php"/>
+            <file name="../php-parser/lib/PhpParser/JsonDecoder.php"/>
+            <directory name="vendor"/>
+        </ignoreFiles>
+    </projectFiles>
+    <disableExtensions>
+        <extension name="dom"/>
+        <extension name="simplexml"/>
+    </disableExtensions>
+</psalm>
