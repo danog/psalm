@@ -1211,14 +1211,14 @@ index c8c56c9..0b2b0d0 100644
  
          // Get oldest ancestor declaring $method_id
 diff --git a/src/Psalm/Internal/Analyzer/Statements/Expression/Call/NamedFunctionCallHandler.php b/src/Psalm/Internal/Analyzer/Statements/Expression/Call/NamedFunctionCallHandler.php
-index 6673b2a..be5baac 100644
+index 24105fd..be5baac 100644
 --- a/src/Psalm/Internal/Analyzer/Statements/Expression/Call/NamedFunctionCallHandler.php
 +++ b/src/Psalm/Internal/Analyzer/Statements/Expression/Call/NamedFunctionCallHandler.php
 @@ -769,7 +769,7 @@ final class NamedFunctionCallHandler
                  }
              }
          } elseif ($function_id === 'get_class'
--            && (($get_class_name = $statements_analyzer->getFQCLN() !== null && $get_class_name = $statements_analyzer->getFQCLN() !== 0))
+-            && ((($get_class_name = $statements_analyzer->getFQCLN()) !== null && $get_class_name !== 0))
 +            && ($get_class_name = $statements_analyzer->getFQCLN()) !== null && $get_class_name !== 0
          ) {
              $statements_analyzer->node_data->setType(
@@ -2366,7 +2366,7 @@ index c8439df..2dc6ee5 100644
                      true,
                      false,
 diff --git a/src/Psalm/Internal/Codebase/Populator.php b/src/Psalm/Internal/Codebase/Populator.php
-index b3cc744..effaa15 100644
+index 383913f..effaa15 100644
 --- a/src/Psalm/Internal/Codebase/Populator.php
 +++ b/src/Psalm/Internal/Codebase/Populator.php
 @@ -34,12 +34,11 @@ use UnitEnum;
@@ -2419,43 +2419,6 @@ index b3cc744..effaa15 100644
                      $current_dependency = $storage_provider->get($current_dependency_name);
                      $dependencies += $current_dependency->dependent_classlikes;
  
-@@ -522,19 +529,19 @@ final class Populator
-         $this->inheritMethodsFromParent($storage, $parent_storage);
-         $this->inheritPropertiesFromParent($storage, $parent_storage);
- 
--        $storage->class_implements = [...$storage->class_implements, ...$parent_storage->class_implements];
-+        $storage->class_implements = array_replace($storage->class_implements, $parent_storage->class_implements);
-         $storage->invalid_dependencies = [...$storage->invalid_dependencies, ...$parent_storage->invalid_dependencies];
- 
-         if ($parent_storage->has_visitor_issues) {
-             $storage->has_visitor_issues = true;
-         }
- 
--        $storage->constants = [...array_filter(
-+        $storage->constants = array_replace(array_filter(
-             $parent_storage->constants,
-             static fn(ClassConstantStorage $constant): bool
-                 => $constant->visibility === ClassLikeAnalyzer::VISIBILITY_PUBLIC
-                     || $constant->visibility === ClassLikeAnalyzer::VISIBILITY_PROTECTED,
--        ), ...$storage->constants];
-+        ), $storage->constants);
- 
-         if ($parent_storage->preserve_constructor_signature) {
-             $storage->preserve_constructor_signature = true;
-@@ -586,11 +593,11 @@ final class Populator
-         $this->populateClassLikeStorage($interface_storage, $dependent_classlikes);
- 
-         // copy over any constants
--        $storage->constants = [...array_filter(
-+        $storage->constants = array_replace(array_filter(
-             $interface_storage->constants,
-             static fn(ClassConstantStorage $constant): bool
-                 => $constant->visibility === ClassLikeAnalyzer::VISIBILITY_PUBLIC,
--        ), ...$storage->constants];
-+        ), $storage->constants);
- 
-         $storage->invalid_dependencies = [
-             ...$storage->invalid_dependencies,
 @@ -670,7 +677,7 @@ final class Populator
              }
          } elseif (($parent_storage->template_extended_params !== null && $parent_storage->template_extended_params !== [])) {
@@ -2920,6 +2883,185 @@ index 7d4c2d0..dd67205 100644
                      /** @psalm-suppress ArgumentTypeCoercion */
                      $reflection_function = new ReflectionFunction($function_id);
  
+diff --git a/src/Psalm/Internal/PluginManager/Command/DisableCommand.php b/src/Psalm/Internal/PluginManager/Command/DisableCommand.php
+index 81a5110..3812250 100644
+--- a/src/Psalm/Internal/PluginManager/Command/DisableCommand.php
++++ b/src/Psalm/Internal/PluginManager/Command/DisableCommand.php
+@@ -4,8 +4,6 @@ declare(strict_types=1);
+ 
+ namespace Psalm\Internal\PluginManager\Command;
+ 
+-use Psalm\Internal\Interner;
+-
+ use InvalidArgumentException;
+ use Override;
+ use Psalm\Internal\PluginManager\PluginListFactory;
+@@ -74,13 +72,13 @@ final class DisableCommand extends Command
+             return 2;
+         }
+ 
+-        if (!$plugin_list->isEnabled(Interner::intern($plugin_class))) {
++        if (!$plugin_list->isEnabled($plugin_class)) {
+             $io->note('Plugin already disabled');
+ 
+             return 3;
+         }
+ 
+-        $plugin_list->disable(Interner::intern($plugin_class));
++        $plugin_list->disable($plugin_class);
+         $io->success('Plugin disabled');
+ 
+         return 0;
+diff --git a/src/Psalm/Internal/PluginManager/Command/EnableCommand.php b/src/Psalm/Internal/PluginManager/Command/EnableCommand.php
+index eaae955..348a1a3 100644
+--- a/src/Psalm/Internal/PluginManager/Command/EnableCommand.php
++++ b/src/Psalm/Internal/PluginManager/Command/EnableCommand.php
+@@ -4,8 +4,6 @@ declare(strict_types=1);
+ 
+ namespace Psalm\Internal\PluginManager\Command;
+ 
+-use Psalm\Internal\Interner;
+-
+ use InvalidArgumentException;
+ use Override;
+ use Psalm\Internal\PluginManager\PluginListFactory;
+@@ -74,13 +72,13 @@ final class EnableCommand extends Command
+             return 2;
+         }
+ 
+-        if ($plugin_list->isEnabled(Interner::intern($plugin_class))) {
++        if ($plugin_list->isEnabled($plugin_class)) {
+             $io->note('Plugin already enabled');
+ 
+             return 3;
+         }
+ 
+-        $plugin_list->enable(Interner::intern($plugin_class));
++        $plugin_list->enable($plugin_class);
+         $io->success('Plugin enabled');
+ 
+         return 0;
+diff --git a/src/Psalm/Internal/PluginManager/Command/ShowCommand.php b/src/Psalm/Internal/PluginManager/Command/ShowCommand.php
+index 741d4c3..47c5fa4 100644
+--- a/src/Psalm/Internal/PluginManager/Command/ShowCommand.php
++++ b/src/Psalm/Internal/PluginManager/Command/ShowCommand.php
+@@ -4,8 +4,6 @@ declare(strict_types=1);
+ 
+ namespace Psalm\Internal\PluginManager\Command;
+ 
+-use Psalm\Internal\Interner;
+-
+ use Override;
+ use Psalm\Internal\PluginManager\PluginListFactory;
+ use Symfony\Component\Console\Command\Command;
+@@ -61,9 +59,9 @@ final class ShowCommand extends Command
+ 
+         $formatRow =
+             /**
+-             * @return array{0: null|string, 1: int}
++             * @return array{0: null|string, 1: string}
+              */
+-            static fn(int $class, ?string $package): array => [$package, $class];
++            static fn(string $class, ?string $package): array => [$package, $class];
+ 
+         $io->section('Enabled');
+         if (count($enabled)) {
+diff --git a/src/Psalm/Internal/PluginManager/ConfigFile.php b/src/Psalm/Internal/PluginManager/ConfigFile.php
+index 7781785..bb9883c 100644
+--- a/src/Psalm/Internal/PluginManager/ConfigFile.php
++++ b/src/Psalm/Internal/PluginManager/ConfigFile.php
+@@ -4,8 +4,6 @@ declare(strict_types=1);
+ 
+ namespace Psalm\Internal\PluginManager;
+ 
+-use Psalm\Internal\Interner;
+-
+ use DOMDocument;
+ use DOMElement;
+ use Psalm\Config;
+@@ -49,7 +47,7 @@ final class ConfigFile
+         return Config::loadFromXMLFile($this->path, $this->current_dir);
+     }
+ 
+-    public function removePlugin(int $plugin_class): void
++    public function removePlugin(string $plugin_class): void
+     {
+         $config_xml = $this->readXml();
+         /** @var DOMElement */
+@@ -80,7 +78,7 @@ final class ConfigFile
+         $this->saveXml($config_xml);
+     }
+ 
+-    public function addPlugin(int $plugin_class): void
++    public function addPlugin(string $plugin_class): void
+     {
+         $config_xml = $this->readXml();
+         /** @var DOMElement */
+@@ -99,7 +97,7 @@ final class ConfigFile
+         $plugin_class_element = $config_xml->createElement('pluginClass');
+         if ($plugin_class_element) {
+             $plugin_class_element->setAttribute('xmlns', Config::CONFIG_NAMESPACE);
+-            $plugin_class_element->setAttribute('class', Interner::lookup($plugin_class));
++            $plugin_class_element->setAttribute('class', $plugin_class);
+             if ($plugins_element) {
+                 $plugins_element->appendChild($plugin_class_element);
+             }
+diff --git a/src/Psalm/Internal/PluginManager/PluginList.php b/src/Psalm/Internal/PluginManager/PluginList.php
+index 59b3b83..435b48e 100644
+--- a/src/Psalm/Internal/PluginManager/PluginList.php
++++ b/src/Psalm/Internal/PluginManager/PluginList.php
+@@ -4,8 +4,6 @@ declare(strict_types=1);
+ 
+ namespace Psalm\Internal\PluginManager;
+ 
+-use Psalm\Internal\Interner;
+-
+ use InvalidArgumentException;
+ use RuntimeException;
+ 
+@@ -45,7 +43,7 @@ final class PluginList
+             if ($this->config_file) {
+                 foreach ($this->config_file->getConfig()->getPluginClasses() as $plugin_entry) {
+                     $plugin_class = $plugin_entry['class'];
+-                    $this->enabled_plugins[$plugin_class] = $this->findPluginPackage(Interner::intern($plugin_class));
++                    $this->enabled_plugins[$plugin_class] = $this->findPluginPackage($plugin_class);
+                 }
+             }
+         }
+@@ -91,20 +89,20 @@ final class PluginList
+         return $class;
+     }
+ 
+-    public function findPluginPackage(int $class): ?string
++    public function findPluginPackage(string $class): ?string
+     {
+         // pluginClass => ?pluginPackage
+         $plugin_classes = $this->getAll();
+ 
+-        return $plugin_classes[Interner::lookup($class)] ?? null;
++        return $plugin_classes[$class] ?? null;
+     }
+ 
+-    public function isEnabled(int $class): bool
++    public function isEnabled(string $class): bool
+     {
+         return array_key_exists($class, $this->getEnabled());
+     }
+ 
+-    public function enable(int $class): void
++    public function enable(string $class): void
+     {
+         if (!$this->config_file) {
+             throw new RuntimeException('Cannot find Psalm config');
+@@ -113,7 +111,7 @@ final class PluginList
+         $this->config_file->addPlugin($class);
+     }
+ 
+-    public function disable(int $class): void
++    public function disable(string $class): void
+     {
+         if (!$this->config_file) {
+             throw new RuntimeException('Cannot find Psalm config');
 diff --git a/src/Psalm/Internal/Provider/FileReferenceProvider.php b/src/Psalm/Internal/Provider/FileReferenceProvider.php
 index 2a8276d..ee0cb7b 100644
 --- a/src/Psalm/Internal/Provider/FileReferenceProvider.php
@@ -4457,6 +4599,304 @@ index 5d28b47..67083ea 100644
   *      checked?: bool,
   *      failed_reconciliation?: bool,
   *      ignore_nullable_issues?: bool,
+diff --git a/tests/Config/ConfigFileTest.php b/tests/Config/ConfigFileTest.php
+index 854367b..12737ba 100644
+--- a/tests/Config/ConfigFileTest.php
++++ b/tests/Config/ConfigFileTest.php
+@@ -4,8 +4,6 @@ declare(strict_types=1);
+ 
+ namespace Psalm\Tests\Config;
+ 
+-use Psalm\Internal\Interner;
+-
+ use Override;
+ use Psalm\Config;
+ use Psalm\Exception\ConfigException;
+@@ -84,7 +82,7 @@ final class ConfigFileTest extends TestCase
+         );
+ 
+         $config_file = new ConfigFile((string)getcwd(), $this->file_path);
+-        $config_file->addPlugin(Interner::intern('a\b\c'));
++        $config_file->addPlugin('a\b\c');
+         $file_contents = file_get_contents($this->file_path);
+         assert($file_contents !== false);
+ 
+@@ -111,7 +109,7 @@ final class ConfigFileTest extends TestCase
+         );
+ 
+         $config_file = new ConfigFile((string)getcwd(), $this->file_path);
+-        $config_file->addPlugin(Interner::intern('a\b\c'));
++        $config_file->addPlugin('a\b\c');
+         $file_contents = file_get_contents($this->file_path);
+         assert($file_contents !== false);
+ 
+@@ -133,7 +131,7 @@ final class ConfigFileTest extends TestCase
+         file_put_contents($this->file_path, $noPlugins);
+ 
+         $config_file = new ConfigFile((string)getcwd(), $this->file_path);
+-        $config_file->removePlugin(Interner::intern('a\b\c'));
++        $config_file->removePlugin('a\b\c');
+         $file_contents = file_get_contents($this->file_path);
+         assert($file_contents !== false);
+ 
+@@ -159,7 +157,7 @@ final class ConfigFileTest extends TestCase
+         file_put_contents($this->file_path, $emptyPlugins);
+ 
+         $config_file = new ConfigFile((string)getcwd(), $this->file_path);
+-        $config_file->removePlugin(Interner::intern('a\b\c'));
++        $config_file->removePlugin('a\b\c');
+         $file_contents = file_get_contents($this->file_path);
+         assert($file_contents !== false);
+ 
+@@ -187,7 +185,7 @@ final class ConfigFileTest extends TestCase
+         file_put_contents($this->file_path, $abcEnabled);
+ 
+         $config_file = new ConfigFile((string)getcwd(), $this->file_path);
+-        $config_file->removePlugin(Interner::intern('a\b\c'));
++        $config_file->removePlugin('a\b\c');
+         $file_contents = file_get_contents($this->file_path);
+         assert($file_contents !== false);
+ 
+@@ -224,7 +222,7 @@ final class ConfigFileTest extends TestCase
+         file_put_contents($this->file_path, $abcEnabled);
+ 
+         $config_file = new ConfigFile((string)getcwd(), $this->file_path);
+-        $config_file->removePlugin(Interner::intern('a\b\c'));
++        $config_file->removePlugin('a\b\c');
+         $file_contents = file_get_contents($this->file_path);
+         assert($file_contents !== false);
+ 
+diff --git a/tests/Config/PluginListTest.php b/tests/Config/PluginListTest.php
+index b4a0a83..3d01a13 100644
+--- a/tests/Config/PluginListTest.php
++++ b/tests/Config/PluginListTest.php
+@@ -4,8 +4,6 @@ declare(strict_types=1);
+ 
+ namespace Psalm\Tests\Config;
+ 
+-use Psalm\Internal\Interner;
+-
+ use InvalidArgumentException;
+ use Mockery;
+ use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
+@@ -153,7 +151,7 @@ final class PluginListTest extends TestCase
+ 
+         $plugin_list = new PluginList($this->config_file, $this->composer_lock);
+ 
+-        $this->assertTrue($plugin_list->isEnabled(Interner::intern('a\b\c')));
++        $this->assertTrue($plugin_list->isEnabled('a\b\c'));
+     }
+ 
+     /**
+@@ -176,7 +174,7 @@ final class PluginListTest extends TestCase
+ 
+         $this->config_file->shouldReceive('addPlugin')->once()->with('a\b\c');
+ 
+-        $plugin_list->enable(Interner::intern('a\b\c'));
++        $plugin_list->enable('a\b\c');
+     }
+ 
+     /**
+@@ -188,6 +186,6 @@ final class PluginListTest extends TestCase
+ 
+         $this->config_file->shouldReceive('removePlugin')->once()->with('a\b\c');
+ 
+-        $plugin_list->disable(Interner::intern('a\b\c'));
++        $plugin_list->disable('a\b\c');
+     }
+ }
+diff --git a/tests/FileDiffTest.php b/tests/FileDiffTest.php
+index 2fd4c54..e686312 100644
+--- a/tests/FileDiffTest.php
++++ b/tests/FileDiffTest.php
+@@ -20,7 +20,7 @@ final class FileDiffTest extends TestCase
+ {
+     /**
+      * @dataProvider getChanges
+-     * @param int[] $same_methods
++     * @param string[] $same_methods
+      */
+     public function testCode(
+         string $a,
+@@ -75,9 +75,9 @@ final class FileDiffTest extends TestCase
+ 
+     /**
+      * @dataProvider getChanges
+-     * @param int[] $same_methods
++     * @param string[] $same_methods
+      * @param string[] $same_signatures
+-     * @param int[] $changed_methods
++     * @param string[] $changed_methods
+      * @param array<array-key,array{int,int}> $diff_map_offsets
+      */
+     public function testPartialAstDiff(
+diff --git a/tests/Internal/Codebase/InternalCallMapHandlerTest.php b/tests/Internal/Codebase/InternalCallMapHandlerTest.php
+index bdfacc0..e595d26 100644
+--- a/tests/Internal/Codebase/InternalCallMapHandlerTest.php
++++ b/tests/Internal/Codebase/InternalCallMapHandlerTest.php
+@@ -4,8 +4,6 @@ declare(strict_types=1);
+ 
+ namespace Psalm\Tests\Internal\Codebase;
+ 
+-use Psalm\Internal\Interner;
+-
+ use InvalidArgumentException;
+ use Override;
+ use PHPUnit\Framework\AssertionFailedError;
+@@ -78,7 +76,7 @@ final class InternalCallMapHandlerTest extends TestCase
+      * Specify a function name as value, or a function name as key and
+      * an array containing the PHP versions in which to ignore this function as values.
+      *
+-     * @var array<int|string, string|list<int>>
++     * @var array<int|string, string|list<string>>
+      */
+     private static array $ignoredFunctions = [
+         'datefmt_create' => ['8.0'],
+@@ -190,7 +188,7 @@ final class InternalCallMapHandlerTest extends TestCase
+      * These could be truly inaccessible, or they could be functions removed in newer PHP versions.
+      * Removed functions should be removed from CallMap and added to the appropriate delta.
+      *
+-     * @var array<int|string, string|list<int>>
++     * @var array<int|string, string|list<string>>
+      */
+     private static array $ignoredUnreflectableFunctions = [
+         'closure::__invoke',
+@@ -245,7 +243,7 @@ final class InternalCallMapHandlerTest extends TestCase
+             $function = is_int($key) ? $value : $key;
+ 
+             $diff = strcmp($function, $previousFunction);
+-            $this->assertGreaterThan(0, $diff, "'" . $function . "' should come before '" . $previousFunction . "' in InternalCallMapHandlerTest::\$ignoredFunctions");
++            $this->assertGreaterThan(0, $diff, "'{$function}' should come before '{$previousFunction}' in InternalCallMapHandlerTest::\$ignoredFunctions");
+ 
+             $previousFunction = $function;
+         }
+@@ -312,7 +310,7 @@ final class InternalCallMapHandlerTest extends TestCase
+             }
+ 
+             // Skip functions with alternate signatures
+-            if (isset($callMap["" . $function . "'1"])) {
++            if (isset($callMap["$function'1"])) {
+                 continue;
+             }
+ 
+@@ -326,14 +324,14 @@ final class InternalCallMapHandlerTest extends TestCase
+                 continue;
+             }
+ 
+-            yield "" . $function . ": " . (string) json_encode($entry) => [$function, $entry];
++            yield "$function: " . (string) json_encode($entry) => [$function, $entry];
+         }
+     }
+ 
+     /**
+      * @psalm-external-mutation-free
+      */
+-    private function isIgnored(int $functionName): bool
++    private function isIgnored(string $functionName): bool
+     {
+         if (in_array($functionName, self::$ignoredFunctions)) {
+             return true;
+@@ -351,7 +349,7 @@ final class InternalCallMapHandlerTest extends TestCase
+     /**
+      * @psalm-external-mutation-free
+      */
+-    private function isReturnTypeOnlyIgnored(int $functionName): bool
++    private function isReturnTypeOnlyIgnored(string $functionName): bool
+     {
+         if (in_array($functionName, static::$ignoredReturnTypeOnlyFunctions, true)) {
+             return true;
+@@ -369,7 +367,7 @@ final class InternalCallMapHandlerTest extends TestCase
+     /**
+      * @psalm-external-mutation-free
+      */
+-    private function isUnreflectableIgnored(int $functionName): bool
++    private function isUnreflectableIgnored(string $functionName): bool
+     {
+         if (in_array($functionName, static::$ignoredUnreflectableFunctions, true)) {
+             return true;
+@@ -389,10 +387,10 @@ final class InternalCallMapHandlerTest extends TestCase
+      * @depends testGetcallmapReturnsAValidCallmap
+      * @dataProvider callMapEntryProvider
+      * @coversNothing
+-     * @psalm-param int $functionName
++     * @psalm-param string $functionName
+      * @param array<int|string, string> $callMapEntry
+      */
+-    public function testIgnoredFunctionsStillFail(int $functionName, array $callMapEntry): void
++    public function testIgnoredFunctionsStillFail(string $functionName, array $callMapEntry): void
+     {
+         $functionIgnored = $this->isIgnored($functionName);
+         $unreflectableIgnored = $this->isUnreflectableIgnored($functionName);
+@@ -404,7 +402,7 @@ final class InternalCallMapHandlerTest extends TestCase
+ 
+         $function = $this->getReflectionFunction($functionName);
+         if ($unreflectableIgnored && $function !== null) {
+-            $this->fail("Remove '" . Interner::lookup($functionName) . "' from InternalCallMapHandlerTest::\$ignoredUnreflectableFunctions");
++            $this->fail("Remove '{$functionName}' from InternalCallMapHandlerTest::\$ignoredUnreflectableFunctions");
+         } elseif ($function === null) {
+             $this->assertTrue(true);
+             return;
+@@ -425,7 +423,7 @@ final class InternalCallMapHandlerTest extends TestCase
+                 $this->assertTrue(true);
+                 return;
+             }
+-            $this->fail("Remove '" . Interner::lookup($functionName) . "' from InternalCallMapHandlerTest::\$ignoredFunctions");
++            $this->fail("Remove '{$functionName}' from InternalCallMapHandlerTest::\$ignoredFunctions");
+         }
+ 
+         try {
+@@ -437,7 +435,7 @@ final class InternalCallMapHandlerTest extends TestCase
+             $this->assertTrue(true);
+             return;
+         }
+-        $this->fail("Remove '" . Interner::lookup($functionName) . "' from InternalCallMapHandlerTest::\$ignoredReturnTypeOnlyFunctions");
++        $this->fail("Remove '{$functionName}' from InternalCallMapHandlerTest::\$ignoredReturnTypeOnlyFunctions");
+     }
+ 
+     /**
+@@ -447,13 +445,13 @@ final class InternalCallMapHandlerTest extends TestCase
+      * @depends testGetcallmapReturnsAValidCallmap
+      * @depends testIgnoresAreSortedAndUnique
+      * @dataProvider callMapEntryProvider
+-     * @psalm-param int $functionName
++     * @psalm-param string $functionName
+      * @param array<int|string, string> $callMapEntry
+      */
+-    public function testCallMapCompliesWithReflection(int $functionName, array $callMapEntry): void
++    public function testCallMapCompliesWithReflection(string $functionName, array $callMapEntry): void
+     {
+         if ($this->isIgnored($functionName)) {
+-            $this->markTestSkipped("Function " . Interner::lookup($functionName) . " is ignored in config");
++            $this->markTestSkipped("Function $functionName is ignored in config");
+         }
+ 
+         $function = $this->getReflectionFunction($functionName);
+@@ -478,19 +476,19 @@ final class InternalCallMapHandlerTest extends TestCase
+     /**
+      * Returns the correct reflection type for function or method name.
+      */
+-    private function getReflectionFunction(int $functionName): ?ReflectionFunctionAbstract
++    private function getReflectionFunction(string $functionName): ?ReflectionFunctionAbstract
+     {
+         try {
+-            if (strpos(Interner::lookup($functionName), '::') !== false) {
++            if (strpos($functionName, '::') !== false) {
+                 if (PHP_VERSION_ID < 8_03_00) {
+-                    return new ReflectionMethod(Interner::lookup($functionName));
++                    return new ReflectionMethod($functionName);
+                 }
+ 
+-                return ReflectionMethod::createFromMethodName(Interner::lookup($functionName));
++                return ReflectionMethod::createFromMethodName($functionName);
+             }
+ 
+-            /** @var int $functionName */
+-            return new ReflectionFunction(Interner::lookupCallable($functionName));
++            /** @var callable-string $functionName */
++            return new ReflectionFunction($functionName);
+         } catch (ReflectionException $e) {
+             return null;
+         }
 diff --git a/tests/Internal/Scanner/FileScannerTest.php b/tests/Internal/Scanner/FileScannerTest.php
 index 40af1ab..a92d4ec 100644
 --- a/tests/Internal/Scanner/FileScannerTest.php

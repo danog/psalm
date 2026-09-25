@@ -20,10 +20,7 @@ $issues = json_decode((string) file_get_contents($argv[2]), true);
 /** A message without what differs between the two checked trees: their paths (closure names embed them). */
 function pristineMessage(string $m, string $type = ''): string
 {
-    // messages whose text drifts with the types / sizes of the code, not with what is wrong
-    if ($type === 'ComplexMethod' || $type === 'RiskyTruthyFalsyComparison') {
-        return '';
-    }
+    // (the fixer matches drifting messages exactly: an issue on a converted slot keeps its own text)
     $m = str_replace('/root/idconv/master-ref/', '/root/idconv/master/', $m);
     return (string) preg_replace('~/\S*?/src/psalm/(\S*?):\d+:\d+:-:closure~', 'src/psalm/$1:closure', $m);
 }
