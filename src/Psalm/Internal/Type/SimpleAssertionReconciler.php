@@ -388,7 +388,7 @@ final class SimpleAssertionReconciler extends Reconciler
         }
 
         if ($assertion_type instanceof TNamedObject
-            && Interner::lookup($assertion_type->name) === 'Traversable'
+            && $assertion_type->name === Sym::TRAVERSABLE
         ) {
             return self::reconcileTraversable(
                 $assertion,

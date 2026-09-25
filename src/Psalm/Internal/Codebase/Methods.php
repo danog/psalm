@@ -349,7 +349,6 @@ final class Methods
             }
 
             $appearing_fq_class_name = $appearing_method_id->class_id;
-            $appearing_method_name = Interner::lookupLc($appearing_method_id->name_id);
 
             $class_storage = $this->classlike_storage_provider->get($appearing_fq_class_name);
 
@@ -517,7 +516,7 @@ final class Methods
 
         $appearing_fq_class_storage = $this->classlike_storage_provider->get($appearing_fq_class_name);
 
-        if (Interner::lookup($appearing_fq_class_name) === 'UnitEnum'
+        if ($appearing_fq_class_name === Sym::UNIT_ENUM
             && $original_class_storage->is_enum
         ) {
             if ($original_method_name === 'cases') {
@@ -536,7 +535,7 @@ final class Methods
             }
         }
 
-        if (Interner::lookup($appearing_fq_class_name) === 'BackedEnum'
+        if ($appearing_fq_class_name === Sym::BACKED_ENUM
             && $original_class_storage->is_enum
             && $original_class_storage->enum_type
         ) {
@@ -641,7 +640,7 @@ final class Methods
             $overridden_method_id = $class_storage->documenting_method_ids[$appearing_method_id->name_id];
 
             // special override to allow inference of Iterator types
-            if (Interner::lookup($overridden_method_id->class_id) === 'Iterator'
+            if ($overridden_method_id->class_id === Sym::ITERATOR
                 && $storage->return_type
                 && $storage->return_type === $storage->signature_return_type
             ) {
@@ -969,7 +968,6 @@ final class Methods
         }
 
         $declaring_class_storage = $this->classlike_storage_provider->get($declaring_method_id->class_id);
-        $declaring_method_name = Interner::lookupLc($declaring_method_id->name_id);
 
         if (isset($declaring_class_storage->overridden_method_ids[$declaring_method_id->name_id])) {
             foreach ($declaring_class_storage->overridden_method_ids[$declaring_method_id->name_id] as $overridden_method_id) {
@@ -986,8 +984,6 @@ final class Methods
         bool $with_pseudo = false,
     ): ?MethodIdentifier {
         $class_storage = $this->classlike_storage_provider->get($method_id->class_id);
-
-        $method_name = Interner::lookupLc($method_id->name_id);
 
         if (isset($class_storage->declaring_method_ids[$method_id->name_id])) {
             return $class_storage->declaring_method_ids[$method_id->name_id];
@@ -1016,8 +1012,6 @@ final class Methods
     ): ?MethodIdentifier {
         $class_storage = $this->classlike_storage_provider->get($method_id->class_id);
 
-        $method_name = Interner::lookupLc($method_id->name_id);
-
         return $class_storage->appearing_method_ids[$method_id->name_id] ?? null;
     }
 
@@ -1028,7 +1022,6 @@ final class Methods
     public function getOverriddenMethodIds(MethodIdentifier $method_id): array
     {
         $class_storage = $this->classlike_storage_provider->get($method_id->class_id);
-        $method_name = Interner::lookupLc($method_id->name_id);
 
         return $class_storage->overridden_method_ids[$method_id->name_id] ?? [];
     }
@@ -1123,7 +1116,6 @@ final class Methods
             throw new UnexpectedValueException($e->getMessage());
         }
 
-        $method_name = Interner::lookupLc($method_id->name_id);
         $method_storage = $class_storage->methods[$method_id->name_id] ?? null;
         if ($method_storage === null && $with_pseudo) {
             $method_storage = $class_storage->pseudo_methods[$method_id->name_id]
@@ -1148,8 +1140,6 @@ final class Methods
         } catch (InvalidArgumentException) {
             return false;
         }
-
-        $method_name = Interner::lookupLc($method_id->name_id);
 
         if (!isset($class_storage->methods[$method_id->name_id])) {
             return false;

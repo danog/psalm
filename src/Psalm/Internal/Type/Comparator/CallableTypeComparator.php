@@ -444,7 +444,7 @@ final class CallableTypeComparator
                 }
             }
         } elseif ($input_type_part instanceof TNamedObject
-            && Interner::lookup($input_type_part->name) === 'Closure'
+            && $input_type_part->name === Sym::CLOSURE
         ) {
             return new TCallable();
         } elseif ($input_type_part instanceof TNamedObject

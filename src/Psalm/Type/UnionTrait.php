@@ -10,6 +10,7 @@ use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Context;
 use Psalm\Internal\Interner;
+use Psalm\Internal\Sym;
 use Psalm\Internal\TypeVisitor\CanContainObjectTypeVisitor;
 use Psalm\Internal\TypeVisitor\ClasslikeReplacer;
 use Psalm\Internal\TypeVisitor\ContainsClassLikeVisitor;
@@ -1261,7 +1262,7 @@ trait UnionTrait
     {
         return count($this->types) === 1
             && (($single_type = reset($this->types)) instanceof TNamedObject)
-            && (Interner::lookup($single_type->name) === 'Generator');
+            && ($single_type->name === Sym::GENERATOR);
     }
 
     /**

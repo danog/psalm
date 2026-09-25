@@ -1799,7 +1799,6 @@ final class ClassLikes
                 $declaring_method_id = $classlike_storage->declaring_method_ids[$method_name_id];
 
                 $declaring_fq_classlike_name = $declaring_method_id->class_id;
-                $declaring_method_name = Interner::lookupLc($declaring_method_id->name_id);
 
                 try {
                     $declaring_classlike_storage = $this->classlike_storage_provider->get($declaring_fq_classlike_name);
@@ -2023,7 +2022,7 @@ final class ClassLikes
                     && $method_storage->return_type_location
                     && !$method_storage->return_type->isVoid()
                     && !$method_storage->return_type->isNever()
-                    && Interner::lookupLc($method_id->name_id) !== '__tostring'
+                    && $method_id->name_id !== Sym::TO_STRING
                     && ($method_storage->is_static || !$method_storage->probably_fluent)
                 ) {
                     $method_return_referenced = $codebase->code_use_graph->isUsed(
@@ -2071,7 +2070,6 @@ final class ClassLikes
                 $declaring_method_id = $classlike_storage->declaring_method_ids[$method_name_id];
 
                 $declaring_fq_classlike_name = $declaring_method_id->class_id;
-                $declaring_method_name = Interner::lookupLc($declaring_method_id->name_id);
 
                 try {
                     $declaring_classlike_storage = $this->classlike_storage_provider->get($declaring_fq_classlike_name);
@@ -2141,7 +2139,6 @@ final class ClassLikes
                 $declaring_method_id = $classlike_storage->declaring_method_ids[$method_name_id];
 
                 $declaring_fq_classlike_name = $declaring_method_id->class_id;
-                $declaring_method_name = Interner::lookupLc($declaring_method_id->name_id);
 
                 try {
                     $declaring_classlike_storage = $this->classlike_storage_provider->get($declaring_fq_classlike_name);

@@ -322,7 +322,7 @@ final class ObjectComparator
             ));
         }
 
-        if (Interner::lookup($intersection_container_type_lower) === Interner::lookupLc($intersection_input_type_lower)) {
+        if ($intersection_container_type_lower === $intersection_input_type_lower) {
             if ($container_was_static && !$input_was_static) {
                 if ($atomic_comparison_result) {
                     $atomic_comparison_result->type_coerced = true;
@@ -334,14 +334,14 @@ final class ObjectComparator
             return true;
         }
 
-        if (Interner::lookupLc($intersection_input_type_lower) === 'generator'
+        if ($intersection_input_type_lower === Sym::C_GENERATOR
             && in_array(Interner::lookup($intersection_container_type_lower), ['iterator', 'traversable', 'iterable'], true)
         ) {
             return true;
         }
 
-        if (Interner::lookup($intersection_container_type_lower) === 'iterable') {
-            if (Interner::lookupLc($intersection_input_type_lower) === 'traversable'
+        if ($intersection_container_type_lower === Sym::ITERABLE) {
+            if ($intersection_input_type_lower === Sym::C_TRAVERSABLE
                 || ($codebase->classlikes->classExists($intersection_input_type_lower)
                     && $codebase->classlikes->classImplements(
                         $intersection_input_type_lower,
@@ -357,8 +357,8 @@ final class ObjectComparator
             }
         }
 
-        if (Interner::lookupLc($intersection_input_type_lower) === 'traversable'
-            && Interner::lookup($intersection_container_type_lower) === 'iterable'
+        if ($intersection_input_type_lower === Sym::C_TRAVERSABLE
+            && $intersection_container_type_lower === Sym::ITERABLE
         ) {
             return true;
         }

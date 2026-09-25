@@ -7,6 +7,7 @@ namespace Psalm\Internal\Type;
 use InvalidArgumentException;
 use Psalm\Codebase;
 use Psalm\Internal\Interner;
+use Psalm\Internal\Sym;
 use Psalm\Type;
 use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\Scalar;
@@ -464,7 +465,7 @@ final class TypeCombiner
             $type_key = 'iterable';
             $combination->builtin_type_params['iterable'] = [Type::getMixed(), Type::getMixed()];
         } elseif ($type instanceof TNamedObject
-            && Interner::lookup($type->name) === 'Traversable'
+            && $type->name === Sym::TRAVERSABLE
             && (isset($combination->builtin_type_params['iterable']) || isset($combination->value_types['iterable']))
         ) {
             $type_key = 'iterable';
@@ -476,7 +477,7 @@ final class TypeCombiner
             if (!$type instanceof TGenericObject) {
                 $type = new TGenericObject(Interner::lookup($type->name), [Type::getMixed(), Type::getMixed()]);
             }
-        } elseif ($type instanceof TNamedObject && (Interner::lookup($type->name) === 'Traversable' || Interner::lookup($type->name) === 'Generator')) {
+        } elseif ($type instanceof TNamedObject && ($type->name === Sym::TRAVERSABLE || $type->name === Sym::GENERATOR)) {
             $type_key = Interner::lookup($type->name);
         } else {
             $type_key = $type->getKey();
@@ -628,7 +629,7 @@ final class TypeCombiner
             return null;
         }
 
-        if (($type instanceof TGenericObject && (Interner::lookup($type->name) === 'Traversable' || Interner::lookup($type->name) === 'Generator'))
+        if (($type instanceof TGenericObject && ($type->name === Sym::TRAVERSABLE || $type->name === Sym::GENERATOR))
             || ($type instanceof TIterable && $type->has_docblock_params)
             || ($type instanceof TArray && $type_key === 'iterable')
         ) {

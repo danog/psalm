@@ -13,6 +13,7 @@ use Psalm\Exception\CodeException;
 use Psalm\Exception\UnpopulatedClasslikeException;
 use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\ClassLikeStorageCacheProvider;
+use Psalm\Internal\Sym;
 use Psalm\Issue\InvalidReturnStatement;
 use Psalm\Issue\InvalidReturnType;
 use Psalm\IssueBuffer;
@@ -174,7 +175,7 @@ final class CodebaseTest extends TestCase
                 $stmt = $event->getStmt();
                 $storage = $event->getStorage();
                 $codebase = $event->getCodebase();
-                if (Interner::lookup($storage->id) === 'Psalm\\CurrentTest\\C' && $stmt instanceof Class_) {
+                if ($storage->id === Sym::C_PSALM__CURRENT_TEST__C && $stmt instanceof Class_) {
                     $storage->custom_metadata['fqcn'] = (string)($stmt->attrs()->namespacedName ?? $stmt->name);
                     $storage->custom_metadata['extends'] = $stmt->extends instanceof Name
                         ? (string)Interner::lookupOrNull($stmt->extends->attrs()->resolvedId)

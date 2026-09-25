@@ -187,7 +187,7 @@ final class Reflection
             (ReflectionMethod::IS_PUBLIC | ReflectionMethod::IS_PROTECTED),
         );
 
-        if (Interner::lookupLc($class_name_lower) === 'generator') {
+        if ($class_name_lower === Sym::C_GENERATOR) {
             $storage->template_types = [
                 'TKey' => ['Generator' => Type::getMixed()],
                 'TValue' => ['Generator' => Type::getMixed()],

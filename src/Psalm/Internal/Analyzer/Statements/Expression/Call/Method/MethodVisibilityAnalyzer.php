@@ -11,6 +11,7 @@ use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Issue\InaccessibleMethod;
 use Psalm\IssueBuffer;
 use Psalm\StatementsSource;
@@ -74,9 +75,9 @@ final class MethodVisibilityAnalyzer
 
         if (!$declaring_method_id) {
             if ($method_name === '__construct'
-                || (Interner::lookup($method_id->class_id) === 'Closure'
-                    && (Interner::lookupLc($method_id->name_id) === 'fromcallable'
-                        || Interner::lookupLc($method_id->name_id) === '__invoke'))
+                || ($method_id->class_id === Sym::CLOSURE
+                    && ($method_id->name_id === Sym::C_FROMCALLABLE
+                        || $method_id->name_id === Sym::INVOKE))
             ) {
                 return null;
             }

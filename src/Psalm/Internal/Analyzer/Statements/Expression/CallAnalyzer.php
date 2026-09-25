@@ -95,7 +95,7 @@ abstract class CallAnalyzer
         if ($context->collect_mutations &&
             ($context->self !== null) &&
             (
-                Interner::lookup($context->self) === Interner::lookup($fq_class_name) ||
+                $context->self === $fq_class_name ||
                 $codebase->classExtends(
                     $context->self,
                     $fq_class_name,
@@ -126,7 +126,7 @@ abstract class CallAnalyzer
         } elseif ($context->collect_initializations &&
             ($context->self !== null) &&
             (
-                Interner::lookup($context->self) === Interner::lookup($fq_class_name)
+                $context->self === $fq_class_name
                 || $codebase->classlikes->classExtends(
                     $context->self,
                     $fq_class_name,
@@ -141,7 +141,7 @@ abstract class CallAnalyzer
             if (isset($context->vars_in_scope['$this'])) {
                 foreach ($context->vars_in_scope['$this']->getAtomicTypes() as $atomic_type) {
                     if ($atomic_type instanceof TNamedObject) {
-                        if (Interner::lookup($fq_class_name) === Interner::lookup($atomic_type->name)) {
+                        if ($fq_class_name === $atomic_type->name) {
                             $alt_declaring_method_id = $declaring_method_id;
                         } else {
                             $fq_class_name = $atomic_type->name;
@@ -295,7 +295,6 @@ abstract class CallAnalyzer
         $method_params = $codebase->methods->getMethodParams($method_id, $statements_analyzer, $args, $context);
 
         $fq_class_name = Interner::lookup($method_id->class_id);
-        $method_name = Interner::lookupLc($method_id->name_id);
 
         $fq_class_name = strtolower($codebase->classlikes->getUnAliasedName($fq_class_name));
 

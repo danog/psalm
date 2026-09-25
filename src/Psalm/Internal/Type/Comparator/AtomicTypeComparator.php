@@ -232,7 +232,7 @@ final class AtomicTypeComparator
         }
 
         if ($input_type_part instanceof TNamedObject &&
-            Interner::lookup($input_type_part->name) === 'Closure' &&
+            $input_type_part->name === Sym::CLOSURE &&
             $container_type_part instanceof TCallable
         ) {
             return true;
@@ -264,7 +264,7 @@ final class AtomicTypeComparator
         }
 
         if ($container_type_part instanceof TNamedObject
-            && Interner::lookup($container_type_part->name) === 'Stringable'
+            && $container_type_part->name === Sym::STRINGABLE
             && $codebase->analysis_php_version_id >= 8_00_00
             && $input_type_part instanceof TObjectWithProperties
             && $input_type_part->is_stringable_object_only
@@ -565,7 +565,7 @@ final class AtomicTypeComparator
         }
 
         if ($input_type_part instanceof TNamedObject
-            && Interner::lookup($input_type_part->name) === 'static'
+            && $input_type_part->name === Sym::STATIC
             && $container_type_part instanceof TNamedObject
             && strtolower(Interner::lookup($container_type_part->name)) === 'self'
         ) {
@@ -635,7 +635,7 @@ final class AtomicTypeComparator
                 // check whether the object has a __toString method
                 if ($codebase->classOrInterfaceExists($input_type_part->name)) {
                     if ($codebase->analysis_php_version_id >= 8_00_00
-                        && (Interner::lookup($input_type_part->name) === 'Stringable'
+                        && ($input_type_part->name === Sym::STRINGABLE
                             || ($codebase->classlikes->classExists($input_type_part->name)
                                 && $codebase->classlikes->classImplements($input_type_part->name, Sym::STRINGABLE))
                             || $codebase->classlikes->interfaceExtends($input_type_part->name, Sym::STRINGABLE))
@@ -662,7 +662,7 @@ final class AtomicTypeComparator
                 }
 
                 // PHP 5.6 doesn't support this natively, so this introduces a bug *just* when checking PHP 5.6 code
-                if (Interner::lookup($input_type_part->name) === 'ReflectionType') {
+                if ($input_type_part->name === Sym::C_REFLECTION_TYPE) {
                     if ($atomic_comparison_result) {
                         $atomic_comparison_result->to_string_cast = true;
                     }
@@ -705,7 +705,7 @@ final class AtomicTypeComparator
             && $input_type_part instanceof TNamedObject
         ) {
             if ($container_type_part instanceof TObjectWithProperties
-                && Interner::lookup($input_type_part->name) !== 'stdClass'
+                && $input_type_part->name !== Sym::STD_CLASS
             ) {
                 return KeyedArrayComparator::isContainedByObjectWithProperties(
                     $codebase,

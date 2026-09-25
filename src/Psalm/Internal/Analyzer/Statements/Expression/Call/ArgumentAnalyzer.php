@@ -428,7 +428,7 @@ final class ArgumentAnalyzer
                 $arg_type_param,
                 $argument_offset,
                 !$statements_analyzer->isStatic()
-                    && (!$method_id || Interner::lookupLc($method_id->name_id) !== '__construct')
+                    && (!$method_id || $method_id->name_id !== Sym::CONSTRUCT)
                     ? Interner::lookupOrNull($context->self)
                     : null,
                 $context->calling_method_id ?: $context->calling_function_id,
@@ -1453,7 +1453,7 @@ final class ArgumentAnalyzer
                             && !in_array($cased_method_id, self::PHP_NATIVE_NON_PUBLIC_CB, true))
                         || ($method_id
                             && Interner::lookup($method_id->class_id) !== Interner::lookupOrNull($context->self)
-                            && Interner::lookup($method_id->class_id) !== 'Closure')
+                            && $method_id->class_id !== Sym::CLOSURE)
                     ) {
                         if ($method_storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PUBLIC) {
                             IssueBuffer::maybeAdd(
@@ -1886,7 +1886,7 @@ final class ArgumentAnalyzer
         if (!$specialize_taint
             && $taint_flow_graph
             && $method_id
-            && Interner::lookupLc($method_id->name_id) !== '__construct'
+            && $method_id->name_id !== Sym::CONSTRUCT
         ) {
             $fq_classlike_name = $method_id->class_id;
             $cased_method_name = explode('::', $cased_method_id)[1];

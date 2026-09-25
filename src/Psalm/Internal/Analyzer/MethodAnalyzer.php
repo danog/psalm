@@ -12,6 +12,7 @@ use Psalm\Context;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Issue\InvalidEnumMethod;
 use Psalm\Issue\InvalidStaticInvocation;
 use Psalm\Issue\MethodSignatureMustOmitReturnType;
@@ -111,8 +112,8 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
     ): void {
         $codebase_methods = $codebase->methods;
 
-        if (Interner::lookup($method_id->class_id) === 'Closure'
-            && Interner::lookupLc($method_id->name_id) === 'fromcallable'
+        if ($method_id->class_id === Sym::CLOSURE
+            && $method_id->name_id === Sym::C_FROMCALLABLE
         ) {
             return;
         }

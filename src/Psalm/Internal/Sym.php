@@ -131,6 +131,18 @@ final class Sym
     public const C_GETATTRIBUTES = 7952769968126523042;
     /** `Ds\Collection` */
     public const C_DS__COLLECTION = 2984005344395933713;
+    /** `fromcallable` */
+    public const C_FROMCALLABLE = 6682075227204844092;
+    /** `getcode` */
+    public const C_GETCODE = 2093979136646160828;
+    /** `generator` */
+    public const C_GENERATOR = 2240490954849136197;
+    /** `ReflectionType` */
+    public const C_REFLECTION_TYPE = 7274733320734885816;
+    /** `traversable` */
+    public const C_TRAVERSABLE = 527846189623684380;
+    /** `Psalm\CurrentTest\C` */
+    public const C_PSALM__CURRENT_TEST__C = 5251242593502271815;
     /** `__construct` */
     public const CONSTRUCT = 3382564448877090733;
     /** `__destruct` */
@@ -267,6 +279,12 @@ final class Sym
         'render',
         'getattributes',
         'Ds\\Collection',
+        'fromcallable',
+        'getcode',
+        'generator',
+        'ReflectionType',
+        'traversable',
+        'Psalm\\CurrentTest\\C',
         '__construct',
         '__destruct',
         '__call',

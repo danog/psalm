@@ -64,6 +64,45 @@ final class InternPeepholePlugin implements PluginEntryPointInterface, AfterExpr
             }
             return null;
         }
+        // Interner::lookup(X) === 'Name' (!==) is X === <id of 'Name'>; lookup(X) === lookup(Y) is X === Y: case-sensitive
+        // string equality is id equality
+        if ($e instanceof Expr\BinaryOp\Identical || $e instanceof Expr\BinaryOp\NotIdentical) {
+            $l = self::internerCall($e->left, ['lookup', 'lookuplc']);
+            $r = self::internerCall($e->right, ['lookup', 'lookuplc']);
+            $src = (string) file_get_contents($file);
+            $txt = static fn(Expr $x): string => substr($src, $x->getStartFilePos(), $x->getEndFilePos() + 1 - $x->getStartFilePos());
+            $sym = null;
+            $lit = $l !== null ? $e->right : ($r !== null ? $e->left : null);
+            if ($lit instanceof \PhpParser\Node\Scalar\String_ && $lit->value !== '' && preg_match('/^[A-Za-z_\\\\][A-Za-z0-9_\\\\]*$/', $lit->value)) {
+                require_once __DIR__ . '/SymNames.php';
+                [$sym, $new] = SymNames::forLiteral($lit->value);
+                // outside src (tests, examples) a literal interns itself: no Sym constant for test data
+                if (!str_contains($file, '/src/')) {
+                    $sym = 'Interner::intern(' . var_export(ltrim($lit->value, '\\'), true) . ')';
+                    $new = null;
+                }
+                if ($new !== null) {
+                    file_put_contents(getenv('ID_REFACTOR_OUT') ?: sys_get_temp_dir() . '/peephole.jsonl', json_encode(
+                        ['kind' => 'sym', 'name' => $new[0], 'value' => $new[1], 'literal' => $new[2]]) . "\n", FILE_APPEND | LOCK_EX);
+                }
+            }
+            $op = $e instanceof Expr\BinaryOp\Identical ? ' === ' : ' !== ';
+            $to = null;
+            if ($l !== null && $r !== null) {
+                $to = $txt($l) . $op . $txt($r);
+            } elseif ($l !== null && $sym !== null) {
+                $to = $txt($l) . $op . $sym;
+            } elseif ($r !== null && $sym !== null) {
+                $to = $sym . $op . $txt($r);
+            }
+            if ($to !== null) {
+                file_put_contents(getenv('ID_REFACTOR_OUT') ?: sys_get_temp_dir() . '/peephole.jsonl', json_encode([
+                    'kind' => 'edit', 'file' => $file, 'site' => $file . ':' . $e->getStartFilePos(),
+                    'edits' => [[$e->getStartFilePos(), $e->getEndFilePos() + 1, $to]],
+                ], JSON_UNESCAPED_SLASHES) . "\n", FILE_APPEND | LOCK_EX);
+                return null;
+            }
+        }
         $inner = null;
         if (($arg = self::internerCall($e, ['intern'])) !== null) {
             $inner = self::internerCall($arg, ['lookup', 'lookuplc']);

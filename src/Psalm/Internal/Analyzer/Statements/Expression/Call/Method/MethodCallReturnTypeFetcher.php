@@ -98,7 +98,7 @@ final class MethodCallReturnTypeFetcher
             }
         }
 
-        if (Interner::lookupLc($premixin_method_id->name_id) === 'getcode'
+        if ($premixin_method_id->name_id === Sym::C_GETCODE
             && Interner::lookup($premixin_method_id->class_id) !== Exception::class
             && Interner::lookup($premixin_method_id->class_id) !== RuntimeException::class
             && Interner::lookup($premixin_method_id->class_id) !== PDOException::class

@@ -24,6 +24,7 @@ use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Stubs\Generator\StubsGenerator;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
@@ -1648,7 +1649,7 @@ final class ArgumentsAnalyzer
                 || !$function_storage instanceof MethodStorage
                 || $function_storage->is_static
                 || ($method_id instanceof MethodIdentifier
-                    && Interner::lookupLc($method_id->name_id) === '__construct'))
+                    && $method_id->name_id === Sym::CONSTRUCT))
         ) {
             IssueBuffer::maybeAdd(
                 new TooManyArguments(

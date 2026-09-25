@@ -682,7 +682,7 @@ abstract class Atomic implements TypeNode, Stringable
             || $this instanceof TKeyedArray
             || $this instanceof TClassStringMap
             || $this->hasArrayAccessInterface($codebase)
-            || ($this instanceof TNamedObject && Interner::lookup($this->name) === 'SimpleXMLElement');
+            || ($this instanceof TNamedObject && $this->name === Sym::SIMPLE_XML_ELEMENT);
     }
 
     public function isArrayAccessibleWithIntOrStringKey(Codebase $codebase): bool
@@ -918,8 +918,8 @@ abstract class Atomic implements TypeNode, Stringable
         }
 
         if ($this instanceof TNamedObject
-            && Interner::lookup($this->name) !== 'SimpleXMLElement'
-            && Interner::lookup($this->name) !== 'SimpleXMLIterator') {
+            && $this->name !== Sym::SIMPLE_XML_ELEMENT
+            && $this->name !== Sym::SIMPLE_XML_ITERATOR) {
             return true;
         }
 

@@ -159,7 +159,7 @@ final class Properties
                 $source,
                 null,
             )) {
-                return Interner::intern(Interner::lookup($fq_class_name));
+                return $fq_class_name;
             }
         }
 

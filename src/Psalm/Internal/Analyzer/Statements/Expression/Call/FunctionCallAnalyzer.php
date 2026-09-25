@@ -776,7 +776,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
                         $var_type_part,
                     );
                 } elseif ($var_type_part instanceof TCallableString
-                    || ($var_type_part instanceof TNamedObject && Interner::lookup($var_type_part->name) === 'Closure')
+                    || ($var_type_part instanceof TNamedObject && $var_type_part->name === Sym::CLOSURE)
                     || ($var_type_part instanceof TObjectWithProperties && isset($var_type_part->methods['__invoke']))
                 ) {
                     // this is fine

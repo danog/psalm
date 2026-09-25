@@ -26,6 +26,7 @@ use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\FileManipulation\FunctionDocblockManipulator;
 use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\NodeDataProvider;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TemplateResult;
@@ -772,7 +773,7 @@ final class ReturnTypeAnalyzer
         if (!$storage->signature_return_type || $storage->signature_return_type === $storage->return_type) {
             foreach ($storage->return_type->getAtomicTypes() as $type) {
                 if ($type instanceof TNamedObject
-                    && 'parent' === Interner::lookup($type->name)
+                    && Sym::PARENT === $type->name
                     && null === $parent_class
                 ) {
                     if (IssueBuffer::accepts(

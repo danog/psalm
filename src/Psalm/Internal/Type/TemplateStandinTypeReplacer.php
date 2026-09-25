@@ -560,7 +560,7 @@ final class TemplateStandinTypeReplacer
                     || $base_type instanceof TIterable)
             ) {
                 if ($base_type instanceof TIterable) {
-                    if (Interner::lookup($atomic_input_type->name) === 'Traversable') {
+                    if ($atomic_input_type->name === Sym::TRAVERSABLE) {
                         $matching_atomic_types[$atomic_input_type->getId()] = $atomic_input_type;
                         continue;
                     }
@@ -593,7 +593,7 @@ final class TemplateStandinTypeReplacer
                     }
 
                     if (isset($classlike_storage->class_implements[Sym::TRAVERSABLE])
-                        && Interner::lookup($base_type->name) === 'Iterator'
+                        && $base_type->name === Sym::ITERATOR
                     ) {
                         $matching_atomic_types[$atomic_input_type->getId()] = $atomic_input_type;
                         continue;
@@ -1332,7 +1332,7 @@ final class TemplateStandinTypeReplacer
 
             $template_extends = $input_class_storage->template_extended_params;
 
-            $container_type_part_value = Interner::lookup($container_type_part->name) === 'iterable'
+            $container_type_part_value = $container_type_part->name === Sym::ITERABLE
                 ? 'Traversable'
                 : Interner::lookup($container_type_part->name);
 

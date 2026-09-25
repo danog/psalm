@@ -2267,7 +2267,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                     }
 
                     if ($storage->is_enum) {
-                        if (Interner::lookupLc($interface_method_name_lc) === 'cases') {
+                        if ($interface_method_name_lc === Sym::CASES) {
                             continue;
                         }
                         if ($storage->enum_type

@@ -18,6 +18,7 @@ use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\Interner;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\TypeExpander;
 use Psalm\Issue\InvalidDocblock;
 use Psalm\Issue\UnnecessaryVarAnnotation;
@@ -239,7 +240,7 @@ final class YieldAnalyzer
             if ($storage->return_type && !$yield_type) {
                 foreach ($storage->return_type->getAtomicTypes() as $atomic_return_type) {
                     if ($atomic_return_type instanceof TNamedObject
-                        && Interner::lookup($atomic_return_type->name) === 'Generator'
+                        && $atomic_return_type->name === Sym::GENERATOR
                     ) {
                         if ($atomic_return_type instanceof TGenericObject) {
                             if (!$atomic_return_type->type_params[2]->isVoid()) {

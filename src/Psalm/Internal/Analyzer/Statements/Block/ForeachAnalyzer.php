@@ -606,7 +606,7 @@ final class ForeachAnalyzer
                     $stmt,
                 );
             } elseif ($iterator_atomic_type instanceof TNamedObject) {
-                if (Interner::lookup($iterator_atomic_type->name) !== 'Traversable' &&
+                if ($iterator_atomic_type->name !== Sym::TRAVERSABLE &&
                     Interner::lookup($iterator_atomic_type->name) !== $statements_analyzer->getClassName()
                 ) {
                     if (ClassLikeAnalyzer::checkFullyQualifiedClassLikeName(
@@ -850,7 +850,7 @@ final class ForeachAnalyzer
 
                                 if ($array_atomic_type instanceof TIterable
                                     || ($array_atomic_type instanceof TNamedObject
-                                        && (Interner::lookup($array_atomic_type->name) === 'Traversable'
+                                        && ($array_atomic_type->name === Sym::TRAVERSABLE
                                             || ($codebase->classOrInterfaceExists(
                                                 $array_atomic_type->name,
                                                 null,

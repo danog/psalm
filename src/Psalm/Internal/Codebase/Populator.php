@@ -416,7 +416,6 @@ final class Populator
 
                 foreach ($overridden_method_ids as $declaring_method_id) {
                     $declaring_class = Interner::lookup($declaring_method_id->class_id);
-                    $declaring_method_name = Interner::lookupLc($declaring_method_id->name_id);
                     $declaring_class_storage = $declaring_class_storages[$declaring_class];
 
                     $declaring_method_storage = $declaring_class_storage->methods[$declaring_method_id->name_id]

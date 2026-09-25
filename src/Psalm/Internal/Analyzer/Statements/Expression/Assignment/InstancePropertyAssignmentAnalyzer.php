@@ -402,7 +402,7 @@ final class InstancePropertyAssignmentAnalyzer
         if (($appearing_property_class !== null)) {
             $can_set_readonly_property = ($context->self !== null)
                 && $context->calling_method_id
-                && (Interner::lookup($appearing_property_class) === Interner::lookup($context->self)
+                && ($appearing_property_class === $context->self
                     || $codebase->classExtends($context->self, $appearing_property_class))
                 && (str_ends_with($context->calling_method_id, '::__construct')
                     || str_ends_with($context->calling_method_id, '::unserialize')

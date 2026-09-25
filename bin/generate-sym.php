@@ -75,6 +75,13 @@ $names = [
     'C_GETATTRIBUTES' => 'getattributes',
     // added by tools/id-refactor
     'C_DS__COLLECTION' => 'Ds\\Collection',
+    // added by tools/id-refactor
+    'C_FROMCALLABLE' => 'fromcallable',
+    'C_GETCODE' => 'getcode',
+    'C_GENERATOR' => 'generator',
+    'C_REFLECTION_TYPE' => 'ReflectionType',
+    'C_TRAVERSABLE' => 'traversable',
+    'C_PSALM__CURRENT_TEST__C' => 'Psalm\\CurrentTest\\C',
 ];
 
 // Member (method, property, constant) names: the storages key their member maps by the id of the canonical

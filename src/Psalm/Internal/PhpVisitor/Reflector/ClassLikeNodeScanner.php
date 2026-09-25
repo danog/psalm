@@ -297,7 +297,6 @@ final class ClassLikeNodeScanner
                     $parent_fqcln,
                     $this->file_scanner->will_analyze,
                 );
-                $parent_fqcln_lc = strtolower($parent_fqcln);
                 $storage->parent_class = $parent_fqcln;
                 $storage->parent_classes[Interner::intern($parent_fqcln)] = true;
                 $this->file_storage->required_classes[strtolower($parent_fqcln)] = $parent_fqcln;
@@ -1069,8 +1068,6 @@ final class ClassLikeNodeScanner
                 return;
             }
 
-            $generic_class_lc = strtolower(Interner::lookup($atomic_type->name));
-
             if (!isset($storage->parent_classes[$atomic_type->name])
                 && !isset($storage->parent_interfaces[$atomic_type->name])
             ) {
@@ -1277,7 +1274,7 @@ final class ClassLikeNodeScanner
         $storage = $class_storage->methods[Sym::CONSTRUCT] = new MethodStorage();
 
         $storage->cased_name = '__construct';
-        $storage->declaring_class = Interner::intern(Interner::lookup($class_storage->id));
+        $storage->declaring_class = $class_storage->id;
 
         $storage->allowed_mutations = Mutations::LEVEL_NONE;
         $storage->mutation_free_assumed = true;

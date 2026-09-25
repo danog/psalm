@@ -8,6 +8,7 @@ use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Interner;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Storage\Mutations;
 use Psalm\Type;
@@ -179,7 +180,7 @@ class TNamedObject extends Atomic
         ?string $this_class,
         bool $use_phpdoc_format,
     ): string {
-        if (Interner::lookup($this->name) === 'static') {
+        if ($this->name === Sym::STATIC) {
             return 'static';
         }
 
@@ -210,7 +211,7 @@ class TNamedObject extends Atomic
         ?string $this_class,
         int $analysis_php_version_id,
     ): ?string {
-        if (Interner::lookup($this->name) === 'static') {
+        if ($this->name === Sym::STATIC) {
             return $analysis_php_version_id >= 8_00_00 ? 'static' : null;
         }
 
@@ -229,7 +230,7 @@ class TNamedObject extends Atomic
     #[Override]
     public function canBeFullyExpressedInPhp(int $analysis_php_version_id): bool
     {
-        return (Interner::lookup($this->name) !== 'static' && $this->is_static === false) || $analysis_php_version_id >= 8_00_00;
+        return ($this->name !== Sym::STATIC && $this->is_static === false) || $analysis_php_version_id >= 8_00_00;
     }
 
     /**
