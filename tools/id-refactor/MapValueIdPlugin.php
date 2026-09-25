@@ -31,6 +31,12 @@ use Throwable;
  *   name         array<int, string> of class names                  -> array<int, int>
  *   member       array<int, string> of "Class::$key" member ids     -> array<int, int> (the class; the key names the member)
  *   member_list  array<int, list<string>> of member ids             -> array<int, list<int>>
+ *   inner_name   array<int, array<string, V>> keyed by class names  -> array<int, array<int, V>> (keys: class ids)
+ *   inner_member array<int, array<string, V>> keyed by "Class::m"   -> array<int, array<int, V>> (keys: class ids; the
+ *                outer key names the member)
+ * For the inner kinds, a configured method returning `S[k]` (env MAP_VALUE_SOURCES = [[class, method, kind]])
+ * yields an inner map too, and so does a local assigned from one: key writes become class ids, a foreach key
+ * variable reads its old string.
  * Writes `S[k] = V` / `S[k] ??= V` / `S[k][] = V` store V's class id (`X . '::$' . Y` and a local defined so give X's
  * id; a value read from a converted map stays). Reads: `Interner::intern(S[k])` is `S[k]`; any other read is the
  * old string (`Interner::lookup(S[k])`, a member `Interner::lookup(S[k]) . '::$' . Interner::lookup(k)`). Foreach
@@ -55,6 +61,10 @@ final class MapValueIdPlugin implements PluginEntryPointInterface, AfterFunction
     private SplObjectStorage $done;
     /** @var array<string, list<array{string, string, int, int}>> value variable => [kind, key text, loop start, loop end] */
     private array $loop_vals = [];
+    /** @var array<string, array{string, string}> local inner maps: variable => [kind, outer key text] */
+    private array $inner_locals = [];
+    /** @var array<string, array{string, string, int, int}> key variable of a foreach over an inner map => [kind, outer key, start, end] */
+    private array $inner_keys = [];
 
     public function __invoke(RegistrationInterface $registration, ?SimpleXMLElement $config = null): void
     {
@@ -282,7 +292,7 @@ final class MapValueIdPlugin implements PluginEntryPointInterface, AfterFunction
         return null;
     }
 
-    private function nameId(Expr $v): string
+    private function nameId(Expr $v, int $depth = 0): string
     {
         if ($v instanceof String_) {
             [$text, $new] = SymNames::forLiteral($v->value);
@@ -292,12 +302,40 @@ final class MapValueIdPlugin implements PluginEntryPointInterface, AfterFunction
             return $text;
         }
         if ($v instanceof Expr\StaticCall && $v->class instanceof Name && strtolower($v->class->getLast()) === 'interner'
-            && $v->name instanceof Identifier && strtolower($v->name->name) === 'lookup' && count($v->getArgs()) === 1
+            && $v->name instanceof Identifier && in_array(strtolower($v->name->name), ['lookup', 'lookuplc'], true)
+            && !$v->isFirstClassCallable() && count($v->getArgs()) === 1
         ) {
             return $this->text($v->getArgs()[0]->value);
         }
+        if ($v instanceof Expr\FuncCall && $v->name instanceof Name && strtolower($v->name->toString()) === 'strtolower'
+            && !$v->isFirstClassCallable() && count($v->getArgs()) === 1
+        ) {
+            // a class id stands for the class whatever the spelling
+            return $this->nameId($v->getArgs()[0]->value, $depth);
+        }
         if ($v instanceof Expr\Variable && is_string($v->name) && $this->loopVal($v) !== null) {
             return '$' . $v->name;
+        }
+        // a local: its nearest earlier definition, when that is a name conversion
+        if ($v instanceof Expr\Variable && is_string($v->name) && $depth < 3) {
+            $defs = [];
+            foreach ($this->order as $n) {
+                if ($n instanceof Expr\Assign && $n->var instanceof Expr\Variable && $n->var->name === $v->name
+                    && $n->getEndFilePos() < $v->getStartFilePos()
+                ) {
+                    $defs[] = $n;
+                }
+            }
+            usort($defs, static fn(Expr\Assign $a, Expr\Assign $b): int => $b->getStartFilePos() <=> $a->getStartFilePos());
+            $d = $defs[0]->expr ?? null;
+            if ($d instanceof Expr\StaticCall || ($d instanceof Expr\FuncCall && $d->name instanceof Name && strtolower($d->name->toString()) === 'strtolower')
+                || ($d instanceof Expr\Variable && $this->loopVal($d) !== null)
+            ) {
+                $r = $this->nameId($d, $depth + 1);
+                if (!str_starts_with($r, 'Interner::intern(')) {
+                    return $r;
+                }
+            }
         }
         // a nullable name concatenated as '' before: the same string
         $t = $this->types->getType($v);
@@ -312,8 +350,196 @@ final class MapValueIdPlugin implements PluginEntryPointInterface, AfterFunction
             : '(Interner::lookup(' . $read . ') . \'::$\' . Interner::lookup(' . $key . '))';
     }
 
+    /** @return ?array{string, string} [kind, outer key text] when the expression is an inner map (keyed by class) */
+    private function innerOf(Expr $e): ?array
+    {
+        // `A ?? B`, `A + B`: an inner map when either operand is one
+        if ($e instanceof Expr\BinaryOp\Coalesce || $e instanceof Expr\BinaryOp\Plus) {
+            return $this->innerOf($e->left) ?? ($e->right instanceof Expr\Array_ ? null : $this->innerOf($e->right));
+        }
+        if ($e instanceof Expr\ArrayDimFetch && $e->dim !== null) {
+            $k = $this->mapKind($e->var);
+            if ($k === 'inner_name' || $k === 'inner_member') {
+                return [$k, $this->text($e->dim)];
+            }
+        }
+        if (($e instanceof Expr\MethodCall || $e instanceof Expr\StaticCall) && $e->name instanceof Identifier) {
+            foreach (json_decode((string) getenv('MAP_VALUE_SOURCES'), true) ?: [] as [$c, $m, $k]) {
+                if (strcasecmp($m, $e->name->name) === 0 && ($e instanceof Expr\StaticCall || $this->receiverIs($e->var, $c))) {
+                    // the member: the method id argument's name
+                    $a = $e->getArgs()[0]->value ?? null;
+                    return [$k, $a !== null ? $this->text($a) . '->name_id' : '0'];
+                }
+            }
+        }
+        if ($e instanceof Expr\Variable && is_string($e->name) && isset($this->inner_locals[$e->name])) {
+            return $this->inner_locals[$e->name];
+        }
+        return null;
+    }
+
+    /** An inner map's key (a class name, or a "Class::member" id) as the class id text, or null. */
+    private function innerKeyId(Expr $k, string $kind): ?string
+    {
+        if ($k instanceof Expr\Variable && is_string($k->name)) {
+            foreach ([$this->inner_keys[$k->name] ?? null] as $ik) {
+                if ($ik !== null && $k->getStartFilePos() > $ik[2] && $k->getEndFilePos() <= $ik[3]) {
+                    return '$' . $k->name;
+                }
+            }
+        }
+        if ($kind === 'inner_name') {
+            return $this->classIdOf($k, 'name');
+        }
+        // "C::m": the class part (the separator is `::`)
+        $parts = $this->concatParts($k);
+        if ($parts !== null) {
+            $before = [];
+            foreach ($parts as $p) {
+                if ($p instanceof String_ && str_starts_with($p->value, '::')) {
+                    $before = array_values(array_filter($before, static fn(Expr $x): bool => !($x instanceof String_ && $x->value === '')));
+                    if (count($before) !== 1) {
+                        return null;
+                    }
+                    $b = $before[0];
+                    // a lowercased class name: the id of the class (ids are exact names; the class resolves by id)
+                    if ($b instanceof Expr\FuncCall && $b->name instanceof Name && strtolower($b->name->toString()) === 'strtolower'
+                        && count($b->getArgs()) === 1
+                    ) {
+                        $b = $b->getArgs()[0]->value;
+                    }
+                    return $this->nameId($b);
+                }
+                $before[] = $p;
+            }
+            return null;
+        }
+        if ($k instanceof Expr\Variable && is_string($k->name)) {
+            $defs = [];
+            foreach ($this->order as $n) {
+                if ($n instanceof Expr\Assign && $n->var instanceof Expr\Variable && $n->var->name === $k->name
+                    && $n->getEndFilePos() < $k->getStartFilePos()
+                ) {
+                    $defs[] = $n;
+                }
+            }
+            usort($defs, static fn(Expr\Assign $a, Expr\Assign $b): int => $b->getStartFilePos() <=> $a->getStartFilePos());
+            return $defs !== [] ? $this->innerKeyId($defs[0]->expr, $kind) : null;
+        }
+        return null;
+    }
+
+    /** Inner maps: key writes, literals assigned whole, locals from sources, foreach key variables. */
+    private function inner(): void
+    {
+        // locals every assignment of which is an inner map (or a source method's result)
+        $bad = [];
+        foreach ($this->order as $n) {
+            if (($n instanceof Expr\Assign || $n instanceof Expr\AssignRef || $n instanceof Expr\AssignOp)
+                && $n->var instanceof Expr\Variable && is_string($n->var->name)
+            ) {
+                $e = $n->expr;
+                while ($e instanceof Expr\BinaryOp\Coalesce) {
+                    $e = $e->left;
+                }
+                $io = $n instanceof Expr\Assign ? $this->innerOf($e) : null;
+                if ($io === null) {
+                    $bad[$n->var->name] = true;
+                } else {
+                    $this->inner_locals[$n->var->name] = $io;
+                }
+            }
+        }
+        $this->inner_locals = array_diff_key($this->inner_locals, $bad);
+        foreach ($this->order as $n) {
+            // S[k][K2] = V (and ??=)
+            if (($n instanceof Expr\Assign || $n instanceof Expr\AssignOp\Coalesce) && $n->var instanceof Expr\ArrayDimFetch
+                && $n->var->dim !== null && ($io = $this->innerOf($n->var->var)) !== null
+            ) {
+                $id = $this->innerKeyId($n->var->dim, $io[0]);
+                if ($id === null) {
+                    $this->manual($n, 'inner key ' . $this->text($n->var->dim));
+                } elseif ($id !== $this->text($n->var->dim)) {
+                    $this->edit($n->var->dim, $id);
+                }
+                continue;
+            }
+            // S[k] = [K2 => V, ...]
+            if ($n instanceof Expr\Assign && $n->var instanceof Expr\ArrayDimFetch && $n->expr instanceof Expr\Array_
+                && ($io = $this->innerOf($n->var)) !== null
+            ) {
+                foreach ($n->expr->items as $it) {
+                    if ($it === null || $it->key === null) {
+                        continue;
+                    }
+                    $id = $this->innerKeyId($it->key, $io[0]);
+                    if ($id === null) {
+                        $this->manual($n, 'inner literal key ' . $this->text($it->key));
+                    } elseif ($id !== $this->text($it->key)) {
+                        $this->edit($it->key, $id);
+                    }
+                }
+                continue;
+            }
+            // `<inner> + [K2 => V, ...]`: the literal's keys too
+            if ($n instanceof Expr\BinaryOp\Plus && $n->right instanceof Expr\Array_ && ($io = $this->innerOf($n->left)) !== null) {
+                foreach ($n->right->items as $it) {
+                    if ($it === null || $it->key === null) {
+                        continue;
+                    }
+                    $id = $this->innerKeyId($it->key, $io[0]);
+                    if ($id === null) {
+                        $this->manual($n, 'inner literal key ' . $this->text($it->key));
+                    } elseif ($id !== $this->text($it->key)) {
+                        $this->edit($it->key, $id);
+                    }
+                }
+                continue;
+            }
+            // isset(S[k][K2])
+            if ($n instanceof Expr\ArrayDimFetch && $n->dim !== null && ($io = $this->innerOf($n->var)) !== null
+                && ($this->parent[$n] ?? null) instanceof Expr\Isset_
+            ) {
+                $id = $this->innerKeyId($n->dim, $io[0]);
+                if ($id === null) {
+                    $this->manual($n, 'inner isset key');
+                } elseif ($id !== $this->text($n->dim)) {
+                    $this->edit($n->dim, $id);
+                }
+                continue;
+            }
+            // foreach (S[k] as $key => ...): the key variable reads its old string
+            if ($n instanceof Stmt\Foreach_ && $n->keyVar instanceof Expr\Variable && is_string($n->keyVar->name)
+                && ($io = $this->innerOf($n->expr)) !== null
+            ) {
+                $key = $n->keyVar->name;
+                $this->inner_keys[$key] = [$io[0], $io[1], $n->keyVar->getEndFilePos(), $n->getEndFilePos()];
+                foreach ($this->order as $u) {
+                    if ($u instanceof Expr\Variable && $u->name === $key && $u !== $n->keyVar
+                        && $u->getStartFilePos() > $n->getStartFilePos() && $u->getEndFilePos() <= $n->getEndFilePos()
+                    ) {
+                        $p = $this->parent[$u];
+                        if ($p instanceof Expr\ArrayDimFetch && $p->dim === $u && $this->innerOf($p->var) !== null) {
+                            continue; // an inner map key again: stays the id
+                        }
+                        $old = $io[0] === 'inner_name'
+                            ? 'Interner::lookup($' . $key . ')'
+                            : '(Interner::lookup($' . $key . ') . \'::\' . Interner::lookupLc(' . $io[1] . '))';
+                        $this->replaceRead($u, $old);
+                    }
+                }
+            }
+            if (($n instanceof Expr\FuncCall && $n->name instanceof Name && in_array(strtolower($n->name->toString()), ['array_keys', 'array_key_first', 'array_key_last', 'key'], true)
+                && ($n->getArgs()[0] ?? null) !== null && $this->innerOf($n->getArgs()[0]->value) !== null)
+            ) {
+                $this->manual($n, 'inner map keys read');
+            }
+        }
+    }
+
     private function walk(): void
     {
+        $this->inner();
         foreach ($this->order as $n) {
             if (isset($this->done[$n])) {
                 continue;
@@ -329,10 +555,12 @@ final class MapValueIdPlugin implements PluginEntryPointInterface, AfterFunction
             if (($n instanceof Expr\Assign || $n instanceof Expr\AssignOp\Coalesce) && $n->var instanceof Expr\ArrayDimFetch) {
                 $d = $n->var;
                 $kind = null;
-                if ($d->dim !== null && ($k = $this->mapKind($d->var)) !== null && $k !== 'member_list') {
+                if ($d->dim !== null && ($k = $this->mapKind($d->var)) !== null && !in_array($k, ['member_list', 'inner_name', 'inner_member'], true)) {
                     $kind = $k;
                 } elseif ($d->dim === null && $d->var instanceof Expr\ArrayDimFetch && $this->mapKind($d->var->var) === 'member_list') {
                     $kind = 'member';
+                } elseif ($d->dim !== null && in_array($this->mapKind($d->var), ['inner_name', 'inner_member'], true)) {
+                    continue; // inner() rewrote its keys
                 } elseif ($d->dim !== null && $this->mapKind($d->var) === 'member_list') {
                     $this->manual($n, 'member list replaced');
                     continue;
@@ -446,6 +674,9 @@ final class MapValueIdPlugin implements PluginEntryPointInterface, AfterFunction
     private function foreach_(Stmt\Foreach_ $f): void
     {
         $k = $this->mapKind($f->expr);
+        if ($k === 'inner_name' || $k === 'inner_member') {
+            return;
+        }
         $key_text = null;
         if ($k === 'member_list') {
             $this->manual($f, 'foreach over a member list map');

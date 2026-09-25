@@ -36,7 +36,22 @@ final class MapValueIdDeclPlugin implements PluginEntryPointInterface, AfterClas
                     continue;
                 }
                 $s = $doc->getStartFilePos() + $m[1][1];
+                if ($kind === 'inner_name' || $kind === 'inner_member') {
+                    // the inner key type: array<int, array<string, V>> -> array<int, array<int, V>>
+                    $edits[] = [$s, $s + strlen($m[1][0]), preg_replace('/^array<int, array<(?:lowercase-)?string, /', 'array<int, array<int, ', $m[1][0])];
+                    continue;
+                }
                 $edits[] = [$s, $s + strlen($m[1][0]), $kind === 'member_list' ? 'array<int, list<int>>' : 'array<int, int>'];
+            }
+        }
+        // source methods returning an inner map: @return array<string, V> -> array<int, V>
+        foreach (json_decode((string) getenv('MAP_VALUE_SOURCES'), true) ?: [] as [$c, $m]) {
+            if (strcasecmp($c, $cls) !== 0 || ($method = $event->getStmt()->getMethod($m)) === null || ($doc = $method->getDocComment()) === null) {
+                continue;
+            }
+            if (preg_match('/@return\s+(array<string, )/', $doc->getText(), $mm, PREG_OFFSET_CAPTURE)) {
+                $s = $doc->getStartFilePos() + $mm[1][1];
+                $edits[] = [$s, $s + strlen($mm[1][0]), 'array<int, '];
             }
         }
         if ($edits !== []) {
