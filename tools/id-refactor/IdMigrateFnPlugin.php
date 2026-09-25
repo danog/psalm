@@ -53,6 +53,8 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
     private array $locals = [];
     /** @var SplObjectStorage<Node, Node> */
     private SplObjectStorage $parent;
+    /** @var list<Node> the indexed nodes in order (loops iterate this: an SplObjectStorage has one internal iterator) */
+    private array $order = [];
 
     public function __invoke(RegistrationInterface $registration, ?SimpleXMLElement $config = null): void
     {
@@ -161,6 +163,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
         }
         $body = $stmt->stmts ?? [];
         $this->parent = new SplObjectStorage();
+        $this->order = [];
         $this->index($body, $stmt);
         $this->findLocals($body);
         // parameter declarations only for the parameters the body leaves convertible
@@ -189,6 +192,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
                 continue;
             }
             $this->parent[$n] = $parent;
+            $this->order[] = $n;
             if ($n instanceof Expr\Closure || $n instanceof Expr\ArrowFunction || $n instanceof Stmt\Class_) {
                 continue; // other scopes: their variables are not this method's
             }
@@ -209,7 +213,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
     {
         $assigned = [];
         $bad = [];
-        foreach ($this->parent as $n) {
+        foreach ($this->order as $n) {
             if ($n instanceof Expr\Assign && $n->var instanceof Expr\Variable && is_string($n->var->name)) {
                 $t = $this->types->getType($n->expr);
                 if ($t !== null && $t->isNullable() && !$t->isNull()) {
@@ -521,7 +525,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
     /** @param array<Node> $nodes */
     private function walk(array $nodes, Node $fn): void
     {
-        foreach ($this->parent as $n) {
+        foreach ($this->order as $n) {
             if (!$n instanceof Expr) {
                 continue;
             }
@@ -616,7 +620,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
                 'nullable' => (bool) $this->types->getType($n)?->isNullable(), 'lc' => $this->isLc($n)]);
         }
         // returns of non-slot expressions into this method's own return slot
-        foreach ($this->parent as $n) {
+        foreach ($this->order as $n) {
             if ($n instanceof Stmt\Return_ && $n->expr !== null && $this->slotOf($n->expr) === null) {
                 $this->flow('R:' . $this->method, $n->expr);
             }

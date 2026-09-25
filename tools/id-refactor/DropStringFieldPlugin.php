@@ -51,6 +51,13 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
     private ?SplObjectStorage $spread_done = null;
     /** @var SplObjectStorage<Node, Node> */
     private SplObjectStorage $parent;
+    /**
+     * The indexed nodes in order: loops iterate this, never $parent (an SplObjectStorage has one internal iterator,
+     * so a nested foreach over it ends the outer one)
+     *
+     * @var list<Node>
+     */
+    private array $order = [];
     /** @var list<array{int, int, string}> */
     private array $edits = [];
 
@@ -113,6 +120,7 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
                 continue;
             }
             $this->parent[$n] = $parent;
+            $this->order[] = $n;
             if ($n instanceof Expr\Closure || $n instanceof Expr\ArrowFunction || $n instanceof Stmt\Class_
                 || $n instanceof Stmt\Function_
             ) {
@@ -155,7 +163,13 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
             $t = null;
             // no type recorded here (inside isset() Psalm keeps none): the class of a `new C(...)` the function
             // assigns to that variable
-            foreach ($this->parent as $m) {
+            foreach ($this->order as $m) {
+                // `$v = $this->p = new C(...)`: the end of an assignment chain
+                while ($m instanceof Expr\Assign && $m->expr instanceof Expr\Assign && $m->var instanceof Expr\Variable
+                    && $m->var->name === $fetch->var->name
+                ) {
+                    $m = new Expr\Assign($m->var, $m->expr->expr);
+                }
                 if ($m instanceof Expr\Assign && $m->var instanceof Expr\Variable && $m->var->name === $fetch->var->name
                     && $m->expr instanceof Expr\New_ && $m->expr->class instanceof Name
                 ) {
@@ -320,7 +334,7 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
     private function walk(): void
     {
         $done = new SplObjectStorage();
-        foreach ($this->parent as $n) {
+        foreach ($this->order as $n) {
             if ($n instanceof Expr\New_ || $n instanceof Expr\StaticCall) {
                 $this->ctorArgs($n);
             }
@@ -484,7 +498,7 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
     private function assignsId(Expr\PropertyFetch|Expr\NullsafePropertyFetch $f, string $id): bool
     {
         $recv = $this->text($f->var);
-        foreach ($this->parent as $m) {
+        foreach ($this->order as $m) {
             if ($m instanceof Expr\Assign && $m->var instanceof Expr\PropertyFetch && $m->var->name instanceof Identifier
                 && $m->var->name->name === $id && $this->text($m->var->var) === $recv
             ) {
