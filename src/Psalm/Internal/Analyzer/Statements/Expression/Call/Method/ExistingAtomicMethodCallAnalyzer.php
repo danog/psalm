@@ -571,7 +571,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
         $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
         $codebase->propertyExists(
-            $property_id_class, $property_id_name,
+            Interner::intern($property_id_class), Interner::intern($property_id_name),
             $method_name === '__get',
             $statements_analyzer,
             $context,

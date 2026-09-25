@@ -49,17 +49,14 @@ final class Properties
      */
     public function propertyExists(
         Codebase $codebase,
-        string $fq_class_name,
-        string $property_name,
+        int $fq_class_name,
+        int $property_name,
         bool $read_mode,
         ?StatementsSource $source = null,
         ?Context $context = null,
         ?CodeLocation $code_location = null,
     ): bool {
-        // remove leading backslash if it exists
-        $fq_class_name = ltrim($fq_class_name, '\\');
-
-        $fq_class_name_lc = strtolower($fq_class_name);
+        $fq_class_name_lc = strtolower(Interner::lookup($fq_class_name));
 
         if ($this->property_existence_provider->has($fq_class_name)) {
             $property_exists = $this->property_existence_provider->doesPropertyExist(
@@ -76,7 +73,7 @@ final class Properties
             }
         }
 
-        $class_storage = $this->classlikes->getStorageFor(Interner::intern($fq_class_name));
+        $class_storage = $this->classlikes->getStorageFor($fq_class_name);
 
         if (!$class_storage) {
             return false;
@@ -84,19 +81,19 @@ final class Properties
 
         if ($source
             && $context
-            && Interner::lookupOrNull($context->self) !== $fq_class_name
+            && Interner::lookupOrNull($context->self) !== Interner::lookup($fq_class_name)
             && !$context->collect_initializations
             && !$context->collect_mutations
         ) {
             $codebase->addReferenceToClass($fq_class_name_lc, $code_location, $context, $source->getFilePath());
         }
 
-        if (isset($class_storage->declaring_property_ids[Interner::intern($property_name)])) {
-            $declaring_property_class = strtolower(Interner::lookup($class_storage->declaring_property_ids[Interner::intern($property_name)]));
+        if (isset($class_storage->declaring_property_ids[$property_name])) {
+            $declaring_property_class = strtolower(Interner::lookup($class_storage->declaring_property_ids[$property_name]));
 
             $codebase->addReferenceToProperty(
                 $declaring_property_class,
-                $property_name,
+                Interner::lookup($property_name),
                 $read_mode,
                 $code_location,
                 $context,
@@ -108,7 +105,7 @@ final class Properties
 
         $codebase->addReferenceToMissingProperty(
             $fq_class_name_lc,
-            $property_name,
+            Interner::lookup($property_name),
             $code_location,
             $context,
             $source?->getFilePath(),
@@ -117,42 +114,11 @@ final class Properties
     }
 
     public function getDeclaringClassForProperty(
-        string $fq_class_name,
-        string $property_name,
+        int $fq_class_name,
+        int $property_name,
         bool $read_mode,
         ?StatementsSource $source = null,
     ): ?int {
-
-        if ($this->property_existence_provider->has($fq_class_name)) {
-            if ($this->property_existence_provider->doesPropertyExist(
-                $fq_class_name,
-                $property_name,
-                $read_mode,
-                $source,
-                null,
-            )) {
-                return Interner::intern($fq_class_name);
-            }
-        }
-
-        $class_storage = $this->classlikes->getStorageFor(Interner::intern($fq_class_name));
-
-        if ($class_storage && isset($class_storage->declaring_property_ids[Interner::intern($property_name)])) {
-            return Interner::intern(Interner::lookup($class_storage->declaring_property_ids[Interner::intern($property_name)]));
-        }
-
-        return null;
-    }
-
-    /**
-     * Get the class this property appears in (vs is declared in, which could give a trait)
-     */
-    public function getAppearingClassForProperty(
-        string $fq_class_name,
-        string $property_name,
-        bool $read_mode,
-        ?StatementsSource $source = null,
-    ): ?string {
 
         if ($this->property_existence_provider->has($fq_class_name)) {
             if ($this->property_existence_provider->doesPropertyExist(
@@ -166,10 +132,41 @@ final class Properties
             }
         }
 
-        $class_storage = $this->classlikes->getStorageFor(Interner::intern($fq_class_name));
+        $class_storage = $this->classlikes->getStorageFor($fq_class_name);
 
-        if ($class_storage && isset($class_storage->appearing_property_ids[Interner::intern($property_name)])) {
-            $appearing_property_id = (Interner::lookup($class_storage->appearing_property_ids[Interner::intern($property_name)]) . '::$' . Interner::lookup(Interner::intern($property_name)));
+        if ($class_storage && isset($class_storage->declaring_property_ids[$property_name])) {
+            return Interner::intern(Interner::lookup($class_storage->declaring_property_ids[$property_name]));
+        }
+
+        return null;
+    }
+
+    /**
+     * Get the class this property appears in (vs is declared in, which could give a trait)
+     */
+    public function getAppearingClassForProperty(
+        int $fq_class_name,
+        int $property_name,
+        bool $read_mode,
+        ?StatementsSource $source = null,
+    ): ?string {
+
+        if ($this->property_existence_provider->has($fq_class_name)) {
+            if ($this->property_existence_provider->doesPropertyExist(
+                $fq_class_name,
+                $property_name,
+                $read_mode,
+                $source,
+                null,
+            )) {
+                return Interner::lookup($fq_class_name);
+            }
+        }
+
+        $class_storage = $this->classlikes->getStorageFor($fq_class_name);
+
+        if ($class_storage && isset($class_storage->appearing_property_ids[$property_name])) {
+            $appearing_property_id = (Interner::lookup($class_storage->appearing_property_ids[$property_name]) . '::$' . Interner::lookup($property_name));
 
             return explode('::$', $appearing_property_id)[0];
         }
@@ -180,66 +177,57 @@ final class Properties
     /**
      * @psalm-mutation-free
      */
-    public function getStorage(string $fq_class_name, string $property_name): PropertyStorage
+    public function getStorage(int $fq_class_name, int $property_name): PropertyStorage
     {
-        // remove leading backslash if it exists
-        $fq_class_name = ltrim($fq_class_name, '\\');
 
-
-        $class_storage = $this->classlike_storage_provider->get(Interner::intern($fq_class_name));
+        $class_storage = $this->classlike_storage_provider->get($fq_class_name);
 
         // own or inherited: the flattened map filled at populate
-        if (isset($class_storage->all_properties[Interner::intern($property_name)])) {
-            return $class_storage->all_properties[Interner::intern($property_name)];
+        if (isset($class_storage->all_properties[$property_name])) {
+            return $class_storage->all_properties[$property_name];
         }
 
-        if (isset($class_storage->declaring_property_ids[Interner::intern($property_name)])) {
-            $declaring_property_class = $class_storage->declaring_property_ids[Interner::intern($property_name)];
+        if (isset($class_storage->declaring_property_ids[$property_name])) {
+            $declaring_property_class = $class_storage->declaring_property_ids[$property_name];
             $declaring_class_storage = $this->classlike_storage_provider->get($declaring_property_class);
 
-            if (isset($declaring_class_storage->properties[Interner::intern($property_name)])) {
-                return $declaring_class_storage->properties[Interner::intern($property_name)];
+            if (isset($declaring_class_storage->properties[$property_name])) {
+                return $declaring_class_storage->properties[$property_name];
             }
         }
 
-        throw new UnexpectedValueException('Property ' . ($fq_class_name . '::$' . $property_name) . ' should exist');
+        throw new UnexpectedValueException('Property ' . (Interner::lookup($fq_class_name) . '::$' . Interner::lookup($property_name)) . ' should exist');
     }
 
     /**
      * @psalm-mutation-free
      */
-    public function hasStorage(string $fq_class_name, string $property_name): bool
+    public function hasStorage(int $fq_class_name, int $property_name): bool
     {
-        // remove leading backslash if it exists
-        $fq_class_name = ltrim($fq_class_name, '\\');
 
+        $class_storage = $this->classlike_storage_provider->get($fq_class_name);
 
-        $class_storage = $this->classlike_storage_provider->get(Interner::intern($fq_class_name));
-
-        if (isset($class_storage->declaring_property_ids[Interner::intern($property_name)])) {
-            $declaring_property_class = $class_storage->declaring_property_ids[Interner::intern($property_name)];
+        if (isset($class_storage->declaring_property_ids[$property_name])) {
+            $declaring_property_class = $class_storage->declaring_property_ids[$property_name];
             $declaring_class_storage = $this->classlike_storage_provider->get($declaring_property_class);
 
-            return isset($declaring_class_storage->properties[Interner::intern($property_name)]);
+            return isset($declaring_class_storage->properties[$property_name]);
         }
         return false;
     }
 
     public function getPropertyType(
-        string $fq_class_name,
-        string $property_name,
+        int $fq_class_name,
+        int $property_name,
         bool $property_set,
         ?StatementsSource $source = null,
         ?Context $context = null,
     ): ?Union {
-        // remove leading backslash if it exists
-        $fq_class_name = ltrim($fq_class_name, '\\');
 
-
-        if ($this->property_type_provider->has($fq_class_name)) {
+        if ($this->property_type_provider->has(Interner::lookup($fq_class_name))) {
             $property_type = $this->property_type_provider->getPropertyType(
-                $fq_class_name,
-                $property_name,
+                Interner::lookup($fq_class_name),
+                Interner::lookup($property_name),
                 !$property_set,
                 $source,
                 $context,
@@ -250,41 +238,41 @@ final class Properties
             }
         }
 
-        $class_storage = $this->classlikes->getStorageFor(Interner::intern($fq_class_name));
+        $class_storage = $this->classlikes->getStorageFor($fq_class_name);
 
-        if ($class_storage && isset($class_storage->declaring_property_ids[Interner::intern($property_name)])) {
-            $declaring_property_class = $class_storage->declaring_property_ids[Interner::intern($property_name)];
+        if ($class_storage && isset($class_storage->declaring_property_ids[$property_name])) {
+            $declaring_property_class = $class_storage->declaring_property_ids[$property_name];
             $declaring_class_storage = $this->classlike_storage_provider->get($declaring_property_class);
 
-            if (isset($declaring_class_storage->properties[Interner::intern($property_name)])) {
-                $storage = $declaring_class_storage->properties[Interner::intern($property_name)];
+            if (isset($declaring_class_storage->properties[$property_name])) {
+                $storage = $declaring_class_storage->properties[$property_name];
             } else {
-                throw new UnexpectedValueException('Property ' . ($fq_class_name . '::$' . $property_name) . ' should exist');
+                throw new UnexpectedValueException('Property ' . (Interner::lookup($fq_class_name) . '::$' . Interner::lookup($property_name)) . ' should exist');
             }
         } else {
-            throw new UnexpectedValueException('Property ' . ($fq_class_name . '::$' . $property_name) . ' should exist');
+            throw new UnexpectedValueException('Property ' . (Interner::lookup($fq_class_name) . '::$' . Interner::lookup($property_name)) . ' should exist');
         }
 
         if ($storage->type) {
             if ($property_set) {
-                if (isset($class_storage->pseudo_property_set_types[Interner::intern('$' . $property_name)])) {
-                    return $class_storage->pseudo_property_set_types[Interner::intern('$' . $property_name)];
+                if (isset($class_storage->pseudo_property_set_types[Interner::intern('$' . Interner::lookup($property_name))])) {
+                    return $class_storage->pseudo_property_set_types[Interner::intern('$' . Interner::lookup($property_name))];
                 }
             } else {
-                if (isset($class_storage->pseudo_property_get_types[Interner::intern('$' . $property_name)])) {
-                    return $class_storage->pseudo_property_get_types[Interner::intern('$' . $property_name)];
+                if (isset($class_storage->pseudo_property_get_types[Interner::intern('$' . Interner::lookup($property_name))])) {
+                    return $class_storage->pseudo_property_get_types[Interner::intern('$' . Interner::lookup($property_name))];
                 }
             }
 
             return $storage->type;
         }
 
-        if (!isset($class_storage->overridden_property_ids[Interner::intern($property_name)])) {
+        if (!isset($class_storage->overridden_property_ids[$property_name])) {
             return null;
         }
 
-        foreach ($class_storage->overridden_property_ids[Interner::intern($property_name)] as $overridden_property_id) {
-            $overridden_storage = $this->getStorage(Interner::lookup($overridden_property_id), Interner::lookup(Interner::intern($property_name)));
+        foreach ($class_storage->overridden_property_ids[$property_name] as $overridden_property_id) {
+            $overridden_storage = $this->getStorage(Interner::intern(Interner::lookup($overridden_property_id)), Interner::intern(Interner::lookup($property_name)));
 
             if ($overridden_storage->type) {
                 return $overridden_storage->type;

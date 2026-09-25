@@ -920,7 +920,7 @@ class Reconciler
                                 } else {
                                     $class_property_type = self::getPropertyType(
                                         $codebase,
-                                        Interner::lookup($existing_key_type_part->name),
+                                        Interner::intern(Interner::lookup($existing_key_type_part->name)),
                                         $property_name,
                                     );
 
@@ -967,14 +967,14 @@ class Reconciler
 
     private static function getPropertyType(
         Codebase $codebase,
-        string $fq_class_name,
+        int $fq_class_name,
         string $property_name,
     ): ?Union {
-        $property_id_class = $fq_class_name; $property_id_name = $property_name;
+        $property_id_class = $fq_class_name; $property_id_name = Interner::intern($property_name);
 
         if (!$codebase->propertyExists($property_id_class, $property_id_name, true)) {
             $declaring_class_storage = $codebase->classlike_storage_provider->get(
-                Interner::intern($fq_class_name),
+                $fq_class_name,
             );
 
             return $declaring_class_storage->pseudo_property_get_types[Interner::intern('$' . $property_name)] ?? null;

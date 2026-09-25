@@ -1201,8 +1201,8 @@ final class Codebase
      * Whether or not a given property exists
      */
     public function propertyExists(
-        string $fq_class_name,
-        string $property_name,
+        int $fq_class_name,
+        int $property_name,
         bool $read_mode,
         ?StatementsSource $source = null,
         ?Context $context = null,
@@ -1647,7 +1647,7 @@ final class Codebase
 
                 if (str_contains($reference->symbol, '$')) {
                     $storage = $this->properties->getStorage(
-                        explode('::$', $reference->symbol)[0], explode('::$', $reference->symbol)[1],
+                        Interner::intern(explode('::$', $reference->symbol)[0]), Interner::intern(explode('::$', $reference->symbol)[1]),
                     );
 
                     return $storage->location;
@@ -2165,7 +2165,7 @@ final class Codebase
                         $property_name = Interner::lookup($property_name_id);
                         try {
                             $property_storage = $this->properties->getStorage(
-                                Interner::lookup($declaring_class), $property_name,
+                                Interner::intern(Interner::lookup($declaring_class)), Interner::intern($property_name),
                             );
                         } catch (UnexpectedValueException $e) {
                             error_log($e->getMessage());

@@ -491,7 +491,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                     if ($codebase->alter_code) {
                         $property_id_class = strtolower($this->fq_class_name); $property_id_name = (string) $prop->name;
 
-                        $property_storage = $codebase->properties->getStorage($property_id_class, $property_id_name);
+                        $property_storage = $codebase->properties->getStorage(Interner::intern($property_id_class), Interner::intern($property_id_name));
 
                         if ($property_storage->type
                             && $property_storage->type_location
@@ -684,7 +684,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         foreach ($storage->appearing_property_ids as $property_name_id => $appearing_property_id) {
             $property_name = Interner::lookup($property_name_id);
             $property_class_name = $codebase->properties->getDeclaringClassForProperty(
-                Interner::lookup($appearing_property_id), Interner::lookup($property_name_id),
+                Interner::intern(Interner::lookup($appearing_property_id)), Interner::intern(Interner::lookup($property_name_id)),
                 true,
             );
 
@@ -1082,7 +1082,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         foreach ($storage->appearing_property_ids as $property_name_id => $appearing_property_id) {
             $property_name = Interner::lookup($property_name_id);
             $property_class_name = $codebase->properties->getDeclaringClassForProperty(
-                Interner::lookup($appearing_property_id), Interner::lookup($property_name_id),
+                Interner::intern(Interner::lookup($appearing_property_id)), Interner::intern(Interner::lookup($property_name_id)),
                 true,
             );
 
@@ -1571,12 +1571,12 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         Context $context,
     ): void {
         $fq_class_name = $source->getFQCLN();
-        $property_name = $stmt->props[0]->name->name;
-        $property_name_id = Interner::intern($property_name);
+        $property_name = Interner::intern($stmt->props[0]->name->name);
+        $property_name_id = $property_name;
 
         $codebase = $this->getCodebase();
 
-        $property_id_class = (string) $fq_class_name; $property_id_name = $property_name;
+        $property_id_class = Interner::intern((string) $fq_class_name); $property_id_name = $property_name;
 
         $declaring_property_class = Interner::lookupOrNull($codebase->properties->getDeclaringClassForProperty(
             $property_id_class, $property_id_name,
@@ -1609,14 +1609,14 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             return;
         }
 
-        $message = 'Property ' . ($property_id_class . '::$' . $property_id_name) . ' does not have a declared type';
+        $message = 'Property ' . (Interner::lookup($property_id_class) . '::$' . Interner::lookup($property_id_name)) . ' does not have a declared type';
 
         $suggested_type = $property_storage->suggested_type;
 
-        if (isset($this->inferred_property_types[$property_name])) {
+        if (isset($this->inferred_property_types[Interner::lookup($property_name)])) {
             $suggested_type = Type::combineUnionTypes(
                 $suggested_type,
-                $this->inferred_property_types[$property_name] ?? null,
+                $this->inferred_property_types[Interner::lookup($property_name)] ?? null,
                 $codebase,
             );
         }
@@ -1660,7 +1660,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             new MissingPropertyType(
                 $message,
                 new CodeLocation($source, $stmt->props[0]->name),
-                ($property_id_class . '::$' . $property_id_name),
+                (Interner::lookup($property_id_class) . '::$' . Interner::lookup($property_id_name)),
             ),
             $this->source->getSuppressedIssues() + $property_storage->suppressed_issues,
         );

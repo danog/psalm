@@ -590,8 +590,8 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
      * @param  array<array-key, string>         $suppressed_issues
      */
     public static function checkPropertyVisibility(
-        string $fq_class_name,
-        string $property_name,
+        int $fq_class_name,
+        int $property_name,
         Context $context,
         SourceAnalyzer $source,
         CodeLocation $code_location,
@@ -601,11 +601,11 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
 
         $codebase = $source->getCodebase();
 
-        if ($codebase->properties->property_visibility_provider->has($fq_class_name)) {
+        if ($codebase->properties->property_visibility_provider->has(Interner::lookup($fq_class_name))) {
             $property_visible = $codebase->properties->property_visibility_provider->isPropertyVisible(
                 $source,
-                $fq_class_name,
-                $property_name,
+                Interner::lookup($fq_class_name),
+                Interner::lookup($property_name),
                 true,
                 $context,
                 $code_location,
@@ -627,7 +627,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
 
         if (!($declaring_property_class !== null) || !($appearing_property_class !== null)) {
             throw new UnexpectedValueException(
-                'Appearing/Declaring classes are not defined for ' . ($fq_class_name . '::$' . $property_name),
+                'Appearing/Declaring classes are not defined for ' . (Interner::lookup($fq_class_name) . '::$' . Interner::lookup($property_name)),
             );
         }
 
@@ -644,11 +644,11 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
 
         $class_storage = $codebase->classlike_storage_provider->get($declaring_property_class);
 
-        if (!isset($class_storage->properties[Interner::intern($property_name)])) {
-            throw new UnexpectedValueException('$storage should not be null for ' . ($fq_class_name . '::$' . $property_name));
+        if (!isset($class_storage->properties[$property_name])) {
+            throw new UnexpectedValueException('$storage should not be null for ' . (Interner::lookup($fq_class_name) . '::$' . Interner::lookup($property_name)));
         }
 
-        $storage = $class_storage->properties[Interner::intern($property_name)];
+        $storage = $class_storage->properties[$property_name];
 
         switch ($storage->visibility) {
             case self::VISIBILITY_PUBLIC:
@@ -658,7 +658,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                 if ($emit_issues) {
                     IssueBuffer::maybeAdd(
                         new InaccessibleProperty(
-                            'Cannot access private property ' . ($fq_class_name . '::$' . $property_name) . ' from context ' . Interner::lookupOrNull($context->self),
+                            'Cannot access private property ' . (Interner::lookup($fq_class_name) . '::$' . Interner::lookup($property_name)) . ' from context ' . Interner::lookupOrNull($context->self),
                             $code_location,
                         ),
                         $suppressed_issues,
@@ -671,7 +671,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                     if ($emit_issues) {
                         IssueBuffer::maybeAdd(
                             new InaccessibleProperty(
-                                'Cannot access protected property ' . ($fq_class_name . '::$' . $property_name),
+                                'Cannot access protected property ' . (Interner::lookup($fq_class_name) . '::$' . Interner::lookup($property_name)),
                                 $code_location,
                             ),
                             $suppressed_issues,
@@ -689,7 +689,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                     if ($emit_issues) {
                         IssueBuffer::maybeAdd(
                             new InaccessibleProperty(
-                                'Cannot access protected property ' . ($fq_class_name . '::$' . $property_name) . ' from context ' . Interner::lookup($context->self),
+                                'Cannot access protected property ' . (Interner::lookup($fq_class_name) . '::$' . Interner::lookup($property_name)) . ' from context ' . Interner::lookup($context->self),
                                 $code_location,
                             ),
                             $suppressed_issues,

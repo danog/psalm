@@ -1331,7 +1331,7 @@ final class ArgumentsAnalyzer
 
         $codebase = $statements_analyzer->getCodebase();
         $declaring_property_class = Interner::intern((string) Interner::lookupOrNull($codebase->properties->getDeclaringClassForProperty(
-            $property_id_class, $property_id_name,
+            Interner::intern($property_id_class), Interner::intern($property_id_name),
             true,
             $statements_analyzer,
         )));

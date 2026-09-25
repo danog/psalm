@@ -221,7 +221,7 @@ final class StaticPropertyFetchAnalyzer
             if ($codebase->collect_references) {
                 // log the appearance
                 $codebase->propertyExists(
-                    $property_id_class, $property_id_name,
+                    Interner::intern($property_id_class), Interner::intern($property_id_name),
                     true,
                     $statements_analyzer,
                     $context,
@@ -246,7 +246,7 @@ final class StaticPropertyFetchAnalyzer
         }
 
         if (!$codebase->propertyExists(
-            $property_id_class, $property_id_name,
+            Interner::intern($property_id_class), Interner::intern($property_id_name),
             true,
             $statements_analyzer,
             $context,
@@ -272,7 +272,7 @@ final class StaticPropertyFetchAnalyzer
         }
 
         $declaring_property_class = $codebase->properties->getDeclaringClassForProperty(
-            $fq_class_name, $prop_name,
+            Interner::intern($fq_class_name), Interner::intern($prop_name),
             true,
             $statements_analyzer,
         );
@@ -320,7 +320,7 @@ final class StaticPropertyFetchAnalyzer
         }
 
         if (ClassLikeAnalyzer::checkPropertyVisibility(
-            $property_id_class, $property_id_name,
+            Interner::intern($property_id_class), Interner::intern($property_id_name),
             $context,
             $statements_analyzer,
             new CodeLocation($statements_analyzer->getSource(), $stmt),

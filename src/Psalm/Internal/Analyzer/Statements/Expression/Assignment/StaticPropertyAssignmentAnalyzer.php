@@ -121,7 +121,7 @@ final class StaticPropertyAssignmentAnalyzer
                 );
             }
 
-            if (!$codebase->propertyExists($property_id_class, $property_id_name, false, $statements_analyzer, $context)) {
+            if (!$codebase->propertyExists(Interner::intern($property_id_class), Interner::intern($property_id_name), false, $statements_analyzer, $context)) {
                 IssueBuffer::maybeAdd(
                     new UndefinedPropertyAssignment(
                         'Static property ' . ($property_id_class . '::$' . $property_id_name) . ' is not defined',
@@ -135,7 +135,7 @@ final class StaticPropertyAssignmentAnalyzer
             }
 
             if (ClassLikeAnalyzer::checkPropertyVisibility(
-                $property_id_class, $property_id_name,
+                Interner::intern($property_id_class), Interner::intern($property_id_name),
                 $context,
                 $statements_analyzer,
                 new CodeLocation($statements_analyzer->getSource(), $stmt),
@@ -145,7 +145,7 @@ final class StaticPropertyAssignmentAnalyzer
             }
 
             $declaring_property_class = (string) Interner::lookupOrNull($codebase->properties->getDeclaringClassForProperty(
-                $fq_class_name, $prop_name->name,
+                Interner::intern($fq_class_name), Interner::intern($prop_name->name),
                 false,
             ));
 
@@ -213,7 +213,7 @@ final class StaticPropertyAssignmentAnalyzer
             }
 
             $class_property_type = $codebase->properties->getPropertyType(
-                $property_id_class, $property_id_name,
+                Interner::intern($property_id_class), Interner::intern($property_id_name),
                 true,
                 $statements_analyzer,
                 $context,
