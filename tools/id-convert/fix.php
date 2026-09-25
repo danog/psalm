@@ -121,8 +121,19 @@ foreach ($issues as $i) {
     ) {
         [$got, $want] = [$m[1], $m[2]];
         $nullable = str_contains($got, 'null');
-    } elseif ($type === 'IdString' && preg_match('/^(\S+) /', $msg, $m)) {
+    } elseif ($type === 'IdString' && preg_match('/^(\S+) .* (built|interpolated|heredoc-interpolated) into a string$/s', $msg, $m)) {
         // an id built into a string (IdStringPlugin): its name is
+        if ($m[2] === 'interpolated') {
+            // split out of the double-quoted string: `"...{$x}..."` -> `"..." . Interner::lookup($x) . "..."`
+            $src = $sources[$file];
+            [$f2, $t2] = $src[$from - 1] === '{' && $src[$to] === '}' ? [$from - 1, $to + 1] : [$from, $to];
+            $fn = str_contains($m[1], 'null') ? 'lookupOrNull' : 'lookup';
+            $edits[$file][] = [$f2, $t2, 'replace', '" . Interner::' . $fn . '(' . substr($src, $from, $to - $from) . ') . "'];
+            continue;
+        }
+        if ($m[2] !== 'built') {
+            continue;
+        }
         [$want, $got] = ['string', $m[1]];
         $nullable = str_contains($got, 'null');
     } elseif (in_array($type, ['InvalidOperand', 'PossiblyInvalidOperand'], true)
@@ -130,6 +141,16 @@ foreach ($issues as $i) {
     ) {
         [$want, $got] = ['string', $m[1]];
         $nullable = str_contains($got, 'null');
+    } elseif ($type === 'PossiblyUndefinedStringArrayOffset'
+        && preg_match("/^Possibly undefined array offset '('[A-Za-z_\\\\][A-Za-z0-9_\\\\]*')' is risky given expected type 'int'/", $msg, $m)
+    ) {
+        // a name literal indexing an id-keyed map: its id
+        $src = $sources[$file];
+        $at = strrpos(substr($src, $from, $to - $from), '[' . $m[1] . ']');
+        if ($at !== false) {
+            $add($file, $from + $at + 1, $from + $at + 1 + strlen($m[1]), 'intern');
+        }
+        continue;
     } elseif ($type === 'InvalidArrayOffset'
         && (preg_match('/using a ([\w-]+) offset, expecting (\w+)/', $msg, $m)
             || (preg_match("/using offset value of '.*', expecting (int)/", $msg, $mm) && ($m = [0, 'string', 'int'])))
@@ -1260,6 +1281,21 @@ function isWriteTarget(string $src, int $from, int $to): bool
 {
     if (preg_match('/\\G\\s*(?:=(?![=>])|\\.=|\\+=|\\?\\?=)/', $src, $m, 0, $to)) {
         return true;
+    }
+    // the array an element of is written: `X[k] = `, `X[k][] = `
+    $k = $to;
+    while (preg_match('/\\G\\s*\\[/', $src, $m, 0, $k)) {
+        $depth = 0;
+        for ($k += strlen($m[0]) - 1; $k < strlen($src); $k++) {
+            $depth += $src[$k] === '[' ? 1 : ($src[$k] === ']' ? -1 : 0);
+            if ($depth === 0) {
+                break;
+            }
+        }
+        $k++;
+        if (preg_match('/\\G\\s*(?:=(?![=>])|\\.=|\\+=|\\?\\?=)/', $src, $m, 0, $k)) {
+            return true;
+        }
     }
     // inside `[ ... ] =` / `list( ... ) =`
     $depth = 0;

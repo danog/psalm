@@ -62,6 +62,12 @@ final class CanonicalNames
         }
     }
 
+    /** Whether a literal names a known class-like (not a keyword such as `self` or `resource`). */
+    public static function isClass(string $literal): bool
+    {
+        return isset(self::$classes[strtolower(ltrim($literal, '\\'))]);
+    }
+
     /** The declared spelling of a class-like or method name literal, or the literal itself. */
     public static function of(string $literal): string
     {

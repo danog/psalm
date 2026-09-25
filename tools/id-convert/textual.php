@@ -487,11 +487,43 @@ final class Rewriter
         ) {
             return;
         }
+        // compared with a literal: a keyword (`self`, `resource`...) keeps its case-insensitive match, a class-like
+        // literal becomes the name's id
+        $compared = null;
+        $after = $this->next($comma ?? $close);
+        if ($after >= 0 && in_array($this->id($after), [T_IS_IDENTICAL, T_IS_NOT_IDENTICAL, T_IS_EQUAL, T_IS_NOT_EQUAL], true)) {
+            $r = $this->next($after);
+            if ($r >= 0 && $this->id($r) === T_CONSTANT_ENCAPSED_STRING) {
+                if (!CanonicalNames::isClass(stripcslashes(substr($this->text($r), 1, -1)))) {
+                    return;
+                }
+                $compared = $r;
+            }
+        }
+        // `in_array(strtolower(x), ['self', 'static', 'parent'])`
+        $callee = $this->next($i, -1) >= 0 ? $this->next($this->next($i, -1), -1) : -1;
+        if ($callee >= 0 && $this->text($this->next($i, -1)) === '(' && strtolower($this->text($callee)) === 'in_array'
+            && $after >= 0 && $this->text($after) === ','
+        ) {
+            $list = $this->next($after);
+            if ($list >= 0 && $this->text($list) === '[') {
+                for ($k = $this->next($list); $k >= 0 && $this->text($k) !== ']'; $k = $this->next($k)) {
+                    if ($this->id($k) === T_CONSTANT_ENCAPSED_STRING
+                        && !CanonicalNames::isClass(stripcslashes(substr($this->text($k), 1, -1)))
+                    ) {
+                        return;
+                    }
+                }
+            }
+        }
         $this->set($i, '');
         $this->set($open, '');
         $this->set($close, '');
         if ($comma !== null) {
             $this->set($comma, '');
+        }
+        if ($compared !== null) {
+            $this->literal($compared);
         }
         // `\strtolower`
         $p = $i - 1;
@@ -806,6 +838,7 @@ function flipNames(string $type): string
 
 // one file, printed (debugging)
 if (isset($argv[2])) {
+    CanonicalNames::init($root);
     echo (new Rewriter((string) file_get_contents($argv[2]), false))->run();
     exit(0);
 }

@@ -22,16 +22,26 @@ use Psalm\Type\Atomic\TInt;
 
 final class IdStringPlugin implements AfterExpressionAnalysisInterface
 {
+    /** @return list<Expr> */
+    private static function leaves(Expr $e): array
+    {
+        return $e instanceof Expr\BinaryOp\Concat ? [...self::leaves($e->left), ...self::leaves($e->right)] : [$e];
+    }
+
     public static function afterExpressionAnalysis(AfterExpressionAnalysisEvent $event): ?bool
     {
         $expr = $event->getExpr();
         $operands = match (true) {
-            $expr instanceof Expr\BinaryOp\Concat => [$expr->left, $expr->right],
+            // Psalm walks a concatenation chain without an event per inner node: its leaves
+            $expr instanceof Expr\BinaryOp\Concat => self::leaves($expr),
             $expr instanceof Expr\AssignOp\Concat => [$expr->expr],
             $expr instanceof Expr\Cast\String_ => [$expr->expr],
             $expr instanceof InterpolatedString => array_values(array_filter($expr->parts, static fn($p): bool => $p instanceof Expr)),
             default => [],
         };
+        // where the operand sits: a double-quoted string part is split out of the string by the fixer
+        $how = !$expr instanceof InterpolatedString ? 'built into'
+            : ($expr->getAttribute('kind') === \PhpParser\Node\Scalar\String_::KIND_DOUBLE_QUOTED ? 'interpolated into' : 'heredoc-interpolated into');
         $source = $event->getStatementsSource();
         foreach ($operands as $operand) {
             $type = $source->getNodeTypeProvider()->getType($operand);
@@ -53,7 +63,7 @@ final class IdStringPlugin implements AfterExpressionAnalysisInterface
             $start = (int) $operand->getAttribute('startFilePos');
             $text = substr($contents, $start, (int) $operand->getAttribute('endFilePos') + 1 - $start);
             IssueBuffer::maybeAdd(
-                new IdString($type->getId() . ' ' . $text . ' built into a string', new CodeLocation($source, $operand)),
+                new IdString($type->getId() . ' ' . $text . ' ' . $how . ' a string', new CodeLocation($source, $operand)),
                 $source->getSuppressedIssues(),
             );
         }
