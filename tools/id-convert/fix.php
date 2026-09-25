@@ -18,8 +18,13 @@ $root = rtrim($argv[1], '/') . '/';
 CanonicalNames::init($root);
 $issues = json_decode((string) file_get_contents($argv[2]), true);
 /** A message without what differs between the two checked trees: their paths (closure names embed them). */
-function pristineMessage(string $m): string
+function pristineMessage(string $m, string $type = ''): string
 {
+    // messages whose text drifts with the types / sizes of the code, not with what is wrong
+    if ($type === 'ComplexMethod' || $type === 'RiskyTruthyFalsyComparison') {
+        return '';
+    }
+    $m = str_replace('/root/idconv/master-ref/', '/root/idconv/master/', $m);
     return (string) preg_replace('~/\S*?/src/psalm/(\S*?):\d+:\d+:-:closure~', 'src/psalm/$1:closure', $m);
 }
 
@@ -28,11 +33,11 @@ $pristine_file = (string) getenv('ID_CONVERT_PRISTINE');
 if ($pristine_file !== '' && is_file($pristine_file)) {
     $seen_pristine = [];
     foreach (json_decode((string) file_get_contents($pristine_file), true) ?: [] as $pi) {
-        $pk = $pi['file_name'] . "\0" . $pi['type'] . "\0" . pristineMessage($pi['message']);
+        $pk = $pi['file_name'] . "\0" . $pi['type'] . "\0" . pristineMessage($pi['message'], $pi['type']);
         $seen_pristine[$pk] = ($seen_pristine[$pk] ?? 0) + 1;
     }
     $issues = array_values(array_filter($issues, static function (array $ci) use (&$seen_pristine): bool {
-        $ck = $ci['file_name'] . "\0" . $ci['type'] . "\0" . pristineMessage($ci['message']);
+        $ck = $ci['file_name'] . "\0" . $ci['type'] . "\0" . pristineMessage($ci['message'], $ci['type']);
         if (($seen_pristine[$ck] ?? 0) > 0) {
             $seen_pristine[$ck]--;
             return false;
@@ -499,6 +504,63 @@ foreach ($issues as $i) {
     }
 }
 
+// an id-keyed map spread into an array literal made only of spreads: array_replace of them keeps the keys
+foreach ($issues as $i) {
+    if ($i['type'] !== 'IdKeysRenumbered' || !str_ends_with($i['message'], 'renumbered by a spread')) {
+        continue;
+    }
+    $src = $sources[$i['file_path']];
+    // the enclosing `[`
+    $depth = 0;
+    for ($k = $i['from'] - 1; $k >= 0; $k--) {
+        $c = $src[$k];
+        if ($c === ']' || $c === ')') {
+            $depth++;
+        } elseif ($c === '[' || $c === '(') {
+            if ($depth === 0) {
+                break;
+            }
+            $depth--;
+        }
+    }
+    if ($k < 0 || $src[$k] !== '[') {
+        continue;
+    }
+    $open = $k;
+    $items = [];
+    $depth = 0;
+    $start = $open + 1;
+    for ($k = $open + 1; $k < strlen($src); $k++) {
+        $c = $src[$k];
+        if ($c === '(' || $c === '[' || $c === '{') {
+            $depth++;
+        } elseif (($c === ')' || $c === ']' || $c === '}') && $depth > 0) {
+            $depth--;
+        } elseif (($c === ']' || $c === ',') && $depth === 0) {
+            $item = trim(substr($src, $start, $k - $start));
+            if ($item !== '') {
+                $items[] = $item;
+            }
+            $start = $k + 1;
+            if ($c === ']') {
+                break;
+            }
+        } elseif (($c === "'" || $c === '"')) {
+            // skip a string literal
+            for ($k++; $k < strlen($src) && $src[$k] !== $c; $k++) {
+                if ($src[$k] === '\\') {
+                    $k++;
+                }
+            }
+        }
+    }
+    if ($items === [] || array_filter($items, static fn(string $it): bool => !str_starts_with($it, '...')) !== []) {
+        continue;
+    }
+    $args = array_map(static fn(string $it): string => substr($it, 3), $items);
+    $edits[$i['file_path']][] = [$open, $k + 1, 'replace', count($args) === 1 ? $args[0] : 'array_replace(' . implode(', ', $args) . ')'];
+}
+
 // `new $x` / `$x::m()` with an id: the class expression is looked up
 foreach ($issues as $i) {
     if ($i['type'] !== 'UndefinedClass' || !str_contains($i['message'], 'Type int cannot be called as a class')) {
@@ -798,16 +860,22 @@ foreach ($issues as $i) {
             $x = trim($em[1]);
             $neg = !$neg;
         }
+        // `$v = expr` is evaluated once, then its variable is compared
+        $x2 = $x;
+        if (preg_match('/^\(?\s*(\$\w+)\s*=(?![=>])/', $x, $am)) {
+            $x = str_starts_with($x, '(') ? $x : "($x)";
+            $x2 = $am[1];
+        }
         if (preg_match('/^Operand of type (null\|)?int(\|null)? contains type int,/', $msg, $tm)) {
             // explicit comparisons keep Psalm's null narrowing
             $nullable = ($tm[1] ?? '') !== '' || ($tm[2] ?? '') !== '';
             $edits[$file][] = [$from, $to, 'replace', $nullable
-                ? ($neg ? "($x === null || $x === 0)" : "($x !== null && $x !== 0)")
+                ? ($neg ? "($x === null || $x2 === 0)" : "($x !== null && $x2 !== 0)")
                 : ($neg ? "$x === 0" : "$x !== 0")];
         } elseif (preg_match('/^Operand of type (?:non-empty-)?(?:array|list)<.*>(?:\|null)? contains type/', $msg)) {
             $nullable = str_contains(explode(' contains type', $msg)[0], '|null');
             $edits[$file][] = [$from, $to, 'replace', $nullable
-                ? ($neg ? "($x === null || $x === [])" : "($x !== null && $x !== [])")
+                ? ($neg ? "($x === null || $x2 === [])" : "($x !== null && $x2 !== [])")
                 : ($neg ? "$x === []" : "$x !== []")];
         }
         continue;

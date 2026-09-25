@@ -2,11 +2,17 @@ import json,collections,re,sys
 S=sys.argv[1]
 p=[i for i in json.load(open(S+"/pristine.json")) if i["severity"]=="error"]
 c=[i for i in json.load(open(S+"/tx-final.json")) if i["severity"]=="error"]
-def pm(m): return re.sub(r"/\S*?/src/psalm/(\S*?):\d+:\d+:-:closure", r"src/psalm/\1:closure", m)
-pk=collections.Counter((i["file_name"],i["type"],pm(i["message"])) for i in p)
+def pm(m, t=''):
+    m = re.sub(r"/\S*?/src/psalm/(\S*?):\d+:\d+:-:closure", r"src/psalm/\1:closure", m)
+    m = m.replace('/root/idconv/master-ref/', '/root/idconv/master/')
+    # messages whose text drifts with the types / sizes of the code, not with what is wrong
+    if t in ('ComplexMethod', 'RiskyTruthyFalsyComparison'):
+        m = ''
+    return m
+pk=collections.Counter((i["file_name"],i["type"],pm(i["message"],i["type"])) for i in p)
 new=[]
 for i in c:
-    k=(i["file_name"],i["type"],pm(i["message"]))
+    k=(i["file_name"],i["type"],pm(i["message"],i["type"]))
     if pk[k]>0: pk[k]-=1
     else: new.append(i)
 json.dump(new,open(S+"/new.json","w"))
