@@ -143,4 +143,26 @@ final class Interner
             self::intern($string);
         }
     }
+
+    /**
+     * The string an optional id stands for (pzoom's `id.map(|i| interner.lookup(i))`).
+     *
+     * @psalm-pure
+     * @return ($id is null ? null : string)
+     */
+    public static function lookupOrNull(?int $id): ?string
+    {
+        return $id === null ? null : self::lookup($id);
+    }
+
+    /**
+     * The id of an optional string (pzoom's `s.map(|s| interner.intern(s))`).
+     *
+     * @psalm-pure
+     * @return ($string is null ? null : int)
+     */
+    public static function internOrNull(?string $string): ?int
+    {
+        return $string === null ? null : self::intern($string);
+    }
 }

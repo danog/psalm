@@ -47,6 +47,8 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
     private ?string $self;
     /** @var array<string, true> string parameters of this method eligible as slots */
     private array $params = [];
+    /** @var array<string, string> declared class of each object-typed parameter */
+    private array $param_classes = [];
     /** @var array<string, true> locals of this method that hold strings */
     private array $locals = [];
     /** @var SplObjectStorage<Node, Node> */
@@ -94,7 +96,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
             $fixed_why = 'no-storage';
         } elseif ($cls->is_interface || $cls->is_trait) {
             $fixed_why = 'interface/trait';
-        } elseif ($lc === '__construct' || str_starts_with($lc, '__')) {
+        } elseif ($lc !== '__construct' && str_starts_with($lc, '__')) {
             $fixed_why = 'magic';
         } else {
             foreach ([...array_keys($cls->parent_classes), ...array_keys($cls->class_implements)] as $anc) {
@@ -105,25 +107,55 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
                 }
             }
             if ($fixed_why === null && !$stmt->isPrivate() && !$stmt->isFinal() && !$cls->final) {
-                $fixed_why = 'overridable';
+                // only an actual override shares the signature (breaking the plugin API is fine, as in pzoom)
+                $self_lc = strtolower($storage->defining_fqcln);
+                foreach ($this->codebase->classlike_storage_provider->getAll() as $sub) {
+                    if (isset($sub->parent_classes[$self_lc]) && isset($sub->methods[Interner::intern($lc)])
+                        && strcasecmp(\Psalm\Internal\Interner::lookup($sub->id), $storage->defining_fqcln) !== 0
+                    ) {
+                        $fixed_why = 'overridden';
+                        break;
+                    }
+                }
             }
         }
         $doc = $stmt->getDocComment();
+        $param_decls = [];
         foreach ($stmt->params as $p) {
             if (!$p->var instanceof Expr\Variable || !is_string($p->var->name)) {
                 continue;
             }
-            if (IdMigratePlugin::isPlainString($p->type) && $p->default === null && !$p->byRef && !$p->variadic && $p->flags === 0) {
+            $pt = $p->type instanceof NullableType ? $p->type->type : $p->type;
+            if ($pt instanceof Name) {
+                $this->param_classes[$p->var->name] = (string) ($pt->attrs()->resolvedName ?? $pt->toString());
+            }
+            $nullable_default = $p->default instanceof Expr\ConstFetch && strtolower($p->default->name->toString()) === 'null';
+            if ($p->flags !== 0 && $lc === '__construct' && IdMigratePlugin::declaresIn($this->file) && IdMigratePlugin::isPlainString($p->type)
+                && ($p->default === null || $nullable_default) && !$p->byRef && !$p->variadic
+            ) {
+                // a promoted parameter is its property: one slot (the declaration is the parameter's)
+                IdMigratePlugin::out(['kind' => 'decl', 'slot' => 'F:' . strtolower($storage->defining_fqcln) . '|' . $p->var->name,
+                    'file' => $this->file, 'type' => [$p->type->getStartFilePos(), $p->type->getEndFilePos() + 1],
+                    'nullable' => IdMigratePlugin::isNullable($p->type),
+                    // the parameter's own `@var` docblock, else the constructor's `@param`
+                    'doc' => IdMigratePlugin::docType($p->getDocComment(), '@var', null)
+                        ?? IdMigratePlugin::docType($doc, '@param', $p->var->name), 'fixed' => true, 'why' => null]);
+                continue;
+            }
+            if (IdMigratePlugin::isPlainString($p->type) && ($p->default === null || ($nullable_default && IdMigratePlugin::isNullable($p->type)))
+                && !$p->byRef && !$p->variadic && $p->flags === 0
+            ) {
                 $this->params[$p->var->name] = true;
-                IdMigratePlugin::out(['kind' => 'decl', 'slot' => 'P:' . $this->method . '|' . $p->var->name, 'file' => $this->file,
-                    'type' => [$p->type->getStartFilePos(), $p->type->getEndFilePos() + 1],
+                $param_decls[$p->var->name] = ['kind' => 'decl', 'slot' => 'P:' . $this->method . '|' . $p->var->name, 'file' => $this->file,
+                    'type' => [$p->type->getStartFilePos(), $p->type->getEndFilePos() + 1], 'nullable' => IdMigratePlugin::isNullable($p->type),
                     'doc' => IdMigratePlugin::docType($doc, '@param', $p->var->name),
-                    'fixed' => $fixed_why === null, 'why' => $fixed_why]);
+                    'fixed' => $fixed_why === null, 'why' => $fixed_why];
             }
         }
-        if (IdMigratePlugin::isPlainString($stmt->returnType)) {
+        if (IdMigratePlugin::declaresIn($this->file) && IdMigratePlugin::isPlainString($stmt->returnType)) {
             IdMigratePlugin::out(['kind' => 'decl', 'slot' => 'R:' . $this->method, 'file' => $this->file,
                 'type' => [$stmt->returnType->getStartFilePos(), $stmt->returnType->getEndFilePos() + 1],
+                'nullable' => IdMigratePlugin::isNullable($stmt->returnType),
                 'doc' => IdMigratePlugin::docType($doc, '@return', null),
                 'fixed' => $fixed_why === null, 'why' => $fixed_why]);
         }
@@ -131,7 +163,18 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
         $this->parent = new SplObjectStorage();
         $this->index($body, $stmt);
         $this->findLocals($body);
-        foreach ($this->locals as $name => $_) {
+        // parameter declarations only for the parameters the body leaves convertible
+        foreach ($param_decls as $name => $row) {
+            if (!IdMigratePlugin::declaresIn($this->file)) {
+                continue;
+            }
+            if (isset($this->params[$name])) {
+                IdMigratePlugin::out($row);
+            } else {
+                IdMigratePlugin::out(['kind' => 'block', 'slot' => $row['slot'], 'why' => 'written/by-ref/captured in body']);
+            }
+        }
+        foreach (IdMigratePlugin::declaresIn($this->file) ? $this->locals : [] as $name => $_) {
             IdMigratePlugin::out(['kind' => 'decl', 'slot' => 'L:' . $this->method . '|' . $name, 'file' => $this->file,
                 'type' => null, 'doc' => null, 'fixed' => true, 'why' => null]);
         }
@@ -242,7 +285,10 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
             return !$call instanceof Expr\FuncCall || !$this->builtinNoRef($call);
         }
         try {
-            [$mid] = explode('|', $callee, 2);
+            if (str_starts_with($callee, 'F:')) {
+                return false; // a promoted constructor parameter is never by reference here
+            }
+            [$mid] = explode('|', substr($callee, 2), 2);
             $ms = $this->codebase->methods->getStorage(new MethodIdentifier(...array_map(\Psalm\Internal\Interner::intern(...), explode('::', $mid, 2))));
             return ($ms->params[$idx] ?? null)?->by_ref ?? false;
         } catch (Throwable) {
@@ -293,7 +339,10 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
             if (in_array(strtolower($class), ['self', 'static'], true)) {
                 $class = $this->self;
             } elseif (strtolower($class) === 'parent') {
-                return [null, 0];
+                $class = $this->codebase->classlike_storage_provider->find(Interner::intern((string) $this->self))?->parent_class;
+                if ($class === null) {
+                    return [null, 0];
+                }
             }
             $method = $call->name->name;
         } elseif ($call instanceof Expr\New_) {
@@ -335,8 +384,11 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
         if ($pname === null) {
             return [null, 0];
         }
+        if (($ms->params[$idx] ?? null)?->promoted_property) {
+            return ['F:' . strtolower($ms->defining_fqcln ?? \Psalm\Internal\Interner::lookup($decl->class_id)) . '|' . $pname, $idx];
+        }
         $defining = $ms->defining_fqcln ?? \Psalm\Internal\Interner::lookup($decl->class_id);
-        return [strtolower($defining . '::' . \Psalm\Internal\Interner::lookupLc($decl->name_id)) . '|' . $pname, $idx];
+        return ['P:' . strtolower($defining . '::' . \Psalm\Internal\Interner::lookupLc($decl->name_id)) . '|' . $pname, $idx];
     }
 
     /** The slot a read expression reads, or null. */
@@ -356,6 +408,11 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
             $cls = null;
             if ($e->var instanceof Expr\Variable && $e->var->name === 'this') {
                 $cls = $this->self;
+            } elseif ($t === null && $e->var instanceof Expr\Variable && is_string($e->var->name)
+                && isset($this->param_classes[$e->var->name])
+            ) {
+                // no type recorded here: the parameter's declared class
+                $cls = $this->param_classes[$e->var->name];
             } elseif ($t !== null) {
                 $named = [];
                 foreach ($t->getAtomicTypes() as $a) {
@@ -424,7 +481,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
         } catch (Throwable) {
             return null;
         }
-        if ($ms->signature_return_type?->getId() !== 'string') {
+        if (!in_array($ms->signature_return_type?->getId(), ['string', 'null|string', 'string|null'], true)) {
             return null;
         }
         return strtolower(($ms->defining_fqcln ?? \Psalm\Internal\Interner::lookup($decl->class_id)) . '::' . \Psalm\Internal\Interner::lookupLc($decl->name_id));
@@ -442,7 +499,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
         }
         $ds = $this->codebase->classlike_storage_provider->find(Interner::intern($declaring));
         $ps = $ds?->properties[Interner::intern($prop)] ?? null;
-        if ($ps === null || $ps->signature_type?->getId() !== 'string') {
+        if ($ps === null || !in_array($ps->signature_type?->getId(), ['string', 'null|string', 'string|null'], true)) {
             return null;
         }
         return 'F:' . strtolower(\Psalm\Internal\Interner::lookup($ds->id)) . '|' . $prop;
@@ -468,7 +525,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
                 foreach ($n->getArgs() as $a) {
                     [$callee] = $this->calleeParam($n, $a);
                     if ($callee !== null && $this->isStringParam($callee)) {
-                        $this->flow('P:' . $callee, $a->value, $a->name !== null ? [$a->name->getStartFilePos(), $a->name->getEndFilePos() + 1] : null);
+                        $this->flow($callee, $a->value, $a->name !== null ? [$a->name->getStartFilePos(), $a->name->getEndFilePos() + 1] : null);
                     }
                 }
             }
@@ -486,8 +543,26 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
                 IdMigratePlugin::out(['kind' => 'block', 'slot' => $slot, 'why' => $parent->getType()]);
                 continue;
             }
-            if ($parent instanceof Expr\Isset_ || $parent instanceof Stmt\Unset_ || $parent instanceof Expr\Empty_) {
-                IdMigratePlugin::out(['kind' => 'block', 'slot' => $slot, 'why' => 'isset/unset/empty']);
+            // null tests: an id is null exactly when the string was
+            if ($parent instanceof Expr\Isset_
+                || (($parent instanceof Expr\BinaryOp\Identical || $parent instanceof Expr\BinaryOp\NotIdentical)
+                    && (($parent->left === $n && $this->isNull($parent->right)) || ($parent->right === $n && $this->isNull($parent->left))))
+            ) {
+                IdMigratePlugin::out(['kind' => 'use', 'slot' => $slot, 'ctx' => 'nullcmp', 'file' => $this->file, 'r' => $this->range($n)]);
+                continue;
+            }
+            if ($parent instanceof Stmt\Unset_ || $parent instanceof Expr\Empty_) {
+                IdMigratePlugin::out(['kind' => 'block', 'slot' => $slot, 'why' => 'unset/empty']);
+                continue;
+            }
+            // `$x ?: Y` / `$x ?? Y`: the whole expression picks the string or the fallback
+            if (($parent instanceof Expr\Ternary && $parent->if === null && $parent->cond === $n)
+                || ($parent instanceof Expr\BinaryOp\Coalesce && $parent->left === $n)
+            ) {
+                $alt = $parent instanceof Expr\Ternary ? $parent->else : $parent->right;
+                IdMigratePlugin::out(['kind' => 'use', 'slot' => $slot, 'ctx' => 'fallback', 'file' => $this->file, 'r' => $this->range($n),
+                    'expr' => $this->range($parent), 'alt' => $this->range($alt),
+                    'nullable' => (bool) $this->types->getType($n)?->isNullable()]);
                 continue;
             }
             // flows are recorded from the target side (Assign / Arg / Return)
@@ -514,8 +589,18 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
                     'src' => ['k' => 'slot', 'slot' => $slot, 'r' => $this->range($n)]]);
                 continue;
             }
+            // a truth test (if/elseif/while/ternary conditions, !, &&, ||): for a nullable name slot it tests null
+            if ($parent instanceof Stmt\If_ && $parent->cond === $n || $parent instanceof Stmt\ElseIf_ && $parent->cond === $n
+                || $parent instanceof Stmt\While_ && $parent->cond === $n || $parent instanceof Expr\BooleanNot
+                || $parent instanceof Expr\BinaryOp\BooleanAnd || $parent instanceof Expr\BinaryOp\BooleanOr
+                || ($parent instanceof Expr\Ternary && $parent->cond === $n && $parent->if !== null)
+            ) {
+                IdMigratePlugin::out(['kind' => 'use', 'slot' => $slot, 'ctx' => 'truthy', 'file' => $this->file, 'r' => $this->range($n)]);
+                continue;
+            }
             // property fetches of a slot-typed object are reads too; method calls on the value are string uses
-            IdMigratePlugin::out(['kind' => 'use', 'slot' => $slot, 'ctx' => 'other', 'file' => $this->file, 'r' => $this->range($n)]);
+            IdMigratePlugin::out(['kind' => 'use', 'slot' => $slot, 'ctx' => 'other', 'file' => $this->file, 'r' => $this->range($n),
+                'nullable' => (bool) $this->types->getType($n)?->isNullable()]);
         }
         // returns of non-slot expressions into this method's own return slot
         foreach ($this->parent as $n) {
@@ -525,9 +610,18 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
         }
     }
 
+    private function isNull(Expr $e): bool
+    {
+        return $e instanceof Expr\ConstFetch && strtolower($e->name->toString()) === 'null';
+    }
+
     private function isStringParam(string $callee): bool
     {
-        [$mid, $pname] = explode('|', $callee, 2);
+        if (str_starts_with($callee, 'F:')) {
+            [$cls, $prop] = explode('|', substr($callee, 2), 2);
+            return $this->propSlot($cls, $prop) !== null;
+        }
+        [$mid, $pname] = explode('|', substr($callee, 2), 2);
         [$c, $m] = explode('::', $mid, 2);
         try {
             $ms = $this->codebase->methods->getStorage(new MethodIdentifier(\Psalm\Internal\Interner::intern($c), \Psalm\Internal\Interner::intern($m)));
@@ -536,7 +630,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
         }
         foreach ($ms->params as $p) {
             if ($p->name === $pname) {
-                return $p->signature_type?->getId() === 'string';
+                return in_array($p->signature_type?->getId(), ['string', 'null|string', 'string|null'], true);
             }
         }
         return false;
@@ -569,6 +663,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
         if ($named !== null) {
             $c['named'] = $named;
         }
+        $c['nullable'] = (bool) $this->types->getType($src)?->isNullable();
         IdMigratePlugin::out(['kind' => 'flow', 'slot' => $target, 'file' => $this->file, 'src' => $c]);
     }
 

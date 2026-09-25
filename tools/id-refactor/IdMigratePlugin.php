@@ -60,12 +60,25 @@ final class IdMigratePlugin implements PluginEntryPointInterface, AfterClassLike
 
     public static function inSrc(string $file): bool
     {
+        return str_starts_with($file, self::root() . '/src/') || str_starts_with($file, self::root() . '/tests/')
+            || str_starts_with($file, self::root() . '/examples/');
+    }
+
+    /** Declarations (slots whose type may change) come from src only: tests and examples adapt to them. */
+    public static function declaresIn(string $file): bool
+    {
         return str_starts_with($file, self::root() . '/src/');
     }
 
     public static function isPlainString(?Node $t): bool
     {
-        return $t instanceof Identifier && strtolower($t->name) === 'string';
+        return ($t instanceof Identifier && strtolower($t->name) === 'string')
+            || ($t instanceof NullableType && $t->type instanceof Identifier && strtolower($t->type->name) === 'string');
+    }
+
+    public static function isNullable(?Node $t): bool
+    {
+        return $t instanceof NullableType;
     }
 
     // ---------------------------------------------------------------- declarations: properties
@@ -74,7 +87,7 @@ final class IdMigratePlugin implements PluginEntryPointInterface, AfterClassLike
         $stmt = $event->getStmt();
         $storage = $event->getClasslikeStorage();
         $file = $event->getStatementsSource()->getFilePath();
-        if (!self::inSrc($file)) {
+        if (!self::declaresIn($file)) {
             return null;
         }
         try {
@@ -87,8 +100,9 @@ final class IdMigratePlugin implements PluginEntryPointInterface, AfterClassLike
                 $default = $pp->default;
                 $doc = self::docType($prop->getDocComment(), '@var', null);
                 self::out(['kind' => 'decl', 'slot' => 'F:' . strtolower(\Psalm\Internal\Interner::lookup($storage->id)) . '|' . $name, 'file' => $file,
-                    'type' => [$prop->type->getStartFilePos(), $prop->type->getEndFilePos() + 1],
-                    'doc' => $doc, 'fixed' => $default === null, 'why' => $default === null ? null : 'default'
+                    'type' => [$prop->type->getStartFilePos(), $prop->type->getEndFilePos() + 1], 'nullable' => self::isNullable($prop->type),
+                    'doc' => $doc, 'fixed' => $default === null || ($default instanceof Expr\ConstFetch && strtolower($default->name->toString()) === 'null'),
+                    'why' => $default === null ? null : 'default'
                     , 'readonly' => $prop->isReadonly()]);
             }
             // promoted constructor parameters are properties too: not migrated (the property and the parameter
