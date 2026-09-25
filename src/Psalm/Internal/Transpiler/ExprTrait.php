@@ -2482,7 +2482,10 @@ trait ExprTrait
 
     private function instanceOf(Expr\Instanceof_ $e): Val
     {
-        $v = $this->rawValue($e->expr);
+        // a local is read with its place, so the test borrows it
+        $v = $e->expr instanceof Expr\Variable && is_string($e->expr->name) && $e->expr->name !== 'this'
+            ? $this->readVar($e->expr->name)
+            : $this->rawValue($e->expr);
         if ($e->class instanceof Name) {
             $fqcn = $this->resolveClassName($e->class);
             if ($fqcn === null) {
@@ -2502,6 +2505,10 @@ trait ExprTrait
             if ($t->kind === RustType::OPTION) {
                 $inner = $t->inner();
                 $this->casts->needInstanceOf($inner, $target);
+                if ($v->place !== null) {
+                    // a borrowable value is tested in place (no clone of the object just to look at its class)
+                    return new Val($v->place . '.as_ref().map_or(false, |__v| is_instance::<' . $target->toRust() . '>(__v))', RustType::bool());
+                }
                 return new Val($v->code . '.map_or(false, |__v| is_instance::<' . $target->toRust() . '>(&__v))', RustType::bool());
             }
             if ($t->kind === RustType::CLASS_ && $tc !== null) {

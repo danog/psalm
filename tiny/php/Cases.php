@@ -1849,7 +1849,8 @@ function case_use_graph(): string
 
 function run_all(): string
 {
-    return check('cond_return', case_cond_return(), 'fallback:n7:n7')
+    return check('option_instanceof', case_option_instanceof(), 'sc3s-')
+        . check('cond_return', case_cond_return(), 'fallback:n7:n7')
         . check('use_graph', case_use_graph(), 'public-api,root:x,class:b,d::q,a::m,b::n')
         . check('queue_pop', case_queue_pop(), 'root,a,b,c,d')
         . check('const_table', case_const_table(), 'inf,nan,null,30719,eol,absent,10')
@@ -3900,4 +3901,36 @@ function case_cond_return(): string
     $y = CondRet::lookupOrNull($b) ?? 'fallback';
     $z = CondRet::lookupOrNull($b);
     return $x . ':' . $y . ':' . ($z ?? 'none');
+}
+
+abstract class OptShape
+{
+}
+
+final class OptCircle extends OptShape
+{
+    public function __construct(public int $r)
+    {
+    }
+}
+
+final class OptSquare extends OptShape
+{
+}
+
+/** `instanceof` on a nullable object local tests it in place (no clone), across a loop popping from a list. */
+function case_option_instanceof(): string
+{
+    /** @var list<OptShape> $shapes */
+    $shapes = [new OptSquare(), new OptCircle(3), new OptSquare()];
+    $out = '';
+    while ($shape = array_pop($shapes)) {
+        if ($shape instanceof OptCircle) {
+            $out .= 'c' . $shape->r;
+        } elseif ($shape instanceof OptSquare) {
+            $out .= 's';
+        }
+    }
+    $none = array_pop($shapes);
+    return $out . ($none instanceof OptCircle ? 'C' : '-');
 }
