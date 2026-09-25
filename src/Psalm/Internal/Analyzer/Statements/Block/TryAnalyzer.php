@@ -182,10 +182,10 @@ final class TryAnalyzer
             }
 
             foreach ($catch->types as $catch_type) {
-                $fq_catch_class = ClassLikeAnalyzer::getFQCLNFromNameObject(
+                $fq_catch_class = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                     $catch_type,
                     $statements_analyzer->getAliases(),
-                );
+                ));
 
                 $fq_catch_class = $codebase->classlikes->getUnAliasedName($fq_catch_class);
 

@@ -93,11 +93,11 @@ abstract class CallAnalyzer
         $codebase = $source->getCodebase();
 
         if ($context->collect_mutations &&
-            $context->self &&
+            ($context->self !== null) &&
             (
-                $context->self === $fq_class_name ||
+                Interner::lookup($context->self) === $fq_class_name ||
                 $codebase->classExtends(
-                    Interner::intern($context->self),
+                    $context->self,
                     Interner::intern($fq_class_name),
                 )
             )
@@ -124,11 +124,11 @@ abstract class CallAnalyzer
                 );
             }
         } elseif ($context->collect_initializations &&
-            $context->self &&
+            ($context->self !== null) &&
             (
-                $context->self === $fq_class_name
+                Interner::lookup($context->self) === $fq_class_name
                 || $codebase->classlikes->classExtends(
-                    Interner::intern($context->self),
+                    $context->self,
                     Interner::intern($fq_class_name),
                 )
             ) &&
@@ -244,7 +244,7 @@ abstract class CallAnalyzer
                     $declaring_fq_class_name = Interner::lookup($declaring_method_id->class_id);
 
                     $old_self = $context->self;
-                    $context->self = $declaring_fq_class_name;
+                    $context->self = Interner::intern($declaring_fq_class_name);
                     $project_analyzer->getMethodMutations(
                         $declaring_method_id,
                         $context,
@@ -551,10 +551,10 @@ abstract class CallAnalyzer
             && strtolower($class_arg->name->name) === 'class'
             && $class_arg->class instanceof Name
         ) {
-            $fq_class_name = ClassLikeAnalyzer::getFQCLNFromNameObject(
+            $fq_class_name = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                 $class_arg->class,
                 $file_source->getAliases(),
-            );
+            ));
 
             return [$fq_class_name . '::' . $method_name_arg->value];
         }
@@ -702,8 +702,8 @@ abstract class CallAnalyzer
                 $assertion_var_id = $thisName;
             } elseif (str_starts_with($var_possibilities->var_id, '$this->') && $thisName !== null) {
                 $assertion_var_id = $thisName . str_replace('$this->', '->', $var_possibilities->var_id);
-            } elseif (str_starts_with($var_possibilities->var_id, 'self::') && $context->self) {
-                $assertion_var_id = $context->self . str_replace('self::', '::', $var_possibilities->var_id);
+            } elseif (str_starts_with($var_possibilities->var_id, 'self::') && ($context->self !== null)) {
+                $assertion_var_id = Interner::lookup($context->self) . str_replace('self::', '::', $var_possibilities->var_id);
             } elseif (str_contains($var_possibilities->var_id, '::$')) {
                 // allow assertions to bring external static props into scope
                 $assertion_var_id = $var_possibilities->var_id;

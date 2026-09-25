@@ -78,7 +78,7 @@ final class ClassConstAnalyzer
             $first_part_lc = strtolower($stmt->class->getFirst());
 
             if ($first_part_lc === 'self' || $first_part_lc === 'static') {
-                if (!$context->self) {
+                if (!($context->self !== null)) {
                     return !IssueBuffer::accepts(
                         new NonStaticSelfCall(
                             'Cannot use ' . $first_part_lc . ' outside class context',
@@ -88,7 +88,7 @@ final class ClassConstAnalyzer
                     );
                 }
 
-                $fq_class_name = $context->self;
+                $fq_class_name = Interner::lookup($context->self);
             } elseif ($first_part_lc === 'parent') {
                 $fq_class_name = $statements_analyzer->getParentFQCLN();
 
@@ -102,10 +102,10 @@ final class ClassConstAnalyzer
                     );
                 }
             } else {
-                $fq_class_name = ClassLikeAnalyzer::getFQCLNFromNameObject(
+                $fq_class_name = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                     $stmt->class,
                     $statements_analyzer->getAliases(),
-                );
+                ));
 
                 if ($stmt->name instanceof PhpParser\Node\Identifier) {
                     if ((!$context->inside_class_exists || $stmt->name->name !== 'class')
@@ -152,7 +152,7 @@ final class ClassConstAnalyzer
                     $const_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
                     $fq_class_name = Interner::lookup($const_class_storage->id);
 
-                    if ($const_class_storage->deprecated && $fq_class_name !== $context->self) {
+                    if ($const_class_storage->deprecated && $fq_class_name !== Interner::lookupOrNull($context->self)) {
                         IssueBuffer::maybeAdd(
                             new DeprecatedClass(
                                 'Class ' . $fq_class_name . ' is deprecated',
@@ -256,16 +256,16 @@ final class ClassConstAnalyzer
                 }
             }
 
-            if ($fq_class_name === $context->self
+            if ($fq_class_name === Interner::lookupOrNull($context->self)
                 || (
                     $statements_analyzer->getSource()->getSource() instanceof TraitAnalyzer &&
                     $fq_class_name === $statements_analyzer->getSource()->getFQCLN()
                 )
             ) {
                 $class_visibility = ReflectionProperty::IS_PRIVATE;
-            } elseif ($context->self &&
-                ($codebase->classlikes->classExtends(Interner::intern($context->self), Interner::intern($fq_class_name))
-                    || $codebase->classlikes->classExtends(Interner::intern($fq_class_name), Interner::intern($context->self)))
+            } elseif (($context->self !== null) &&
+                ($codebase->classlikes->classExtends($context->self, Interner::intern($fq_class_name))
+                    || $codebase->classlikes->classExtends(Interner::intern($fq_class_name), $context->self))
             ) {
                 $class_visibility = ReflectionProperty::IS_PROTECTED;
             } else {
@@ -296,7 +296,7 @@ final class ClassConstAnalyzer
             }
 
             if (!$class_constant_type) {
-                if ($fq_class_name !== $context->self) {
+                if ($fq_class_name !== Interner::lookupOrNull($context->self)) {
                     $class_constant_type = $codebase->classlikes->getClassConstantType(
                         $fq_class_name,
                         $stmt->name->name,
@@ -368,16 +368,16 @@ final class ClassConstAnalyzer
                 }
             }
 
-            if ($context->self
+            if (($context->self !== null)
                 && !$context->collect_initializations
                 && !$context->collect_mutations
-                && !NamespaceAnalyzer::isWithinAny($context->self, $const_class_storage->internal)
+                && !NamespaceAnalyzer::isWithinAny(Interner::lookup($context->self), $const_class_storage->internal)
             ) {
                 IssueBuffer::maybeAdd(
                     new InternalClass(
                         $fq_class_name . ' is internal to '
                             . InternalClass::listToPhrase($const_class_storage->internal)
-                            . ' but called from ' . $context->self,
+                            . ' but called from ' . Interner::lookup($context->self),
                         new CodeLocation($statements_analyzer->getSource(), $stmt),
                         $fq_class_name,
                     ),
@@ -385,7 +385,7 @@ final class ClassConstAnalyzer
                 );
             }
 
-            if ($const_class_storage->deprecated && $fq_class_name !== $context->self) {
+            if ($const_class_storage->deprecated && $fq_class_name !== Interner::lookupOrNull($context->self)) {
                 IssueBuffer::maybeAdd(
                     new DeprecatedClass(
                         'Class ' . $fq_class_name . ' is deprecated',
@@ -563,16 +563,16 @@ final class ClassConstAnalyzer
 
             $const_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
-            if ($fq_class_name === $context->self
+            if ($fq_class_name === Interner::lookupOrNull($context->self)
                 || (
                     $statements_analyzer->getSource()->getSource() instanceof TraitAnalyzer &&
                     $fq_class_name === $statements_analyzer->getSource()->getFQCLN()
                 )
             ) {
                 $class_visibility = ReflectionProperty::IS_PRIVATE;
-            } elseif ($context->self &&
-                ($codebase->classlikes->classExtends(Interner::intern($context->self), Interner::intern($fq_class_name))
-                    || $codebase->classlikes->classExtends(Interner::intern($fq_class_name), Interner::intern($context->self)))
+            } elseif (($context->self !== null) &&
+                ($codebase->classlikes->classExtends($context->self, Interner::intern($fq_class_name))
+                    || $codebase->classlikes->classExtends(Interner::intern($fq_class_name), $context->self))
             ) {
                 $class_visibility = ReflectionProperty::IS_PROTECTED;
             } else {
@@ -601,7 +601,7 @@ final class ClassConstAnalyzer
             }
 
             if (!$class_constant_type) {
-                if ($fq_class_name !== $context->self) {
+                if ($fq_class_name !== Interner::lookupOrNull($context->self)) {
                     $class_constant_type = $codebase->classlikes->getClassConstantType(
                         $fq_class_name,
                         $stmt->name->name,
@@ -660,16 +660,16 @@ final class ClassConstAnalyzer
                 }
             }
 
-            if ($context->self
+            if (($context->self !== null)
                 && !$context->collect_initializations
                 && !$context->collect_mutations
-                && !NamespaceAnalyzer::isWithinAny($context->self, $const_class_storage->internal)
+                && !NamespaceAnalyzer::isWithinAny(Interner::lookup($context->self), $const_class_storage->internal)
             ) {
                 IssueBuffer::maybeAdd(
                     new InternalClass(
                         $fq_class_name . ' is internal to '
                             . InternalClass::listToPhrase($const_class_storage->internal)
-                            . ' but called from ' . $context->self,
+                            . ' but called from ' . Interner::lookup($context->self),
                         new CodeLocation($statements_analyzer->getSource(), $stmt),
                         $fq_class_name,
                     ),
@@ -677,7 +677,7 @@ final class ClassConstAnalyzer
                 );
             }
 
-            if ($const_class_storage->deprecated && $fq_class_name !== $context->self) {
+            if ($const_class_storage->deprecated && $fq_class_name !== Interner::lookupOrNull($context->self)) {
                 IssueBuffer::maybeAdd(
                     new DeprecatedClass(
                         'Class ' . $fq_class_name . ' is deprecated',
@@ -717,7 +717,7 @@ final class ClassConstAnalyzer
         Context $context,
     ): void {
         assert($context->self !== null);
-        $class_storage = $statements_analyzer->getCodebase()->classlike_storage_provider->get(Interner::intern($context->self));
+        $class_storage = $statements_analyzer->getCodebase()->classlike_storage_provider->get($context->self);
 
         if ($class_storage->has_visitor_issues) {
             return;

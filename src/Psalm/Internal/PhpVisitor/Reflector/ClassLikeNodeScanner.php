@@ -291,7 +291,7 @@ final class ClassLikeNodeScanner
             $this->codebase->classlikes->addFullyQualifiedClassName($fq_classlike_name, $this->file_path);
 
             if ($node->extends) {
-                $parent_fqcln = ClassLikeAnalyzer::getFQCLNFromNameObject($node->extends, $this->aliases);
+                $parent_fqcln = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject($node->extends, $this->aliases));
                 $parent_fqcln = $this->codebase->classlikes->getUnAliasedName($parent_fqcln);
                 $this->codebase->scanner->queueClassLikeForScanning(
                     $parent_fqcln,
@@ -307,7 +307,7 @@ final class ClassLikeNodeScanner
             $this->codebase->classlikes->addFullyQualifiedInterfaceName($fq_classlike_name, $this->file_path);
 
             foreach ($node->extends as $interface) {
-                $interface_fqcln = ClassLikeAnalyzer::getFQCLNFromNameObject($interface, $this->aliases);
+                $interface_fqcln = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject($interface, $this->aliases));
                 $interface_fqcln = $this->codebase->classlikes->getUnAliasedName($interface_fqcln);
                 $interface_fqcln_lc = strtolower($interface_fqcln);
                 $this->codebase->scanner->queueClassLikeForScanning($interface_fqcln);
@@ -368,7 +368,7 @@ final class ClassLikeNodeScanner
 
         if ($node instanceof PhpParser\Node\Stmt\Class_ || $node instanceof PhpParser\Node\Stmt\Enum_) {
             foreach ($node->implements as $interface) {
-                $interface_fqcln = ClassLikeAnalyzer::getFQCLNFromNameObject($interface, $this->aliases);
+                $interface_fqcln = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject($interface, $this->aliases));
                 $interface_fqcln_lc = strtolower($interface_fqcln);
                 $this->codebase->scanner->queueClassLikeForScanning($interface_fqcln);
                 $storage->class_implements[$interface_fqcln_lc] = $interface_fqcln;
@@ -977,7 +977,7 @@ final class ClassLikeNodeScanner
         }
 
         foreach ($node->traits as $trait) {
-            $trait_fqcln = ClassLikeAnalyzer::getFQCLNFromNameObject($trait, $this->aliases);
+            $trait_fqcln = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject($trait, $this->aliases));
             $this->codebase->scanner->queueClassLikeForScanning($trait_fqcln, $this->file_scanner->will_analyze);
             $storage->used_traits[strtolower($trait_fqcln)] = $trait_fqcln;
             $this->file_storage->required_classes[strtolower($trait_fqcln)] = $trait_fqcln;

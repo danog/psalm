@@ -43,7 +43,7 @@ final class MethodCallPurityAnalyzer
         // $stmt->var->getAttribute('pure', false)
         return $statements_analyzer->node_data->isPureCompatible($var)
             || ($var->getAttributes()->external_mutation_free ?? false)
-            || Interner::lookup($method_id->class_id) === $context->self;
+            || Interner::lookup($method_id->class_id) === Interner::lookupOrNull($context->self);
     }
 
     /**

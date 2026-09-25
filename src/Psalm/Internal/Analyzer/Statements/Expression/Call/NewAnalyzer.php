@@ -105,10 +105,10 @@ final class NewAnalyzer extends CallAnalyzer
             if (!in_array(strtolower($stmt->class->getFirst()), ['self', 'static', 'parent'], true)) {
                 $aliases = $statements_analyzer->getAliases();
 
-                $fq_class_name = ClassLikeAnalyzer::getFQCLNFromNameObject(
+                $fq_class_name = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                     $stmt->class,
                     $aliases,
-                );
+                ));
 
                 $fq_class_name = $codebase->classlikes->getUnAliasedName($fq_class_name);
 
@@ -124,7 +124,7 @@ final class NewAnalyzer extends CallAnalyzer
             } elseif ($context->self !== null) {
                 switch ($stmt->class->getFirst()) {
                     case 'self':
-                        $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($context->self));
+                        $class_storage = $codebase->classlike_storage_provider->get($context->self);
                         $fq_class_name = Interner::lookup($class_storage->id);
                         break;
 
@@ -134,7 +134,7 @@ final class NewAnalyzer extends CallAnalyzer
 
                     case 'static':
                         // @todo maybe we can do better here
-                        $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($context->self));
+                        $class_storage = $codebase->classlike_storage_provider->get($context->self);
                         $fq_class_name = Interner::lookup($class_storage->id);
 
                         if (!$class_storage->final) {
@@ -367,7 +367,7 @@ final class NewAnalyzer extends CallAnalyzer
             }
         }
 
-        if ($storage->deprecated && strtolower($fq_class_name) !== strtolower((string)$context->self)) {
+        if ($storage->deprecated && strtolower($fq_class_name) !== strtolower((string)Interner::lookupOrNull($context->self))) {
             IssueBuffer::maybeAdd(
                 new DeprecatedClass(
                     $fq_class_name . ' is marked deprecated',
@@ -379,15 +379,15 @@ final class NewAnalyzer extends CallAnalyzer
         }
 
 
-        if ($context->self
+        if (($context->self !== null)
             && !$context->collect_initializations
             && !$context->collect_mutations
-            && !NamespaceAnalyzer::isWithinAny($context->self, $storage->internal)
+            && !NamespaceAnalyzer::isWithinAny(Interner::lookup($context->self), $storage->internal)
         ) {
             IssueBuffer::maybeAdd(
                 new InternalClass(
                     $fq_class_name . ' is internal to ' . InternalClass::listToPhrase($storage->internal)
-                        . ' but called from ' . $context->self,
+                        . ' but called from ' . Interner::lookup($context->self),
                     new CodeLocation($statements_analyzer->getSource(), $stmt),
                     $fq_class_name,
                 ),

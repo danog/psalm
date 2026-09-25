@@ -153,7 +153,7 @@ final class TypeHintResolver
                 }
             } else {
                 $type_string = $hint->toString();
-                $fq_type_string = ClassLikeAnalyzer::getFQCLNFromNameObject($hint, $aliases);
+                $fq_type_string = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject($hint, $aliases));
 
                 $codebase->scanner->queueClassLikeForScanning($fq_type_string);
                 $file_storage->referenced_classlikes[strtolower($fq_type_string)] = $fq_type_string;

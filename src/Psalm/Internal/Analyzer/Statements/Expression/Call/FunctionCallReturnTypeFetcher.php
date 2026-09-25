@@ -354,14 +354,14 @@ final class FunctionCallReturnTypeFetcher
                 case 'get_called_class':
                     return new Union([
                         new TClassString(
-                            $context->self ?: 'object',
-                            $context->self ? new TNamedObject($context->self, true) : null,
+                            (Interner::lookupOrNull($context->self) ?? 'object'),
+                            ($context->self !== null) ? new TNamedObject(Interner::lookup($context->self), true) : null,
                         ),
                     ]);
 
                 case 'get_parent_class':
-                    if ($context->self && $codebase->classExists(Interner::intern($context->self), null, $context)) {
-                        $classlike_storage = $codebase->classlike_storage_provider->get(Interner::intern($context->self));
+                    if (($context->self !== null) && $codebase->classExists($context->self, null, $context)) {
+                        $classlike_storage = $codebase->classlike_storage_provider->get($context->self);
 
                         if ($classlike_storage->parent_classes) {
                             return new Union([

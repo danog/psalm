@@ -83,7 +83,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
         $fq_class_name = Interner::lookup($lhs_type_part->name);
 
         if ($fq_class_name === 'static') {
-            $fq_class_name = (string) $context->self;
+            $fq_class_name = (string) Interner::lookupOrNull($context->self);
         }
 
         $method_name_lc = Interner::lookupLc($method_id->name_id);

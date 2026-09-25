@@ -50,7 +50,7 @@ final class StaticPropertyAssignmentAnalyzer
     ): ?bool {
         $var_id = ExpressionIdentifier::getExtendedVarId(
             $stmt,
-            $context->self,
+            Interner::lookupOrNull($context->self),
             $statements_analyzer,
         );
 

@@ -39,19 +39,6 @@ foreach ($flows as $f) {
     if ($f['src']['k'] === 'slot') { $out_flows[$f['src']['slot']][] = $f; }
 }
 foreach ($uses as $u) { $slot_uses[$u['slot']][] = $u; }
-// a nullable slot converts only when its string reads and nullable string sources are side-effect free
-foreach (array_keys($X) as $s) {
-    if (empty($decl[$s]['nullable'])) { continue; }
-    $ok = true;
-    foreach ($slot_uses[$s] ?? [] as $u) { if ($u['ctx'] !== 'intern' && !$pure($text0($u['file'], $u['r']))) { $ok = false; } }
-    foreach ($in_flows[$s] ?? [] as $f) {
-        if (in_array($f['src']['k'], ['str', 'slot'], true) && !empty($f['src']['nullable']) && !$pure($text0($f['file'], $f['src']['r']))) { $ok = false; }
-    }
-    foreach ($out_flows[$s] ?? [] as $f) {
-        if (!empty($f['src']['nullable']) && !$pure($text0($f['file'], $f['src']['r']))) { $ok = false; }
-    }
-    if (!$ok) { unset($X[$s]); $why['nullable boundary not pure'] = ($why['nullable boundary not pure'] ?? 0) + 1; }
-}
 // a slot adjacent (by a flow) to a converted one
 $neighbour = static function (string $s) use (&$X, $in_flows, $out_flows): bool {
     foreach ($in_flows[$s] ?? [] as $f) { if ($f['src']['k'] === 'slot' && isset($X[$f['src']['slot']])) { return true; } }
@@ -132,8 +119,7 @@ $edits = []; // file => list of [s, e, text]
 $add = static function (string $file, int $s, int $e, string $t) use (&$edits): void { $edits[$file][] = [$s, $e, $t]; };
 $wrap = static function (string $file, array $r, string $fn, bool $nullable = false) use ($add, $text0): void {
     if ($nullable) {
-        $t = $text0($file, $r);
-        $add($file, $r[0], $r[1], "($t === null ? null : Interner::$fn($t))");
+        $add($file, $r[0], $r[0], 'Interner::' . $fn . 'OrNull('); $add($file, $r[1], $r[1], ')');
         return;
     }
     $add($file, $r[0], $r[0], "Interner::$fn("); $add($file, $r[1], $r[1], ')');
@@ -184,7 +170,7 @@ foreach ($fallbacks as $u) {
     if ($inside) {
         $wrap($u['file'], $u['r'], 'lookup', true);
     } else {
-        $add($u['file'], $u['expr'][0], $u['expr'][1], "($rt !== null ? Interner::lookup($rt) : " . $text($u['file'], $u['alt']) . ')');
+        $add($u['file'], $u['expr'][0], $u['expr'][1], "(Interner::lookupOrNull($rt) ?? " . $text($u['file'], $u['alt']) . ')');
     }
 }
 $fh = fopen($out, 'w');

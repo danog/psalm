@@ -11,6 +11,7 @@ use Psalm\Internal\Algebra;
 use Psalm\Internal\Analyzer\Statements\Expression\AssertionFinder;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Clause;
+use Psalm\Internal\Interner;
 use Psalm\Node\Expr\BinaryOp\VirtualBooleanAnd;
 use Psalm\Node\Expr\BinaryOp\VirtualBooleanOr;
 use Psalm\Node\Expr\VirtualBooleanNot;
@@ -32,7 +33,7 @@ final class FormulaGenerator
         int $conditional_object_id,
         int $creating_object_id,
         PhpParser\Node\Expr $conditional,
-        ?string $this_class_name,
+        ?int $this_class_name,
         FileSource $source,
         ?Codebase $codebase = null,
         bool $inside_negation = false,
@@ -132,7 +133,7 @@ final class FormulaGenerator
                 if ($anded_assertions === null) {
                     $anded_assertions = AssertionFinder::scrapeAssertions(
                         $conditional->expr,
-                        $this_class_name,
+                        Interner::lookupOrNull($this_class_name),
                         $source,
                         $codebase,
                         $inside_negation,
@@ -402,7 +403,7 @@ final class FormulaGenerator
         if ($anded_assertions === null) {
             $anded_assertions = AssertionFinder::scrapeAssertions(
                 $conditional,
-                $this_class_name,
+                Interner::lookupOrNull($this_class_name),
                 $source,
                 $codebase,
                 $inside_negation,

@@ -355,10 +355,10 @@ final class SimpleTypeInferer
                 if ($stmt->class->getParts() === ['self']) {
                     $const_fq_class_name = $fq_classlike_name;
                 } else {
-                    $const_fq_class_name = ClassLikeAnalyzer::getFQCLNFromNameObject(
+                    $const_fq_class_name = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                         $stmt->class,
                         $aliases,
-                    );
+                    ));
                 }
 
                 if (strtolower($const_fq_class_name) === strtolower($fq_classlike_name)

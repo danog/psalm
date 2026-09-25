@@ -69,7 +69,7 @@ final class AttributesAnalyzer
             if ($attribute->name instanceof FullyQualified) {
                 $fq_attribute_name = (string) $attribute->name;
             } else {
-                $fq_attribute_name = ClassLikeAnalyzer::getFQCLNFromNameObject($attribute->name, $source->getAliases());
+                $fq_attribute_name = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject($attribute->name, $source->getAliases()));
             }
 
             $attribute_name = (string) $attribute->name;

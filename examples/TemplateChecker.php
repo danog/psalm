@@ -81,7 +81,7 @@ final class TemplateAnalyzer extends Psalm\Internal\Analyzer\FileAnalyzer
         if (!$this_params) {
             $this_params = new Context();
             $this_params->check_variables = false;
-            $this_params->self = self::VIEW_CLASS;
+            $this_params->self = Interner::intern(self::VIEW_CLASS);
             $this_params->vars_in_scope['$this'] = new Union([
                 new TNamedObject(self::VIEW_CLASS),
             ]);
@@ -108,7 +108,7 @@ final class TemplateAnalyzer extends Psalm\Internal\Analyzer\FileAnalyzer
         }
 
         $this_context = new Context();
-        $this_context->self = Interner::lookup($method_id->class_id);
+        $this_context->self = Interner::intern(Interner::lookup($method_id->class_id));
 
         $class_storage = $codebase->classlike_storage_provider->get($method_id->class_id);
 
@@ -132,7 +132,7 @@ final class TemplateAnalyzer extends Psalm\Internal\Analyzer\FileAnalyzer
         );
 
         $view_context = new Context();
-        $view_context->self = strtolower(self::VIEW_CLASS);
+        $view_context->self = Interner::intern(strtolower(self::VIEW_CLASS));
 
         // add all $this-> vars to scope
         foreach ($this_context->vars_possibly_in_scope as $var => $_) {

@@ -58,7 +58,7 @@ final class MethodVisibilityAnalyzer
                 if (IssueBuffer::accepts(
                     new InaccessibleMethod(
                         'Cannot access method ' . $codebase_methods->getCasedMethodId($method_id) .
-                            ' from context ' . $context->self,
+                            ' from context ' . Interner::lookupOrNull($context->self),
                         $code_location,
                     ),
                     $suppressed_issues,
@@ -99,7 +99,7 @@ final class MethodVisibilityAnalyzer
             $appearing_method_name = Interner::lookupLc($appearing_method_id->name_id);
 
             // if the calling class is the same, we know the method exists, so it must be visible
-            if ($appearing_method_class === $context->self) {
+            if ($appearing_method_class === Interner::lookupOrNull($context->self)) {
                 return null;
             }
 
@@ -149,11 +149,11 @@ final class MethodVisibilityAnalyzer
                 return null;
 
             case ClassLikeAnalyzer::VISIBILITY_PRIVATE:
-                if (!$context->self || $appearing_method_class !== $context->self) {
+                if (!($context->self !== null) || $appearing_method_class !== Interner::lookup($context->self)) {
                     if (IssueBuffer::accepts(
                         new InaccessibleMethod(
                             'Cannot access private method ' . $codebase_methods->getCasedMethodId($method_id) .
-                                ' from context ' . $context->self,
+                                ' from context ' . Interner::lookupOrNull($context->self),
                             $code_location,
                         ),
                         $suppressed_issues,
@@ -165,7 +165,7 @@ final class MethodVisibilityAnalyzer
                 return null;
 
             case ClassLikeAnalyzer::VISIBILITY_PROTECTED:
-                if (!$context->self) {
+                if (!($context->self !== null)) {
                     if (IssueBuffer::accepts(
                         new InaccessibleMethod(
                             'Cannot access protected method ' . $method_id,
@@ -180,19 +180,19 @@ final class MethodVisibilityAnalyzer
                 }
 
                 if ($oldest_ancestor_declaring_method_class !== null
-                    && $codebase_classlikes->classExtends(Interner::intern($oldest_ancestor_declaring_method_class), Interner::intern($context->self))
+                    && $codebase_classlikes->classExtends(Interner::intern($oldest_ancestor_declaring_method_class), $context->self)
                 ) {
                     return null;
                 }
 
                 if ($oldest_ancestor_declaring_method_class !== null
-                    && !$codebase_classlikes->classExtends(Interner::intern($context->self), Interner::intern($oldest_ancestor_declaring_method_class))
-                    && !$codebase_classlikes->classExtends(Interner::intern($declaring_method_class), Interner::intern($context->self))
+                    && !$codebase_classlikes->classExtends($context->self, Interner::intern($oldest_ancestor_declaring_method_class))
+                    && !$codebase_classlikes->classExtends(Interner::intern($declaring_method_class), $context->self)
                 ) {
                     if (IssueBuffer::accepts(
                         new InaccessibleMethod(
                             'Cannot access protected method ' . $codebase_methods->getCasedMethodId($method_id) .
-                                ' from context ' . $context->self,
+                                ' from context ' . Interner::lookup($context->self),
                             $code_location,
                         ),
                         $suppressed_issues,

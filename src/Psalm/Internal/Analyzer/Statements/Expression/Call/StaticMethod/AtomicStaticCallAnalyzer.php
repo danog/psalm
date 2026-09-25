@@ -551,7 +551,7 @@ final class AtomicStaticCallAnalyzer
             $expanded_return_type = TypeExpander::expandUnion(
                 $codebase,
                 $return_type_candidate,
-                $context->self,
+                Interner::lookupOrNull($context->self),
                 Interner::lookup($class_storage->id),
                 $context->parent,
                 true,
@@ -579,16 +579,16 @@ final class AtomicStaticCallAnalyzer
                     || $stmt->class->getFirst() !== 'parent'
                     || $statements_analyzer->isStatic())
                 && (
-                    !$context->self
+                    !($context->self !== null)
                     || $statements_analyzer->isStatic()
-                    || !$codebase->classExtends(Interner::intern($context->self), Interner::intern($fq_class_name))
+                    || !$codebase->classExtends($context->self, Interner::intern($fq_class_name))
                 )
             ) {
                 MethodAnalyzer::checkStatic(
                     $method_id,
                     ($stmt->class instanceof PhpParser\Node\Name
                         && strtolower($stmt->class->getFirst()) === 'self')
-                    || $context->self === $fq_class_name,
+                    || Interner::lookupOrNull($context->self) === $fq_class_name,
                     !$statements_analyzer->isStatic(),
                     $codebase,
                     new CodeLocation($statements_analyzer, $stmt),
@@ -816,7 +816,7 @@ final class AtomicStaticCallAnalyzer
 
         $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
-        if ($class_storage->deprecated && $fq_class_name !== $context->self) {
+        if ($class_storage->deprecated && $fq_class_name !== Interner::lookupOrNull($context->self)) {
             IssueBuffer::maybeAdd(
                 new DeprecatedClass(
                     $fq_class_name . ' is marked deprecated',
@@ -827,11 +827,11 @@ final class AtomicStaticCallAnalyzer
             );
         }
 
-        if ($context->self && ! NamespaceAnalyzer::isWithinAny($context->self, $class_storage->internal)) {
+        if (($context->self !== null) && ! NamespaceAnalyzer::isWithinAny(Interner::lookup($context->self), $class_storage->internal)) {
             IssueBuffer::maybeAdd(
                 new InternalClass(
                     $fq_class_name . ' is internal to ' . InternalClass::listToPhrase($class_storage->internal)
-                        . ' but called from ' . $context->self,
+                        . ' but called from ' . Interner::lookup($context->self),
                     new CodeLocation($statements_analyzer->getSource(), $stmt),
                     $fq_class_name,
                 ),

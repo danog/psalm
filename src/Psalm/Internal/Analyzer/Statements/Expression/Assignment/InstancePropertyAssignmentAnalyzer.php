@@ -110,11 +110,11 @@ final class InstancePropertyAssignmentAnalyzer
         $codebase = $statements_analyzer->getCodebase();
 
         if ($stmt instanceof PropertyItem) {
-            if (!$context->self || !$stmt->default) {
+            if (!($context->self !== null) || !$stmt->default) {
                 return;
             }
 
-            $property_id = $context->self . '::$' . $prop_name;
+            $property_id = Interner::lookup($context->self) . '::$' . $prop_name;
 
             $class_property_type = null;
 
@@ -130,11 +130,11 @@ final class InstancePropertyAssignmentAnalyzer
             }
 
             if ($class_property_type) {
-                $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($context->self));
+                $class_storage = $codebase->classlike_storage_provider->get($context->self);
 
                 $class_property_type = self::getExpandedPropertyType(
                     $codebase,
-                    $context->self,
+                    Interner::lookup($context->self),
                     $prop_name,
                     $class_storage,
                 );
@@ -400,10 +400,10 @@ final class InstancePropertyAssignmentAnalyzer
 
         $can_set_readonly_property = true;
         if ($appearing_property_class) {
-            $can_set_readonly_property = $context->self
+            $can_set_readonly_property = ($context->self !== null)
                 && $context->calling_method_id
-                && ($appearing_property_class === $context->self
-                    || $codebase->classExtends(Interner::intern($context->self), Interner::intern($appearing_property_class)))
+                && ($appearing_property_class === Interner::lookup($context->self)
+                    || $codebase->classExtends($context->self, Interner::intern($appearing_property_class)))
                 && (str_ends_with($context->calling_method_id, '::__construct')
                     || str_ends_with($context->calling_method_id, '::unserialize')
                     || str_ends_with($context->calling_method_id, '::__unserialize')
@@ -468,7 +468,7 @@ final class InstancePropertyAssignmentAnalyzer
                 if ($stmt->isReadonly()) {
                     IssueBuffer::maybeAdd(
                         new InvalidPropertyAssignment(
-                            'Readonly property ' . $context->self . '::$' . $prop->name->name
+                            'Readonly property ' . Interner::lookupOrNull($context->self) . '::$' . $prop->name->name
                                 . ' cannot have a default',
                             new CodeLocation($statements_analyzer->getSource(), $prop->default),
                         ),
@@ -903,7 +903,7 @@ final class InstancePropertyAssignmentAnalyzer
             if ($context->collect_initializations
                 && $lhs_var_id === '$this'
             ) {
-                $context_type = $context_type->setProperties(['initialized_class' => $context->self]);
+                $context_type = $context_type->setProperties(['initialized_class' => Interner::lookupOrNull($context->self)]);
             }
 
             // because we don't want to be assigning for property declarations
@@ -1072,7 +1072,7 @@ final class InstancePropertyAssignmentAnalyzer
 
         if ((!$codebase->propertyExists($property_id, false, $statements_analyzer, $context)
                 || ($lhs_var_id !== '$this'
-                    && $fq_class_name !== $context->self
+                    && $fq_class_name !== Interner::lookupOrNull($context->self)
                     && ClassLikeAnalyzer::checkPropertyVisibility(
                         $property_id,
                         $context,
@@ -1179,9 +1179,9 @@ final class InstancePropertyAssignmentAnalyzer
 
         if ($stmt->var instanceof PhpParser\Node\Expr\Variable
             && $stmt->var->name === 'this'
-            && $context->self
+            && ($context->self !== null)
         ) {
-            $self_property_id = $context->self . '::$' . $prop_name;
+            $self_property_id = Interner::lookup($context->self) . '::$' . $prop_name;
 
             if ($self_property_id !== $property_id
                 && $codebase->propertyExists(
@@ -1327,11 +1327,11 @@ final class InstancePropertyAssignmentAnalyzer
                 );
             }
 
-            if ($context->self && !NamespaceAnalyzer::isWithinAny($context->self, $property_storage->internal)) {
+            if (($context->self !== null) && !NamespaceAnalyzer::isWithinAny(Interner::lookup($context->self), $property_storage->internal)) {
                 IssueBuffer::maybeAdd(
                     new InternalProperty(
                         $property_id . ' is internal to ' . InternalClass::listToPhrase($property_storage->internal)
-                            . ' but called from ' . $context->self,
+                            . ' but called from ' . Interner::lookup($context->self),
                         new CodeLocation($statements_analyzer->getSource(), $stmt),
                         $property_id,
                     ),

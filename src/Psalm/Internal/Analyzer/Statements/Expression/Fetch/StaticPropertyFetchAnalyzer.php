@@ -69,7 +69,7 @@ final class StaticPropertyFetchAnalyzer
                     );
                 }
             } else {
-                $fq_class_name = (string)$context->self;
+                $fq_class_name = (string)Interner::lookupOrNull($context->self);
             }
 
             if ($context->isPhantomClass($fq_class_name)) {
@@ -78,10 +78,10 @@ final class StaticPropertyFetchAnalyzer
         } else {
             $aliases = $statements_analyzer->getAliases();
 
-            $fq_class_name = ClassLikeAnalyzer::getFQCLNFromNameObject(
+            $fq_class_name = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                 $stmt->class,
                 $aliases,
-            );
+            ));
 
             if ($context->calling_method_id
                 && !$stmt->class instanceof PhpParser\Node\Name\FullyQualified
@@ -177,7 +177,7 @@ final class StaticPropertyFetchAnalyzer
 
         $var_id = ExpressionIdentifier::getVarId(
             $stmt,
-            $context->self ?: $statements_analyzer->getFQCLN(),
+            (Interner::lookupOrNull($context->self) ?? $statements_analyzer->getFQCLN()),
             $statements_analyzer,
         );
 

@@ -490,7 +490,7 @@ final class CodeUseGraph
             $target_node,
             $context?->calling_method_id,
             $context?->calling_function_id,
-            $context?->self,
+            Interner::lookupOrNull($context?->self),
             $location,
             $type,
             $file_path,

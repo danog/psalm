@@ -18,6 +18,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\Fetch\ConstFetchAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\IncludeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\SimpleTypeInferer;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\Scanner\FileScanner;
 use Psalm\Storage\FileStorage;
@@ -71,7 +72,7 @@ final class ExpressionScanner
                 || $node instanceof PhpParser\Node\Expr\StaticCall)
             && ($class_name_node = $node->class) instanceof PhpParser\Node\Name
         ) {
-            $fq_classlike_name = ClassLikeAnalyzer::getFQCLNFromNameObject($class_name_node, $aliases);
+            $fq_classlike_name = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject($class_name_node, $aliases));
 
             if (!in_array(strtolower($fq_classlike_name), ['self', 'static', 'parent'], true)) {
                 $codebase->scanner->queueClassLikeForScanning(

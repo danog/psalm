@@ -764,8 +764,8 @@ final class ReturnTypeAnalyzer
 
         $classlike_storage = null;
 
-        if ($context->self) {
-            $classlike_storage = $codebase->classlike_storage_provider->get(Interner::intern($context->self));
+        if (($context->self !== null)) {
+            $classlike_storage = $codebase->classlike_storage_provider->get($context->self);
             $parent_class = $classlike_storage->parent_class;
         }
 
@@ -870,13 +870,13 @@ final class ReturnTypeAnalyzer
             return false;
         }
 
-        if ($classlike_storage && $context->self) {
+        if ($classlike_storage && ($context->self !== null)) {
             $class_template_params = ClassTemplateParamCollector::collect(
                 $codebase,
                 $classlike_storage,
-                $codebase->classlike_storage_provider->get(Interner::intern($context->self)),
+                $codebase->classlike_storage_provider->get($context->self),
                 strtolower($function->name->name),
-                new TNamedObject($context->self),
+                new TNamedObject(Interner::lookup($context->self)),
                 true,
             );
 

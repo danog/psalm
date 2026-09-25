@@ -285,7 +285,7 @@ final class FunctionLikeNodeScanner
                             $cond_id,
                             $cond_id,
                             $function_stmt->cond,
-                            (isset($this->classlike_storage->id) ? Interner::lookup($this->classlike_storage->id) : null),
+                            (Interner::internOrNull(isset($this->classlike_storage->id) ? Interner::lookup($this->classlike_storage->id) : null)),
                             $this->file_scanner,
                             null,
                         );

@@ -117,16 +117,16 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
 
         if (!$statements_analyzer->isStatic() && !$closure_analyzer->isStatic()) {
             if ($context->collect_mutations &&
-                $context->self &&
+                ($context->self !== null) &&
                 $codebase->classExtends(
-                    Interner::intern($context->self),
+                    $context->self,
                     Interner::intern((string)$statements_analyzer->getFQCLN()),
                 )
             ) {
                 /** @psalm-suppress PossiblyUndefinedStringArrayOffset */
                 $use_context->vars_in_scope['$this'] = $context->vars_in_scope['$this'];
-            } elseif ($context->self) {
-                $this_atomic = new TNamedObject($context->self, true);
+            } elseif (($context->self !== null)) {
+                $this_atomic = new TNamedObject(Interner::lookup($context->self), true);
 
                 $use_context->vars_in_scope['$this'] = new Union([$this_atomic]);
             }
@@ -138,14 +138,14 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
             }
         }
 
-        if ($context->self) {
-            $self_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($context->self));
+        if (($context->self !== null)) {
+            $self_class_storage = $codebase->classlike_storage_provider->get($context->self);
 
             ClassAnalyzer::addContextProperties(
                 $statements_analyzer,
                 $self_class_storage,
                 $use_context,
-                $context->self,
+                Interner::lookup($context->self),
                 $statements_analyzer->getParentFQCLN(),
             );
         }

@@ -136,10 +136,10 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         parent::__construct($class, $source, $fq_class_name);
 
         if ($this->class instanceof PhpParser\Node\Stmt\Class_ && $this->class->extends) {
-            $this->parent_fq_class_name = self::getFQCLNFromNameObject(
+            $this->parent_fq_class_name = Interner::lookup(self::getFQCLNFromNameObject(
                 $this->class->extends,
                 $this->source->getAliases(),
-            );
+            ));
         }
     }
 
@@ -175,7 +175,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             throw new LogicException('Something went badly wrong');
         }
 
-        $fq_class_name = $class_context && $class_context->self ? $class_context->self : $this->fq_class_name;
+        $fq_class_name = $class_context && ($class_context->self !== null) ? Interner::lookup($class_context->self) : $this->fq_class_name;
 
         $storage = $this->storage;
 
@@ -283,7 +283,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         $parent_fq_class_name = $this->parent_fq_class_name;
 
         if (!$class_context) {
-            $class_context = new Context($this->fq_class_name);
+            $class_context = new Context(Interner::intern($this->fq_class_name));
             $class_context->parent = $parent_fq_class_name;
         }
 
@@ -601,13 +601,13 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                     );
 
                     try {
-                        $trait_file_analyzer = $project_analyzer->getFileAnalyzerForClassLike($fq_trait_name);
+                        $trait_file_analyzer = $project_analyzer->getFileAnalyzerForClassLike(Interner::lookup($fq_trait_name));
                     } catch (Exception) {
                         continue;
                     }
 
-                    $trait_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_trait_name));
-                    $trait_node = $codebase->classlikes->getTraitNode($fq_trait_name);
+                    $trait_storage = $codebase->classlike_storage_provider->get($fq_trait_name);
+                    $trait_node = $codebase->classlikes->getTraitNode(Interner::lookup($fq_trait_name));
                     $trait_aliases = $trait_storage->aliases;
 
                     if ($trait_aliases === null) {
@@ -617,11 +617,11 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                     $trait_analyzer = new TraitAnalyzer(
                         $trait_node,
                         $trait_file_analyzer,
-                        $fq_trait_name,
+                        Interner::lookup($fq_trait_name),
                         $trait_aliases,
                     );
 
-                    $fq_trait_name_lc = strtolower($fq_trait_name);
+                    $fq_trait_name_lc = strtolower(Interner::lookup($fq_trait_name));
 
                     $this->checkTemplateParams(
                         $codebase,
@@ -1050,7 +1050,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             return;
         }
 
-        $fq_class_name = $class_context->self ?: $this->fq_class_name;
+        $fq_class_name = (Interner::lookupOrNull($class_context->self) ?? $this->fq_class_name);
         $fq_class_name_lc = strtolower($fq_class_name);
 
         $included_file_path = $this->getFilePath();
@@ -1288,7 +1288,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             $method_context = clone $class_context;
             $method_context->collect_initializations = true;
             $method_context->collect_nonprivate_initializations = !$uninitialized_private_properties;
-            $method_context->self = $fq_class_name;
+            $method_context->self = Interner::intern($fq_class_name);
 
             $this_atomic_object_type = new TNamedObject($fq_class_name, !$storage->final);
 
@@ -1417,10 +1417,10 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             $trait_location = new CodeLocation($this, $trait_name, null, true);
             $class_context->include_location = new CodeLocation($this, $trait_name, null, true);
 
-            $fq_trait_name = self::getFQCLNFromNameObject(
+            $fq_trait_name = Interner::lookup(self::getFQCLNFromNameObject(
                 $trait_name,
                 $aliases,
-            );
+            ));
 
             if (!$codebase->classlikes->hasFullyQualifiedTraitName(
                 $fq_trait_name,
@@ -1756,7 +1756,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
 
         $included_file_path = $source->getFilePath();
 
-        if ($class_context->self && strtolower($class_context->self) !== strtolower((string) $source->getFQCLN())) {
+        if (($class_context->self !== null) && strtolower(Interner::lookup($class_context->self)) !== strtolower((string) $source->getFQCLN())) {
             $analyzed_method_id = $method_analyzer->getMethodId($class_context->self);
 
             $declaring_method_id = $codebase->methods->getDeclaringMethodId($analyzed_method_id);
@@ -1865,7 +1865,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
 
         if ($stmt->name->name !== '__construct'
             && $config->reportIssueInFile('InvalidReturnType', $source->getFilePath())
-            && $class_context->self
+            && ($class_context->self !== null)
         ) {
             self::analyzeClassMethodReturnType(
                 $stmt,
@@ -1874,7 +1874,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 $type_provider,
                 $codebase,
                 $class_storage,
-                $class_context->self,
+                Interner::lookup($class_context->self),
                 $analyzed_method_id,
                 $actual_method_id,
                 $method_context,
@@ -2068,10 +2068,10 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         $classlike_storage_provider = $codebase->classlike_storage_provider;
 
         foreach ($class->implements as $interface_name) {
-            $fq_interface_name = self::getFQCLNFromNameObject(
+            $fq_interface_name = Interner::lookup(self::getFQCLNFromNameObject(
                 $interface_name,
                 $this->source->getAliases(),
-            );
+            ));
 
             $fq_interface_name_lc = strtolower($fq_interface_name);
 

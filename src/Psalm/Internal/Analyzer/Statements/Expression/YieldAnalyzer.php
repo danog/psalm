@@ -70,8 +70,8 @@ final class YieldAnalyzer
                 $comment_type = TypeExpander::expandUnion(
                     $codebase,
                     $var_comment->type,
-                    $context->self,
-                    $context->self ? new TNamedObject($context->self) : null,
+                    Interner::lookupOrNull($context->self),
+                    ($context->self !== null) ? new TNamedObject(Interner::lookup($context->self)) : null,
                     $statements_analyzer->getParentFQCLN(),
                 );
 

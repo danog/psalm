@@ -203,7 +203,7 @@ final class Methods
         $fq_class_name = strtolower(Interner::lookup($class_storage->id));
         $calling_context = null;
         if ($calling_method_id !== null || $calling_class_name !== null) {
-            $calling_context = new Context($calling_class_name);
+            $calling_context = new Context(Interner::internOrNull($calling_class_name));
             $calling_context->calling_method_id = $calling_method_id;
         }
 

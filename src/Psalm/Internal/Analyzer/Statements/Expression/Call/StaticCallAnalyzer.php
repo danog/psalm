@@ -59,7 +59,7 @@ final class StaticCallAnalyzer extends CallAnalyzer
                 && in_array(strtolower($stmt->class->getFirst()), ['self', 'static', 'parent'], true)
             ) {
                 if ($stmt->class->getFirst() === 'parent') {
-                    $child_fq_class_name = $context->self;
+                    $child_fq_class_name = Interner::lookupOrNull($context->self);
 
                     $class_storage = $child_fq_class_name
                         ? $codebase->classlike_storage_provider->get(Interner::intern($child_fq_class_name))
@@ -105,12 +105,12 @@ final class StaticCallAnalyzer extends CallAnalyzer
                             }
                         }
                     }
-                } elseif ($context->self) {
+                } elseif (($context->self !== null)) {
                     if ($stmt->class->getFirst() === 'static' && isset($context->vars_in_scope['$this'])) {
                         $fq_class_name = (string) $context->vars_in_scope['$this'];
                         $lhs_type = $context->vars_in_scope['$this'];
                     } else {
-                        $fq_class_name = $context->self;
+                        $fq_class_name = Interner::lookup($context->self);
                     }
                 } else {
                     return !IssueBuffer::accepts(
@@ -128,10 +128,10 @@ final class StaticCallAnalyzer extends CallAnalyzer
             } else {
                 $aliases = $statements_analyzer->getAliases();
 
-                $fq_class_name = ClassLikeAnalyzer::getFQCLNFromNameObject(
+                $fq_class_name = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                     $stmt->class,
                     $aliases,
-                );
+                ));
 
                 if ($context->calling_method_id
                     && !$stmt->class instanceof PhpParser\Node\Name\FullyQualified
@@ -149,11 +149,11 @@ final class StaticCallAnalyzer extends CallAnalyzer
 
                 $does_class_exist = false;
 
-                if ($context->self) {
-                    $self_storage = $codebase->classlike_storage_provider->get(Interner::intern($context->self));
+                if (($context->self !== null)) {
+                    $self_storage = $codebase->classlike_storage_provider->get($context->self);
 
                     if (isset($self_storage->used_traits[strtolower($fq_class_name)])) {
-                        $fq_class_name = $context->self;
+                        $fq_class_name = Interner::lookup($context->self);
                         $does_class_exist = true;
                     }
                 }

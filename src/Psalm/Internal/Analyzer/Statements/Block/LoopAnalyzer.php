@@ -14,6 +14,7 @@ use Psalm\Internal\Analyzer\ScopeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Clause;
+use Psalm\Internal\Interner;
 use Psalm\Internal\PhpVisitor\AssignmentMapVisitor;
 use Psalm\Internal\PhpVisitor\NodeCleanerVisitor;
 use Psalm\Internal\Scope\LoopScope;
@@ -61,7 +62,7 @@ final class LoopAnalyzer
         $loop_context = $loop_scope->loop_context;
         $loop_parent_context = $loop_scope->loop_parent_context;
 
-        $assignment_mapper = new AssignmentMapVisitor($loop_context->self);
+        $assignment_mapper = new AssignmentMapVisitor(Interner::lookupOrNull($loop_context->self));
         $traverser->addVisitor($assignment_mapper);
 
         $traverser->traverse(array_merge($pre_conditions, $stmts, $post_expressions));

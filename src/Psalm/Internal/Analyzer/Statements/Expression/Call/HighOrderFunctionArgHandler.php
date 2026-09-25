@@ -144,8 +144,8 @@ final class HighOrderFunctionArgHandler
         $expanded = TypeExpander::expandUnion(
             $statements_analyzer->getCodebase(),
             $fully_inferred_callable_type,
-            $context->self,
-            $context->self,
+            Interner::lookupOrNull($context->self),
+            Interner::lookupOrNull($context->self),
             $context->parent,
             true,
             true,

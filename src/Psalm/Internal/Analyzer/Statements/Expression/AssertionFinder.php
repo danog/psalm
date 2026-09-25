@@ -1263,10 +1263,10 @@ final class AssertionFinder
     ): array {
         if ($stmt->class instanceof PhpParser\Node\Name) {
             if (!in_array(strtolower($stmt->class->getFirst()), ['self', 'static', 'parent'], true)) {
-                $instanceof_class = ClassLikeAnalyzer::getFQCLNFromNameObject(
+                $instanceof_class = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                     $stmt->class,
                     $source->getAliases(),
-                );
+                ));
 
                 if ($source instanceof StatementsAnalyzer) {
                     $codebase = $source->getCodebase();
@@ -2544,10 +2544,10 @@ final class AssertionFinder
         } elseif ($whichclass_expr instanceof PhpParser\Node\Expr\ClassConstFetch
             && $whichclass_expr->class instanceof PhpParser\Node\Name
         ) {
-            $var_type = ClassLikeAnalyzer::getFQCLNFromNameObject(
+            $var_type = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                 $whichclass_expr->class,
                 $source->getAliases(),
-            );
+            ));
         } else {
             throw new UnexpectedValueException('Shouldn’t get here');
         }
@@ -2610,10 +2610,10 @@ final class AssertionFinder
         } elseif ($whichclass_expr instanceof PhpParser\Node\Expr\ClassConstFetch
             && $whichclass_expr->class instanceof PhpParser\Node\Name
         ) {
-            $var_type = ClassLikeAnalyzer::getFQCLNFromNameObject(
+            $var_type = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                 $whichclass_expr->class,
                 $source->getAliases(),
-            );
+            ));
         } else {
             throw new UnexpectedValueException('Shouldn’t get here');
         }
@@ -2678,10 +2678,10 @@ final class AssertionFinder
         } elseif ($whichclass_expr instanceof PhpParser\Node\Expr\ClassConstFetch
             && $whichclass_expr->class instanceof PhpParser\Node\Name
         ) {
-            $var_type = ClassLikeAnalyzer::getFQCLNFromNameObject(
+            $var_type = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                 $whichclass_expr->class,
                 $source->getAliases(),
-            );
+            ));
 
             if ($var_type === 'self' || $var_type === 'static') {
                 $var_type = $this_class_name;
@@ -3327,10 +3327,10 @@ final class AssertionFinder
         } elseif ($whichclass_expr instanceof PhpParser\Node\Expr\ClassConstFetch
             && $whichclass_expr->class instanceof PhpParser\Node\Name
         ) {
-            $var_type = ClassLikeAnalyzer::getFQCLNFromNameObject(
+            $var_type = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                 $whichclass_expr->class,
                 $source->getAliases(),
-            );
+            ));
         } else {
             throw new UnexpectedValueException('Shouldn’t get here');
         }
@@ -3399,10 +3399,10 @@ final class AssertionFinder
         if ($whichclass_expr instanceof PhpParser\Node\Expr\ClassConstFetch
             && $whichclass_expr->class instanceof PhpParser\Node\Name
         ) {
-            $var_type = ClassLikeAnalyzer::getFQCLNFromNameObject(
+            $var_type = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                 $whichclass_expr->class,
                 $source->getAliases(),
-            );
+            ));
 
             if ($var_type === 'self' || $var_type === 'static') {
                 $var_type = $this_class_name;
@@ -3634,10 +3634,10 @@ final class AssertionFinder
                         // do nothing
                     } else {
                         $object = new TNamedObject(
-                            ClassLikeAnalyzer::getFQCLNFromNameObject(
+                            Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                                 $class_node,
                                 $source->getAliases(),
-                            ),
+                            )),
                         );
                         $if_types[$first_var_name] = [[new IsAClass($object, $third_arg_value === 'true')]];
                     }

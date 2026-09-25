@@ -365,11 +365,11 @@ final class AtomicPropertyFetchAnalyzer
         }
 
         if (!$naive_property_exists
-            && $fq_class_name !== $context->self
-            && $context->self
-            && $codebase->classlikes->classExtends(Interner::intern($fq_class_name), Interner::intern($context->self))
+            && $fq_class_name !== Interner::lookupOrNull($context->self)
+            && ($context->self !== null)
+            && $codebase->classlikes->classExtends(Interner::intern($fq_class_name), $context->self)
             && $codebase->propertyExists(
-                $context->self . '::$' . $prop_name,
+                Interner::lookup($context->self) . '::$' . $prop_name,
                 true,
                 $statements_analyzer,
                 $context,
@@ -378,7 +378,7 @@ final class AtomicPropertyFetchAnalyzer
                     : null,
             )
         ) {
-            $property_id = $context->self . '::$' . $prop_name;
+            $property_id = Interner::lookup($context->self) . '::$' . $prop_name;
         } elseif (!$naive_property_exists
             || (!$is_static_access
                 // when property existence is asserted by a plugin it doesn't necessarily has storage
@@ -462,11 +462,11 @@ final class AtomicPropertyFetchAnalyzer
 
             $property_storage = $declaring_class_storage->properties[$prop_name_id];
 
-            if ($context->self && !NamespaceAnalyzer::isWithinAny($context->self, $property_storage->internal)) {
+            if (($context->self !== null) && !NamespaceAnalyzer::isWithinAny(Interner::lookup($context->self), $property_storage->internal)) {
                 IssueBuffer::maybeAdd(
                     new InternalProperty(
                         $property_id . ' is internal to ' . InternalClass::listToPhrase($property_storage->internal)
-                            . ' but called from ' . $context->self,
+                            . ' but called from ' . Interner::lookup($context->self),
                         new CodeLocation($statements_analyzer->getSource(), $stmt),
                         $property_id,
                     ),
@@ -610,7 +610,7 @@ final class AtomicPropertyFetchAnalyzer
     ): bool {
         if ((!$naive_property_exists
                 || ($stmt_var_id !== '$this'
-                    && $fq_class_name !== $context->self
+                    && $fq_class_name !== Interner::lookupOrNull($context->self)
                     && ClassLikeAnalyzer::checkPropertyVisibility(
                         $property_id,
                         $context,

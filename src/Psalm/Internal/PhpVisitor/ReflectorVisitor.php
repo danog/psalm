@@ -20,6 +20,7 @@ use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\CommentAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\SimpleTypeInferer;
 use Psalm\Internal\EventDispatcher;
+use Psalm\Internal\Interner;
 use Psalm\Internal\PhpVisitor\Reflector\ClassLikeNodeScanner;
 use Psalm\Internal\PhpVisitor\Reflector\ExpressionResolver;
 use Psalm\Internal\PhpVisitor\Reflector\ExpressionScanner;
@@ -170,7 +171,7 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
         } elseif ($node instanceof PhpParser\Node\Stmt\TryCatch) {
             foreach ($node->catches as $catch) {
                 foreach ($catch->types as $catch_type) {
-                    $catch_fqcln = ClassLikeAnalyzer::getFQCLNFromNameObject($catch_type, $this->aliases);
+                    $catch_fqcln = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject($catch_type, $this->aliases));
 
                     if (!in_array(strtolower($catch_fqcln), ['self', 'static', 'parent'], true)) {
                         $this->codebase->scanner->queueClassLikeForScanning($catch_fqcln);

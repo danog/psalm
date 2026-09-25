@@ -9,6 +9,7 @@ use Psalm\Config;
 use Psalm\FileSource;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 
 use function count;
 use function implode;
@@ -45,10 +46,10 @@ final class ExpressionIdentifier
                 }
             } else {
                 $fq_class_name = $source
-                    ? ClassLikeAnalyzer::getFQCLNFromNameObject(
+                    ? Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                         $stmt->class,
                         $source->getAliases(),
-                    )
+                    ))
                     : implode('\\', $stmt->class->getParts());
             }
 

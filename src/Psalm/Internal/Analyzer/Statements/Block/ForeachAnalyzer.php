@@ -158,8 +158,8 @@ final class ForeachAnalyzer
             $comment_type = TypeExpander::expandUnion(
                 $codebase,
                 $var_comment->type,
-                $context->self,
-                $context->self,
+                Interner::lookupOrNull($context->self),
+                Interner::lookupOrNull($context->self),
                 $statements_analyzer->getParentFQCLN(),
             );
 
@@ -350,8 +350,8 @@ final class ForeachAnalyzer
             $comment_type = TypeExpander::expandUnion(
                 $codebase,
                 $var_comment->type,
-                $context->self,
-                $context->self,
+                Interner::lookupOrNull($context->self),
+                Interner::lookupOrNull($context->self),
                 $statements_analyzer->getParentFQCLN(),
             );
 

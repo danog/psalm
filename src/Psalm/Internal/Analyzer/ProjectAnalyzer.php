@@ -1293,8 +1293,8 @@ final class ProjectAnalyzer
 
         $file_analyzer->populateCheckers($stmts);
 
-        if (!$this_context->self) {
-            $this_context->self = $fq_class_name;
+        if (!($this_context->self !== null)) {
+            $this_context->self = Interner::intern($fq_class_name);
             $this_context->vars_in_scope['$this'] = Type::parseString($fq_class_name);
         }
 

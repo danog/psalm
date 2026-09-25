@@ -153,7 +153,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
         $result->has_mock = $result->has_mock || $is_mock;
 
         if ($fq_class_name === 'static') {
-            $fq_class_name = (string) $context->self;
+            $fq_class_name = (string) Interner::lookupOrNull($context->self);
         }
 
         if ($is_mock ||
@@ -439,15 +439,15 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
         $cased_method_id = $fq_class_name . '::' . $method_name_node->name;
 
         if ($lhs_var_id === '$this'
-            && $context->self
-            && $fq_class_name !== $context->self
+            && ($context->self !== null)
+            && $fq_class_name !== Interner::lookup($context->self)
             && $codebase->methodExists(
-                new MethodIdentifier(Interner::intern($context->self), Interner::intern($method_name_lc)),
+                new MethodIdentifier($context->self, Interner::intern($method_name_lc)),
             )
         ) {
-            $method_id = new MethodIdentifier(Interner::intern($context->self), Interner::intern($method_name_lc));
-            $cased_method_id = $context->self . '::' . $method_name_node->name;
-            $fq_class_name = $context->self;
+            $method_id = new MethodIdentifier($context->self, Interner::intern($method_name_lc));
+            $cased_method_id = Interner::lookup($context->self) . '::' . $method_name_node->name;
+            $fq_class_name = Interner::lookup($context->self);
         }
 
         $source_method_id = $source instanceof FunctionLikeAnalyzer

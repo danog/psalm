@@ -520,7 +520,7 @@ final class NamedFunctionCallHandler
 
             $anded_assertions = $stmt_assertions ?? AssertionFinder::processFunctionCall(
                 $stmt,
-                $context->self,
+                Interner::lookupOrNull($context->self),
                 $statements_analyzer,
                 $codebase,
                 $context->inside_negation,

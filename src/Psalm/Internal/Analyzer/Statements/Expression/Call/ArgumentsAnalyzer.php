@@ -1009,7 +1009,7 @@ final class ArgumentsAnalyzer
 
         if ($method_id === 'get_class' && $args === []) {
             //get_class without args only works when inside a class
-            if (!$context->self) {
+            if (!($context->self !== null)) {
                 IssueBuffer::maybeAdd(
                     new TooFewArguments(
                         'Cannot call get_class() without argument outside of class scope',
@@ -1147,7 +1147,7 @@ final class ArgumentsAnalyzer
                         $statements_analyzer,
                         $statements_analyzer->node_data->getType($arg->value),
                         $argument_offset,
-                        $context->self,
+                        Interner::lookupOrNull($context->self),
                         $context->calling_method_id ?: $context->calling_function_id,
                     );
 
@@ -1172,7 +1172,7 @@ final class ArgumentsAnalyzer
                         $statements_analyzer,
                         $statements_analyzer->node_data->getType($arg->value),
                         $argument_offset,
-                        $context->self,
+                        Interner::lookupOrNull($context->self),
                         $context->calling_method_id ?: $context->calling_function_id,
                     );
 

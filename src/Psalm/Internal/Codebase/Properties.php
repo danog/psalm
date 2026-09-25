@@ -84,7 +84,7 @@ final class Properties
 
         if ($source
             && $context
-            && $context->self !== $fq_class_name
+            && Interner::lookupOrNull($context->self) !== $fq_class_name
             && !$context->collect_initializations
             && !$context->collect_mutations
         ) {

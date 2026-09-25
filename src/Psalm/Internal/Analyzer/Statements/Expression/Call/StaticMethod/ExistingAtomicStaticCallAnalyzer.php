@@ -89,7 +89,7 @@ final class ExistingAtomicStaticCallAnalyzer
         );
 
         if ($class_storage->user_defined
-            && $context->self
+            && ($context->self !== null)
             && ($context->collect_mutations || $context->collect_initializations)
         ) {
             $appearing_method_id = $codebase->methods->getAppearingMethodId($method_id);
@@ -98,9 +98,9 @@ final class ExistingAtomicStaticCallAnalyzer
                 return;
             }
 
-            $appearing_method_class_name = Interner::lookup($appearing_method_id->class_id);
+            $appearing_method_class_name = Interner::intern(Interner::lookup($appearing_method_id->class_id));
 
-            if ($codebase->classExtends(Interner::intern($context->self), Interner::intern($appearing_method_class_name))) {
+            if ($codebase->classExtends($context->self, $appearing_method_class_name)) {
                 $old_context_include_location = $context->include_location;
                 $old_self = $context->self;
                 $context->include_location = new CodeLocation($statements_analyzer->getSource(), $stmt);
@@ -153,14 +153,14 @@ final class ExistingAtomicStaticCallAnalyzer
             $class_storage,
             $method_name_lc,
             $lhs_type_part,
-            !$statements_analyzer->isStatic() && Interner::lookup($method_id->class_id) === $context->self,
+            !$statements_analyzer->isStatic() && Interner::lookup($method_id->class_id) === Interner::lookupOrNull($context->self),
         );
 
         if ($found_generic_params
             && $stmt->class instanceof PhpParser\Node\Name
             && $stmt->class->getParts() === ['parent']
-            && $context->self
-            && ($self_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($context->self)))
+            && ($context->self !== null)
+            && ($self_class_storage = $codebase->classlike_storage_provider->get($context->self))
             && $self_class_storage->template_extended_params
         ) {
             foreach ($self_class_storage->template_extended_params as $template_fq_class_name => $extended_types) {
@@ -268,12 +268,12 @@ final class ExistingAtomicStaticCallAnalyzer
         if ($method_storage) {
             if ($method_storage->abstract
                 && $stmt->class instanceof PhpParser\Node\Name
-                && (!$context->self
+                && (!($context->self !== null)
                     || !UnionTypeComparator::isContainedBy(
                         $codebase,
                         $context->vars_in_scope['$this']
                             ?? new Union([
-                                new TNamedObject($context->self),
+                                new TNamedObject(Interner::lookup($context->self)),
                             ]),
                         new Union([
                             new TNamedObject(Interner::lookup($method_id->class_id)),
@@ -531,10 +531,10 @@ final class ExistingAtomicStaticCallAnalyzer
                 && count($stmt->class->getParts()) === 1
                 && in_array(strtolower($stmt->class->getFirst()), ['self', 'static', 'parent'], true)
                 && $lhs_type_part instanceof TNamedObject
-                && $context->self
+                && ($context->self !== null)
             ) {
-                $static_type = $context->self;
-                $context_final = $codebase->classlike_storage_provider->get(Interner::intern($context->self))->final;
+                $static_type = Interner::lookup($context->self);
+                $context_final = $codebase->classlike_storage_provider->get($context->self)->final;
             } elseif ($context->calling_method_id !== null) {
                 // differentiate between these cases:
                 //   1. "static" comes from the CALLED static method - use $fq_class_name.
@@ -542,7 +542,7 @@ final class ExistingAtomicStaticCallAnalyzer
                 //   method CALLING the currently analyzed static method - use $context->self.
                 $static_type = self::hasStaticInType($return_type_candidate)
                     ? $fq_class_name
-                    : $context->self;
+                    : Interner::lookupOrNull($context->self);
             } else {
                 $static_type = $fq_class_name;
             }
@@ -572,7 +572,7 @@ final class ExistingAtomicStaticCallAnalyzer
                 true,
                 false,
                 is_string($static_type)
-                && ($static_type !== $context->self
+                && ($static_type !== Interner::lookupOrNull($context->self)
                     || $class_storage->final
                     || $context_final),
             );

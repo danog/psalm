@@ -11,6 +11,7 @@ use Psalm\Internal\Analyzer\FunctionAnalyzer;
 use Psalm\Internal\Analyzer\MethodAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Issue\UndefinedConstant;
 use Psalm\IssueBuffer;
 use Psalm\Type;
@@ -35,7 +36,7 @@ final class MagicConstAnalyzer
         } elseif ($stmt instanceof PhpParser\Node\Scalar\MagicConst\Class_) {
             $codebase = $statements_analyzer->getCodebase();
 
-            if (!$context->self) {
+            if (!($context->self !== null)) {
                 IssueBuffer::maybeAdd(
                     new UndefinedConstant(
                         'Cannot get __class__ outside a class',
@@ -51,12 +52,12 @@ final class MagicConstAnalyzer
                         $codebase,
                         $statements_analyzer,
                         $stmt,
-                        $context->self,
+                        Interner::lookup($context->self),
                         $context,
                     );
                 }
 
-                $statements_analyzer->node_data->setType($stmt, Type::getLiteralClassString($context->self));
+                $statements_analyzer->node_data->setType($stmt, Type::getLiteralClassString(Interner::lookup($context->self)));
             }
         } elseif ($stmt instanceof PhpParser\Node\Scalar\MagicConst\Namespace_) {
             $namespace = $statements_analyzer->getNamespace();

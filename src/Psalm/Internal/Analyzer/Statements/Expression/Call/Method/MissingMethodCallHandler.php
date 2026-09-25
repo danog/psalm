@@ -124,7 +124,7 @@ final class MissingMethodCallHandler
                 $class_storage,
                 $method_name_lc,
                 $lhs_type_part,
-                !$statements_analyzer->isStatic() && Interner::lookup($method_id->class_id) === $context->self,
+                !$statements_analyzer->isStatic() && Interner::lookup($method_id->class_id) === Interner::lookupOrNull($context->self),
             );
 
             ArgumentsAnalyzer::analyze(
@@ -286,7 +286,7 @@ final class MissingMethodCallHandler
                 $class_storage,
                 $method_name_lc,
                 $lhs_type_part,
-                !$statements_analyzer->isStatic() && Interner::lookup($method_id->class_id) === $context->self,
+                !$statements_analyzer->isStatic() && Interner::lookup($method_id->class_id) === Interner::lookupOrNull($context->self),
             );
 
             if (ArgumentsAnalyzer::analyze(

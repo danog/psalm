@@ -176,9 +176,9 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                         $this->source->getAliases(),
                     );
 
-                    $trait_file_analyzer = $project_analyzer->getFileAnalyzerForClassLike($fq_trait_name);
-                    $trait_node = $codebase->classlikes->getTraitNode($fq_trait_name);
-                    $trait_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_trait_name));
+                    $trait_file_analyzer = $project_analyzer->getFileAnalyzerForClassLike(Interner::lookup($fq_trait_name));
+                    $trait_node = $codebase->classlikes->getTraitNode(Interner::lookup($fq_trait_name));
+                    $trait_storage = $codebase->classlike_storage_provider->get($fq_trait_name);
                     $trait_aliases = $trait_storage->aliases;
 
                     if ($trait_aliases === null) {
@@ -188,7 +188,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                     $trait_analyzer = new TraitAnalyzer(
                         $trait_node,
                         $trait_file_analyzer,
-                        $fq_trait_name,
+                        Interner::lookup($fq_trait_name),
                         $trait_aliases,
                     );
 
@@ -200,7 +200,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
 
                             $actual_method_id = $method_analyzer->getMethodId();
 
-                            if ($context->self && $context->self !== $this->fq_class_name) {
+                            if (($context->self !== null) && Interner::lookup($context->self) !== $this->fq_class_name) {
                                 $analyzed_method_id = $method_analyzer->getMethodId($context->self);
                                 $declaring_method_id = $codebase->methods->getDeclaringMethodId($analyzed_method_id);
 
@@ -462,26 +462,26 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
     public static function getFQCLNFromNameObject(
         PhpParser\Node\Name $class_name,
         Aliases $aliases,
-    ): string {
+    ): int {
         /** @var string|null */
         $resolved_name = $class_name->attrs()->resolvedName;
 
         if ($resolved_name) {
-            return $resolved_name;
+            return Interner::intern($resolved_name);
         }
 
         if ($class_name instanceof PhpParser\Node\Name\FullyQualified) {
-            return $class_name->toString();
+            return Interner::intern($class_name->toString());
         }
 
         if (in_array($class_name->getFirst(), ['self', 'static', 'parent'], true)) {
-            return $class_name->getFirst();
+            return Interner::intern($class_name->getFirst());
         }
 
-        return Type::getFQCLNFromString(
+        return Interner::intern(Type::getFQCLNFromString(
             $class_name->toString(),
             $aliases,
-        );
+        ));
     }
 
     /**
@@ -633,7 +633,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         }
 
         // if the calling class is the same, we know the property exists, so it must be visible
-        if ($appearing_property_class === $context->self) {
+        if ($appearing_property_class === Interner::lookupOrNull($context->self)) {
             return $emit_issues ? null : true;
         }
 
@@ -659,7 +659,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                 if ($emit_issues) {
                     IssueBuffer::maybeAdd(
                         new InaccessibleProperty(
-                            'Cannot access private property ' . $property_id . ' from context ' . $context->self,
+                            'Cannot access private property ' . $property_id . ' from context ' . Interner::lookupOrNull($context->self),
                             $code_location,
                         ),
                         $suppressed_issues,
@@ -668,7 +668,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
 
                 return null;
             case self::VISIBILITY_PROTECTED:
-                if (!$context->self) {
+                if (!($context->self !== null)) {
                     if ($emit_issues) {
                         IssueBuffer::maybeAdd(
                             new InaccessibleProperty(
@@ -682,15 +682,15 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                     return null;
                 }
 
-                if ($codebase->classExtends(Interner::intern($appearing_property_class), Interner::intern($context->self))) {
+                if ($codebase->classExtends(Interner::intern($appearing_property_class), $context->self)) {
                     return $emit_issues ? null : true;
                 }
 
-                if (!$codebase->classExtends(Interner::intern($context->self), Interner::intern($appearing_property_class))) {
+                if (!$codebase->classExtends($context->self, Interner::intern($appearing_property_class))) {
                     if ($emit_issues) {
                         IssueBuffer::maybeAdd(
                             new InaccessibleProperty(
-                                'Cannot access protected property ' . $property_id . ' from context ' . $context->self,
+                                'Cannot access protected property ' . $property_id . ' from context ' . Interner::lookup($context->self),
                                 $code_location,
                             ),
                             $suppressed_issues,

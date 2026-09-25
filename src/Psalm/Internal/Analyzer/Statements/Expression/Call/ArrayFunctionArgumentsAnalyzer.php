@@ -999,7 +999,7 @@ final class ArrayFunctionArgumentsAnalyzer
                     $statements_analyzer,
                     $input_type,
                     $i,
-                    $context->self,
+                    Interner::lookupOrNull($context->self),
                     $context->calling_method_id ?: $context->calling_function_id,
                 );
 
@@ -1012,7 +1012,7 @@ final class ArrayFunctionArgumentsAnalyzer
             $closure_param_type = TypeExpander::expandUnion(
                 $codebase,
                 $closure_param_type,
-                $context->self,
+                Interner::lookupOrNull($context->self),
                 null,
                 $statements_analyzer->getParentFQCLN(),
             );

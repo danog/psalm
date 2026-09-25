@@ -17,6 +17,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\Fetch\ArrayFetchAnalyzer;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Issue\InvalidArrayAssignment;
@@ -1116,10 +1117,10 @@ final class ArrayAssignmentAnalyzer
             && $child_stmt->dim->name instanceof PhpParser\Node\Identifier
             && $child_stmt->dim->class instanceof PhpParser\Node\Name
         ) {
-            $object_name = ClassLikeAnalyzer::getFQCLNFromNameObject(
+            $object_name = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                 $child_stmt->dim->class,
                 $statements_analyzer->getAliases(),
-            );
+            ));
             $var_id_addition = '[' . $object_name . '::' . $child_stmt->dim->name->name . ']';
 
             return [null, $var_id_addition, true];

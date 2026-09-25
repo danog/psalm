@@ -10,6 +10,7 @@ use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\SimpleTypeInferer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\Scanner\FileScanner;
 use Psalm\Storage\AttributeArg;
@@ -35,7 +36,7 @@ final class AttributeResolver
         if ($stmt->name instanceof PhpParser\Node\Name\FullyQualified) {
             $fq_type_string = (string)$stmt->name;
         } else {
-            $fq_type_string = ClassLikeAnalyzer::getFQCLNFromNameObject($stmt->name, $aliases);
+            $fq_type_string = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject($stmt->name, $aliases));
         }
 
         $codebase->scanner->queueClassLikeForScanning($fq_type_string);

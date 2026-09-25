@@ -297,7 +297,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
             $appearing_method_class = Interner::lookup($appearing_method_id->class_id);
 
             // if the calling class is the same, we know the method exists, so it must be visible
-            if ($appearing_method_class === $context->self) {
+            if ($appearing_method_class === Interner::lookupOrNull($context->self)) {
                 return true;
             }
         }
@@ -317,21 +317,21 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
                 return true;
 
             case ClassLikeAnalyzer::VISIBILITY_PRIVATE:
-                return $context->self && $appearing_method_class === $context->self;
+                return ($context->self !== null) && $appearing_method_class === Interner::lookup($context->self);
 
             case ClassLikeAnalyzer::VISIBILITY_PROTECTED:
-                if (!$context->self) {
+                if (!($context->self !== null)) {
                     return false;
                 }
 
                 if ($appearing_method_class
-                    && $codebase->classExtends(Interner::intern($appearing_method_class), Interner::intern($context->self))
+                    && $codebase->classExtends(Interner::intern($appearing_method_class), $context->self)
                 ) {
                     return true;
                 }
 
                 if ($appearing_method_class
-                    && !$codebase->classExtends(Interner::intern($context->self), Interner::intern($appearing_method_class))
+                    && !$codebase->classExtends($context->self, Interner::intern($appearing_method_class))
                 ) {
                     return false;
                 }
@@ -372,12 +372,12 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
     /**
      * @psalm-mutation-free
      */
-    public function getMethodId(?string $context_self = null): MethodIdentifier
+    public function getMethodId(?int $context_self = null): MethodIdentifier
     {
         $function_name = (string)$this->function->name;
 
         return new MethodIdentifier(
-            Interner::intern($context_self ?: (string) $this->source->getFQCLN()),
+            Interner::intern((Interner::lookupOrNull($context_self) ?? (string) $this->source->getFQCLN())),
             Interner::intern(strtolower($function_name)),
         );
     }

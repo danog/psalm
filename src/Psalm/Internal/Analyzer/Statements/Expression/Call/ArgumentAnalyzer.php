@@ -370,7 +370,7 @@ final class ArgumentAnalyzer
                 $statements_analyzer,
                 $arg_value_type,
                 $argument_offset,
-                $context->self,
+                Interner::lookupOrNull($context->self),
                 $context->calling_function_id ?: $context->calling_method_id,
             );
 
@@ -381,7 +381,7 @@ final class ArgumentAnalyzer
                 $statements_analyzer,
                 $arg_value_type,
                 $argument_offset,
-                $context->self,
+                Interner::lookupOrNull($context->self),
                 $context->calling_function_id ?: $context->calling_method_id,
             );
         }
@@ -429,7 +429,7 @@ final class ArgumentAnalyzer
                 $argument_offset,
                 !$statements_analyzer->isStatic()
                     && (!$method_id || Interner::lookupLc($method_id->name_id) !== '__construct')
-                    ? $context->self
+                    ? Interner::lookupOrNull($context->self)
                     : null,
                 $context->calling_method_id ?: $context->calling_function_id,
             );
@@ -1429,8 +1429,8 @@ final class ArgumentAnalyzer
         $method_identifier = $cased_method_id !== null ? ' of ' . $cased_method_id : '';
 
         if (!$method_id
-            || Interner::lookup($potential_method_id->class_id) !== $context->self
-            || Interner::lookup($method_id->class_id) !== $context->self) {
+            || Interner::lookup($potential_method_id->class_id) !== Interner::lookupOrNull($context->self)
+            || Interner::lookup($method_id->class_id) !== Interner::lookupOrNull($context->self)) {
             if ($input_type_part instanceof TKeyedArray) {
                 [$lhs,] = $input_type_part->properties;
             } else {
@@ -1446,13 +1446,13 @@ final class ArgumentAnalyzer
                     && ($lhs->isStaticObject()
                         || ($lhs_atomic instanceof TNamedObject
                             && !$lhs_atomic->definite_class
-                            && Interner::lookup($lhs_atomic->name) === $context->self))) {
-                    if (Interner::lookup($potential_method_id->class_id) !== $context->self
+                            && Interner::lookup($lhs_atomic->name) === Interner::lookupOrNull($context->self)))) {
+                    if (Interner::lookup($potential_method_id->class_id) !== Interner::lookupOrNull($context->self)
                         || ($cased_method_id !== null
                             && !$method_id
                             && !in_array($cased_method_id, self::PHP_NATIVE_NON_PUBLIC_CB, true))
                         || ($method_id
-                            && Interner::lookup($method_id->class_id) !== $context->self
+                            && Interner::lookup($method_id->class_id) !== Interner::lookupOrNull($context->self)
                             && Interner::lookup($method_id->class_id) !== 'Closure')
                     ) {
                         if ($method_storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PUBLIC) {
