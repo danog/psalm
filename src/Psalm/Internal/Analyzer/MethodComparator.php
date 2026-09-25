@@ -259,7 +259,7 @@ final class MethodComparator
 
             $overridden_method_ids = $codebase->methods->getOverriddenMethodIds($pseudo_method_id);
             if (isset($class_storage->methods[$pseudo_method_id->name_id])) {
-                $overridden_method_ids[Interner::lookup($class_storage->id)] = $pseudo_method_id;
+                $overridden_method_ids[$class_storage->id] = $pseudo_method_id;
             }
 
             if ($overridden_method_ids

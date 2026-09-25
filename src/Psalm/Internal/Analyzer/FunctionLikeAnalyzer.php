@@ -1949,7 +1949,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
      *        ClassLikeStorage|null,
      *        ?string,
      *        ?string,
-     *        array<string, MethodIdentifier>
+     *        array<int, MethodIdentifier>
      * }|null
      */
     private function getFunctionInformation(

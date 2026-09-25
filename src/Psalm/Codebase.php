@@ -1314,7 +1314,7 @@ final class Codebase
     }
 
     /**
-     * @return array<string, MethodIdentifier>
+     * @return array<int, MethodIdentifier>
      * @psalm-mutation-free
      */
     public function getOverriddenMethodIds(MethodIdentifier $method_id): array

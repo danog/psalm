@@ -84,7 +84,7 @@ final class Reflection
         $storage->abstract = $reflected_class->isAbstract();
         $storage->is_interface = $reflected_class->isInterface();
 
-        $storage->potential_declaring_method_ids[Sym::CONSTRUCT][Interner::lookupLc($class_name_lower) . '::__construct'] = true;
+        $storage->potential_declaring_method_ids[Sym::CONSTRUCT][$class_name_lower] = true;
 
         if ($reflected_parent_class) {
             $parent_class_name = $reflected_parent_class->getName();
@@ -524,7 +524,7 @@ final class Reflection
             $storage->declaring_method_ids[$method_name_id] = $declaring_method_id;
             $storage->inheritable_method_ids[$method_name_id] = $declaring_method_id;
 
-            $storage->overridden_method_ids[$method_name_id][Interner::lookup($declaring_method_id->class_id)]
+            $storage->overridden_method_ids[$method_name_id][$declaring_method_id->class_id]
                 = $declaring_method_id;
         }
     }

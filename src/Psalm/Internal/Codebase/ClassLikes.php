@@ -819,7 +819,7 @@ final class ClassLikes
                 $parent_method_ids = $classlike_storage->overridden_method_ids[$method_name_id] ?? [];
 
                 foreach ($classlike_storage->class_implements as $fq_interface_name_lc => $_) {
-                    if (!isset($parent_method_ids[strtolower(Interner::lookup($fq_interface_name_lc))])) {
+                    if (!isset($parent_method_ids[$fq_interface_name_lc])) {
                         try {
                             $interface_storage = $this->classlike_storage_provider->get($fq_interface_name_lc);
                         } catch (InvalidArgumentException) {
@@ -827,7 +827,7 @@ final class ClassLikes
                         }
 
                         if (isset($interface_storage->methods[$method_name_id])) {
-                            $parent_method_ids[strtolower(Interner::lookup($fq_interface_name_lc))] = new MethodIdentifier(
+                            $parent_method_ids[$fq_interface_name_lc] = new MethodIdentifier(
                                 $interface_storage->id,
                                 Interner::intern($method_name),
                             );

@@ -321,9 +321,9 @@ final class Populator
     }
 
     /**
-     * @param array<string, MethodIdentifier> $a
-     * @param array<string, MethodIdentifier> $b
-     * @return array<string, MethodIdentifier>
+     * @param array<int, MethodIdentifier> $a
+     * @param array<int, MethodIdentifier> $b
+     * @return array<int, MethodIdentifier>
      */
     private static function intersectOverriddenIds(array $a, array $b): array
     {
@@ -385,7 +385,7 @@ final class Populator
             }
 
             foreach ($interface_method_ids as $interface_method_id) {
-                $storage->overridden_method_ids[$method_name_id][Interner::lookup($interface_method_id->class_id)]
+                $storage->overridden_method_ids[$method_name_id][$interface_method_id->class_id]
                     = $interface_method_id;
             }
         }
@@ -407,7 +407,7 @@ final class Populator
                         = $this->classlike_storage_provider->get(Interner::intern($declaring_class));
 
                     $declaring_overridden_ids = ($declaring_class_storage->overridden_method_ids[$method_name_id] ?? [])
-                        + [Interner::lookup($declaring_method_id->class_id) => $declaring_method_id];
+                        + [$declaring_method_id->class_id => $declaring_method_id];
 
                     $candidate_overridden_ids = $candidate_overridden_ids === null
                         ? $declaring_overridden_ids
@@ -1028,17 +1028,17 @@ final class Populator
                 $this_method_id = $fq_class_name_lc . '::' . $method_name_lc;
 
                 if (isset($storage->methods[$aliased_method_name_id])) {
-                    $storage->potential_declaring_method_ids[$aliased_method_name_id] = [$this_method_id => true];
+                    $storage->potential_declaring_method_ids[$aliased_method_name_id] = [$storage->id => true];
                 } else {
                     if (isset($parent_storage->potential_declaring_method_ids[$aliased_method_name_id])) {
                         $storage->potential_declaring_method_ids[$aliased_method_name_id]
                             = $parent_storage->potential_declaring_method_ids[$aliased_method_name_id];
                     }
 
-                    $storage->potential_declaring_method_ids[$aliased_method_name_id][$this_method_id] = true;
+                    $storage->potential_declaring_method_ids[$aliased_method_name_id][$storage->id] = true;
 
                     $parent_method_id = strtolower(Interner::lookup($parent_storage->id)) . '::' . $method_name_lc;
-                    $storage->potential_declaring_method_ids[$aliased_method_name_id][$parent_method_id] = true;
+                    $storage->potential_declaring_method_ids[$aliased_method_name_id][$parent_storage->id] = true;
                 }
             }
         }
@@ -1056,7 +1056,7 @@ final class Populator
                     if (isset($declaring_class_storage->methods[$method_name_lc_id])
                         && $declaring_class_storage->methods[$method_name_lc_id]->abstract
                     ) {
-                        $storage->overridden_method_ids[$method_name_lc_id][Interner::lookup($declaring_method_id->class_id)]
+                        $storage->overridden_method_ids[$method_name_lc_id][$declaring_method_id->class_id]
                             = $declaring_method_id;
                     }
                 } else {
@@ -1084,7 +1084,7 @@ final class Populator
                     if ($declaring_method_storage === null
                         || $declaring_visibility !== ClassLikeAnalyzer::VISIBILITY_PRIVATE
                     ) {
-                        $storage->overridden_method_ids[$method_name_lc_id][Interner::lookup($declaring_method_id->class_id)]
+                        $storage->overridden_method_ids[$method_name_lc_id][$declaring_method_id->class_id]
                             = $declaring_method_id;
                     }
                 }

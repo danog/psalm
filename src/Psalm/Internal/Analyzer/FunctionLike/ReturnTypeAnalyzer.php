@@ -68,7 +68,7 @@ final class ReturnTypeAnalyzer
     /**
      * @param Closure|Function_|ClassMethod|ArrowFunction $function
      * @param list<PhpParser\Node\Stmt> $function_stmts
-     * @param array<string, string>   $compatible_method_ids
+     * @param array<array-key, string> $compatible_method_ids
      * @return  false|null
      * @psalm-suppress ComplexMethod Unavoidably complex method
      */

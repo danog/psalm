@@ -957,7 +957,7 @@ final class Methods
             && isset($class_storage->potential_declaring_method_ids[$method_name_id])
         ) {
             foreach ($class_storage->potential_declaring_method_ids[$method_name_id] as $potential_id => $_) {
-                $function_ids[] = strtolower($potential_id);
+                $function_ids[] = strtolower((Interner::lookup($potential_id) . '::' . Interner::lookupLc($method_name_id)));
             }
         } else {
             $function_ids[] = $declaring_method_id_lc;
@@ -1016,7 +1016,7 @@ final class Methods
     }
 
     /**
-     * @return array<string, MethodIdentifier>
+     * @return array<int, MethodIdentifier>
      * @psalm-mutation-free
      */
     public function getOverriddenMethodIds(MethodIdentifier $method_id): array

@@ -215,7 +215,7 @@ final class ClassLikeStorage implements HasAttributesInterface
      * great-grandparent, etc **including traits and interfaces**. Ancestors that don't have their own declaration are
      * skipped.
      *
-     * @var array<int, array<string, MethodIdentifier>>
+     * @var array<int, array<int, MethodIdentifier>>
      */
     public array $overridden_method_ids = [];
 
@@ -230,7 +230,7 @@ final class ClassLikeStorage implements HasAttributesInterface
     public array $inheritable_method_ids = [];
 
     /**
-     * @var array<int, array<string, bool>>
+     * @var array<int, array<int, bool>>
      */
     public array $potential_declaring_method_ids = [];
 
