@@ -267,8 +267,6 @@ final class Analyzer
             }
         }
 
-        $codebase->file_reference_provider->updateReferenceCache($codebase, $scanned_files);
-
         if ($codebase->track_unused_suppressions) {
             IssueBuffer::processUnusedSuppressions($codebase->file_provider);
         }

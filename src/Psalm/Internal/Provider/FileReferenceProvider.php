@@ -362,6 +362,11 @@ final class FileReferenceProvider
      */
     public function updateReferenceCache(Codebase $codebase, array $visited_files): void
     {
+        // the references only serve the cache, diff runs and the language server (pzoom computes none)
+        if ($this->cache === null && !$codebase->diff_methods) {
+            return;
+        }
+
         foreach ($visited_files as $file => $_) {
             $all_file_references = array_unique(
                 array_merge(
