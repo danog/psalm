@@ -849,39 +849,41 @@ final class TypeCombiner
                 return null;
             }
 
-            if (!$codebase->classlikes->classOrInterfaceOrEnumExists(Interner::intern($type_key))) {
+            if (!($type::class === TNamedObject::class && $type->extra_types === []
+                ? $codebase->classlikes->classOrInterfaceOrEnumExists($type->name)
+                : $codebase->classlikes->classOrInterfaceOrEnumExists(Interner::intern($type_key)))) {
                 // write this to the main list
                 $combination->value_types[$type_key] = $type;
 
                 return null;
             }
 
-            $is_class = $codebase->classExists(Interner::intern($type_key));
+            $is_class = $codebase->classExists($type->name);
 
-            foreach ($combination->named_object_types as $key => $_) {
-                if ($codebase->classExists(Interner::intern($key))) {
-                    if ($codebase->classExtendsOrImplements(Interner::intern($key), Interner::intern($type_key))) {
+            foreach ($combination->named_object_types as $key => $other) {
+                if ($codebase->classExists($other->name)) {
+                    if ($codebase->classExtendsOrImplements($other->name, $type->name)) {
                         unset($combination->named_object_types[$key]);
                         continue;
                     }
 
                     if ($is_class) {
-                        if ($codebase->classExtends(Interner::intern($type_key), Interner::intern($key))) {
+                        if ($codebase->classExtends($type->name, $other->name)) {
                             return null;
                         }
                     }
                 } else {
-                    if ($codebase->interfaceExtends(Interner::intern($key), Interner::intern($type_key))) {
+                    if ($codebase->interfaceExtends($other->name, $type->name)) {
                         unset($combination->named_object_types[$key]);
                         continue;
                     }
 
                     if ($is_class) {
-                        if ($codebase->classImplements(Interner::intern($type_key), Interner::intern($key))) {
+                        if ($codebase->classImplements($type->name, $other->name)) {
                             return null;
                         }
                     } else {
-                        if ($codebase->interfaceExtends(Interner::intern($type_key), Interner::intern($key))) {
+                        if ($codebase->interfaceExtends($type->name, $other->name)) {
                             return null;
                         }
                     }

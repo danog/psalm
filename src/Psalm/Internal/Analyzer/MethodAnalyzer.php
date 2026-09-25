@@ -378,7 +378,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
         $function_name = (string)$this->function->name;
 
         return new MethodIdentifier(
-            Interner::intern((Interner::lookupOrNull($context_self) ?? (string) $this->source->getFQCLN())),
+            $context_self ?? Interner::intern((string) $this->source->getFQCLN()),
             Interner::intern(strtolower($function_name)),
         );
     }
