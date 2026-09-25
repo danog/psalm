@@ -6,6 +6,7 @@ namespace Psalm\Type\Atomic;
 
 use Override;
 use Psalm\Type\Atomic;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * Denotes the `object` type
@@ -15,11 +16,12 @@ use Psalm\Type\Atomic;
  */
 class TObject extends Atomic
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     /**
      * @psalm-pure
      */
     #[Override]
-    public function getKey(bool $include_extra = true): string
+    protected function computeKey(bool $include_extra = true): string
     {
         return 'object';
     }

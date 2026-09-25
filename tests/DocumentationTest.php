@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
-use DOMAttr;
 use DOMDocument;
 use DOMElement;
 use Override;
@@ -304,6 +303,12 @@ final class DocumentationTest extends TestCase
             $php_version = '8.0';
             $ignored_issues = [];
             switch ($issue_name) {
+                // emitted by plugins only: a wrong-cased class reference is UndefinedClass (pzoom's rule)
+                case 'InvalidClass':
+                // no longer emitted: return mismatches are reported at the return statement (pzoom's rule)
+                case 'MoreSpecificReturnType':
+                case 'InvalidNullableReturnType':
+                case 'InvalidFalsableReturnType':
                 case 'InvalidStringClass':
                 case 'MissingThrowsDocblock':
                 case 'PluginClass':
@@ -342,7 +347,6 @@ final class DocumentationTest extends TestCase
                 case 'UnusedMethod':
                     $ignored_issues = ['UnusedVariable'];
                     break;
-
 
                 case 'ClassMustBeFinal':
                     $ignored_issues = ['UnusedClass'];
@@ -473,27 +477,16 @@ final class DocumentationTest extends TestCase
                 return $this->inner->toString();
             }
 
-            /**
-             * Untyped, as the parameter of the method it overrides is: a narrower one would not be
-             * a compatible signature.
-             *
-             * @param string $other
-             * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
-             */
             #[Override]
-            protected function matches($other): bool
+            protected function matches(mixed $other): bool
             {
                 return $this->inner->matches($other);
             }
 
-            /**
-             * @param string $other
-             * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
-             */
             #[Override]
-            protected function failureDescription($other): string
+            protected function failureDescription(mixed $other): string
             {
-                return self::export($other) . ' ' . $this->toString();
+                return $this->exporter()->export($other) . ' ' . $this->toString();
             }
         };
     }

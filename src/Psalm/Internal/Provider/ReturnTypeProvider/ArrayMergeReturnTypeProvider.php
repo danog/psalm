@@ -20,7 +20,6 @@ use Psalm\Type\Atomic\TNull;
 use Psalm\Type\Union;
 
 use function array_merge;
-use function array_values;
 use function count;
 use function is_string;
 use function max;
@@ -136,7 +135,7 @@ final class ArrayMergeReturnTypeProvider implements FunctionReturnTypeProviderIn
                                     $added_inner_values = true;
                                     $inner_value_types = array_merge(
                                         $inner_value_types,
-                                        array_values($type->getAtomicTypes()),
+                                        $type->getAtomicTypes(),
                                     );
                                 } else {
                                     $generic_properties[] = $type;
@@ -185,11 +184,11 @@ final class ArrayMergeReturnTypeProvider implements FunctionReturnTypeProviderIn
                             $all_keyed_arrays = false;
                             $inner_value_types = array_merge(
                                 $inner_value_types,
-                                array_values($unpacked_type_part->fallback_params[1]->getAtomicTypes()),
+                                $unpacked_type_part->fallback_params[1]->getAtomicTypes(),
                             );
                             $inner_key_types = array_merge(
                                 $inner_key_types,
-                                array_values($unpacked_type_part->fallback_params[0]->getAtomicTypes()),
+                                $unpacked_type_part->fallback_params[0]->getAtomicTypes(),
                             );
                         }
 
@@ -236,11 +235,11 @@ final class ArrayMergeReturnTypeProvider implements FunctionReturnTypeProviderIn
 
                     $inner_key_types = array_merge(
                         $inner_key_types,
-                        array_values($unpacked_type_part->type_params[0]->getAtomicTypes()),
+                        $unpacked_type_part->type_params[0]->getAtomicTypes(),
                     );
                     $inner_value_types = array_merge(
                         $inner_value_types,
-                        array_values($unpacked_type_part->type_params[1]->getAtomicTypes()),
+                        $unpacked_type_part->type_params[1]->getAtomicTypes(),
                     );
                 }
             }

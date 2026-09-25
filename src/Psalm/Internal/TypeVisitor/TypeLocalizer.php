@@ -40,7 +40,7 @@ final class TypeLocalizer extends MutableTypeVisitor
                 if (isset($this->extends[$this->base_fq_class_name][$type->param_name])) {
                     $extended_param = $this->extends[$this->base_fq_class_name][$type->param_name];
 
-                    $types = array_values($extended_param->getAtomicTypes());
+                    $types = $extended_param->getAtomicTypes();
 
                     if (count($types) === 1 && $types[0] instanceof TNamedObject) {
                         $type = $type->setAs(
@@ -65,7 +65,8 @@ final class TypeLocalizer extends MutableTypeVisitor
             return null;
         }
 
-        foreach ($union->getAtomicTypes() as $key => $atomic_type) {
+        foreach ($union->getAtomicTypes() as $atomic_type) {
+            $key = $atomic_type->getKey();
             if ($atomic_type instanceof TTemplateParam
                 && ($atomic_type->defining_class === $this->base_fq_class_name
                     || isset($this->extends[$atomic_type->defining_class]))

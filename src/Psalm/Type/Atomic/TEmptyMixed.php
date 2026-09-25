@@ -19,7 +19,7 @@ final class TEmptyMixed extends TMixed
      * @psalm-pure
      */
     #[Override]
-    public function getId(bool $exact = true, bool $nested = false): string
+    protected function computeId(bool $exact = true, bool $nested = false): string
     {
         return 'empty-mixed';
     }

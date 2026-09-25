@@ -678,7 +678,8 @@ final class FilterUtils
             && $filter_int_used !== FILTER_VALIDATE_REGEXP
             && !self::hasFlag($flags_int_used, FILTER_REQUIRE_SCALAR)
         ) {
-            foreach ($input_type->getAtomicTypes() as $key => $atomic_type) {
+            foreach ($input_type->getAtomicTypes() as $atomic_type) {
+                $key = $atomic_type->getKey();
                 if ($atomic_type instanceof TKeyedArray) {
                     $input_type = $input_type->getBuilder();
                     $input_type->removeType($key);

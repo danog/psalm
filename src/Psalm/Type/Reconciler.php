@@ -71,8 +71,6 @@ use function is_numeric;
 use function is_string;
 use function key;
 use function ksort;
-use function preg_match;
-use function preg_quote;
 use function str_contains;
 use function str_ends_with;
 use function str_split;
@@ -92,6 +90,27 @@ class Reconciler
 
     /** @var array<string, non-empty-list<string>> */
     private static array $broken_paths = [];
+
+    /**
+     * Whether $var_id contains $base followed by `]`, `[` or `-`, i.e. names an access path through it (what the
+     * regex `/<base>[\]\[\-]/` tested, without building and compiling one per call).
+     *
+     * @internal
+     * @psalm-pure
+     */
+    public static function isPathThrough(string $var_id, string $base): bool
+    {
+        $length = strlen($base);
+        $offset = 0;
+        while (($position = strpos($var_id, $base, $offset)) !== false) {
+            $next = $var_id[$position + $length] ?? '';
+            if ($next === ']' || $next === '[' || $next === '-') {
+                return true;
+            }
+            $offset = $position + 1;
+        }
+        return false;
+    }
 
     /**
      * Takes two arrays and consolidates them, removing null values from existing types where applicable.
@@ -362,9 +381,10 @@ class Reconciler
                             continue;
                         }
 
-                        if (!isset($new_types[$new_key])
-                            && preg_match('/' . preg_quote($key, '/') . '[\]\[\-]/', $new_key)
-                            && $is_real
+                        if ($is_real
+                            && !isset($new_types[$new_key])
+                            && str_contains($new_key, $key)
+                            && self::isPathThrough($new_key, $key)
                         ) {
                             // Fix any references to the type before removing it.
                             $references_to_fix = array_keys($reference_graph[$new_key] ?? []);
@@ -768,12 +788,9 @@ class Reconciler
                         } elseif ($existing_key_type_part instanceof TNull
                             || $existing_key_type_part instanceof TFalse
                         ) {
-                            $new_base_type_candidate = Type::getNull();
-
-                            if ($existing_keys[$base_key]->ignore_nullable_issues) {
-                                /** @psalm-suppress InaccessibleProperty We just created this type */
-                                $new_base_type_candidate->ignore_nullable_issues = true;
-                            }
+                            $new_base_type_candidate = $existing_keys[$base_key]->ignore_nullable_issues
+                                ? new Union([new TNull()], ['ignore_nullable_issues' => true])
+                                : Type::getNull();
                         } elseif ($existing_key_type_part instanceof TClassStringMap) {
                             return Type::getMixed();
                         } elseif ($existing_key_type_part instanceof TNever
@@ -1000,7 +1017,7 @@ class Reconciler
      */
     protected static function triggerIssueForImpossible(
         Union|MutableUnion $existing_var_type,
-        string $old_var_type_string,
+        Union $old_var_type,
         string $key,
         Assertion $assertion,
         bool $redundant,
@@ -1008,6 +1025,8 @@ class Reconciler
         CodeLocation $code_location,
         array $suppressed_issues,
     ): void {
+        // the type's id is only spelled out when an issue is reported (pzoom computes it here too)
+        $old_var_type_string = $old_var_type->getId();
         $assertion_string = (string)$assertion;
         $not = $assertion_string[0] === '!';
 
@@ -1027,7 +1046,7 @@ class Reconciler
             $not = !$not;
         }
 
-        $existing_var_atomic_types = $existing_var_type->getAtomicTypes();
+        $existing_var_atomic_types = $existing_var_type->getAtomicTypesByKey();
 
         $from_docblock = $existing_var_type->from_docblock
             || (isset($existing_var_atomic_types[$assertion_string])

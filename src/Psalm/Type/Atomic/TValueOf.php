@@ -16,6 +16,7 @@ use function assert;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeVisitor;
 use Psalm\Type\TypeNode;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * Represents a value of an array or enum.
@@ -25,6 +26,7 @@ use Psalm\Type\TypeNode;
  */
 final class TValueOf extends Atomic
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     public function __construct(public Union $type, bool $from_docblock = false)
     {
         parent::__construct($from_docblock);
@@ -96,7 +98,7 @@ final class TValueOf extends Atomic
 
 
     #[Override]
-    public function getKey(bool $include_extra = true): string
+    protected function computeKey(bool $include_extra = true): string
     {
         return 'value-of<' . $this->type . '>';
     }
@@ -198,7 +200,7 @@ final class TValueOf extends Atomic
                 continue;
             }
 
-            $value_types = [...$value_types, ...array_values($value_atomics->getAtomicTypes())];
+            $value_types = [...$value_types, ...$value_atomics->getAtomicTypes()];
         }
 
         if ($value_types === []) {

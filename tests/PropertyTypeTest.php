@@ -1204,6 +1204,10 @@ final class PropertyTypeTest extends TestCase
                             return $name === "stmts" ? $this->stmts : null;
                         }
 
+                        public function getSubNodes() : array {
+                            return ["stmts" => $this->stmts];
+                        }
+
                         public function setSubNode(string $name, mixed $value) : void {
                         }
 

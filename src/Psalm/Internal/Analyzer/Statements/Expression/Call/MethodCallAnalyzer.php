@@ -181,7 +181,7 @@ final class MethodCallAnalyzer extends CallAnalyzer
         
         $class_type = TypeVariableTracker::resolveTypeVariables($class_type, $codebase);
 
-        $lhs_types = $class_type->getAtomicTypes();
+        $lhs_types = $class_type->getAtomicTypesByKey();
 
         foreach ($lhs_types as $k => $lhs_type_part) {
             if ($lhs_type_part instanceof TConditional) {
@@ -288,7 +288,11 @@ final class MethodCallAnalyzer extends CallAnalyzer
                 if ($result->existent_method_ids || $result->has_mixed_method_call) {
                     IssueBuffer::maybeAdd(
                         new PossiblyUndefinedMethod(
-                            'Method ' . $result->non_existent_class_method_ids[0] . ' does not exist',
+                            'Method ' . $result->non_existent_class_method_ids[0] . ' does not exist'
+                                . (isset($result->incorrect_casing[$result->non_existent_class_method_ids[0]])
+                                    ? ' (incorrect casing of '
+                                        . $result->incorrect_casing[$result->non_existent_class_method_ids[0]] . ')'
+                                    : ''),
                             new CodeLocation($source, $stmt->name),
                             $result->non_existent_class_method_ids[0],
                         ),
@@ -297,7 +301,11 @@ final class MethodCallAnalyzer extends CallAnalyzer
                 } else {
                     IssueBuffer::maybeAdd(
                         new UndefinedMethod(
-                            'Method ' . $result->non_existent_class_method_ids[0] . ' does not exist',
+                            'Method ' . $result->non_existent_class_method_ids[0] . ' does not exist'
+                                . (isset($result->incorrect_casing[$result->non_existent_class_method_ids[0]])
+                                    ? ' (incorrect casing of '
+                                        . $result->incorrect_casing[$result->non_existent_class_method_ids[0]] . ')'
+                                    : ''),
                             new CodeLocation($source, $stmt->name),
                             $result->non_existent_class_method_ids[0],
                         ),
@@ -414,7 +422,7 @@ final class MethodCallAnalyzer extends CallAnalyzer
             && ($class_type->from_docblock || $class_type->isNullable())
             && $real_method_call
         ) {
-            $types = $class_type->getAtomicTypes();
+            $types = $class_type->getAtomicTypesByKey();
 
             foreach ($types as $key => &$type) {
                 // A type variable that survived here is a valid method-call
@@ -435,7 +443,7 @@ final class MethodCallAnalyzer extends CallAnalyzer
                 throw new AssertionError("We must have some types here!");
             }
 
-            $context->removeVarFromConflictingClauses($lhs_var_id, null, $statements_analyzer);
+            $context->removeVarFromConflictingClauses($lhs_var_id);
 
             $class_type = $class_type->getBuilder()->setTypes($types);
             $class_type->from_docblock = false;

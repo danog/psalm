@@ -57,7 +57,7 @@ class TClassString extends TString
         return $cloned;
     }
     #[Override]
-    public function getKey(bool $include_extra = true): string
+    protected function computeKey(bool $include_extra = true): string
     {
         if ($this->is_interface) {
             $key = 'interface-string';
@@ -71,7 +71,7 @@ class TClassString extends TString
     }
 
     #[Override]
-    public function getId(bool $exact = true, bool $nested = false): string
+    protected function computeId(bool $exact = true, bool $nested = false): string
     {
         if ($this->is_interface) {
             $key = 'interface-string';
@@ -231,7 +231,7 @@ class TClassString extends TString
             $depth,
         );
 
-        $as_type_types = array_values($as_type->getAtomicTypes());
+        $as_type_types = $as_type->getAtomicTypes();
 
         $as_type = count($as_type_types) === 1
             && $as_type_types[0] instanceof TNamedObject

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
 use PhpParser;
+use Psalm\Internal\Analyzer\Statements\Expression\Fetch\VariableFetchAnalyzer;
 use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\Exception\ComplicatedExpressionException;
@@ -32,8 +33,6 @@ use function array_map;
 use function array_values;
 use function count;
 use function in_array;
-use function preg_match;
-use function preg_quote;
 use function spl_object_id;
 
 /**
@@ -106,7 +105,7 @@ final class TernaryAnalyzer
 
                 foreach ($keys as $key) {
                     foreach ($mixed_var_ids as $mixed_var_id) {
-                        if (preg_match('/^' . preg_quote($mixed_var_id, '/') . '(\[|-)/', $key)) {
+                        if (VariableFetchAnalyzer::isSubVarId($key, $mixed_var_id)) {
                             return new Clause([], $cond_object_id, $cond_object_id, true);
                         }
                     }

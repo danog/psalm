@@ -25,6 +25,7 @@ use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\FileAnalyzer;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\CliUtils;
+use Psalm\Internal\Codebase\ConstantMap;
 use Psalm\Internal\Composer;
 use Psalm\Internal\Composer\AutoloadMap;
 use Psalm\Internal\EventDispatcher;
@@ -76,7 +77,6 @@ use function file_get_contents;
 use function flock;
 use function fopen;
 use function function_exists;
-use function get_defined_constants;
 use function get_defined_functions;
 use function getcwd;
 use function glob;
@@ -551,6 +551,7 @@ final class Config
         "mongodb" => null,
         "mysqli" => null,
         "pdo" => null,
+        "phar" => null,
         "random" => null,
         "rdkafka" => null,
         "redis" => null,
@@ -1550,6 +1551,28 @@ final class Config
     public function setComposerAutoloadMap(?AutoloadMap $autoload_map): void
     {
         $this->autoload_map = $autoload_map;
+        $this->composer_bootstrap_files = null;
+    }
+
+    /** @var array<string, true>|null real paths of the project's Composer bootstrap (see isComposerBootstrapFile) */
+    private ?array $composer_bootstrap_files = null;
+
+    /**
+     * Whether a file is part of what the project's `vendor/autoload.php` loads. Psalm normally runs from the
+     * project's own vendor/bin, where all of it is already included (and IncludeAnalyzer does not analyze an
+     * include of an already-included file); answering from the project's Composer metadata keeps that behaviour
+     * however Psalm itself was loaded -- from another vendor directory, or compiled.
+     */
+    public function isComposerBootstrapFile(string $real_path): bool
+    {
+        if ($this->composer_bootstrap_files === null) {
+            $set = [];
+            foreach ($this->autoload_map?->getBootstrapFiles() ?? [] as $file) {
+                $set[$file] = true;
+            }
+            $this->composer_bootstrap_files = $set;
+        }
+        return isset($this->composer_bootstrap_files[$real_path]);
     }
 
     /**
@@ -2405,7 +2428,9 @@ final class Config
             foreach ($this->php_extensions as $ext => $enabled) {
                 $ext_stub_path = $ext_stubs_dir . $ext . '.phpstub';
 
-                if ($enabled && file_exists($ext_stub_path)) {
+                // an extension neither required nor configured is known through the runtime that loaded it
+                // (pzoom asks `php -m`); a compiled program has no reflection to fall back on for its classes
+                if (($enabled ?? extension_loaded($ext)) && file_exists($ext_stub_path)) {
                     $core_generic_files[] = $ext_stub_path;
                 }
             }
@@ -2648,11 +2673,10 @@ final class Config
         return $this->predefined_constants;
     }
 
+    /** @psalm-external-mutation-free */
     public function collectPredefinedConstants(): void
     {
-        /** @var array<string, scalar|null> $constants PHP constants are scalars (arrays are unused by Psalm) */
-        $constants = get_defined_constants();
-        $this->predefined_constants = $constants;
+        $this->predefined_constants = ConstantMap::get();
     }
 
     /**

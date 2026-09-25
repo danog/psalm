@@ -18,7 +18,7 @@ class TNonFalsyString extends TNonEmptyString
      * @psalm-pure
      */
     #[Override]
-    public function getId(bool $exact = true, bool $nested = false): string
+    protected function computeId(bool $exact = true, bool $nested = false): string
     {
         if (!$exact) {
             return 'string';

@@ -30,7 +30,7 @@ final class TIntRange extends TInt
     }
 
     #[Override]
-    public function getKey(bool $include_extra = true): string
+    protected function computeKey(bool $include_extra = true): string
     {
         return 'int<' . ($this->min_bound ?? 'min') . ', ' . ($this->max_bound ?? 'max') . '>';
     }

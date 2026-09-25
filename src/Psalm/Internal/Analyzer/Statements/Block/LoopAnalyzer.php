@@ -305,12 +305,12 @@ final class LoopAnalyzer
                 }
 
                 foreach ($always_assigned_before_loop_body_vars as $var_id) {
-                    if ((!isset($continue_context->vars_in_scope[$var_id])
-                            || $continue_context->vars_in_scope[$var_id]->getId()
-                                !== $pre_loop_context->vars_in_scope[$var_id]->getId()
-                            || $continue_context->vars_in_scope[$var_id]->from_docblock
-                                !== $pre_loop_context->vars_in_scope[$var_id]->from_docblock
+                    if (!isset($continue_context->vars_in_scope[$var_id])
+                        || !$continue_context->vars_in_scope[$var_id]->hasSameAtomics(
+                            $pre_loop_context->vars_in_scope[$var_id],
                         )
+                        || $continue_context->vars_in_scope[$var_id]->from_docblock
+                            !== $pre_loop_context->vars_in_scope[$var_id]->from_docblock
                     ) {
                         if (isset($pre_loop_context->vars_in_scope[$var_id])) {
                             $continue_context->vars_in_scope[$var_id] = $pre_loop_context->vars_in_scope[$var_id];
@@ -396,7 +396,7 @@ final class LoopAnalyzer
                 continue;
             }
 
-            if ($loop_context->vars_in_scope[$var_id]->getId() !== $type->getId()) {
+            if (!$loop_context->vars_in_scope[$var_id]->hasSameAtomics($type)) {
                 $loop_parent_context->vars_in_scope[$var_id] = Type::combineUnionTypes(
                     $loop_parent_context->vars_in_scope[$var_id],
                     $loop_context->vars_in_scope[$var_id],
@@ -433,7 +433,7 @@ final class LoopAnalyzer
                     continue;
                 }
 
-                if ($continue_context->vars_in_scope[$var_id]->getId() !== $type->getId()) {
+                if (!$continue_context->vars_in_scope[$var_id]->hasSameAtomics($type)) {
                     $loop_parent_context->vars_in_scope[$var_id] = Type::combineUnionTypes(
                         $loop_parent_context->vars_in_scope[$var_id],
                         $continue_context->vars_in_scope[$var_id],
@@ -639,6 +639,7 @@ final class LoopAnalyzer
 
     /**
      * @param array<string, Union> $init_var_types
+     * @psalm-mutation-free
      */
     private static function doesEnterLoop(
         StatementsAnalyzer $statements_analyzer,
@@ -801,12 +802,7 @@ final class LoopAnalyzer
         }
 
         foreach ($always_assigned_before_loop_body_vars as $var_id) {
-            $loop_context->clauses = Context::filterClauses(
-                $var_id,
-                $loop_context->clauses,
-                null,
-                $statements_analyzer,
-            );
+            $loop_context->clauses = Context::filterClauses($var_id, $loop_context->clauses);
         }
 
         return $always_assigned_before_loop_body_vars;

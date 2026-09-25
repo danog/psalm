@@ -8,9 +8,9 @@ use InvalidArgumentException;
 use Override;
 use Psalm\Storage\ImmutableNonCloneableTrait;
 use Stringable;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 use function explode;
-use function is_string;
 use function ltrim;
 use function str_contains;
 use function strtolower;
@@ -22,6 +22,16 @@ use function strtolower;
 final class MethodIdentifier implements Stringable
 {
     use ImmutableNonCloneableTrait;
+    use UnserializeMemoryUsageSuppressionTrait;
+
+    /**
+     * Memo of __toString (the identifier is stringified as a map key on most hot paths); public so the
+     * cache serializer sees it like every other property.
+     *
+     * @internal
+     * @var non-empty-string|null
+     */
+    public ?string $string_memo = null;
 
     /**
      * @param lowercase-string $method_name
@@ -31,16 +41,6 @@ final class MethodIdentifier implements Stringable
     {
     }
 
-    /**
-     * Takes any valid reference to a method id and converts
-     * it into a MethodIdentifier
-     *
-     * @psalm-pure
-     */
-    public static function wrap(string|MethodIdentifier $method_id): self
-    {
-        return is_string($method_id) ? static::fromMethodIdReference($method_id) : $method_id;
-    }
 
     /**
      * @psalm-pure
@@ -68,6 +68,12 @@ final class MethodIdentifier implements Stringable
     #[Override]
     public function __toString(): string
     {
-        return $this->fq_class_name . '::' . $this->method_name;
+        if ($this->string_memo !== null) {
+            return $this->string_memo;
+        }
+        $string = $this->fq_class_name . '::' . $this->method_name;
+        /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
+        $this->string_memo = $string;
+        return $string;
     }
 }

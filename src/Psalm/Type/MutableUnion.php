@@ -9,6 +9,7 @@ use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\Type\TypeCombiner;
 use Psalm\Internal\TypeVisitor\FromDocblockSetter;
 use Psalm\Type;
+use Psalm\Type\Atomic\IdMemo;
 use Psalm\Type\Atomic\Scalar;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TClassString;
@@ -26,9 +27,9 @@ use Psalm\Type\Atomic\TString;
 use Psalm\Type\Atomic\TTemplateParamClass;
 use Psalm\Type\Atomic\TTrue;
 
+use function array_values;
+use function assert;
 use function count;
-use function get_object_vars;
-use function strpos;
 
 /**
  * @api
@@ -38,7 +39,7 @@ final class MutableUnion implements TypeNode
     use UnionTrait;
 
     /**
-     * @var non-empty-array<string, Atomic>
+     * @var non-empty-list<Atomic> (empty only between mutations)
      */
     private array $types;
 
@@ -126,26 +127,6 @@ final class MutableUnion implements TypeNode
     public bool $from_template_default = false;
 
     /**
-     * @var array<string, TLiteralString>
-     */
-    private array $literal_string_types = [];
-
-    /**
-     * @var array<string, TClassString>
-     */
-    private array $typed_class_strings = [];
-
-    /**
-     * @var array<string, TLiteralInt>
-     */
-    private array $literal_int_types = [];
-
-    /**
-     * @var array<string, TLiteralFloat>
-     */
-    private array $literal_float_types = [];
-
-    /**
      * True if the type was passed or returned by reference, or if the type refers to an object's
      * property or an item in an array. Note that this is not true for locally created references
      * that don't refer to properties or array items (see Context::$references_in_scope).
@@ -158,16 +139,8 @@ final class MutableUnion implements TypeNode
 
     public bool $has_mutations = true;
 
-    /**
-     * This is a cache of getId on non-exact mode
-     */
-    private ?string $id = null;
-
-    /**
-     * This is a cache of getId on exact mode
-     */
-    private ?string $exact_id = null;
-
+    /** The memoized getId(true) / getId(false) strings (IdMemo::$id / IdMemo::$inexact_id), allocated on first use */
+    private ?IdMemo $memo = null;
 
     /**
      * @var array<string, DataFlowNode>
@@ -179,45 +152,61 @@ final class MutableUnion implements TypeNode
     public bool $propagate_parent_nodes = false;
 
     /**
+     * @param non-empty-array<array-key, Atomic> $types
+     * @return static
      * @psalm-external-mutation-free
-     * @param non-empty-list<Atomic>|non-empty-array<string, Atomic>  $types
      */
     public function setTypes(array $types): self
     {
-        $this->literal_float_types = [];
-        $this->literal_int_types = [];
-        $this->literal_string_types = [];
-        $this->typed_class_strings = [];
         $this->checked = false;
+        $this->types = self::listOfTypes(array_values($types));
 
         $from_docblock = false;
-        $keyed_types = [];
-
-        foreach ($types as $type) {
-            $key = $type->getKey();
-            $keyed_types[$key] = $type;
-
-            if ($type instanceof TLiteralInt) {
-                $this->literal_int_types[$key] = $type;
-            } elseif ($type instanceof TLiteralString) {
-                $this->literal_string_types[$key] = $type;
-            } elseif ($type instanceof TLiteralFloat) {
-                $this->literal_float_types[$key] = $type;
-            } elseif ($type instanceof TClassString
-                && ($type->as_type || $type instanceof TTemplateParamClass)
-            ) {
-                $this->typed_class_strings[$key] = $type;
-            } elseif ($type instanceof TNever) {
+        foreach ($this->types as $type) {
+            if ($type instanceof TNever) {
                 $this->explicit_never = true;
             }
-
             $from_docblock = $from_docblock || $type->from_docblock;
         }
-
-        $this->types = $keyed_types;
         $this->from_docblock = $from_docblock;
+        $this->bustCache();
 
         return $this;
+    }
+
+    /**
+     * Stores an atomic under its key: in place of the one with the same key, else appended.
+     *
+     * @psalm-external-mutation-free
+     */
+    private function put(Atomic $type): void
+    {
+        $key = $type->getKey();
+        foreach ($this->types as $i => $existing) {
+            if ($existing->getKey() === $key) {
+                $this->types[$i] = $type;
+                return;
+            }
+        }
+        $this->types[] = $type;
+    }
+
+    /**
+     * Removes the atomic with this key, if any.
+     *
+     * @psalm-external-mutation-free
+     */
+    private function drop(string $key): bool
+    {
+        foreach ($this->types as $i => $existing) {
+            if ($existing->getKey() === $key) {
+                unset($this->types[$i]);
+                /** @psalm-suppress InvalidPropertyAssignmentValue transiently empty */
+                $this->types = array_values($this->types);
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -225,36 +214,56 @@ final class MutableUnion implements TypeNode
      */
     public function addType(Atomic $type): self
     {
-        $this->types[$type->getKey()] = $type;
+        $this->put($type);
 
-        if ($type instanceof TLiteralString) {
-            $this->literal_string_types[$type->getKey()] = $type;
-        } elseif ($type instanceof TLiteralInt) {
-            $this->literal_int_types[$type->getKey()] = $type;
-        } elseif ($type instanceof TLiteralFloat) {
-            $this->literal_float_types[$type->getKey()] = $type;
-        } elseif ($type instanceof TString && $this->literal_string_types) {
-            foreach ($this->literal_string_types as $key => $_) {
-                unset($this->literal_string_types[$key], $this->types[$key]);
-            }
-            if (!$type instanceof TClassString
-                || (!$type->as_type && !$type instanceof TTemplateParamClass)
-            ) {
-                foreach ($this->typed_class_strings as $key => $_) {
-                    unset($this->typed_class_strings[$key], $this->types[$key]);
+        if ($type instanceof TLiteralString || $type instanceof TLiteralInt || $type instanceof TLiteralFloat) {
+            // a literal joins the others
+        } elseif ($type instanceof TString) {
+            if ($this->countLiteralStrings() > 0) {
+                // the literal strings are covered by the wider string, and so are the bounded class-strings
+                // unless the wider string is itself one
+                $keep_typed_class_strings = $type instanceof TClassString
+                    && ($type->as_type || $type instanceof TTemplateParamClass);
+                $kept = [];
+                foreach ($this->types as $existing) {
+                    if ($existing instanceof TLiteralString) {
+                        continue;
+                    }
+                    if (!$keep_typed_class_strings
+                        && $existing instanceof TClassString
+                        && ($existing->as_type || $existing instanceof TTemplateParamClass)
+                    ) {
+                        continue;
+                    }
+                    $kept[] = $existing;
                 }
+                /** @psalm-suppress InvalidPropertyAssignmentValue transiently empty */
+                $this->types = $kept;
             }
-        } elseif ($type instanceof TInt && $this->literal_int_types) {
-            //we remove any literal that is already included in a wider type
-            $int_type_in_range = TIntRange::convertToIntRange($type);
-            foreach ($this->literal_int_types as $key => $literal_int_type) {
-                if ($int_type_in_range->contains($literal_int_type->value)) {
-                    unset($this->literal_int_types[$key], $this->types[$key]);
+        } elseif ($type instanceof TInt) {
+            if ($this->countLiteralInts() > 0) {
+                // we remove any literal that is already included in a wider type
+                $int_type_in_range = TIntRange::convertToIntRange($type);
+                $kept = [];
+                foreach ($this->types as $existing) {
+                    if ($existing instanceof TLiteralInt && $int_type_in_range->contains($existing->value)) {
+                        continue;
+                    }
+                    $kept[] = $existing;
                 }
+                /** @psalm-suppress InvalidPropertyAssignmentValue transiently empty */
+                $this->types = $kept;
             }
-        } elseif ($type instanceof TFloat && $this->literal_float_types) {
-            foreach ($this->literal_float_types as $key => $_) {
-                unset($this->literal_float_types[$key], $this->types[$key]);
+        } elseif ($type instanceof TFloat) {
+            if ($this->countLiteralFloats() > 0) {
+                $kept = [];
+                foreach ($this->types as $existing) {
+                    if (!$existing instanceof TLiteralFloat) {
+                        $kept[] = $existing;
+                    }
+                }
+                /** @psalm-suppress InvalidPropertyAssignmentValue transiently empty */
+                $this->types = $kept;
             }
         } elseif ($type instanceof TNever) {
             $this->explicit_never = true;
@@ -266,52 +275,60 @@ final class MutableUnion implements TypeNode
     }
 
     /**
+     * Removes the atomic with this key. Removing `string`, `int` or `float` when no such atomic exists
+     * removes the literals (and, for `string`, the class-strings) it would have covered instead, and
+     * reports false as before.
+     *
      * @psalm-external-mutation-free
      */
     public function removeType(string $type_string): bool
     {
-        if (isset($this->types[$type_string])) {
-            unset($this->types[$type_string]);
-
-            if (strpos($type_string, '(')) {
-                unset(
-                    $this->literal_string_types[$type_string],
-                    $this->literal_int_types[$type_string],
-                    $this->literal_float_types[$type_string],
-                );
-            }
-
+        if ($this->drop($type_string)) {
             $this->bustCache();
 
             return true;
         }
 
         if ($type_string === 'string') {
-            if ($this->literal_string_types) {
-                foreach ($this->literal_string_types as $literal_key => $_) {
-                    unset($this->types[$literal_key]);
+            $kept = [];
+            foreach ($this->types as $existing) {
+                if ($existing instanceof TLiteralString
+                    || ($existing instanceof TClassString
+                        && ($existing->as_type || $existing instanceof TTemplateParamClass))
+                ) {
+                    continue;
                 }
-                $this->literal_string_types = [];
-            }
-
-            if ($this->typed_class_strings) {
-                foreach ($this->typed_class_strings as $typed_class_key => $_) {
-                    unset($this->types[$typed_class_key]);
+                $key = $existing->getKey();
+                if ($key === 'class-string' || $key === 'trait-string') {
+                    continue;
                 }
-                $this->typed_class_strings = [];
+                $kept[] = $existing;
             }
-
-            unset($this->types['class-string'], $this->types['trait-string']);
-        } elseif ($type_string === 'int' && $this->literal_int_types) {
-            foreach ($this->literal_int_types as $literal_key => $_) {
-                unset($this->types[$literal_key]);
+            if (count($kept) !== count($this->types)) {
+                /** @psalm-suppress InvalidPropertyAssignmentValue transiently empty */
+                $this->types = $kept;
+                $this->bustCache();
             }
-            $this->literal_int_types = [];
-        } elseif ($type_string === 'float' && $this->literal_float_types) {
-            foreach ($this->literal_float_types as $literal_key => $_) {
-                unset($this->types[$literal_key]);
+        } elseif ($type_string === 'int' && $this->countLiteralInts() > 0) {
+            $kept = [];
+            foreach ($this->types as $existing) {
+                if (!$existing instanceof TLiteralInt) {
+                    $kept[] = $existing;
+                }
             }
-            $this->literal_float_types = [];
+            /** @psalm-suppress InvalidPropertyAssignmentValue transiently empty */
+            $this->types = $kept;
+            $this->bustCache();
+        } elseif ($type_string === 'float' && $this->countLiteralFloats() > 0) {
+            $kept = [];
+            foreach ($this->types as $existing) {
+                if (!$existing instanceof TLiteralFloat) {
+                    $kept[] = $existing;
+                }
+            }
+            /** @psalm-suppress InvalidPropertyAssignmentValue transiently empty */
+            $this->types = $kept;
+            $this->bustCache();
         }
 
         return false;
@@ -331,8 +348,7 @@ final class MutableUnion implements TypeNode
      */
     public function bustCache(): void
     {
-        $this->id = null;
-        $this->exact_id = null;
+        $this->memo = null;
     }
 
     /**
@@ -357,67 +373,71 @@ final class MutableUnion implements TypeNode
         }
 
         foreach ($old_type->types as $old_type_part) {
-            $had = isset($this->types[$old_type_part->getKey()]);
+            $had = $this->has($old_type_part->getKey());
             $this->removeType($old_type_part->getKey());
             if (!$had) {
                 if ($old_type_part instanceof TFalse
-                    && isset($this->types['bool'])
-                    && !isset($this->types['true'])
+                    && $this->has('bool')
+                    && !$this->has('true')
                 ) {
                     $this->removeType('bool');
-                    $this->types['true'] = new TTrue;
+                    $this->put(new TTrue);
                 } elseif ($old_type_part instanceof TTrue
-                    && isset($this->types['bool'])
-                    && !isset($this->types['false'])
+                    && $this->has('bool')
+                    && !$this->has('false')
                 ) {
                     $this->removeType('bool');
-                    $this->types['false'] = new TFalse;
-                } elseif (isset($this->types['iterable'])) {
+                    $this->put(new TFalse);
+                } elseif ($this->has('iterable')) {
                     if ($old_type_part instanceof TNamedObject
                         && $old_type_part->value === 'Traversable'
-                        && !isset($this->types['array'])
+                        && !$this->has('array')
                     ) {
                         $this->removeType('iterable');
-                        $this->types['array'] = Type::getArrayAtomic();
+                        $this->put(Type::getArrayAtomic());
                     }
 
                     if ($old_type_part instanceof TArray
-                        && !isset($this->types['traversable'])
+                        && !$this->has('traversable')
                     ) {
                         $this->removeType('iterable');
-                        $this->types['traversable'] = new TNamedObject('Traversable');
+                        $this->put(new TNamedObject('Traversable'));
                     }
-                } elseif (isset($this->types['array-key'])) {
+                } elseif ($this->has('array-key')) {
                     if ($old_type_part instanceof TString
-                        && !isset($this->types['int'])
+                        && !$this->has('int')
                     ) {
                         $this->removeType('array-key');
-                        $this->types['int'] = new TInt();
+                        $this->put(new TInt());
                     }
 
                     if ($old_type_part instanceof TInt
-                        && !isset($this->types['string'])
+                        && !$this->has('string')
                     ) {
                         $this->removeType('array-key');
-                        $this->types['string'] = new TString();
+                        $this->put(new TString());
                     }
                 }
             }
         }
 
         if ($new_type) {
-            foreach ($new_type->types as $key => $new_type_part) {
-                if (!isset($this->types[$key])
+            foreach ($new_type->types as $new_type_part) {
+                $existing = $this->find($new_type_part->getKey());
+                if ($existing === null
                     || ($new_type_part instanceof Scalar
-                        && $new_type_part::class === $this->types[$key]::class)
+                        && $new_type_part::class === $existing::class)
                 ) {
-                    $this->types[$key] = $new_type_part;
+                    $this->put($new_type_part);
                 } else {
-                    $this->types[$key] = TypeCombiner::combine([$new_type_part, $this->types[$key]])->getSingleAtomic();
+                    $this->put(TypeCombiner::combine([$new_type_part, $existing])->getSingleAtomic());
                 }
             }
-        } elseif (count($this->types) === 0) {
-            $this->types['mixed'] = new TMixed();
+        } else {
+            /** @psalm-suppress TypeDoesNotContainType transiently empty */
+            if (count($this->types) === 0) {
+                $this->put(new TMixed());
+            }
         }
 
         $this->bustCache();
@@ -438,7 +458,6 @@ final class MutableUnion implements TypeNode
      */
     public function freeze(): Union
     {
-        /** @psalm-suppress InvalidArgument It's actually filtered internally */
         return new Union($this->getAtomicTypes(), $this->getConstructionProperties());
     }
 

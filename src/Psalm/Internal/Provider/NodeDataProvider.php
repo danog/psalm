@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Internal\Provider;
 
 use Override;
-use PhpParser\Node;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
@@ -16,47 +15,43 @@ use Psalm\NodeTypeProvider;
 use Psalm\Storage\Assertion;
 use Psalm\Storage\Possibilities;
 use Psalm\Type\Union;
-use SplObjectStorage;
+
+use function spl_object_id;
 
 /**
  * @internal
  */
 final class NodeDataProvider implements NodeTypeProvider
 {
-    /** @var SplObjectStorage<Node, Union> */
-    private SplObjectStorage $node_types;
-
     /**
-     * @var SplObjectStorage<Node,list<non-empty-array<string, non-empty-list<non-empty-list<Assertion>>>>|null>
+     * The types and assertions by node, keyed by the node's object id (pzoom keeps a plain map keyed by
+     * position; four SplObjectStorage objects cost a method call per read and write). One store object is
+     * shared by every clone of the provider, as the SplObjectStorage objects were (a clone is shallow).
      */
-    private SplObjectStorage $node_assertions;
-
-    /** @var SplObjectStorage<Node, array<int, Possibilities>> */
-    private SplObjectStorage $node_if_true_assertions;
-
-    /** @var SplObjectStorage<Node, array<int, Possibilities>> */
-    private SplObjectStorage $node_if_false_assertions;
+    private NodeDataStore $store;
 
     public bool $cache_assertions = true;
 
+    /** @psalm-mutation-free */
     public function __construct()
     {
-        $this->node_types = new SplObjectStorage();
-        $this->node_assertions = new SplObjectStorage();
-        $this->node_if_true_assertions = new SplObjectStorage();
-        $this->node_if_false_assertions = new SplObjectStorage();
+        $this->store = new NodeDataStore();
     }
 
     #[Override]
     public function setType(NodeAbstract $node, Union $type): void
     {
-        $this->node_types[$node] = $type;
+        $id = spl_object_id($node);
+        $this->store->node_types[$id] = $type;
+        $this->store->nodes[$id] = $node;
     }
+
+        /** @psalm-mutation-free */
 
     #[Override]
     public function getType(NodeAbstract $node): ?Union
     {
-        return $this->node_types[$node] ?? null;
+        return $this->store->node_types[spl_object_id($node)] ?? null;
     }
 
     /**
@@ -68,11 +63,14 @@ final class NodeDataProvider implements NodeTypeProvider
             return;
         }
 
-        $this->node_assertions[$node] = $assertions;
+        $id = spl_object_id($node);
+        $this->store->node_assertions[$id] = $assertions;
+        $this->store->nodes[$id] = $node;
     }
 
     /**
      * @return list<non-empty-array<string, non-empty-list<non-empty-list<Assertion>>>>|null
+     * @psalm-mutation-free
      */
     public function getAssertions(Expr $node): ?array
     {
@@ -80,7 +78,7 @@ final class NodeDataProvider implements NodeTypeProvider
             return null;
         }
 
-        return $this->node_assertions[$node] ?? null;
+        return $this->store->node_assertions[spl_object_id($node)] ?? null;
     }
 
     /**
@@ -89,16 +87,19 @@ final class NodeDataProvider implements NodeTypeProvider
      */
     public function setIfTrueAssertions(Expr $node, array $assertions): void
     {
-        $this->node_if_true_assertions[$node] = $assertions;
+        $id = spl_object_id($node);
+        $this->store->node_if_true_assertions[$id] = $assertions;
+        $this->store->nodes[$id] = $node;
     }
 
     /**
      * @param Expr\FuncCall|MethodCall|StaticCall|New_ $node
      * @return array<int, Possibilities>|null
+     * @psalm-mutation-free
      */
     public function getIfTrueAssertions(Expr $node): ?array
     {
-        return $this->node_if_true_assertions[$node] ?? null;
+        return $this->store->node_if_true_assertions[spl_object_id($node)] ?? null;
     }
 
     /**
@@ -107,18 +108,22 @@ final class NodeDataProvider implements NodeTypeProvider
      */
     public function setIfFalseAssertions(Expr $node, array $assertions): void
     {
-        $this->node_if_false_assertions[$node] = $assertions;
+        $id = spl_object_id($node);
+        $this->store->node_if_false_assertions[$id] = $assertions;
+        $this->store->nodes[$id] = $node;
     }
 
     /**
      * @param FuncCall|MethodCall|StaticCall|New_ $node
      * @return array<int, Possibilities>|null
+     * @psalm-mutation-free
      */
     public function getIfFalseAssertions(Expr $node): ?array
     {
-        return $this->node_if_false_assertions[$node] ?? null;
+        return $this->store->node_if_false_assertions[spl_object_id($node)] ?? null;
     }
 
+    /** @psalm-mutation-free */
     public function isPureCompatible(Expr $node): bool
     {
         $node_type = $this->getType($node);
@@ -128,6 +133,7 @@ final class NodeDataProvider implements NodeTypeProvider
 
     public function clearNodeOfTypeAndAssertions(Expr $node): void
     {
-        unset($this->node_types[$node], $this->node_assertions[$node]);
+        $id = spl_object_id($node);
+        unset($this->store->node_types[$id], $this->store->node_assertions[$id]);
     }
 }

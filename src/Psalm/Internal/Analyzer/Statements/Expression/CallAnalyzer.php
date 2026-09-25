@@ -72,6 +72,8 @@ use function str_contains;
 use function str_replace;
 use function str_starts_with;
 use function strtolower;
+use function substr;
+use function strrpos;
 
 /**
  * @internal
@@ -589,12 +591,15 @@ abstract class CallAnalyzer
     /**
      * @param  non-empty-string     $function_id
      * @param  bool                 $can_be_in_root_scope if true, the function can be shortened to the root version
+     * @param  bool                 $case_sensitive a call written in code must spell the name as declared
+     *                              (pzoom); a callable string is a runtime truth and resolves as PHP does
      */
     public static function checkFunctionExists(
         StatementsAnalyzer $statements_analyzer,
         string &$function_id,
         CodeLocation $code_location,
         bool $can_be_in_root_scope,
+        bool $case_sensitive = false,
     ): bool {
         $cased_function_id = $function_id;
         $function_id = strtolower($function_id);
@@ -615,6 +620,35 @@ abstract class CallAnalyzer
                     new UndefinedFunction(
                         'Function ' . $cased_function_id . ' does not exist'
                             .', consider enabling the allFunctionsGlobal config option if scanning legacy codebases',
+                        $code_location,
+                        $function_id,
+                    ),
+                    $statements_analyzer->getSuppressedIssues(),
+                );
+
+                return false;
+            }
+        }
+
+        if (!$case_sensitive) {
+            return true;
+        }
+
+        // pzoom resolves function names case-sensitively: a call spelled differently from the declaration is
+        // undefined, reported with the declared spelling
+        try {
+            $declared = $codebase->functions->getStorage($statements_analyzer, $function_id)->cased_name;
+        } catch (UnexpectedValueException) {
+            // provided by a plugin: no storage to compare against
+            $declared = null;
+        }
+        if ($declared !== null && $declared !== '') {
+            $written_short = ($pos = strrpos($cased_function_id, '\\')) === false ? $cased_function_id : substr($cased_function_id, $pos + 1);
+            $declared_short = ($pos = strrpos($declared, '\\')) === false ? $declared : substr($declared, $pos + 1);
+            if ($written_short !== $declared_short && strtolower($written_short) === strtolower($declared_short)) {
+                IssueBuffer::maybeAdd(
+                    new UndefinedFunction(
+                        'Function ' . $cased_function_id . ' does not exist (incorrect casing of ' . $declared . ')',
                         $code_location,
                         $function_id,
                     ),

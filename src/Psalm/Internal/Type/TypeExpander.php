@@ -27,6 +27,8 @@ use Psalm\Type\Atomic\TKeyOf;
 use Psalm\Type\Atomic\TKeyedArray;
 use Psalm\Type\Atomic\TLiteralClassString;
 use Psalm\Type\Atomic\TLiteralInt;
+use Psalm\Type\Atomic\TMixed;
+use Psalm\Type\Atomic\TClassStringMap;
 use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\Atomic\TNever;
 use Psalm\Type\Atomic\TNull;
@@ -54,9 +56,6 @@ use function strtolower;
  */
 final class TypeExpander
 {
-    /**
-     * @psalm-suppress InaccessibleProperty We just created the type
-     */
     public static function expandUnion(
         Codebase $codebase,
         Union $return_type,
@@ -71,8 +70,14 @@ final class TypeExpander
         bool $throw_on_unresolvable_constant = false,
     ): Union {
         $new_return_type_parts = [];
+        // every expansion step returns the atomic it was given when there is nothing to resolve, so a union
+        // whose atomics all came back unchanged is returned as it is: no recombination (pzoom expands in
+        // place and only touches what needs expanding)
+        $changed = false;
 
         foreach ($return_type->getAtomicTypes() as $return_type_part) {
+            // expandAtomic takes its atomic by reference and may replace it: keep the original for the comparison
+            $original_part = $return_type_part;
             $parts = self::expandAtomic(
                 $codebase,
                 $return_type_part,
@@ -87,28 +92,100 @@ final class TypeExpander
                 $throw_on_unresolvable_constant,
             );
 
+            if (count($parts) !== 1 || $parts[0] !== $original_part) {
+                $changed = true;
+            }
+
             $new_return_type_parts = [...$new_return_type_parts, ...$parts];
         }
 
-        $fleshed_out_type = TypeCombiner::combine(
+        if (!$changed && self::isCombineNormal($new_return_type_parts)) {
+            // nothing to resolve and nothing the combiner would merge: the same atomics in a fresh union carrying
+            // the flags an expansion keeps (below), exactly what recombining them produced, without the combiner
+            // (pzoom expands in place). The combiner lists null after the other atomic.
+            if (count($new_return_type_parts) === 2 && $new_return_type_parts[0] instanceof TNull) {
+                $new_return_type_parts = [$new_return_type_parts[1], $new_return_type_parts[0]];
+            }
+            // (an explicit from_docblock is exact: an expansion keeps the original union's)
+            return new Union($new_return_type_parts, [
+                'from_docblock' => $return_type->from_docblock,
+                'ignore_nullable_issues' => $return_type->ignore_nullable_issues,
+                'ignore_falsable_issues' => $return_type->ignore_falsable_issues,
+                'possibly_undefined' => $return_type->possibly_undefined,
+                'possibly_undefined_from_try' => $return_type->possibly_undefined_from_try,
+                'by_ref' => $return_type->by_ref,
+                'initialized' => $return_type->initialized,
+                'from_property' => $return_type->from_property,
+                'from_static_property' => $return_type->from_static_property,
+                'explicit_never' => $return_type->explicit_never,
+                'had_template' => $return_type->had_template,
+                'parent_nodes' => $return_type->parent_nodes,
+            ]);
+        }
+
+        return TypeCombiner::combine(
             $new_return_type_parts,
             $codebase,
+            properties: [
+                'from_docblock' => $return_type->from_docblock,
+                'ignore_nullable_issues' => $return_type->ignore_nullable_issues,
+                'ignore_falsable_issues' => $return_type->ignore_falsable_issues,
+                'possibly_undefined' => $return_type->possibly_undefined,
+                'possibly_undefined_from_try' => $return_type->possibly_undefined_from_try,
+                'by_ref' => $return_type->by_ref,
+                'initialized' => $return_type->initialized,
+                'from_property' => $return_type->from_property,
+                'from_static_property' => $return_type->from_static_property,
+                'explicit_never' => $return_type->explicit_never,
+                'had_template' => $return_type->had_template,
+                'parent_nodes' => $return_type->parent_nodes,
+            ],
         );
+    }
 
-        $fleshed_out_type->from_docblock = $return_type->from_docblock;
-        $fleshed_out_type->ignore_nullable_issues = $return_type->ignore_nullable_issues;
-        $fleshed_out_type->ignore_falsable_issues = $return_type->ignore_falsable_issues;
-        $fleshed_out_type->possibly_undefined = $return_type->possibly_undefined;
-        $fleshed_out_type->possibly_undefined_from_try = $return_type->possibly_undefined_from_try;
-        $fleshed_out_type->by_ref = $return_type->by_ref;
-        $fleshed_out_type->initialized = $return_type->initialized;
-        $fleshed_out_type->from_property = $return_type->from_property;
-        $fleshed_out_type->from_static_property = $return_type->from_static_property;
-        $fleshed_out_type->explicit_never = $return_type->explicit_never;
-        $fleshed_out_type->had_template = $return_type->had_template;
-        $fleshed_out_type->parent_nodes = $return_type->parent_nodes;
+    /**
+     * Whether combining these atomics would give them back as they are: a single atomic, or one atomic and
+     * null. Anything else (two objects, scalars and literals, two arrays) the combiner may merge.
+     *
+     * @param list<Atomic> $atomics
+     * @psalm-pure
+     */
+    private static function isCombineNormal(array $atomics): bool
+    {
+        if (count($atomics) === 1) {
+            return self::isCombineNormalAtomic($atomics[0]);
+        }
 
-        return $fleshed_out_type;
+        if (count($atomics) === 2) {
+            $a = $atomics[0];
+            $b = $atomics[1];
+
+            return ($a instanceof TNull xor $b instanceof TNull)
+                && self::isCombineNormalAtomic($a instanceof TNull ? $b : $a);
+        }
+
+        return false;
+    }
+
+    /**
+     * An atomic the combiner hands back as it is. A container is rebuilt by the combiner (its type parameters
+     * pass through the combiner again, which resets what they carry from a docblock), so it still combines.
+     *
+     * @psalm-pure
+     */
+    private static function isCombineNormalAtomic(Atomic $atomic): bool
+    {
+        return !$atomic instanceof TNull
+            && !$atomic instanceof TMixed
+            && !$atomic instanceof TNever
+            && !$atomic instanceof TArray
+            && !$atomic instanceof TKeyedArray
+            && !$atomic instanceof TIterable
+            && !$atomic instanceof TGenericObject
+            && !$atomic instanceof TCallable
+            && !$atomic instanceof TClosure
+            && !$atomic instanceof TObjectWithProperties
+            && !$atomic instanceof TClassStringMap;
     }
 
     /**
@@ -220,7 +297,7 @@ final class TypeExpander
             );
 
             if ($expand_templates) {
-                return array_values($new_as_type->getAtomicTypes());
+                return $new_as_type->getAtomicTypes();
             }
 
             $return_type = $return_type->replaceAs($new_as_type);
@@ -256,7 +333,7 @@ final class TypeExpander
                 }
 
                 if ($class_constant) {
-                    return array_values($class_constant->getAtomicTypes());
+                    return $class_constant->getAtomicTypes();
                 }
             }
 
@@ -825,7 +902,7 @@ final class TypeExpander
 
 
                 if ($if_conditional_return_type) {
-                    $if_conditional_return_types = array_values($if_conditional_return_type->getAtomicTypes());
+                    $if_conditional_return_types = $if_conditional_return_type->getAtomicTypes();
                 }
             }
 
@@ -842,7 +919,7 @@ final class TypeExpander
                 );
 
                 if ($else_conditional_return_type) {
-                    $else_conditional_return_types = array_values($else_conditional_return_type->getAtomicTypes());
+                    $else_conditional_return_types = $else_conditional_return_type->getAtomicTypes();
                 }
             }
 
@@ -878,7 +955,7 @@ final class TypeExpander
 
                 $return_type = $return_type->setTypes($new_as_type);
 
-                return array_values($combined->getAtomicTypes());
+                return $combined->getAtomicTypes();
             }
         }
 
@@ -1090,7 +1167,7 @@ final class TypeExpander
 
             $type_atomics = array_merge(
                 $type_atomics,
-                array_values($constant_type->getAtomicTypes()),
+                $constant_type->getAtomicTypes(),
             );
         }
         if ($type_atomics === []) {
@@ -1107,6 +1184,6 @@ final class TypeExpander
             return [$return_type];
         }
 
-        return array_values($new_return_types->getAtomicTypes());
+        return $new_return_types->getAtomicTypes();
     }
 }

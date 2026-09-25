@@ -87,7 +87,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         bool $is_equality = false,
         bool $inside_loop = false,
     ): ?Union {
-        $old_var_type_string = $existing_var_type->getId();
+        $old_var_type = $existing_var_type;
 
         if ($assertion instanceof IsNotIsset) {
             if ($existing_var_type->possibly_undefined) {
@@ -165,7 +165,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
                 if ($key && $code_location) {
                     self::triggerIssueForImpossible(
                         $existing_var_type,
-                        $existing_var_type->getId(),
+                        $existing_var_type,
                         $key,
                         $assertion,
                         true,
@@ -229,7 +229,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
                 $assertion,
                 $existing_var_type,
                 $inside_loop,
-                $old_var_type_string,
+                $old_var_type,
                 $key,
                 $negated,
                 $code_location,
@@ -242,7 +242,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
                 $assertion,
                 $existing_var_type,
                 $inside_loop,
-                $old_var_type_string,
+                $old_var_type,
                 $key,
                 $negated,
                 $code_location,
@@ -429,7 +429,8 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         TCallable $assertion_type,
     ): Union {
         $existing_var_type = $existing_var_type->getBuilder();
-        foreach ($existing_var_type->getAtomicTypes() as $atomic_key => $type) {
+        foreach ($existing_var_type->getAtomicTypes() as $type) {
+            $atomic_key = $type->getKey();
             if ($type instanceof TLiteralString
                 && InternalCallMapHandler::inCallMap($type->value)
             ) {
@@ -470,7 +471,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         int &$failed_reconciliation,
         bool $is_equality,
     ): Union {
-        $old_var_type_string = $existing_var_type->getId();
+        $old_var_type = $existing_var_type;
         $non_bool_types = [];
         $redundant = true;
 
@@ -519,7 +520,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
             if ($key && $code_location && !$is_equality) {
                 self::triggerIssueForImpossible(
                     $existing_var_type,
-                    $old_var_type_string,
+                    $old_var_type,
                     $key,
                     $assertion,
                     $redundant,
@@ -556,9 +557,9 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         bool $is_equality,
         ?int $count,
     ): Union {
+        $old_var_type = $existing_var_type;
         $existing_var_type = $existing_var_type->getBuilder();
-        $old_var_type_string = $existing_var_type->getId();
-        $existing_var_atomic_types = $existing_var_type->getAtomicTypes();
+        $existing_var_atomic_types = $existing_var_type->getAtomicTypesByKey();
 
         if (isset($existing_var_atomic_types['array'])) {
             $array_atomic_type = $existing_var_type->getArray();
@@ -642,7 +643,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
                 if ($key && $code_location) {
                     self::triggerIssueForImpossible(
                         $existing_var_type,
-                        $old_var_type_string,
+                        $old_var_type,
                         $key,
                         $assertion,
                         $redundant,
@@ -671,8 +672,8 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         int &$failed_reconciliation,
         bool $is_equality,
     ): Union {
-        $types = $existing_var_type->getAtomicTypes();
-        $old_var_type_string = $existing_var_type->getId();
+        $types = $existing_var_type->getAtomicTypesByKey();
+        $old_var_type = $existing_var_type;
         $redundant = true;
 
         if (isset($types['null'])) {
@@ -708,7 +709,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
             if ($key && $code_location && !$is_equality) {
                 self::triggerIssueForImpossible(
                     $existing_var_type,
-                    $old_var_type_string,
+                    $old_var_type,
                     $key,
                     $assertion,
                     $redundant,
@@ -746,8 +747,8 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         int &$failed_reconciliation,
         bool $is_equality,
     ): Union {
-        $types = $existing_var_type->getAtomicTypes();
-        $old_var_type_string = $existing_var_type->getId();
+        $types = $existing_var_type->getAtomicTypesByKey();
+        $old_var_type = $existing_var_type;
         $redundant = true;
 
         if (isset($types['scalar'])) {
@@ -788,7 +789,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
             if ($key && $code_location && !$is_equality) {
                 self::triggerIssueForImpossible(
                     $existing_var_type,
-                    $old_var_type_string,
+                    $old_var_type,
                     $key,
                     $assertion,
                     $redundant,
@@ -826,8 +827,8 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         int &$failed_reconciliation,
         bool $is_equality,
     ): Union {
-        $types = $existing_var_type->getAtomicTypes();
-        $old_var_type_string = $existing_var_type->getId();
+        $types = $existing_var_type->getAtomicTypesByKey();
+        $old_var_type = $existing_var_type;
         $redundant = true;
 
         if (isset($types['scalar'])) {
@@ -868,7 +869,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
             if ($key && $code_location && !$is_equality) {
                 self::triggerIssueForImpossible(
                     $existing_var_type,
-                    $old_var_type_string,
+                    $old_var_type,
                     $key,
                     $assertion,
                     $redundant,
@@ -907,13 +908,14 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         int &$failed_reconciliation,
         bool $recursive_check,
     ): Union {
+        $old_var_type = $existing_var_type;
         $existing_var_type = $existing_var_type->getBuilder();
-        $old_var_type_string = $existing_var_type->getId();
 
         $redundant = !($existing_var_type->possibly_undefined
             || $existing_var_type->possibly_undefined_from_try);
 
-        foreach ($existing_var_type->getAtomicTypes() as $existing_var_type_key => $existing_var_type_part) {
+        foreach ($existing_var_type->getAtomicTypes() as $existing_var_type_part) {
+            $existing_var_type_key = $existing_var_type_part->getKey();
             //if any atomic in the union is either always truthy, we remove it. If not always falsy, we mark the check
             //as not redundant.
             if (!$existing_var_type->possibly_undefined
@@ -932,7 +934,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
             if ($code_location && $key && !$recursive_check) {
                 self::triggerIssueForImpossible(
                     $existing_var_type,
-                    $old_var_type_string,
+                    $old_var_type,
                     $key,
                     $assertion,
                     false,
@@ -952,7 +954,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
             if ($code_location && $key && !$recursive_check) {
                 self::triggerIssueForImpossible(
                     $existing_var_type,
-                    $old_var_type_string,
+                    $old_var_type,
                     $key,
                     $assertion,
                     true,
@@ -983,7 +985,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         }
 
         if ($existing_var_type->hasMixed()) {
-            $mixed_atomic_type = $existing_var_type->getAtomicTypes()['mixed'];
+            $mixed_atomic_type = $existing_var_type->find('mixed');
 
             if ($mixed_atomic_type::class === TMixed::class) {
                 $existing_var_type->removeType('mixed');
@@ -992,7 +994,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         }
 
         if ($existing_var_type->hasScalar()) {
-            $scalar_atomic_type = $existing_var_type->getAtomicTypes()['scalar'];
+            $scalar_atomic_type = $existing_var_type->find('scalar');
 
             if ($scalar_atomic_type::class === TScalar::class) {
                 $existing_var_type->removeType('scalar');
@@ -1001,7 +1003,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         }
 
         if ($existing_var_type->hasType('string')) {
-            $string_atomic_type = $existing_var_type->getAtomicTypes()['string'];
+            $string_atomic_type = $existing_var_type->find('string');
 
             if ($string_atomic_type::class === TString::class) {
                 $existing_var_type->removeType('string');
@@ -1045,7 +1047,8 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
             $existing_var_type->addType(new TEmptyNumeric());
         }
 
-        foreach ($existing_var_type->getAtomicTypes() as $type_key => $existing_var_atomic_type) {
+        foreach ($existing_var_type->getAtomicTypes() as $existing_var_atomic_type) {
+            $type_key = $existing_var_atomic_type->getKey();
             if ($existing_var_atomic_type instanceof TTemplateParam) {
                 if (!$existing_var_atomic_type->as->isMixed()) {
                     $template_did_fail = 0;
@@ -1088,7 +1091,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         int &$failed_reconciliation,
         bool $is_equality,
     ): Union {
-        $old_var_type_string = $existing_var_type->getId();
+        $old_var_type = $existing_var_type;
         $non_scalar_types = [];
         $redundant = true;
 
@@ -1132,7 +1135,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
             if ($key && $code_location) {
                 self::triggerIssueForImpossible(
                     $existing_var_type,
-                    $old_var_type_string,
+                    $old_var_type,
                     $key,
                     $assertion,
                     $redundant,
@@ -1174,7 +1177,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         int &$failed_reconciliation,
         bool $is_equality,
     ): Union {
-        $old_var_type_string = $existing_var_type->getId();
+        $old_var_type = $existing_var_type;
         $non_object_types = [];
         $redundant = true;
 
@@ -1231,7 +1234,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
             if ($key && $code_location) {
                 self::triggerIssueForImpossible(
                     $existing_var_type,
-                    $old_var_type_string,
+                    $old_var_type,
                     $key,
                     $assertion,
                     $redundant,
@@ -1273,7 +1276,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         int &$failed_reconciliation,
         bool $is_equality,
     ): Union {
-        $old_var_type_string = $existing_var_type->getId();
+        $old_var_type = $existing_var_type;
         $non_numeric_types = [];
         $redundant = !($existing_var_type->hasString()
             || $existing_var_type->hasScalar());
@@ -1325,7 +1328,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
             if ($key && $code_location && !$is_equality) {
                 self::triggerIssueForImpossible(
                     $existing_var_type,
-                    $old_var_type_string,
+                    $old_var_type,
                     $key,
                     $assertion,
                     $redundant,
@@ -1367,7 +1370,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         int &$failed_reconciliation,
         bool $is_equality,
     ): Union {
-        $old_var_type_string = $existing_var_type->getId();
+        $old_var_type = $existing_var_type;
         $non_int_types = [];
         $redundant = true;
 
@@ -1425,7 +1428,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
             if ($key && $code_location && !$is_equality) {
                 self::triggerIssueForImpossible(
                     $existing_var_type,
-                    $old_var_type_string,
+                    $old_var_type,
                     $key,
                     $assertion,
                     $redundant,
@@ -1467,7 +1470,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         int &$failed_reconciliation,
         bool $is_equality,
     ): Union {
-        $old_var_type_string = $existing_var_type->getId();
+        $old_var_type = $existing_var_type;
         $non_float_types = [];
         $redundant = true;
 
@@ -1520,7 +1523,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
             if ($key && $code_location && !$is_equality) {
                 self::triggerIssueForImpossible(
                     $existing_var_type,
-                    $old_var_type_string,
+                    $old_var_type,
                     $key,
                     $assertion,
                     $redundant,
@@ -1562,7 +1565,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         int &$failed_reconciliation,
         bool $is_equality,
     ): Union {
-        $old_var_type_string = $existing_var_type->getId();
+        $old_var_type = $existing_var_type;
         $non_string_types = [];
         $redundant = !$existing_var_type->hasScalar();
 
@@ -1624,7 +1627,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
             if ($key && $code_location) {
                 self::triggerIssueForImpossible(
                     $existing_var_type,
-                    $old_var_type_string,
+                    $old_var_type,
                     $key,
                     $assertion,
                     $redundant,
@@ -1666,7 +1669,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         int &$failed_reconciliation,
         bool $is_equality,
     ): Union {
-        $old_var_type_string = $existing_var_type->getId();
+        $old_var_type = $existing_var_type;
         $non_array_types = [];
         $redundant = !$existing_var_type->hasScalar();
 
@@ -1724,7 +1727,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
             if ($key && $code_location) {
                 self::triggerIssueForImpossible(
                     $existing_var_type,
-                    $old_var_type_string,
+                    $old_var_type,
                     $key,
                     $assertion,
                     $redundant,
@@ -1766,8 +1769,8 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         int &$failed_reconciliation,
         bool $is_equality,
     ): Union {
-        $types = $existing_var_type->getAtomicTypes();
-        $old_var_type_string = $existing_var_type->getId();
+        $types = $existing_var_type->getAtomicTypesByKey();
+        $old_var_type = $existing_var_type;
         $redundant = true;
 
         if (isset($types['resource'])) {
@@ -1798,7 +1801,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
             if ($key && $code_location && !$is_equality) {
                 self::triggerIssueForImpossible(
                     $existing_var_type,
-                    $old_var_type_string,
+                    $old_var_type,
                     $key,
                     $assertion,
                     $redundant,
@@ -1829,7 +1832,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         IsLessThanOrEqualTo $assertion,
         Union               $existing_var_type,
         bool                $inside_loop,
-        string              $old_var_type_string,
+        Union              $old_var_type,
         ?string             $var_id,
         bool                $negated,
         ?CodeLocation       $code_location,
@@ -1900,7 +1903,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         if (!$inside_loop && $redundant && $var_id && $code_location) {
             self::triggerIssueForImpossible(
                 $existing_var_type,
-                $old_var_type_string,
+                $old_var_type,
                 $var_id,
                 $assertion,
                 true,
@@ -1914,7 +1917,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
             if ($var_id && $code_location) {
                 self::triggerIssueForImpossible(
                     $existing_var_type,
-                    $old_var_type_string,
+                    $old_var_type,
                     $var_id,
                     $assertion,
                     false,
@@ -1936,7 +1939,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         IsGreaterThanOrEqualTo $assertion,
         Union                  $existing_var_type,
         bool                   $inside_loop,
-        string                 $old_var_type_string,
+        Union                 $old_var_type,
         ?string                $var_id,
         bool                   $negated,
         ?CodeLocation          $code_location,
@@ -2005,7 +2008,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
         if (!$inside_loop && $redundant && $var_id && $code_location) {
             self::triggerIssueForImpossible(
                 $existing_var_type,
-                $old_var_type_string,
+                $old_var_type,
                 $var_id,
                 $assertion,
                 true,
@@ -2019,7 +2022,7 @@ final class SimpleNegatedAssertionReconciler extends Reconciler
             if ($var_id && $code_location) {
                 self::triggerIssueForImpossible(
                     $existing_var_type,
-                    $old_var_type_string,
+                    $old_var_type,
                     $var_id,
                     $assertion,
                     false,

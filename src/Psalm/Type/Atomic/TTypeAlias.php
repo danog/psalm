@@ -6,6 +6,7 @@ namespace Psalm\Type\Atomic;
 
 use Override;
 use Psalm\Type\Atomic;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * @psalm-immutable
@@ -13,6 +14,7 @@ use Psalm\Type\Atomic;
  */
 final class TTypeAlias extends Atomic
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     public function __construct(
         public string $declaring_fq_classlike_name,
         public string $alias_name,
@@ -21,13 +23,13 @@ final class TTypeAlias extends Atomic
     }
 
     #[Override]
-    public function getKey(bool $include_extra = true): string
+    protected function computeKey(bool $include_extra = true): string
     {
         return 'type-alias(' . $this->declaring_fq_classlike_name . '::' . $this->alias_name . ')';
     }
 
     #[Override]
-    public function getId(bool $exact = true, bool $nested = false): string
+    protected function computeId(bool $exact = true, bool $nested = false): string
     {
         return $this->getKey();
     }

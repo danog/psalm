@@ -6,6 +6,7 @@ namespace Psalm\Storage\Assertion;
 
 use Override;
 use Psalm\Storage\Assertion;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * @psalm-immutable
@@ -13,6 +14,7 @@ use Psalm\Storage\Assertion;
  */
 final class IsLessThan extends Assertion
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     public function __construct(public readonly int $value)
     {
     }

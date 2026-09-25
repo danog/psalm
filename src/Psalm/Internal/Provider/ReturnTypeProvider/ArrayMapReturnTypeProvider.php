@@ -145,10 +145,9 @@ final class ArrayMapReturnTypeProvider implements FunctionReturnTypeProviderInte
         $array_arg_type = null;
 
         if ($array_arg_union_type = $statements_source->node_data->getType($array_arg->value)) {
-            $arg_types = $array_arg_union_type->getAtomicTypes();
+            $array_arg_atomic_type = $array_arg_union_type->find('array');
 
-            if (isset($arg_types['array'])) {
-                $array_arg_atomic_type = $arg_types['array'];
+            if ($array_arg_atomic_type !== null) {
 
                 $array_arg_type = ArrayType::infer($array_arg_atomic_type);
             }

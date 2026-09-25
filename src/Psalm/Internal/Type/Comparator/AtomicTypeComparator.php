@@ -488,8 +488,8 @@ final class AtomicTypeComparator
 
         if ($container_type_part instanceof TConditional) {
             $atomic_types = array_merge(
-                array_values($container_type_part->if_type->getAtomicTypes()),
-                array_values($container_type_part->else_type->getAtomicTypes()),
+                $container_type_part->if_type->getAtomicTypes(),
+                $container_type_part->else_type->getAtomicTypes(),
             );
 
             foreach ($atomic_types as $container_as_type_part) {
@@ -542,8 +542,8 @@ final class AtomicTypeComparator
 
         if ($input_type_part instanceof TConditional) {
             $input_atomic_types = array_merge(
-                array_values($input_type_part->if_type->getAtomicTypes()),
-                array_values($input_type_part->else_type->getAtomicTypes()),
+                $input_type_part->if_type->getAtomicTypes(),
+                $input_type_part->else_type->getAtomicTypes(),
             );
 
             foreach ($input_atomic_types as $input_as_type_part) {
@@ -687,7 +687,7 @@ final class AtomicTypeComparator
                 || (
                     $input_type_part instanceof TNamedObject &&
                     $codebase->classOrInterfaceExists($input_type_part->value) &&
-                    $codebase->methodExists($input_type_part->value . '::__invoke')
+                    $codebase->methodExists(new MethodIdentifier($input_type_part->value, '__invoke'))
                 )
             )
         ) {

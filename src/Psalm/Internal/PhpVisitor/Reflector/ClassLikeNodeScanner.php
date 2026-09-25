@@ -886,8 +886,7 @@ final class ClassLikeNodeScanner
                 $property_id = $fq_classlike_name . '::$' . $property_name;
 
                 if ($property_id === 'DateInterval::$days') {
-                    /** @psalm-suppress InaccessibleProperty We just parsed this type */
-                    $property_type->ignore_falsable_issues = true;
+                    $property_type = $property_type->setProperties(['ignore_falsable_issues' => true]);
                 }
 
                 $classlike_storage->properties[$property_name]->type = $property_type;
@@ -908,7 +907,7 @@ final class ClassLikeNodeScanner
                     true,
                 );
 
-                $converted_aliases[$key] = new ClassTypeAlias(array_values($union->getAtomicTypes()));
+                $converted_aliases[$key] = new ClassTypeAlias($union->getAtomicTypes());
             } catch (TypeParseTreeException $e) {
                 $classlike_storage->docblock_issues[] = new InvalidDocblock(
                     '@psalm-type ' . $key . ' contains invalid reference: ' . $e->getMessage(),
@@ -1777,20 +1776,23 @@ final class ClassLikeNodeScanner
 
                 if ($property_storage->signature_type) {
                     $all_typehint_types_match = true;
-                    $signature_atomic_types = $property_storage->signature_type->getAtomicTypes();
+                    $signature_type = $property_storage->signature_type;
 
+                    // the atomics the signature also declares are not docblock-only: rebuilt through the wither
+                    // (a type is a value, never written in place)
+                    $types = [];
                     foreach ($property_storage->type->getAtomicTypes() as $key => $type) {
-                        if (isset($signature_atomic_types[$key])) {
-                            /** @psalm-suppress InaccessibleProperty We just created this type */
-                            $type->from_docblock = false;
+                        if ($signature_type->has($type->getKey())) {
+                            $types[$key] = $type->setFromDocblock(false);
                         } else {
                             $all_typehint_types_match = false;
+                            $types[$key] = $type;
                         }
                     }
+                    $property_storage->type = $property_storage->type->setTypes($types);
 
                     if ($all_typehint_types_match) {
-                        /** @psalm-suppress InaccessibleProperty We just created this type */
-                        $property_storage->type->from_docblock = false;
+                        $property_storage->type = $property_storage->type->setProperties(['from_docblock' => false]);
                     }
 
                     if ($property_storage->signature_type->isNullable()

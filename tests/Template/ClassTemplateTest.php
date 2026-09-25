@@ -1054,7 +1054,7 @@ final class ClassTemplateTest extends TestCase
                     class AppUser extends User {}
 
                     $au = new AppUser(-1);
-                    $id = $au->getId();',
+                    $id = $au->getID();',
                 'assertions' => [
                     '$au' => 'AppUser',
                     '$id' => 'array-key',

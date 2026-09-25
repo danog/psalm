@@ -51,7 +51,7 @@ final class ClassConstantByWildcardResolver
                 continue;
             }
 
-            $types[] = $class_constant_storage->type->getAtomicTypes();
+            $types[] = $class_constant_storage->type->getAtomicTypesByKey();
         }
 
         if ($types === []) {

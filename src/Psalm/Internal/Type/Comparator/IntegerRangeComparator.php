@@ -52,7 +52,7 @@ final class IntegerRangeComparator
         TIntRange $input_type_part,
         Union $container_type,
     ): bool {
-        $container_atomic_types = $container_type->getAtomicTypes();
+        $container_atomic_types = $container_type->getAtomicTypesByKey();
         $reduced_range = new TIntRange(
             $input_type_part->min_bound,
             $input_type_part->max_bound,
@@ -92,13 +92,19 @@ final class IntegerRangeComparator
      * The goal is to use values in atomics in order to reduce the range.
      * Once the range is empty, it means that every value in range was covered by some atomics combination
      *
-     * @psalm-suppress InaccessibleProperty $reduced_range was just re-created
+     * The range is reduced in place: its bounds travel as ints and it is rebuilt when a container comparison
+     * needs the atomic (a TIntRange is never written after construction).
+     *
      * @param array<string, Atomic> $container_atomic_types
      */
-    private static function reduceRangeIncrementally(array &$container_atomic_types, TIntRange $reduced_range): ?bool
+    private static function reduceRangeIncrementally(array &$container_atomic_types, TIntRange &$reduced_range): ?bool
     {
+        $min_bound = $reduced_range->min_bound;
+        $max_bound = $reduced_range->max_bound;
+
         foreach ($container_atomic_types as $key => $container_atomic_type) {
             if ($container_atomic_type instanceof TIntRange) {
+                $reduced_range = new TIntRange($min_bound, $max_bound);
                 if (self::isContainedBy($reduced_range, $container_atomic_type)) {
                     if ($container_atomic_type->max_bound === null && $container_atomic_type->min_bound === null) {
                         //this container range covers any integer
@@ -107,9 +113,9 @@ final class IntegerRangeComparator
                     if ($container_atomic_type->max_bound === null) {
                         //this container range is int<X, max>
                         //X-1 becomes the max of our reduced range if it was higher
-                        $reduced_range->max_bound = TIntRange::getNewLowestBound(
+                        $max_bound = TIntRange::getNewLowestBound(
                             $container_atomic_type->min_bound - 1,
-                            $reduced_range->max_bound ?? $container_atomic_type->min_bound - 1,
+                            $max_bound ?? $container_atomic_type->min_bound - 1,
                         );
                         unset($container_atomic_types[$key]); //we don't need this one anymore
                         continue;
@@ -117,27 +123,27 @@ final class IntegerRangeComparator
                     if ($container_atomic_type->min_bound === null) {
                         //this container range is int<min, X>
                         //X+1 becomes the min of our reduced range if it was lower
-                        $reduced_range->min_bound = TIntRange::getNewHighestBound(
+                        $min_bound = TIntRange::getNewHighestBound(
                             $container_atomic_type->max_bound + 1,
-                            $reduced_range->min_bound ?? $container_atomic_type->max_bound + 1,
+                            $min_bound ?? $container_atomic_type->max_bound + 1,
                         );
                         unset($container_atomic_types[$key]); //we don't need this one anymore
                         continue;
                     }
                     //if the container range has no 'null' bound, it's more complex
                     //in this case, we can only reduce if the container include one bound of our reduced range
-                    if ($reduced_range->min_bound !== null
-                        && $container_atomic_type->contains($reduced_range->min_bound)
+                    if ($min_bound !== null
+                        && $container_atomic_type->contains($min_bound)
                     ) {
                         //this container range is int<X, Y> and contains the min of our reduced range.
                         //the min from our reduced range becomes Y + 1
-                        $reduced_range->min_bound = $container_atomic_type->max_bound + 1;
+                        $min_bound = $container_atomic_type->max_bound + 1;
                         unset($container_atomic_types[$key]); //we don't need this one anymore
-                    } elseif ($reduced_range->max_bound !== null
-                        && $container_atomic_type->contains($reduced_range->max_bound)) {
+                    } elseif ($max_bound !== null
+                        && $container_atomic_type->contains($max_bound)) {
                         //this container range is int<X, Y> and contains the max of our reduced range.
                         //the max from our reduced range becomes X - 1
-                        $reduced_range->max_bound = $container_atomic_type->min_bound - 1;
+                        $max_bound = $container_atomic_type->min_bound - 1;
                         unset($container_atomic_types[$key]); //we don't need this one anymore
                     }
                     //there is probably a case here where we could unset containers when they're not at all in our range
@@ -146,13 +152,13 @@ final class IntegerRangeComparator
                     return false;
                 }
             } elseif ($container_atomic_type instanceof TLiteralInt) {
-                if (!$reduced_range->contains($container_atomic_type->value)) {
+                if (!self::boundsContain($min_bound, $max_bound, $container_atomic_type->value)) {
                     unset($container_atomic_types[$key]); //we don't need this one anymore
-                } elseif ($reduced_range->min_bound === $container_atomic_type->value) {
-                    $reduced_range->min_bound++;
+                } elseif ($min_bound === $container_atomic_type->value) {
+                    $min_bound++;
                     unset($container_atomic_types[$key]); //we don't need this one anymore
-                } elseif ($reduced_range->max_bound === $container_atomic_type->value) {
-                    $reduced_range->max_bound--;
+                } elseif ($max_bound === $container_atomic_type->value) {
+                    $max_bound--;
                     unset($container_atomic_types[$key]); //we don't need this one anymore
                 }
             }
@@ -165,14 +171,23 @@ final class IntegerRangeComparator
         //bounds from our reduced range where we could return false
 
         //if our reduced range has its min bound superior to its max bound, it means the container covers it all.
-        if ($reduced_range->min_bound !== null &&
-            $reduced_range->max_bound !== null &&
-            $reduced_range->min_bound > $reduced_range->max_bound
-        ) {
+        $reduced_range = new TIntRange($min_bound, $max_bound);
+
+        if ($min_bound !== null && $max_bound !== null && $min_bound > $max_bound) {
             return true;
         }
 
         //if we didn't return true or false before then the result is inconclusive for this round
         return null;
+    }
+
+    /**
+     * TIntRange::contains() on bare bounds.
+     *
+     * @psalm-pure
+     */
+    private static function boundsContain(?int $min_bound, ?int $max_bound, int $i): bool
+    {
+        return ($min_bound === null || $min_bound <= $i) && ($max_bound === null || $max_bound >= $i);
     }
 }

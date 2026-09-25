@@ -188,6 +188,11 @@ final class Properties
 
         $class_storage = $this->classlike_storage_provider->get($fq_class_name);
 
+        // own or inherited: the flattened map filled at populate
+        if (isset($class_storage->all_properties[$property_name])) {
+            return $class_storage->all_properties[$property_name];
+        }
+
         if (isset($class_storage->declaring_property_ids[$property_name])) {
             $declaring_property_class = $class_storage->declaring_property_ids[$property_name];
             $declaring_class_storage = $this->classlike_storage_provider->get($declaring_property_class);

@@ -628,7 +628,7 @@ final class ArrayFunctionArgumentsAnalyzer
         );
 
         if ($var_id) {
-            $context->removeVarFromConflictingClauses($var_id, null, $statements_analyzer);
+            $context->removeVarFromConflictingClauses($var_id);
 
             if (isset($context->vars_in_scope[$var_id])) {
                 $array_atomic_types = [];
@@ -720,7 +720,7 @@ final class ArrayFunctionArgumentsAnalyzer
                     throw new AssertionError("We must have some types here!");
                 }
                 $array_type = new Union($array_atomic_types);
-                $context->removeDescendents($var_id, $array_type);
+                $context->removeDescendents($var_id);
                 $context->vars_in_scope[$var_id] = $array_type;
             }
         }

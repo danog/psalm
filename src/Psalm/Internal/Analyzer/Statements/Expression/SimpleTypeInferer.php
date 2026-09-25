@@ -34,8 +34,8 @@ use Psalm\Type\Union;
 use ReflectionProperty;
 
 use function array_merge;
-use function array_values;
 use function count;
+use function dirname;
 use function is_string;
 use function strtolower;
 
@@ -311,6 +311,12 @@ final class SimpleTypeInferer
         if ($stmt instanceof PhpParser\Node\Scalar\MagicConst\Dir
             || $stmt instanceof PhpParser\Node\Scalar\MagicConst\File
         ) {
+            // the value the file's own path gives, so `define('X', __DIR__ . '/y.php')` records a literal path
+            // (the analyzer never runs the file it scans)
+            if ($file_source !== null) {
+                $file_path = $file_source->getFilePath();
+                return Type::getString($stmt instanceof PhpParser\Node\Scalar\MagicConst\Dir ? dirname($file_path) : $file_path);
+            }
             return new Union([new TNonEmptyString()]);
         }
 
@@ -674,7 +680,7 @@ final class SimpleTypeInferer
 
                 $array_creation_info->item_key_atomic_types = array_merge(
                     $array_creation_info->item_key_atomic_types,
-                    array_values($key_type->getAtomicTypes()),
+                    $key_type->getAtomicTypes(),
                 );
 
                 if ($key_type->isSingleStringLiteral()) {
@@ -767,7 +773,7 @@ final class SimpleTypeInferer
 
         $array_creation_info->item_value_atomic_types = array_merge(
             $array_creation_info->item_value_atomic_types,
-            array_values($single_item_value_type->getAtomicTypes()),
+            $single_item_value_type->getAtomicTypes(),
         );
 
         return true;
@@ -793,7 +799,7 @@ final class SimpleTypeInferer
 
                     $array_creation_info->item_value_atomic_types = array_merge(
                         $array_creation_info->item_value_atomic_types,
-                        array_values($property_value->getAtomicTypes()),
+                        $property_value->getAtomicTypes(),
                     );
 
                     $array_creation_info->array_keys[$new_offset] = true;
@@ -813,9 +819,7 @@ final class SimpleTypeInferer
 
                     $array_creation_info->item_value_atomic_types = array_merge(
                         $array_creation_info->item_value_atomic_types,
-                        array_values(
-                            $unpacked_atomic_type->fallback_params[1]->getAtomicTypes(),
-                        ),
+                        $unpacked_atomic_type->fallback_params[1]->getAtomicTypes(),
                     );
                 }
             } elseif ($unpacked_atomic_type instanceof TArray) {
@@ -834,11 +838,9 @@ final class SimpleTypeInferer
 
                 $array_creation_info->item_value_atomic_types = array_merge(
                     $array_creation_info->item_value_atomic_types,
-                    array_values(
-                        isset($unpacked_atomic_type->type_params[1])
-                            ? $unpacked_atomic_type->type_params[1]->getAtomicTypes()
-                            : [new TMixed()],
-                    ),
+                    isset($unpacked_atomic_type->type_params[1])
+                        ? $unpacked_atomic_type->type_params[1]->getAtomicTypes()
+                        : [new TMixed()],
                 );
             }
         }

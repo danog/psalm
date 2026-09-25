@@ -21,7 +21,7 @@ final class TFalse extends TBool
      * @psalm-pure
      */
     #[Override]
-    public function getKey(bool $include_extra = true): string
+    protected function computeKey(bool $include_extra = true): string
     {
         return 'false';
     }

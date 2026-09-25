@@ -16,6 +16,7 @@ use function count;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeVisitor;
 use Psalm\Type\TypeNode;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * Denotes a simple array of the form `array<TKey, TValue>`. It expects an array with two elements, both union types.
@@ -25,6 +26,7 @@ use Psalm\Type\TypeNode;
  */
 class TArray extends Atomic
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     /**
      * @use GenericTrait<array{Union, Union}>
      */
@@ -81,7 +83,7 @@ class TArray extends Atomic
      * @psalm-pure
      */
     #[Override]
-    public function getKey(bool $include_extra = true): string
+    protected function computeKey(bool $include_extra = true): string
     {
         return 'array';
     }

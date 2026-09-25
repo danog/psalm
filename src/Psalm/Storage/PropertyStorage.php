@@ -15,6 +15,7 @@ use Psalm\Type\Union;
 final class PropertyStorage implements HasAttributesInterface
 {
     use CustomMetadataTrait;
+    use UnserializeMemoryUsageSuppressionTrait;
 
     public ?bool $is_static = null;
 

@@ -16,6 +16,7 @@ use function implode;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeVisitor;
 use Psalm\Type\TypeNode;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * denotes a template parameter that has been previously specified in a `@template` tag.
@@ -25,6 +26,7 @@ use Psalm\Type\TypeNode;
  */
 final class TTemplateParam extends Atomic
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     use HasIntersectionTrait;
 
     /**
@@ -55,7 +57,7 @@ final class TTemplateParam extends Atomic
     }
 
     #[Override]
-    public function getKey(bool $include_extra = true): string
+    protected function computeKey(bool $include_extra = true): string
     {
         if ($include_extra && $this->extra_types) {
             return $this->param_name . ':' . $this->defining_class . '&' . implode('&', $this->extra_types);
@@ -71,7 +73,7 @@ final class TTemplateParam extends Atomic
     }
 
     #[Override]
-    public function getId(bool $exact = true, bool $nested = false): string
+    protected function computeId(bool $exact = true, bool $nested = false): string
     {
         if (!$exact) {
             return $this->param_name;

@@ -5,6 +5,13 @@ declare(strict_types=1);
 namespace Psalm\Type;
 
 use Override;
+use Psalm\Type\Atomic\IdMemo;
+use Psalm\Type\Atomic\TClassStringMap;
+use Psalm\Type\Atomic\TObjectWithProperties;
+use Psalm\Type\Atomic\TIterable;
+use Psalm\Type\Atomic\TGenericObject;
+use Psalm\Type\Atomic\TArray;
+use Psalm\Type\Atomic\TKeyedArray;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\TypeVisitor\FromDocblockSetter;
 use Psalm\Storage\ImmutableNonCloneableTrait;
@@ -52,7 +59,7 @@ final class Union implements TypeNode
 
     /**
      * @psalm-readonly
-     * @var non-empty-array<string, Atomic>
+     * @var non-empty-list<Atomic>
      */
     private array $types;
 
@@ -139,25 +146,9 @@ final class Union implements TypeNode
      */
     public bool $from_template_default = false;
 
-    /**
-     * @var array<string, TLiteralString>
-     */
-    private array $literal_string_types = [];
 
-    /**
-     * @var array<string, TClassString>
-     */
-    private array $typed_class_strings = [];
 
-    /**
-     * @var array<string, TLiteralInt>
-     */
-    private array $literal_int_types = [];
 
-    /**
-     * @var array<string, TLiteralFloat>
-     */
-    private array $literal_float_types = [];
 
     /**
      * True if the type was passed or returned by reference, or if the type refers to an object's
@@ -172,15 +163,8 @@ final class Union implements TypeNode
 
     public bool $has_mutations = true;
 
-    /**
-     * This is a cache of getId on non-exact mode
-     */
-    private ?string $id = null;
-
-    /**
-     * This is a cache of getId on exact mode
-     */
-    private ?string $exact_id = null;
+    /** The memoized getId(true) / getId(false) strings (IdMemo::$id / IdMemo::$inexact_id), allocated on first use */
+    private ?IdMemo $memo = null;
 
 
     /**
@@ -192,28 +176,162 @@ final class Union implements TypeNode
 
     public bool $different = false;
 
-    // serialized property keys: see __unserialize()
+    private const PROPERTY_KEYS_FOR_UNSERIALIZE = [
+        "\0" . self::class . "\0" . 'types' => 'types',
+        'from_docblock' => 'from_docblock',
+        'from_calculation' => 'from_calculation',
+        'from_property' => 'from_property',
+        'from_static_property' => 'from_static_property',
+        'initialized' => 'initialized',
+        'initialized_class' => 'initialized_class',
+        'checked' => 'checked',
+        'failed_reconciliation' => 'failed_reconciliation',
+        'ignore_nullable_issues' => 'ignore_nullable_issues',
+        'ignore_falsable_issues' => 'ignore_falsable_issues',
+        'ignore_isset' => 'ignore_isset',
+        'possibly_undefined' => 'possibly_undefined',
+        'possibly_undefined_from_try' => 'possibly_undefined_from_try',
+        'explicit_never' => 'explicit_never',
+        'had_template' => 'had_template',
+        'from_template_default' => 'from_template_default',
+        'by_ref' => 'by_ref',
+        'reference_free' => 'reference_free',
+        'allow_mutations' => 'allow_mutations',
+        'has_mutations' => 'has_mutations',
+        'parent_nodes' => 'parent_nodes',
+        'propagate_parent_nodes' => 'propagate_parent_nodes',
+        'different' => 'different',
+    ];
 
     /**
      * Suppresses memory usage when unserializing objects.
      *
      * @see \Psalm\Storage\UnserializeMemoryUsageSuppressionTrait
-     * @param array<string, never> $properties objects are never unserialized in the compiled program
      */
     public function __unserialize(array $properties): void
     {
-        // objects are never unserialized in the compiled program; property names cannot be looked up dynamically
-        throw new \LogicException('Unserialization of ' . self::class . ' is not supported');
+        foreach (self::PROPERTY_KEYS_FOR_UNSERIALIZE as $key => $property_name) {
+            /** @psalm-suppress PossiblyUndefinedStringArrayOffset */
+            $this->$property_name = $properties[$key];
+        }
+    }
+
+    /**
+     * pzoom's `TUnion::eq`, as combineUnionTypes uses it: the same atomics (compared first, since most pairs
+     * differ there; a wither's clone shares the atomics array, so `===` is a pointer comparison, else an
+     * element-wise identity check in C, then a per-key id comparison) and the same flags a combination merges.
+     * Per-atomic docblock provenance is not compared.
+     *
+     * @psalm-mutation-free
+     */
+    public function isCombineEquivalent(Union $other): bool
+    {
+        if ($this === $other) {
+            return true;
+        }
+
+        return $this->hasCombineEquivalentAtomics($other)
+            && $this->from_docblock === $other->from_docblock
+            && $this->from_calculation === $other->from_calculation
+            && $this->ignore_nullable_issues === $other->ignore_nullable_issues
+            && $this->ignore_falsable_issues === $other->ignore_falsable_issues
+            && $this->reference_free === $other->reference_free
+            && $this->allow_mutations === $other->allow_mutations
+            && $this->initialized === $other->initialized
+            && $this->explicit_never === $other->explicit_never
+            && $this->had_template === $other->had_template
+            && $this->failed_reconciliation === $other->failed_reconciliation
+            && $this->possibly_undefined === $other->possibly_undefined
+            && $this->possibly_undefined_from_try === $other->possibly_undefined_from_try
+            && $this->by_ref === $other->by_ref
+            && $this->hasSameParentNodes($other);
+    }
+
+    /**
+     * The same data-flow nodes: a node is its id (the graphs key by it), so two unions carrying nodes with the
+     * same ids in the same order are equally sourced even when the node objects differ (a property fetch makes
+     * a fresh node for the same id on every visit).
+     *
+     * @psalm-mutation-free
+     */
+    public function hasSameParentNodes(Union $other): bool
+    {
+        if ($this->parent_nodes === $other->parent_nodes) {
+            return true;
+        }
+        if (count($this->parent_nodes) !== count($other->parent_nodes)) {
+            return false;
+        }
+        foreach ($this->parent_nodes as $key => $_) {
+            if (!isset($other->parent_nodes[$key])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * The atomics half of isCombineEquivalent(): the same atomic types by id (containers structurally), with
+     * the same per-atomic docblock provenance when $same_docblock is set (the combiner ORs it per atomic).
+     *
+     * @psalm-mutation-free
+     */
+    public function hasCombineEquivalentAtomics(Union $other, bool $same_docblock = false): bool
+    {
+        if ($this->types !== $other->types) {
+            if (count($this->types) !== count($other->types)) {
+                return false;
+            }
+            // lists built from the same atomics keep their order, so compare by position and only look
+            // the key up when the orders differ
+            foreach ($this->types as $i => $atomic) {
+                $theirs = $other->types[$i];
+                if ($theirs === $atomic) {
+                    continue;
+                }
+                if ($theirs->getKey() !== $atomic->getKey()) {
+                    $theirs = $other->find($atomic->getKey());
+                    if ($theirs === null) {
+                        return false;
+                    }
+                }
+                if ($theirs !== $atomic) {
+                    if ($theirs::class !== $atomic::class) {
+                        return false;
+                    }
+                    // containers compare their shape structurally (pzoom's TAtomic equality); for a fresh keyed
+                    // array the id would be its whole shape spelled out. Other atomics are their memoized id.
+                    if ($atomic instanceof TKeyedArray
+                        || $atomic instanceof TArray
+                        || $atomic instanceof TGenericObject
+                        || $atomic instanceof TIterable
+                        || $atomic instanceof TObjectWithProperties
+                        || $atomic instanceof TClassStringMap
+                    ) {
+                        if (!$atomic->equals($theirs, true)) {
+                            return false;
+                        }
+                    } elseif ($theirs->getId() !== $atomic->getId()) {
+                        return false;
+                    }
+                    if ($same_docblock && $theirs->from_docblock !== $atomic->from_docblock) {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        return true;
     }
 
     /**
      * @param TProperties $properties
      * @return static
+     * @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty We just cloned this object
      */
     public function setProperties(array $properties): self
     {
         $obj = null;
-        /** @psalm-suppress ImpurePropertyAssignment We just cloned this object */
         if (array_key_exists('from_docblock', $properties) && $this->from_docblock !== $properties['from_docblock']) {
             $obj ??= clone $this;
             $obj->from_docblock = $properties['from_docblock'];

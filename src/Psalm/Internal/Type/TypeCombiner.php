@@ -72,6 +72,7 @@ use function substr;
 
 /**
  * @internal
+ * @psalm-import-type TProperties from Union
  */
 final class TypeCombiner
 {
@@ -89,6 +90,7 @@ final class TypeCombiner
      * @param  non-empty-list<Atomic>    $types
      * @param  int    $literal_limit any greater number of literal types than this
      *                               will be merged to a scalar
+     * @param TProperties $properties the union's properties (applied over the derived ones)
      */
     public static function combine(
         array $types,
@@ -96,9 +98,10 @@ final class TypeCombiner
         bool $overwrite_empty_array = false,
         bool $allow_mixed_union = true,
         int $literal_limit = 500,
+        array $properties = [],
     ): Union {
         if (count($types) === 1) {
-            return new Union([$types[0]]);
+            return new Union([$types[0]], $properties);
         }
 
         $combination = new TypeCombination();
@@ -238,7 +241,7 @@ final class TypeCombiner
             $combination->extra_types = self::combine(
                 array_values($combination->extra_types),
                 $codebase,
-            )->getAtomicTypes();
+            )->getAtomicTypesByKey();
         }
 
         foreach ($combination->builtin_type_params as $generic_type => $generic_type_params) {
@@ -383,6 +386,9 @@ final class TypeCombiner
         if ($has_never) {
             $union_properties['explicit_never'] = true;
         }
+
+        // the caller's properties win over the derived ones
+        $union_properties = $properties + $union_properties;
 
         if ($union_properties !== []) {
             return $union_type->setProperties($union_properties);
@@ -658,7 +664,6 @@ final class TypeCombiner
             }
 
             $existing_objectlike_entries = (bool) $combination->objectlike_entries;
-            $missing_entries = $combination->objectlike_entries;
             $combination->objectlike_sealed = $combination->objectlike_sealed
                 && $type->fallback_params === null;
 
@@ -702,8 +707,6 @@ final class TypeCombiner
                         $overwrite_empty_array,
                     );
                 }
-
-                unset($missing_entries[$candidate_property_name]);
 
                 if (is_int($candidate_property_name)) {
                     continue;
@@ -752,23 +755,23 @@ final class TypeCombiner
                 $combination->array_min_counts[$min_prop_count] = true;
             }
 
-            foreach ($missing_entries as $k => $_) {
-                $combination->objectlike_entries[$k] = $combination->objectlike_entries[$k]
-                    ->setPossiblyUndefined(true);
-            }
-
-            if ($combination->objectlike_value_type) {
-                foreach ($missing_entries as $k => $_) {
-                    if (!$combination->fallbackKeyContains($k)) {
-                        continue;
-                    }
-                    $combination->objectlike_entries[$k] =  Type::combineUnionTypes(
-                        $combination->objectlike_entries[$k],
+            // entries this keyed array does not define become possibly undefined (and take the fallback value
+            // type where the fallback covers their key): checked against this array's properties instead of
+            // through a copy of the entries with each present key removed (1.7 M copies and removals per run)
+            foreach ($combination->objectlike_entries as $k => $entry) {
+                if (isset($type->properties[$k])) {
+                    continue;
+                }
+                $entry = $entry->setPossiblyUndefined(true);
+                if ($combination->fallbackKeyContains($k)) {
+                    $entry = Type::combineUnionTypes(
+                        $entry,
                         $combination->objectlike_value_type,
                         $codebase,
                         $overwrite_empty_array,
                     );
                 }
+                $combination->objectlike_entries[$k] = $entry;
             }
 
             if (!$type->is_list) {

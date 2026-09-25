@@ -30,9 +30,9 @@ use Psalm\Internal\Type\TemplateStandinTypeReplacer;
 use Psalm\Internal\Type\TypeExpander;
 use Psalm\Internal\TypeVisitor\TypeVariableResolver;
 use Psalm\Issue\ArgumentTypeCoercion;
+use Psalm\Issue\CodeIssue;
 use Psalm\Issue\DeprecatedConstant;
 use Psalm\Issue\ImplicitToStringCast;
-use Psalm\Issue\CodeIssue;
 use Psalm\Issue\InvalidArgument;
 use Psalm\Issue\InvalidLiteralArgument;
 use Psalm\Issue\InvalidScalarArgument;
@@ -327,7 +327,13 @@ final class ArgumentAnalyzer
             }
         }
 
-        $param_type = TypeExpander::expandUnion(
+        $param_type = $function_param->getExpandedType(
+            $codebase,
+            $classlike_storage->name ?? null,
+            $static_classlike_storage->name ?? null,
+            $parent_class,
+            $static_classlike_storage->final ?? false,
+        ) ?? TypeExpander::expandUnion(
             $codebase,
             $param_type,
             $classlike_storage->name ?? null,
@@ -904,7 +910,8 @@ final class ArgumentAnalyzer
             // we do this replacement early because later we don't have access to the
             // $statements_analyzer, which is necessary to understand string function names
             $input_type = $input_type->getBuilder();
-            foreach ($input_type->getAtomicTypes() as $key => $atomic_type) {
+            foreach ($input_type->getAtomicTypes() as $atomic_type) {
+                $key = $atomic_type->getKey();
                 $container_callable_type = $param_type->getSingleAtomic();
                 $container_callable_type = $container_callable_type instanceof TCallable
                     ? $container_callable_type
@@ -980,7 +987,7 @@ final class ArgumentAnalyzer
             $input_type,
             $param_type,
             true,
-            !isset($param_type->getAtomicTypes()['true']),
+            !$param_type->has('true'),
             $union_comparison_results,
         );
 
@@ -1050,7 +1057,7 @@ final class ArgumentAnalyzer
                 static fn(Atomic $atomic) => !$atomic->isCallableType(),
             );
             $param_type_without_callable = [] !== $param_types_without_callable
-                ? new Union($param_types_without_callable)
+                ? new Union(array_values($param_types_without_callable))
                 : null;
 
             foreach ($input_type->getAtomicTypes() as $input_type_part) {
@@ -1737,7 +1744,6 @@ final class ArgumentAnalyzer
             $input_type = new Union($types);
         }
 
-
         $was_cloned = false;
 
         if ($input_type->isNullable() && !$param_type->isNullable()) {
@@ -1747,7 +1753,7 @@ final class ArgumentAnalyzer
             $input_type = $input_type->freeze();
         }
 
-        if ($input_type->getId() === $param_type->getId()) {
+        if ($input_type->hasSameAtomics($param_type)) {
             if ($input_type->from_docblock) {
                 $input_type = $input_type->setFromDocblock(false);
             }
@@ -1767,7 +1773,7 @@ final class ArgumentAnalyzer
         }
 
         if ($was_cloned) {
-            $context->removeVarFromConflictingClauses($var_id, null, $statements_analyzer);
+            $context->removeVarFromConflictingClauses($var_id);
         }
 
         if ($unpack) {

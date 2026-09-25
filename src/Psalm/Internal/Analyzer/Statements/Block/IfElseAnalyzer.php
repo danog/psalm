@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Internal\Analyzer\Statements\Block;
 
 use PhpParser;
+use Psalm\Internal\Analyzer\Statements\Expression\Fetch\VariableFetchAnalyzer;
 use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\Exception\ComplicatedExpressionException;
@@ -35,8 +36,6 @@ use function array_unique;
 use function array_values;
 use function count;
 use function in_array;
-use function preg_match;
-use function preg_quote;
 use function spl_object_id;
 use function substr;
 
@@ -148,7 +147,7 @@ final class IfElseAnalyzer
 
             foreach ($keys as $key) {
                 foreach ($mixed_var_ids as $mixed_var_id) {
-                    if (preg_match('/^' . preg_quote($mixed_var_id, '/') . '(\[|-)/', $key)) {
+                    if (VariableFetchAnalyzer::isSubVarId($key, $mixed_var_id)) {
                         $clause = new Clause([], $cond_object_id, $cond_object_id, true);
                         break 2;
                     }
@@ -401,8 +400,6 @@ final class IfElseAnalyzer
                     $if_scope->reasonable_clauses = Context::filterClauses(
                         $var_id,
                         $if_scope->reasonable_clauses,
-                        $context->vars_in_scope[$var_id] ?? null,
-                        $statements_analyzer,
                     );
                 }
             }
@@ -429,7 +426,7 @@ final class IfElseAnalyzer
                         );
 
                         if (!$combined_type->equals($context->vars_in_scope[$var_id], true, false)) {
-                            $context->removeDescendents($var_id, $combined_type);
+                            $context->removeDescendents($var_id);
                         }
 
                         $context->vars_in_scope[$var_id] = $combined_type;

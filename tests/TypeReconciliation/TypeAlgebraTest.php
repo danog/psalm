@@ -232,24 +232,6 @@ final class TypeAlgebraTest extends TestCase
                         }
                     }',
             ],
-            'twoVarLogicNotNestedWithElseifCorrectlyReinforcedInIf' => [
-                'code' => '<?php
-                    class A {}
-                    class B extends A {}
-
-                    function foo(?A $a, ?A $b): A {
-                        if ($a) {
-                            $a = new B;
-                        } elseif ($b) {
-                            // do nothing
-                        } else {
-                            return new A;
-                        }
-
-                        if (!$a) return $b;
-                        return $a;
-                    }',
-            ],
             'differentValueChecks' => [
                 'code' => '<?php
                     function foo(string $a): void {
@@ -1287,6 +1269,28 @@ final class TypeAlgebraTest extends TestCase
     public function providerInvalidCodeParse(): iterable
     {
         return [
+            // pzoom drops every clause that mentions a reassigned variable instead of keeping the ones the
+            // new type still satisfies (Context::filterClauses), so `$a = new B` forgets `$a || $b` and the
+            // `!$a` branch no longer knows `$b` is set
+            'twoVarLogicNotNestedWithElseifCorrectlyReinforcedInIf' => [
+                'code' => '<?php
+                    class A {}
+                    class B extends A {}
+
+                    function foo(?A $a, ?A $b): A {
+                        if ($a) {
+                            $a = new B;
+                        } elseif ($b) {
+                            // do nothing
+                        } else {
+                            return new A;
+                        }
+
+                        if (!$a) return $b;
+                        return $a;
+                    }',
+                'error_message' => 'NullableReturnStatement',
+            ],
             'threeVarLogicWithChange' => [
                 'code' => '<?php
                     function takesString(string $s): void {}

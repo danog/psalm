@@ -43,6 +43,7 @@ use Psalm\Report\XmlReport;
 use RuntimeException;
 use UnexpectedValueException;
 
+use function array_filter;
 use function array_keys;
 use function array_merge;
 use function array_pop;
@@ -122,7 +123,7 @@ final class IssueBuffer
     private static array $used_suppressions = [];
 
     /** @var array<string, string|int|float|list<string>> */
-    /** @var array<string, string|int|float|list<string>> */
+    /** @var array<string, mixed> */
     private static array $server = [];
 
     /**
@@ -133,11 +134,12 @@ final class IssueBuffer
     public static function accepts(CodeIssue $e, array $suppressed_issues = [], bool $is_fixable = false): bool
     {
         $config = Config::getInstance();
-        $project_analyzer = ProjectAnalyzer::getInstance();
-        $codebase = $project_analyzer->getCodebase();
-        $event = new BeforeAddIssueEvent($e, $is_fixable, $codebase);
-        if ($config->eventDispatcher->dispatchBeforeAddIssue($event) === false) {
-            return false;
+        if ($config->eventDispatcher->hasBeforeAddIssueHandlers()) {
+            $codebase = ProjectAnalyzer::getInstance()->getCodebase();
+            $event = new BeforeAddIssueEvent($e, $is_fixable, $codebase);
+            if ($config->eventDispatcher->dispatchBeforeAddIssue($event) === false) {
+                return false;
+            }
         }
 
         if (self::isSuppressed($e, $suppressed_issues)) {
@@ -579,7 +581,6 @@ final class IssueBuffer
         $error_count = 0;
         $info_count = 0;
 
-
         $issues_data = [];
 
         if (self::$issues_data) {
@@ -727,7 +728,6 @@ final class IssueBuffer
                 }
             }
         }
-
 
         if ($codebase->config->eventDispatcher->after_analysis) {
             $source_control_info = null;
@@ -1150,7 +1150,7 @@ final class IssueBuffer
 
     /**
      * @internal
-     * @param array<string, string|int|float|list<string>> $server
+     * @param array<string, mixed> $server
      * @psalm-external-mutation-free
      */
     final public static function captureServer(array $server): void
@@ -1159,7 +1159,7 @@ final class IssueBuffer
     }
     /**
      * @internal
-     * @return array<string, string|int|float|list<string>>
+     * @return array<string, mixed>
      * @psalm-external-mutation-free
      */
     final public static function getServer(): array

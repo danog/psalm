@@ -27,6 +27,7 @@ use function in_array;
 final class ClassLikeStorage implements HasAttributesInterface
 {
     use CustomMetadataTrait;
+    use UnserializeMemoryUsageSuppressionTrait;
 
     /**
      * @var array<string, ClassConstantStorage>
@@ -120,6 +121,23 @@ final class ClassLikeStorage implements HasAttributesInterface
     public array $parent_classes = [];
 
     public ?CodeLocation $location = null;
+
+    /**
+     * Every method callable on the class-like, own and inherited, by lowercased name: the declaring class's
+     * MethodStorage objects, shared (pzoom flattens ancestor methods into every descendant, Arc-shared).
+     * Filled at populate from declaring_method_ids.
+     *
+     * @var array<lowercase-string, MethodStorage>
+     */
+    public array $all_methods = [];
+
+    /**
+     * Every property of the class-like, own and inherited, by name: the declaring class's PropertyStorage
+     * objects, shared. Filled at populate from declaring_property_ids.
+     *
+     * @var array<string, PropertyStorage>
+     */
+    public array $all_properties = [];
 
     public ?CodeLocation $stmt_location = null;
 
@@ -317,7 +335,6 @@ final class ClassLikeStorage implements HasAttributesInterface
      * @var array<string, int>|null
      */
     public ?array $template_type_extends_count = null;
-
 
     /**
      * @var array<string, int>|null

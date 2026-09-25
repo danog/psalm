@@ -60,6 +60,14 @@ final class AtomicMethodCallAnalysisResult
      */
     public array $non_existent_magic_method_ids = [];
 
+    /**
+     * The declared spelling of a method a call names with another casing (pzoom resolves method names
+     * case-sensitively), by the cased method id the call used.
+     *
+     * @var array<string, string>
+     */
+    public array $incorrect_casing = [];
+
     public bool $check_visibility = true;
 
     public bool $too_many_arguments = true;

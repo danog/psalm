@@ -14,16 +14,14 @@ use Psalm\Type\Atomic\TLiteralInt;
 use Psalm\Type\Atomic\TLiteralString;
 use Stringable;
 
-use function array_diff;
+use function array_diff_key;
 use function array_keys;
 use function assert;
 use function count;
-use function hash;
 use function implode;
 use function is_int;
 use function ksort;
 use function reset;
-use function strlen;
 use function substr;
 
 /**
@@ -49,7 +47,9 @@ final class Clause implements Stringable
      *
      * !$a || $b || $c !== null || is_string($d) || is_int($d)
      *
-     * @var array<string, non-empty-array<string, Assertion>>
+     * Each variable's assertions are keyed by Assertion::getHash() (pzoom's AssertionSet), see keyed().
+     *
+     * @var array<string, non-empty-array<int, Assertion>>
      */
     public array $possibilities;
 
@@ -73,10 +73,21 @@ final class Clause implements Stringable
 
     public bool $reconcilable;
 
-    public string $hash;
+    /**
+     * The clause's identity (pzoom's `Clause::hash`): an int over interned ids of its variables and assertion
+     * keys. Wedges and unreconcilable clauses are identified by the object that created them, as negative
+     * numbers, so they never meet an ordinary clause's (non-negative) hash.
+     */
+    public int $hash;
 
     /**
-     * @param array<string, non-empty-array<string, Assertion>>  $possibilities
+     * pzoom's `keys_bloom`: one bit per variable and per assertion key, so `contains()` rejects a clause that
+     * is not a subset without looking anything up.
+     */
+    public int $keys_bloom = 0;
+
+    /**
+     * @param array<string, non-empty-array<int, Assertion>>  $possibilities
      * @param array<string, bool> $redefined_vars
      */
     public function __construct(
@@ -88,42 +99,80 @@ final class Clause implements Stringable
         public bool $generated = false,
         public array $redefined_vars = [],
     ) {
-        if ($wedge || !$reconcilable) {
-            $this->hash = ($wedge ? 'w' : '') . $creating_object_id;
-        } else {
-            ksort($possibilities);
-
-            $possibility_strings = [];
-
-            foreach ($possibilities as $i => $v) {
-                if (count($v) > 1) {
-                    ksort($v);
-                }
-                $possibility_strings[$i] = array_keys($v);
+        // pzoom keeps possibilities in a BTreeMap: sorted by variable. Most arrive sorted (one variable, or built
+        // from a sorted clause): only an unsorted array is sorted (a copy of the shared array otherwise).
+        $prev = null;
+        foreach ($possibilities as $var => $_) {
+            if ($prev !== null && $prev > $var) {
+                ksort($possibilities);
+                break;
             }
-
-            // The identity of the possibility set. Assertions carry literal strings out of the
-            // analysed code, which need not be valid UTF-8, so the key bytes go in length-prefixed
-            // rather than through an encoding that would reject or mangle them.
-            $data = '';
-
-            foreach ($possibility_strings as $i => $keys) {
-                $data .= is_int($i) ? 'i' . $i . ';' : 's' . strlen($i) . ':' . $i . ';';
-
-                foreach ($keys as $key) {
-                    $data .= is_int($key) ? 'I' . $key . ';' : 'S' . strlen($key) . ':' . $key . ';';
-                }
-
-                $data .= '|';
-            }
-
-            $this->hash = hash('xxh128', $data);
+            $prev = $var;
         }
+
+        // One pass over interned ids (variables here, assertions by Assertion::getHash()) computes both the hash and the bloom (pzoom's compute_hash /
+        // compute_keys_bloom). Within a variable the assertions are combined by a sum, so their order does not
+        // matter (Psalm's identity never depended on it); across variables the sorted order is hashed. PHP is
+        // 64-bit (CliUtils::checkRuntimeRequirements), but an overflowing product becomes a float, so the hash is
+        // built in a 32-bit and a 31-bit lane (63 bits: negative numbers stay free for wedges).
+        $h1 = 0;
+        $h2 = 0;
+        $bloom = 0;
+        foreach ($possibilities as $var => $assertions) {
+            $var_id = self::keyId((string) $var);
+            $bloom |= 1 << ($var_id & 63);
+            $set1 = 0;
+            $set2 = 0;
+            foreach ($assertions as $id => $_) {
+                $bloom |= 1 << ($id & 63);
+                // assertion ids come from their own table, so they are mixed differently from variable ids
+                // (with the same mixing, `$a: #0` and `$b: #1` would each cancel out to 0)
+                $set1 = ($set1 + ((($id + 1) * 0x9E3779B1) & 0xFFFFFFFF)) & 0xFFFFFFFF;
+                $set2 = ($set2 + ((($id + 1) * 0x85EBCA6B) & 0x7FFFFFFF)) & 0x7FFFFFFF;
+            }
+            $h1 = ($h1 * 1_000_003 + ((($var_id * 0x2545F491) & 0xFFFFFFFF) ^ $set1)) % 4_294_967_291;
+            $h2 = ($h2 * 998_244_353 + ((($var_id * 0x1B873593) & 0x7FFFFFFF) ^ $set2)) % 2_147_483_629;
+        }
+        $this->keys_bloom = $bloom;
+        $this->hash = $wedge || !$reconcilable
+            ? -1 - (2 * $creating_object_id + ($wedge ? 1 : 0))
+            : ($h1 << 31) | $h2;  // h1 < 2^32, h2 < 2^31: 63 bits, never negative
 
         $this->possibilities = $possibilities;
         $this->wedge = $wedge;
         $this->reconcilable = $reconcilable;
         $this->creating_object_id = $creating_object_id;
+    }
+
+    /**
+     * @psalm-pure
+     */
+    private static function keyId(string $key): int
+    {
+        // a stable 31-bit hash of the variable (xxh3, native in the compiled program): no table, no lookup, the
+        // same value on every thread. 31 bits keep the mixing products below 2^63.
+        if (\defined('PSALM_COMPILED')) {
+            /** @psalm-suppress UndefinedFunction, MixedOperand the compiled program's native xxh3 (php-rt) */
+            return \__rt_str_id($key) & 0x7FFFFFFF;
+        }
+        /** @var array{1: int} $unpacked */
+        $unpacked = unpack('q', hash('xxh3', $key, true));
+        return $unpacked[1] & 0x7FFFFFFF;
+    }
+
+    /**
+     * An assertion set as clauses key it: by each assertion's hash.
+     *
+     * @return non-empty-array<int, Assertion>
+     * @psalm-mutation-free
+     */
+    public static function keyed(Assertion $assertion, Assertion ...$assertions): array
+    {
+        $keyed = [$assertion->getHash() => $assertion];
+        foreach ($assertions as $other) {
+            $keyed[$other->getHash()] = $other;
+        }
+        return $keyed;
     }
 
     /**
@@ -135,6 +184,11 @@ final class Clause implements Stringable
             return false;
         }
 
+        // a subset's variables and assertion keys all appear here, so its bloom bits must too
+        if (($other_clause->keys_bloom & ~$this->keys_bloom) !== 0) {
+            return false;
+        }
+
         foreach ($other_clause->possibilities as $var => $_) {
             if (!isset($this->possibilities[$var])) {
                 return false;
@@ -142,7 +196,8 @@ final class Clause implements Stringable
         }
 
         foreach ($other_clause->possibilities as $var => $possible_types) {
-            if (count(array_diff($possible_types, $this->possibilities[$var]))) {
+            // keyed by the assertions' hashes, as pzoom compares them
+            if (array_diff_key($possible_types, $this->possibilities[$var]) !== []) {
                 return false;
             }
         }
@@ -233,7 +288,7 @@ final class Clause implements Stringable
     }
 
     /**
-     * @param non-empty-array<string, Assertion> $clause_var_possibilities
+     * @param non-empty-array<int, Assertion> $clause_var_possibilities
      */
     public function addPossibilities(string $var_id, array $clause_var_possibilities): self
     {

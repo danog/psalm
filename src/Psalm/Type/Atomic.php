@@ -68,8 +68,12 @@ use Psalm\Type\Atomic\TTraitString;
 use Psalm\Type\Atomic\TTrue;
 use Psalm\Type\Atomic\TTypeAlias;
 use Psalm\Type\Atomic\TVoid;
+use Psalm\Type\Atomic\SourceSpan;
+use Psalm\Type\Atomic\IdMemo;
 use Stringable;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
+use function get_object_vars;
 use function array_any;
 use function array_keys;
 use function count;
@@ -85,6 +89,7 @@ use function strtolower;
  */
 abstract class Atomic implements TypeNode, Stringable
 {
+    use UnserializeMemoryUsageSuppressionTrait;
 
     /**
      * @psalm-mutation-free
@@ -101,6 +106,30 @@ abstract class Atomic implements TypeNode, Stringable
      */
     protected function __clone()
     {
+        // a clone is about to be changed (withers write it right after cloning): its strings are recomputed
+        $this->memo = null;
+    }
+
+    /**
+     * Memoized getKey() / getId(true) / getId(false): an atomic is immutable, and these strings are rebuilt on
+     * every Union construction, comparison and combination otherwise (pzoom never builds them: its types are
+     * compared structurally and names are interned ids). The exception is a type variable (`` `_0 ``): its
+     * id shows its bounds, which grow during inference, so no string mentioning one is kept.
+     */
+    private ?IdMemo $memo = null;
+
+    /**
+     * The memos are not serialized: they are private (UnserializeMemoryUsageSuppressionTrait restores
+     * properties by name, which only public ones have) and cheap to recompute on the other side.
+     *
+     * @return array<string, mixed>
+     * @psalm-mutation-free
+     */
+    public function __serialize(): array
+    {
+        $vars = get_object_vars($this);
+        unset($vars['memo']);
+        return $vars;
     }
 
     /**
@@ -108,11 +137,21 @@ abstract class Atomic implements TypeNode, Stringable
      */
     public bool $checked = false;
 
-    public ?int $offset_start = null;
+    /** Where a docblock type was written, when the type parser built it from one */
+    public ?SourceSpan $span = null;
 
-    public ?int $offset_end = null;
-
-    public ?string $text = null;
+    /**
+     * @return static
+     */
+    public function setSpan(?SourceSpan $span): self
+    {
+        if ($span === $this->span) {
+            return $this;
+        }
+        $cloned = clone $this;
+        $cloned->span = $span;
+        return $cloned;
+    }
 
     /**
      * @return static
@@ -164,17 +203,18 @@ abstract class Atomic implements TypeNode, Stringable
             $type_aliases,
             $from_docblock,
         );
-        $result->offset_start = $offset_start;
-        $result->offset_end = $offset_end;
-        $result->text = $text;
+        if ($offset_start !== null || $offset_end !== null || $text !== null) {
+            /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Allowed during construction */
+            $result->span = new SourceSpan($offset_start, $offset_end, $text);
+        }
         $result->from_docblock = $from_docblock;
         return $result;
     }
     /**
-     * @psalm-suppress InaccessibleProperty Allowed during construction
      * @param int $analysis_php_version_id contains php version when the type comes from signature
      * @param array<string, array<string, Union>> $template_type_map
      * @param array<string, TypeAlias> $type_aliases
+     * @psalm-pure
      */
     private static function createInner(
         string $value,
@@ -377,14 +417,10 @@ abstract class Atomic implements TypeNode, Stringable
                 return new TClassString();
 
             case 'interface-string':
-                $type = new TClassString();
-                $type->is_interface = true;
-                return $type;
+                return new TClassString(is_interface: true);
 
             case 'enum-string':
-                $type = new TClassString();
-                $type->is_enum = true;
-                return $type;
+                return new TClassString(is_enum: true);
 
             case 'trait-string':
                 return new TTraitString();
@@ -470,7 +506,27 @@ abstract class Atomic implements TypeNode, Stringable
      *
      * @psalm-mutation-free
      */
-    abstract public function getKey(bool $include_extra = true): string;
+    abstract protected function computeKey(bool $include_extra = true): string;
+
+    /**
+     * @psalm-mutation-free
+     */
+    final public function getKey(bool $include_extra = true): string
+    {
+        if (!$include_extra) {
+            return $this->computeKey(false);
+        }
+        $memo = $this->memo;
+        if ($memo !== null && $memo->key !== null) {
+            return $memo->key;
+        }
+        $key = $this->computeKey();
+        if (!str_contains($key, '`')) {
+            /** @psalm-suppress ImpurePropertyAssignment Cache */
+            $this->memo()->key = $key;
+        }
+        return $key;
+    }
 
     /**
      * @psalm-mutation-free
@@ -685,7 +741,50 @@ abstract class Atomic implements TypeNode, Stringable
      *
      * @psalm-mutation-free
      */
-    public function getId(bool $exact = true, bool $nested = false): string
+    final public function getId(bool $exact = true, bool $nested = false): string
+    {
+        if ($nested) {
+            return $this->computeId($exact, true);
+        }
+        if ($exact) {
+            $memo = $this->memo;
+            if ($memo !== null && $memo->id !== null) {
+                return $memo->id;
+            }
+            $id = $this->computeId(true, false);
+            if (!str_contains($id, '`')) {
+                /** @psalm-suppress ImpurePropertyAssignment Cache */
+                $this->memo()->id = $id;
+            }
+            return $id;
+        }
+        $memo = $this->memo;
+        if ($memo !== null && $memo->inexact_id !== null) {
+            return $memo->inexact_id;
+        }
+        $id = $this->computeId(false, false);
+        if (!str_contains($id, '`')) {
+            /** @psalm-suppress ImpurePropertyAssignment Cache */
+            $this->memo()->inexact_id = $id;
+        }
+        return $id;
+    }
+
+    /**
+     * The memo slots, allocated on first use.
+     *
+     * @psalm-mutation-free
+     */
+    private function memo(): IdMemo
+    {
+        /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
+        return $this->memo ??= new IdMemo();
+    }
+
+    /**
+     * @psalm-mutation-free
+     */
+    protected function computeId(bool $exact = true, bool $nested = false): string
     {
         return $this->getKey();
     }

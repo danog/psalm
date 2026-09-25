@@ -967,18 +967,19 @@ final class ClassTest extends TestCase
                     (new Foo());',
                 'error_message' => 'UndefinedClass',
             ],
+            // pzoom resolves names case-sensitively: a wrong-cased reference is undefined, with a hint
             'wrongCaseClass' => [
                 'code' => '<?php
                     class Foo {}
                     (new foo());',
-                'error_message' => 'InvalidClass',
+                'error_message' => 'UndefinedClass - src/somefile.php:3:26 - Class, interface or enum named foo does not exist (incorrect casing of Foo',
             ],
             'wrongCaseClassWithCall' => [
                 'code' => '<?php
                     class A {}
                     needsA(new A);
                     function needsA(a $x): void {}',
-                'error_message' => 'InvalidClass',
+                'error_message' => 'UndefinedClass',
             ],
             'invalidThisFetch' => [
                 'code' => '<?php

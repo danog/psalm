@@ -10,6 +10,7 @@ use Psalm\Codebase;
 use Psalm\Exception\TypeParseTreeException;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\ArrayAnalyzer;
+use Psalm\Internal\Codebase\ConstantMap;
 use Psalm\Internal\Type\ParseTree\CallableParamTree;
 use Psalm\Internal\Type\ParseTree\CallableTree;
 use Psalm\Internal\Type\ParseTree\CallableWithReturnTypeTree;
@@ -84,9 +85,7 @@ use function array_unique;
 use function array_unshift;
 use function array_values;
 use function assert;
-use function constant;
 use function count;
-use function defined;
 use function end;
 use function explode;
 use function in_array;
@@ -105,7 +104,6 @@ use function strtr;
 use function substr;
 
 /**
- * @psalm-suppress InaccessibleProperty Allowed during construction
  * @internal
  */
 final class TypeParser
@@ -251,12 +249,12 @@ final class TypeParser
                 $from_docblock,
             );
 
-            $callable_type->return_type = $return_type instanceof Union
-                ? $return_type
-                : new Union([$return_type], ['from_docblock' => $from_docblock])
-            ;
-
-            return $callable_type;
+            return $callable_type->replace(
+                $callable_type->params,
+                $return_type instanceof Union
+                    ? $return_type
+                    : new Union([$return_type], ['from_docblock' => $from_docblock]),
+            );
         }
 
         if ($parse_tree instanceof CallableTree) {
@@ -676,7 +674,8 @@ final class TypeParser
                 }
             }
 
-            foreach ($generic_params[0]->getAtomicTypes() as $key => $atomic_type) {
+            foreach ($generic_params[0]->getAtomicTypes() as $atomic_type) {
+                $key = $atomic_type->getKey();
                 if ($atomic_type instanceof TLiteralString
                     && ($string_to_int = ArrayAnalyzer::getLiteralArrayKeyInt($atomic_type->value)) !== false
                 ) {
@@ -810,7 +809,7 @@ final class TypeParser
                 );
             }
 
-            $template_marker_parts = array_values($generic_params[0]->getAtomicTypes());
+            $template_marker_parts = $generic_params[0]->getAtomicTypes();
 
             $template_marker = $template_marker_parts[0];
 
@@ -873,7 +872,7 @@ final class TypeParser
                 );
             }
 
-            $param_union_types = array_values($generic_params[0]->getAtomicTypes());
+            $param_union_types = $generic_params[0]->getAtomicTypes();
 
             if (count($param_union_types) > 1) {
                 throw new TypeParseTreeException('Union types are not allowed in ' . $generic_type_value . ' param');
@@ -952,10 +951,9 @@ final class TypeParser
                 $atomic_type = reset($generic_param_atomics);
 
                 if ($atomic_type instanceof TNamedObject) {
-                    if (defined($atomic_type->value)) {
-                        /** @var scalar|null|list<scalar|null>|array<string, scalar|null> */
-                        // a builtin constant of the analyzer's runtime (its own table; no dynamic constant lookup)
-                        $constant_value = get_defined_constants()[$atomic_type->value] ?? null;
+                    if (ConstantMap::has($atomic_type->value)) {
+                        // an internal constant the analyzer models
+                        $constant_value = ConstantMap::get()[$atomic_type->value];
 
                         if (!is_int($constant_value)) {
                             throw new TypeParseTreeException(
@@ -1000,7 +998,7 @@ final class TypeParser
         }
 
         if ($generic_type_value === 'int-mask-of') {
-            $param_union_types = array_values($generic_params[0]->getAtomicTypes());
+            $param_union_types = $generic_params[0]->getAtomicTypes();
 
             if (count($param_union_types) > 1) {
                 throw new TypeParseTreeException('Union types are not allowed in value-of type');
@@ -1258,10 +1256,8 @@ final class TypeParser
         if ($intersect_static
             && $first_type instanceof TNamedObject
         ) {
-            // typed-local (transpiler): write is_static on a TNamedObject-typed local, not the Atomic-typed $first_type
-            $named_first = $first_type;
-            $named_first->is_static = true;
-            $first_type = $named_first;
+            // through the wither: the parsed type's key was already computed (and memoized) for the keyed list
+            $first_type = $first_type->setIsStatic(true);
         }
 
         if ($keyed_intersection_types) {
@@ -1535,7 +1531,7 @@ final class TypeParser
             }
 
             if ($property_maybe_undefined) {
-                $property_type->possibly_undefined = true;
+                $property_type = $property_type->setPossiblyUndefined(true);
                 $had_optional = true;
             }
 

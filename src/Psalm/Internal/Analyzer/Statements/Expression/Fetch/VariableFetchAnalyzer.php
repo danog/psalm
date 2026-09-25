@@ -37,6 +37,9 @@ use Psalm\Type\Atomic\TString;
 use Psalm\Type\TaintKind;
 use Psalm\Type\Union;
 
+use function strpos;
+use function strlen;
+use function str_starts_with;
 use function in_array;
 use function is_string;
 use function time;
@@ -531,6 +534,59 @@ final class VariableFetchAnalyzer
         $type = $type->setParentNodes([
             $taint_source->id => $taint_source,
         ]);
+    }
+
+    /**
+     * @psalm-pure
+     */
+    /**
+     * Whether `$key` names something inside the variable `$base`: `$base[...]` or `$base->...` (pzoom: a
+     * starts-with test; this replaces a regex built from the variable name at every call).
+     *
+     * @psalm-pure
+     */
+    public static function isSubVarId(string $key, string $base): bool
+    {
+        if (!str_starts_with($key, $base)) {
+            return false;
+        }
+
+        $next = $key[strlen($base)] ?? '';
+
+        return $next === '[' || $next === '-';
+    }
+
+    /**
+     * isSubVarId() or the variable itself.
+     *
+     * @psalm-pure
+     */
+    public static function isSubVarIdOrSelf(string $key, string $base): bool
+    {
+        return $key === $base || self::isSubVarId($key, $base);
+    }
+
+    /**
+     * Whether `$var_id` mentions `$base` as the base of an element or property access anywhere in it:
+     * `$base` followed by `]`, `[` or `-` (the original was an unanchored regex).
+     *
+     * @psalm-pure
+     */
+    public static function mentionsVarIdAsBase(string $var_id, string $base): bool
+    {
+        $offset = 0;
+
+        while (($pos = strpos($var_id, $base, $offset)) !== false) {
+            $next = $var_id[$pos + strlen($base)] ?? '';
+
+            if ($next === ']' || $next === '[' || $next === '-') {
+                return true;
+            }
+
+            $offset = $pos + 1;
+        }
+
+        return false;
     }
 
     /**

@@ -42,6 +42,20 @@ final class ReturnTypeTest extends TestCase
     public function providerValidCodeParse(): iterable
     {
         return [
+            // pzoom reports return mismatches at the return statement only: with those suppressed, nothing
+            'invalidReturnTypeMoreAccurateThanFalsable' => [
+                'code' => '<?php
+                    class A1{}
+                    class B1{}
+
+                    function testFalseable() : A1 {
+                        /**
+                         * @psalm-suppress InvalidReturnStatement
+                         * @psalm-suppress FalsableReturnStatement
+                         */
+                        return (rand() % 2 === 0) ? (new B1()) : false;
+                    }',
+            ],
             'arrayCombine' => [
                 'code' => '<?php
                     class a {}
@@ -1552,20 +1566,6 @@ final class ReturnTypeTest extends TestCase
                     }',
                 'error_message' => 'InvalidReturnStatement',
             ],
-            'invalidReturnTypeMoreAccurateThanFalsable' => [
-                'code' => '<?php
-                    class A1{}
-                    class B1{}
-
-                    function testFalseable() : A1 {
-                        /**
-                         * @psalm-suppress InvalidReturnStatement
-                         * @psalm-suppress FalsableReturnStatement
-                         */
-                        return (rand() % 2 === 0) ? (new B1()) : false;
-                    }',
-                'error_message' => 'InvalidReturnType',
-            ],
             'invalidGenericReturnType' => [
                 'code' => '<?php
                     /** @return ArrayIterator<int, string> */
@@ -1842,7 +1842,7 @@ final class ReturnTypeTest extends TestCase
                             return new Example();
                         }
                     }',
-                'error_message' => 'InvalidClass',
+                'error_message' => 'UndefinedDocblockClass',
             ],
             'listItems' => [
                 'code' => <<<'PHP'

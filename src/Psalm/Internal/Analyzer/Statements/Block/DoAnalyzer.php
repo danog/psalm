@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Internal\Analyzer\Statements\Block;
 
 use PhpParser;
+use Psalm\Internal\Analyzer\Statements\Expression\Fetch\VariableFetchAnalyzer;
 use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\Internal\Algebra;
@@ -20,8 +21,6 @@ use function array_filter;
 use function array_keys;
 use function array_values;
 use function in_array;
-use function preg_match;
-use function preg_quote;
 use function spl_object_id;
 
 /**
@@ -78,7 +77,7 @@ final class DoAnalyzer
 
                     foreach ($keys as $key) {
                         foreach ($mixed_var_ids as $mixed_var_id) {
-                            if (preg_match('/^' . preg_quote($mixed_var_id, '/') . '(\[|-)/', $key)) {
+                            if (VariableFetchAnalyzer::isSubVarId($key, $mixed_var_id)) {
                                 return false;
                             }
                         }

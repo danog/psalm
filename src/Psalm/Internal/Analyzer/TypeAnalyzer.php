@@ -53,7 +53,7 @@ final class TypeAnalyzer
             $existing_var_types = $existing_types[$key];
             $new_var_types = $new_types[$key];
 
-            if ($new_var_types->getId() === $existing_var_types->getId()) {
+            if ($new_var_types->hasSameAtomics($existing_var_types)) {
                 $result_types[$key] = $new_var_types;
             } else {
                 $result_types[$key] = Type::combineUnionTypes($new_var_types, $existing_var_types);

@@ -15,7 +15,6 @@ use Psalm\Type\Atomic\TKeyedArray;
 use Psalm\Type\Union;
 
 use function array_reverse;
-use function array_values;
 use function count;
 
 /**
@@ -85,8 +84,8 @@ final class ArrayReverseReturnTypeProvider implements FunctionReturnTypeProvider
                     $j = $i - $num_undefined;
                     for (; $j < $i; ++$j) {
                         $reversed_array_items[$j] = TypeCombiner::combine([
-                            ...array_values($reversed_array_items[$j]->getAtomicTypes()),
-                            ...array_values($array_item_type->getAtomicTypes()),
+                            ...$reversed_array_items[$j]->getAtomicTypes(),
+                            ...$array_item_type->getAtomicTypes(),
                         ]);
                     }
                     if ($array_item_type->possibly_undefined) {

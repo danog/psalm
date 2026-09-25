@@ -81,10 +81,6 @@ final class TypeChecker extends TypeVisitor
             return null;
         }
 
-        if ($type->checked) {
-            return self::DONT_TRAVERSE_CHILDREN;
-        }
-
         if ($type instanceof TNamedObject) {
             $this->checkNamedObject($type);
         } elseif ($type instanceof TClassConstant) {
@@ -94,9 +90,6 @@ final class TypeChecker extends TypeVisitor
         } elseif ($type instanceof TResource) {
             $this->checkResource($type);
         }
-
-        /** @psalm-suppress InaccessibleProperty Doesn't affect anything else */
-        $type->checked = true;
 
         return null;
     }
@@ -110,21 +103,25 @@ final class TypeChecker extends TypeVisitor
     {
         $codebase = $this->source->getCodebase();
 
+        $span = $atomic->span;
+
         if ($this->code_location instanceof DocblockTypeLocation
             && $codebase->store_node_types
-            && $atomic->offset_start !== null
-            && $atomic->offset_end !== null
+            && $span !== null
+            && $span->offset_start !== null
+            && $span->offset_end !== null
         ) {
             $codebase->analyzer->addOffsetReference(
                 $this->source->getFilePath(),
-                $this->code_location->raw_file_start + $atomic->offset_start,
-                $this->code_location->raw_file_start + $atomic->offset_end,
+                $this->code_location->raw_file_start + $span->offset_start,
+                $this->code_location->raw_file_start + $span->offset_end,
                 $atomic->value,
             );
         }
 
         if ($this->context?->calling_method_id !== null
-            && $atomic->text !== null
+            && $span !== null
+            && $span->text !== null
         ) {
             $codebase->addReferenceToClass(
                 strtolower($atomic->value),
@@ -133,7 +130,7 @@ final class TypeChecker extends TypeVisitor
             );
             // the type was written using an import alias: re-analyse if the import changes
             $codebase->addReferenceToUseAlias(
-                explode('\\', $atomic->text, 2)[0],
+                explode('\\', $span->text, 2)[0],
                 $this->source->getFilePath(),
                 $this->context,
             );

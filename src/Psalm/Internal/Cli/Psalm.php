@@ -58,7 +58,6 @@ use function extension_loaded;
 use function file_exists;
 use function file_get_contents;
 use function file_put_contents;
-use function function_exists;
 use function fwrite;
 use function gc_collect_cycles;
 use function gc_disable;
@@ -74,7 +73,6 @@ use function is_string;
 use function json_encode;
 use function max;
 use function microtime;
-use function opcache_get_status;
 use function parse_url;
 use function preg_match;
 use function preg_replace;
@@ -441,9 +439,9 @@ final class Psalm
         }
     }
 
-    /** @return int<1, max> */
     /**
      * @param CliOptions $options
+     * @return int<1, max>
      */
     public static function getThreads(array $options, Config $config, bool $in_ci, bool $for_scan): int
     {
@@ -946,7 +944,6 @@ final class Psalm
         echo 'Cache directory deleted' . PHP_EOL;
         exit;
     }
-
 
     private static function consolidateCache(Config $config, string $current_dir): never
     {

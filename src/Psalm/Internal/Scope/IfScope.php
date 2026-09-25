@@ -73,7 +73,7 @@ final class IfScope
     public array $updated_vars = [];
 
     /**
-     * @var array<string, list<array<int, Assertion>>>
+     * @var array<string, list<list<Assertion>>>
      */
     public array $negated_types = [];
 

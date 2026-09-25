@@ -49,7 +49,7 @@ final class RoundReturnTypeProvider implements FunctionReturnTypeProviderInterfa
             $type = $statements_source->node_data->getType($call_args[1]->value);
 
             if ($type !== null && $type->isSingle()) {
-                $atomic_type = array_values($type->getAtomicTypes())[0];
+                $atomic_type = $type->getAtomicTypes()[0];
                 if ($atomic_type instanceof Type\Atomic\TLiteralInt) {
                     $precision_val = $atomic_type->value;
                 }
@@ -61,7 +61,7 @@ final class RoundReturnTypeProvider implements FunctionReturnTypeProviderInterfa
             $type = $statements_source->node_data->getType($call_args[2]->value);
 
             if ($type !== null && $type->isSingle()) {
-                $atomic_type = array_values($type->getAtomicTypes())[0];
+                $atomic_type = $type->getAtomicTypes()[0];
                 if ($atomic_type instanceof Type\Atomic\TLiteralInt) {
                     /** @var positive-int|0 $mode_val */
                     $mode_val = $atomic_type->value;
@@ -70,7 +70,7 @@ final class RoundReturnTypeProvider implements FunctionReturnTypeProviderInterfa
         }
 
         if ($num_arg !== null && $num_arg->isSingle()) {
-            $num_type = array_values($num_arg->getAtomicTypes())[0];
+            $num_type = $num_arg->getAtomicTypes()[0];
             if ($num_type instanceof Type\Atomic\TLiteralFloat || $num_type instanceof Type\Atomic\TLiteralInt) {
                 $rounded_val = round($num_type->value, $precision_val, $mode_val);
                 return new Type\Union([new Type\Atomic\TLiteralFloat($rounded_val)]);

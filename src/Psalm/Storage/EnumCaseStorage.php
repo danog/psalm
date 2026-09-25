@@ -18,6 +18,7 @@ use UnexpectedValueException;
  */
 final class EnumCaseStorage
 {
+    use UnserializeMemoryUsageSuppressionTrait;
 
     /**
      * @psalm-mutation-free

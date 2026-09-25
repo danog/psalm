@@ -16,6 +16,7 @@ use Psalm\Type\Union;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeVisitor;
 use Psalm\Type\TypeNode;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 use function assert;
 
@@ -28,6 +29,7 @@ use function assert;
  */
 final class TClassStringMap extends Atomic
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     /**
      * Constructs a new instance of a list
      */
@@ -41,7 +43,7 @@ final class TClassStringMap extends Atomic
     }
 
     #[Override]
-    public function getId(bool $exact = true, bool $nested = false): string
+    protected function computeId(bool $exact = true, bool $nested = false): string
     {
         return 'class-string-map'
             . '<'
@@ -114,7 +116,7 @@ final class TClassStringMap extends Atomic
      * @psalm-pure
      */
     #[Override]
-    public function getKey(bool $include_extra = true): string
+    protected function computeKey(bool $include_extra = true): string
     {
         return 'array';
     }

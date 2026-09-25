@@ -24,7 +24,7 @@ final class TKeyOf extends TArrayKey
     }
 
     #[Override]
-    public function getKey(bool $include_extra = true): string
+    protected function computeKey(bool $include_extra = true): string
     {
         return 'key-of<' . $this->type . '>';
     }
@@ -110,7 +110,7 @@ final class TKeyOf extends TArrayKey
 
             $key_types = array_merge(
                 $key_types,
-                array_values($array_key_atomics->getAtomicTypes()),
+                $array_key_atomics->getAtomicTypes(),
             );
         }
 

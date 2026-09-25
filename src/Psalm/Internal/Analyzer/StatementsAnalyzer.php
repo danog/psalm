@@ -770,8 +770,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
                             true,
                         );
 
-                        /** @psalm-suppress InaccessibleProperty We just created this type */
-                        $check_type->possibly_undefined = $possibly_undefined;
+                        $check_type = $check_type->setPossiblyUndefined($possibly_undefined);
 
                         if ($check_type->possibly_undefined !== $checked_type->possibly_undefined
                             || !UnionTypeComparator::isContainedBy($codebase, $checked_type, $check_type)
@@ -810,6 +809,10 @@ final class StatementsAnalyzer extends SourceAnalyzer
     ): ?bool {
         $codebase = $statements_analyzer->getCodebase();
 
+        if ($codebase->config->eventDispatcher->after_statement_checks === []) {
+            return null;
+        }
+
         $event = new AfterStatementAnalysisEvent(
             $stmt,
             $context,
@@ -835,6 +838,10 @@ final class StatementsAnalyzer extends SourceAnalyzer
         StatementsAnalyzer $statements_analyzer,
     ): ?bool {
         $codebase = $statements_analyzer->getCodebase();
+
+        if ($codebase->config->eventDispatcher->before_statement_checks === []) {
+            return null;
+        }
 
         $event = new BeforeStatementAnalysisEvent(
             $stmt,

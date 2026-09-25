@@ -6,6 +6,7 @@ namespace Psalm\Type\Atomic;
 
 use Override;
 use Psalm\Type\Atomic;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * Denotes the `mixed` type, used when you don’t know the type of an expression.
@@ -15,6 +16,7 @@ use Psalm\Type\Atomic;
  */
 class TMixed extends Atomic
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     public function __construct(public bool $from_loop_isset = false, bool $from_docblock = false)
     {
         parent::__construct($from_docblock);
@@ -24,7 +26,7 @@ class TMixed extends Atomic
      * @psalm-pure
      */
     #[Override]
-    public function getKey(bool $include_extra = true): string
+    protected function computeKey(bool $include_extra = true): string
     {
         return 'mixed';
     }

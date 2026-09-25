@@ -9,6 +9,7 @@ use Psalm\Type\Atomic;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeVisitor;
 use Psalm\Type\TypeNode;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 use function assert;
 
@@ -22,6 +23,7 @@ use function assert;
  */
 final class TPropertiesOf extends Atomic
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     // These should match the values of
     // `Psalm\Internal\Analyzer\ClassLikeAnalyzer::VISIBILITY_*`, as they are
     // used to compared against properties visibility.
@@ -120,7 +122,7 @@ final class TPropertiesOf extends Atomic
     }
 
     #[Override]
-    public function getKey(bool $include_extra = true): string
+    protected function computeKey(bool $include_extra = true): string
     {
         return self::tokenNameForFilter($this->visibility_filter) . '<' . $this->classlike_type . '>';
     }

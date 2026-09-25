@@ -124,7 +124,7 @@ final class AssertionReconciler extends Reconciler
             );
         }
 
-        $old_var_type_string = $existing_var_type->getId();
+        $old_var_type = $existing_var_type;
 
         $type_variables = [];
 
@@ -163,7 +163,7 @@ final class AssertionReconciler extends Reconciler
                 $statements_analyzer,
                 $assertion,
                 $existing_var_type,
-                $old_var_type_string,
+                $old_var_type,
                 $key,
                 $negated,
                 $code_location,
@@ -185,7 +185,7 @@ final class AssertionReconciler extends Reconciler
                 $assertion,
                 $assertion_type,
                 $existing_var_type,
-                $old_var_type_string,
+                $old_var_type,
                 $key,
                 $negated,
                 $code_location,
@@ -325,7 +325,7 @@ final class AssertionReconciler extends Reconciler
     ): Union {
         $codebase = $statements_analyzer->getCodebase();
 
-        $old_var_type_string = $existing_var_type->getId();
+        $old_var_type = $existing_var_type;
 
         if ($new_type_part instanceof TMixed) {
             return $existing_var_type;
@@ -479,7 +479,7 @@ final class AssertionReconciler extends Reconciler
             ) {
                 self::triggerIssueForImpossible(
                     $existing_var_type,
-                    $old_var_type_string,
+                    $old_var_type,
                     $key,
                     $assertion,
                     true,
@@ -921,7 +921,7 @@ final class AssertionReconciler extends Reconciler
         Assertion          $assertion,
         Atomic             $assertion_type,
         Union              $existing_var_type,
-        string             $old_var_type_string,
+        Union             $old_var_type,
         ?string            $var_id,
         bool               $negated,
         ?CodeLocation      $code_location,
@@ -956,7 +956,7 @@ final class AssertionReconciler extends Reconciler
                 $assertion_type,
                 $existing_var_type,
                 $existing_var_atomic_types,
-                $old_var_type_string,
+                $old_var_type,
                 $var_id,
                 $negated,
                 $code_location,
@@ -969,7 +969,7 @@ final class AssertionReconciler extends Reconciler
                 $assertion_type,
                 $existing_var_type,
                 $existing_var_atomic_types,
-                $old_var_type_string,
+                $old_var_type,
                 $var_id,
                 $negated,
                 $code_location,
@@ -982,7 +982,7 @@ final class AssertionReconciler extends Reconciler
                 $assertion_type,
                 $existing_var_type,
                 $existing_var_atomic_types,
-                $old_var_type_string,
+                $old_var_type,
                 $var_id,
                 $negated,
                 $code_location,
@@ -1036,7 +1036,7 @@ final class AssertionReconciler extends Reconciler
             ) {
                 self::triggerIssueForImpossible(
                     $existing_var_type,
-                    $old_var_type_string,
+                    $old_var_type,
                     $var_id,
                     $assertion,
                     $can_be_equal,
@@ -1051,7 +1051,7 @@ final class AssertionReconciler extends Reconciler
     }
 
     /**
-     * @param array<string, Atomic> $existing_var_atomic_types
+     * @param array<array-key, Atomic> $existing_var_atomic_types
      * @param array<array-key, string>     $suppressed_issues
      */
     private static function handleLiteralEqualityWithInt(
@@ -1060,7 +1060,7 @@ final class AssertionReconciler extends Reconciler
         TLiteralInt        $assertion_type,
         Union              $existing_var_type,
         array              $existing_var_atomic_types,
-        string             $old_var_type_string,
+        Union             $old_var_type,
         ?string            $var_id,
         bool               $negated,
         ?CodeLocation      $code_location,
@@ -1095,7 +1095,7 @@ final class AssertionReconciler extends Reconciler
                     if ($var_id && $code_location) {
                         self::triggerIssueForImpossible(
                             $existing_var_type,
-                            $old_var_type_string,
+                            $old_var_type,
                             $var_id,
                             $assertion,
                             true,
@@ -1130,7 +1130,7 @@ final class AssertionReconciler extends Reconciler
                         $assertion,
                         $assertion_type,
                         $existing_var_atomic_type->as,
-                        $old_var_type_string,
+                        $old_var_type,
                         $var_id,
                         $negated,
                         $code_location,
@@ -1178,7 +1178,7 @@ final class AssertionReconciler extends Reconciler
         if ($var_id && $code_location) {
             self::triggerIssueForImpossible(
                 $existing_var_type,
-                $old_var_type_string,
+                $old_var_type,
                 $var_id,
                 $assertion,
                 false,
@@ -1192,7 +1192,7 @@ final class AssertionReconciler extends Reconciler
     }
 
     /**
-     * @param array<string, Atomic> $existing_var_atomic_types
+     * @param array<array-key, Atomic> $existing_var_atomic_types
      * @param array<array-key, string>     $suppressed_issues
      */
     private static function handleLiteralEqualityWithString(
@@ -1201,7 +1201,7 @@ final class AssertionReconciler extends Reconciler
         TLiteralString     $assertion_type,
         Union              $existing_var_type,
         array              $existing_var_atomic_types,
-        string             $old_var_type_string,
+        Union             $old_var_type,
         ?string            $var_id,
         bool               $negated,
         ?CodeLocation      $code_location,
@@ -1233,7 +1233,7 @@ final class AssertionReconciler extends Reconciler
                     if ($var_id && $code_location) {
                         self::triggerIssueForImpossible(
                             $existing_var_type,
-                            $old_var_type_string,
+                            $old_var_type,
                             $var_id,
                             $assertion,
                             true,
@@ -1273,7 +1273,7 @@ final class AssertionReconciler extends Reconciler
                         $assertion,
                         $assertion_type,
                         $existing_var_atomic_type->as,
-                        $old_var_type_string,
+                        $old_var_type,
                         $var_id,
                         $negated,
                         $code_location,
@@ -1321,7 +1321,7 @@ final class AssertionReconciler extends Reconciler
         if ($var_id && $code_location) {
             self::triggerIssueForImpossible(
                 $existing_var_type,
-                $old_var_type_string,
+                $old_var_type,
                 $var_id,
                 $assertion,
                 false,
@@ -1335,7 +1335,7 @@ final class AssertionReconciler extends Reconciler
     }
 
     /**
-     * @param array<string, Atomic> $existing_var_atomic_types
+     * @param array<array-key, Atomic> $existing_var_atomic_types
      * @param array<array-key, string>     $suppressed_issues
      */
     private static function handleLiteralEqualityWithFloat(
@@ -1344,7 +1344,7 @@ final class AssertionReconciler extends Reconciler
         TLiteralFloat      $assertion_type,
         Union              $existing_var_type,
         array              $existing_var_atomic_types,
-        string             $old_var_type_string,
+        Union             $old_var_type,
         ?string            $var_id,
         bool               $negated,
         ?CodeLocation      $code_location,
@@ -1376,7 +1376,7 @@ final class AssertionReconciler extends Reconciler
                     if ($var_id && $code_location) {
                         self::triggerIssueForImpossible(
                             $existing_var_type,
-                            $old_var_type_string,
+                            $old_var_type,
                             $var_id,
                             $assertion,
                             true,
@@ -1416,7 +1416,7 @@ final class AssertionReconciler extends Reconciler
                         $assertion,
                         $assertion_type,
                         $existing_var_atomic_type->as,
-                        $old_var_type_string,
+                        $old_var_type,
                         $var_id,
                         $negated,
                         $code_location,
@@ -1463,7 +1463,7 @@ final class AssertionReconciler extends Reconciler
         if ($var_id && $code_location) {
             self::triggerIssueForImpossible(
                 $existing_var_type,
-                $old_var_type_string,
+                $old_var_type,
                 $var_id,
                 $assertion,
                 false,
@@ -1477,7 +1477,7 @@ final class AssertionReconciler extends Reconciler
     }
 
     /**
-     * @param array<string, Atomic> $existing_var_atomic_types
+     * @param array<array-key, Atomic> $existing_var_atomic_types
      * @psalm-pure
      */
     private static function getCompatibleIntType(
@@ -1506,7 +1506,7 @@ final class AssertionReconciler extends Reconciler
     }
 
     /**
-     * @param array<string, Atomic> $existing_var_atomic_types
+     * @param array<array-key, Atomic> $existing_var_atomic_types
      * @psalm-pure
      */
     private static function getCompatibleStringType(
@@ -1534,7 +1534,7 @@ final class AssertionReconciler extends Reconciler
     }
 
     /**
-     * @param array<string, Atomic> $existing_var_atomic_types
+     * @param array<array-key, Atomic> $existing_var_atomic_types
      * @psalm-pure
      */
     private static function getCompatibleFloatType(

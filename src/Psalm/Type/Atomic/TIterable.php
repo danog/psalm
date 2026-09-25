@@ -19,6 +19,7 @@ use function substr;
 use Psalm\Type\MutableTypeVisitor;
 use Psalm\Type\TypeVisitor;
 use Psalm\Type\TypeNode;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * denotes the `iterable` type(which can also result from an `is_iterable` check).
@@ -28,6 +29,7 @@ use Psalm\Type\TypeNode;
  */
 final class TIterable extends Atomic
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     use HasIntersectionTrait;
     /**
      * @use GenericTrait<array{Union, Union}>
@@ -89,7 +91,7 @@ final class TIterable extends Atomic
     }
 
     #[Override]
-    public function getKey(bool $include_extra = true): string
+    protected function computeKey(bool $include_extra = true): string
     {
         if ($include_extra && $this->extra_types) {
             // do nothing
@@ -108,7 +110,7 @@ final class TIterable extends Atomic
     }
 
     #[Override]
-    public function getId(bool $exact = true, bool $nested = false): string
+    protected function computeId(bool $exact = true, bool $nested = false): string
     {
         $s = '';
         foreach ($this->type_params as $type_param) {

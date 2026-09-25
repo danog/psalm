@@ -6,6 +6,7 @@ namespace Psalm\Type\Atomic;
 
 use Override;
 use Psalm\Type\Atomic;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * Denotes the `resource` type (e.g. a file handle).
@@ -15,11 +16,12 @@ use Psalm\Type\Atomic;
  */
 final class TResource extends Atomic
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     /**
      * @psalm-pure
      */
     #[Override]
-    public function getKey(bool $include_extra = true): string
+    protected function computeKey(bool $include_extra = true): string
     {
         return 'resource';
     }

@@ -11,8 +11,12 @@ use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
 use Psalm\Internal\Type\TypeCombiner;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type;
 use Psalm\Type\Atomic;
+use Psalm\Type\MutableTypeVisitor;
+use Psalm\Type\TypeNode;
+use Psalm\Type\TypeVisitor;
 use Psalm\Type\Union;
 use Throwable;
 
@@ -27,9 +31,6 @@ use function ksort;
 use function preg_match;
 use function sort;
 use function str_replace;
-use Psalm\Type\MutableTypeVisitor;
-use Psalm\Type\TypeVisitor;
-use Psalm\Type\TypeNode;
 
 /**
  * Represents an 'object-like array' - an array with known keys.
@@ -40,6 +41,7 @@ use Psalm\Type\TypeNode;
  */
 final class TKeyedArray extends Atomic
 {
+    use UnserializeMemoryUsageSuppressionTrait;
 
     /**
      * Constructs a new instance of a generic type
@@ -88,6 +90,17 @@ final class TKeyedArray extends Atomic
     ): self|TArray {
         if ($is_list && $fallback_params) {
             $fallback_params[0] = Type::getListKey();
+            // canonical form (what combining produces, and what pzoom's single representation of a list
+            // is): a list whose only entry is an optional 0 of the element type is list<element>, whatever
+            // flags that entry carried
+            if (count($properties) === 1
+                && isset($properties[0])
+                && $properties[0]->possibly_undefined
+                && $properties[0] !== $fallback_params[1]
+                && $properties[0]->getId() === $fallback_params[1]->getId()
+            ) {
+                $properties[0] = $fallback_params[1]->setPossiblyUndefined(true);
+            }
         }
         if (count($properties) === 1
             && $properties[array_key_first($properties)]->isNever()
@@ -208,7 +221,7 @@ final class TKeyedArray extends Atomic
     }
 
     #[Override]
-    public function getId(bool $exact = true, bool $nested = false): string
+    protected function computeId(bool $exact = true, bool $nested = false): string
     {
         $property_strings = [];
 
@@ -366,7 +379,42 @@ final class TKeyedArray extends Atomic
         return false;
     }
 
+    /**
+     * The derived generic forms of this shape, built once: the atomic is immutable, and the reconcilers and
+     * comparators ask for them again and again (a wither's clone starts over, see __clone).
+     */
+    private ?TArray $generic_array_memo = null;
+
+    private ?Union $generic_value_memo = null;
+    private ?Union $generic_value_memo_pu = null;
+    private ?Union $generic_key_memo = null;
+    private ?Union $generic_key_memo_pu = null;
+
+    /**
+     * @psalm-mutation-free
+     */
+    #[Override]
+    protected function __clone()
+    {
+        parent::__clone();
+        $this->generic_array_memo = null;
+        $this->generic_value_memo = null;
+        $this->generic_value_memo_pu = null;
+        $this->generic_key_memo = null;
+        $this->generic_key_memo_pu = null;
+    }
+
     public function getGenericKeyType(bool $possibly_undefined = false): Union
+    {
+        return $possibly_undefined
+            ? ($this->generic_key_memo_pu ??= $this->computeGenericKeyType(true))
+            : ($this->generic_key_memo ??= $this->computeGenericKeyType(false));
+    }
+
+    /**
+     * @psalm-mutation-free
+     */
+    private function computeGenericKeyType(bool $possibly_undefined): Union
     {
         if ($this->is_list) {
             if ($this->fallback_params) {
@@ -391,10 +439,8 @@ final class TKeyedArray extends Atomic
             }
         }
 
-        $key_type = TypeCombiner::combine($key_types);
-
-        /** @psalm-suppress InaccessibleProperty, ImpurePropertyAssignment We just created this type */
-        $key_type->possibly_undefined = $possibly_undefined;
+        /** @psalm-suppress ImpureMethodCall the combination only reads its inputs */
+        $key_type = TypeCombiner::combine($key_types, properties: ['possibly_undefined' => $possibly_undefined]);
 
         if ($this->fallback_params === null) {
             return $key_type;
@@ -404,6 +450,16 @@ final class TKeyedArray extends Atomic
     }
 
     public function getGenericValueType(bool $possibly_undefined = false): Union
+    {
+        return $possibly_undefined
+            ? ($this->generic_value_memo_pu ??= $this->computeGenericValueType(true))
+            : ($this->generic_value_memo ??= $this->computeGenericValueType(false));
+    }
+
+    /**
+     * @psalm-mutation-free
+     */
+    private function computeGenericValueType(bool $possibly_undefined): Union
     {
         $value_type = null;
 
@@ -426,6 +482,17 @@ final class TKeyedArray extends Atomic
      * @return TArray|TNonEmptyArray
      */
     public function getGenericArrayType(?string $list_var_id = null): TArray
+    {
+        if ($list_var_id !== null) {
+            return $this->computeGenericArrayType($list_var_id);
+        }
+        return $this->generic_array_memo ??= $this->computeGenericArrayType(null);
+    }
+
+    /**
+     * @psalm-mutation-free
+     */
+    private function computeGenericArrayType(?string $list_var_id): TArray
     {
         $key_types = [];
         $value_type = null;
@@ -560,7 +627,7 @@ final class TKeyedArray extends Atomic
      * @psalm-pure
      */
     #[Override]
-    public function getKey(bool $include_extra = true): string
+    protected function computeKey(bool $include_extra = true): string
     {
         return 'array';
     }
@@ -666,7 +733,6 @@ final class TKeyedArray extends Atomic
                 $depth,
             );
         }
-
 
         if ($properties === $this->properties && $fallback_params === $this->fallback_params) {
             return $this;
@@ -806,6 +872,10 @@ final class TKeyedArray extends Atomic
     public function equals(Atomic $other_type, bool $ensure_source_equality): bool
     {
         if ($other_type::class !== static::class) {
+            return false;
+        }
+
+        if ($this->is_list !== $other_type->is_list) {
             return false;
         }
 

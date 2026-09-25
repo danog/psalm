@@ -7,6 +7,7 @@ namespace Psalm\Storage\Assertion;
 use Override;
 use Psalm\Storage\Assertion;
 use Psalm\Type\Atomic;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * @psalm-immutable
@@ -14,6 +15,7 @@ use Psalm\Type\Atomic;
  */
 final class IsNotAClass extends Assertion
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     /** @param Atomic\TTemplateParamClass|Atomic\TNamedObject $type */
     public function __construct(public readonly Atomic $type, public readonly bool $allow_string)
     {

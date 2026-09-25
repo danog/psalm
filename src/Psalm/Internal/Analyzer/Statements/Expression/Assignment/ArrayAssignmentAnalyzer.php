@@ -563,7 +563,7 @@ final class ArrayAssignmentAnalyzer
 
         $array_atomic_type = null;
         if (!$current_dim && !$context->inside_loop) {
-            $atomic_root_types = $root_type->getAtomicTypes();
+            $atomic_root_types = $root_type->getAtomicTypesByKey();
 
             if (isset($atomic_root_types['array'])) {
                 $atomic_root_type_array = $atomic_root_types['array'];
@@ -678,7 +678,7 @@ final class ArrayAssignmentAnalyzer
         }
 
         if ($from_countable_object_like) {
-            $atomic_root_types = $new_child_type->getAtomicTypes();
+            $atomic_root_types = $new_child_type->getAtomicTypesByKey();
 
             if (isset($atomic_root_types['array'])) {
                 $atomic_root_type_array = $atomic_root_types['array'];
@@ -689,7 +689,7 @@ final class ArrayAssignmentAnalyzer
                 ) {
                     $atomic_root_types['array'] =
                         $atomic_root_type_array->setCount($atomic_root_type_array->count+1);
-                    $new_child_type = new Union($atomic_root_types);
+                    $new_child_type = new Union(array_values($atomic_root_types));
                 } elseif ($atomic_root_type_array instanceof TKeyedArray
                     && $atomic_root_type_array->is_list) {
                     $properties = $atomic_root_type_array->properties;
@@ -709,7 +709,7 @@ final class ArrayAssignmentAnalyzer
                     $atomic_root_types['array'] =
                         $atomic_root_type_array->setProperties($properties);
 
-                    $new_child_type = new Union($atomic_root_types);
+                    $new_child_type = new Union(array_values($atomic_root_types));
                 }
             }
         }

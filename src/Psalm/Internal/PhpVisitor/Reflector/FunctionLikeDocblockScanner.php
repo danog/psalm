@@ -155,8 +155,7 @@ final class FunctionLikeDocblockScanner
                 || !in_array($file_storage->file_path, $codebase->config->internal_stubs)
             )
         ) {
-            /** @psalm-suppress InaccessibleProperty We just created this type */
-            $storage->return_type->ignore_nullable_issues = true;
+            $storage->return_type = $storage->return_type->setProperties(['ignore_nullable_issues' => true]);
         }
 
         // we make sure we only add ignore flag for internal stubs if the config is set to true
@@ -166,8 +165,7 @@ final class FunctionLikeDocblockScanner
                 || !in_array($file_storage->file_path, $codebase->config->internal_stubs)
             )
         ) {
-            /** @psalm-suppress InaccessibleProperty We just created this type */
-            $storage->return_type->ignore_falsable_issues = true;
+            $storage->return_type = $storage->return_type->setProperties(['ignore_falsable_issues' => true]);
         }
 
         if ($docblock_info->stub_override && !$is_functionlike_override) {
@@ -876,30 +874,35 @@ final class FunctionLikeDocblockScanner
                 continue;
             }
 
-            $storage_param_atomic_types = $storage_param->type->getAtomicTypes();
+            $storage_param_atomic_types = $storage_param->type->getAtomicTypesByKey();
 
             $all_typehint_types_match = true;
+            $new_atomic_types = [];
 
-            foreach ($new_param_type->getAtomicTypes() as $key => $type) {
+            foreach ($new_param_type->getAtomicTypes() as $type) {
+                $key = $type->getKey();
                 if (isset($storage_param_atomic_types[$key])) {
-                    /** @psalm-suppress InaccessibleProperty We just created this type */
-                    $type->from_docblock = false;
+                    $type = $type->setFromDocblock(false);
 
                     if ($storage_param_atomic_types[$key] instanceof TArray
                         && $type instanceof TArray
                         && $type->type_params[0]->hasArrayKey()
                     ) {
-                        /** @psalm-suppress InaccessibleProperty We just created this type */
-                        $type->type_params[0]->from_docblock = false;
+                        $type = $type->setTypeParams([
+                            $type->type_params[0]->setProperties(['from_docblock' => false]),
+                            $type->type_params[1],
+                        ]);
                     }
                 } else {
                     $all_typehint_types_match = false;
                 }
+                $new_atomic_types[] = $type;
             }
 
+            $new_param_type = $new_param_type->setTypes($new_atomic_types);
+
             if ($all_typehint_types_match) {
-                /** @psalm-suppress InaccessibleProperty We just created this type */
-                $new_param_type->from_docblock = false;
+                $new_param_type = $new_param_type->setProperties(['from_docblock' => false]);
             }
 
             if ($existing_param_type_nullable && !$new_param_type->isNullable()) {
@@ -993,20 +996,23 @@ final class FunctionLikeDocblockScanner
 
             if ($storage->signature_return_type) {
                 $all_typehint_types_match = true;
-                $signature_return_atomic_types = $storage->signature_return_type->getAtomicTypes();
+                $signature_return_type = $storage->signature_return_type;
 
+                // the atomics the signature also declares are not docblock-only: rebuilt through the wither
+                // (a type is a value, never written in place)
+                $types = [];
                 foreach ($storage->return_type->getAtomicTypes() as $key => $type) {
-                    if (isset($signature_return_atomic_types[$key])) {
-                        /** @psalm-suppress InaccessibleProperty We just created this atomic type */
-                        $type->from_docblock = false;
+                    if ($signature_return_type->has($type->getKey())) {
+                        $types[$key] = $type->setFromDocblock(false);
                     } else {
                         $all_typehint_types_match = false;
+                        $types[$key] = $type;
                     }
                 }
+                $storage->return_type = $storage->return_type->setTypes($types);
 
                 if ($all_typehint_types_match) {
-                    /** @psalm-suppress InaccessibleProperty We just created this type */
-                    $storage->return_type->from_docblock = false;
+                    $storage->return_type = $storage->return_type->setProperties(['from_docblock' => false]);
 
                     if ($storage instanceof MethodStorage) {
                         $storage->has_docblock_return_type = true;
@@ -1049,8 +1055,7 @@ final class FunctionLikeDocblockScanner
                 || !in_array($file_storage->file_path, $codebase->config->internal_stubs)
             )
         ) {
-            /** @psalm-suppress InaccessibleProperty We just created this type */
-            $storage->return_type->ignore_nullable_issues = true;
+            $storage->return_type = $storage->return_type->setProperties(['ignore_nullable_issues' => true]);
         }
 
         // we make sure we only add ignore flag for internal stubs if the config is set to true
@@ -1060,13 +1065,11 @@ final class FunctionLikeDocblockScanner
                 || !in_array($file_storage->file_path, $codebase->config->internal_stubs)
             )
         ) {
-            /** @psalm-suppress InaccessibleProperty We just created this type */
-            $storage->return_type->ignore_falsable_issues = true;
+            $storage->return_type = $storage->return_type->setProperties(['ignore_falsable_issues' => true]);
         }
 
         if ($stmt->returnsByRef() && $storage->return_type) {
-            /** @psalm-suppress InaccessibleProperty We just created this type */
-            $storage->return_type->by_ref = true;
+            $storage->return_type = $storage->return_type->setProperties(['by_ref' => true]);
         }
 
         $storage->return_type_description = $docblock_info->return_type_description;

@@ -45,9 +45,9 @@ final class InArrayReturnTypeProvider implements FunctionReturnTypeProviderInter
             return $bool;
         }
 
-        $false = Type::getFalse();
-        /** @psalm-suppress InaccessibleProperty We just created these types */
-        $false->from_docblock = $bool->from_docblock = $needle_type->from_docblock || $haystack_type->from_docblock;
+        $from_docblock = $needle_type->from_docblock || $haystack_type->from_docblock;
+        $false = Type::getFalse($from_docblock);
+        $bool = $bool->setProperties(['from_docblock' => $from_docblock]);
 
         if (!isset($call_args[2])) {
             return $bool;
@@ -59,7 +59,7 @@ final class InArrayReturnTypeProvider implements FunctionReturnTypeProviderInter
             return $bool;
         }
 
-        $types = $haystack_type->getAtomicTypes();
+        $types = $haystack_type->getAtomicTypesByKey();
         /**
          * @var TKeyedArray|TArray|null
          */

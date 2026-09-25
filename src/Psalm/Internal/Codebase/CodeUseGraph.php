@@ -438,11 +438,34 @@ final class CodeUseGraph
         string $type = self::EDGE_USE,
         ?string $file_path = null,
     ): void {
-        $file_path = $location?->file_path ?? $file_path;
+        $this->addReferenceFrom(
+            $target_node,
+            $context?->calling_method_id,
+            $context?->calling_function_id,
+            $context?->self,
+            $location,
+            $type,
+            $file_path,
+        );
+    }
 
-        $calling_method_id = $context?->calling_method_id;
-        $calling_function_id = $context?->calling_function_id;
-        $self = $context?->self;
+    /**
+     * addReference() with the referencing scope given directly (no Context needs building for it).
+     *
+     * @param lowercase-string|null $calling_method_id
+     * @param lowercase-string|null $calling_function_id
+     * @psalm-external-mutation-free
+     */
+    public function addReferenceFrom(
+        string $target_node,
+        ?string $calling_method_id,
+        ?string $calling_function_id,
+        ?string $self,
+        ?CodeLocation $location = null,
+        string $type = self::EDGE_USE,
+        ?string $file_path = null,
+    ): void {
+        $file_path = $location?->file_path ?? $file_path;
 
         if ($calling_method_id !== null) {
             $source_node = self::functionLikeNode($calling_method_id);
@@ -594,12 +617,7 @@ final class CodeUseGraph
             }
         }
 
-        /**
-         * Override edges whose target's class is not used yet, by class node
-         *
-         * @var array<string, list<string>>
-         */
-        $deferred = [];
+        $deferred = self::noDeferredOverrides();
 
         while ($queue) {
             $node_id = array_pop($queue);
@@ -634,20 +652,30 @@ final class CodeUseGraph
                 $used[$target_node] = true;
                 $queue[] = $target_node;
 
-                if (isset($deferred[$target_node])) {
-                    foreach ($deferred[$target_node] as $deferred_node) {
-                        if (!isset($used[$deferred_node])) {
-                            $used[$deferred_node] = true;
-                            $queue[] = $deferred_node;
-                        }
+                foreach ($deferred[$target_node] ?? [] as $deferred_node) {
+                    if (!isset($used[$deferred_node])) {
+                        $used[$deferred_node] = true;
+                        $queue[] = $deferred_node;
                     }
-
-                    unset($deferred[$target_node]);
                 }
+
+                unset($deferred[$target_node]);
             }
         }
 
         $this->used = $used;
+    }
+
+    /**
+     * Override edges whose target's class is not used yet, by class node: the empty starting point of resolve(),
+     * typed here because a local's type comes from what is assigned to it.
+     *
+     * @return array<string, list<string>>
+     * @psalm-pure
+     */
+    private static function noDeferredOverrides(): array
+    {
+        return [];
     }
 
     /**

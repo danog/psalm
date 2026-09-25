@@ -14,6 +14,7 @@ use Psalm\CodeLocation;
  */
 final class PropertyHookStorage
 {
+    use UnserializeMemoryUsageSuppressionTrait;
 
     /**
      * @psalm-mutation-free

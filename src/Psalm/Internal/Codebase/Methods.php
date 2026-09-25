@@ -140,87 +140,63 @@ final class Methods
             $calling_class_name = explode('::', $calling_method_id)[0];
         }
 
-        $calling_context = null;
-        if ($calling_method_id !== null || $calling_class_name !== null) {
-            $calling_context = new Context($calling_class_name);
-            $calling_context->calling_method_id = $calling_method_id;
-        }
-
         $declaring_method_id = $class_storage->declaring_method_ids[$method_name] ?? null;
         if ($declaring_method_id === null && $with_pseudo) {
             $declaring_method_id = $class_storage->declaring_pseudo_method_ids[$method_name] ?? null;
         }
         if ($declaring_method_id !== null) {
-            if ($calling_method_id === strtolower((string) $declaring_method_id)) {
+            // the nodes a call to this method references, built once per (class, method): the declaring
+            // class and method (or its potential declarers), every interface's copy and every override
+            // (pzoom records one symbol reference; Psalm's unused-code and cache invalidation need these)
+            $nodes = $this->reference_nodes[strtolower($class_storage->name)][$method_name]
+                ??= $this->referenceNodesFor($class_storage, $method_name, $declaring_method_id);
+
+            if ($calling_method_id === $nodes[0]) {
                 return true;
             }
 
-            $declaring_fq_class_name = strtolower($declaring_method_id->fq_class_name);
+            $graph = $codebase->code_use_graph;
 
-            if ($declaring_fq_class_name !== strtolower((string) $calling_class_name)) {
-                $codebase->addReferenceToClass(
-                    $declaring_fq_class_name,
+            if ($nodes[1] !== strtolower((string) $calling_class_name)) {
+                $graph->addReferenceFrom(
+                    CodeUseGraph::classNode($nodes[1]),
+                    $calling_method_id,
+                    null,
+                    $calling_class_name,
                     $code_location,
-                    $calling_context,
+                    CodeUseGraph::EDGE_USE,
                     $source_file_path,
                 );
             }
 
-            if ((string) $method_id !== (string) $declaring_method_id
-                && $class_storage->user_defined
-                && isset($class_storage->potential_declaring_method_ids[$method_name])
-            ) {
-                foreach ($class_storage->potential_declaring_method_ids[$method_name] as $potential_id => $_) {
-                    $codebase->addReferenceToFunctionLike(
-                        strtolower($potential_id),
-                        $code_location,
-                        $calling_context,
-                        $is_used,
-                        $source_file_path,
-                    );
+            foreach ($nodes[2] as $function_id_lc) {
+                $function_node = CodeUseGraph::functionLikeNode($function_id_lc);
+                if ($is_used) {
+                    // using the return value implies calling the function
+                    $return_node = CodeUseGraph::functionLikeReturnNode($function_id_lc);
+                    $graph->addEdge($return_node, $function_node, CodeUseGraph::EDGE_RETURN);
+                    $function_node = $return_node;
                 }
-            } else {
-                $codebase->addReferenceToFunctionLike(
-                    strtolower((string) $declaring_method_id),
+                $graph->addReferenceFrom(
+                    $function_node,
+                    $calling_method_id,
+                    null,
+                    $calling_class_name,
                     $code_location,
-                    $calling_context,
-                    $is_used,
+                    CodeUseGraph::EDGE_USE,
                     $source_file_path,
                 );
-            }
-
-            foreach ($class_storage->class_implements as $fq_interface_name) {
-                $interface_method_id_lc = strtolower($fq_interface_name . '::' . $method_name);
-
-                $codebase->addReferenceToFunctionLike(
-                    $interface_method_id_lc,
-                    $code_location,
-                    $calling_context,
-                    $is_used,
-                    $source_file_path,
-                );
-            }
-
-            $declaring_method_class = $declaring_method_id->fq_class_name;
-            $declaring_method_name = $declaring_method_id->method_name;
-
-            $declaring_class_storage = $this->classlike_storage_provider->get($declaring_method_class);
-
-            if (isset($declaring_class_storage->overridden_method_ids[$declaring_method_name])) {
-                $overridden_method_ids = $declaring_class_storage->overridden_method_ids[$declaring_method_name];
-
-                foreach ($overridden_method_ids as $overridden_method_id) {
-                    $codebase->addReferenceToFunctionLike(
-                        strtolower((string) $overridden_method_id),
-                        $code_location,
-                        $calling_context,
-                        $is_used,
-                        $source_file_path,
-                    );
-                }
             }
 
             return true;
+        }
+
+        // the method is missing: the references below take a Context (the found path above records
+        // without one)
+        $calling_context = null;
+        if ($calling_method_id !== null || $calling_class_name !== null) {
+            $calling_context = new Context($calling_class_name);
+            $calling_context->calling_method_id = $calling_method_id;
         }
 
         if ($source_file_path && $fq_class_name !== strtolower((string) $calling_class_name)) {
@@ -939,6 +915,55 @@ final class Methods
             $appearing_fq_class_name,
             $appearing_method_name_lc,
         );
+    }
+
+    /**
+     * @var array<lowercase-string, array<lowercase-string, array{lowercase-string, lowercase-string, list<lowercase-string>}>>
+     *      by lowercased class-like name and method name: the declaring method id, the declaring class, and the
+     *      function-like ids a call references (see methodExists)
+     */
+    private array $reference_nodes = [];
+
+    /**
+     * @param lowercase-string $method_name
+     * @return array{lowercase-string, lowercase-string, list<lowercase-string>}
+     * @psalm-mutation-free
+     */
+    private function referenceNodesFor(
+        ClassLikeStorage $class_storage,
+        string $method_name,
+        MethodIdentifier $declaring_method_id,
+    ): array {
+        $declaring_method_id_lc = strtolower((string) $declaring_method_id);
+        $declaring_fq_class_name_lc = strtolower($declaring_method_id->fq_class_name);
+
+        $function_ids = [];
+
+        if (strtolower($declaring_method_id->fq_class_name) !== strtolower($class_storage->name)
+            && $class_storage->user_defined
+            && isset($class_storage->potential_declaring_method_ids[$method_name])
+        ) {
+            foreach ($class_storage->potential_declaring_method_ids[$method_name] as $potential_id => $_) {
+                $function_ids[] = strtolower($potential_id);
+            }
+        } else {
+            $function_ids[] = $declaring_method_id_lc;
+        }
+
+        foreach ($class_storage->class_implements as $fq_interface_name) {
+            $function_ids[] = strtolower($fq_interface_name . '::' . $method_name);
+        }
+
+        $declaring_class_storage = $this->classlike_storage_provider->get($declaring_method_id->fq_class_name);
+        $declaring_method_name = $declaring_method_id->method_name;
+
+        if (isset($declaring_class_storage->overridden_method_ids[$declaring_method_name])) {
+            foreach ($declaring_class_storage->overridden_method_ids[$declaring_method_name] as $overridden_method_id) {
+                $function_ids[] = strtolower((string) $overridden_method_id);
+            }
+        }
+
+        return [$declaring_method_id_lc, $declaring_fq_class_name_lc, $function_ids];
     }
 
     /** @psalm-mutation-free */

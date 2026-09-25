@@ -216,7 +216,6 @@ final class CacheTest extends TestCase
                     'issues' => [
                         'src/A.php' => [
                             "NullableReturnStatement: The declared return type 'int' for A::foo is not nullable, but the function returns 'int|null'",
-                            "InvalidNullableReturnType: The declared return type 'int' for A::foo is not nullable, but 'int|null' contains null",
                         ],
                     ],
                 ],

@@ -10,6 +10,7 @@ use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * Represents the type used when using TPropertiesOf when the type of the array is a template
@@ -19,6 +20,7 @@ use Psalm\Type\Union;
  */
 final class TTemplatePropertiesOf extends Atomic
 {
+    use UnserializeMemoryUsageSuppressionTrait;
     /**
      * @param TPropertiesOf::VISIBILITY_*|null $visibility_filter
      */
@@ -33,13 +35,13 @@ final class TTemplatePropertiesOf extends Atomic
     }
 
     #[Override]
-    public function getKey(bool $include_extra = true): string
+    protected function computeKey(bool $include_extra = true): string
     {
         return TPropertiesOf::tokenNameForFilter($this->visibility_filter) . '<' . $this->param_name . '>';
     }
 
     #[Override]
-    public function getId(bool $exact = true, bool $nested = false): string
+    protected function computeId(bool $exact = true, bool $nested = false): string
     {
         if (!$exact) {
             return $this->getKey();

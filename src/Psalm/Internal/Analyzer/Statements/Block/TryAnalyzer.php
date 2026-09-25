@@ -275,12 +275,7 @@ final class TryAnalyzer
                 );
 
                 // removes dependent vars from $context
-                $catch_context->removeDescendents(
-                    $catch_var_id,
-                    $catch_context->vars_in_scope[$catch_var_id],
-                    $catch_context->vars_in_scope[$catch_var_id],
-                    $statements_analyzer,
-                );
+                $catch_context->removeDescendents($catch_var_id);
 
                 $catch_context->vars_possibly_in_scope[$catch_var_id] = true;
 
@@ -442,10 +437,8 @@ final class TryAnalyzer
                             $codebase,
                         );
                         if ($possibly_undefined) {
-                            /** @psalm-suppress InaccessibleProperty We just created this type */
-                            $context->vars_in_scope[$var_id]->possibly_undefined = false;
-                            /** @psalm-suppress InaccessibleProperty We just created this type */
-                            $context->vars_in_scope[$var_id]->possibly_undefined_from_try = false;
+                            $context->vars_in_scope[$var_id] = $context->vars_in_scope[$var_id]
+                                ->setPossiblyUndefined(false, false);
                         }
                     } elseif (isset($finally_context->vars_in_scope[$var_id])) {
                         $context->vars_in_scope[$var_id] = $finally_context->vars_in_scope[$var_id];

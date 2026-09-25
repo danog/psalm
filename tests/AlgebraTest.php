@@ -30,7 +30,7 @@ final class AlgebraTest extends TestCase
     public function testNegateFormula(): void
     {
         $formula = [
-            new Clause(['$a' => ['truthy' => new Truthy()]], 1, 1),
+            new Clause(['$a' => Clause::keyed(new Truthy())], 1, 1),
         ];
 
         $negated_formula = Algebra::negateFormula($formula);
@@ -39,7 +39,7 @@ final class AlgebraTest extends TestCase
         $this->assertSame('!$a', (string)$negated_formula[0]);
 
         $formula = [
-            new Clause(['$a' => ['truthy' => new Truthy()], '$b' => ['truthy' => new Truthy()]], 1, 1),
+            new Clause(['$a' => Clause::keyed(new Truthy()), '$b' => Clause::keyed(new Truthy())], 1, 1),
         ];
 
         $negated_formula = Algebra::negateFormula($formula);
@@ -49,8 +49,8 @@ final class AlgebraTest extends TestCase
         $this->assertSame('!$b', (string)$negated_formula[1]);
 
         $formula = [
-            new Clause(['$a' => ['truthy' => new Truthy()]], 1, 1),
-            new Clause(['$b' => ['truthy' => new Truthy()]], 1, 2),
+            new Clause(['$a' => Clause::keyed(new Truthy())], 1, 1),
+            new Clause(['$b' => Clause::keyed(new Truthy())], 1, 2),
         ];
 
         $negated_formula = Algebra::negateFormula($formula);
@@ -64,8 +64,8 @@ final class AlgebraTest extends TestCase
         $formula = [
             new Clause(
                 [
-                    '$a' => [(string)$a1 => $a1, (string)$a2 => $a2],
-                    '$b' => ['truthy' => new Truthy()],
+                    '$a' => Clause::keyed($a1, $a2),
+                    '$b' => Clause::keyed(new Truthy()),
                 ],
                 1,
                 1,
@@ -84,8 +84,8 @@ final class AlgebraTest extends TestCase
     {
         $a1 = new IsType(new TInt());
         $formula = [
-            new Clause(['$a' => [(string)$a1 => $a1]], 1, 1),
-            new Clause(['$b' => [(string)$a1 => $a1]], 1, 2, false, false),
+            new Clause(['$a' => Clause::keyed($a1)], 1, 1),
+            new Clause(['$b' => Clause::keyed($a1)], 1, 2, false, false),
         ];
 
         $negated_formula = Algebra::negateFormula($formula);
@@ -135,15 +135,15 @@ final class AlgebraTest extends TestCase
         $this->assertTrue(
             (new Clause(
                 [
-                    '$a' => ['truthy' => new Truthy()],
-                    '$b' => ['truthy' => new Truthy()],
+                    '$a' => Clause::keyed(new Truthy()),
+                    '$b' => Clause::keyed(new Truthy()),
                 ],
                 1,
                 1,
             ))->contains(
                 new Clause(
                     [
-                        '$a' => ['truthy' => new Truthy()],
+                        '$a' => Clause::keyed(new Truthy()),
                     ],
                     1,
                     1,
@@ -154,15 +154,15 @@ final class AlgebraTest extends TestCase
         $this->assertFalse(
             (new Clause(
                 [
-                    '$a' => ['truthy' => new Truthy()],
+                    '$a' => Clause::keyed(new Truthy()),
                 ],
                 1,
                 1,
             ))->contains(
                 new Clause(
                     [
-                        '$a' => ['truthy' => new Truthy()],
-                        '$b' => ['truthy' => new Truthy()],
+                        '$a' => Clause::keyed(new Truthy()),
+                        '$b' => Clause::keyed(new Truthy()),
                     ],
                     1,
                     1,
@@ -174,8 +174,8 @@ final class AlgebraTest extends TestCase
     public function testSimplifySimpleCNF(): void
     {
         $formula = [
-            new Clause(['$a' => ['truthy' => new Truthy()]], 1, 1),
-            new Clause(['$a' => ['falsy' => new Falsy()], '$b' => ['falsy' => new Falsy()]], 1, 2),
+            new Clause(['$a' => Clause::keyed(new Truthy())], 1, 1),
+            new Clause(['$a' => Clause::keyed(new Falsy()), '$b' => Clause::keyed(new Falsy())], 1, 2),
         ];
 
         $simplified_formula = Algebra::simplifyCNF($formula);
@@ -189,8 +189,8 @@ final class AlgebraTest extends TestCase
     {
         /** @psalm-suppress ArgumentTypeCoercion due to Psalm bug */
         $formula = [
-            new Clause(['$a' => ['truthy' => new Truthy()], '$b' => ['truthy' => new Truthy()]], 1, 1),
-            new Clause(['$a' => ['falsy' => new Falsy()], '$b' => ['truthy' => new Truthy()]], 1, 2),
+            new Clause(['$a' => Clause::keyed(new Truthy()), '$b' => Clause::keyed(new Truthy())], 1, 1),
+            new Clause(['$a' => Clause::keyed(new Falsy()), '$b' => Clause::keyed(new Truthy())], 1, 2),
         ];
 
         $simplified_formula = Algebra::simplifyCNF($formula);
@@ -202,8 +202,8 @@ final class AlgebraTest extends TestCase
     public function testSimplifyCNFWithNonUselessTerm(): void
     {
         $formula = [
-            new Clause(['$a' => ['truthy' => new Truthy()], '$b' => ['truthy' => new Truthy()]], 1, 1),
-            new Clause(['$a' => ['falsy' => new Falsy()], '$b' => ['falsy' => new Falsy()]], 1, 2),
+            new Clause(['$a' => Clause::keyed(new Truthy()), '$b' => Clause::keyed(new Truthy())], 1, 1),
+            new Clause(['$a' => Clause::keyed(new Falsy()), '$b' => Clause::keyed(new Falsy())], 1, 2),
         ];
 
         $simplified_formula = Algebra::simplifyCNF($formula);
@@ -217,9 +217,9 @@ final class AlgebraTest extends TestCase
     {
         /** @psalm-suppress ArgumentTypeCoercion due to Psalm bug */
         $formula = [
-            new Clause(['$a' => ['truthy' => new Truthy()], '$b' => ['truthy' => new Truthy()]], 1, 1),
-            new Clause(['$b' => ['truthy' => new Truthy()]], 1, 2),
-            new Clause(['$a' => ['falsy' => new Falsy()], '$b' => ['truthy' => new Truthy()]], 1, 3),
+            new Clause(['$a' => Clause::keyed(new Truthy()), '$b' => Clause::keyed(new Truthy())], 1, 1),
+            new Clause(['$b' => Clause::keyed(new Truthy())], 1, 2),
+            new Clause(['$a' => Clause::keyed(new Falsy()), '$b' => Clause::keyed(new Truthy())], 1, 3),
         ];
 
         $simplified_formula = Algebra::simplifyCNF($formula);
@@ -234,7 +234,7 @@ final class AlgebraTest extends TestCase
 
         $clause1 = (new Clause(
             [
-                '$a' => [(string)$a1 => $a1],
+                '$a' => Clause::keyed($a1),
             ],
             1,
             2,
@@ -248,7 +248,7 @@ final class AlgebraTest extends TestCase
 
         $clause2 = (new Clause(
             [
-                '$b' => [(string)$a2 => $a2],
+                '$b' => Clause::keyed($a2),
             ],
             1,
             2,

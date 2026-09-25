@@ -8,6 +8,7 @@ use Override;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
 use Psalm\Internal\Type\TypeVariableBounds;
 use Psalm\Type\Atomic;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 /**
  * Denotes a type variable: a placeholder (e.g. `` `_0 ``) minted for a class template
@@ -21,6 +22,7 @@ use Psalm\Type\Atomic;
  */
 final class TTypeVariable extends Atomic
 {
+    use UnserializeMemoryUsageSuppressionTrait;
 
     public function __construct(
         public readonly string $name,
@@ -31,7 +33,7 @@ final class TTypeVariable extends Atomic
     }
 
     #[Override]
-    public function getKey(bool $include_extra = true): string
+    protected function computeKey(bool $include_extra = true): string
     {
         return $this->name;
     }
@@ -56,7 +58,7 @@ final class TTypeVariable extends Atomic
      *      their current state
      */
     #[Override]
-    public function getId(bool $exact = true, bool $nested = false): string
+    protected function computeId(bool $exact = true, bool $nested = false): string
     {
         $bound = null;
 

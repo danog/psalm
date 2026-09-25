@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Internal\Analyzer\Statements\Block\IfElse;
 
 use PhpParser;
+use Psalm\Internal\Analyzer\Statements\Expression\Fetch\VariableFetchAnalyzer;
 use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Context;
@@ -39,8 +40,6 @@ use function array_merge;
 use function array_reduce;
 use function count;
 use function in_array;
-use function preg_match;
-use function preg_quote;
 use function spl_object_id;
 
 /**
@@ -129,7 +128,7 @@ final class IfAnalyzer
 
                 foreach ($changed_var_ids as $changed_var_id => $_) {
                     foreach ($if_context->vars_in_scope as $var_id => $_) {
-                        if (preg_match('/' . preg_quote($changed_var_id, '/') . '[\]\[\-]/', $var_id)
+                        if (VariableFetchAnalyzer::mentionsVarIdAsBase($var_id, $changed_var_id)
                             && !array_key_exists($var_id, $changed_var_ids)
                             && !array_key_exists($var_id, $cond_referenced_var_ids)
                         ) {
@@ -239,8 +238,6 @@ final class IfAnalyzer
                     $if_scope->reasonable_clauses = Context::filterClauses(
                         $var_id,
                         $if_scope->reasonable_clauses,
-                        $if_context->vars_in_scope[$var_id] ?? null,
-                        $statements_analyzer,
                     );
                 }
             }

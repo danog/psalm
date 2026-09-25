@@ -92,12 +92,7 @@ final class IncDecExpressionAnalyzer
                 }
 
                 // removes dependent vars from $context
-                $context->removeDescendents(
-                    $var_id,
-                    $context->vars_in_scope[$var_id],
-                    $return_type,
-                    $statements_analyzer,
-                );
+                $context->removeDescendents($var_id);
             }
         } else {
             $fake_right_expr = new VirtualInt(1, $stmt->getAttributes());

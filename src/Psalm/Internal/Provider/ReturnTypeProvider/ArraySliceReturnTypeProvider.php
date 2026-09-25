@@ -33,6 +33,8 @@ final class ArraySliceReturnTypeProvider implements FunctionReturnTypeProviderIn
         return ['array_slice'];
     }
 
+        /** @psalm-external-mutation-free */
+
     #[Override]
     public static function getFunctionReturnType(FunctionReturnTypeProviderEvent $event): Union
     {
@@ -64,8 +66,6 @@ final class ArraySliceReturnTypeProvider implements FunctionReturnTypeProviderIn
                 $atomic_types = array_merge($atomic_types, $atomic_type->as->getAtomicTypes());
                 continue;
             }
-
-
 
             if ($atomic_type instanceof TKeyedArray) {
                 $atomic_type = $atomic_type->getGenericArrayType();

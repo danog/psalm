@@ -333,12 +333,7 @@ final class SprintfReturnTypeProvider implements FunctionReturnTypeProviderInter
             }
 
             // check for unions of either
-            $atomic_types = $type->getAtomicTypes();
-            if ($atomic_types === []) {
-                continue;
-            }
-
-            foreach ($atomic_types as $atomic_type) {
+            foreach ($type->getAtomicTypes() as $atomic_type) {
                 if ($atomic_type instanceof TNonEmptyString
                     || $atomic_type instanceof TNonEmptyNonspecificLiteralString
                     || $atomic_type instanceof TClassString

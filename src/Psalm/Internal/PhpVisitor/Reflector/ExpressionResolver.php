@@ -12,6 +12,7 @@ use PhpParser\Node\Expr\ConstFetch;
 use Psalm\Aliases;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
+use Psalm\Internal\Codebase\ConstantMap;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\Scanner\UnresolvedConstant\ArrayOffsetFetch;
 use Psalm\Internal\Scanner\UnresolvedConstant\ArraySpread;
@@ -35,12 +36,9 @@ use Psalm\Internal\Scanner\UnresolvedConstantComponent;
 use ReflectionClass;
 use ReflectionFunction;
 
-use function array_merge;
-use function array_values;
 use function assert;
 use function class_exists;
 use function function_exists;
-use function get_defined_constants;
 use function in_array;
 use function interface_exists;
 use function strtolower;
@@ -528,10 +526,8 @@ final class ExpressionResolver
             && isset($function->getArgs()[0])
             && ($const_name_node = $function->getArgs()[0]->value) instanceof PhpParser\Node\Scalar\String_
         ) {
-            // the runtime's own (non-user) constants
-            $predefined_constants = get_defined_constants();
-
-            return isset($predefined_constants[$const_name_node->value]);
+            // the internal constants the analyzer models
+            return ConstantMap::has($const_name_node->value);
         }
 
         return null;
