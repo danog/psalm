@@ -1,0 +1,975 @@
+//! Environment, error handling, class/function introspection and assorted builtins.
+
+use crate::containers::DynCallable;
+use crate::error::RtError;
+use crate::key::ArrayKey;
+use crate::list::List;
+use crate::map::Map;
+use crate::mixed::Mixed;
+use crate::string::Str;
+use crate::traits::*;
+use std::cell::RefCell;
+use crate::{FastMap, fast_map};
+
+thread_local! {
+    static INI: RefCell<FastMap<Vec<u8>, Str>> = RefCell::new(fast_map());
+    static ERROR_LEVEL: RefCell<i64> = RefCell::new(32767);
+    static LAST_ERROR: RefCell<Option<Map<ArrayKey, Mixed>>> = RefCell::new(None);
+    static INCLUDED: RefCell<Vec<Str>> = RefCell::new(Vec::new());
+}
+
+pub fn getenv(name: &Str) -> Option<Str> {
+    std::env::var_os(&*name.to_string_lossy()).map(|v| Str::from_string(v.to_string_lossy().into_owned()))
+}
+pub fn putenv(assignment: &Str) -> bool {
+    let s = assignment.to_string_lossy().into_owned();
+    match s.split_once('=') {
+        Some((k, v)) => {
+            // SAFETY: single-threaded runtime
+            unsafe { std::env::set_var(k, v) };
+            true
+        }
+        None => {
+            unsafe { std::env::remove_var(&s) };
+            true
+        }
+    }
+}
+pub fn ini_set(name: &Str, value: &Str) -> Option<Str> {
+    INI.with(|i| i.borrow_mut().insert(name.to_vec(), value.clone()))
+}
+pub fn ini_get(name: &Str) -> Option<Str> {
+    INI.with(|i| i.borrow().get(name.as_bytes()).cloned()).or_else(|| match name.as_bytes() {
+        b"memory_limit" => Some(Str::from_static("-1")),
+        b"xdebug.scream" => None,
+        b"precision" => Some(Str::from_static("14")),
+        b"zend.assertions" => Some(Str::from_static("1")),
+        _ => None,
+    })
+}
+pub fn set_error_handler(_h: &Mixed) {}
+pub fn restore_error_handler() -> bool {
+    true
+}
+pub fn set_exception_handler(_h: &Mixed) {}
+pub fn error_reporting(level: Option<i64>) -> i64 {
+    ERROR_LEVEL.with(|l| {
+        let old = *l.borrow();
+        if let Some(n) = level {
+            *l.borrow_mut() = n;
+        }
+        old
+    })
+}
+pub fn error_log(msg: &Str) -> bool {
+    crate::output::eprint(msg);
+    crate::output::eprint(b"\n");
+    true
+}
+pub fn trigger_error(msg: &Str, level: i64) -> Result<bool, RtError> {
+    if level == 256 {
+        return Err(RtError::new("ErrorException", msg.clone()));
+    }
+    crate::output::eprint(msg);
+    crate::output::eprint(b"\n");
+    Ok(true)
+}
+/// `error_get_last()` as (type, message, file, line); the runtime raises PHP errors as exceptions, so None.
+pub fn error_get_last_typed() -> Option<(i64, Str, Str, i64)> {
+    LAST_ERROR.with(|e| e.borrow().clone().map(|m| (
+        m.get(&ArrayKey::from_static("type")).and_then(|v| if let Mixed::Int(i) = v { Some(*i) } else { None }).unwrap_or(0),
+        m.get(&ArrayKey::from_static("message")).map(|v| v.to_php_str()).unwrap_or_else(Str::empty),
+        m.get(&ArrayKey::from_static("file")).map(|v| v.to_php_str()).unwrap_or_else(Str::empty),
+        m.get(&ArrayKey::from_static("line")).and_then(|v| if let Mixed::Int(i) = v { Some(*i) } else { None }).unwrap_or(0),
+    )))
+}
+
+/// `parse_url($url, $component)` for a string component (None when the URL lacks it or is malformed).
+pub fn parse_url_component(url: &Str, component: i64) -> Option<Str> {
+    match parse_url(url, component) {
+        Mixed::Str(s) => Some(s),
+        Mixed::Int(i) => Some(Str::from_string(i.to_string())),
+        _ => None,
+    }
+}
+
+/// `parse_url($url, PHP_URL_PORT)`.
+pub fn parse_url_port(url: &Str) -> Option<i64> {
+    match parse_url(url, 2) {
+        Mixed::Int(i) => Some(i),
+        Mixed::Str(s) => s.to_string_lossy().parse().ok(),
+        _ => None,
+    }
+}
+
+pub fn error_get_last() -> Option<Mixed> {
+    LAST_ERROR.with(|e| e.borrow().clone().map(Mixed::Arr))
+}
+pub fn gc_collect_cycles() -> i64 {
+    0
+}
+pub fn gc_disable() {}
+pub fn gc_enable() {}
+pub fn memory_get_usage(_real: bool) -> i64 {
+    0
+}
+pub fn memory_get_peak_usage(_real: bool) -> i64 {
+    0
+}
+pub fn usleep(us: i64) {
+    std::thread::sleep(std::time::Duration::from_micros(us.max(0) as u64));
+}
+pub fn sleep(s: i64) -> i64 {
+    std::thread::sleep(std::time::Duration::from_secs(s.max(0) as u64));
+    0
+}
+/// The extensions the runtime implements, spelled as PHP's own module entries spell them
+/// (`ext/reflection/php_reflection.c` registers `Reflection`, `ext/spl/php_spl.c` `SPL`, ...).
+/// One table answers both `extension_loaded()` and `get_loaded_extensions()`, so the two agree.
+/// The extensions a stock PHP build of the reference machine loads (`php -m` there, PECL modules left out):
+/// Psalm loads the stub of an extension neither required by composer.json nor configured when the runtime has
+/// it, so a class such as `PDOException` or `Phar` is known to the compiled analyzer the way it is to PHP.
+pub const LOADED_EXTENSIONS: &[&str] = &[
+    "Core", "date", "standard", "json", "tokenizer", "mbstring", "ctype", "pcre", "SPL", "SimpleXML", "dom",
+    "libxml", "filter", "hash", "random", "Reflection", "PDO", "pdo_mysql", "Phar", "xml", "xmlreader", "xmlwriter",
+    "xsl", "zlib", "curl", "openssl", "posix", "pcntl", "iconv", "session", "sodium", "fileinfo", "gd", "bcmath",
+    "calendar", "exif", "ftp", "gettext", "gmp", "intl", "mysqli", "mysqlnd", "readline", "shmop", "soap", "sockets",
+    "sysvmsg", "sysvsem", "sysvshm", "zip", "FFI",
+];
+
+/// PHP matches the name case-insensitively (`zend_hash_str_find` over the lowercased name).
+pub fn extension_loaded(name: &Str) -> bool {
+    let want = name.to_string_lossy().to_ascii_lowercase();
+    LOADED_EXTENSIONS.iter().any(|e| e.eq_ignore_ascii_case(&want))
+}
+pub fn phpversion(ext: Option<&Str>) -> Option<Str> {
+    match ext {
+        None => Some(crate::consts::PHP_VERSION),
+        Some(e) if extension_loaded(e) => Some(crate::consts::PHP_VERSION),
+        _ => None,
+    }
+}
+pub fn php_sapi_name() -> Str {
+    Str::from_static("cli")
+}
+pub fn spl_autoload_register(_f: Option<&Mixed>) -> bool {
+    true
+}
+pub fn setlocale(_cat: i64, _loc: &Str) -> Option<Str> {
+    Some(Str::from_static("C"))
+}
+pub fn date(format: &Str, ts: Option<i64>) -> Str {
+    let secs = ts.unwrap_or_else(crate::builtins::math::time);
+    let days = secs.div_euclid(86400);
+    let rem = secs.rem_euclid(86400);
+    let (y, m, d) = civil_from_days(days);
+    let (h, mi, s) = (rem / 3600, (rem % 3600) / 60, rem % 60);
+    let mut out = String::new();
+    for c in format.to_string_lossy().chars() {
+        match c {
+            'Y' => out.push_str(&format!("{:04}", y)),
+            'm' => out.push_str(&format!("{:02}", m)),
+            'd' => out.push_str(&format!("{:02}", d)),
+            'H' => out.push_str(&format!("{:02}", h)),
+            'i' => out.push_str(&format!("{:02}", mi)),
+            's' => out.push_str(&format!("{:02}", s)),
+            'U' => out.push_str(&secs.to_string()),
+            'D' => out.push_str(["Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed"][days.rem_euclid(7) as usize]),
+            'N' => out.push_str(&((days.rem_euclid(7) + 3) % 7 + 1).to_string()),
+            other => out.push(other),
+        }
+    }
+    Str::from_string(out)
+}
+fn civil_from_days(z: i64) -> (i64, i64, i64) {
+    let z = z + 719468;
+    let era = z.div_euclid(146097);
+    let doe = z.rem_euclid(146097);
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    (if m <= 2 { y + 1 } else { y }, m, d)
+}
+pub fn strtotime(_s: &Str) -> Option<i64> {
+    None
+}
+pub fn checkdate(m: i64, d: i64, y: i64) -> bool {
+    m >= 1 && m <= 12 && d >= 1 && d <= 31 && y >= 1
+}
+pub fn debug_print_backtrace(_options: i64, _limit: i64) {}
+pub fn debug_zval_refcount(_m: &Mixed) -> i64 {
+    1
+}
+pub fn cli_set_process_title(_t: &Str) -> bool {
+    true
+}
+pub fn getmypid() -> i64 {
+    std::process::id() as i64
+}
+pub fn gethostname() -> Str {
+    Str::from_static("localhost")
+}
+pub fn get_include_path() -> Str {
+    Str::from_static(".")
+}
+pub fn get_included_files() -> List<Str> {
+    INCLUDED.with(|i| i.borrow().clone().into())
+}
+/// `zend_extensions`: the runtime loads none, so asking for them lists nothing.
+pub fn get_loaded_extensions(zend_extensions: bool) -> List<Str> {
+    if zend_extensions {
+        return List::new();
+    }
+    LOADED_EXTENSIONS.iter().map(|e| Str::from_static(*e)).collect::<Vec<_>>().into()
+}
+/// Names of the functions the runtime implements natively (see `builtin_callable` and the eval call table).
+pub const BUILTIN_FUNCTION_NAMES: &[&str] = &[
+    "strtolower", "strtoupper", "ucfirst", "lcfirst", "trim", "strval", "strlen", "intval", "is_string", "is_int",
+    "is_array", "is_null", "is_numeric", "is_object", "is_bool", "is_float", "is_scalar", "strcmp", "strcasecmp",
+    "strnatcmp", "strnatcasecmp", "ucwords", "ltrim", "rtrim", "md5", "floatval", "boolval", "count", "array_values",
+    "array_keys", "array_unique", "array_merge", "preg_match", "array_map", "array_filter", "str_contains",
+    "str_starts_with", "str_ends_with", "array_is_list", "array_key_first", "array_key_last", "array_find",
+    "array_any", "array_all", "json_validate", "mb_strcut", "opcache_get_status", "posix_kill", "pcntl_fork",
+    "igbinary_serialize", "lz4_compress",
+];
+
+/// `get_defined_functions()`: the runtime's builtins as `internal`, the compiled program's functions
+/// (a static table generated per crate) as `user`.
+pub fn get_defined_functions(user_functions: &[&'static str]) -> Map<Str, List<Str>> {
+    let internal: List<Str> = List::from_vec(BUILTIN_FUNCTION_NAMES.iter().map(|n| Str::from_static(n)).collect());
+    let user: List<Str> = List::from_vec(user_functions.iter().map(|n| Str::from_static(n)).collect());
+    let mut m: Map<Str, List<Str>> = Map::new();
+    m.insert(Str::from_static("internal"), internal);
+    m.insert(Str::from_static("user"), user);
+    m
+}
+/// `sapi_windows_cp_is_utf8()`: the runtime's console is UTF-8.
+pub fn sapi_windows_cp_is_utf8() -> bool {
+    true
+}
+pub fn opcache_get_status() -> Option<Mixed> {
+    None
+}
+pub fn get_cfg_var(_n: &Str) -> Option<Str> {
+    None
+}
+pub fn posix_kill(_pid: i64, _sig: i64) -> bool {
+    false
+}
+pub fn posix_get_last_error() -> i64 {
+    0
+}
+pub fn posix_strerror(_e: i64) -> Str {
+    Str::from_static("Unknown error")
+}
+pub fn libxml_use_internal_errors(_b: bool) -> bool {
+    false
+}
+pub fn libxml_clear_errors() {}
+pub fn libxml_get_errors() -> List<Mixed> {
+    List::new()
+}
+pub fn settype(_m: &Mixed, _t: &Str) -> bool {
+    false
+}
+pub fn array_walk_recursive(_a: &Mixed, _cb: &Mixed) -> bool {
+    true
+}
+pub fn parse_url(url: &Str, component: i64) -> Mixed {
+    let s = url.to_string_lossy().into_owned();
+    let mut m: Map<ArrayKey, Mixed> = Map::new();
+    let (scheme, rest) = match s.split_once("://") {
+        Some((a, b)) => (Some(a.to_string()), b.to_string()),
+        None => (None, s.clone()),
+    };
+    if let Some(sc) = &scheme {
+        m.insert(ArrayKey::from("scheme"), Mixed::Str(Str::from_str(sc)));
+    }
+    let (host_part, path) = if scheme.is_some() {
+        match rest.find('/') {
+            Some(i) => (Some(rest[..i].to_string()), rest[i..].to_string()),
+            None => (Some(rest.clone()), String::new()),
+        }
+    } else {
+        (None, rest.clone())
+    };
+    if let Some(h) = host_part {
+        m.insert(ArrayKey::from("host"), Mixed::Str(Str::from_string(h)));
+    }
+    let (path, query) = match path.split_once('?') {
+        Some((p, q)) => (p.to_string(), Some(q.to_string())),
+        None => (path, None),
+    };
+    if !path.is_empty() {
+        m.insert(ArrayKey::from("path"), Mixed::Str(Str::from_string(path)));
+    }
+    if let Some(q) = query {
+        m.insert(ArrayKey::from("query"), Mixed::Str(Str::from_string(q)));
+    }
+    match component {
+        -1 => Mixed::Arr(m),
+        0 => m.get(&ArrayKey::from("scheme")).cloned().unwrap_or(Mixed::Null),
+        1 => m.get(&ArrayKey::from("host")).cloned().unwrap_or(Mixed::Null),
+        5 => m.get(&ArrayKey::from("path")).cloned().unwrap_or(Mixed::Null),
+        6 => m.get(&ArrayKey::from("query")).cloned().unwrap_or(Mixed::Null),
+        _ => Mixed::Null,
+    }
+}
+/// `filter_var($s, FILTER_VALIDATE_INT)`: the int, None for the `false` outcome.
+pub fn filter_validate_int(s: &Str) -> Option<i64> {
+    match filter_var(&Mixed::Str(s.clone()), 257, Mixed::Null) {
+        Mixed::Int(i) => Some(i),
+        _ => None,
+    }
+}
+
+/// `filter_var($s, FILTER_VALIDATE_FLOAT)`: the float, None for the `false` outcome.
+pub fn filter_validate_float(s: &Str) -> Option<f64> {
+    match filter_var(&Mixed::Str(s.clone()), 259, Mixed::Null) {
+        Mixed::Float(f) => Some(f),
+        Mixed::Int(i) => Some(i as f64),
+        _ => None,
+    }
+}
+
+/// `filter_var($s, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)`: None for an unrecognized value.
+pub fn filter_validate_bool(s: &Str) -> Option<bool> {
+    match filter_var(&Mixed::Str(s.clone()), 258, Mixed::Null) {
+        Mixed::Bool(b) => Some(b),
+        _ => None,
+    }
+}
+
+/// `filter_var($s, $filter)` for any other filter: the result's string form, None for the `false` outcome.
+pub fn filter_var_str(s: &Str, filter: i64) -> Option<Str> {
+    match filter_var(&Mixed::Str(s.clone()), filter, Mixed::Null) {
+        Mixed::Bool(false) | Mixed::Null => None,
+        other => Some(other.to_php_str()),
+    }
+}
+
+/// `$key++` on an array key: ints step, strings follow PHP's string increment.
+pub fn key_inc(k: &ArrayKey) -> ArrayKey {
+    match k {
+        ArrayKey::Int(i) => ArrayKey::Int(i.wrapping_add(1)),
+        ArrayKey::Str(s) => crate::traits::to_key(crate::support::mixed_inc(&Mixed::Str(s.clone()))),
+    }
+}
+
+/// `$key--` on an array key: ints step, strings are unchanged (as in PHP).
+pub fn key_dec(k: &ArrayKey) -> ArrayKey {
+    match k {
+        ArrayKey::Int(i) => ArrayKey::Int(i.wrapping_sub(1)),
+        ArrayKey::Str(s) => ArrayKey::Str(s.clone()),
+    }
+}
+
+/// `FILTER_VALIDATE_INT`: whitespace, an optional sign and decimal digits without a leading zero
+/// (`"01"` is not an integer to the filter, which is what keeps it a string array key).
+fn validate_int(b: &[u8]) -> Option<i64> {
+    let t = {
+        let mut a = 0;
+        let mut z = b.len();
+        while a < z && b[a].is_ascii_whitespace() {
+            a += 1;
+        }
+        while z > a && b[z - 1].is_ascii_whitespace() {
+            z -= 1;
+        }
+        &b[a..z]
+    };
+    if t.is_empty() {
+        return None;
+    }
+    let (neg, digits) = match t[0] {
+        b'-' => (true, &t[1..]),
+        b'+' => (false, &t[1..]),
+        _ => (false, t),
+    };
+    if digits.is_empty() || !digits.iter().all(|c| c.is_ascii_digit()) {
+        return None;
+    }
+    if digits.len() > 1 && digits[0] == b'0' {
+        return None;
+    }
+    let mut v: i64 = 0;
+    for &c in digits {
+        v = v.checked_mul(10)?;
+        let d = (c - b'0') as i64;
+        v = if neg { v.checked_sub(d)? } else { v.checked_add(d)? };
+    }
+    Some(v)
+}
+
+pub fn filter_var(v: &Mixed, filter: i64, _options: Mixed) -> Mixed {
+    let s = v.to_php_str();
+    match filter {
+        257 => match validate_int(s.as_bytes()) {
+            Some(i) => Mixed::Int(i),
+            None => Mixed::Bool(false),
+        },
+        259 => match crate::conv::parse_numeric(s.as_bytes()) {
+            Some(n) => Mixed::Float(n.to_f64()),
+            None => Mixed::Bool(false),
+        },
+        258 => match s.to_lowercase().as_bytes() {
+            b"1" | b"true" | b"on" | b"yes" => Mixed::Bool(true),
+            b"0" | b"false" | b"off" | b"no" | b"" => Mixed::Bool(false),
+            _ => Mixed::Null,
+        },
+        273 => {
+            if s.as_bytes().contains(&b':') { Mixed::Str(s) } else { Mixed::Bool(false) }
+        }
+        274 => {
+            if s.as_bytes().contains(&b'@') { Mixed::Str(s) } else { Mixed::Bool(false) }
+        }
+        _ => Mixed::Str(s),
+    }
+}
+/// The compiled program takes no command-line options through `getopt()` (its arguments are passed as `$argv`).
+/// `getopt()`, as php-src's ext/standard implements it over main/getopt.c: short options are the
+/// characters of `short` (`:` after one requires a value, `::` makes it optional), long options are
+/// the entries of `long` with the same suffixes. Parsing starts at `argv[1]` and stops at the first
+/// argument that is not an option or at `--`; unknown options are skipped. A value comes from
+/// `--name=value`, `--name value` (required values only), `-cvalue`, `-c=value` or `-c value`. An
+/// option given more than once collects its values in a list; one without a value is `false`.
+pub fn getopt(short: &Str, long: List<Str>) -> Map<Str, crate::conv::OptValue> {
+    use crate::conv::OptValue;
+
+    // (name, needs: 0 = flag, 1 = required value, 2 = optional value)
+    let mut specs: Vec<(Vec<u8>, u8)> = Vec::new();
+    let sb = short.as_bytes();
+    let mut i = 0;
+    while i < sb.len() {
+        let c = sb[i];
+        i += 1;
+        if c == b':' {
+            continue;
+        }
+        let mut needs = 0u8;
+        while i < sb.len() && sb[i] == b':' && needs < 2 {
+            needs += 1;
+            i += 1;
+        }
+        specs.push((vec![c], needs));
+    }
+    for l in long.iter() {
+        let mut name = l.as_bytes().to_vec();
+        let mut needs = 0u8;
+        while name.last() == Some(&b':') && needs < 2 {
+            name.pop();
+            needs += 1;
+        }
+        if !name.is_empty() {
+            specs.push((name, needs));
+        }
+    }
+
+    let argv: Vec<Vec<u8>> = crate::support::argv().iter().map(|a| a.as_bytes().to_vec()).collect();
+    let mut out: Map<Str, OptValue> = Map::new();
+    let mut push = |out: &mut Map<Str, OptValue>, name: &[u8], value: Option<&[u8]>| {
+        let v = match value {
+            Some(b) => OptValue::Str(Str::from_bytes(b)),
+            None => OptValue::False,
+        };
+        let key = Str::from_bytes(name);
+        let merged = match out.get(&key).cloned() {
+            None => v,
+            Some(OptValue::List(l)) => {
+                let mut l = l;
+                l.push(v);
+                OptValue::List(l)
+            }
+            Some(prev) => OptValue::List(List::from_vec(vec![prev, v])),
+        };
+        out.insert(key, merged);
+    };
+
+    let mut ind = 1;
+    while ind < argv.len() {
+        let arg = &argv[ind];
+        if arg.first() != Some(&b'-') || arg.len() == 1 {
+            break;
+        }
+        if arg.starts_with(b"--") {
+            if arg.len() == 2 {
+                break;
+            }
+            let body = &arg[2..];
+            let (name, inline) = match body.iter().position(|&b| b == b'=') {
+                Some(p) => (&body[..p], Some(&body[p + 1..])),
+                None => (body, None),
+            };
+            ind += 1;
+            let Some((_, needs)) = specs.iter().find(|(n, _)| n.len() > 1 && n.as_slice() == name) else {
+                continue;
+            };
+            match (*needs, inline) {
+                (0, _) => push(&mut out, name, None),
+                (_, Some(v)) => push(&mut out, name, Some(v)),
+                (1, None) => {
+                    if ind < argv.len() {
+                        push(&mut out, name, Some(&argv[ind]));
+                        ind += 1;
+                    }
+                    // a required value that is missing is an error PHP reports; the option is dropped
+                }
+                (_, None) => push(&mut out, name, None),
+            }
+            continue;
+        }
+        // a cluster of short options: -abc, -cvalue, -c=value, -c value
+        let mut pos = 1;
+        ind += 1;
+        while pos < arg.len() {
+            let c = arg[pos];
+            pos += 1;
+            let Some((_, needs)) = specs.iter().find(|(n, _)| n.len() == 1 && n[0] == c) else {
+                continue;
+            };
+            let name = [c];
+            if *needs == 0 {
+                push(&mut out, &name, None);
+                continue;
+            }
+            let rest = &arg[pos..];
+            if !rest.is_empty() {
+                let v = if rest[0] == b'=' { &rest[1..] } else { rest };
+                push(&mut out, &name, Some(v));
+            } else if *needs == 1 {
+                if ind < argv.len() {
+                    push(&mut out, &name, Some(&argv[ind]));
+                    ind += 1;
+                }
+            } else {
+                push(&mut out, &name, None);
+            }
+            break;
+        }
+    }
+    out
+}
+/// `hrtime()`: (seconds, nanoseconds) of a monotonic clock.
+pub fn hrtime_parts() -> (i64, i64) {
+    thread_local! { static START: std::time::Instant = std::time::Instant::now(); }
+    let d = START.with(|s| s.elapsed());
+    (d.as_secs() as i64, d.subsec_nanos() as i64)
+}
+
+pub fn rt_function_is_builtin(name: &Str) -> bool {
+    let lc = name.as_bytes().to_ascii_lowercase();
+    let lc = if lc.first() == Some(&b'\\') { lc[1..].to_vec() } else { lc };
+    builtin_function_exists(&lc) || BUILTIN_FUNCTION_NAMES.iter().any(|n| n.as_bytes() == lc.as_slice())
+}
+
+// ---------------------------------------------------------------- incremental hashing
+
+/// `hash_init()` context: the algorithm and the data fed so far.
+pub struct HashContext {
+    pub algo: Str,
+    pub data: crate::support::RwCell<Vec<u8>>,
+}
+impl crate::mixed::PhpObject for HashContext {
+    fn class_name(&self) -> &'static str {
+        "HashContext"
+    }
+    fn class_ancestors(&self) -> &'static [&'static str] {
+        &["hashcontext"]
+    }
+    fn obj_id(&self) -> usize {
+        self as *const _ as usize
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+pub fn hash_init(algo: &Str) -> Mixed {
+    Mixed::Obj(std::rc::Rc::new(HashContext { algo: algo.clone(), data: crate::support::RwCell::new(Vec::new()) }))
+}
+pub fn hash_update(ctx: &Mixed, data: &Str) -> bool {
+    if let Mixed::Obj(o) = ctx {
+        if let Some(h) = o.as_any().downcast_ref::<HashContext>() {
+            h.data.borrow_mut().extend_from_slice(data.as_bytes());
+            return true;
+        }
+    }
+    false
+}
+pub fn hash_final(ctx: &Mixed, _binary: bool) -> Str {
+    if let Mixed::Obj(o) = ctx {
+        if let Some(h) = o.as_any().downcast_ref::<HashContext>() {
+            let data = Str::from_vec(h.data.borrow().clone());
+            return crate::builtins::string::hash(&h.algo, &data, false).unwrap_or_default();
+        }
+    }
+    Str::empty()
+}
+
+// ---------------------------------------------------------------- pack / unpack
+
+/// One `pack()`/`unpack()` format code with its repeat count (None: `*`) and, for unpack, its key name.
+fn parse_format(format: &[u8]) -> Vec<(u8, Option<usize>, Vec<u8>)> {
+    let mut out = Vec::new();
+    for part in format.split(|b| *b == b'/') {
+        if part.is_empty() {
+            continue;
+        }
+        let code = part[0];
+        let mut i = 1;
+        let mut count: Option<usize> = Some(1);
+        if i < part.len() && part[i] == b'*' {
+            count = None;
+            i += 1;
+        } else {
+            let start = i;
+            while i < part.len() && part[i].is_ascii_digit() {
+                i += 1;
+            }
+            if i > start {
+                count = Some(String::from_utf8_lossy(&part[start..i]).parse().unwrap_or(1));
+            }
+        }
+        out.push((code, count, part[i..].to_vec()));
+    }
+    out
+}
+
+fn int_width(code: u8) -> Option<(usize, bool, bool)> {
+    // (bytes, big endian, signed)
+    match code {
+        b'C' => Some((1, false, false)),
+        b'c' => Some((1, false, true)),
+        b'n' => Some((2, true, false)),
+        b'v' | b'S' => Some((2, false, false)),
+        b's' => Some((2, false, true)),
+        b'N' => Some((4, true, false)),
+        b'V' | b'L' => Some((4, false, false)),
+        b'l' => Some((4, false, true)),
+        b'J' => Some((8, true, false)),
+        b'P' | b'Q' => Some((8, false, false)),
+        b'q' => Some((8, false, true)),
+        _ => None,
+    }
+}
+
+pub fn pack(format: &Str, args: &Mixed) -> Str {
+    let values: Vec<Mixed> = match args {
+        Mixed::Arr(a) => a.iter().map(|(_, v)| v.clone()).collect(),
+        other => vec![other.clone()],
+    };
+    let mut vi = 0;
+    let mut out = Vec::new();
+    for (code, count, _) in parse_format(format.as_bytes()) {
+        match code {
+            b'a' | b'A' | b'Z' => {
+                let s = values.get(vi).map(|v| crate::traits::ToStr::to_php_str(v)).unwrap_or_default();
+                vi += 1;
+                let bytes = s.as_bytes();
+                match count {
+                    None => {
+                        out.extend_from_slice(bytes);
+                        if code == b'Z' {
+                            out.push(0);
+                        }
+                    }
+                    Some(n) => {
+                        let take = bytes.len().min(n);
+                        out.extend_from_slice(&bytes[..take]);
+                        let pad = if code == b'A' { b' ' } else { 0 };
+                        for _ in take..n {
+                            out.push(pad);
+                        }
+                    }
+                }
+            }
+            _ => {
+                if let Some((width, big, _)) = int_width(code) {
+                    let n = count.unwrap_or(values.len().saturating_sub(vi));
+                    for _ in 0..n {
+                        let v = values.get(vi).map(|v| crate::traits::ToInt::to_php_int(v)).unwrap_or(0) as u64;
+                        vi += 1;
+                        let bytes = if big { v.to_be_bytes() } else { v.to_le_bytes() };
+                        if big {
+                            out.extend_from_slice(&bytes[8 - width..]);
+                        } else {
+                            out.extend_from_slice(&bytes[..width]);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Str::from_vec(out)
+}
+
+pub fn unpack(format: &Str, data: &Str, offset: i64) -> Map<ArrayKey, Mixed> {
+    let bytes = data.as_bytes();
+    let mut pos = offset.max(0) as usize;
+    let mut out: Map<ArrayKey, Mixed> = Map::new();
+    for (code, count, name) in parse_format(format.as_bytes()) {
+        let key = |i: usize, single: bool| -> ArrayKey {
+            if name.is_empty() {
+                ArrayKey::Int(i as i64 + 1)
+            } else if single {
+                ArrayKey::from_str_val(Str::from_bytes(&name))
+            } else {
+                let mut k = name.clone();
+                k.extend_from_slice((i + 1).to_string().as_bytes());
+                ArrayKey::from_str_val(Str::from_bytes(&k))
+            }
+        };
+        match code {
+            b'a' | b'A' | b'Z' => {
+                let n = count.unwrap_or(bytes.len().saturating_sub(pos));
+                let end = (pos + n).min(bytes.len());
+                let mut s = bytes[pos.min(end)..end].to_vec();
+                if code == b'A' {
+                    while s.last().map_or(false, |b| *b == b' ' || *b == 0) {
+                        s.pop();
+                    }
+                }
+                if code == b'Z' {
+                    if let Some(p) = s.iter().position(|b| *b == 0) {
+                        s.truncate(p);
+                    }
+                }
+                out.insert(key(0, true), Mixed::Str(Str::from_vec(s)));
+                pos = end;
+            }
+            _ => {
+                if let Some((width, big, signed)) = int_width(code) {
+                    let n = count.unwrap_or(bytes.len().saturating_sub(pos) / width.max(1));
+                    for i in 0..n {
+                        if pos + width > bytes.len() {
+                            break;
+                        }
+                        let chunk = &bytes[pos..pos + width];
+                        let mut buf = [0u8; 8];
+                        let v: u64 = if big {
+                            buf[8 - width..].copy_from_slice(chunk);
+                            u64::from_be_bytes(buf)
+                        } else {
+                            buf[..width].copy_from_slice(chunk);
+                            u64::from_le_bytes(buf)
+                        };
+                        let v = if signed && width < 8 {
+                            let shift = 64 - width * 8;
+                            ((v << shift) as i64) >> shift
+                        } else {
+                            v as i64
+                        };
+                        out.insert(key(i, n == 1 && count == Some(1)), Mixed::Int(v));
+                        pos += width;
+                    }
+                }
+            }
+        }
+    }
+    out
+}
+pub fn serialize(m: &Mixed) -> Str {
+    fn ser(m: &Mixed, out: &mut Vec<u8>) {
+        match m {
+            Mixed::Null => out.extend_from_slice(b"N;"),
+            Mixed::Bool(b) => out.extend_from_slice(if *b { b"b:1;" } else { b"b:0;" }),
+            Mixed::Int(i) => out.extend_from_slice(format!("i:{};", i).as_bytes()),
+            Mixed::Float(f) => out.extend_from_slice(format!("d:{};", crate::conv::float_to_string_repr(*f)).as_bytes()),
+            Mixed::Str(s) => {
+                out.extend_from_slice(format!("s:{}:\"", s.len()).as_bytes());
+                out.extend_from_slice(s);
+                out.extend_from_slice(b"\";");
+            }
+            Mixed::Arr(a) => {
+                out.extend_from_slice(format!("a:{}:{{", a.len()).as_bytes());
+                for (k, v) in a.iter() {
+                    match k {
+                        ArrayKey::Int(i) => out.extend_from_slice(format!("i:{};", i).as_bytes()),
+                        ArrayKey::Str(s) => {
+                            out.extend_from_slice(format!("s:{}:\"", s.len()).as_bytes());
+                            out.extend_from_slice(s);
+                            out.extend_from_slice(b"\";");
+                        }
+                    }
+                    ser(v, out);
+                }
+                out.push(b'}');
+            }
+            Mixed::Obj(o) => {
+                let props = o.props();
+                out.extend_from_slice(format!("O:{}:\"{}\":{}:{{", o.class_name().len(), o.class_name(), props.len()).as_bytes());
+                for (k, v) in props {
+                    out.extend_from_slice(format!("s:{}:\"", k.len()).as_bytes());
+                    out.extend_from_slice(&k);
+                    out.extend_from_slice(b"\";");
+                    ser(&v, out);
+                }
+                out.push(b'}');
+            }
+            Mixed::Closure(_) => out.extend_from_slice(b"N;"),
+        }
+    }
+    let mut out = Vec::new();
+    ser(m, &mut out);
+    Str::from_vec(out)
+}
+pub fn unserialize(_s: &Str) -> Mixed {
+    Mixed::Bool(false)
+}
+pub fn get_parent_class_of(m: &Mixed) -> Option<Str> {
+    match m {
+        Mixed::Obj(o) => o.class_ancestors().get(1).map(|s| Str::from_str(s)),
+        _ => None,
+    }
+}
+pub fn get_object_vars(m: &Mixed) -> Map<ArrayKey, Mixed> {
+    crate::support::object_to_array(m)
+}
+pub fn token_name(id: i64) -> Str {
+    crate::consts::token_name(id)
+}
+pub fn token_get_all(code: &Str) -> List<Mixed> {
+    let mut out = Vec::new();
+    for (id, text, line, _pos) in crate::tokenizer::tokenize(code) {
+        if id < 256 {
+            out.push(Mixed::Str(text));
+        } else {
+            let mut t: Map<ArrayKey, Mixed> = Map::new();
+            t.push(Mixed::Int(id));
+            t.push(Mixed::Str(text));
+            t.push(Mixed::Int(line));
+            out.push(Mixed::Arr(t));
+        }
+    }
+    List::from_vec(out)
+}
+/// Backing function for the PhpToken runtime stub.
+pub fn __rt_tokenize(code: &Str) -> List<(i64, Str, i64, i64)> {
+    List::from_vec(crate::tokenizer::tokenize(code))
+}
+
+pub fn simplexml_load_string(_s: &Str) -> Option<Mixed> {
+    None
+}
+pub fn simplexml_load_file(_s: &Str) -> Option<Mixed> {
+    None
+}
+
+/// Builtin functions callable by name (used by `call_user_func`, `array_map('strtolower', ...)`).
+pub fn builtin_callable(lc: &[u8]) -> Option<DynCallable> {
+    macro_rules! s1 {
+        ($f:expr) => {
+            Some(DynCallable::from_rt(1, |a| Ok(Mixed::Str($f(&a[0].to_php_str())))))
+        };
+    }
+    match lc {
+        b"strtolower" => s1!(crate::builtins::string::strtolower),
+        b"strtoupper" => s1!(crate::builtins::string::strtoupper),
+        b"ucfirst" => s1!(crate::builtins::string::ucfirst),
+        b"lcfirst" => s1!(crate::builtins::string::lcfirst),
+        b"trim" => s1!(|s: &Str| crate::builtins::string::trim(s, None)),
+        b"strval" => s1!(|s: &Str| s.clone()),
+        b"strlen" => Some(DynCallable::from_rt(1, |a| Ok(Mixed::Int(a[0].to_php_str().len() as i64)))),
+        b"intval" => Some(DynCallable::from_rt(1, |a| Ok(Mixed::Int(a[0].to_php_int())))),
+        b"is_string" => Some(DynCallable::from_rt(1, |a| Ok(Mixed::Bool(a[0].is_string())))),
+        b"is_int" => Some(DynCallable::from_rt(1, |a| Ok(Mixed::Bool(a[0].is_int())))),
+        b"is_array" => Some(DynCallable::from_rt(1, |a| Ok(Mixed::Bool(a[0].is_array())))),
+        b"is_null" => Some(DynCallable::from_rt(1, |a| Ok(Mixed::Bool(a[0].is_null())))),
+        b"is_numeric" => Some(DynCallable::from_rt(1, |a| Ok(Mixed::Bool(a[0].is_numeric())))),
+        b"is_object" => Some(DynCallable::from_rt(1, |a| Ok(Mixed::Bool(a[0].is_object())))),
+        b"is_bool" => Some(DynCallable::from_rt(1, |a| Ok(Mixed::Bool(a[0].is_bool())))),
+        b"is_float" => Some(DynCallable::from_rt(1, |a| Ok(Mixed::Bool(a[0].is_float())))),
+        b"is_scalar" => Some(DynCallable::from_rt(1, |a| Ok(Mixed::Bool(a[0].is_scalar())))),
+        b"strcmp" => Some(DynCallable::from_rt(2, |a| Ok(Mixed::Int(crate::builtins::string::strcmp(&a[0].to_php_str(), &a[1].to_php_str()))))),
+        b"strcasecmp" => Some(DynCallable::from_rt(2, |a| Ok(Mixed::Int(crate::builtins::string::strcasecmp(&a[0].to_php_str(), &a[1].to_php_str()))))),
+        b"strnatcmp" => Some(DynCallable::from_rt(2, |a| Ok(Mixed::Int(crate::builtins::string::strnatcmp(&a[0].to_php_str(), &a[1].to_php_str()))))),
+        b"strnatcasecmp" => Some(DynCallable::from_rt(2, |a| Ok(Mixed::Int(crate::builtins::string::strnatcasecmp(&a[0].to_php_str(), &a[1].to_php_str()))))),
+        b"ucwords" => s1!(crate::builtins::string::ucwords),
+        b"ltrim" => s1!(|s: &Str| crate::builtins::string::ltrim(s, None)),
+        b"rtrim" => s1!(|s: &Str| crate::builtins::string::rtrim(s, None)),
+        b"md5" => s1!(crate::builtins::string::md5),
+        b"floatval" => Some(DynCallable::from_rt(1, |a| Ok(Mixed::Float(a[0].to_php_float())))),
+        b"boolval" => Some(DynCallable::from_rt(1, |a| Ok(Mixed::Bool(crate::traits::Truthy::truthy(&a[0]))))),
+        b"count" => Some(DynCallable::from_rt(1, |a| Ok(Mixed::Int(a[0].php_count())))),
+        b"array_values" => Some(DynCallable::from_rt(1, |a| Ok(Mixed::Arr(crate::support::mixed_to_array(a[0].clone()).renumbered())))),
+        b"array_keys" => Some(DynCallable::from_rt(1, |a| Ok(Mixed::Arr(crate::support::mixed_to_array(a[0].clone()).keys_list().into_iter().enumerate().map(|(i, k)| (ArrayKey::Int(i as i64), Mixed::from(k))).collect())))),
+        b"array_unique" => Some(DynCallable::from_rt(1, |a| Ok(Mixed::Arr(crate::builtins::array::array_unique_m(&crate::support::mixed_to_array(a[0].clone())))))),
+        b"array_merge" => Some(DynCallable::from_rt(0, |a| {
+            let parts: Vec<Map<ArrayKey, Mixed>> = a.into_iter().map(crate::support::mixed_to_array).collect();
+            let refs: Vec<&Map<ArrayKey, Mixed>> = parts.iter().collect();
+            Ok(Mixed::Arr(crate::builtins::array::array_merge_m(&refs)))
+        })),
+        _ => None,
+    }
+}
+
+pub fn builtin_function_exists(lc: &[u8]) -> bool {
+    builtin_callable(lc).is_some()
+        || matches!(
+            lc,
+            b"preg_match" | b"array_map" | b"array_filter" | b"str_contains" | b"str_starts_with" | b"str_ends_with" | b"array_is_list" | b"array_key_first" | b"array_key_last" | b"array_find" | b"array_any" | b"array_all" | b"json_validate" | b"mb_strcut" | b"opcache_get_status" | b"posix_kill" | b"pcntl_fork" | b"igbinary_serialize" | b"lz4_compress"
+        )
+}
+
+/// `defined()` on a runtime-provided constant name.
+pub fn builtin_constant_defined(name: &Str) -> bool {
+    crate::consts::builtin_value(name.as_bytes()).is_some()
+}
+
+#[cfg(test)]
+mod getopt_tests {
+    use super::*;
+    use crate::conv::OptValue;
+
+    fn run(args: &[&str], short: &str, long: &[&str]) -> Map<Str, OptValue> {
+        crate::support::set_argv(List::from_vec(args.iter().map(|a| Str::from_str(a)).collect()));
+        getopt(&Str::from_str(short), List::from_vec(long.iter().map(|l| Str::from_str(l)).collect()))
+    }
+
+    fn str_of(v: &OptValue) -> String {
+        match v {
+            OptValue::Str(s) => s.to_string_lossy().into_owned(),
+            OptValue::False => "false".into(),
+            OptValue::List(l) => format!("[{}]", l.iter().map(str_of).collect::<Vec<_>>().join(",")),
+        }
+    }
+
+    fn get(m: &Map<Str, OptValue>, k: &str) -> Option<String> {
+        m.get(&Str::from_str(k)).map(str_of)
+    }
+
+    #[test]
+    fn psalm_style_command_line() {
+        let m = run(
+            &["psalm", "-c", "psalm.xml.dist", "--threads=1", "--no-cache", "--no-progress", "--php-version=8.5", "src/"],
+            "f:mhvc:ir:",
+            &["threads:", "no-cache", "no-progress", "php-version:", "config:"],
+        );
+        assert_eq!(get(&m, "c").as_deref(), Some("psalm.xml.dist"));
+        assert_eq!(get(&m, "threads").as_deref(), Some("1"));
+        assert_eq!(get(&m, "no-cache").as_deref(), Some("false"));
+        assert_eq!(get(&m, "no-progress").as_deref(), Some("false"));
+        assert_eq!(get(&m, "php-version").as_deref(), Some("8.5"));
+        assert_eq!(get(&m, "config"), None);
+    }
+
+    #[test]
+    fn value_spellings_repeats_and_stops() {
+        let m = run(&["x", "-cfoo", "-c=bar", "-c", "baz", "-vm", "--long", "val", "--opt", "--", "-c", "no"], "c:vm", &["long:", "opt::"]);
+        assert_eq!(get(&m, "c").as_deref(), Some("[foo,bar,baz]"));
+        assert_eq!(get(&m, "v").as_deref(), Some("false"));
+        assert_eq!(get(&m, "m").as_deref(), Some("false"));
+        assert_eq!(get(&m, "long").as_deref(), Some("val"));
+        assert_eq!(get(&m, "opt").as_deref(), Some("false"));
+        // parsing stops at the first non-option: nothing after `file` is seen
+        let m = run(&["x", "-v", "file", "-m"], "vm", &[]);
+        assert_eq!(get(&m, "v").as_deref(), Some("false"));
+        assert_eq!(get(&m, "m"), None);
+        // unknown options are skipped, not fatal
+        let m = run(&["x", "--nope", "-z", "-v"], "v", &[]);
+        assert_eq!(get(&m, "v").as_deref(), Some("false"));
+        assert_eq!(get(&m, "nope"), None);
+    }
+}

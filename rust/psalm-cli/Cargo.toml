@@ -1,0 +1,15 @@
+# Built from a workspace that also lists the transpiler's output, `generated/psalm_mono` (the
+# build host's workspace does; this repository's excludes generated code, so it is not a member
+# here). See the `fast` and `bench` profiles in ../Cargo.toml for how it is built.
+[package]
+name = "psalm-cli"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "psalm-rs"
+path = "src/main.rs"
+
+[dependencies]
+php-rt = { path = "../php-rt" }
+psalm_mono = { path = "../generated/psalm_mono" }
