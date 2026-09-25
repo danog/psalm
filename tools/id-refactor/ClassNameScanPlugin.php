@@ -8,6 +8,7 @@ use PhpParser\Node\Expr;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use Psalm\Internal\Analyzer\MethodAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Plugin\EventHandler\AfterCodebasePopulatedInterface;
 use Psalm\Plugin\EventHandler\AfterExpressionAnalysisInterface;
 use Psalm\Plugin\EventHandler\Event\AfterCodebasePopulatedEvent;
@@ -138,7 +139,7 @@ final class ClassNameScanPlugin implements PluginEntryPointInterface, AfterCodeb
                 $kind = 'casefold:' . $fn;
             }
         } elseif ($e instanceof Expr\StaticCall && $e->class instanceof Name && $e->name instanceof Identifier) {
-            $cls = strtolower((string) ($e->class->attrs()->resolvedName ?? $e->class->toString()));
+            $cls = strtolower((string) ((isset($e->class->attrs()->resolvedId) ? Interner::lookupOrNull($e->class->attrs()->resolvedId) : $e->class->toString())));
             if (str_ends_with($cls, 'interner')) {
                 $kind = 'interner:' . strtolower($e->name->name);
             }

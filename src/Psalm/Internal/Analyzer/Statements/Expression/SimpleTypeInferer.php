@@ -525,7 +525,7 @@ final class SimpleTypeInferer
         }
 
         if ($stmt instanceof PhpParser\Node\Expr\New_) {
-            $resolved_class_name = $stmt->class->attrs()->resolvedName;
+            $resolved_class_name = Interner::lookupOrNull($stmt->class->attrs()->resolvedId);
 
             if (!is_string($resolved_class_name)) {
                 return null;

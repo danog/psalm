@@ -463,8 +463,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         PhpParser\Node\Name $class_name,
         Aliases $aliases,
     ): int {
-        /** @var string|null */
-        $resolved_name = $class_name->attrs()->resolvedName;
+        $resolved_name = Interner::lookupOrNull($class_name->attrs()->resolvedId);
 
         if ($resolved_name) {
             return Interner::intern($resolved_name);

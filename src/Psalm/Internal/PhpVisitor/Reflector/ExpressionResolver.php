@@ -441,7 +441,7 @@ final class ExpressionResolver
                 && $first_arg_value->name instanceof PhpParser\Node\Identifier
                 && strtolower($first_arg_value->name->name) === 'class'
             ) {
-                $string_value = (string) $first_arg_value->class->attrs()->resolvedName;
+                $string_value = (string) Interner::lookupOrNull($first_arg_value->class->attrs()->resolvedId);
             }
 
             if ($string_value && class_exists($string_value)) {
@@ -472,7 +472,7 @@ final class ExpressionResolver
                 && $first_arg_value->name instanceof PhpParser\Node\Identifier
                 && strtolower($first_arg_value->name->name) === 'class'
             ) {
-                $string_value = (string) $first_arg_value->class->attrs()->resolvedName;
+                $string_value = (string) Interner::lookupOrNull($first_arg_value->class->attrs()->resolvedId);
             }
 
             if ($string_value && interface_exists($string_value)) {
@@ -503,7 +503,7 @@ final class ExpressionResolver
                 && $first_arg_value->name instanceof PhpParser\Node\Identifier
                 && strtolower($first_arg_value->name->name) === 'class'
             ) {
-                $string_value = (string) $first_arg_value->class->attrs()->resolvedName;
+                $string_value = (string) Interner::lookupOrNull($first_arg_value->class->attrs()->resolvedId);
             }
 
             // We're using class_exists here because enum_exists doesn't exist on old versions of PHP

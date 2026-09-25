@@ -7,6 +7,7 @@ namespace Psalm\Internal\Scanner;
 use PhpParser;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Plugin\EventHandler\Event\FunctionReturnTypeProviderEvent;
 use Psalm\Plugin\EventHandler\Event\MethodReturnTypeProviderEvent;
 use Psalm\Type;
@@ -72,8 +73,7 @@ final class PhpStormMetaScanner
                     && $array_item->key->class instanceof PhpParser\Node\Name\FullyQualified
                     && $array_item->key->name instanceof PhpParser\Node\Identifier
                 ) {
-                    /** @var string|null $resolved_name */
-                    $resolved_name =  $array_item->key->class->attrs()->resolvedName;
+                    $resolved_name =  Interner::lookupOrNull($array_item->key->class->attrs()->resolvedId);
                     if (!$resolved_name) {
                         continue;
                     }

@@ -127,7 +127,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
             }
             $pt = $p->type instanceof NullableType ? $p->type->type : $p->type;
             if ($pt instanceof Name) {
-                $this->param_classes[$p->var->name] = (string) ($pt->attrs()->resolvedName ?? $pt->toString());
+                $this->param_classes[$p->var->name] = (string) ((isset($pt->attrs()->resolvedId) ? Interner::lookupOrNull($pt->attrs()->resolvedId) : $pt->toString()));
             }
             $nullable_default = $p->default instanceof Expr\ConstFetch && strtolower($p->default->name->toString()) === 'null';
             if ($p->flags !== 0 && $lc === '__construct' && IdMigratePlugin::declaresIn($this->file) && IdMigratePlugin::isPlainString($p->type)
@@ -176,7 +176,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
         }
         foreach (IdMigratePlugin::declaresIn($this->file) ? $this->locals : [] as $name => $_) {
             IdMigratePlugin::out(['kind' => 'decl', 'slot' => 'L:' . $this->method . '|' . $name, 'file' => $this->file,
-                'type' => null, 'doc' => null, 'fixed' => true, 'why' => null]);
+                'type' => null, 'doc' => null, 'fixed' => true, 'why' => null, 'nullable' => isset($this->nullable_locals[$name])]);
         }
         $this->walk($body, $stmt);
     }
@@ -202,6 +202,9 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
     }
 
     /** Locals assigned only by plain `$x = E` with string-typed E, and never written otherwise. @param array<Node> $body */
+    /** @var array<string, true> locals holding `string|null` */
+    private array $nullable_locals = [];
+
     private function findLocals(array $body): void
     {
         $assigned = [];
@@ -209,6 +212,16 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
         foreach ($this->parent as $n) {
             if ($n instanceof Expr\Assign && $n->var instanceof Expr\Variable && is_string($n->var->name)) {
                 $t = $this->types->getType($n->expr);
+                if ($t !== null && $t->isNullable() && !$t->isNull()) {
+                    // a nullable string: a nullable slot
+                    $nn = $t->getBuilder();
+                    $nn->removeType('null');
+                    if ($nn->freeze()->isString()) {
+                        $assigned[$n->var->name] = true;
+                        $this->nullable_locals[$n->var->name] = true;
+                        continue;
+                    }
+                }
                 if ($t !== null && $t->isString() && !$t->isNullable()) {
                     $assigned[$n->var->name] = true;
                 } else {
@@ -335,7 +348,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
             if (!$call->class instanceof Name || !$call->name instanceof Identifier) {
                 return [null, 0];
             }
-            $class = (string) ($call->class->attrs()->resolvedName ?? $call->class->toString());
+            $class = (string) ((isset($call->class->attrs()->resolvedId) ? Interner::lookupOrNull($call->class->attrs()->resolvedId) : $call->class->toString()));
             if (in_array(strtolower($class), ['self', 'static'], true)) {
                 $class = $this->self;
             } elseif (strtolower($class) === 'parent') {
@@ -349,7 +362,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
             if (!$call->class instanceof Name) {
                 return [null, 0];
             }
-            $class = (string) ($call->class->attrs()->resolvedName ?? $call->class->toString());
+            $class = (string) ((isset($call->class->attrs()->resolvedId) ? Interner::lookupOrNull($call->class->attrs()->resolvedId) : $call->class->toString()));
             $method = '__construct';
         } else {
             return [null, 0];
@@ -427,7 +440,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
             return $cls === null ? null : $this->propSlot($cls, $e->name->name);
         }
         if ($e instanceof Expr\StaticPropertyFetch && $e->class instanceof Name && $e->name instanceof Node\VarLikeIdentifier) {
-            $cls = (string) ($e->class->attrs()->resolvedName ?? $e->class->toString());
+            $cls = (string) ((isset($e->class->attrs()->resolvedId) ? Interner::lookupOrNull($e->class->attrs()->resolvedId) : $e->class->toString()));
             if (in_array(strtolower($cls), ['self', 'static'], true)) {
                 $cls = $this->self;
             }
@@ -451,7 +464,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
             if (!$call->class instanceof Name) {
                 return null;
             }
-            $class = (string) ($call->class->attrs()->resolvedName ?? $call->class->toString());
+            $class = (string) ((isset($call->class->attrs()->resolvedId) ? Interner::lookupOrNull($call->class->attrs()->resolvedId) : $call->class->toString()));
             if (in_array(strtolower($class), ['self', 'static'], true)) {
                 $class = $this->self;
             } elseif (strtolower($class) === 'parent') {
@@ -722,9 +735,9 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
             }
             return $to === null ? null : [[$e->name->getStartFilePos(), $e->name->getEndFilePos() + 1, $to], null];
         }
-        // Interner::lookup($id): its id is the argument
+        // Interner::lookup($id) / Interner::lookupOrNull($id): its id is the argument
         if ($e instanceof Expr\StaticCall && $e->class instanceof Name && $e->name instanceof Identifier
-            && strtolower($e->name->name) === 'lookup' && count($e->getArgs()) === 1
+            && in_array(strtolower($e->name->name), ['lookup', 'lookupornull'], true) && count($e->getArgs()) === 1
             && in_array(strtolower($e->class->getLast()), ['interner'], true)
         ) {
             $inner = $e->getArgs()[0]->value;
@@ -737,7 +750,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
         } elseif ($e instanceof Expr\ClassConstFetch && $e->class instanceof Name && $e->name instanceof Identifier
             && strtolower($e->name->name) === 'class'
         ) {
-            $n = (string) ($e->class->attrs()->resolvedName ?? $e->class->toString());
+            $n = (string) ((isset($e->class->attrs()->resolvedId) ? Interner::lookupOrNull($e->class->attrs()->resolvedId) : $e->class->toString()));
             if (in_array(strtolower($n), ['self', 'static', 'parent'], true)) {
                 return null;
             }

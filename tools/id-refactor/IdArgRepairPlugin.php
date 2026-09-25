@@ -7,6 +7,7 @@ namespace Psalm\Tools\IdRefactor;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Plugin\EventHandler\AfterExpressionAnalysisInterface;
 use Psalm\Plugin\EventHandler\Event\AfterExpressionAnalysisEvent;
@@ -53,7 +54,7 @@ final class IdArgRepairPlugin implements PluginEntryPointInterface, AfterExpress
                 if (!$call->class instanceof Name) {
                     return null;
                 }
-                $class = (string) ($call->class->attrs()->resolvedName ?? $call->class->toString());
+                $class = (string) ((isset($call->class->attrs()->resolvedId) ? Interner::lookupOrNull($call->class->attrs()->resolvedId) : $call->class->toString()));
                 if (in_array(strtolower($class), ['self', 'static'], true)) {
                     $class = (string) $source->getFQCLN();
                 }
@@ -62,7 +63,7 @@ final class IdArgRepairPlugin implements PluginEntryPointInterface, AfterExpress
                 if (!$call->class instanceof Name || !$call->name instanceof Identifier) {
                     return null;
                 }
-                $class = (string) ($call->class->attrs()->resolvedName ?? $call->class->toString());
+                $class = (string) ((isset($call->class->attrs()->resolvedId) ? Interner::lookupOrNull($call->class->attrs()->resolvedId) : $call->class->toString()));
                 if (in_array(strtolower($class), ['self', 'static'], true)) {
                     $class = (string) $source->getFQCLN();
                 }

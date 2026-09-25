@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<psalm
+    errorLevel="8"
+    resolveFromConfigFile="true"
+    findUnusedCode="false"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns="https://getpsalm.org/schema/config"
+>
+    <!-- the id-refactor tools themselves, analyzed so their own plugins keep them in step with the API -->
+    <projectFiles>
+        <directory name="."/>
+    </projectFiles>
+</psalm>

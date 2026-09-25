@@ -128,7 +128,7 @@ final class NamedFunctionCallHandler
                     && $first_arg->value->name instanceof PhpParser\Node\Identifier
                     && $first_arg->value->name->name === 'class'
                 ) {
-                    $resolved_name = (string) $first_arg->value->class->attrs()->resolvedName;
+                    $resolved_name = (string) Interner::lookupOrNull($first_arg->value->class->attrs()->resolvedId);
 
                     if (!$codebase->classlikes->classExists(Interner::intern($resolved_name), null, $context)) {
                         $context->phantom_classes[strtolower($resolved_name)] = true;
@@ -150,7 +150,7 @@ final class NamedFunctionCallHandler
                     && $first_arg->value->name instanceof PhpParser\Node\Identifier
                     && $first_arg->value->name->name === 'class'
                 ) {
-                    $resolved_name = (string) $first_arg->value->class->attrs()->resolvedName;
+                    $resolved_name = (string) Interner::lookupOrNull($first_arg->value->class->attrs()->resolvedId);
 
                     if (!$codebase->classlikes->interfaceExists(Interner::intern($resolved_name), null, $context)) {
                         $context->phantom_classes[strtolower($resolved_name)] = true;
@@ -172,7 +172,7 @@ final class NamedFunctionCallHandler
                     && $first_arg->value->name instanceof PhpParser\Node\Identifier
                     && $first_arg->value->name->name === 'class'
                 ) {
-                    $resolved_name = (string) $first_arg->value->class->attrs()->resolvedName;
+                    $resolved_name = (string) Interner::lookupOrNull($first_arg->value->class->attrs()->resolvedId);
 
                     if (!$codebase->classlikes->enumExists(Interner::intern($resolved_name), null, $context)) {
                         $context->phantom_classes[strtolower($resolved_name)] = true;

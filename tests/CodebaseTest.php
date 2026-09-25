@@ -177,10 +177,10 @@ final class CodebaseTest extends TestCase
                 if (Interner::lookup($storage->id) === 'Psalm\\CurrentTest\\C' && $stmt instanceof Class_) {
                     $storage->custom_metadata['fqcn'] = (string)($stmt->attrs()->namespacedName ?? $stmt->name);
                     $storage->custom_metadata['extends'] = $stmt->extends instanceof Name
-                        ? (string)$stmt->extends->attrs()->resolvedName
+                        ? (string)Interner::lookupOrNull($stmt->extends->attrs()->resolvedId)
                         : '';
                     $storage->custom_metadata['implements'] = array_map(
-                        static fn(Name $aspect): string => (string)$aspect->attrs()->resolvedName,
+                        static fn(Name $aspect): string => (string)Interner::lookupOrNull($aspect->attrs()->resolvedId),
                         $stmt->implements,
                     );
                     $storage->custom_metadata['a'] = 'b';

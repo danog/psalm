@@ -6,6 +6,7 @@ namespace Psalm\Internal\PhpVisitor;
 
 use Override;
 use PhpParser;
+use Psalm\Internal\Interner;
 use ReflectionClass;
 use Throwable;
 
@@ -38,8 +39,7 @@ final class TraitFinder extends PhpParser\NodeVisitorAbstract
     public function enterNode(PhpParser\Node $node, bool &$traverseChildren = true): ?int
     {
         if ($node instanceof PhpParser\Node\Stmt\Trait_) {
-            /** @var ?string */
-            $resolved_name = $node->attrs()->resolvedName;
+            $resolved_name = Interner::lookupOrNull($node->attrs()->resolvedId);
 
             if ($resolved_name === null) {
                 // compare ends of names, a temporary hack because PHPParser caches

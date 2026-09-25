@@ -503,7 +503,7 @@ abstract class CallAnalyzer
                 && $callable_arg->right instanceof PhpParser\Node\Scalar\String_
                 && preg_match('/^::[A-Za-z0-9]+$/', $callable_arg->right->value)
             ) {
-                $r = (string) $callable_arg->left->class->attrs()->resolvedName . $callable_arg->right->value;
+                $r = (string) Interner::lookupOrNull($callable_arg->left->class->attrs()->resolvedId) . $callable_arg->right->value;
                 assert($r !== '');
                 return [$r];
             }

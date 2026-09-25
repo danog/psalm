@@ -163,8 +163,7 @@ final class ExpressionIdentifier
                 } elseif ($stmt->dim instanceof PhpParser\Node\Expr\ClassConstFetch
                     && $stmt->dim->name instanceof PhpParser\Node\Identifier
                 ) {
-                    /** @var string|null */
-                    $resolved_name = $stmt->dim->class->attrs()->resolvedName;
+                    $resolved_name = Interner::lookupOrNull($stmt->dim->class->attrs()->resolvedId);
 
                     if ($resolved_name) {
                         $offset = $resolved_name . '::' . $stmt->dim->name;
@@ -198,8 +197,7 @@ final class ExpressionIdentifier
         if ($stmt instanceof PhpParser\Node\Expr\ClassConstFetch
             && $stmt->name instanceof PhpParser\Node\Identifier
         ) {
-            /** @var string|null */
-            $resolved_name = $stmt->class->attrs()->resolvedName;
+            $resolved_name = Interner::lookupOrNull($stmt->class->attrs()->resolvedId);
 
             if ($resolved_name) {
                 if (($resolved_name === 'self' || $resolved_name === 'static') && $this_class_name) {

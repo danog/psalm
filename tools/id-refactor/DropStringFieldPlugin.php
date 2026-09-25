@@ -12,6 +12,7 @@ use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
 use Psalm\Codebase;
 use Psalm\Internal\Interner;
+use Psalm\Internal\Sym;
 use Psalm\NodeTypeProvider;
 use Psalm\Plugin\EventHandler\AfterFunctionLikeAnalysisInterface;
 use Psalm\Plugin\EventHandler\Event\AfterFunctionLikeAnalysisEvent;
@@ -158,7 +159,7 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
                 if ($m instanceof Expr\Assign && $m->var instanceof Expr\Variable && $m->var->name === $fetch->var->name
                     && $m->expr instanceof Expr\New_ && $m->expr->class instanceof Name
                 ) {
-                    $t = new \Psalm\Type\Union([new TNamedObject((string) ($m->expr->class->attrs()->resolvedName ?? $m->expr->class->toString()))]);
+                    $t = new \Psalm\Type\Union([new TNamedObject($m->expr->class->attrs()->resolvedId ?? Interner::intern($m->expr->class->toString()))]);
                 }
             }
         }
@@ -237,7 +238,7 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
             if (!$call->class instanceof Name) {
                 return;
             }
-            $class = (string) ($call->class->attrs()->resolvedName ?? $call->class->toString());
+            $class = (string) ((isset($call->class->attrs()->resolvedId) ? Interner::lookupOrNull($call->class->attrs()->resolvedId) : $call->class->toString()));
             if (in_array(strtolower($class), ['self', 'static'], true)) {
                 $class = $this->selfClass;
             }
