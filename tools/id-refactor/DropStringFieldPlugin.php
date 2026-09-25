@@ -167,6 +167,7 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
             return null;
         }
         $match = null;
+        $parent_only = null;
         $kept = [];
         $dropped = [];
         // a template parameter stands for its bound
@@ -199,6 +200,18 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
                 }
             }
             if ($found === null) {
+                // a class without the property at all (a wider declared type, e.g. FunctionLikeStorage for a
+                // MethodStorage): the access can only be on the configured class
+                $ks = $this->codebase->classlike_storage_provider->find(Interner::intern($cls));
+                if ($ks !== null && !isset($ks->declaring_property_ids[Interner::intern($prop)])) {
+                    // a parent of the configured class (the declared type of a variable holding it)
+                    foreach ($cands as $c) {
+                        if ($this->codebase->classExtendsOrImplements(Interner::intern($c[0]), Interner::intern($cls))) {
+                            $parent_only = [$c[1], $c[2], $c[3] ?? 'lookup'];
+                        }
+                    }
+                    continue;
+                }
                 $kept[] = $cls;
                 continue;
             }
@@ -211,7 +224,7 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
         if ($match !== null && $kept !== []) {
             return ['mixed', $match[1], array_values(array_unique($kept)), $match[2]];
         }
-        return $match;
+        return $match ?? ($kept === [] ? $parent_only : null);
     }
 
     private function text(Node $n): string
