@@ -80,6 +80,59 @@ final class IdStringPlugin implements AfterExpressionAnalysisInterface
         }
     }
 
+    /**
+     * An int offset (an id, after the conversion) probing a map keyed by strings, where Psalm itself is lenient:
+     * `isset($map[$id])`, `array_key_exists($id, $map)`.
+     */
+    private static function idOffsets(AfterExpressionAnalysisEvent $event): void
+    {
+        $expr = $event->getExpr();
+        $pairs = [];
+        if ($expr instanceof Expr\Isset_) {
+            foreach ($expr->vars as $var) {
+                if ($var instanceof Expr\ArrayDimFetch && $var->dim !== null) {
+                    $pairs[] = [$var->dim, $var->var];
+                }
+            }
+        } elseif ($expr instanceof Expr\FuncCall && $expr->name instanceof \PhpParser\Node\Name
+            && strtolower($expr->name->toString()) === 'array_key_exists' && count($expr->getArgs()) === 2
+        ) {
+            $pairs[] = [$expr->getArgs()[0]->value, $expr->getArgs()[1]->value];
+        }
+        $source = $event->getStatementsSource();
+        $types = $source->getNodeTypeProvider();
+        foreach ($pairs as [$offset, $array]) {
+            $offset_type = $types->getType($offset);
+            $array_type = $types->getType($array);
+            if ($offset_type === null || $array_type === null || !$offset_type->isSingle()
+                || $offset_type->getSingleAtomic()::class !== TInt::class
+            ) {
+                continue;
+            }
+            foreach ($array_type->getAtomicTypes() as $atomic) {
+                if (!$atomic instanceof \Psalm\Type\Atomic\TArray) {
+                    continue;
+                }
+                $keys = $atomic->type_params[0]->getAtomicTypes();
+                $string_keys = array_filter($keys, static fn($k): bool => $k instanceof \Psalm\Type\Atomic\TString);
+                if ($string_keys === [] || count($string_keys) !== count($keys)) {
+                    continue;
+                }
+                $contents = $event->getCodebase()->getFileContents($source->getFilePath());
+                $start = (int) $offset->getAttribute('startFilePos');
+                $text = substr($contents, $start, (int) $offset->getAttribute('endFilePos') + 1 - $start);
+                IssueBuffer::maybeAdd(
+                    new IdOffsetIntoStringKeys(
+                        'int ' . $text . ' probes a map keyed by ' . $atomic->type_params[0]->getId(),
+                        new CodeLocation($source, $offset),
+                    ),
+                    $source->getSuppressedIssues(),
+                );
+                continue 2;
+            }
+        }
+    }
+
     /** @return list<Expr> */
     private static function leaves(Expr $e): array
     {
@@ -102,6 +155,7 @@ final class IdStringPlugin implements AfterExpressionAnalysisInterface
             : ($expr->getAttribute('kind') === \PhpParser\Node\Scalar\String_::KIND_DOUBLE_QUOTED ? 'interpolated into' : 'heredoc-interpolated into');
         $source = $event->getStatementsSource();
         self::renumbered($event);
+        self::idOffsets($event);
         foreach ($operands as $operand) {
             $type = $source->getNodeTypeProvider()->getType($operand);
             if ($type === null) {
@@ -135,5 +189,9 @@ final class IdString extends PluginIssue
 }
 
 final class IdKeysRenumbered extends PluginIssue
+{
+}
+
+final class IdOffsetIntoStringKeys extends PluginIssue
 {
 }

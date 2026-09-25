@@ -27,4 +27,6 @@ php $T/prune.php $M
 git add -A && git commit -qm "pipeline output" && git tag -f auto > /dev/null
 # the reviewed hand fixes on top of the automated conversion
 if [ -s $T/manual.diff ]; then git apply --3way --whitespace=nowarn $T/manual.diff && [ -z "$(git diff --name-only --diff-filter=U)" ] && echo "manual.diff applied" || echo "manual.diff FAILED"; fi
+# class names in the dictionaries' types in their declared spelling
+php $T/dicts.php $M
 check $S/tx-final.json; echo "final: $(errs $S/tx-final.json) errors"
