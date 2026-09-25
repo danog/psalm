@@ -167,8 +167,8 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
         $member_stmts = [];
         foreach ($this->class->stmts as $stmt) {
             if ($stmt instanceof PhpParser\Node\Stmt\ClassMethod) {
-                $method_name_lc = strtolower($stmt->name->name);
-                $method_name_lc_id = Interner::intern($method_name_lc);
+                $method_name_lc = Interner::intern(strtolower($stmt->name->name));
+                $method_name_lc_id = $method_name_lc;
                 if (!isset($class_storage->methods[$method_name_lc_id])) {
                     // Storage was overwritten by a different class-like with the same FQCN
                     // (e.g., project declares interface X while vendor has class X).

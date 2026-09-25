@@ -469,13 +469,13 @@ final class Scanner
     {
         $changed = false;
         foreach ($reflected->methods as $method_name_lc_id => $method_storage) {
-            $method_name_lc = Interner::lookupLc($method_name_lc_id);
+            $method_name_lc = Interner::intern(Interner::lookupLc($method_name_lc_id));
             if (isset($stub->methods[$method_name_lc_id])) {
                 continue;
             }
             $changed = true;
             $stub->methods[$method_name_lc_id] = $method_storage;
-            $method_id = new MethodIdentifier(Interner::intern(Interner::lookup($stub->id)), Interner::intern($method_name_lc));
+            $method_id = new MethodIdentifier(Interner::intern(Interner::lookup($stub->id)), $method_name_lc);
             $stub->declaring_method_ids[$method_name_lc_id] ??= $method_id;
             $stub->appearing_method_ids[$method_name_lc_id] ??= $method_id;
             if ($method_storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PRIVATE) {

@@ -10,6 +10,7 @@ if ($in === null || $out === null) { exit("usage: migrate.php facts.jsonl edits.
 $decl = []; $flows = []; $uses = []; $block = []; $syms = [];
 foreach (file($in, FILE_IGNORE_NEW_LINES) as $line) {
     $r = json_decode($line, true);
+    if (!is_array($r)) { continue; }
     switch ($r['kind']) {
         case 'decl': if (!str_contains($r['slot'], 'psalm\\internal\\interner')) { $decl[$r['slot']] = $r; } break;
         case 'flow':
@@ -119,6 +120,7 @@ $edits = []; // file => list of [s, e, text]
 $add = static function (string $file, int $s, int $e, string $t) use (&$edits): void { $edits[$file][] = [$s, $e, $t]; };
 $wrap = static function (string $file, array $r, string $fn, bool $nullable = false) use ($add, $text0): void {
     if ($nullable) {
+        $fn = $fn === 'lookupLc' ? 'lookup' : $fn;
         $add($file, $r[0], $r[0], 'Interner::' . $fn . 'OrNull('); $add($file, $r[1], $r[1], ')');
         return;
     }

@@ -345,7 +345,7 @@ final class AtomicPropertyFetchAnalyzer
             $naive_property_exists,
             $override_property_visibility,
             $class_exists,
-            $declaring_property_class,
+            Interner::internOrNull($declaring_property_class),
             $class_storage,
             $get_method_id,
             $in_assignment,
@@ -603,7 +603,7 @@ final class AtomicPropertyFetchAnalyzer
         bool $naive_property_exists,
         bool $override_property_visibility,
         bool $class_exists,
-        ?string $declaring_property_class,
+        ?int $declaring_property_class,
         ClassLikeStorage $class_storage,
         MethodIdentifier $get_method_id,
         bool $in_assignment,
@@ -654,9 +654,9 @@ final class AtomicPropertyFetchAnalyzer
                         $stmt_type,
                         $lhs_type_part,
                         $class_storage,
-                        $declaring_property_class
+                        ($declaring_property_class !== null)
                             ? $codebase->classlike_storage_provider->get(
-                                Interner::intern($declaring_property_class),
+                                $declaring_property_class,
                             ) : $class_storage,
                     );
 

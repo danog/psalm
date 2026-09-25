@@ -36,8 +36,8 @@ final class AssertionsFromInheritanceResolver
         MethodStorage $method_storage,
         ClassLikeStorage $called_class,
     ): array {
-        $method_name_lc = strtolower($method_storage->cased_name ?? '');
-        $method_name_lc_id = Interner::intern($method_name_lc);
+        $method_name_lc = Interner::intern(strtolower($method_storage->cased_name ?? ''));
+        $method_name_lc_id = $method_name_lc;
 
         $assertions = $method_storage->assertions;
         $inherited_classes_and_interfaces = array_values(array_filter([

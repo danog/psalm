@@ -388,13 +388,13 @@ final class CompiledProbeTest extends TestCase
                 'property' => $c->properties[Interner::intern('items')]->type?->getId() ?? 'absent',
                 'localized' => $value === null
                     ? 'absent'
-                    : Methods::localizeType($codebase, $value, 'Test', 'C')->getId(),
+                    : Methods::localizeType($codebase, $value, Interner::intern('Test'), 'C')->getId(),
             ],
             json_encode([
                 'property' => $c->properties[Interner::intern('items')]->type?->getId() ?? 'absent',
                 'localized' => $value === null
                     ? 'absent'
-                    : Methods::localizeType($codebase, $value, 'Test', 'C')->getId(),
+                    : Methods::localizeType($codebase, $value, Interner::intern('Test'), 'C')->getId(),
             ], JSON_THROW_ON_ERROR),
         );
     }

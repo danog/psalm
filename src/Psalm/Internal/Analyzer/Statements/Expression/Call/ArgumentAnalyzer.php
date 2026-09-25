@@ -1888,10 +1888,10 @@ final class ArgumentAnalyzer
             && $method_id
             && Interner::lookupLc($method_id->name_id) !== '__construct'
         ) {
-            $fq_classlike_name = Interner::lookup($method_id->class_id);
+            $fq_classlike_name = Interner::intern(Interner::lookup($method_id->class_id));
             $cased_method_name = explode('::', $cased_method_id)[1];
 
-            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_classlike_name));
+            $class_storage = $codebase->classlike_storage_provider->get($fq_classlike_name);
 
             foreach ($class_storage->dependent_classlikes as $dependent_classlike_lc => $_) {
                 $dependent_classlike_storage = $codebase->classlike_storage_provider->get(

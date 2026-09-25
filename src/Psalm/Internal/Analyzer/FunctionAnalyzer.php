@@ -34,15 +34,15 @@ final class FunctionAnalyzer extends FunctionLikeAnalyzer
 
         $namespace = $source->getNamespace();
 
-        $function_id = ($namespace ? strtolower($namespace) . '\\' : '') . strtolower($function->name->name);
+        $function_id = Interner::intern(($namespace ? strtolower($namespace) . '\\' : '') . strtolower($function->name->name));
 
-        if (!isset($file_storage->functions[Interner::intern($function_id)])) {
+        if (!isset($file_storage->functions[$function_id])) {
             throw new UnexpectedValueException(
-                'Function ' . $function_id . ' should be defined in ' . $source->getFilePath(),
+                'Function ' . Interner::lookup($function_id) . ' should be defined in ' . $source->getFilePath(),
             );
         }
 
-        $storage = $file_storage->functions[Interner::intern($function_id)];
+        $storage = $file_storage->functions[$function_id];
 
         parent::__construct($function, $source, $storage);
     }

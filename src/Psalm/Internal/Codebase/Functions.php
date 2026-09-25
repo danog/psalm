@@ -410,9 +410,9 @@ final class Functions
     /**
      * @psalm-external-mutation-free
      */
-    public static function isVariadic(Codebase $codebase, string $function_id, string $file_path): bool
+    public static function isVariadic(Codebase $codebase, int $function_id, string $file_path): bool
     {
-        $function_iid = Interner::intern($function_id);
+        $function_iid = $function_id;
         $file_storage = $codebase->file_storage_provider->get($file_path);
 
         if (!isset($file_storage->declaring_function_ids[$function_iid])) {

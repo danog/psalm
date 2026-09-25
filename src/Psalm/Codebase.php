@@ -1437,8 +1437,8 @@ final class Codebase
 
                 //Get Real Properties
                 if (isset($class_storage->declaring_property_ids[Interner::intern($property_name)])) {
-                    $declaring_property_class = $class_storage->declaring_property_ids[Interner::intern($property_name)];
-                    $declaring_class_storage = $this->classlike_storage_provider->get(Interner::intern($declaring_property_class));
+                    $declaring_property_class = Interner::intern($class_storage->declaring_property_ids[Interner::intern($property_name)]);
+                    $declaring_class_storage = $this->classlike_storage_provider->get($declaring_property_class);
 
                     if (isset($declaring_class_storage->properties[Interner::intern($property_name)])) {
                         $storage = $declaring_class_storage->properties[Interner::intern($property_name)];

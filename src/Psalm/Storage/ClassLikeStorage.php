@@ -61,7 +61,7 @@ final class ClassLikeStorage implements HasAttributesInterface
      */
     public array $namedMixins = [];
 
-    public ?string $mixin_declaring_fqcln = null;
+    public ?int $mixin_declaring_fqcln = null;
 
     public ?bool $sealed_properties = null;
 

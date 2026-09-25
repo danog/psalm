@@ -318,12 +318,12 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
 
         if ($storage->template_types) {
             foreach ($storage->template_types as $param_name => $_) {
-                $fq_classlike_name = Type::getFQCLNFromString(
+                $fq_classlike_name = Interner::intern(Type::getFQCLNFromString(
                     $param_name,
                     $this->getAliases(),
-                );
+                ));
 
-                if ($codebase->classOrInterfaceExists(Interner::intern($fq_classlike_name))) {
+                if ($codebase->classOrInterfaceExists($fq_classlike_name)) {
                     IssueBuffer::maybeAdd(
                         new ReservedWord(
                             'Cannot use ' . $param_name . ' as template name since the class already exists',
@@ -337,7 +337,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         }
 
         if (($storage->templatedMixins || $storage->namedMixins)
-            && $storage->mixin_declaring_fqcln === Interner::lookup($storage->id)) {
+            && Interner::lookupOrNull($storage->mixin_declaring_fqcln) === Interner::lookup($storage->id)) {
             /** @var non-empty-list<TTemplateParam|TNamedObject> $mixins */
             $mixins = array_merge($storage->templatedMixins, $storage->namedMixins);
             $union = new Union($mixins);
@@ -1330,9 +1330,9 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                     if (!isset($a_class_storage->declaring_property_ids[Interner::intern($property_name)])) {
                         $constructor_class_property_storage = null;
                     } else {
-                        $declaring_property_class = $a_class_storage->declaring_property_ids[Interner::intern($property_name)];
+                        $declaring_property_class = Interner::intern($a_class_storage->declaring_property_ids[Interner::intern($property_name)]);
                         $constructor_class_property_storage = $classlike_storage_provider
-                            ->get(Interner::intern($declaring_property_class))
+                            ->get($declaring_property_class)
                             ->properties[Interner::intern($property_name)];
                     }
                 }
@@ -1958,9 +1958,9 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             $declaring_method_id = $codebase->methods->getDeclaringMethodId($analyzed_method_id);
 
             if ($declaring_method_id) {
-                $declaring_class_name = Interner::lookup($declaring_method_id->class_id);
+                $declaring_class_name = Interner::intern(Interner::lookup($declaring_method_id->class_id));
 
-                $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($declaring_class_name));
+                $class_storage = $codebase->classlike_storage_provider->get($declaring_class_name);
             }
 
             $this_object_type = self::getThisObjectType(
@@ -2244,12 +2244,12 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             );
 
             foreach ($interface_storage->methods as $interface_method_name_lc_id => $interface_method_storage) {
-                $interface_method_name_lc = Interner::lookupLc($interface_method_name_lc_id);
+                $interface_method_name_lc = Interner::intern(Interner::lookupLc($interface_method_name_lc_id));
                 if ($interface_method_storage->visibility === self::VISIBILITY_PUBLIC) {
                     $implementer_declaring_method_id = $codebase->methods->getDeclaringMethodId(
                         new MethodIdentifier(
                             Interner::intern($this->fq_class_name),
-                            Interner::intern($interface_method_name_lc),
+                            $interface_method_name_lc,
                         ),
                     );
 
@@ -2257,21 +2257,21 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                     $implementer_classlike_storage = null;
 
                     if ($implementer_declaring_method_id) {
-                        $implementer_fq_class_name = Interner::lookup($implementer_declaring_method_id->class_id);
+                        $implementer_fq_class_name = Interner::intern(Interner::lookup($implementer_declaring_method_id->class_id));
                         $implementer_method_storage = $codebase->methods->getStorage(
                             $implementer_declaring_method_id,
                         );
                         $implementer_classlike_storage = $classlike_storage_provider->get(
-                            Interner::intern($implementer_fq_class_name),
+                            $implementer_fq_class_name,
                         );
                     }
 
                     if ($storage->is_enum) {
-                        if ($interface_method_name_lc === 'cases') {
+                        if (Interner::lookupLc($interface_method_name_lc) === 'cases') {
                             continue;
                         }
                         if ($storage->enum_type
-                            && in_array($interface_method_name_lc, ['from', 'tryfrom'], true)
+                            && in_array(Interner::lookupLc($interface_method_name_lc), ['from', 'tryfrom'], true)
                         ) {
                             continue;
                         }
@@ -2280,7 +2280,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                     if (!$implementer_method_storage) {
                         IssueBuffer::maybeAdd(
                             new UnimplementedInterfaceMethod(
-                                'Method ' . $interface_method_name_lc . ' is not defined on class ' .
+                                'Method ' . Interner::lookupLc($interface_method_name_lc) . ' is not defined on class ' .
                                 Interner::lookup($storage->id),
                                 $code_location,
                             ),
@@ -2293,7 +2293,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                     $implementer_appearing_method_id = $codebase->methods->getAppearingMethodId(
                         new MethodIdentifier(
                             Interner::intern($this->fq_class_name),
-                            Interner::intern($interface_method_name_lc),
+                            $interface_method_name_lc,
                         ),
                     );
 
@@ -2302,11 +2302,11 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                     if ($implementer_appearing_method_id
                         && $implementer_appearing_method_id !== $implementer_declaring_method_id
                     ) {
-                        $appearing_fq_class_name = Interner::lookup($implementer_appearing_method_id->class_id);
+                        $appearing_fq_class_name = Interner::intern(Interner::lookup($implementer_appearing_method_id->class_id));
                         $appearing_method_name = Interner::lookupLc($implementer_appearing_method_id->name_id);
 
                         $appearing_class_storage = $classlike_storage_provider->get(
-                            Interner::intern($appearing_fq_class_name),
+                            $appearing_fq_class_name,
                         );
 
                         if (isset($appearing_class_storage->trait_visibility_map[$appearing_method_name])) {

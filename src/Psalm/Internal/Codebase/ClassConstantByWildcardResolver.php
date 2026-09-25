@@ -32,13 +32,13 @@ final class ClassConstantByWildcardResolver
      * @return non-empty-array<string, Atomic>|null
      * @psalm-mutation-free
      */
-    public function resolve(string $class_name, string $constant_pattern): ?array
+    public function resolve(int $class_name, string $constant_pattern): ?array
     {
-        if (!$this->codebase->classlike_storage_provider->has(Interner::intern($class_name))) {
+        if (!$this->codebase->classlike_storage_provider->has($class_name)) {
             return null;
         }
 
-        $classlike_storage = $this->codebase->classlike_storage_provider->get(Interner::intern($class_name));
+        $classlike_storage = $this->codebase->classlike_storage_provider->get($class_name);
 
         $constants = $this->resolver->resolveConstants(
             $classlike_storage,

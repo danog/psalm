@@ -402,12 +402,12 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
             return null;
         }
 
-        $aliased_name = $codebase->classlikes->getUnAliasedName(
+        $aliased_name = Interner::intern($codebase->classlikes->getUnAliasedName(
             $fq_class_name,
-        );
+        ));
 
         try {
-            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($aliased_name));
+            $class_storage = $codebase->classlike_storage_provider->get($aliased_name);
         } catch (InvalidArgumentException $e) {
             if (!$options->inferred) {
                 throw $e;

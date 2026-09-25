@@ -2885,8 +2885,8 @@ final class SimpleAssertionReconciler extends Reconciler
         Union $existing_type,
         int &$failed_reconciliation,
     ): Union {
-        $class_name = $class_constant_expression->fq_classlike_name;
-        if (!$codebase->classlike_storage_provider->has(Interner::intern($class_name))) {
+        $class_name = Interner::intern($class_constant_expression->fq_classlike_name);
+        if (!$codebase->classlike_storage_provider->has($class_name)) {
             return $existing_type;
         }
 
@@ -2920,19 +2920,19 @@ final class SimpleAssertionReconciler extends Reconciler
         foreach ($assertion_type->type->getAtomicTypes() as $atomic_type) {
             $enum_case_to_assert = null;
             if ($atomic_type instanceof TClassConstant) {
-                $class_name = $atomic_type->fq_classlike_name;
+                $class_name = Interner::intern($atomic_type->fq_classlike_name);
                 $enum_case_to_assert = $atomic_type->const_name;
             } elseif ($atomic_type instanceof TNamedObject) {
-                $class_name = Interner::lookup($atomic_type->name);
+                $class_name = Interner::intern(Interner::lookup($atomic_type->name));
             } else {
                 return null;
             }
 
-            if (!$codebase->classOrInterfaceOrEnumExists(Interner::intern($class_name))) {
+            if (!$codebase->classOrInterfaceOrEnumExists($class_name)) {
                 return null;
             }
 
-            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($class_name));
+            $class_storage = $codebase->classlike_storage_provider->get($class_name);
             if (!$class_storage->is_enum) {
                 return null;
             }

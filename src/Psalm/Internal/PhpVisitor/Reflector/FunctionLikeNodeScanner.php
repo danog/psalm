@@ -245,8 +245,8 @@ final class FunctionLikeNodeScanner
                 && $stmt->stmts[0]->expr->var->name === 'this'
                 && $stmt->stmts[0]->expr->name instanceof PhpParser\Node\Identifier
             ) {
-                $property_name = $stmt->stmts[0]->expr->name->name;
-                $property_name_id = Interner::intern($property_name);
+                $property_name = Interner::intern($stmt->stmts[0]->expr->name->name);
+                $property_name_id = $property_name;
 
                 if (isset($classlike_storage->properties[$property_name_id])
                     && $classlike_storage->properties[$property_name_id]->type
@@ -1164,14 +1164,14 @@ final class FunctionLikeNodeScanner
             ) {
                 $this->codebase->methods->setDeclaringMethodId(
                     $fq_classlike_name,
-                    '__construct',
+                    Sym::CONSTRUCT,
                     $fq_classlike_name,
                     $method_name_lc,
                 );
 
                 $this->codebase->methods->setAppearingMethodId(
                     $fq_classlike_name,
-                    '__construct',
+                    Sym::CONSTRUCT,
                     $fq_classlike_name,
                     $method_name_lc,
                 );

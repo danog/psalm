@@ -188,9 +188,9 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
             if ($grandparent_source instanceof TraitAnalyzer) {
                 $fq_trait_name = $grandparent_source->getFQCLN();
 
-                $fq_trait_name_lc = strtolower($fq_trait_name);
+                $fq_trait_name_lc = Interner::intern(strtolower($fq_trait_name));
 
-                $trait_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_trait_name_lc));
+                $trait_storage = $codebase->classlike_storage_provider->get($fq_trait_name_lc);
 
                 if (isset($trait_storage->methods[$method_id->name_id])) {
                     $trait_method_id = new MethodIdentifier(Interner::intern(Interner::lookup($trait_storage->id)), Interner::intern($method_name_lc));

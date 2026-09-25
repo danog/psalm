@@ -317,12 +317,12 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
         if ($storage->template_types) {
             foreach ($storage->template_types as $param_name => $_) {
-                $fq_classlike_name = Type::getFQCLNFromString(
+                $fq_classlike_name = Interner::intern(Type::getFQCLNFromString(
                     $param_name,
                     $this->getAliases(),
-                );
+                ));
 
-                if ($codebase->classOrInterfaceExists(Interner::intern($fq_classlike_name), null, $context)) {
+                if ($codebase->classOrInterfaceExists($fq_classlike_name, null, $context)) {
                     IssueBuffer::maybeAdd(
                         new ReservedWord(
                             'Cannot use ' . $param_name . ' as template name since the class already exists',
@@ -1073,8 +1073,8 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                         $method_id_lc,
                     );
 
-                    $method_name_lc = strtolower($storage->cased_name);
-                    $method_name_lc_id = Interner::intern($method_name_lc);
+                    $method_name_lc = Interner::intern(strtolower($storage->cased_name));
+                    $method_name_lc_id = $method_name_lc;
 
                     if (!isset($class_storage->overridden_method_ids[$method_name_lc_id])) {
                         continue;
@@ -2154,17 +2154,17 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                     if ($implementer_appearing_method_id
                         && $implementer_appearing_method_id !== $implementer_declaring_method_id
                     ) {
-                        $appearing_fq_class_name = Interner::lookup($implementer_appearing_method_id->class_id);
+                        $appearing_fq_class_name = Interner::intern(Interner::lookup($implementer_appearing_method_id->class_id));
                         $appearing_method_name = Interner::lookupLc($implementer_appearing_method_id->name_id);
 
-                        $declaring_fq_class_name = Interner::lookup($implementer_declaring_method_id->class_id);
+                        $declaring_fq_class_name = Interner::intern(Interner::lookup($implementer_declaring_method_id->class_id));
 
                         $appearing_class_storage = $classlike_storage_provider->get(
-                            Interner::intern($appearing_fq_class_name),
+                            $appearing_fq_class_name,
                         );
 
                         $declaring_class_storage = $classlike_storage_provider->get(
-                            Interner::intern($declaring_fq_class_name),
+                            $declaring_fq_class_name,
                         );
 
                         if (isset($appearing_class_storage->trait_visibility_map[$appearing_method_name])) {
@@ -2303,12 +2303,12 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 continue;
             }
 
-            $fq_class_name = (string)Interner::lookupOrNull($context->self);
+            $fq_class_name = Interner::intern((string)Interner::lookupOrNull($context->self));
 
-            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
+            $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
 
-            $method_name_lc = strtolower($storage->cased_name);
-            $method_name_lc_id = Interner::intern($method_name_lc);
+            $method_name_lc = Interner::intern(strtolower($storage->cased_name));
+            $method_name_lc_id = $method_name_lc;
 
             if ($storage->abstract) {
                 continue;

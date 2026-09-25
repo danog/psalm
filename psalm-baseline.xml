@@ -926,8 +926,6 @@
       <code><![CDATA[$lhs_type_part]]></code>
     </ImplicitToStringCast>
     <RiskyTruthyFalsyComparison>
-      <code><![CDATA[!$class_storage->mixin_declaring_fqcln]]></code>
-      <code><![CDATA[$class_storage->mixin_declaring_fqcln]]></code>
       <code><![CDATA[$class_storage->template_types]]></code>
       <code><![CDATA[$class_storage->template_types]]></code>
       <code><![CDATA[$context->calling_method_id]]></code>
@@ -1050,7 +1048,6 @@
     </ImplicitToStringCast>
     <RiskyTruthyFalsyComparison>
       <code><![CDATA[!$fq_class_name]]></code>
-      <code><![CDATA[$class_storage->mixin_declaring_fqcln]]></code>
       <code><![CDATA[$context->calling_method_id]]></code>
       <code><![CDATA[$context->calling_method_id]]></code>
     </RiskyTruthyFalsyComparison>
@@ -1153,7 +1150,6 @@
       <code><![CDATA[$stmt_type]]></code>
     </ReferenceConstraintViolation>
     <RiskyTruthyFalsyComparison>
-      <code><![CDATA[$declaring_property_class]]></code>
       <code><![CDATA[$declaring_property_class]]></code>
       <code><![CDATA[$property_class_storage->template_types]]></code>
       <code><![CDATA[$property_class_storage->template_types]]></code>
@@ -2158,7 +2154,6 @@
       <code><![CDATA[$container_class_storage->template_types]]></code>
       <code><![CDATA[$params]]></code>
       <code><![CDATA[$parent_class]]></code>
-      <code><![CDATA[$self_class]]></code>
       <code><![CDATA[$self_class]]></code>
       <code><![CDATA[$self_class]]></code>
       <code><![CDATA[$self_class]]></code>

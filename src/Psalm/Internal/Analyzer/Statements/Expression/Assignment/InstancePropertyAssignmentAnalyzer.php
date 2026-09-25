@@ -992,7 +992,7 @@ final class InstancePropertyAssignmentAnalyzer
 
         $intersection_types = $lhs_type_part->getIntersectionTypes() ?: [];
 
-        $fq_class_name = Interner::lookup($lhs_type_part->name);
+        $fq_class_name = Interner::intern(Interner::lookup($lhs_type_part->name));
 
         $override_property_visibility = false;
 
@@ -1012,7 +1012,7 @@ final class InstancePropertyAssignmentAnalyzer
                     if ($intersection_type instanceof TNamedObject
                         && $codebase->classExists($intersection_type->name, null, $context)
                     ) {
-                        $fq_class_name = Interner::lookup($intersection_type->name);
+                        $fq_class_name = Interner::intern(Interner::lookup($intersection_type->name));
                         $class_exists = true;
                         break;
                     }
@@ -1039,7 +1039,7 @@ final class InstancePropertyAssignmentAnalyzer
 
                     if (!$codebase->methodExists(
                         new MethodIdentifier(
-                            Interner::intern($fq_class_name),
+                            $fq_class_name,
                             Sym::SET,
                         ),
                     )) {
@@ -1064,15 +1064,15 @@ final class InstancePropertyAssignmentAnalyzer
             $class_exists = true;
         }
 
-        $property_id = $fq_class_name . '::$' . $prop_name;
+        $property_id = Interner::lookup($fq_class_name) . '::$' . $prop_name;
 
         $has_magic_setter = false;
 
-        $set_method_id = new MethodIdentifier(Interner::intern($fq_class_name), Sym::SET);
+        $set_method_id = new MethodIdentifier($fq_class_name, Sym::SET);
 
         if ((!$codebase->propertyExists($property_id, false, $statements_analyzer, $context)
                 || ($lhs_var_id !== '$this'
-                    && $fq_class_name !== Interner::lookupOrNull($context->self)
+                    && Interner::lookup($fq_class_name) !== Interner::lookupOrNull($context->self)
                     && ClassLikeAnalyzer::checkPropertyVisibility(
                         $property_id,
                         $context,
@@ -1096,15 +1096,15 @@ final class InstancePropertyAssignmentAnalyzer
             )
         ) {
             $has_magic_setter = true;
-            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
+            $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
 
             if ($var_id) {
                 if (isset($class_storage->pseudo_property_set_types[Interner::intern('$' . $prop_name)])) {
                     $class_property_type = TypeExpander::expandUnion(
                         $codebase,
                         $class_storage->pseudo_property_set_types[Interner::intern('$' . $prop_name)],
-                        $fq_class_name,
-                        $fq_class_name,
+                        Interner::lookup($fq_class_name),
+                        Interner::lookup($fq_class_name),
                         $class_storage->parent_class,
                     );
 
@@ -1199,7 +1199,7 @@ final class InstancePropertyAssignmentAnalyzer
             && !$context->collect_initializations
             && !$context->collect_mutations
         ) {
-            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
+            $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
 
             self::taintProperty(
                 $statements_analyzer,
@@ -1384,12 +1384,12 @@ final class InstancePropertyAssignmentAnalyzer
         }
 
         if (!$class_property_type->isMixed()) {
-            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
+            $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
 
             $class_property_type = TypeExpander::expandUnion(
                 $codebase,
                 $class_property_type,
-                $fq_class_name,
+                Interner::lookup($fq_class_name),
                 $lhs_type_part,
                 $declaring_class_storage->parent_class,
                 true,

@@ -652,8 +652,8 @@ final class ClassLikeNodeScanner
 
                 /** @var MethodStorage */
                 $pseudo_method_storage = $functionlike_node_scanner->start($method, true);
-                $lc_method_name = strtolower($method->name->name);
-                $lc_method_name_id = Interner::intern($lc_method_name);
+                $lc_method_name = Interner::intern(strtolower($method->name->name));
+                $lc_method_name_id = $lc_method_name;
 
                 if ($pseudo_method_storage->is_static) {
                     $storage->pseudo_static_methods[$lc_method_name_id] = $pseudo_method_storage;
@@ -661,7 +661,7 @@ final class ClassLikeNodeScanner
                     $storage->pseudo_methods[$lc_method_name_id] = $pseudo_method_storage;
                     $storage->declaring_pseudo_method_ids[$lc_method_name_id] = new MethodIdentifier(
                         Interner::intern($fq_classlike_name),
-                        Interner::intern($lc_method_name),
+                        $lc_method_name,
                     );
                 }
             }
@@ -736,7 +736,7 @@ final class ClassLikeNodeScanner
                 }
 
                 if ($key === 0) {
-                    $storage->mixin_declaring_fqcln = Interner::lookup($storage->id);
+                    $storage->mixin_declaring_fqcln = Interner::intern(Interner::lookup($storage->id));
                 }
             }
 
@@ -1267,8 +1267,8 @@ final class ClassLikeNodeScanner
 
     private static function registerEmptyConstructor(ClassLikeStorage $class_storage): void
     {
-        $method_name_lc = '__construct';
-        $method_name_lc_id = Interner::intern($method_name_lc);
+        $method_name_lc = Sym::CONSTRUCT;
+        $method_name_lc_id = $method_name_lc;
 
         if (isset($class_storage->methods[$method_name_lc_id])) {
             return;

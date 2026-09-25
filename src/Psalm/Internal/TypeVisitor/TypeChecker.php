@@ -151,13 +151,13 @@ final class TypeChecker extends TypeVisitor
             }
         }
 
-        $fq_class_name_lc = strtolower(Interner::lookup($atomic->name));
+        $fq_class_name_lc = Interner::intern(strtolower(Interner::lookup($atomic->name)));
 
         if (!$this->inherited
-            && $codebase->classlike_storage_provider->has(Interner::intern($fq_class_name_lc))
+            && $codebase->classlike_storage_provider->has($fq_class_name_lc)
             && $this->source->getFQCLN() !== Interner::lookup($atomic->name)
         ) {
-            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name_lc));
+            $class_storage = $codebase->classlike_storage_provider->get($fq_class_name_lc);
 
             if ($class_storage->deprecated) {
                 if ($class_storage->is_interface) {

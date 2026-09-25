@@ -269,9 +269,9 @@ final class MethodComparator
                 foreach ($overridden_method_ids as $overridden_method_id) {
                     $parent_method_storage = $codebase->methods->getStorage($overridden_method_id);
 
-                    $overridden_fq_class_name = Interner::lookup($overridden_method_id->class_id);
+                    $overridden_fq_class_name = Interner::intern(Interner::lookup($overridden_method_id->class_id));
 
-                    $parent_storage = $codebase->classlike_storage_provider->get(Interner::intern($overridden_fq_class_name));
+                    $parent_storage = $codebase->classlike_storage_provider->get($overridden_fq_class_name);
 
                     self::compare(
                         $codebase,

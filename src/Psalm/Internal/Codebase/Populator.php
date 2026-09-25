@@ -315,8 +315,8 @@ final class Populator
                 // Dependencies may not be fully set yet, so we have to loop through dependencies of dependencies
                 $dependencies = [strtolower(Interner::lookup($dependency->id)) => true];
                 do {
-                    $current_dependency_name = key(array_splice($dependencies, 0, 1)); // Key shift
-                    $current_dependency = $storage_provider->get(Interner::intern($current_dependency_name));
+                    $current_dependency_name = Interner::intern(key(array_splice($dependencies, 0, 1))); // Key shift
+                    $current_dependency = $storage_provider->get($current_dependency_name);
                     $dependencies += $current_dependency->dependent_classlikes;
 
                     if (isset($current_dependency->dependent_classlikes[$fq_classlike_name_lc])) {
@@ -357,12 +357,12 @@ final class Populator
         $interface_method_implementers = [];
         foreach ($storage->class_implements as $interface) {
             try {
-                $implemented_interface = strtolower(
+                $implemented_interface = Interner::intern(strtolower(
                     $this->classlikes->getUnAliasedName(
                         $interface,
                     ),
-                );
-                $implemented_interface_storage = $storage_provider->get(Interner::intern($implemented_interface));
+                ));
+                $implemented_interface_storage = $storage_provider->get($implemented_interface);
             } catch (InvalidArgumentException) {
                 continue;
             }
@@ -388,8 +388,8 @@ final class Populator
                         && !$method_storage->signature_return_type->isVoid()
                         && $method_storage->return_type === $method_storage->signature_return_type
                     ) {
-                        $interface_fqcln = Interner::lookup($interface_method_ids[0]->class_id);
-                        $interface_storage = $storage_provider->get(Interner::intern($interface_fqcln));
+                        $interface_fqcln = Interner::intern(Interner::lookup($interface_method_ids[0]->class_id));
+                        $interface_storage = $storage_provider->get($interface_fqcln);
 
                         if (isset($interface_storage->methods[$method_name_id])) {
                             $interface_method_storage = $interface_storage->methods[$method_name_id];
@@ -1080,8 +1080,8 @@ final class Populator
                 || $parent_storage->preserve_constructor_signature
             ) {
                 if ($parent_storage->is_trait) {
-                    $declaring_class = Interner::lookup($declaring_method_id->class_id);
-                    $declaring_class_storage = $this->classlike_storage_provider->get(Interner::intern($declaring_class));
+                    $declaring_class = Interner::intern(Interner::lookup($declaring_method_id->class_id));
+                    $declaring_class_storage = $this->classlike_storage_provider->get($declaring_class);
 
                     if (isset($declaring_class_storage->methods[$method_name_lc_id])
                         && $declaring_class_storage->methods[$method_name_lc_id]->abstract

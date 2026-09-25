@@ -313,9 +313,9 @@ final class AtomicStaticCallAnalyzer
     ): bool {
         $codebase = $statements_analyzer->getCodebase();
 
-        $method_name_lc = strtolower($stmt_name->name);
-        $method_name_lc_id = Interner::intern($method_name_lc);
-        $method_id = new MethodIdentifier(Interner::intern($fq_class_name), Interner::intern($method_name_lc));
+        $method_name_lc = Interner::intern(strtolower($stmt_name->name));
+        $method_name_lc_id = $method_name_lc;
+        $method_id = new MethodIdentifier(Interner::intern($fq_class_name), $method_name_lc);
 
         $cased_method_id = $fq_class_name . '::' . $stmt_name->name;
 
@@ -342,7 +342,7 @@ final class AtomicStaticCallAnalyzer
 
                 $intersection_method_id = new MethodIdentifier(
                     $intersection_type->name,
-                    Interner::intern($method_name_lc),
+                    $method_name_lc,
                 );
 
                 if ($codebase->methodExists($intersection_method_id)) {
@@ -396,13 +396,13 @@ final class AtomicStaticCallAnalyzer
         $args = $stmt->isFirstClassCallable() ? [] : $stmt->getArgs();
 
         if (!$naive_method_exists
-            && $class_storage->mixin_declaring_fqcln
+            && ($class_storage->mixin_declaring_fqcln !== null)
             && $class_storage->namedMixins
         ) {
             foreach ($class_storage->namedMixins as $mixin) {
                 $new_method_id = new MethodIdentifier(
                     $mixin->name,
-                    Interner::intern($method_name_lc),
+                    $method_name_lc,
                 );
 
                 if ($codebase->methodExists(
@@ -445,7 +445,7 @@ final class AtomicStaticCallAnalyzer
                         }
 
                         $mixin_declaring_class_storage = $codebase->classlike_storage_provider->get(
-                            Interner::intern($class_storage->mixin_declaring_fqcln),
+                            $class_storage->mixin_declaring_fqcln,
                         );
 
                         $new_mixin_candidate_type = AtomicPropertyFetchAnalyzer::localizePropertyType(
@@ -1052,16 +1052,16 @@ final class AtomicStaticCallAnalyzer
      * If the method is not declared, null is returned.
      *
      * @param ClassLikeStorage $static_class_storage The called class
-     * @param lowercase-string $method_name_lc
+     * @param int $method_name_lc
      * @return array{MethodStorage, ClassLikeStorage}|null
      * @psalm-mutation-free
      */
     private static function findPseudoMethodAndClassStorages(
         Codebase $codebase,
         ClassLikeStorage $static_class_storage,
-        string $method_name_lc,
+        int $method_name_lc,
     ): ?array {
-        $method_name_lc_id = Interner::intern($method_name_lc);
+        $method_name_lc_id = $method_name_lc;
         if ($pseudo_method_storage = $static_class_storage->pseudo_static_methods[$method_name_lc_id] ?? null) {
             return [$pseudo_method_storage, $static_class_storage];
         }

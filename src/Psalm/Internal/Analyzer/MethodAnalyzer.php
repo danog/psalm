@@ -63,19 +63,19 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
     ) {
         $codebase = $source->getCodebase();
 
-        $method_name_lc = strtolower((string) $function->name);
+        $method_name_lc = Interner::intern(strtolower((string) $function->name));
 
         $source_fqcln = (string) $source->getFQCLN();
 
-        $source_fqcln_lc = strtolower($source_fqcln);
+        $source_fqcln_lc = Interner::intern(strtolower($source_fqcln));
 
-        $method_id = new MethodIdentifier(Interner::intern($source_fqcln), Interner::intern($method_name_lc));
+        $method_id = new MethodIdentifier(Interner::intern($source_fqcln), $method_name_lc);
 
         if (!$storage) {
             try {
                 $storage = $codebase->methods->getStorage($method_id);
             } catch (UnexpectedValueException $e) {
-                $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($source_fqcln_lc));
+                $class_storage = $codebase->classlike_storage_provider->get($source_fqcln_lc);
 
                 if (!$class_storage->parent_classes) {
                     throw $e;

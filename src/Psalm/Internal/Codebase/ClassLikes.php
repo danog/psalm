@@ -1798,11 +1798,11 @@ final class ClassLikes
             } else {
                 $declaring_method_id = $classlike_storage->declaring_method_ids[$method_name_id];
 
-                $declaring_fq_classlike_name = Interner::lookup($declaring_method_id->class_id);
+                $declaring_fq_classlike_name = Interner::intern(Interner::lookup($declaring_method_id->class_id));
                 $declaring_method_name = Interner::lookupLc($declaring_method_id->name_id);
 
                 try {
-                    $declaring_classlike_storage = $this->classlike_storage_provider->get(Interner::intern($declaring_fq_classlike_name));
+                    $declaring_classlike_storage = $this->classlike_storage_provider->get($declaring_fq_classlike_name);
                 } catch (InvalidArgumentException) {
                     continue;
                 }
@@ -2070,11 +2070,11 @@ final class ClassLikes
             } else {
                 $declaring_method_id = $classlike_storage->declaring_method_ids[$method_name_id];
 
-                $declaring_fq_classlike_name = Interner::lookup($declaring_method_id->class_id);
+                $declaring_fq_classlike_name = Interner::intern(Interner::lookup($declaring_method_id->class_id));
                 $declaring_method_name = Interner::lookupLc($declaring_method_id->name_id);
 
                 try {
-                    $declaring_classlike_storage = $this->classlike_storage_provider->get(Interner::intern($declaring_fq_classlike_name));
+                    $declaring_classlike_storage = $this->classlike_storage_provider->get($declaring_fq_classlike_name);
                 } catch (InvalidArgumentException) {
                     continue;
                 }
@@ -2140,11 +2140,11 @@ final class ClassLikes
             } else {
                 $declaring_method_id = $classlike_storage->declaring_method_ids[$method_name_id];
 
-                $declaring_fq_classlike_name = Interner::lookup($declaring_method_id->class_id);
+                $declaring_fq_classlike_name = Interner::intern(Interner::lookup($declaring_method_id->class_id));
                 $declaring_method_name = Interner::lookupLc($declaring_method_id->name_id);
 
                 try {
-                    $declaring_classlike_storage = $this->classlike_storage_provider->get(Interner::intern($declaring_fq_classlike_name));
+                    $declaring_classlike_storage = $this->classlike_storage_provider->get($declaring_fq_classlike_name);
                 } catch (InvalidArgumentException) {
                     continue;
                 }

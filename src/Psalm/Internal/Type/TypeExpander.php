@@ -248,7 +248,7 @@ final class TypeExpander
                 $return_type = self::expandNamedObject(
                     $codebase,
                     $return_type,
-                    $self_class,
+                    Interner::internOrNull($self_class),
                     $static_class_type,
                     $parent_class,
                     $final,
@@ -663,7 +663,7 @@ final class TypeExpander
     private static function expandNamedObject(
         Codebase $codebase,
         TNamedObject &$return_type,
-        ?string $self_class,
+        ?int $self_class,
         string|TNamedObject|TTemplateParam|null $static_class_type,
         ?string $parent_class,
         bool $final = false,
@@ -771,10 +771,10 @@ final class TypeExpander
             && is_string($static_class_type)
             && $final
             && (
-                Interner::lookup($return_type->name) === $self_class
+                Interner::lookup($return_type->name) === Interner::lookupOrNull($self_class)
                 || ($self_class !== null &&
-                    ($codebase->classExtends($return_type->name, Interner::intern($self_class))
-                        || $codebase->classExtends(Interner::intern($self_class), $return_type->name)
+                    ($codebase->classExtends($return_type->name, $self_class)
+                        || $codebase->classExtends($self_class, $return_type->name)
                     )
                 )
             )
@@ -783,8 +783,8 @@ final class TypeExpander
                 $static_class_type,
                 false,
             );
-        } elseif ($self_class && $return_type_lc === 'self') {
-            $return_type = $return_type->setValue($self_class);
+        } elseif (($self_class !== null) && $return_type_lc === 'self') {
+            $return_type = $return_type->setValue(Interner::lookup($self_class));
         } elseif ($parent_class && $return_type_lc === 'parent') {
             $return_type = $return_type->setValue($parent_class);
         } elseif (!$codebase->classlike_storage_provider->has($return_type->name)) {

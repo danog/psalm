@@ -68,10 +68,10 @@ final class Reflection
             $class_name = 'libXMLError';
         }
 
-        $class_name_lower = strtolower($class_name);
+        $class_name_lower = Interner::intern(strtolower($class_name));
 
         try {
-            $this->storage_provider->get(Interner::intern($class_name_lower));
+            $this->storage_provider->get($class_name_lower);
 
             return;
         } catch (Exception) {
@@ -84,14 +84,14 @@ final class Reflection
         $storage->abstract = $reflected_class->isAbstract();
         $storage->is_interface = $reflected_class->isInterface();
 
-        $storage->potential_declaring_method_ids[Sym::CONSTRUCT][$class_name_lower . '::__construct'] = true;
+        $storage->potential_declaring_method_ids[Sym::CONSTRUCT][Interner::lookupLc($class_name_lower) . '::__construct'] = true;
 
         if ($reflected_parent_class) {
             $parent_class_name = $reflected_parent_class->getName();
             $this->registerClass($reflected_parent_class);
-            $parent_class_name_lc = strtolower($parent_class_name);
+            $parent_class_name_lc = Interner::intern(strtolower($parent_class_name));
 
-            $parent_storage = $this->storage_provider->get(Interner::intern($parent_class_name_lc));
+            $parent_storage = $this->storage_provider->get($parent_class_name_lc);
 
             $this->registerInheritedMethods($class_name_lower, $parent_class_name_lc);
             $this->registerInheritedProperties($class_name_lower, $parent_class_name_lc);
@@ -101,7 +101,7 @@ final class Reflection
             $storage->constants = $parent_storage->constants;
 
             $storage->parent_classes = array_merge(
-                [$parent_class_name_lc => $parent_class_name],
+                [Interner::lookupLc($parent_class_name_lc) => $parent_class_name],
                 $parent_storage->parent_classes,
             );
 
@@ -190,7 +190,7 @@ final class Reflection
             (ReflectionMethod::IS_PUBLIC | ReflectionMethod::IS_PROTECTED),
         );
 
-        if ($class_name_lower === 'generator') {
+        if (Interner::lookupLc($class_name_lower) === 'generator') {
             $storage->template_types = [
                 'TKey' => ['Generator' => Type::getMixed()],
                 'TValue' => ['Generator' => Type::getMixed()],
@@ -220,21 +220,21 @@ final class Reflection
             if ($reflection_method->class !== $class_name
                 && ($class_name !== 'SoapFault' || $reflection_method->name !== '__construct')
             ) {
-                $reflection_method_name = strtolower($reflection_method->name);
+                $reflection_method_name = Interner::intern(strtolower($reflection_method->name));
                 $reflection_method_class = $reflection_method->class;
 
                 $this->codebase->methods->setDeclaringMethodId(
                     $class_name,
                     $reflection_method_name,
                     $reflection_method_class,
-                    $reflection_method_name,
+                    Interner::lookupLc($reflection_method_name),
                 );
 
                 $this->codebase->methods->setAppearingMethodId(
                     $class_name,
                     $reflection_method_name,
                     $reflection_method_class,
-                    $reflection_method_name,
+                    Interner::lookupLc($reflection_method_name),
                 );
             }
         }
@@ -265,13 +265,13 @@ final class Reflection
         if ($method_name_lc === $fq_class_name_lc) {
             $this->codebase->methods->setDeclaringMethodId(
                 $fq_class_name,
-                '__construct',
+                Sym::CONSTRUCT,
                 $fq_class_name,
                 $method_name_lc,
             );
             $this->codebase->methods->setAppearingMethodId(
                 $fq_class_name,
-                '__construct',
+                Sym::CONSTRUCT,
                 $fq_class_name,
                 $method_name_lc,
             );
@@ -511,11 +511,11 @@ final class Reflection
     }
 
     private function registerInheritedMethods(
-        string $fq_class_name,
-        string $parent_class,
+        int $fq_class_name,
+        int $parent_class,
     ): void {
-        $parent_storage = $this->storage_provider->get(Interner::intern($parent_class));
-        $storage = $this->storage_provider->get(Interner::intern($fq_class_name));
+        $parent_storage = $this->storage_provider->get($parent_class);
+        $storage = $this->storage_provider->get($fq_class_name);
 
         // register where they appear (can never be in a trait)
         foreach ($parent_storage->appearing_method_ids as $method_name_id => $appearing_method_id) {
@@ -533,15 +533,15 @@ final class Reflection
     }
 
     /**
-     * @param lowercase-string $fq_class_name
-     * @param lowercase-string $parent_class
+     * @param int $fq_class_name
+     * @param int $parent_class
      */
     private function registerInheritedProperties(
-        string $fq_class_name,
-        string $parent_class,
+        int $fq_class_name,
+        int $parent_class,
     ): void {
-        $parent_storage = $this->storage_provider->get(Interner::intern($parent_class));
-        $storage = $this->storage_provider->get(Interner::intern($fq_class_name));
+        $parent_storage = $this->storage_provider->get($parent_class);
+        $storage = $this->storage_provider->get($fq_class_name);
 
         // register where they appear (can never be in a trait)
         foreach ($parent_storage->appearing_property_ids as $property_name_id => $appearing_property_id) {
