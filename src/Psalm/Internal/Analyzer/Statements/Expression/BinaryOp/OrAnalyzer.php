@@ -18,6 +18,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\ExpressionIdentifier;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Clause;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Scope\IfScope;
 use Psalm\Internal\Type\AssertionReconciler;
 use Psalm\Node\Expr\VirtualBooleanNot;
@@ -340,7 +341,7 @@ final class OrAnalyzer
                 }
             }
         } elseif ($stmt->left instanceof PhpParser\Node\Expr\Assign) {
-            $var_id = ExpressionIdentifier::getVarId($stmt->left->var, $context->self);
+            $var_id = ExpressionIdentifier::getVarId($stmt->left->var, Interner::lookupOrNull($context->self));
 
             if ($var_id && isset($left_context->vars_in_scope[$var_id])) {
                 $left_inferred_reconciled = AssertionReconciler::reconcile(

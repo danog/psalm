@@ -9,7 +9,9 @@ use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Internal\Codebase\ClassConstantByWildcardResolver;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\Comparator\CallableTypeComparator;
 use Psalm\Storage\Assertion;
 use Psalm\Storage\Assertion\Any;
@@ -386,7 +388,7 @@ final class SimpleAssertionReconciler extends Reconciler
         }
 
         if ($assertion_type instanceof TNamedObject
-            && $assertion_type->value === 'Traversable'
+            && $assertion_type->name === Sym::TRAVERSABLE
         ) {
             return self::reconcileTraversable(
                 $assertion,
@@ -888,16 +890,16 @@ final class SimpleAssertionReconciler extends Reconciler
 
         foreach ($existing_var_atomic_types as $type) {
             if ($type instanceof TNamedObject
-                && $codebase->classOrInterfaceExists($type->value)
+                && $codebase->classOrInterfaceExists($type->name)
             ) {
-                if (!$codebase->methodExists(new MethodIdentifier($type->value, strtolower($method_name)))) {
+                if (!$codebase->methodExists(new MethodIdentifier($type->name, Interner::intern(strtolower($method_name))))) {
                     $match_found = false;
 
                     $extra_types = $type->extra_types;
                     foreach ($type->extra_types as $k => $extra_type) {
                         if ($extra_type instanceof TNamedObject
-                            && $codebase->classOrInterfaceExists($extra_type->value)
-                            && $codebase->methodExists(new MethodIdentifier($extra_type->value, strtolower($method_name)))
+                            && $codebase->classOrInterfaceExists($extra_type->name)
+                            && $codebase->methodExists(new MethodIdentifier($extra_type->name, Interner::intern(strtolower($method_name))))
                         ) {
                             $match_found = true;
                         } elseif ($extra_type instanceof TObjectWithProperties) {
@@ -917,7 +919,7 @@ final class SimpleAssertionReconciler extends Reconciler
                     if (!$match_found) {
                         $extra_type = new TObjectWithProperties(
                             [],
-                            [strtolower($method_name) => $type->value . '::' . $method_name],
+                            [strtolower($method_name) => Interner::lookup($type->name) . '::' . $method_name],
                         );
                         $extra_types[$extra_type->getKey()] = $extra_type;
                         $redundant = false;
@@ -2268,7 +2270,7 @@ final class SimpleAssertionReconciler extends Reconciler
                         $type->type_params,
                         $atomic_assertion_type->count,
                         $atomic_assertion_type->min_count,
-                        'non-empty-array',
+                        Sym::C_NON_EMPTY_ARRAY,
                         $type->from_docblock,
                     );
                 } else {
@@ -2608,8 +2610,8 @@ final class SimpleAssertionReconciler extends Reconciler
                 $callable_types[] = new TCallableObject();
                 $redundant = false;
             } elseif ($type instanceof TNamedObject
-                && $codebase->classExists($type->value)
-                && $codebase->methodExists(new MethodIdentifier($type->value, '__invoke'))
+                && $codebase->classExists($type->name)
+                && $codebase->methodExists(new MethodIdentifier($type->name, Sym::INVOKE))
             ) {
                 $callable_types[] = $type;
             } elseif ($type::class === TString::class
@@ -2883,7 +2885,7 @@ final class SimpleAssertionReconciler extends Reconciler
         Union $existing_type,
         int &$failed_reconciliation,
     ): Union {
-        $class_name = $class_constant_expression->fq_classlike_name;
+        $class_name = Interner::intern($class_constant_expression->fq_classlike_name);
         if (!$codebase->classlike_storage_provider->has($class_name)) {
             return $existing_type;
         }
@@ -2918,10 +2920,10 @@ final class SimpleAssertionReconciler extends Reconciler
         foreach ($assertion_type->type->getAtomicTypes() as $atomic_type) {
             $enum_case_to_assert = null;
             if ($atomic_type instanceof TClassConstant) {
-                $class_name = $atomic_type->fq_classlike_name;
+                $class_name = Interner::intern($atomic_type->fq_classlike_name);
                 $enum_case_to_assert = $atomic_type->const_name;
             } elseif ($atomic_type instanceof TNamedObject) {
-                $class_name = $atomic_type->value;
+                $class_name = $atomic_type->name;
             } else {
                 return null;
             }
@@ -2953,7 +2955,7 @@ final class SimpleAssertionReconciler extends Reconciler
                 continue;
             }
 
-            $enum_case = $class_storage->enum_cases[$enum_case_to_assert] ?? null;
+            $enum_case = $class_storage->enum_cases[Interner::intern($enum_case_to_assert)] ?? null;
             if ($enum_case === null) {
                 return null;
             }
@@ -2981,11 +2983,11 @@ final class SimpleAssertionReconciler extends Reconciler
             return true;
         }
 
-        if (!$type instanceof TNamedObject || !$codebase->classlike_storage_provider->has($type->value)) {
+        if (!$type instanceof TNamedObject || !$codebase->classlike_storage_provider->has($type->name)) {
             return false;
         }
 
-        $class_storage = $codebase->classlike_storage_provider->get($type->value);
+        $class_storage = $codebase->classlike_storage_provider->get($type->name);
 
         return !$class_storage->final;
     }

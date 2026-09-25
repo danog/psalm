@@ -19,7 +19,9 @@ use Psalm\Internal\Analyzer\Statements\Expression\CallAnalyzer;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\TemplateBound;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
@@ -103,10 +105,10 @@ final class NewAnalyzer extends CallAnalyzer
             if (!in_array(strtolower($stmt->class->getFirst()), ['self', 'static', 'parent'], true)) {
                 $aliases = $statements_analyzer->getAliases();
 
-                $fq_class_name = ClassLikeAnalyzer::getFQCLNFromNameObject(
+                $fq_class_name = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                     $stmt->class,
                     $aliases,
-                );
+                ));
 
                 $fq_class_name = $codebase->classlikes->getUnAliasedName($fq_class_name);
 
@@ -123,7 +125,7 @@ final class NewAnalyzer extends CallAnalyzer
                 switch ($stmt->class->getFirst()) {
                     case 'self':
                         $class_storage = $codebase->classlike_storage_provider->get($context->self);
-                        $fq_class_name = $class_storage->name;
+                        $fq_class_name = Interner::lookup($class_storage->id);
                         break;
 
                     case 'parent':
@@ -133,7 +135,7 @@ final class NewAnalyzer extends CallAnalyzer
                     case 'static':
                         // @todo maybe we can do better here
                         $class_storage = $codebase->classlike_storage_provider->get($context->self);
-                        $fq_class_name = $class_storage->name;
+                        $fq_class_name = Interner::lookup($class_storage->id);
 
                         if (!$class_storage->final) {
                             $can_extend = true;
@@ -152,7 +154,7 @@ final class NewAnalyzer extends CallAnalyzer
                 $codebase->analyzer->addNodeReference(
                     $statements_analyzer->getFilePath(),
                     $stmt->class,
-                    $codebase->classlikes->classExists($fq_class_name, null, $context)
+                    $codebase->classlikes->classExists(Interner::intern($fq_class_name), null, $context)
                         ? $fq_class_name
                         : '*'
                             . ($stmt->class instanceof PhpParser\Node\Name\FullyQualified
@@ -228,7 +230,7 @@ final class NewAnalyzer extends CallAnalyzer
                     return true;
                 }
 
-                if ($codebase->interfaceExists($fq_class_name, null, $context)) {
+                if ($codebase->interfaceExists(Interner::intern($fq_class_name), null, $context)) {
                     IssueBuffer::maybeAdd(
                         new InterfaceInstantiation(
                             'Interface ' . $fq_class_name . ' cannot be instantiated',
@@ -266,7 +268,7 @@ final class NewAnalyzer extends CallAnalyzer
             }
 
             if (strtolower($fq_class_name) !== 'stdclass' &&
-                $codebase->classlikes->classExists($fq_class_name, null, $context)
+                $codebase->classlikes->classExists(Interner::intern($fq_class_name), null, $context)
             ) {
                 self::analyzeNamedConstructor(
                     $statements_analyzer,
@@ -288,7 +290,7 @@ final class NewAnalyzer extends CallAnalyzer
                     $context,
                 );
 
-                if ($codebase->classlikes->enumExists($fq_class_name, null, $context)) {
+                if ($codebase->classlikes->enumExists(Interner::intern($fq_class_name), null, $context)) {
                     IssueBuffer::maybeAdd(new UndefinedClass(
                         'Enums cannot be instantiated',
                         new CodeLocation($statements_analyzer, $stmt),
@@ -315,7 +317,7 @@ final class NewAnalyzer extends CallAnalyzer
         bool $can_extend,
         ?TemplateResult $template_result = null,
     ): void {
-        $storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
         if ($from_static) {
             if (!$storage->preserve_constructor_signature) {
@@ -365,7 +367,7 @@ final class NewAnalyzer extends CallAnalyzer
             }
         }
 
-        if ($storage->deprecated && strtolower($fq_class_name) !== strtolower((string)$context->self)) {
+        if ($storage->deprecated && strtolower($fq_class_name) !== strtolower((string)Interner::lookupOrNull($context->self))) {
             IssueBuffer::maybeAdd(
                 new DeprecatedClass(
                     $fq_class_name . ' is marked deprecated',
@@ -377,15 +379,15 @@ final class NewAnalyzer extends CallAnalyzer
         }
 
 
-        if ($context->self
+        if (($context->self !== null)
             && !$context->collect_initializations
             && !$context->collect_mutations
-            && !NamespaceAnalyzer::isWithinAny($context->self, $storage->internal)
+            && !NamespaceAnalyzer::isWithinAny(Interner::lookup($context->self), $storage->internal)
         ) {
             IssueBuffer::maybeAdd(
                 new InternalClass(
                     $fq_class_name . ' is internal to ' . InternalClass::listToPhrase($storage->internal)
-                        . ' but called from ' . $context->self,
+                        . ' but called from ' . Interner::lookup($context->self),
                     new CodeLocation($statements_analyzer->getSource(), $stmt),
                     $fq_class_name,
                 ),
@@ -393,7 +395,7 @@ final class NewAnalyzer extends CallAnalyzer
             );
         }
 
-        $method_id = new MethodIdentifier($fq_class_name, '__construct');
+        $method_id = new MethodIdentifier(Interner::intern($fq_class_name), Sym::CONSTRUCT);
 
         if ($codebase->methodExists(
             $method_id,
@@ -785,7 +787,7 @@ final class NewAnalyzer extends CallAnalyzer
 
             $statements_analyzer->taint_flow_graph->addNode($method_source);
 
-            $stmt_type = $stmt_type->setParentNodes([$method_source->id => $method_source]);
+            $stmt_type = $stmt_type->setParentNodes([$method_source->key => $method_source]);
             $statements_analyzer->node_data->setType($stmt, $stmt_type);
         }
     }
@@ -953,16 +955,16 @@ final class NewAnalyzer extends CallAnalyzer
                     $new_types []= new Union([$new_type_part]);
 
                     if ($lhs_type_part->as_type
-                        && $codebase->classlikes->classExists($lhs_type_part->as_type->value, null, $context)
+                        && $codebase->classlikes->classExists($lhs_type_part->as_type->name, null, $context)
                     ) {
                         $as_storage = $codebase->classlike_storage_provider->get(
-                            $lhs_type_part->as_type->value,
+                            $lhs_type_part->as_type->name,
                         );
 
                         if (!$as_storage->preserve_constructor_signature) {
                             IssueBuffer::maybeAdd(
                                 new UnsafeInstantiation(
-                                    'Cannot safely instantiate class ' . $lhs_type_part->as_type->value
+                                    'Cannot safely instantiate class ' . Interner::lookup($lhs_type_part->as_type->name)
                                     . ' with "new $class_name" as'
                                     . ' its constructor might change in child classes',
                                     new CodeLocation($statements_analyzer->getSource(), $stmt),
@@ -976,8 +978,8 @@ final class NewAnalyzer extends CallAnalyzer
                 if ($lhs_type_part->as_type) {
                     $codebase->methodExists(
                         new MethodIdentifier(
-                            $lhs_type_part->as_type->value,
-                            '__construct',
+                            $lhs_type_part->as_type->name,
+                            Sym::CONSTRUCT,
                         ),
                         $context->calling_method_id,
                         $codebase->collect_locations
@@ -1002,16 +1004,16 @@ final class NewAnalyzer extends CallAnalyzer
                         }
 
                         if ($lhs_type_part->as_type
-                            && $codebase->classlikes->classExists($lhs_type_part->as_type->value, null, $context)
+                            && $codebase->classlikes->classExists($lhs_type_part->as_type->name, null, $context)
                         ) {
                             $as_storage = $codebase->classlike_storage_provider->get(
-                                $lhs_type_part->as_type->value,
+                                $lhs_type_part->as_type->name,
                             );
 
                             if (!$as_storage->preserve_constructor_signature) {
                                 IssueBuffer::maybeAdd(
                                     new UnsafeInstantiation(
-                                        'Cannot safely instantiate class ' . $lhs_type_part->as_type->value
+                                        'Cannot safely instantiate class ' . Interner::lookup($lhs_type_part->as_type->name)
                                         . ' with "new $class_name" as'
                                         . ' its constructor might change in child classes',
                                         new CodeLocation($statements_analyzer->getSource(), $stmt),
@@ -1029,7 +1031,7 @@ final class NewAnalyzer extends CallAnalyzer
                             foreach ($lhs_type_part->as_type->getAtomicTypes() as $typeof_type_atomic) {
                                 if ($typeof_type_atomic instanceof TNamedObject) {
                                     $generated_type = new TNamedObject(
-                                        $typeof_type_atomic->value,
+                                        Interner::lookup($typeof_type_atomic->name),
                                     );
                                 }
                             }
@@ -1178,7 +1180,8 @@ final class NewAnalyzer extends CallAnalyzer
             $unconstrainable[$template_name] = true;
         }
 
-        foreach ($storage->methods as $method_name => $method_storage) {
+        foreach ($storage->methods as $method_name_id => $method_storage) {
+            $method_name = Interner::lookupLc($method_name_id);
             if (!$unconstrainable) {
                 break;
             }

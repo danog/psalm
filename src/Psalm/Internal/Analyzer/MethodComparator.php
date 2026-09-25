@@ -11,7 +11,9 @@ use Psalm\Codebase;
 use Psalm\Config;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Internal\PhpVisitor\ParamReplacementVisitor;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
@@ -70,22 +72,22 @@ final class MethodComparator
         bool $prevent_method_signature_mismatch = true,
     ): ?bool {
         $implementer_method_id = new MethodIdentifier(
-            $implementer_classlike_storage->name,
-            strtolower($guide_method_storage->cased_name ?: ''),
+            $implementer_classlike_storage->id,
+            Interner::intern(strtolower($guide_method_storage->cased_name ?: '')),
         );
 
         $implementer_declaring_method_id = $codebase->methods->getDeclaringMethodId(
             $implementer_method_id,
         );
 
-        $cased_implementer_method_id = $implementer_classlike_storage->name . '::'
+        $cased_implementer_method_id = Interner::lookup($implementer_classlike_storage->id) . '::'
             . $implementer_method_storage->cased_name;
 
-        $cased_guide_method_id = $guide_classlike_storage->name . '::' . $guide_method_storage->cased_name;
+        $cased_guide_method_id = Interner::lookup($guide_classlike_storage->id) . '::' . $guide_method_storage->cased_name;
 
         $codebase->methods->file_reference_provider->addMethodDependencyToClassMember(
             strtolower((string)($implementer_declaring_method_id ?? $implementer_method_id)),
-            strtolower($guide_classlike_storage->name . '::' . $guide_method_storage->cased_name),
+            strtolower(Interner::lookup($guide_classlike_storage->id) . '::' . $guide_method_storage->cased_name),
         );
 
         self::checkForObviousMethodMismatches(
@@ -241,7 +243,7 @@ final class MethodComparator
     }
 
     /**
-     * @param array<lowercase-string, MethodStorage> $pseudo_methods
+     * @param array<int, MethodStorage> $pseudo_methods
      */
     public static function comparePseudoMethods(
         array $pseudo_methods,
@@ -249,25 +251,25 @@ final class MethodComparator
         Codebase $codebase,
         ClassLikeStorage $class_storage,
     ): void {
-        foreach ($pseudo_methods as $pseudo_method_name => $pseudo_method_storage) {
+        foreach ($pseudo_methods as $pseudo_method_name_id => $pseudo_method_storage) {
             $pseudo_method_id = new MethodIdentifier(
-                $fq_class_name,
-                $pseudo_method_name,
+                Interner::intern($fq_class_name),
+                $pseudo_method_name_id,
             );
 
             $overridden_method_ids = $codebase->methods->getOverriddenMethodIds($pseudo_method_id);
-            if (isset($class_storage->methods[$pseudo_method_id->method_name])) {
-                $overridden_method_ids[$class_storage->name] = $pseudo_method_id;
+            if (isset($class_storage->methods[$pseudo_method_id->name_id])) {
+                $overridden_method_ids[$class_storage->id] = $pseudo_method_id;
             }
 
             if ($overridden_method_ids
-                && $pseudo_method_name !== '__construct'
+                && $pseudo_method_name_id !== Sym::CONSTRUCT
                 && $pseudo_method_storage->location
             ) {
                 foreach ($overridden_method_ids as $overridden_method_id) {
                     $parent_method_storage = $codebase->methods->getStorage($overridden_method_id);
 
-                    $overridden_fq_class_name = $overridden_method_id->fq_class_name;
+                    $overridden_fq_class_name = $overridden_method_id->class_id;
 
                     $parent_storage = $codebase->classlike_storage_provider->get($overridden_fq_class_name);
 
@@ -312,8 +314,8 @@ final class MethodComparator
         if ($implementer_visibility > $guide_visibility) {
             if ($trait_mismatches_are_fatal
                 || $guide_classlike_storage->is_trait === $implementer_classlike_storage->is_trait
-                || !in_array($guide_classlike_storage->name, $implementer_classlike_storage->used_traits)
-                || $implementer_method_storage->defining_fqcln !== $implementer_classlike_storage->name
+                || !isset($implementer_classlike_storage->used_traits[$guide_classlike_storage->id])
+                || $implementer_method_storage->declaring_class !== $implementer_classlike_storage->id
                 || (!$implementer_method_storage->abstract
                     && !$guide_method_storage->abstract)
             ) {
@@ -386,7 +388,7 @@ final class MethodComparator
             IssueBuffer::maybeAdd(
                 new ImmutableDependency(
                     $cased_guide_method_id . ' is marked at least @psalm-external-mutation-free, but '
-                        . $implementer_classlike_storage->name . '::'
+                        . Interner::lookup($implementer_classlike_storage->id) . '::'
                         . ($guide_method_storage->cased_name ?: '')
                         . ' is not marked @psalm-external-mutation-free',
                     $code_location,
@@ -636,11 +638,11 @@ final class MethodComparator
                 $codebase,
                 $guide_param->signature_type,
                 $guide_classlike_storage->is_trait && $guide_method_storage->abstract
-                    ? $implementer_classlike_storage->name
-                    : $guide_classlike_storage->name,
+                    ? Interner::lookup($implementer_classlike_storage->id)
+                    : Interner::lookup($guide_classlike_storage->id),
                 $guide_classlike_storage->is_trait && $guide_method_storage->abstract
-                    ? $implementer_classlike_storage->name
-                    : $guide_classlike_storage->name,
+                    ? Interner::lookup($implementer_classlike_storage->id)
+                    : Interner::lookup($guide_classlike_storage->id),
                 $guide_classlike_storage->is_trait && $guide_method_storage->abstract
                     ? $implementer_classlike_storage->parent_class
                     : $guide_classlike_storage->parent_class,
@@ -655,11 +657,11 @@ final class MethodComparator
                 $codebase,
                 $guide_param->type,
                 $guide_classlike_storage->is_trait && $guide_method_storage->abstract
-                    ? $implementer_classlike_storage->name
-                    : $guide_classlike_storage->name,
+                    ? Interner::lookup($implementer_classlike_storage->id)
+                    : Interner::lookup($guide_classlike_storage->id),
                 $guide_classlike_storage->is_trait && $guide_method_storage->abstract
-                    ? $implementer_classlike_storage->name
-                    : $guide_classlike_storage->name,
+                    ? Interner::lookup($implementer_classlike_storage->id)
+                    : Interner::lookup($guide_classlike_storage->id),
                 $guide_classlike_storage->is_trait && $guide_method_storage->abstract
                     ? $implementer_classlike_storage->parent_class
                     : $guide_classlike_storage->parent_class,
@@ -696,8 +698,8 @@ final class MethodComparator
         $implementer_param_signature_type = TypeExpander::expandUnion(
             $codebase,
             $implementer_param_signature_type,
-            $implementer_classlike_storage->name,
-            $implementer_classlike_storage->name,
+            Interner::lookup($implementer_classlike_storage->id),
+            Interner::lookup($implementer_classlike_storage->id),
             $implementer_classlike_storage->parent_class,
         );
 
@@ -717,8 +719,8 @@ final class MethodComparator
 
             if ($codebase->analysis_php_version_id >= 8_00_00
                 || $guide_classlike_storage->is_trait === $implementer_classlike_storage->is_trait
-                || !in_array($guide_classlike_storage->name, $implementer_classlike_storage->used_traits)
-                || $implementer_method_storage->defining_fqcln !== $implementer_classlike_storage->name
+                || !isset($implementer_classlike_storage->used_traits[$guide_classlike_storage->id])
+                || $implementer_method_storage->declaring_class !== $implementer_classlike_storage->id
                 || (!$implementer_method_storage->abstract
                     && !$guide_method_storage->abstract)
             ) {
@@ -800,7 +802,7 @@ final class MethodComparator
         $implementer_method_storage_param_type = TypeExpander::expandUnion(
             $codebase,
             $implementer_param_type,
-            $implementer_classlike_storage->name,
+            Interner::lookup($implementer_classlike_storage->id),
             $implementer_called_class_name,
             $implementer_classlike_storage->parent_class,
         );
@@ -809,29 +811,29 @@ final class MethodComparator
             $codebase,
             $guide_param_type,
             $guide_classlike_storage->is_trait && $guide_method_storage->abstract
-                ? $implementer_classlike_storage->name
-                : $guide_classlike_storage->name,
+                ? Interner::lookup($implementer_classlike_storage->id)
+                : Interner::lookup($guide_classlike_storage->id),
             $guide_classlike_storage->is_trait && $guide_method_storage->abstract
-                ? $implementer_classlike_storage->name
-                : $guide_classlike_storage->name,
+                ? Interner::lookup($implementer_classlike_storage->id)
+                : Interner::lookup($guide_classlike_storage->id),
             $guide_classlike_storage->is_trait && $guide_method_storage->abstract
                 ? $implementer_classlike_storage->parent_class
                 : $guide_classlike_storage->parent_class,
         );
 
-        $guide_class_name = $guide_classlike_storage->name;
+        $guide_class_name = Interner::lookup($guide_classlike_storage->id);
 
         if ($implementer_classlike_storage->is_trait) {
             $implementer_called_class_storage = $codebase->classlike_storage_provider->get(
-                $implementer_called_class_name,
+                Interner::intern($implementer_called_class_name),
             );
 
             if (isset(
-                $implementer_called_class_storage->template_extended_params[$implementer_classlike_storage->name],
+                $implementer_called_class_storage->template_extended_params[Interner::lookup($implementer_classlike_storage->id)],
             )) {
                 self::transformTemplates(
                     $implementer_called_class_storage->template_extended_params,
-                    $implementer_classlike_storage->name,
+                    Interner::lookup($implementer_classlike_storage->id),
                     $implementer_method_storage_param_type,
                     $codebase,
                 );
@@ -981,12 +983,12 @@ final class MethodComparator
             $codebase,
             $guide_signature_return_type,
             $guide_classlike_storage->is_trait && $guide_method_storage->abstract
-                ? $implementer_classlike_storage->name
-                : $guide_classlike_storage->name,
+                ? Interner::lookup($implementer_classlike_storage->id)
+                : Interner::lookup($guide_classlike_storage->id),
             ($guide_classlike_storage->is_trait && $guide_method_storage->abstract)
                 || $guide_classlike_storage->final
-                ? $implementer_classlike_storage->name
-                : $guide_classlike_storage->name,
+                ? Interner::lookup($implementer_classlike_storage->id)
+                : Interner::lookup($guide_classlike_storage->id),
             $guide_classlike_storage->is_trait && $guide_method_storage->abstract
                 ? $implementer_classlike_storage->parent_class
                 : $guide_classlike_storage->parent_class,
@@ -1001,10 +1003,10 @@ final class MethodComparator
                 $implementer_method_storage->signature_return_type,
                 $implementer_classlike_storage->is_trait
                     ? $implementer_called_class_name
-                    : $implementer_classlike_storage->name,
+                    : Interner::lookup($implementer_classlike_storage->id),
                 $implementer_classlike_storage->is_trait
                     ? $implementer_called_class_name
-                    : $implementer_classlike_storage->name,
+                    : Interner::lookup($implementer_classlike_storage->id),
                 $implementer_classlike_storage->parent_class,
             ) : null;
 
@@ -1026,8 +1028,8 @@ final class MethodComparator
                 // no error if return type will change and no signature set at all
             } elseif ($codebase->analysis_php_version_id >= 8_00_00
                       || $guide_classlike_storage->is_trait === $implementer_classlike_storage->is_trait
-                      || !in_array($guide_classlike_storage->name, $implementer_classlike_storage->used_traits)
-                      || $implementer_method_storage->defining_fqcln !== $implementer_classlike_storage->name
+                      || !isset($implementer_classlike_storage->used_traits[$guide_classlike_storage->id])
+                      || $implementer_method_storage->declaring_class !== $implementer_classlike_storage->id
                       || (!$implementer_method_storage->abstract
                           && !$guide_method_storage->abstract)
             ) {
@@ -1075,7 +1077,7 @@ final class MethodComparator
             $implementer_return_type,
             $implementer_classlike_storage->is_trait
                 ? $implementer_called_class_name
-                : $implementer_classlike_storage->name,
+                : Interner::lookup($implementer_classlike_storage->id),
             $implementer_called_class_name,
             $implementer_classlike_storage->parent_class,
         );
@@ -1084,19 +1086,19 @@ final class MethodComparator
             $codebase,
             $guide_return_type,
             $guide_classlike_storage->is_trait
-                ? $implementer_classlike_storage->name
-                : $guide_classlike_storage->name,
+                ? Interner::lookup($implementer_classlike_storage->id)
+                : Interner::lookup($guide_classlike_storage->id),
             $guide_classlike_storage->is_trait
                 || $implementer_method_storage->final
                 ? $implementer_called_class_name
-                : $guide_classlike_storage->name,
+                : Interner::lookup($guide_classlike_storage->id),
             $guide_classlike_storage->parent_class,
             true,
             true,
             $implementer_method_storage->final,
         );
 
-        $guide_class_name = $guide_classlike_storage->name;
+        $guide_class_name = Interner::lookup($guide_classlike_storage->id);
 
         if ($implementer_classlike_storage->template_extended_params) {
             self::transformTemplates(
@@ -1106,10 +1108,10 @@ final class MethodComparator
                 $codebase,
             );
 
-            if ($implementer_method_storage->defining_fqcln) {
+            if (($implementer_method_storage->declaring_class !== null && (bool) Interner::lookup($implementer_method_storage->declaring_class))) {
                 self::transformTemplates(
                     $implementer_classlike_storage->template_extended_params,
-                    $implementer_method_storage->defining_fqcln,
+                    Interner::lookupOrNull($implementer_method_storage->declaring_class),
                     $implementer_method_storage_return_type,
                     $codebase,
                 );
@@ -1118,13 +1120,13 @@ final class MethodComparator
 
         if ($implementer_classlike_storage->is_trait) {
             $implementer_called_class_storage = $codebase->classlike_storage_provider->get(
-                $implementer_called_class_name,
+                Interner::intern($implementer_called_class_name),
             );
 
             if ($implementer_called_class_storage->template_extended_params) {
                 self::transformTemplates(
                     $implementer_called_class_storage->template_extended_params,
-                    $implementer_classlike_storage->name,
+                    Interner::lookup($implementer_classlike_storage->id),
                     $implementer_method_storage_return_type,
                     $codebase,
                 );

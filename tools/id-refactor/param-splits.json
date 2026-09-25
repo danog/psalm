@@ -1,0 +1,8 @@
+[["Psalm\\Internal\\Codebase\\Properties","propertyExists","property_id",["fq_class_name","property_name"]],
+ ["Psalm\\Internal\\Codebase\\Properties","getDeclaringClassForProperty","property_id",["fq_class_name","property_name"]],
+ ["Psalm\\Internal\\Codebase\\Properties","getAppearingClassForProperty","property_id",["fq_class_name","property_name"]],
+ ["Psalm\\Internal\\Codebase\\Properties","getStorage","property_id",["fq_class_name","property_name"]],
+ ["Psalm\\Internal\\Codebase\\Properties","hasStorage","property_id",["fq_class_name","property_name"]],
+ ["Psalm\\Internal\\Codebase\\Properties","getPropertyType","property_id",["fq_class_name","property_name"]],
+ ["Psalm\\Codebase","propertyExists","property_id",["fq_class_name","property_name"]],
+ ["Psalm\\Internal\\Analyzer\\ClassLikeAnalyzer","checkPropertyVisibility","property_id",["fq_class_name","property_name"]]]

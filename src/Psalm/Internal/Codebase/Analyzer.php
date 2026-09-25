@@ -21,6 +21,7 @@ use Psalm\Internal\Fork\AnalyzerTask;
 use Psalm\Internal\Fork\InitAnalyzerTask;
 use Psalm\Internal\Fork\Pool;
 use Psalm\Internal\Fork\ShutdownAnalyzerTask;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\FileProvider;
 use Psalm\Internal\Provider\FileStorageProvider;
 use Psalm\Internal\Provider\StatementsProvider;
@@ -69,6 +70,7 @@ use const PHP_INT_MAX;
  * }
  *
  * @psalm-type  WorkerData = array{
+ *     interner: list<string>,
  *      issues: array<string, list<IssueData>>,
  *      fixable_issue_counts: array<string, int>,
  *      mixed_counts: array<string, array{0: int, 1: int}>,
@@ -332,6 +334,8 @@ final class Analyzer
             foreach (Future::iterate($forked_pool_data) as $pool_data) {
                 $pool_data = $pool_data->await();
 
+                Interner::merge($pool_data['interner']);
+
                 IssueBuffer::addIssues($pool_data['issues']);
                 IssueBuffer::addFixableIssues($pool_data['fixable_issue_counts']);
 
@@ -492,14 +496,14 @@ final class Analyzer
                     foreach ($all_referencing_methods[$unchanged_signature_member_id] as $referencing_method_id => $_) {
                         if (str_ends_with($referencing_method_id, '::__construct')) {
                             $referencing_base_classlike = explode('::', $referencing_method_id)[0];
-                            $unchanged_signature_classlike = explode('::', $unchanged_signature_member_id)[0];
+                            $unchanged_signature_classlike = Interner::intern(explode('::', $unchanged_signature_member_id)[0]);
 
-                            if ($referencing_base_classlike === $unchanged_signature_classlike) {
+                            if ($referencing_base_classlike === Interner::lookup($unchanged_signature_classlike)) {
                                 $newly_invalidated_methods[$referencing_method_id] = true;
                             } else {
                                 try {
                                     $referencing_storage = $codebase->classlike_storage_provider->get(
-                                        $referencing_base_classlike,
+                                        Interner::intern($referencing_base_classlike),
                                     );
                                 } catch (InvalidArgumentException) {
                                     // Workaround for #3671
@@ -507,8 +511,8 @@ final class Analyzer
                                     $referencing_storage = null;
                                 }
 
-                                if (isset($referencing_storage->used_traits[$unchanged_signature_classlike])
-                                    || isset($referencing_storage->parent_classes[$unchanged_signature_classlike])
+                                if (isset($referencing_storage->used_traits[$codebase->classlike_storage_provider->canonicalId($unchanged_signature_classlike)])
+                                    || isset($referencing_storage->parent_classes[$codebase->classlike_storage_provider->canonicalId($unchanged_signature_classlike)])
                                 ) {
                                     $newly_invalidated_methods[$referencing_method_id] = true;
                                 }
@@ -678,13 +682,13 @@ final class Analyzer
             $code_use_graph->removeReferencesFrom(CodeUseGraph::classNode($fq_class_name_lc));
 
             try {
-                $classlike_storage = $codebase->classlike_storage_provider->get($fq_class_name_lc);
+                $classlike_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name_lc));
             } catch (InvalidArgumentException) {
                 continue;
             }
 
             foreach ($classlike_storage->appearing_method_ids as $appearing_method_id) {
-                if (strtolower($appearing_method_id->fq_class_name) !== $fq_class_name_lc) {
+                if (strtolower(Interner::lookup($appearing_method_id->class_id)) !== $fq_class_name_lc) {
                     continue;
                 }
 
@@ -696,7 +700,8 @@ final class Analyzer
             }
         }
 
-        foreach ($file_storage->functions as $function_id => $_) {
+        foreach ($file_storage->functions as $function_iid => $_) {
+            $function_id = Interner::lookup($function_iid);
             $code_use_graph->removeReferencesFrom(CodeUseGraph::functionLikeNode(strtolower($function_id)));
         }
     }

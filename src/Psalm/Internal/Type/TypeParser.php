@@ -11,6 +11,8 @@ use Psalm\Exception\TypeParseTreeException;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\ArrayAnalyzer;
 use Psalm\Internal\Codebase\ConstantMap;
+use Psalm\Internal\Interner;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\ParseTree\CallableParamTree;
 use Psalm\Internal\Type\ParseTree\CallableTree;
 use Psalm\Internal\Type\ParseTree\CallableWithReturnTypeTree;
@@ -492,7 +494,7 @@ final class TypeParser
 
                 return new TTemplateParamClass(
                     $param_name,
-                    $traversable->value,
+                    Interner::lookup($traversable->name),
                     $traversable,
                     $defining_class,
                     $from_docblock,
@@ -508,7 +510,7 @@ final class TypeParser
 
                 return new TTemplateParamClass(
                     $t->param_name,
-                    $t_atomic_type->value ?? 'object',
+                    (isset($t_atomic_type->name) ? Interner::lookup($t_atomic_type->name) : 'object'),
                     $t_atomic_type,
                     $t->defining_class,
                     $from_docblock,
@@ -523,7 +525,7 @@ final class TypeParser
 
             return new TTemplateParamClass(
                 $param_name,
-                $t->value,
+                Interner::lookup($t->name),
                 $t,
                 $defining_class,
                 $from_docblock,
@@ -607,7 +609,7 @@ final class TypeParser
                 if ($tree_type instanceof TTemplateParam) {
                     $template_type_map[$tree_type->param_name] = ['class-string-map' => $tree_type->as];
                 } elseif ($tree_type instanceof TNamedObject) {
-                    $template_type_map[$tree_type->value] = ['class-string-map' => Type::getObject()];
+                    $template_type_map[Interner::lookup($tree_type->name)] = ['class-string-map' => Type::getObject()];
                 }
             }
 
@@ -722,7 +724,7 @@ final class TypeParser
 
             return $generic_type_value === 'array'
                 ? new TArray($generic_params, $from_docblock)
-                : new TNonEmptyArray($generic_params, null, null, 'non-empty-array', $from_docblock)
+                : new TNonEmptyArray($generic_params, null, null, Sym::C_NON_EMPTY_ARRAY, $from_docblock)
             ;
         }
 
@@ -780,7 +782,7 @@ final class TypeParser
             $types = [];
             foreach ($generic_params[0]->getAtomicTypes() as $type) {
                 if ($type instanceof TNamedObject) {
-                    $types[] = new TClassString($type->value, $type, false, false, false, $from_docblock);
+                    $types[] = new TClassString(Interner::lookup($type->name), $type, false, false, false, $from_docblock);
                     continue;
                 }
 
@@ -816,7 +818,7 @@ final class TypeParser
             $template_as_type = null;
 
             if ($template_marker instanceof TNamedObject) {
-                $template_param_name = $template_marker->value;
+                $template_param_name = Interner::lookup($template_marker->name);
             } elseif ($template_marker instanceof TTemplateParam) {
                 $template_param_name = $template_marker->param_name;
                 $template_as_type = $template_marker->as->getSingleAtomic();
@@ -951,9 +953,9 @@ final class TypeParser
                 $atomic_type = reset($generic_param_atomics);
 
                 if ($atomic_type instanceof TNamedObject) {
-                    if (ConstantMap::has($atomic_type->value)) {
+                    if (ConstantMap::has(Interner::lookup($atomic_type->name))) {
                         // an internal constant the analyzer models
-                        $constant_value = ConstantMap::get()[$atomic_type->value];
+                        $constant_value = ConstantMap::get()[Interner::lookup($atomic_type->name)];
 
                         if (!is_int($constant_value)) {
                             throw new TypeParseTreeException(
@@ -1722,7 +1724,7 @@ final class TypeParser
         $modified = false;
         foreach ($intersection_types as $intersection_type) {
             if (!$intersection_type instanceof TTypeAlias
-                || !$codebase->classlike_storage_provider->has($intersection_type->declaring_fq_classlike_name)
+                || !$codebase->classlike_storage_provider->has(Interner::intern($intersection_type->declaring_fq_classlike_name))
             ) {
                 $normalized_intersection_types[] = [$intersection_type];
                 continue;

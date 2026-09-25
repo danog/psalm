@@ -9,6 +9,7 @@ use Psalm\Codebase;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\VariableFetchAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\Comparator\AtomicTypeComparator;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
@@ -335,7 +336,7 @@ final class AssertionReconciler extends Reconciler
 
         if ($new_type_part->isObjectType()) {
             if ($new_type_part instanceof TNamedObject &&
-                $codebase->interfaceExists($new_type_part->value)
+                $codebase->interfaceExists($new_type_part->name)
             ) {
                 $new_type_has_interface = true;
             }
@@ -346,7 +347,7 @@ final class AssertionReconciler extends Reconciler
         if ($existing_var_type->hasObjectType()) {
             foreach ($existing_var_type->getAtomicTypes() as $existing_type_part) {
                 if ($existing_type_part instanceof TNamedObject &&
-                    $codebase->interfaceExists($existing_type_part->value)
+                    $codebase->interfaceExists($existing_type_part->name)
                 ) {
                     $old_type_has_interface = true;
                     break;
@@ -432,8 +433,8 @@ final class AssertionReconciler extends Reconciler
                 }
 
                 if ($existing_var_type_part instanceof TNamedObject
-                    && ($codebase->classExists($existing_var_type_part->value)
-                        || $codebase->interfaceExists($existing_var_type_part->value))
+                    && ($codebase->classExists($existing_var_type_part->name)
+                        || $codebase->interfaceExists($existing_var_type_part->name))
                 ) {
                     $existing_var_type_part = $existing_var_type_part->addIntersectionType($new_type_part);
                     $acceptable_atomic_types[] = $existing_var_type_part;
@@ -659,8 +660,8 @@ final class AssertionReconciler extends Reconciler
 
         if ($type_1_atomic instanceof TNamedObject
             && $type_2_atomic instanceof TNamedObject
-            && ($codebase->interfaceExists($type_1_atomic->value)
-                || $codebase->interfaceExists($type_2_atomic->value))
+            && ($codebase->interfaceExists($type_1_atomic->name)
+                || $codebase->interfaceExists($type_2_atomic->name))
         ) {
             return $type_2_atomic->addIntersectionType($type_1_atomic);
         }
@@ -888,7 +889,7 @@ final class AssertionReconciler extends Reconciler
         ) {
             // this is a hack - it's not actually rigorous, as the params may be different
             return new TGenericObject(
-                $type_2_atomic->value,
+                Interner::lookup($type_2_atomic->name),
                 $type_1_atomic->type_params,
             );
         } elseif ($type_2_atomic instanceof TNamedObject
@@ -989,7 +990,7 @@ final class AssertionReconciler extends Reconciler
                 $suppressed_issues,
             );
         } else {
-            $fq_enum_name = $assertion_type->value;
+            $fq_enum_name = Interner::lookup($assertion_type->name);
             $case_name = $assertion_type->case_name;
 
             if ($existing_var_type->hasMixed()) {
@@ -1006,7 +1007,7 @@ final class AssertionReconciler extends Reconciler
             $existing_var_type = $existing_var_type->getBuilder();
             foreach ($existing_var_atomic_types as $atomic_key => $atomic_type) {
                 if ($atomic_type::class === TNamedObject::class
-                    && $atomic_type->value === $fq_enum_name
+                    && Interner::lookup($atomic_type->name) === $fq_enum_name
                 ) {
                     $can_be_equal = true;
                     $redundant = false;
@@ -1587,7 +1588,7 @@ final class AssertionReconciler extends Reconciler
 
             if ($allow_string_comparison) {
                 $types[] = new TClassString(
-                    $assertion_type->value,
+                    Interner::lookup($assertion_type->name),
                     $assertion_type,
                 );
             }
@@ -1627,21 +1628,21 @@ final class AssertionReconciler extends Reconciler
                     return [$assertion_type];
                 }
 
-                $new_type_has_interface_string = $codebase->interfaceExists($assertion_type->value);
+                $new_type_has_interface_string = $codebase->interfaceExists($assertion_type->name);
 
                 $old_type_has_interface_string = false;
 
                 foreach ($existing_var_type->getAtomicTypes() as $existing_type_part) {
                     if ($existing_type_part instanceof TClassString
                         && $existing_type_part->as_type
-                        && $codebase->interfaceExists($existing_type_part->as_type->value)
+                        && $codebase->interfaceExists($existing_type_part->as_type->name)
                     ) {
                         $old_type_has_interface_string = true;
                         break;
                     }
                 }
 
-                $new_type = Type::getClassString($assertion_type->value);
+                $new_type = Type::getClassString(Interner::lookup($assertion_type->name));
 
                 if ((
                         $new_type_has_interface_string
@@ -1688,8 +1689,8 @@ final class AssertionReconciler extends Reconciler
                             continue;
                         }
 
-                        if ($codebase->classExists($existing_var_type_part->value)
-                            || $codebase->interfaceExists($existing_var_type_part->value)
+                        if ($codebase->classExists($existing_var_type_part->name)
+                            || $codebase->interfaceExists($existing_var_type_part->name)
                         ) {
                             $existing_var_type_part = $existing_var_type_part->addIntersectionType($new_type_part);
                             $acceptable_atomic_types[] = $existing_var_type_part;

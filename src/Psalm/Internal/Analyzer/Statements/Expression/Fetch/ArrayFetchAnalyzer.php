@@ -18,6 +18,8 @@ use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\Codebase\VariableUseGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\Interner;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\Comparator\AtomicTypeComparator;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
@@ -466,10 +468,10 @@ final class ArrayFetchAnalyzer
                 }
             }
 
-            $stmt_type = $stmt_type->setParentNodes([$new_parent_node->id => $new_parent_node]);
+            $stmt_type = $stmt_type->setParentNodes([$new_parent_node->key => $new_parent_node]);
 
             if ($array_key_node) {
-                $offset_type = $offset_type->setParentNodes([$array_key_node->id => $array_key_node]);
+                $offset_type = $offset_type->setParentNodes([$array_key_node->key => $array_key_node]);
             }
         }
     }
@@ -1133,7 +1135,7 @@ final class ArrayFetchAnalyzer
                 }
 
                 $statements_analyzer->node_data->setType($stmt->var, $stmt_var_type->setParentNodes([
-                    $new_parent_node->id => $new_parent_node,
+                    $new_parent_node->key => $new_parent_node,
                 ]));
             }
         }
@@ -1427,7 +1429,7 @@ final class ArrayFetchAnalyzer
                     $type->type_params,
                     null,
                     null,
-                    'non-empty-array',
+                    Sym::C_NON_EMPTY_ARRAY,
                     $type->from_docblock,
                 );
             }
@@ -1833,12 +1835,12 @@ final class ArrayFetchAnalyzer
         bool &$has_array_access,
     ): void {
         $codebase = $statements_analyzer->getCodebase();
-        if (strtolower($type->value) === 'simplexmlelement'
-            || ($codebase->classExists($type->value, null, $context)
-                && $codebase->classExtendsOrImplements($type->value, 'SimpleXMLElement'))
+        if (strtolower(Interner::lookup($type->name)) === 'simplexmlelement'
+            || ($codebase->classExists($type->name, null, $context)
+                && $codebase->classExtendsOrImplements($type->name, Sym::SIMPLE_XML_ELEMENT))
         ) {
             $call_array_access_type = new Union([new TNull(), new TNamedObject('SimpleXMLElement')]);
-        } elseif (strtolower($type->value) === 'domnodelist' && $stmt->dim) {
+        } elseif (strtolower(Interner::lookup($type->name)) === 'domnodelist' && $stmt->dim) {
             $old_data_provider = $statements_analyzer->node_data;
 
             $statements_analyzer->node_data = clone $statements_analyzer->node_data;

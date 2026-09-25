@@ -6,6 +6,7 @@ namespace Psalm\Internal\TypeVisitor;
 
 use Override;
 use Psalm\Internal\Codebase\Scanner;
+use Psalm\Internal\Interner;
 use Psalm\Storage\FileStorage;
 use Psalm\Type\Atomic\TClassConstant;
 use Psalm\Type\Atomic\TLiteralClassString;
@@ -35,20 +36,20 @@ final class TypeScanner extends TypeVisitor
     protected function enterNode(TypeNode $type): ?int
     {
         if ($type instanceof TNamedObject) {
-            $fq_classlike_name_lc = strtolower($type->value);
+            $fq_classlike_name_lc = strtolower(Interner::lookup($type->name));
 
-            if (!isset($this->phantom_classes[$type->value])
+            if (!isset($this->phantom_classes[Interner::lookup($type->name)])
                 && !isset($this->phantom_classes[$fq_classlike_name_lc])
             ) {
                 $this->scanner->queueClassLikeForScanning(
-                    $type->value,
+                    Interner::lookup($type->name),
                     false,
                     !$type->from_docblock,
                     $this->phantom_classes,
                 );
 
                 if ($this->file_storage) {
-                    $this->file_storage->referenced_classlikes[$fq_classlike_name_lc] = $type->value;
+                    $this->file_storage->referenced_classlikes[$fq_classlike_name_lc] = Interner::lookup($type->name);
                 }
             }
         }

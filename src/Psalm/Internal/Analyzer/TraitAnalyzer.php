@@ -9,6 +9,7 @@ use Override;
 use PhpParser\Node\Stmt\Trait_;
 use Psalm\Aliases;
 use Psalm\Context;
+use Psalm\Internal\Interner;
 use Psalm\IssueBuffer;
 
 use function assert;
@@ -32,7 +33,7 @@ final class TraitAnalyzer extends ClassLikeAnalyzer
         $this->class = $class;
         $this->fq_class_name = $fq_class_name;
         $codebase = $source->getCodebase();
-        $this->storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $this->storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
     }
 
     /** @psalm-mutation-free */
@@ -74,11 +75,11 @@ final class TraitAnalyzer extends ClassLikeAnalyzer
         assert($stmt->name !== null);
         $codebase = $statements_analyzer->getCodebase();
 
-        if (!$codebase->classlike_storage_provider->has($stmt->name->name)) {
+        if (!$codebase->classlike_storage_provider->has(Interner::intern($stmt->name->name))) {
             return;
         }
 
-        $storage = $codebase->classlike_storage_provider->get($stmt->name->name);
+        $storage = $codebase->classlike_storage_provider->get(Interner::intern($stmt->name->name));
 
         ClassLikeAnalyzer::registerDocblockSuppressions($storage, $statements_analyzer->getFilePath(), $codebase);
 

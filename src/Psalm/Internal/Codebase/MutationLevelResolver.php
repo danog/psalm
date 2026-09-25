@@ -44,15 +44,15 @@ final class MutationLevelResolver
      * Computes the final mutation level of every function-like with recorded
      * mutation info: node id => level.
      *
-     * @param array<string, MutationInfo> $infos
-     * @return array<string, Mutations::LEVEL_*>
+     * @param array<int, MutationInfo> $infos
+     * @return array<int, Mutations::LEVEL_*>
      * @psalm-pure
      */
     public static function resolveLevels(array $infos): array
     {
         $levels = [];
 
-        /** @var array<string, array<string, true>> callee => callers */
+        /** @var array<int, array<int, true>> callee => callers */
         $callers = [];
 
         foreach ($infos as $node_id => $info) {

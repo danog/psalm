@@ -26,9 +26,11 @@ use Psalm\Internal\Codebase\MutationInfo;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\FileManipulation\FunctionDocblockManipulator;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\PhpVisitor\NodeCounterVisitor;
 use Psalm\Internal\Provider\NodeDataProvider;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
@@ -151,14 +153,14 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
      * (graph node => whether mutations of the callee's own instance are fine),
      * whose levels are only known after analysis.
      *
-     * @var array<string, bool>
+     * @var array<int, bool>
      */
     public array $deferred_callees = [];
 
     /**
      * Holds param nodes for functions with func_get_args calls
      *
-     * @var array<string, DataFlowNode>
+     * @var array<int, DataFlowNode>
      */
     public array $param_nodes = [];
 
@@ -292,7 +294,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
                     $context->vars_in_scope[$use_var_id] =
                         $context->vars_in_scope[$use_var_id]->addParentNodes(
-                            [$use_assignment->id => $use_assignment],
+                            [$use_assignment->key => $use_assignment],
                         );
                 }
 
@@ -316,10 +318,10 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
         if ($storage->template_types) {
             foreach ($storage->template_types as $param_name => $_) {
-                $fq_classlike_name = Type::getFQCLNFromString(
+                $fq_classlike_name = Interner::intern(Type::getFQCLNFromString(
                     $param_name,
                     $this->getAliases(),
-                );
+                ));
 
                 if ($codebase->classOrInterfaceExists($fq_classlike_name, null, $context)) {
                     IssueBuffer::maybeAdd(
@@ -621,7 +623,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                     $storage->location,
                     $storage->cased_name ?? '{closure}',
                     $storage->suppressed_issues,
-                    $storage instanceof MethodStorage ? $storage->defining_fqcln : null,
+                    $storage instanceof MethodStorage ? Interner::lookupOrNull($storage->declaring_class) : null,
                     $this->function->getStartFilePos(),
                     true,
                     // inline callbacks are not worth annotating, closures assigned to a variable are
@@ -778,9 +780,9 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
         foreach ($storage->throws as $expected_exception => $_) {
             if (($expected_exception === 'self'
                     || $expected_exception === 'static')
-                && $context->self
+                && ($context->self !== null)
             ) {
-                $expected_exception = $context->self;
+                $expected_exception = Interner::lookup($context->self);
             }
 
             if (isset($storage->throw_locations[$expected_exception])) {
@@ -833,10 +835,10 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             foreach ($storage->throws as $expected_exception => $_) {
                 if ($expected_exception === $possibly_thrown_exception
                     || (
-                        $codebase->classOrInterfaceExists($possibly_thrown_exception, null, $context)
+                        $codebase->classOrInterfaceExists(Interner::intern($possibly_thrown_exception), null, $context)
                         && (
-                            $codebase->interfaceExtends($possibly_thrown_exception, $expected_exception)
-                            || $codebase->classExtendsOrImplements($possibly_thrown_exception, $expected_exception)
+                            $codebase->interfaceExtends(Interner::intern($possibly_thrown_exception), Interner::intern($expected_exception))
+                            || $codebase->classExtendsOrImplements(Interner::intern($possibly_thrown_exception), Interner::intern($expected_exception))
                         )
                     )
                 ) {
@@ -1072,13 +1074,14 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                         $method_id_lc,
                     );
 
-                    $method_name_lc = strtolower($storage->cased_name);
+                    $method_name_lc = Interner::intern(strtolower($storage->cased_name));
+                    $method_name_lc_id = $method_name_lc;
 
-                    if (!isset($class_storage->overridden_method_ids[$method_name_lc])) {
+                    if (!isset($class_storage->overridden_method_ids[$method_name_lc_id])) {
                         continue;
                     }
 
-                    foreach ($class_storage->overridden_method_ids[$method_name_lc] as $parent_method_id) {
+                    foreach ($class_storage->overridden_method_ids[$method_name_lc_id] as $parent_method_id) {
                         $codebase->file_reference_provider->addMethodParamUse(
                             strtolower((string) $parent_method_id),
                             $i,
@@ -1132,8 +1135,8 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 $signature_type = TypeExpander::expandUnion(
                     $codebase,
                     $signature_type,
-                    $context->self,
-                    $context->self,
+                    Interner::lookupOrNull($context->self),
+                    Interner::lookupOrNull($context->self),
                     $this->getParentFQCLN(),
                 );
             }
@@ -1168,10 +1171,10 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 }
 
                 if ($storage->variadic) {
-                    $this->param_nodes += [$param_assignment->id => $param_assignment];
+                    $this->param_nodes += [$param_assignment->key => $param_assignment];
                 }
 
-                $parent_nodes = [$param_assignment->id => $param_assignment];
+                $parent_nodes = [$param_assignment->key => $param_assignment];
             }
 
             if ($function_param->type) {
@@ -1181,8 +1184,8 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                     $param_type = TypeExpander::expandUnion(
                         $codebase,
                         $param_type,
-                        $context->self,
-                        $context->self,
+                        Interner::lookupOrNull($context->self),
+                        Interner::lookupOrNull($context->self),
                         $this->getParentFQCLN(),
                         true,
                         false,
@@ -1465,12 +1468,12 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             }
 
             if ($param_name_node) {
-                $resolved_name = ClassLikeAnalyzer::getFQCLNFromNameObject($param_name_node, $this->getAliases());
+                $resolved_name = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject($param_name_node, $this->getAliases()));
 
                 $parent_fqcln = $this->getParentFQCLN();
 
-                if ($resolved_name === 'self' && $context->self) {
-                    $resolved_name = $context->self;
+                if ($resolved_name === 'self' && ($context->self !== null)) {
+                    $resolved_name = Interner::lookup($context->self);
                 } elseif ($resolved_name === 'parent' && $parent_fqcln) {
                     $resolved_name = $parent_fqcln;
                 }
@@ -1499,12 +1502,12 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             }
 
             if ($return_name_node) {
-                $resolved_name = ClassLikeAnalyzer::getFQCLNFromNameObject($return_name_node, $this->getAliases());
+                $resolved_name = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject($return_name_node, $this->getAliases()));
 
                 $parent_fqcln = $this->getParentFQCLN();
 
-                if ($resolved_name === 'self' && $context->self) {
-                    $resolved_name = $context->self;
+                if ($resolved_name === 'self' && ($context->self !== null)) {
+                    $resolved_name = Interner::lookup($context->self);
                 } elseif ($resolved_name === 'parent' && $parent_fqcln) {
                     $resolved_name = $parent_fqcln;
                 }
@@ -1528,7 +1531,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             $replace_type = TypeExpander::expandUnion(
                 $codebase,
                 $storage->return_type,
-                $context->self,
+                Interner::lookupOrNull($context->self),
                 'static',
                 $this->getParentFQCLN(),
                 false,
@@ -1552,7 +1555,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 $replace_type = TypeExpander::expandUnion(
                     $codebase,
                     $function_param->type,
-                    $context->self,
+                    Interner::lookupOrNull($context->self),
                     'static',
                     $this->getParentFQCLN(),
                     false,
@@ -1611,7 +1614,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
         $codebase = $project_analyzer->getCodebase();
         $is_final = true;
-        $fqcln = $this->source->getFQCLN();
+        $fqcln = Interner::internOrNull($this->source->getFQCLN());
 
         if ($fqcln !== null && $this instanceof MethodAnalyzer) {
             $class_storage = $codebase->classlike_storage_provider->get($fqcln);
@@ -1840,7 +1843,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
      *
      * @psalm-mutation-free
      */
-    public function getMutationNodeId(): ?string
+    public function getMutationNodeId(): ?int
     {
         return CodeUseGraph::functionLikeNodeForStorage($this->storage);
     }
@@ -1946,7 +1949,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
      *        ClassLikeStorage|null,
      *        ?string,
      *        ?string,
-     *        array<string, MethodIdentifier>
+     *        array<int, MethodIdentifier>
      * }|null
      */
     private function getFunctionInformation(
@@ -1974,8 +1977,8 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
             $method_id = $this->getMethodId($context->self);
 
-            $fq_class_name = (string)$context->self;
-            $appearing_class_storage = $classlike_storage_provider->get($fq_class_name);
+            $fq_class_name = (string)Interner::lookupOrNull($context->self);
+            $appearing_class_storage = $classlike_storage_provider->get(Interner::intern($fq_class_name));
 
             if ($add_mutations) {
                 if (!$context->collect_initializations) {
@@ -1986,7 +1989,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                         return null;
                     }
                 }
-            } elseif ($context->self) {
+            } elseif (($context->self !== null)) {
                 if ($appearing_class_storage->template_types) {
                     $template_params = [];
 
@@ -2003,14 +2006,14 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                     }
 
                     $this_object_type = new TGenericObject(
-                        $context->self,
+                        Interner::lookup($context->self),
                         $template_params,
                         false,
                         !$storage->final,
                     );
                 } else {
                     $this_object_type = new TNamedObject(
-                        $context->self,
+                        Interner::lookup($context->self),
                         !$storage->final,
                     );
                 }
@@ -2032,7 +2035,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                     $new_parent_node = DataFlowNode::getForAssignment('$this in ' . $method_id, $storage->location);
 
                     $codebase->taint_flow_graph->addNode($new_parent_node);
-                    $props['parent_nodes'] = [$new_parent_node->id => $new_parent_node];
+                    $props['parent_nodes'] = [$new_parent_node->key => $new_parent_node];
                 }
 
                 if ($this->storage instanceof MethodStorage && $this->storage->if_this_is_type) {
@@ -2099,11 +2102,11 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             if (!$has_override_attribute
                 && $codebase->config->ensure_override_attribute
                 && $overridden_method_ids
-                && ($storage->defining_fqcln === null
-                    || !$codebase->classlike_storage_provider->get($storage->defining_fqcln)->is_trait
+                && ($storage->declaring_class === null
+                    || !$codebase->classlike_storage_provider->get($storage->declaring_class)->is_trait
                 ) && $storage->cased_name !== '__construct'
                 && ($storage->cased_name !== '__toString'
-                    || isset($appearing_class_storage->direct_class_interfaces['stringable']))
+                    || isset($appearing_class_storage->direct_class_interfaces[Sym::STRINGABLE]))
             ) {
                 IssueBuffer::maybeAdd(
                     new MissingOverrideAttribute(
@@ -2132,7 +2135,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 foreach ($overridden_method_ids as $overridden_method_id) {
                     $parent_method_storage = $codebase->methods->getStorage($overridden_method_id);
 
-                    $overridden_fq_class_name = $overridden_method_id->fq_class_name;
+                    $overridden_fq_class_name = $overridden_method_id->class_id;
 
                     $parent_storage = $classlike_storage_provider->get($overridden_fq_class_name);
 
@@ -2152,10 +2155,10 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                     if ($implementer_appearing_method_id
                         && $implementer_appearing_method_id !== $implementer_declaring_method_id
                     ) {
-                        $appearing_fq_class_name = $implementer_appearing_method_id->fq_class_name;
-                        $appearing_method_name = $implementer_appearing_method_id->method_name;
+                        $appearing_fq_class_name = $implementer_appearing_method_id->class_id;
+                        $appearing_method_name = Interner::lookupLc($implementer_appearing_method_id->name_id);
 
-                        $declaring_fq_class_name = $implementer_declaring_method_id->fq_class_name;
+                        $declaring_fq_class_name = $implementer_declaring_method_id->class_id;
 
                         $appearing_class_storage = $classlike_storage_provider->get(
                             $appearing_fq_class_name,
@@ -2172,7 +2175,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                     }
 
                     // we've already checked this in the class checker
-                    if (!isset($appearing_class_storage->class_implements[strtolower($overridden_fq_class_name)])) {
+                    if (!isset($appearing_class_storage->class_implements[$overridden_fq_class_name])) {
                         MethodComparator::compare(
                             $codebase,
                             count($overridden_method_ids) === 1 ? $this->function : null,
@@ -2208,8 +2211,8 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 $closure_return_type = TypeExpander::expandUnion(
                     $codebase,
                     $storage->return_type,
-                    $context->self,
-                    $context->self,
+                    Interner::lookupOrNull($context->self),
+                    Interner::lookupOrNull($context->self),
                     $this->getParentFQCLN(),
                 );
             } else {
@@ -2301,18 +2304,19 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 continue;
             }
 
-            $fq_class_name = (string)$context->self;
+            $fq_class_name = Interner::intern((string)Interner::lookupOrNull($context->self));
 
             $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
 
-            $method_name_lc = strtolower($storage->cased_name);
+            $method_name_lc = Interner::intern(strtolower($storage->cased_name));
+            $method_name_lc_id = $method_name_lc;
 
             if ($storage->abstract) {
                 continue;
             }
 
-            if (isset($class_storage->overridden_method_ids[$method_name_lc])) {
-                $parent_method_id = end($class_storage->overridden_method_ids[$method_name_lc]);
+            if (isset($class_storage->overridden_method_ids[$method_name_lc_id])) {
+                $parent_method_id = end($class_storage->overridden_method_ids[$method_name_lc_id]);
 
                 if ($parent_method_id) {
                     $parent_method_storage = $codebase->methods->getStorage($parent_method_id);

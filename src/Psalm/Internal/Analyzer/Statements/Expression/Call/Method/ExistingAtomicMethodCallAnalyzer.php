@@ -20,6 +20,7 @@ use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\Codebase\AssertionsFromInheritanceResolver;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
@@ -79,13 +80,13 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
     ): Union {
         $config = $codebase->config;
 
-        $fq_class_name = $lhs_type_part->value;
+        $fq_class_name = Interner::lookup($lhs_type_part->name);
 
         if ($fq_class_name === 'static') {
-            $fq_class_name = (string) $context->self;
+            $fq_class_name = (string) Interner::lookupOrNull($context->self);
         }
 
-        $method_name_lc = $method_id->method_name;
+        $method_name_lc = Interner::lookupLc($method_id->name_id);
 
         $cased_method_id = $fq_class_name . '::' . $stmt_name->name;
 
@@ -168,7 +169,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
 
         $fq_class_name = $codebase->classlikes->getUnAliasedName($fq_class_name);
 
-        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
         $parent_source = $statements_analyzer->getSource();
 
@@ -187,12 +188,12 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
             if ($grandparent_source instanceof TraitAnalyzer) {
                 $fq_trait_name = $grandparent_source->getFQCLN();
 
-                $fq_trait_name_lc = strtolower($fq_trait_name);
+                $fq_trait_name_lc = Interner::intern(strtolower($fq_trait_name));
 
                 $trait_storage = $codebase->classlike_storage_provider->get($fq_trait_name_lc);
 
-                if (isset($trait_storage->methods[$method_name_lc])) {
-                    $trait_method_id = new MethodIdentifier($trait_storage->name, $method_name_lc);
+                if (isset($trait_storage->methods[$method_id->name_id])) {
+                    $trait_method_id = new MethodIdentifier($trait_storage->id, Interner::intern($method_name_lc));
 
                     $class_template_params = ClassTemplateParamCollector::collect(
                         $codebase,
@@ -347,7 +348,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                         true,
                         false,
                         $static_type instanceof TNamedObject
-                            && $codebase->classlike_storage_provider->get($static_type->value)->final,
+                            && $codebase->classlike_storage_provider->get($static_type->name)->final,
                         true,
                     );
                 }
@@ -369,7 +370,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                     true,
                     false,
                     $static_type instanceof TNamedObject
-                        && $codebase->classlike_storage_provider->get($static_type->value)->final,
+                        && $codebase->classlike_storage_provider->get($static_type->name)->final,
                     true,
                 );
 
@@ -565,12 +566,12 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
         }
 
         $prop_name = $first_arg_value->value;
-        $property_id = $fq_class_name . '::$' . $prop_name;
+        $property_id_class = $fq_class_name; $property_id_name = $prop_name;
 
-        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
         $codebase->propertyExists(
-            $property_id,
+            Interner::intern($property_id_class), Interner::intern($property_id_name),
             $method_name === '__get',
             $statements_analyzer,
             $context,
@@ -582,13 +583,13 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                 // If `@psalm-seal-properties` is set, the property must be defined with
                 // a `@property` annotation
                 if (($class_storage->hasSealedProperties($codebase->config))
-                    && !isset($class_storage->pseudo_property_set_types['$' . $prop_name])
+                    && !isset($class_storage->pseudo_property_set_types[Interner::intern('$' . $prop_name)])
                 ) {
                     IssueBuffer::maybeAdd(
                         new UndefinedThisPropertyAssignment(
-                            'Instance property ' . $property_id . ' is not defined',
+                            'Instance property ' . ($property_id_class . '::$' . $property_id_name) . ' is not defined',
                             new CodeLocation($statements_analyzer->getSource(), $stmt),
-                            $property_id,
+                            ($property_id_class . '::$' . $property_id_name),
                         ),
                         $statements_analyzer->getSuppressedIssues(),
                     );
@@ -600,10 +601,10 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                     ? $statements_analyzer->node_data->getType($stmt->getArgs()[1]->value)
                     : null;
 
-                if (isset($class_storage->pseudo_property_set_types['$' . $prop_name]) && $second_arg_type) {
+                if (isset($class_storage->pseudo_property_set_types[Interner::intern('$' . $prop_name)]) && $second_arg_type) {
                     $pseudo_set_type = TypeExpander::expandUnion(
                         $codebase,
-                        $class_storage->pseudo_property_set_types['$' . $prop_name],
+                        $class_storage->pseudo_property_set_types[Interner::intern('$' . $prop_name)],
                         $fq_class_name,
                         new TNamedObject($fq_class_name),
                         $class_storage->parent_class,
@@ -627,7 +628,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                                     $prop_name . ' expects \'' . $pseudo_set_type->getId() . '\', '
                                         . ' parent type `' . $second_arg_type . '` provided',
                                     new CodeLocation($statements_analyzer->getSource(), $stmt),
-                                    $property_id,
+                                    ($property_id_class . '::$' . $property_id_name),
                                 ),
                                 $statements_analyzer->getSuppressedIssues(),
                             );
@@ -637,7 +638,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                                     $prop_name . ' expects \'' . $pseudo_set_type->getId() . '\', '
                                         . ' parent type `' . $second_arg_type . '` provided',
                                     new CodeLocation($statements_analyzer->getSource(), $stmt),
-                                    $property_id,
+                                    ($property_id_class . '::$' . $property_id_name),
                                 ),
                                 $statements_analyzer->getSuppressedIssues(),
                             );
@@ -656,7 +657,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                                     . $pseudo_set_type
                                     . '\' cannot be assigned possibly different type \'' . $second_arg_type . '\'',
                                     new CodeLocation($statements_analyzer->getSource(), $stmt),
-                                    $property_id,
+                                    ($property_id_class . '::$' . $property_id_name),
                                 ),
                                 $statements_analyzer->getSuppressedIssues(),
                             );
@@ -667,7 +668,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                                     . $pseudo_set_type
                                     . '\' cannot be assigned type \'' . $second_arg_type . '\'',
                                     new CodeLocation($statements_analyzer->getSource(), $stmt),
-                                    $property_id,
+                                    ($property_id_class . '::$' . $property_id_name),
                                 ),
                                 $statements_analyzer->getSuppressedIssues(),
                             );
@@ -680,20 +681,20 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                 // If `@psalm-seal-properties` is set, the property must be defined with
                 // a `@property` annotation
                 if (($class_storage->hasSealedProperties($codebase->config))
-                    && !isset($class_storage->pseudo_property_get_types['$' . $prop_name])
+                    && !isset($class_storage->pseudo_property_get_types[Interner::intern('$' . $prop_name)])
                 ) {
                     IssueBuffer::maybeAdd(
                         new UndefinedThisPropertyFetch(
-                            'Instance property ' . $property_id . ' is not defined',
+                            'Instance property ' . ($property_id_class . '::$' . $property_id_name) . ' is not defined',
                             new CodeLocation($statements_analyzer->getSource(), $stmt),
-                            $property_id,
+                            ($property_id_class . '::$' . $property_id_name),
                         ),
                         $statements_analyzer->getSuppressedIssues(),
                     );
                 }
 
-                if (isset($class_storage->pseudo_property_get_types['$' . $prop_name])) {
-                    return $class_storage->pseudo_property_get_types['$' . $prop_name];
+                if (isset($class_storage->pseudo_property_get_types[Interner::intern('$' . $prop_name)])) {
+                    return $class_storage->pseudo_property_get_types[Interner::intern('$' . $prop_name)];
                 }
 
                 break;

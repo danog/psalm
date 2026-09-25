@@ -13,6 +13,7 @@ use Psalm\Context;
 use Psalm\FileManipulation;
 use Psalm\Internal\Analyzer\Statements\Expression\ClassConstAnalyzer;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Issue\InheritorViolation;
@@ -53,9 +54,9 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
 
         self::registerDocblockSuppressions($this->storage, $this->getFilePath(), $codebase);
 
-        $fq_interface_name = $this->getFQCLN();
+        $fq_interface_name = Interner::intern($this->getFQCLN());
 
-        if (!$fq_interface_name) {
+        if (!Interner::lookup($fq_interface_name)) {
             throw new UnexpectedValueException('bad');
         }
 
@@ -95,22 +96,22 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
                 if (!$extended_interface_storage->is_interface) {
                     IssueBuffer::maybeAdd(
                         new UndefinedInterface(
-                            $extended_interface_name . ' is not an interface',
+                            Interner::lookup($extended_interface_name) . ' is not an interface',
                             $code_location,
-                            $extended_interface_name,
+                            Interner::lookup($extended_interface_name),
                         ),
                         $this->getSuppressedIssues(),
                     );
                 }
 
-                if ($codebase->store_node_types && $extended_interface_name) {
+                if ($codebase->store_node_types && Interner::lookup($extended_interface_name)) {
                     $bounds = $parent_reference_location->getSelectionBounds();
 
                     $codebase->analyzer->addOffsetReference(
                         $this->getFilePath(),
                         $bounds[0],
                         $bounds[1],
-                        $extended_interface_name,
+                        Interner::lookup($extended_interface_name),
                     );
                 }
 
@@ -119,20 +120,20 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
                     $class_storage,
                     $extended_interface_storage,
                     $code_location,
-                    $class_storage->template_type_extends_count[$extended_interface_name] ?? 0,
+                    $class_storage->template_type_extends_count[Interner::lookup($extended_interface_name)] ?? 0,
                 );
             }
         }
 
-        $class_union = new Union([new TNamedObject($fq_interface_name)]);
-        foreach ($class_storage->direct_interface_parents as $parent_interface) {
-            $parent_storage = $codebase->classlikes->getStorageFor($parent_interface);
+        $class_union = new Union([new TNamedObject(Interner::lookup($fq_interface_name))]);
+        foreach ($class_storage->direct_interface_parents as $parent_interface_id => $_) {
+            $parent_storage = $codebase->classlikes->getStorageFor($parent_interface_id);
             if ($parent_storage && $parent_storage->inheritors) {
                 if (!UnionTypeComparator::isContainedBy($codebase, $class_union, $parent_storage->inheritors)) {
                     IssueBuffer::maybeAdd(
                         new InheritorViolation(
-                            'Interface ' . $fq_interface_name . '
-                             is not an allowed inheritor of parent interface ' . $parent_interface,
+                            'Interface ' . Interner::lookup($fq_interface_name) . '
+                             is not an allowed inheritor of parent interface ' . Interner::lookup($parent_interface_id),
                             new CodeLocation($this, $this->class),
                         ),
                         $this->getSuppressedIssues(),
@@ -141,14 +142,14 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
             }
         }
 
-        $fq_interface_name = $this->getFQCLN();
+        $fq_interface_name = Interner::intern($this->getFQCLN());
 
-        if (!$fq_interface_name) {
+        if (!Interner::lookup($fq_interface_name)) {
             throw new UnexpectedValueException('bad');
         }
 
         $class_storage = $codebase->classlike_storage_provider->get($fq_interface_name);
-        $interface_context = new Context($this->getFQCLN());
+        $interface_context = new Context(Interner::intern($this->getFQCLN()));
 
         AttributesAnalyzer::analyze(
             $this,
@@ -166,8 +167,9 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
         $member_stmts = [];
         foreach ($this->class->stmts as $stmt) {
             if ($stmt instanceof PhpParser\Node\Stmt\ClassMethod) {
-                $method_name_lc = strtolower($stmt->name->name);
-                if (!isset($class_storage->methods[$method_name_lc])) {
+                $method_name_lc = Interner::intern(strtolower($stmt->name->name));
+                $method_name_lc_id = $method_name_lc;
+                if (!isset($class_storage->methods[$method_name_lc_id])) {
                     // Storage was overwritten by a different class-like with the same FQCN
                     // (e.g., project declares interface X while vendor has class X).
                     // Skip analysis — DuplicateClass was already emitted during scanning.
@@ -193,7 +195,7 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
                         $type_provider,
                         $codebase,
                         $class_storage,
-                        $fq_interface_name,
+                        Interner::lookup($fq_interface_name),
                         $actual_method_id,
                         $actual_method_id,
                         $class_context,

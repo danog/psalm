@@ -13,7 +13,9 @@ use Psalm\Internal\Analyzer\Statements\Expression\Call\ArgumentsAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\ClassTemplateParamCollector;
 use Psalm\Internal\Analyzer\Statements\Expression\CallAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TypeExpander;
@@ -48,15 +50,15 @@ final class MissingMethodCallHandler
         AtomicMethodCallAnalysisResult $result,
         ?Atomic $lhs_type_part,
     ): ?AtomicCallContext {
-        $fq_class_name = $method_id->fq_class_name;
-        $method_name_lc = $method_id->method_name;
+        $fq_class_name = Interner::lookup($method_id->class_id);
+        $method_name_lc = Interner::lookupLc($method_id->name_id);
 
         if ($stmt->isFirstClassCallable()) {
-            if (isset($class_storage->pseudo_methods[$method_name_lc])) {
+            if (isset($class_storage->pseudo_methods[$method_id->name_id])) {
                 $result->has_valid_method_call_type = true;
                 $result->existent_method_ids[$method_id->__toString()] = true;
                 $result->return_type = self::createFirstClassCallableReturnType(
-                    $class_storage->pseudo_methods[$method_name_lc],
+                    $class_storage->pseudo_methods[$method_id->name_id],
                 );
             } else {
                 $result->non_existent_magic_method_ids[] = $method_id->__toString();
@@ -69,8 +71,8 @@ final class MissingMethodCallHandler
         if ($codebase->methods->return_type_provider->has($fq_class_name)) {
             $return_type_candidate = $codebase->methods->return_type_provider->getReturnType(
                 $statements_analyzer,
-                $method_id->fq_class_name,
-                $method_id->method_name,
+                Interner::lookup($method_id->class_id),
+                Interner::lookupLc($method_id->name_id),
                 $stmt,
                 $context,
                 new CodeLocation($statements_analyzer->getSource(), $stmt->name),
@@ -122,7 +124,7 @@ final class MissingMethodCallHandler
                 $class_storage,
                 $method_name_lc,
                 $lhs_type_part,
-                !$statements_analyzer->isStatic() && $method_id->fq_class_name === $context->self,
+                !$statements_analyzer->isStatic() && Interner::lookup($method_id->class_id) === Interner::lookupOrNull($context->self),
             );
 
             ArgumentsAnalyzer::analyze(
@@ -161,7 +163,7 @@ final class MissingMethodCallHandler
                 $return_type_candidate = TypeExpander::expandUnion(
                     $codebase,
                     $return_type_candidate,
-                    $defining_class_storage->name,
+                    Interner::lookup($defining_class_storage->id),
                     $lhs_type_part instanceof Atomic\TNamedObject ? $lhs_type_part : $fq_class_name,
                     $defining_class_storage->parent_class,
                 );
@@ -215,7 +217,7 @@ final class MissingMethodCallHandler
         $statements_analyzer->node_data = clone $statements_analyzer->node_data;
 
         return new AtomicCallContext(
-            new MethodIdentifier($fq_class_name, '__call'),
+            new MethodIdentifier(Interner::intern($fq_class_name), Sym::CALL),
             [
                 new VirtualArg(
                     new VirtualString($method_name_lc),
@@ -254,10 +256,10 @@ final class MissingMethodCallHandler
         AtomicMethodCallAnalysisResult $result,
         ?Atomic $lhs_type_part,
     ): void {
-        $fq_class_name = $method_id->fq_class_name;
-        $method_name_lc = $method_id->method_name;
+        $fq_class_name = Interner::lookup($method_id->class_id);
+        $method_name_lc = Interner::lookupLc($method_id->name_id);
 
-        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
         $found_method_and_class_storage = self::findPseudoMethodAndClassStorages(
             $codebase,
@@ -284,7 +286,7 @@ final class MissingMethodCallHandler
                 $class_storage,
                 $method_name_lc,
                 $lhs_type_part,
-                !$statements_analyzer->isStatic() && $method_id->fq_class_name === $context->self,
+                !$statements_analyzer->isStatic() && Interner::lookup($method_id->class_id) === Interner::lookupOrNull($context->self),
             );
 
             if (ArgumentsAnalyzer::analyze(
@@ -335,7 +337,7 @@ final class MissingMethodCallHandler
                 $return_type_candidate = TypeExpander::expandUnion(
                     $codebase,
                     $return_type_candidate,
-                    $defining_class_storage->name,
+                    Interner::lookup($defining_class_storage->id),
                     $lhs_type_part instanceof Atomic\TNamedObject ? $lhs_type_part : $fq_class_name,
                     $defining_class_storage->parent_class,
                     true,
@@ -382,7 +384,7 @@ final class MissingMethodCallHandler
         }
 
         if ((!$is_interface && !$config->use_phpdoc_method_without_magic_or_parent)
-            || !isset($class_storage->pseudo_methods[$method_name_lc])
+            || !isset($class_storage->pseudo_methods[$method_id->name_id])
         ) {
             if ($is_interface) {
                 $result->non_existent_interface_method_ids[] = $intersection_method_id ?: $cased_method_id;
@@ -424,33 +426,34 @@ final class MissingMethodCallHandler
         ClassLikeStorage $static_class_storage,
         string $method_name_lc,
     ): ?array {
-        if (isset($static_class_storage->declaring_pseudo_method_ids[$method_name_lc])) {
-            $method_id = $static_class_storage->declaring_pseudo_method_ids[$method_name_lc];
-            $class_storage = $codebase->classlikes->getStorageFor($method_id->fq_class_name);
+        $method_name_lc_id = Interner::intern($method_name_lc);
+        if (isset($static_class_storage->declaring_pseudo_method_ids[$method_name_lc_id])) {
+            $method_id = $static_class_storage->declaring_pseudo_method_ids[$method_name_lc_id];
+            $class_storage = $codebase->classlikes->getStorageFor($method_id->class_id);
 
-            if ($class_storage && isset($class_storage->pseudo_methods[$method_name_lc])) {
-                return [$class_storage->pseudo_methods[$method_name_lc], $class_storage];
+            if ($class_storage && isset($class_storage->pseudo_methods[$method_name_lc_id])) {
+                return [$class_storage->pseudo_methods[$method_name_lc_id], $class_storage];
             }
         }
 
-        if ($pseudo_method_storage = $static_class_storage->pseudo_methods[$method_name_lc] ?? null) {
+        if ($pseudo_method_storage = $static_class_storage->pseudo_methods[$method_name_lc_id] ?? null) {
             return [$pseudo_method_storage, $static_class_storage];
         }
 
         $ancestors = $static_class_storage->class_implements;
         foreach ($static_class_storage->namedMixins as $namedObject) {
-            $type = $namedObject->value;
+            $type = Interner::lookup($namedObject->name);
             if ($type) {
-                $ancestors[$type] = true;
+                $ancestors[$namedObject->name] = true;
             }
         }
 
         foreach ($ancestors as $fq_class_name => $_) {
             $class_storage = $codebase->classlikes->getStorageFor($fq_class_name);
 
-            if ($class_storage && isset($class_storage->pseudo_methods[$method_name_lc])) {
+            if ($class_storage && isset($class_storage->pseudo_methods[$method_name_lc_id])) {
                 return [
-                    $class_storage->pseudo_methods[$method_name_lc],
+                    $class_storage->pseudo_methods[$method_name_lc_id],
                     $class_storage,
                 ];
             }

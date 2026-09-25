@@ -16,7 +16,9 @@ use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Codebase\VariableUseGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Issue\DocblockTypeContradiction;
 use Psalm\Issue\ImpureMethodCall;
 use Psalm\Issue\InvalidOperand;
@@ -157,7 +159,7 @@ final class BinaryOpAnalyzer
                 $graph->addNode($new_parent_node);
 
                 $stmt_type = $stmt_type->setParentNodes([
-                    $new_parent_node->id => $new_parent_node,
+                    $new_parent_node->key => $new_parent_node,
                 ]);
 
                 $codebase = $statements_analyzer->getCodebase();
@@ -412,7 +414,7 @@ final class BinaryOpAnalyzer
             $graph->addNode($new_parent_node);
 
             $result_type = $result_type->setParentNodes([
-                $new_parent_node->id => $new_parent_node,
+                $new_parent_node->key => $new_parent_node,
             ]);
             $statements_analyzer->node_data->setType($stmt, $result_type);
 
@@ -474,8 +476,8 @@ final class BinaryOpAnalyzer
                     try {
                         $storage = $codebase->methods->getStorage(
                             new MethodIdentifier(
-                                $atomic_type->value,
-                                '__tostring',
+                                $atomic_type->name,
+                                Sym::TO_STRING,
                             ),
                         );
                     } catch (UnexpectedValueException) {
@@ -491,7 +493,7 @@ final class BinaryOpAnalyzer
                         $storage->allowed_mutations,
                         $context,
                         'possibly-mutating method '
-                                    . $atomic_type->value . '::__toString',
+                                    . Interner::lookup($atomic_type->name) . '::__toString',
                         ImpureMethodCall::class,
                         $stmt,
                         null,
@@ -506,8 +508,8 @@ final class BinaryOpAnalyzer
                     try {
                         $storage = $codebase->methods->getStorage(
                             new MethodIdentifier(
-                                $atomic_type->value,
-                                '__tostring',
+                                $atomic_type->name,
+                                Sym::TO_STRING,
                             ),
                         );
                     } catch (UnexpectedValueException) {
@@ -524,7 +526,7 @@ final class BinaryOpAnalyzer
                         $storage->allowed_mutations,
                         $context,
                         'possibly-mutating method '
-                                    . $atomic_type->value . '::__toString',
+                                    . Interner::lookup($atomic_type->name) . '::__toString',
                         ImpureMethodCall::class,
                         $stmt,
                         null,

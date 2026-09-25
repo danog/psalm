@@ -6,6 +6,8 @@ namespace Psalm\Internal\Type;
 
 use InvalidArgumentException;
 use Psalm\Codebase;
+use Psalm\Internal\Interner;
+use Psalm\Internal\Sym;
 use Psalm\Type;
 use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\Scalar;
@@ -303,7 +305,7 @@ final class TypeCombiner
 
                 foreach ($object_type->getAtomicTypes() as $object_atomic_type) {
                     if ($object_atomic_type instanceof TNamedObject) {
-                        $class_type = new TClassString($object_atomic_type->value, $object_atomic_type);
+                        $class_type = new TClassString(Interner::lookup($object_atomic_type->name), $object_atomic_type);
                     } elseif ($object_atomic_type instanceof TObject) {
                         $class_type = new TClassString();
                     } else {
@@ -343,7 +345,7 @@ final class TypeCombiner
 
         if ($combination->named_object_types !== null) {
             foreach ($combination->value_types as $key => $atomic_type) {
-                if ($atomic_type instanceof TEnumCase && isset($combination->named_object_types[$atomic_type->value])) {
+                if ($atomic_type instanceof TEnumCase && isset($combination->named_object_types[Interner::lookup($atomic_type->name)])) {
                     unset($combination->value_types[$key]);
                 }
             }
@@ -463,7 +465,7 @@ final class TypeCombiner
             $type_key = 'iterable';
             $combination->builtin_type_params['iterable'] = [Type::getMixed(), Type::getMixed()];
         } elseif ($type instanceof TNamedObject
-            && $type->value === 'Traversable'
+            && $type->name === Sym::TRAVERSABLE
             && (isset($combination->builtin_type_params['iterable']) || isset($combination->value_types['iterable']))
         ) {
             $type_key = 'iterable';
@@ -473,10 +475,10 @@ final class TypeCombiner
             }
 
             if (!$type instanceof TGenericObject) {
-                $type = new TGenericObject($type->value, [Type::getMixed(), Type::getMixed()]);
+                $type = new TGenericObject(Interner::lookup($type->name), [Type::getMixed(), Type::getMixed()]);
             }
-        } elseif ($type instanceof TNamedObject && ($type->value === 'Traversable' || $type->value === 'Generator')) {
-            $type_key = $type->value;
+        } elseif ($type instanceof TNamedObject && ($type->name === Sym::TRAVERSABLE || $type->name === Sym::GENERATOR)) {
+            $type_key = Interner::lookup($type->name);
         } else {
             $type_key = $type->getKey();
         }
@@ -542,12 +544,12 @@ final class TypeCombiner
         }
 
         if ($type instanceof TNamedObject) {
-            if (array_key_exists($type->value, $combination->object_static)) {
-                if ($combination->object_static[$type->value] && !$type->is_static) {
-                    $combination->object_static[$type->value] = false;
+            if (array_key_exists(Interner::lookup($type->name), $combination->object_static)) {
+                if ($combination->object_static[Interner::lookup($type->name)] && !$type->is_static) {
+                    $combination->object_static[Interner::lookup($type->name)] = false;
                 }
             } else {
-                $combination->object_static[$type->value] = $type->is_static;
+                $combination->object_static[Interner::lookup($type->name)] = $type->is_static;
             }
         }
 
@@ -627,7 +629,7 @@ final class TypeCombiner
             return null;
         }
 
-        if (($type instanceof TGenericObject && ($type->value === 'Traversable' || $type->value === 'Generator'))
+        if (($type instanceof TGenericObject && ($type->name === Sym::TRAVERSABLE || $type->name === Sym::GENERATOR))
             || ($type instanceof TIterable && $type->has_docblock_params)
             || ($type instanceof TArray && $type_key === 'iterable')
         ) {
@@ -847,39 +849,41 @@ final class TypeCombiner
                 return null;
             }
 
-            if (!$codebase->classlikes->classOrInterfaceOrEnumExists($type_key)) {
+            if (!($type::class === TNamedObject::class && $type->extra_types === []
+                ? $codebase->classlikes->classOrInterfaceOrEnumExists($type->name)
+                : $codebase->classlikes->classOrInterfaceOrEnumExists(Interner::intern($type_key)))) {
                 // write this to the main list
                 $combination->value_types[$type_key] = $type;
 
                 return null;
             }
 
-            $is_class = $codebase->classExists($type_key);
+            $is_class = $codebase->classExists($type->name);
 
-            foreach ($combination->named_object_types as $key => $_) {
-                if ($codebase->classExists($key)) {
-                    if ($codebase->classExtendsOrImplements($key, $type_key)) {
+            foreach ($combination->named_object_types as $key => $other) {
+                if ($codebase->classExists($other->name)) {
+                    if ($codebase->classExtendsOrImplements($other->name, $type->name)) {
                         unset($combination->named_object_types[$key]);
                         continue;
                     }
 
                     if ($is_class) {
-                        if ($codebase->classExtends($type_key, $key)) {
+                        if ($codebase->classExtends($type->name, $other->name)) {
                             return null;
                         }
                     }
                 } else {
-                    if ($codebase->interfaceExtends($key, $type_key)) {
+                    if ($codebase->interfaceExtends($other->name, $type->name)) {
                         unset($combination->named_object_types[$key]);
                         continue;
                     }
 
                     if ($is_class) {
-                        if ($codebase->classImplements($type_key, $key)) {
+                        if ($codebase->classImplements($type->name, $other->name)) {
                             return null;
                         }
                     } else {
-                        if ($codebase->interfaceExtends($type_key, $key)) {
+                        if ($codebase->interfaceExtends($type->name, $other->name)) {
                             return null;
                         }
                     }
@@ -1374,7 +1378,7 @@ final class TypeCombiner
         if ($combination->class_string_types) {
             foreach ($combination->class_string_types as $value_type) {
                 if ($value_type instanceof TNamedObject) {
-                    $classlikes = self::getClassLikes($codebase, $value_type->value);
+                    $classlikes = self::getClassLikes($codebase, Interner::lookup($value_type->name));
 
                     $shared_classlikes = $shared_classlikes === null
                         ? $classlikes
@@ -1406,7 +1410,7 @@ final class TypeCombiner
     private static function getClassLikes(Codebase $codebase, string $fq_classlike_name): array
     {
         try {
-            $class_storage = $codebase->classlike_storage_provider->get($fq_classlike_name);
+            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_classlike_name));
         } catch (InvalidArgumentException) {
             return [];
         }
@@ -1415,16 +1419,16 @@ final class TypeCombiner
 
         $classlikes[$fq_classlike_name] = true;
 
-        foreach ($class_storage->parent_classes as $parent_class) {
-            $classlikes[$parent_class] = true;
+        foreach ($class_storage->parent_classes as $parent_class_id => $_) {
+            $classlikes[Interner::lookup($parent_class_id)] = true;
         }
 
-        foreach ($class_storage->parent_interfaces as $parent_interface) {
-            $classlikes[$parent_interface] = true;
+        foreach ($class_storage->parent_interfaces as $parent_interface_id => $_) {
+            $classlikes[Interner::lookup($parent_interface_id)] = true;
         }
 
-        foreach ($class_storage->class_implements as $interface) {
-            $classlikes[$interface] = true;
+        foreach ($class_storage->class_implements as $interface_id => $_) {
+            $classlikes[Interner::lookup($interface_id)] = true;
         }
 
         return $classlikes;

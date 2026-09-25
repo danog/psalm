@@ -17,6 +17,8 @@ use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
+use Psalm\Internal\Interner;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\TypeExpander;
 use Psalm\Issue\InvalidDocblock;
 use Psalm\Issue\UnnecessaryVarAnnotation;
@@ -69,8 +71,8 @@ final class YieldAnalyzer
                 $comment_type = TypeExpander::expandUnion(
                     $codebase,
                     $var_comment->type,
-                    $context->self,
-                    $context->self ? new TNamedObject($context->self) : null,
+                    Interner::lookupOrNull($context->self),
+                    ($context->self !== null) ? new TNamedObject(Interner::lookup($context->self)) : null,
                     $statements_analyzer->getParentFQCLN(),
                 );
 
@@ -158,17 +160,17 @@ final class YieldAnalyzer
             if (!$expression_atomic_type instanceof TNamedObject) {
                 continue;
             }
-            if (!$codebase->classlikes->classOrInterfaceExists($expression_atomic_type->value, null, $context)) {
+            if (!$codebase->classlikes->classOrInterfaceExists($expression_atomic_type->name, null, $context)) {
                 continue;
             }
 
-            $classlike_storage = $codebase->classlike_storage_provider->get($expression_atomic_type->value);
+            $classlike_storage = $codebase->classlike_storage_provider->get($expression_atomic_type->name);
 
             if (!$classlike_storage->yield) {
                 continue;
             }
             $declaring_classlike_storage = $classlike_storage->declaring_yield_fqcn
-                ? $codebase->classlike_storage_provider->get($classlike_storage->declaring_yield_fqcn)
+                ? $codebase->classlike_storage_provider->get(Interner::intern($classlike_storage->declaring_yield_fqcn))
                 : $classlike_storage;
 
             $yield_candidate_type = $classlike_storage->yield;
@@ -176,8 +178,8 @@ final class YieldAnalyzer
                 ? TypeExpander::expandUnion(
                     $codebase,
                     $yield_candidate_type,
-                    $expression_atomic_type->value,
-                    $expression_atomic_type->value,
+                    Interner::lookup($expression_atomic_type->name),
+                    Interner::lookup($expression_atomic_type->name),
                     null,
                     true,
                     false,
@@ -201,7 +203,7 @@ final class YieldAnalyzer
                         $type_params[] = array_values($type_map)[0];
                     }
 
-                    $expression_atomic_type = new TGenericObject($expression_atomic_type->value, $type_params);
+                    $expression_atomic_type = new TGenericObject(Interner::lookup($expression_atomic_type->name), $type_params);
                 }
 
                 $yield_candidate_type = AtomicPropertyFetchAnalyzer::localizePropertyType(
@@ -238,7 +240,7 @@ final class YieldAnalyzer
             if ($storage->return_type && !$yield_type) {
                 foreach ($storage->return_type->getAtomicTypes() as $atomic_return_type) {
                     if ($atomic_return_type instanceof TNamedObject
-                        && $atomic_return_type->value === 'Generator'
+                        && $atomic_return_type->name === Sym::GENERATOR
                     ) {
                         if ($atomic_return_type instanceof TGenericObject) {
                             if (!$atomic_return_type->type_params[2]->isVoid()) {

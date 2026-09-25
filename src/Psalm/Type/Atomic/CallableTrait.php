@@ -7,6 +7,7 @@ namespace Psalm\Type\Atomic;
 use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
@@ -108,7 +109,7 @@ trait CallableTrait
             Mutations::LEVEL_EXTERNAL => 'impure-',
         };
 
-        return $prefix . $this->value . $param_string . $return_type_string;
+        return $prefix . Interner::lookup($this->name) . $param_string . $return_type_string;
     }
 
     /**
@@ -122,7 +123,7 @@ trait CallableTrait
         bool $use_phpdoc_format,
     ): string {
         if ($use_phpdoc_format) {
-            return $this->value;
+            return Interner::lookup($this->name);
         }
 
         $prefix = match ($this->allowed_mutations) {
@@ -162,7 +163,7 @@ trait CallableTrait
             ) . ($return_type_multiple ? ')' : '');
         }
 
-        return $prefix . $this->value . $param_string . $return_type_string;
+        return $prefix . Interner::lookup($this->name) . $param_string . $return_type_string;
     }
 
     /**
@@ -179,7 +180,7 @@ trait CallableTrait
             return parent::toNamespacedString($namespace, $aliased_classes, $this_class, true);
         }
 
-        return $this->value;
+        return Interner::lookup($this->name);
     }
 
     #[Override]
@@ -214,7 +215,7 @@ trait CallableTrait
             Mutations::LEVEL_EXTERNAL => 'impure-',
         };
         return $prefix
-            . $this->value . $param_string . $return_type_string;
+            . Interner::lookup($this->name) . $param_string . $return_type_string;
     }
 
     /**

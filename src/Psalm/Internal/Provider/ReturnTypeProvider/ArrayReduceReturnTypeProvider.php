@@ -10,6 +10,7 @@ use Psalm\CodeLocation;
 use Psalm\Internal\Analyzer\Statements\Expression\CallAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Issue\InvalidArgument;
@@ -241,8 +242,8 @@ final class ArrayReduceReturnTypeProvider implements FunctionReturnTypeProviderI
                             }
 
                             $method_id = new MethodIdentifier(
-                                $callable_fq_class_name,
-                                strtolower($method_name),
+                                Interner::intern($callable_fq_class_name),
+                                Interner::intern(strtolower($method_name)),
                             );
 
                             if (!$codebase->methodExists(

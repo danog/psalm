@@ -14,6 +14,7 @@ use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Assignment\InstancePropertyAssignmentAnalyzer as AssignmentAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\NoDiscardAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Issue\ImpureMethodCall;
 use Psalm\Issue\UnusedMethodCall;
@@ -42,7 +43,7 @@ final class MethodCallPurityAnalyzer
         // $stmt->var->getAttribute('pure', false)
         return $statements_analyzer->node_data->isPureCompatible($var)
             || ($var->getAttributes()->external_mutation_free ?? false)
-            || $method_id->fq_class_name === $context->self;
+            || Interner::lookup($method_id->class_id) === Interner::lookupOrNull($context->self);
     }
 
     /**
@@ -204,15 +205,15 @@ final class MethodCallPurityAnalyzer
 
                 $this_property_didnt_exist = $lhs_var_id === '$this'
                     && isset($context->vars_in_scope[$mutation_var_id])
-                    && !isset($class_storage->declaring_property_ids[$name]);
+                    && !isset($class_storage->declaring_property_ids[Interner::intern($name)]);
 
                 if ($this_property_didnt_exist) {
                     unset($context->vars_in_scope[$mutation_var_id]);
                 } else {
                     $new_type = AssignmentAnalyzer::getExpandedPropertyType(
                         $codebase,
-                        $class_storage->name,
-                        $name,
+                        Interner::lookup($class_storage->id),
+                        Interner::intern($name),
                         $class_storage,
                     ) ?? Type::getMixed();
 

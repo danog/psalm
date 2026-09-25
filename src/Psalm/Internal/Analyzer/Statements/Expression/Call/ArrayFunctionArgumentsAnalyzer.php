@@ -15,6 +15,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\ExpressionIdentifier;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\ArrayType;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
@@ -791,13 +792,13 @@ final class ArrayFunctionArgumentsAnalyzer
                                 $callable_fq_class_name = $container_class;
                         }
 
-                        if (!$codebase->classOrInterfaceExists($callable_fq_class_name, null, $context)) {
+                        if (!$codebase->classOrInterfaceExists(Interner::intern($callable_fq_class_name), null, $context)) {
                             return;
                         }
 
                         $function_id_part = new MethodIdentifier(
-                            $callable_fq_class_name,
-                            strtolower($method_name),
+                            Interner::intern($callable_fq_class_name),
+                            Interner::intern(strtolower($method_name)),
                         );
 
                         try {
@@ -998,7 +999,7 @@ final class ArrayFunctionArgumentsAnalyzer
                     $statements_analyzer,
                     $input_type,
                     $i,
-                    $context->self,
+                    Interner::lookupOrNull($context->self),
                     $context->calling_method_id ?: $context->calling_function_id,
                 );
 
@@ -1011,7 +1012,7 @@ final class ArrayFunctionArgumentsAnalyzer
             $closure_param_type = TypeExpander::expandUnion(
                 $codebase,
                 $closure_param_type,
-                $context->self,
+                Interner::lookupOrNull($context->self),
                 null,
                 $statements_analyzer->getParentFQCLN(),
             );

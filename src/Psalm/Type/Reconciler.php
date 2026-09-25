@@ -9,6 +9,7 @@ use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\Statements\Expression\ArrayAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\AssertionReconciler;
 use Psalm\Internal\Type\TypeExpander;
@@ -713,7 +714,7 @@ class Reconciler
             if (strpos($base_key, '::')) {
                 [$fq_class_name, $const_name] = explode('::', $base_key);
 
-                if (!$codebase->classlikes->classOrInterfaceExists($fq_class_name)) {
+                if (!$codebase->classlikes->classOrInterfaceExists(Interner::intern($fq_class_name))) {
                     return null;
                 }
 
@@ -873,17 +874,17 @@ class Reconciler
                         } elseif ($existing_key_type_part instanceof TMixed
                             || $existing_key_type_part instanceof TObject
                             || ($existing_key_type_part instanceof TNamedObject
-                                && strtolower($existing_key_type_part->value) === 'stdclass')
+                                && strtolower(Interner::lookup($existing_key_type_part->name)) === 'stdclass')
                         ) {
                             $class_property_type = Type::getMixed();
                         } elseif ($existing_key_type_part instanceof TNamedObject) {
-                            if (!$codebase->classOrInterfaceExists($existing_key_type_part->value)) {
+                            if (!$codebase->classOrInterfaceExists($existing_key_type_part->name)) {
                                 $class_property_type = Type::getMixed();
                             } else {
                                 if (str_ends_with($property_name, '()')) {
                                     $method_id = new MethodIdentifier(
-                                        $existing_key_type_part->value,
-                                        strtolower(substr($property_name, 0, -2)),
+                                        $existing_key_type_part->name,
+                                        Interner::intern(strtolower(substr($property_name, 0, -2))),
                                     );
 
                                     if (!$codebase->methodExists($method_id)) {
@@ -898,7 +899,7 @@ class Reconciler
                                         return null;
                                     }
 
-                                    $declaring_class = $declaring_method_id->fq_class_name;
+                                    $declaring_class = Interner::lookup($declaring_method_id->class_id);
 
                                     $method_return_type = $codebase->getMethodReturnType(
                                         $method_id,
@@ -919,7 +920,7 @@ class Reconciler
                                 } else {
                                     $class_property_type = self::getPropertyType(
                                         $codebase,
-                                        $existing_key_type_part->value,
+                                        $existing_key_type_part->name,
                                         $property_name,
                                     );
 
@@ -966,21 +967,21 @@ class Reconciler
 
     private static function getPropertyType(
         Codebase $codebase,
-        string $fq_class_name,
+        int $fq_class_name,
         string $property_name,
     ): ?Union {
-        $property_id = $fq_class_name . '::$' . $property_name;
+        $property_id_class = $fq_class_name; $property_id_name = Interner::intern($property_name);
 
-        if (!$codebase->propertyExists($property_id, true)) {
+        if (!$codebase->propertyExists($property_id_class, $property_id_name, true)) {
             $declaring_class_storage = $codebase->classlike_storage_provider->get(
                 $fq_class_name,
             );
 
-            return $declaring_class_storage->pseudo_property_get_types['$' . $property_name] ?? null;
+            return $declaring_class_storage->pseudo_property_get_types[Interner::intern('$' . $property_name)] ?? null;
         }
 
         $declaring_property_class = $codebase->properties->getDeclaringClassForProperty(
-            $property_id,
+            $property_id_class, $property_id_name,
             true,
         );
 
@@ -989,7 +990,7 @@ class Reconciler
         }
 
         $class_property_type = $codebase->properties->getPropertyType(
-            $property_id,
+            $property_id_class, $property_id_name,
             false,
             null,
             null,
@@ -1003,8 +1004,8 @@ class Reconciler
             return TypeExpander::expandUnion(
                 $codebase,
                 $class_property_type,
-                $declaring_class_storage->name,
-                $declaring_class_storage->name,
+                Interner::lookup($declaring_class_storage->id),
+                Interner::lookup($declaring_class_storage->id),
                 null,
             );
         }

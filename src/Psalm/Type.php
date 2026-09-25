@@ -726,13 +726,13 @@ abstract class Type
                     $both_failed_reconciliation = true;
                 } else {
                     return $type_2->setProperties([
-                        'parent_nodes' => [...$type_2->parent_nodes, ...$type_1->parent_nodes],
+                        'parent_nodes' => $type_2->parent_nodes + $type_1->parent_nodes,
                         'possibly_undefined' => $possibly_undefined ?? $type_2->possibly_undefined,
                     ]);
                 }
             } elseif ($type_2->failed_reconciliation) {
                 return $type_1->setProperties([
-                    'parent_nodes' => [...$type_1->parent_nodes, ...$type_2->parent_nodes],
+                    'parent_nodes' => $type_1->parent_nodes + $type_2->parent_nodes,
                     'possibly_undefined' => $possibly_undefined ?? $type_1->possibly_undefined,
                 ]);
             }
@@ -993,14 +993,14 @@ abstract class Type
         if ($type_1_atomic instanceof TNamedObject
             && $type_2_atomic instanceof TNamedObject
         ) {
-            if (($type_1_atomic->value === $type_2_atomic->value
+            if (($type_1_atomic->name === $type_2_atomic->name
                 && $type_1_atomic::class === TNamedObject::class
                 && $type_2_atomic::class !== TNamedObject::class)
             ) {
                 $intersection_atomic = $type_2_atomic;
                 $wider_type = $type_1_atomic;
                 $intersection_performed = true;
-            } elseif (($type_1_atomic->value === $type_2_atomic->value
+            } elseif (($type_1_atomic->name === $type_2_atomic->name
                 && $type_2_atomic::class === TNamedObject::class
                 && $type_1_atomic::class !== TNamedObject::class)
             ) {
@@ -1082,8 +1082,8 @@ abstract class Type
             /** @psalm-suppress TypeDoesNotContainType */
             if ($type_1_atomic instanceof TNamedObject && $type_2_atomic instanceof TNamedObject) {
                 try {
-                    $first = $codebase->classlike_storage_provider->get($type_1_atomic->value);
-                    $second = $codebase->classlike_storage_provider->get($type_2_atomic->value);
+                    $first = $codebase->classlike_storage_provider->get($type_1_atomic->name);
+                    $second = $codebase->classlike_storage_provider->get($type_2_atomic->name);
                     $first_is_class = !$first->is_interface && !$first->is_trait;
                     $second_is_class = !$second->is_interface && !$second->is_trait;
                     if ($first_is_class && $second_is_class) {
@@ -1164,7 +1164,7 @@ abstract class Type
             return null;
         }
         try {
-            $storage = $codebase->classlike_storage_provider->get($type->value);
+            $storage = $codebase->classlike_storage_provider->get($type->name);
         } catch (InvalidArgumentException) {
             // Ignore non-existing classes during initial scan
             return $type;

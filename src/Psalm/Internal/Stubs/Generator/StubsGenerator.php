@@ -3,6 +3,7 @@
 namespace Psalm\Internal\Stubs\Generator;
 
 use Psalm\Codebase;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
 use Psalm\Internal\Provider\FileStorageProvider;
 use Psalm\Storage\FunctionLikeStorage;
@@ -63,7 +64,7 @@ final class StubsGenerator
         $psalm_base = dirname(__DIR__, 5);
 
         foreach ($class_provider->getAll() as $storage) {
-            if (str_starts_with($storage->name, 'Psalm\\')) {
+            if (str_starts_with(Interner::lookup($storage->id), 'Psalm\\')) {
                 continue;
             }
 
@@ -77,7 +78,7 @@ final class StubsGenerator
                 continue;
             }
 
-            $name_parts = explode('\\', $storage->name);
+            $name_parts = explode('\\', Interner::lookup($storage->id));
 
             $classlike_name = array_pop($name_parts);
             $namespace_name = implode('\\', $name_parts);
@@ -340,7 +341,7 @@ final class StubsGenerator
             }
 
             if ($atomic_type instanceof TNamedObject) {
-                $name_node = new VirtualFullyQualified($atomic_type->value);
+                $name_node = new VirtualFullyQualified(Interner::lookup($atomic_type->name));
 
                 if ($nullable) {
                     return new VirtualNullableType($name_node);
@@ -410,7 +411,7 @@ final class StubsGenerator
             }
 
             if ($atomic_type instanceof TEnumCase) {
-                return new VirtualClassConstFetch(new VirtualName('\\' . $atomic_type->value), new VirtualIdentifier($atomic_type->case_name));
+                return new VirtualClassConstFetch(new VirtualName('\\' . Interner::lookup($atomic_type->name)), new VirtualIdentifier($atomic_type->case_name));
             }
         }
 

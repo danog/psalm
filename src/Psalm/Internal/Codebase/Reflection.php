@@ -9,8 +9,10 @@ use LibXMLError;
 use LogicException;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
+use Psalm\Internal\Sym;
 use Psalm\Storage\ClassConstantStorage;
 use Psalm\Storage\FunctionLikeParameter;
 use Psalm\Storage\FunctionStorage;
@@ -44,7 +46,7 @@ use const PHP_VERSION_ID;
 final class Reflection
 {
     /**
-     * @var array<string, FunctionStorage>
+     * @var array<int, FunctionStorage> by interned lowercase function id
      */
     private static array $builtin_functions = [];
 
@@ -66,7 +68,7 @@ final class Reflection
             $class_name = 'libXMLError';
         }
 
-        $class_name_lower = strtolower($class_name);
+        $class_name_lower = Interner::intern(strtolower($class_name));
 
         try {
             $this->storage_provider->get($class_name_lower);
@@ -82,12 +84,12 @@ final class Reflection
         $storage->abstract = $reflected_class->isAbstract();
         $storage->is_interface = $reflected_class->isInterface();
 
-        $storage->potential_declaring_method_ids['__construct'][$class_name_lower . '::__construct'] = true;
+        $storage->potential_declaring_method_ids[Sym::CONSTRUCT][$class_name_lower] = true;
 
         if ($reflected_parent_class) {
             $parent_class_name = $reflected_parent_class->getName();
             $this->registerClass($reflected_parent_class);
-            $parent_class_name_lc = strtolower($parent_class_name);
+            $parent_class_name_lc = Interner::intern(strtolower($parent_class_name));
 
             $parent_storage = $this->storage_provider->get($parent_class_name_lc);
 
@@ -98,10 +100,7 @@ final class Reflection
 
             $storage->constants = $parent_storage->constants;
 
-            $storage->parent_classes = array_merge(
-                [$parent_class_name_lc => $parent_class_name],
-                $parent_storage->parent_classes,
-            );
+            $storage->parent_classes = ([Interner::intern($parent_class_name) => true] + $parent_storage->parent_classes);
 
             $storage->used_traits = $parent_storage->used_traits;
         }
@@ -114,43 +113,45 @@ final class Reflection
 
         foreach ($class_properties as $class_property) {
             $property_name = $class_property->getName();
-            $storage->properties[$property_name] = new PropertyStorage();
+            $property_name_id = Interner::intern($property_name);
+            $storage->properties[$property_name_id] = new PropertyStorage();
 
-            $storage->properties[$property_name]->type = Type::getMixed();
+            $storage->properties[$property_name_id]->type = Type::getMixed();
 
             if ($class_property->isStatic()) {
-                $storage->properties[$property_name]->is_static = true;
+                $storage->properties[$property_name_id]->is_static = true;
             }
 
             if ($class_property->isPublic()) {
-                $storage->properties[$property_name]->visibility = ClassLikeAnalyzer::VISIBILITY_PUBLIC;
+                $storage->properties[$property_name_id]->visibility = ClassLikeAnalyzer::VISIBILITY_PUBLIC;
             } elseif ($class_property->isProtected()) {
-                $storage->properties[$property_name]->visibility = ClassLikeAnalyzer::VISIBILITY_PROTECTED;
+                $storage->properties[$property_name_id]->visibility = ClassLikeAnalyzer::VISIBILITY_PROTECTED;
             } elseif ($class_property->isPrivate()) {
-                $storage->properties[$property_name]->visibility = ClassLikeAnalyzer::VISIBILITY_PRIVATE;
+                $storage->properties[$property_name_id]->visibility = ClassLikeAnalyzer::VISIBILITY_PRIVATE;
             }
 
             $property_id = $class_property->class . '::$' . $property_name;
 
-            $storage->declaring_property_ids[$property_name] = $class_property->class;
-            $storage->appearing_property_ids[$property_name] = $property_id;
+            $storage->declaring_property_ids[$property_name_id] = Interner::intern($class_property->class);
+            $storage->appearing_property_ids[$property_name_id] = Interner::intern($class_property->class);
 
             if (!$class_property->isPrivate()) {
-                $storage->inheritable_property_ids[$property_name] = $property_id;
+                $storage->inheritable_property_ids[$property_name_id] = Interner::intern($class_property->class);
             }
         }
 
         // have to do this separately as there can be new properties here
         foreach ($public_mapped_properties as $property_name => $type_string) {
+            $property_name_id = Interner::intern($property_name);
             $property_id = $class_name . '::$' . $property_name;
 
-            if (!isset($storage->properties[$property_name])) {
-                $storage->properties[$property_name] = new PropertyStorage();
-                $storage->properties[$property_name]->visibility = ClassLikeAnalyzer::VISIBILITY_PUBLIC;
+            if (!isset($storage->properties[$property_name_id])) {
+                $storage->properties[$property_name_id] = new PropertyStorage();
+                $storage->properties[$property_name_id]->visibility = ClassLikeAnalyzer::VISIBILITY_PUBLIC;
 
-                $storage->declaring_property_ids[$property_name] = $class_name;
-                $storage->appearing_property_ids[$property_name] = $property_id;
-                $storage->inheritable_property_ids[$property_name] = $property_id;
+                $storage->declaring_property_ids[$property_name_id] = Interner::intern($class_name);
+                $storage->appearing_property_ids[$property_name_id] = Interner::intern($class_name);
+                $storage->inheritable_property_ids[$property_name_id] = Interner::intern($class_name);
             }
 
             $type = Type::parseString($type_string);
@@ -159,14 +160,14 @@ final class Reflection
                 $type = $type->setProperties(['ignore_falsable_issues' => true]);
             }
 
-            $storage->properties[$property_name]->type = $type;
+            $storage->properties[$property_name_id]->type = $type;
         }
 
         /** @var array<string, scalar|null|list<scalar|null|list<scalar|null|array>|array<string, scalar|null|array>>|array<string, scalar|null|list<scalar|null|array>|array<string, scalar|null|array>>> */
         $class_constants = $reflected_class->getConstants();
 
         foreach ($class_constants as $name => $value) {
-            $storage->constants[$name] = new ClassConstantStorage(
+            $storage->constants[Interner::intern($name)] = new ClassConstantStorage(
                 ClassLikeAnalyzer::getTypeFromValue($value),
                 new Union([ConstantTypeResolver::getLiteralTypeFromScalarValue($value)]),
                 ClassLikeAnalyzer::VISIBILITY_PUBLIC,
@@ -186,7 +187,7 @@ final class Reflection
             (ReflectionMethod::IS_PUBLIC | ReflectionMethod::IS_PROTECTED),
         );
 
-        if ($class_name_lower === 'generator') {
+        if ($class_name_lower === Sym::C_GENERATOR) {
             $storage->template_types = [
                 'TKey' => ['Generator' => Type::getMixed()],
                 'TValue' => ['Generator' => Type::getMixed()],
@@ -196,13 +197,13 @@ final class Reflection
         $interfaces = $reflected_class->getInterfaces();
 
         foreach ($interfaces as $interface) {
-            $interface_name = $interface->getName();
+            $interface_name = Interner::intern($interface->getName());
             $this->registerClass($interface);
 
             if ($reflected_class->isInterface()) {
-                $storage->parent_interfaces[strtolower($interface_name)] = $interface_name;
+                $storage->parent_interfaces[$interface_name] = true;
             } else {
-                $storage->class_implements[strtolower($interface_name)] = $interface_name;
+                $storage->class_implements[$interface_name] = true;
             }
         }
 
@@ -216,21 +217,21 @@ final class Reflection
             if ($reflection_method->class !== $class_name
                 && ($class_name !== 'SoapFault' || $reflection_method->name !== '__construct')
             ) {
-                $reflection_method_name = strtolower($reflection_method->name);
+                $reflection_method_name = Interner::intern(strtolower($reflection_method->name));
                 $reflection_method_class = $reflection_method->class;
 
                 $this->codebase->methods->setDeclaringMethodId(
                     $class_name,
                     $reflection_method_name,
                     $reflection_method_class,
-                    $reflection_method_name,
+                    Interner::lookupLc($reflection_method_name),
                 );
 
                 $this->codebase->methods->setAppearingMethodId(
                     $class_name,
                     $reflection_method_name,
                     $reflection_method_class,
-                    $reflection_method_name,
+                    Interner::lookupLc($reflection_method_name),
                 );
             }
         }
@@ -239,34 +240,35 @@ final class Reflection
     public function extractReflectionMethodInfo(ReflectionMethod $method): void
     {
         $method_name_lc = strtolower($method->getName());
+        $method_name_lc_id = Interner::intern($method_name_lc);
 
         $fq_class_name = $method->class;
 
         $fq_class_name_lc = strtolower($fq_class_name);
 
-        $class_storage = $this->storage_provider->get($fq_class_name_lc);
+        $class_storage = $this->storage_provider->get(Interner::intern($fq_class_name_lc));
 
-        if (isset($class_storage->methods[$method_name_lc])) {
+        if (isset($class_storage->methods[$method_name_lc_id])) {
             return;
         }
 
         $method_id = $method->class . '::' . $method_name_lc;
 
-        $storage = $class_storage->methods[$method_name_lc] = new MethodStorage();
+        $storage = $class_storage->methods[$method_name_lc_id] = new MethodStorage();
 
         $storage->cased_name = $method->name;
-        $storage->defining_fqcln = $method->class;
+        $storage->declaring_class = Interner::intern($method->class);
 
         if ($method_name_lc === $fq_class_name_lc) {
             $this->codebase->methods->setDeclaringMethodId(
                 $fq_class_name,
-                '__construct',
+                Sym::CONSTRUCT,
                 $fq_class_name,
                 $method_name_lc,
             );
             $this->codebase->methods->setAppearingMethodId(
                 $fq_class_name,
-                '__construct',
+                Sym::CONSTRUCT,
                 $fq_class_name,
                 $method_name_lc,
             );
@@ -283,16 +285,16 @@ final class Reflection
             $storage->allowed_mutations = Mutations::LEVEL_ALL;
         }
 
-        $class_storage->declaring_method_ids[$method_name_lc] = new MethodIdentifier(
-            $declaring_class->name,
-            $method_name_lc,
+        $class_storage->declaring_method_ids[$method_name_lc_id] = new MethodIdentifier(
+            Interner::intern($declaring_class->name),
+            Interner::intern($method_name_lc),
         );
 
-        $class_storage->inheritable_method_ids[$method_name_lc]
-            = $class_storage->declaring_method_ids[$method_name_lc];
-        $class_storage->appearing_method_ids[$method_name_lc]
-            = $class_storage->declaring_method_ids[$method_name_lc];
-        $class_storage->overridden_method_ids[$method_name_lc] = [];
+        $class_storage->inheritable_method_ids[$method_name_lc_id]
+            = $class_storage->declaring_method_ids[$method_name_lc_id];
+        $class_storage->appearing_method_ids[$method_name_lc_id]
+            = $class_storage->declaring_method_ids[$method_name_lc_id];
+        $class_storage->overridden_method_ids[$method_name_lc_id] = [];
 
         $storage->visibility = $method->isPrivate()
             ? ClassLikeAnalyzer::VISIBILITY_PRIVATE
@@ -365,6 +367,7 @@ final class Reflection
      */
     public function registerFunction(string $function_id): ?bool
     {
+        $function_iid = Interner::intern($function_id);
         if (\defined('PSALM_COMPILED')) {
             // a compiled program cannot reflect the interpreter's own functions, so the call map is
             // the only description of them there is
@@ -375,11 +378,11 @@ final class Reflection
 
             $callmap_callable = null;
 
-            if (isset(self::$builtin_functions[$function_id])) {
+            if (isset(self::$builtin_functions[$function_iid])) {
                 return null;
             }
 
-            $storage = self::$builtin_functions[$function_id] = new FunctionStorage();
+            $storage = self::$builtin_functions[$function_iid] = new FunctionStorage();
 
             if (InternalCallMapHandler::inCallMap($function_id)) {
                 $callmap_callable = InternalCallMapHandler::getCallableFromCallMapById(
@@ -439,7 +442,8 @@ final class Reflection
      */
     private function registerFunctionFromCallMap(string $function_id): ?bool
     {
-        if (isset(self::$builtin_functions[$function_id])) {
+        $function_iid = Interner::intern($function_id);
+        if (isset(self::$builtin_functions[$function_iid])) {
             return null;
         }
 
@@ -458,7 +462,7 @@ final class Reflection
             return false;
         }
 
-        $storage = self::$builtin_functions[$function_id] = new FunctionStorage();
+        $storage = self::$builtin_functions[$function_iid] = new FunctionStorage();
         $storage->setParams($callmap_callable->params);
         $storage->return_type = $callmap_callable->return_type;
         $storage->allowed_mutations = Mutations::LEVEL_NONE;
@@ -504,72 +508,72 @@ final class Reflection
     }
 
     private function registerInheritedMethods(
-        string $fq_class_name,
-        string $parent_class,
+        int $fq_class_name,
+        int $parent_class,
     ): void {
         $parent_storage = $this->storage_provider->get($parent_class);
         $storage = $this->storage_provider->get($fq_class_name);
 
         // register where they appear (can never be in a trait)
-        foreach ($parent_storage->appearing_method_ids as $method_name => $appearing_method_id) {
-            $storage->appearing_method_ids[$method_name] = $appearing_method_id;
+        foreach ($parent_storage->appearing_method_ids as $method_name_id => $appearing_method_id) {
+            $storage->appearing_method_ids[$method_name_id] = $appearing_method_id;
         }
 
         // register where they're declared
-        foreach ($parent_storage->inheritable_method_ids as $method_name => $declaring_method_id) {
-            $storage->declaring_method_ids[$method_name] = $declaring_method_id;
-            $storage->inheritable_method_ids[$method_name] = $declaring_method_id;
+        foreach ($parent_storage->inheritable_method_ids as $method_name_id => $declaring_method_id) {
+            $storage->declaring_method_ids[$method_name_id] = $declaring_method_id;
+            $storage->inheritable_method_ids[$method_name_id] = $declaring_method_id;
 
-            $storage->overridden_method_ids[$method_name][$declaring_method_id->fq_class_name]
+            $storage->overridden_method_ids[$method_name_id][$declaring_method_id->class_id]
                 = $declaring_method_id;
         }
     }
 
     /**
-     * @param lowercase-string $fq_class_name
-     * @param lowercase-string $parent_class
+     * @param int $fq_class_name
+     * @param int $parent_class
      */
     private function registerInheritedProperties(
-        string $fq_class_name,
-        string $parent_class,
+        int $fq_class_name,
+        int $parent_class,
     ): void {
         $parent_storage = $this->storage_provider->get($parent_class);
         $storage = $this->storage_provider->get($fq_class_name);
 
         // register where they appear (can never be in a trait)
-        foreach ($parent_storage->appearing_property_ids as $property_name => $appearing_property_id) {
+        foreach ($parent_storage->appearing_property_ids as $property_name_id => $appearing_property_id) {
             if (!$parent_storage->is_trait
-                && isset($parent_storage->properties[$property_name])
-                && $parent_storage->properties[$property_name]->visibility === ClassLikeAnalyzer::VISIBILITY_PRIVATE
+                && isset($parent_storage->properties[$property_name_id])
+                && $parent_storage->properties[$property_name_id]->visibility === ClassLikeAnalyzer::VISIBILITY_PRIVATE
             ) {
                 continue;
             }
 
-            $storage->appearing_property_ids[$property_name] = $appearing_property_id;
+            $storage->appearing_property_ids[$property_name_id] = $appearing_property_id;
         }
 
         // register where they're declared
-        foreach ($parent_storage->declaring_property_ids as $property_name => $declaring_property_class) {
+        foreach ($parent_storage->declaring_property_ids as $property_name_id => $declaring_property_class) {
             if (!$parent_storage->is_trait
-                && isset($parent_storage->properties[$property_name])
-                && $parent_storage->properties[$property_name]->visibility === ClassLikeAnalyzer::VISIBILITY_PRIVATE
+                && isset($parent_storage->properties[$property_name_id])
+                && $parent_storage->properties[$property_name_id]->visibility === ClassLikeAnalyzer::VISIBILITY_PRIVATE
             ) {
                 continue;
             }
 
-            $storage->declaring_property_ids[$property_name] = strtolower($declaring_property_class);
+            $storage->declaring_property_ids[$property_name_id] = $declaring_property_class;
         }
 
         // register where they're declared
-        foreach ($parent_storage->inheritable_property_ids as $property_name => $inheritable_property_id) {
+        foreach ($parent_storage->inheritable_property_ids as $property_name_id => $inheritable_property_id) {
             if (!$parent_storage->is_trait
-                && isset($parent_storage->properties[$property_name])
-                && $parent_storage->properties[$property_name]->visibility === ClassLikeAnalyzer::VISIBILITY_PRIVATE
+                && isset($parent_storage->properties[$property_name_id])
+                && $parent_storage->properties[$property_name_id]->visibility === ClassLikeAnalyzer::VISIBILITY_PRIVATE
             ) {
                 continue;
             }
 
-            $storage->inheritable_property_ids[$property_name] = $inheritable_property_id;
+            $storage->inheritable_property_ids[$property_name_id] = $inheritable_property_id;
         }
     }
 
@@ -578,7 +582,8 @@ final class Reflection
      */
     public function hasFunction(string $function_id): bool
     {
-        return isset(self::$builtin_functions[$function_id]);
+        $function_iid = Interner::intern($function_id);
+        return isset(self::$builtin_functions[$function_iid]);
     }
 
     /**
@@ -586,15 +591,16 @@ final class Reflection
      */
     public function getFunctionStorage(string $function_id): FunctionStorage
     {
-        if (isset(self::$builtin_functions[$function_id])) {
-            return self::$builtin_functions[$function_id];
+        $function_iid = Interner::intern($function_id);
+        if (isset(self::$builtin_functions[$function_iid])) {
+            return self::$builtin_functions[$function_iid];
         }
 
         throw new UnexpectedValueException('Expecting to have a function for ' . $function_id);
     }
 
     /**
-     * @return array<string, FunctionStorage>
+     * @return array<int, FunctionStorage>
      * @psalm-external-mutation-free
      */
     public function getFunctions(): array

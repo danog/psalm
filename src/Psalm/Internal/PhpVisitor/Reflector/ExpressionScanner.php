@@ -18,6 +18,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\Fetch\ConstFetchAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\IncludeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\SimpleTypeInferer;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\Scanner\FileScanner;
 use Psalm\Storage\FileStorage;
@@ -71,7 +72,7 @@ final class ExpressionScanner
                 || $node instanceof PhpParser\Node\Expr\StaticCall)
             && ($class_name_node = $node->class) instanceof PhpParser\Node\Name
         ) {
-            $fq_classlike_name = ClassLikeAnalyzer::getFQCLNFromNameObject($class_name_node, $aliases);
+            $fq_classlike_name = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject($class_name_node, $aliases));
 
             if (!in_array(strtolower($fq_classlike_name), ['self', 'static', 'parent'], true)) {
                 $codebase->scanner->queueClassLikeForScanning(
@@ -268,7 +269,7 @@ final class ExpressionScanner
                 && $first_arg->name instanceof PhpParser\Node\Identifier
                 && strtolower($first_arg->name->name) === 'class'
             ) {
-                $first_resolved = $first_arg->class->attrs()->resolvedName;
+                $first_resolved = Interner::lookupOrNull($first_arg->class->attrs()->resolvedId);
                 $first_arg_value = $first_resolved instanceof PhpParser\Node\Name
                     ? $first_resolved->toString()
                     : $first_resolved;
@@ -283,7 +284,7 @@ final class ExpressionScanner
                 && $second_arg->name instanceof PhpParser\Node\Identifier
                 && strtolower($second_arg->name->name) === 'class'
             ) {
-                $second_resolved = $second_arg->class->attrs()->resolvedName;
+                $second_resolved = Interner::lookupOrNull($second_arg->class->attrs()->resolvedId);
                 $second_arg_value = $second_resolved instanceof PhpParser\Node\Name
                     ? $second_resolved->toString()
                     : $second_resolved;

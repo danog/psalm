@@ -50,7 +50,7 @@ final class ArrayCreationInfo
     public bool $all_list = true;
 
     /**
-     * @var array<string, DataFlowNode>
+     * @var array<int, DataFlowNode>
      */
     public array $parent_taint_nodes = [];
 

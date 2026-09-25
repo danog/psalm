@@ -14,6 +14,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\ExpressionIdentifier;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\TypeVariableTracker;
 use Psalm\Issue\ImpurePropertyAssignment;
 use Psalm\Issue\ImpurePropertyFetch;
@@ -214,7 +215,7 @@ final class InstancePropertyFetchAnalyzer
                 foreach ($stmt_var_type->getAtomicTypes() as $type) {
                     if ($type instanceof TNamedObject) {
                         $codebase->analyzer->addMixedMemberName(
-                            strtolower($type->value) . '::$',
+                            strtolower(Interner::lookup($type->name)) . '::$',
                             $context->calling_method_id ?: $statements_analyzer->getFileName(),
                         );
                     }
@@ -365,11 +366,11 @@ final class InstancePropertyFetchAnalyzer
 
             foreach ($stmt_var_type->getAtomicTypes() as $lhs_type_part) {
                 if ($lhs_type_part instanceof TNamedObject) {
-                    if (!$codebase->classExists($lhs_type_part->value, null, $context)) {
+                    if (!$codebase->classExists($lhs_type_part->name, null, $context)) {
                         continue;
                     }
 
-                    $property_id = $lhs_type_part->value . '::$' . $stmt->name->name;
+                    $property_id = Interner::lookup($lhs_type_part->name) . '::$' . $stmt->name->name;
                 }
             }
 
@@ -413,14 +414,14 @@ final class InstancePropertyFetchAnalyzer
             // log the appearance
             foreach ($stmt_var_type->getAtomicTypes() as $lhs_type_part) {
                 if ($lhs_type_part instanceof TNamedObject) {
-                    if (!$codebase->classExists($lhs_type_part->value, null, $context)) {
+                    if (!$codebase->classExists($lhs_type_part->name, null, $context)) {
                         continue;
                     }
 
-                    $property_id = $lhs_type_part->value . '::$' . $stmt->name->name;
+                    $property_id = Interner::lookup($lhs_type_part->name) . '::$' . $stmt->name->name;
 
 
-                    $class_storage = $codebase->classlike_storage_provider->get($lhs_type_part->value);
+                    $class_storage = $codebase->classlike_storage_provider->get($lhs_type_part->name);
 
                     AtomicPropertyFetchAnalyzer::processTaints(
                         $statements_analyzer,
@@ -435,12 +436,12 @@ final class InstancePropertyFetchAnalyzer
                     $statements_analyzer->node_data->setType($stmt, $stmt_type);
 
                     $declaring_property_class = $codebase->properties->getDeclaringClassForProperty(
-                        $property_id,
+                        $lhs_type_part->name, Interner::intern($stmt->name->name),
                         true,
                         $statements_analyzer,
                     );
 
-                    if ($declaring_property_class) {
+                    if (($declaring_property_class !== null)) {
                         AtomicPropertyFetchAnalyzer::checkPropertyDeprecation(
                             $stmt->name->name,
                             $declaring_property_class,
@@ -450,7 +451,7 @@ final class InstancePropertyFetchAnalyzer
                     }
 
                     $codebase->propertyExists(
-                        $property_id,
+                        $lhs_type_part->name, Interner::intern($stmt->name->name),
                         true,
                         $statements_analyzer,
                         $context,

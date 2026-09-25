@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<psalm errorLevel="8" resolveFromConfigFile="true" findUnusedCode="false"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="https://getpsalm.org/schema/config">
+    <!-- php-parser's lib (vendor/nikic/php-parser is the ../php-parser checkout), analyzed so id-refactor plugins edit it -->
+    <projectFiles>
+        <file name="../../../php-parser/lib/PhpParser/NodeAttributes.php"/>
+    </projectFiles>
+</psalm>

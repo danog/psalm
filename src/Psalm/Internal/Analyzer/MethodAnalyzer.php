@@ -10,7 +10,9 @@ use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Context;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Issue\InvalidEnumMethod;
 use Psalm\Issue\InvalidStaticInvocation;
 use Psalm\Issue\MethodSignatureMustOmitReturnType;
@@ -62,13 +64,13 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
     ) {
         $codebase = $source->getCodebase();
 
-        $method_name_lc = strtolower((string) $function->name);
+        $method_name_lc = Interner::intern(strtolower((string) $function->name));
 
         $source_fqcln = (string) $source->getFQCLN();
 
-        $source_fqcln_lc = strtolower($source_fqcln);
+        $source_fqcln_lc = Interner::intern(strtolower($source_fqcln));
 
-        $method_id = new MethodIdentifier($source_fqcln, $method_name_lc);
+        $method_id = new MethodIdentifier(Interner::intern($source_fqcln), $method_name_lc);
 
         if (!$storage) {
             try {
@@ -110,8 +112,8 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
     ): void {
         $codebase_methods = $codebase->methods;
 
-        if ($method_id->fq_class_name === 'Closure'
-            && $method_id->method_name === 'fromcallable'
+        if ($method_id->class_id === Sym::CLOSURE
+            && $method_id->name_id === Sym::C_FROMCALLABLE
         ) {
             return;
         }
@@ -195,7 +197,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
 
             if (IssueBuffer::accepts(
                 new UndefinedMethod(
-                    'Method ' . $method_id->fq_class_name . '::' . $written_name
+                    'Method ' . Interner::lookup($method_id->class_id) . '::' . $written_name
                         . ' does not exist (incorrect casing of ' . $declared . ')',
                     $code_location,
                     (string) $method_id,
@@ -264,8 +266,8 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
     ): bool {
         $codebase = $source->getCodebase();
 
-        $fq_classlike_name = $method_id->fq_class_name;
-        $method_name = $method_id->method_name;
+        $fq_classlike_name = Interner::lookup($method_id->class_id);
+        $method_name = Interner::lookupLc($method_id->name_id);
 
         if ($codebase->methods->visibility_provider->has($fq_classlike_name)) {
             $method_visible = $codebase->methods->visibility_provider->isMethodVisible(
@@ -293,15 +295,15 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
         $appearing_method_class = null;
 
         if ($appearing_method_id) {
-            $appearing_method_class = $appearing_method_id->fq_class_name;
+            $appearing_method_class = Interner::lookup($appearing_method_id->class_id);
 
             // if the calling class is the same, we know the method exists, so it must be visible
-            if ($appearing_method_class === $context->self) {
+            if ($appearing_method_class === Interner::lookupOrNull($context->self)) {
                 return true;
             }
         }
 
-        $declaring_method_class = $declaring_method_id->fq_class_name;
+        $declaring_method_class = Interner::lookup($declaring_method_id->class_id);
 
         if ($source->getSource() instanceof TraitAnalyzer
             && strtolower($declaring_method_class) === strtolower((string) $source->getFQCLN())
@@ -316,21 +318,21 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
                 return true;
 
             case ClassLikeAnalyzer::VISIBILITY_PRIVATE:
-                return $context->self && $appearing_method_class === $context->self;
+                return ($context->self !== null) && $appearing_method_class === Interner::lookup($context->self);
 
             case ClassLikeAnalyzer::VISIBILITY_PROTECTED:
-                if (!$context->self) {
+                if (!($context->self !== null)) {
                     return false;
                 }
 
                 if ($appearing_method_class
-                    && $codebase->classExtends($appearing_method_class, $context->self)
+                    && $codebase->classExtends(Interner::intern($appearing_method_class), $context->self)
                 ) {
                     return true;
                 }
 
                 if ($appearing_method_class
-                    && !$codebase->classExtends($context->self, $appearing_method_class)
+                    && !$codebase->classExtends($context->self, Interner::intern($appearing_method_class))
                 ) {
                     return false;
                 }
@@ -371,13 +373,13 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
     /**
      * @psalm-mutation-free
      */
-    public function getMethodId(?string $context_self = null): MethodIdentifier
+    public function getMethodId(?int $context_self = null): MethodIdentifier
     {
         $function_name = (string)$this->function->name;
 
         return new MethodIdentifier(
-            $context_self ?: (string) $this->source->getFQCLN(),
-            strtolower($function_name),
+            $context_self ?? Interner::intern((string) $this->source->getFQCLN()),
+            Interner::intern(strtolower($function_name)),
         );
     }
 
@@ -392,7 +394,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
             IssueBuffer::maybeAdd(new InvalidEnumMethod(
                 'Enums cannot define ' . $method_storage->cased_name,
                 $method_storage->location,
-                $method_storage->defining_fqcln . '::' . $method_storage->cased_name,
+                Interner::lookupOrNull($method_storage->declaring_class) . '::' . $method_storage->cased_name,
             ));
         }
 
@@ -400,7 +402,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
             IssueBuffer::maybeAdd(new InvalidEnumMethod(
                 'Enums cannot define ' . $method_storage->cased_name,
                 $method_storage->location,
-                $method_storage->defining_fqcln . '::' . $method_storage->cased_name,
+                Interner::lookupOrNull($method_storage->declaring_class) . '::' . $method_storage->cased_name,
             ));
         }
 
@@ -408,7 +410,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
             IssueBuffer::maybeAdd(new InvalidEnumMethod(
                 'Enums cannot define ' . $method_storage->cased_name,
                 $method_storage->location,
-                $method_storage->defining_fqcln . '::' . $method_storage->cased_name,
+                Interner::lookupOrNull($method_storage->declaring_class) . '::' . $method_storage->cased_name,
             ));
         }
     }

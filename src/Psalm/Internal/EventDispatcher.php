@@ -413,6 +413,7 @@ final class EventDispatcher
         }
     }
 
+    /** @psalm-mutation-free */
     public function hasBeforeAddIssueHandlers(): bool
     {
         return $this->before_add_issue !== [];

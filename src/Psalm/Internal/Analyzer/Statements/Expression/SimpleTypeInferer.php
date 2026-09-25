@@ -14,6 +14,7 @@ use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\BinaryOp\ArithmeticOpAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\ConstFetchAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\Type\TypeCombiner;
 use Psalm\StatementsSource;
@@ -49,7 +50,7 @@ use const PHP_INT_MAX;
 final class SimpleTypeInferer
 {
     /**
-     * @param   ?array<string, ClassConstantStorage> $existing_class_constants
+     * @param   ?array<int, ClassConstantStorage> $existing_class_constants
      */
     public static function infer(
         Codebase $codebase,
@@ -343,28 +344,28 @@ final class SimpleTypeInferer
                 && $stmt->class->getParts() !== ['static']
                 && $stmt->class->getParts() !== ['parent']
             ) {
-                if (isset($existing_class_constants[$stmt->name->name])
-                    && $existing_class_constants[$stmt->name->name]->type
+                if (isset($existing_class_constants[Interner::intern($stmt->name->name)])
+                    && $existing_class_constants[Interner::intern($stmt->name->name)]->type
                 ) {
                     if ($stmt->class->getParts() === ['self']) {
-                        return $existing_class_constants[$stmt->name->name]->type;
+                        return $existing_class_constants[Interner::intern($stmt->name->name)]->type;
                     }
                 }
 
                 if ($stmt->class->getParts() === ['self']) {
                     $const_fq_class_name = $fq_classlike_name;
                 } else {
-                    $const_fq_class_name = ClassLikeAnalyzer::getFQCLNFromNameObject(
+                    $const_fq_class_name = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                         $stmt->class,
                         $aliases,
-                    );
+                    ));
                 }
 
                 if (strtolower($const_fq_class_name) === strtolower($fq_classlike_name)
-                    && isset($existing_class_constants[$stmt->name->name])
-                    && $existing_class_constants[$stmt->name->name]->type
+                    && isset($existing_class_constants[Interner::intern($stmt->name->name)])
+                    && $existing_class_constants[Interner::intern($stmt->name->name)]->type
                 ) {
-                    return $existing_class_constants[$stmt->name->name]->type;
+                    return $existing_class_constants[Interner::intern($stmt->name->name)]->type;
                 }
 
                 if (strtolower($stmt->name->name) === 'class') {
@@ -524,7 +525,7 @@ final class SimpleTypeInferer
         }
 
         if ($stmt instanceof PhpParser\Node\Expr\New_) {
-            $resolved_class_name = $stmt->class->attrs()->resolvedName;
+            $resolved_class_name = Interner::lookupOrNull($stmt->class->attrs()->resolvedId);
 
             if (!is_string($resolved_class_name)) {
                 return null;
@@ -539,7 +540,7 @@ final class SimpleTypeInferer
     }
 
     /**
-     * @param   ?array<string, ClassConstantStorage> $existing_class_constants
+     * @param   ?array<int, ClassConstantStorage> $existing_class_constants
      */
     private static function inferArrayType(
         Codebase $codebase,
@@ -622,7 +623,7 @@ final class SimpleTypeInferer
     }
 
     /**
-     * @param   ?array<string, ClassConstantStorage> $existing_class_constants
+     * @param   ?array<int, ClassConstantStorage> $existing_class_constants
      */
     private static function handleArrayItem(
         Codebase $codebase,

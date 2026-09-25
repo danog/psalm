@@ -7,7 +7,9 @@ namespace Psalm\Tests;
 use Psalm\Context;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\Codebase\Methods;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\Comparator\CallableTypeComparator;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TClassString;
@@ -246,12 +248,12 @@ final class CompiledProbeTest extends TestCase
         $context = new Context();
         $this->analyzeFile($file_path, $context);
 
-        $storage = $this->project_analyzer->getCodebase()->classlike_storage_provider->get('datetime');
+        $storage = $this->project_analyzer->getCodebase()->classlike_storage_provider->get(Interner::intern('datetime'));
 
         $actual = [
             'user_defined' => $storage->user_defined ? 'yes' : 'no',
-            'format' => (string) ($storage->methods['format']->return_type ?? null),
-            'getTimestamp' => (string) ($storage->methods['gettimestamp']->return_type ?? null),
+            'format' => (string) ($storage->methods[Interner::intern('format')]->return_type ?? null),
+            'getTimestamp' => (string) ($storage->methods[Interner::intern('gettimestamp')]->return_type ?? null),
             '$a' => (string) ($context->vars_in_scope['$a'] ?? null),
             '$b' => (string) ($context->vars_in_scope['$b'] ?? null),
         ];
@@ -322,9 +324,9 @@ final class CompiledProbeTest extends TestCase
         $codebase = $this->project_analyzer->getCodebase();
 
         $strlen = CallableTypeComparator::getCallableFromAtomic($codebase, new TLiteralString('strlen'));
-        $create = $codebase->methods->getStorage(new MethodIdentifier('DateTime', 'createfrominterface'));
+        $create = $codebase->methods->getStorage(new MethodIdentifier(Sym::DATE_TIME, Sym::C_CREATEFROMINTERFACE));
         $param = $codebase->file_storage_provider->get($file_path)
-            ->functions['takescallableobject']->params[0]->type;
+            ->functions[Interner::intern('takescallableobject')]->params[0]->type;
         $class_string = $param?->getSingleAtomic();
         $as_type = $class_string instanceof TClassString ? $class_string->as_type : null;
 
@@ -376,23 +378,23 @@ final class CompiledProbeTest extends TestCase
         $this->analyzeFile($file_path, new Context());
 
         $codebase = $this->project_analyzer->getCodebase();
-        $c = $codebase->classlike_storage_provider->get('C');
-        $item = $c->properties['items']->type?->getSingleAtomic();
+        $c = $codebase->classlike_storage_provider->get(Interner::intern('C'));
+        $item = $c->properties[Interner::intern('items')]->type?->getSingleAtomic();
         $value = $item instanceof TArray ? $item->type_params[1] : null;
 
         $this->assertSame(
             ['property' => 'array<string, T:C as I>', 'localized' => 'Impl'],
             [
-                'property' => $c->properties['items']->type?->getId() ?? 'absent',
+                'property' => $c->properties[Interner::intern('items')]->type?->getId() ?? 'absent',
                 'localized' => $value === null
                     ? 'absent'
-                    : Methods::localizeType($codebase, $value, 'Test', 'C')->getId(),
+                    : Methods::localizeType($codebase, $value, Interner::intern('Test'), 'C')->getId(),
             ],
             json_encode([
-                'property' => $c->properties['items']->type?->getId() ?? 'absent',
+                'property' => $c->properties[Interner::intern('items')]->type?->getId() ?? 'absent',
                 'localized' => $value === null
                     ? 'absent'
-                    : Methods::localizeType($codebase, $value, 'Test', 'C')->getId(),
+                    : Methods::localizeType($codebase, $value, Interner::intern('Test'), 'C')->getId(),
             ], JSON_THROW_ON_ERROR),
         );
     }

@@ -8,7 +8,9 @@ use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
@@ -142,8 +144,8 @@ final class HighOrderFunctionArgHandler
         $expanded = TypeExpander::expandUnion(
             $statements_analyzer->getCodebase(),
             $fully_inferred_callable_type,
-            $context->self,
-            $context->self,
+            Interner::lookupOrNull($context->self),
+            Interner::lookupOrNull($context->self),
             $context->parent,
             true,
             true,
@@ -169,7 +171,7 @@ final class HighOrderFunctionArgHandler
 
         try {
             if ($input_arg_expr instanceof PhpParser\Node\Expr\FuncCall) {
-                $function_id = strtolower((string) $input_arg_expr->name->attrs()->resolvedName);
+                $function_id = strtolower((string) Interner::lookupOrNull($input_arg_expr->name->attrs()->resolvedId));
 
                 if (empty($function_id)) {
                     return null;
@@ -206,8 +208,8 @@ final class HighOrderFunctionArgHandler
                 }
 
                 $method_id = new MethodIdentifier(
-                    $lhs_type->value,
-                    strtolower((string)$input_arg_expr->name),
+                    $lhs_type->name,
+                    Interner::intern(strtolower((string)$input_arg_expr->name)),
                 );
 
                 return new HighOrderFunctionArgInfo(
@@ -222,8 +224,8 @@ final class HighOrderFunctionArgHandler
                 $input_arg_expr->name instanceof PhpParser\Node\Identifier
             ) {
                 $method_id = new MethodIdentifier(
-                    (string)$input_arg_expr->class->attrs()->resolvedName,
-                    strtolower($input_arg_expr->name->toString()),
+                    Interner::intern((string)Interner::lookupOrNull($input_arg_expr->class->attrs()->resolvedId)),
+                    Interner::intern(strtolower($input_arg_expr->name->toString())),
                 );
 
                 return new HighOrderFunctionArgInfo(
@@ -250,10 +252,10 @@ final class HighOrderFunctionArgHandler
                 $input_arg_expr->name instanceof PhpParser\Node\Identifier
             ) {
                 $storage = $codebase->classlikes
-                    ->getStorageFor((string)$input_arg_expr->class->attrs()->resolvedName);
+                    ->getStorageFor(Interner::intern((string)Interner::lookupOrNull($input_arg_expr->class->attrs()->resolvedId)));
 
                 $constant = null !== $storage
-                    ? $storage->constants[$input_arg_expr->name->toString()] ?? null
+                    ? $storage->constants[Interner::intern($input_arg_expr->name->toString())] ?? null
                     : null;
 
                 return null !== $constant && null !== $constant->type
@@ -265,10 +267,10 @@ final class HighOrderFunctionArgHandler
                 $input_arg_expr->class instanceof PhpParser\Node\Name
             ) {
                 $class_storage = $codebase->classlikes
-                    ->getStorageFor((string) $input_arg_expr->class->attrs()->resolvedName);
+                    ->getStorageFor(Interner::intern((string) Interner::lookupOrNull($input_arg_expr->class->attrs()->resolvedId)));
 
-                $invoke_storage = $class_storage && isset($class_storage->methods['__invoke'])
-                    ? $class_storage->methods['__invoke']
+                $invoke_storage = $class_storage && isset($class_storage->methods[Sym::INVOKE])
+                    ? $class_storage->methods[Sym::INVOKE]
                     : null;
 
                 if (!$invoke_storage) {

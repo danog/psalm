@@ -6,6 +6,7 @@ namespace Psalm\Internal\Type;
 
 use InvalidArgumentException;
 use Psalm\Codebase;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Type;
 use Psalm\Type\Atomic;
@@ -104,7 +105,7 @@ final class TemplateInferredTypeReplacer
                             $class_template_type = new TClassString();
                         } elseif ($template_type_part instanceof TNamedObject) {
                             $class_template_type = new TClassString(
-                                $template_type_part->value,
+                                Interner::lookup($template_type_part->name),
                                 $template_type_part,
                             );
                         } elseif ($template_type_part instanceof TTemplateParam) {
@@ -340,7 +341,7 @@ final class TemplateInferredTypeReplacer
                     }
 
                     try {
-                        $classlike_storage = $codebase->classlike_storage_provider->get($template_class);
+                        $classlike_storage = $codebase->classlike_storage_provider->get(Interner::intern($template_class));
 
                         if ($classlike_storage->template_extended_params) {
                             $defining_class = $atomic_type->defining_class;

@@ -315,7 +315,7 @@ final class ArrayAnalyzer
                     );
                 }
 
-                $array_creation_info->parent_taint_nodes += [$new_parent_node->id => $new_parent_node];
+                $array_creation_info->parent_taint_nodes += [$new_parent_node->key => $new_parent_node];
             }
 
             return;
@@ -472,7 +472,7 @@ final class ArrayAnalyzer
                         );
                     }
 
-                    $array_creation_info->parent_taint_nodes += [$new_parent_node->id => $new_parent_node];
+                    $array_creation_info->parent_taint_nodes += [$new_parent_node->key => $new_parent_node];
                 }
 
                 $taint_key_flow_graph = $taint_flow_graph;
@@ -529,7 +529,7 @@ final class ArrayAnalyzer
                         );
                     }
 
-                    $array_creation_info->parent_taint_nodes += [$new_parent_node->id => $new_parent_node];
+                    $array_creation_info->parent_taint_nodes += [$new_parent_node->key => $new_parent_node];
                 }
             }
         }

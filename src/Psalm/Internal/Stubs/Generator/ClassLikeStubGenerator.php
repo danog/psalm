@@ -5,6 +5,7 @@ namespace Psalm\Internal\Stubs\Generator;
 use PhpParser;
 use Psalm\Codebase;
 use Psalm\Internal\Codebase\ConstantTypeResolver;
+use Psalm\Internal\Interner;
 use Psalm\Node\Name\VirtualFullyQualified;
 use Psalm\Node\Stmt\VirtualClass;
 use Psalm\Node\Stmt\VirtualClassConst;
@@ -75,8 +76,8 @@ final class ClassLikeStubGenerator
             if ($storage->direct_interface_parents) {
                 $subnodes['extends'] = [];
 
-                foreach ($storage->direct_interface_parents as $direct_interface_parent) {
-                    $subnodes['extends'][] = new VirtualFullyQualified($direct_interface_parent);
+                foreach ($storage->direct_interface_parents as $direct_interface_parent_id => $_) {
+                    $subnodes['extends'][] = new VirtualFullyQualified(Interner::lookup($direct_interface_parent_id));
                 }
             }
 
@@ -101,8 +102,8 @@ final class ClassLikeStubGenerator
 
         if ($storage->direct_class_interfaces) {
             $subnodes['implements'] = [];
-            foreach ($storage->direct_class_interfaces as $direct_class_interface) {
-                $subnodes['implements'][] = new VirtualFullyQualified($direct_class_interface);
+            foreach ($storage->direct_class_interfaces as $direct_class_interface_id => $_) {
+                $subnodes['implements'][] = new VirtualFullyQualified(Interner::lookup($direct_class_interface_id));
             }
         }
 
@@ -120,7 +121,8 @@ final class ClassLikeStubGenerator
     {
         $constant_nodes = [];
 
-        foreach ($storage->constants as $constant_name => $constant_storage) {
+        foreach ($storage->constants as $constant_name_id => $constant_storage) {
+            $constant_name = Interner::lookup($constant_name_id);
             if ($constant_storage->unresolved_node) {
                 $type = new Union([
                     ConstantTypeResolver::resolve(
@@ -157,11 +159,12 @@ final class ClassLikeStubGenerator
      */
     private static function getPropertyNodes(ClassLikeStorage $storage): array
     {
-        $namespace_name = implode('\\', array_slice(explode('\\', $storage->name), 0, -1));
+        $namespace_name = implode('\\', array_slice(explode('\\', Interner::lookup($storage->id)), 0, -1));
 
         $property_nodes = [];
 
-        foreach ($storage->properties as $property_name => $property_storage) {
+        foreach ($storage->properties as $property_name_id => $property_storage) {
+            $property_name = Interner::lookup($property_name_id);
             $flag = match ($property_storage->visibility) {
                 ClassLikeAnalyzer::VISIBILITY_PRIVATE => PhpParser\Modifiers::PRIVATE,
                 ClassLikeAnalyzer::VISIBILITY_PROTECTED => PhpParser\Modifiers::PROTECTED,
@@ -213,7 +216,7 @@ final class ClassLikeStubGenerator
      * @return list<PhpParser\Node\Stmt\ClassMethod>
      */
     private static function getMethodNodes(ClassLikeStorage $storage): array {
-        $namespace_name = implode('\\', array_slice(explode('\\', $storage->name), 0, -1));
+        $namespace_name = implode('\\', array_slice(explode('\\', Interner::lookup($storage->id)), 0, -1));
         $method_nodes = [];
 
         foreach ($storage->methods as $method_storage) {

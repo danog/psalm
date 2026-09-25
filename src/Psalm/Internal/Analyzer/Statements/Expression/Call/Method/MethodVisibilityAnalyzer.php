@@ -9,7 +9,9 @@ use Psalm\Context;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Issue\InaccessibleMethod;
 use Psalm\IssueBuffer;
 use Psalm\StatementsSource;
@@ -39,8 +41,8 @@ final class MethodVisibilityAnalyzer
         $codebase_methods = $codebase->methods;
         $codebase_classlikes = $codebase->classlikes;
 
-        $fq_classlike_name = $method_id->fq_class_name;
-        $method_name = $method_id->method_name;
+        $fq_classlike_name = Interner::lookup($method_id->class_id);
+        $method_name = Interner::lookupLc($method_id->name_id);
 
         $with_pseudo = true;
 
@@ -57,7 +59,7 @@ final class MethodVisibilityAnalyzer
                 if (IssueBuffer::accepts(
                     new InaccessibleMethod(
                         'Cannot access method ' . $codebase_methods->getCasedMethodId($method_id) .
-                            ' from context ' . $context->self,
+                            ' from context ' . Interner::lookupOrNull($context->self),
                         $code_location,
                     ),
                     $suppressed_issues,
@@ -73,9 +75,9 @@ final class MethodVisibilityAnalyzer
 
         if (!$declaring_method_id) {
             if ($method_name === '__construct'
-                || ($method_id->fq_class_name === 'Closure'
-                    && ($method_id->method_name === 'fromcallable'
-                        || $method_id->method_name === '__invoke'))
+                || ($method_id->class_id === Sym::CLOSURE
+                    && ($method_id->name_id === Sym::C_FROMCALLABLE
+                        || $method_id->name_id === Sym::INVOKE))
             ) {
                 return null;
             }
@@ -94,18 +96,18 @@ final class MethodVisibilityAnalyzer
         $appearing_method_name = null;
 
         if ($appearing_method_id) {
-            $appearing_method_class = $appearing_method_id->fq_class_name;
-            $appearing_method_name = $appearing_method_id->method_name;
+            $appearing_method_class = Interner::lookup($appearing_method_id->class_id);
+            $appearing_method_name = Interner::lookupLc($appearing_method_id->name_id);
 
             // if the calling class is the same, we know the method exists, so it must be visible
-            if ($appearing_method_class === $context->self) {
+            if ($appearing_method_class === Interner::lookupOrNull($context->self)) {
                 return null;
             }
 
-            $appearing_class_storage = $codebase->classlike_storage_provider->get($appearing_method_class);
+            $appearing_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($appearing_method_class));
         }
 
-        $declaring_method_class = $declaring_method_id->fq_class_name;
+        $declaring_method_class = Interner::lookup($declaring_method_id->class_id);
 
         if ($source->getSource() instanceof TraitAnalyzer
             && strtolower($declaring_method_class) === strtolower((string) $source->getFQCLN())
@@ -127,7 +129,7 @@ final class MethodVisibilityAnalyzer
         // Remove traits and interfaces
         while (($oldest_declaring_method_id = end($overridden_method_ids))
             && !$codebase_classlikes->hasFullyQualifiedClassName(
-                $oldest_declaring_method_id->fq_class_name,
+                Interner::lookup($oldest_declaring_method_id->class_id),
                 null,
                 $context,
             )
@@ -141,18 +143,18 @@ final class MethodVisibilityAnalyzer
             // Oldest ancestor is at end of array
             $oldest_ancestor_declaring_method_id = array_pop($overridden_method_ids);
         }
-        $oldest_ancestor_declaring_method_class = $oldest_ancestor_declaring_method_id->fq_class_name ?? null;
+        $oldest_ancestor_declaring_method_class = (Interner::internOrNull(isset($oldest_ancestor_declaring_method_id->class_id) ? Interner::lookup($oldest_ancestor_declaring_method_id->class_id) : null));
 
         switch ($visibility) {
             case ClassLikeAnalyzer::VISIBILITY_PUBLIC:
                 return null;
 
             case ClassLikeAnalyzer::VISIBILITY_PRIVATE:
-                if (!$context->self || $appearing_method_class !== $context->self) {
+                if (!($context->self !== null) || $appearing_method_class !== Interner::lookup($context->self)) {
                     if (IssueBuffer::accepts(
                         new InaccessibleMethod(
                             'Cannot access private method ' . $codebase_methods->getCasedMethodId($method_id) .
-                                ' from context ' . $context->self,
+                                ' from context ' . Interner::lookupOrNull($context->self),
                             $code_location,
                         ),
                         $suppressed_issues,
@@ -164,7 +166,7 @@ final class MethodVisibilityAnalyzer
                 return null;
 
             case ClassLikeAnalyzer::VISIBILITY_PROTECTED:
-                if (!$context->self) {
+                if (!($context->self !== null)) {
                     if (IssueBuffer::accepts(
                         new InaccessibleMethod(
                             'Cannot access protected method ' . $method_id,
@@ -186,12 +188,12 @@ final class MethodVisibilityAnalyzer
 
                 if ($oldest_ancestor_declaring_method_class !== null
                     && !$codebase_classlikes->classExtends($context->self, $oldest_ancestor_declaring_method_class)
-                    && !$codebase_classlikes->classExtends($declaring_method_class, $context->self)
+                    && !$codebase_classlikes->classExtends(Interner::intern($declaring_method_class), $context->self)
                 ) {
                     if (IssueBuffer::accepts(
                         new InaccessibleMethod(
                             'Cannot access protected method ' . $codebase_methods->getCasedMethodId($method_id) .
-                                ' from context ' . $context->self,
+                                ' from context ' . Interner::lookup($context->self),
                             $code_location,
                         ),
                         $suppressed_issues,

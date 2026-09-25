@@ -7,6 +7,8 @@ namespace Psalm\Type;
 use InvalidArgumentException;
 use Override;
 use Psalm\Codebase;
+use Psalm\Internal\Interner;
+use Psalm\Internal\Sym;
 use UnexpectedValueException;
 use Psalm\Exception\TypeParseTreeException;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
@@ -595,7 +597,7 @@ abstract class Atomic implements TypeNode, Stringable
             return new TIterable([$this->getGenericKeyType(), $this->getGenericValueType()]);
         }
         if ($this->hasTraversableInterface($codebase)) {
-            if (strtolower($this->value) === "traversable") {
+            if (strtolower(Interner::lookup($this->name)) === "traversable") {
                 if ($this instanceof TGenericObject) {
                     if (count($this->type_params) > 2) {
                         throw new InvalidArgumentException('Too many templates!');
@@ -632,14 +634,14 @@ abstract class Atomic implements TypeNode, Stringable
     {
         return $this instanceof TNamedObject
             && (
-                strtolower($this->value) === 'traversable'
-                || ($codebase->classOrInterfaceExists($this->value)
+                strtolower(Interner::lookup($this->name)) === 'traversable'
+                || ($codebase->classOrInterfaceExists($this->name)
                     && ($codebase->classExtendsOrImplements(
-                        $this->value,
-                        'Traversable',
+                        $this->name,
+                        Sym::TRAVERSABLE,
                     ) || $codebase->interfaceExtends(
-                        $this->value,
-                        'Traversable',
+                        $this->name,
+                        Sym::TRAVERSABLE,
                     )))
                 || (
                     $this->extra_types
@@ -655,14 +657,14 @@ abstract class Atomic implements TypeNode, Stringable
     {
         return $this instanceof TNamedObject
             && (
-                strtolower($this->value) === 'countable'
-                || ($codebase->classOrInterfaceExists($this->value)
+                strtolower(Interner::lookup($this->name)) === 'countable'
+                || ($codebase->classOrInterfaceExists($this->name)
                     && ($codebase->classExtendsOrImplements(
-                        $this->value,
-                        'Countable',
+                        $this->name,
+                        Sym::COUNTABLE,
                     ) || $codebase->interfaceExtends(
-                        $this->value,
-                        'Countable',
+                        $this->name,
+                        Sym::COUNTABLE,
                     )))
                 || (
                     $this->extra_types
@@ -680,7 +682,7 @@ abstract class Atomic implements TypeNode, Stringable
             || $this instanceof TKeyedArray
             || $this instanceof TClassStringMap
             || $this->hasArrayAccessInterface($codebase)
-            || ($this instanceof TNamedObject && $this->value === 'SimpleXMLElement');
+            || ($this instanceof TNamedObject && $this->name === Sym::SIMPLE_XML_ELEMENT);
     }
 
     public function isArrayAccessibleWithIntOrStringKey(Codebase $codebase): bool
@@ -693,14 +695,14 @@ abstract class Atomic implements TypeNode, Stringable
     {
         return $this instanceof TNamedObject
             && (
-                strtolower($this->value) === 'arrayaccess'
-                || ($codebase->classOrInterfaceExists($this->value)
+                strtolower(Interner::lookup($this->name)) === 'arrayaccess'
+                || ($codebase->classOrInterfaceExists($this->name)
                     && ($codebase->classExtendsOrImplements(
-                        $this->value,
-                        'ArrayAccess',
+                        $this->name,
+                        Sym::ARRAY_ACCESS,
                     ) || $codebase->interfaceExtends(
-                        $this->value,
-                        'ArrayAccess',
+                        $this->name,
+                        Sym::ARRAY_ACCESS,
                     )))
                 || (
                     $this->extra_types
@@ -916,8 +918,8 @@ abstract class Atomic implements TypeNode, Stringable
         }
 
         if ($this instanceof TNamedObject
-            && $this->value !== 'SimpleXMLElement'
-            && $this->value !== 'SimpleXMLIterator') {
+            && $this->name !== Sym::SIMPLE_XML_ELEMENT
+            && $this->name !== Sym::SIMPLE_XML_ITERATOR) {
             return true;
         }
 

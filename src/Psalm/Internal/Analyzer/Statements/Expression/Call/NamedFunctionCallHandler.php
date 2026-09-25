@@ -16,6 +16,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\IncludeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Issue\ForbiddenCode;
 use Psalm\Issue\PossibleRawObjectIteration;
@@ -119,7 +120,7 @@ final class NamedFunctionCallHandler
         if ($function_id === 'class_exists') {
             if ($first_arg) {
                 if ($first_arg->value instanceof PhpParser\Node\Scalar\String_) {
-                    if (!$codebase->classlikes->classExists($first_arg->value->value, null, $context)) {
+                    if (!$codebase->classlikes->classExists(Interner::intern($first_arg->value->value), null, $context)) {
                         $context->phantom_classes[strtolower($first_arg->value->value)] = true;
                     }
                 } elseif ($first_arg->value instanceof PhpParser\Node\Expr\ClassConstFetch
@@ -127,9 +128,9 @@ final class NamedFunctionCallHandler
                     && $first_arg->value->name instanceof PhpParser\Node\Identifier
                     && $first_arg->value->name->name === 'class'
                 ) {
-                    $resolved_name = (string) $first_arg->value->class->attrs()->resolvedName;
+                    $resolved_name = (string) Interner::lookupOrNull($first_arg->value->class->attrs()->resolvedId);
 
-                    if (!$codebase->classlikes->classExists($resolved_name, null, $context)) {
+                    if (!$codebase->classlikes->classExists(Interner::intern($resolved_name), null, $context)) {
                         $context->phantom_classes[strtolower($resolved_name)] = true;
                     }
                 }
@@ -141,7 +142,7 @@ final class NamedFunctionCallHandler
         if ($function_id === 'interface_exists') {
             if ($first_arg) {
                 if ($first_arg->value instanceof PhpParser\Node\Scalar\String_) {
-                    if (!$codebase->classlikes->interfaceExists($first_arg->value->value, null, $context)) {
+                    if (!$codebase->classlikes->interfaceExists(Interner::intern($first_arg->value->value), null, $context)) {
                         $context->phantom_classes[strtolower($first_arg->value->value)] = true;
                     }
                 } elseif ($first_arg->value instanceof PhpParser\Node\Expr\ClassConstFetch
@@ -149,9 +150,9 @@ final class NamedFunctionCallHandler
                     && $first_arg->value->name instanceof PhpParser\Node\Identifier
                     && $first_arg->value->name->name === 'class'
                 ) {
-                    $resolved_name = (string) $first_arg->value->class->attrs()->resolvedName;
+                    $resolved_name = (string) Interner::lookupOrNull($first_arg->value->class->attrs()->resolvedId);
 
-                    if (!$codebase->classlikes->interfaceExists($resolved_name, null, $context)) {
+                    if (!$codebase->classlikes->interfaceExists(Interner::intern($resolved_name), null, $context)) {
                         $context->phantom_classes[strtolower($resolved_name)] = true;
                     }
                 }
@@ -163,7 +164,7 @@ final class NamedFunctionCallHandler
         if ($function_id === 'enum_exists') {
             if ($first_arg) {
                 if ($first_arg->value instanceof PhpParser\Node\Scalar\String_) {
-                    if (!$codebase->classlikes->enumExists($first_arg->value->value, null, $context)) {
+                    if (!$codebase->classlikes->enumExists(Interner::intern($first_arg->value->value), null, $context)) {
                         $context->phantom_classes[strtolower($first_arg->value->value)] = true;
                     }
                 } elseif ($first_arg->value instanceof PhpParser\Node\Expr\ClassConstFetch
@@ -171,9 +172,9 @@ final class NamedFunctionCallHandler
                     && $first_arg->value->name instanceof PhpParser\Node\Identifier
                     && $first_arg->value->name->name === 'class'
                 ) {
-                    $resolved_name = (string) $first_arg->value->class->attrs()->resolvedName;
+                    $resolved_name = (string) Interner::lookupOrNull($first_arg->value->class->attrs()->resolvedId);
 
-                    if (!$codebase->classlikes->enumExists($resolved_name, null, $context)) {
+                    if (!$codebase->classlikes->enumExists(Interner::intern($resolved_name), null, $context)) {
                         $context->phantom_classes[strtolower($resolved_name)] = true;
                     }
                 }
@@ -519,7 +520,7 @@ final class NamedFunctionCallHandler
 
             $anded_assertions = $stmt_assertions ?? AssertionFinder::processFunctionCall(
                 $stmt,
-                $context->self,
+                Interner::lookupOrNull($context->self),
                 $statements_analyzer,
                 $codebase,
                 $context->inside_negation,
@@ -720,7 +721,7 @@ final class NamedFunctionCallHandler
 
                 foreach ($var_type->getAtomicTypes() as $class_type) {
                     if ($class_type instanceof TNamedObject) {
-                        $class_string_types[] = new TClassString($class_type->value, $class_type);
+                        $class_string_types[] = new TClassString(Interner::lookup($class_type->name), $class_type);
                     } elseif ($class_type instanceof TTemplateParam
                         && $class_type->as->isSingle()
                     ) {
@@ -736,7 +737,7 @@ final class NamedFunctionCallHandler
                         } elseif ($as_atomic_type instanceof TNamedObject) {
                             $class_string_types[] = new TTemplateParamClass(
                                 $class_type->param_name,
-                                $as_atomic_type->value,
+                                Interner::lookup($as_atomic_type->name),
                                 $as_atomic_type,
                                 $class_type->defining_class,
                             );

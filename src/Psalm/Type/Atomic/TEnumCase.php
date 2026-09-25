@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Type\Atomic;
 
 use Override;
+use Psalm\Internal\Interner;
 
 /**
  * Denotes an enum with a specific value
@@ -22,13 +23,13 @@ final class TEnumCase extends TNamedObject
     #[Override]
     protected function computeKey(bool $include_extra = true): string
     {
-        return 'enum(' . $this->value . '::' . $this->case_name . ')';
+        return 'enum(' . Interner::lookup($this->name) . '::' . $this->case_name . ')';
     }
 
     #[Override]
     protected function computeId(bool $exact = true, bool $nested = false): string
     {
-        return 'enum(' . $this->value . '::' . $this->case_name . ')';
+        return 'enum(' . Interner::lookup($this->name) . '::' . $this->case_name . ')';
     }
 
     #[Override]
@@ -38,7 +39,7 @@ final class TEnumCase extends TNamedObject
         ?string $this_class,
         int $analysis_php_version_id,
     ): ?string {
-        return $this->value;
+        return Interner::lookup($this->name);
     }
 
     /**
@@ -60,6 +61,6 @@ final class TEnumCase extends TNamedObject
         ?string $this_class,
         bool $use_phpdoc_format,
     ): string {
-        return $this->value . '::' . $this->case_name;
+        return Interner::lookup($this->name) . '::' . $this->case_name;
     }
 }

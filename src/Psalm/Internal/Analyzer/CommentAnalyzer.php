@@ -15,6 +15,7 @@ use Psalm\Exception\DocblockParseException;
 use Psalm\Exception\IncorrectDocblockException;
 use Psalm\Exception\TypeParseTreeException;
 use Psalm\FileSource;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Scanner\DocblockParser;
 use Psalm\Internal\Scanner\ParsedDocblock;
 use Psalm\Internal\Scanner\VarDocblockComment;
@@ -504,8 +505,8 @@ final class CommentAnalyzer
                 $var_comment_type = TypeExpander::expandUnion(
                     $codebase,
                     $var_comment->type,
-                    $context->self,
-                    $context->self,
+                    Interner::lookupOrNull($context->self),
+                    Interner::lookupOrNull($context->self),
                     $statements_analyzer->getParentFQCLN(),
                 );
 

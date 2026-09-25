@@ -24,7 +24,9 @@ use Psalm\Internal\Analyzer\Statements\Expression\Call\ClassTemplateParamCollect
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\FileManipulation\FunctionDocblockManipulator;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\NodeDataProvider;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TemplateResult;
@@ -66,7 +68,7 @@ final class ReturnTypeAnalyzer
     /**
      * @param Closure|Function_|ClassMethod|ArrowFunction $function
      * @param list<PhpParser\Node\Stmt> $function_stmts
-     * @param array<string, string>   $compatible_method_ids
+     * @param array<array-key, string> $compatible_method_ids
      * @return  false|null
      * @psalm-suppress ComplexMethod Unavoidably complex method
      */
@@ -410,7 +412,7 @@ final class ReturnTypeAnalyzer
         $classlike_storage = null;
 
         if ($self_fq_class_name) {
-            $classlike_storage = $codebase->classlike_storage_provider->get($self_fq_class_name);
+            $classlike_storage = $codebase->classlike_storage_provider->get(Interner::intern($self_fq_class_name));
             $parent_class = $classlike_storage->parent_class;
         }
 
@@ -763,7 +765,7 @@ final class ReturnTypeAnalyzer
 
         $classlike_storage = null;
 
-        if ($context->self) {
+        if (($context->self !== null)) {
             $classlike_storage = $codebase->classlike_storage_provider->get($context->self);
             $parent_class = $classlike_storage->parent_class;
         }
@@ -771,7 +773,7 @@ final class ReturnTypeAnalyzer
         if (!$storage->signature_return_type || $storage->signature_return_type === $storage->return_type) {
             foreach ($storage->return_type->getAtomicTypes() as $type) {
                 if ($type instanceof TNamedObject
-                    && 'parent' === $type->value
+                    && Sym::PARENT === $type->name
                     && null === $parent_class
                 ) {
                     if (IssueBuffer::accepts(
@@ -790,8 +792,8 @@ final class ReturnTypeAnalyzer
             $fleshed_out_return_type = TypeExpander::expandUnion(
                 $codebase,
                 $storage->return_type,
-                $classlike_storage->name ?? null,
-                $classlike_storage->name ?? null,
+                (isset($classlike_storage->id) ? Interner::lookup($classlike_storage->id) : null),
+                (isset($classlike_storage->id) ? Interner::lookup($classlike_storage->id) : null),
                 $parent_class,
             );
 
@@ -813,8 +815,8 @@ final class ReturnTypeAnalyzer
         $fleshed_out_signature_type = TypeExpander::expandUnion(
             $codebase,
             $storage->signature_return_type,
-            $classlike_storage->name ?? null,
-            $classlike_storage->name ?? null,
+            (isset($classlike_storage->id) ? Interner::lookup($classlike_storage->id) : null),
+            (isset($classlike_storage->id) ? Interner::lookup($classlike_storage->id) : null),
             $parent_class,
         );
 
@@ -836,8 +838,8 @@ final class ReturnTypeAnalyzer
             $fleshed_out_return_type = TypeExpander::expandUnion(
                 $codebase,
                 $storage->return_type,
-                $classlike_storage->name ?? null,
-                $classlike_storage->name ?? null,
+                (isset($classlike_storage->id) ? Interner::lookup($classlike_storage->id) : null),
+                (isset($classlike_storage->id) ? Interner::lookup($classlike_storage->id) : null),
                 $parent_class,
                 true,
                 true,
@@ -869,13 +871,13 @@ final class ReturnTypeAnalyzer
             return false;
         }
 
-        if ($classlike_storage && $context->self) {
+        if ($classlike_storage && ($context->self !== null)) {
             $class_template_params = ClassTemplateParamCollector::collect(
                 $codebase,
                 $classlike_storage,
                 $codebase->classlike_storage_provider->get($context->self),
                 strtolower($function->name->name),
-                new TNamedObject($context->self),
+                new TNamedObject(Interner::lookup($context->self)),
                 true,
             );
 
@@ -957,7 +959,7 @@ final class ReturnTypeAnalyzer
 
         $codebase = $project_analyzer->getCodebase();
         $is_final = true;
-        $fqcln = $source->getFQCLN();
+        $fqcln = Interner::internOrNull($source->getFQCLN());
 
         if ($fqcln !== null && $function instanceof ClassMethod) {
             $class_storage = $codebase->classlike_storage_provider->get($fqcln);

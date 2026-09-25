@@ -116,7 +116,7 @@ final class GlobalAnalyzer
                 new CodeLocation($statements_analyzer, $var),
             );
             $context->vars_in_scope[$var_id] = $context->vars_in_scope[$var_id]->setParentNodes([
-                $assignment_node->id => $assignment_node,
+                $assignment_node->key => $assignment_node,
             ]);
             $context->references_to_external_scope[$var_id] = true;
 

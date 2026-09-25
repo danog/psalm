@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Internal\Codebase;
 
 use Psalm\Codebase;
+use Psalm\Internal\Interner;
 use Psalm\Storage\ClassLikeStorage;
 use Psalm\Storage\MethodStorage;
 use Psalm\Storage\Possibilities;
@@ -35,24 +36,22 @@ final class AssertionsFromInheritanceResolver
         MethodStorage $method_storage,
         ClassLikeStorage $called_class,
     ): array {
-        $method_name_lc = strtolower($method_storage->cased_name ?? '');
+        $method_name_lc = Interner::intern(strtolower($method_storage->cased_name ?? ''));
+        $method_name_lc_id = $method_name_lc;
 
         $assertions = $method_storage->assertions;
-        $inherited_classes_and_interfaces = array_values(array_filter([
-            ...$called_class->parent_classes,
-            ...$called_class->class_implements,
-        ], fn(string $classOrInterface) => $this->codebase->classOrInterfaceOrEnumExists($classOrInterface)));
+        $inherited_classes_and_interfaces = array_map(Interner::lookup(...), array_keys(array_fill_keys(array_filter(array_keys(($called_class->parent_classes + $called_class->class_implements)), fn(int $classOrInterface) => $this->codebase->classOrInterfaceOrEnumExists($classOrInterface)), true)));
 
         foreach ($inherited_classes_and_interfaces as $potential_assertion_providing_class) {
             $potential_assertion_providing_classlike_storage = $this->codebase->classlike_storage_provider->get(
-                $potential_assertion_providing_class,
+                Interner::intern($potential_assertion_providing_class),
             );
-            if (!isset($potential_assertion_providing_classlike_storage->methods[$method_name_lc])) {
+            if (!isset($potential_assertion_providing_classlike_storage->methods[$method_name_lc_id])) {
                 continue;
             }
 
             $potential_assertion_providing_method_storage = $potential_assertion_providing_classlike_storage
-                ->methods[$method_name_lc];
+                ->methods[$method_name_lc_id];
 
             /**
              * Since the inheritance does not provide its own assertions, we have to detect those

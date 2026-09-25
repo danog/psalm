@@ -9,6 +9,7 @@ use Amp\Parallel\Worker\Task;
 use Amp\Sync\Channel;
 use Override;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Codebase\Scanner;
 use Psalm\IssueBuffer;
 
@@ -35,6 +36,7 @@ final class ShutdownScannerTask implements Task
         $statements_provider = $codebase->statements_provider;
 
         return [
+            'interner' => Interner::delta(),
             'classlikes_data' => $codebase->classlikes->getThreadData(),
             'scanner_data' => $codebase->scanner->getThreadData(),
             'issues' => IssueBuffer::getIssuesData(),

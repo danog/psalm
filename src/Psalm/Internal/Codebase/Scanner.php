@@ -7,6 +7,7 @@ namespace Psalm\Internal\Codebase;
 use Closure;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Config;
 use Psalm\Internal\Analyzer\IssueData;
@@ -62,6 +63,7 @@ use const PHP_EOL;
  * }
  *
  * @psalm-type  PoolData = array{
+ *     interner: list<string>,
  *     classlikes_data:array{
  *         array<lowercase-string, bool>,
  *         array<lowercase-string, bool>,
@@ -84,7 +86,7 @@ use const PHP_EOL;
  *     file_storage:array<lowercase-string, FileStorage>,
  *     taint_data: ?TaintFlowGraph,
  *     global_constants: array<string, Union>,
- *     global_functions: array<lowercase-string, FunctionStorage>
+ *     global_functions: array<int, FunctionStorage>
  * }
  */
 
@@ -377,6 +379,8 @@ final class Scanner
                     $this->codebase->taint_flow_graph->addGraph($pool_data['taint_data']);
                 }
 
+                Interner::merge($pool_data['interner']);
+
                 $this->codebase->file_storage_provider->addMore($pool_data['file_storage']);
                 $this->codebase->classlike_storage_provider->addMore($pool_data['classlike_storage']);
 
@@ -464,37 +468,39 @@ final class Scanner
     private function mergeReflectedMembers(ClassLikeStorage $stub, ClassLikeStorage $reflected): bool
     {
         $changed = false;
-        foreach ($reflected->methods as $method_name_lc => $method_storage) {
-            if (isset($stub->methods[$method_name_lc])) {
+        foreach ($reflected->methods as $method_name_lc_id => $method_storage) {
+            $method_name_lc = $method_name_lc_id;
+            if (isset($stub->methods[$method_name_lc_id])) {
                 continue;
             }
             $changed = true;
-            $stub->methods[$method_name_lc] = $method_storage;
-            $method_id = new MethodIdentifier($stub->name, $method_name_lc);
-            $stub->declaring_method_ids[$method_name_lc] ??= $method_id;
-            $stub->appearing_method_ids[$method_name_lc] ??= $method_id;
+            $stub->methods[$method_name_lc_id] = $method_storage;
+            $method_id = new MethodIdentifier($stub->id, $method_name_lc);
+            $stub->declaring_method_ids[$method_name_lc_id] ??= $method_id;
+            $stub->appearing_method_ids[$method_name_lc_id] ??= $method_id;
             if ($method_storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PRIVATE) {
-                $stub->inheritable_method_ids[$method_name_lc] ??= $method_id;
+                $stub->inheritable_method_ids[$method_name_lc_id] ??= $method_id;
             }
         }
-        foreach ($reflected->properties as $property_name => $property_storage) {
-            if (isset($stub->properties[$property_name])) {
+        foreach ($reflected->properties as $property_name_id => $property_storage) {
+            $property_name = Interner::lookup($property_name_id);
+            if (isset($stub->properties[$property_name_id])) {
                 continue;
             }
             $changed = true;
-            $stub->properties[$property_name] = $property_storage;
-            $property_id = $stub->name . '::$' . $property_name;
+            $stub->properties[$property_name_id] = $property_storage;
+            $property_id = Interner::lookup($stub->id) . '::$' . $property_name;
             // the declaring map holds the class, the other two hold the property id
-            $stub->declaring_property_ids[$property_name] ??= $stub->name;
-            $stub->appearing_property_ids[$property_name] ??= $property_id;
+            $stub->declaring_property_ids[$property_name_id] ??= $stub->id;
+            $stub->appearing_property_ids[$property_name_id] ??= $stub->id;
             if ($property_storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PRIVATE) {
-                $stub->inheritable_property_ids[$property_name] ??= $property_id;
+                $stub->inheritable_property_ids[$property_name_id] ??= $stub->id;
             }
         }
-        foreach ($reflected->constants as $const_name => $const_storage) {
-            if (!isset($stub->constants[$const_name])) {
+        foreach ($reflected->constants as $const_name_id => $const_storage) {
+            if (!isset($stub->constants[$const_name_id])) {
                 $changed = true;
-                $stub->constants[$const_name] = $const_storage;
+                $stub->constants[$const_name_id] = $const_storage;
             }
         }
         return $changed;
@@ -507,7 +513,7 @@ final class Scanner
      */
     private function unpopulate(ClassLikeStorage $storage, array $seen): void
     {
-        $lc = strtolower($storage->name);
+        $lc = strtolower(Interner::lookup($storage->id));
         if (isset($seen[$lc])) {
             return;
         }
@@ -515,8 +521,9 @@ final class Scanner
         $storage->populated = false;
         $this->codebase->classlike_storage_provider->makeNew($lc);
         foreach ($storage->dependent_classlikes as $dependent_lc => $_) {
-            if ($this->codebase->classlike_storage_provider->has($dependent_lc)) {
-                $this->unpopulate($this->codebase->classlike_storage_provider->get($dependent_lc), $seen);
+            $dependent_storage = $this->codebase->classlike_storage_provider->findDeclared(Interner::intern($dependent_lc));
+            if ($dependent_storage !== null) {
+                $this->unpopulate($dependent_storage, $seen);
             }
         }
     }
@@ -582,8 +589,9 @@ final class Scanner
                 $provider = $this->codebase->classlike_storage_provider;
                 // re-registering the stub's definition means exhuming it from the class cache: without one
                 // (a test that builds its own providers) whatever is registered has to stand
-                if ($this->codebase->register_stub_files && $provider->cache !== null && $provider->has($fq_classlike_name)) {
-                    $replaced = $provider->get($fq_classlike_name);
+                $declared = $provider->findDeclared(Interner::intern($fq_classlike_name));
+                if ($this->codebase->register_stub_files && $provider->cache !== null && $declared !== null) {
+                    $replaced = $declared;
                     if (!$replaced->stubbed
                         && $replaced->stmt_location
                         && $this->config->isInProjectDirs($replaced->stmt_location->file_path)
@@ -612,20 +620,21 @@ final class Scanner
                         continue;
                     }
 
-                    $stub_storage = $provider->get($fq_classlike_name);
+                    $stub_storage = $provider->get(Interner::intern($fq_classlike_name));
                     if ($stub_storage !== $replaced && $this->mergeReflectedMembers($stub_storage, $replaced)) {
                         // the stub storage and everything populated from it inherit the new members
                         $this->unpopulate($stub_storage, []);
                     }
                     foreach ($replaced->dependent_classlikes as $dependent_name_lc => $_) {
-                        if ($provider->has($dependent_name_lc)) {
-                            $provider->get($dependent_name_lc)->populated = false;
+                        $dependent_storage = $provider->findDeclared(Interner::intern($dependent_name_lc));
+                        if ($dependent_storage !== null) {
+                            $dependent_storage->populated = false;
                             $provider->makeNew($dependent_name_lc);
                         }
                     }
                     continue;
                 }
-                if ($provider->has($fq_classlike_name) || $provider->cache !== null) {
+                if ($provider->findDeclared(Interner::intern($fq_classlike_name)) !== null || $provider->cache !== null) {
                     // in memory already, or re-readable from the cache; with neither there is nothing to
                     // exhume and the class stays as the scan of this file left it
                     try {
@@ -646,8 +655,9 @@ final class Scanner
 
             if ($this->codebase->register_stub_files) {
                 // what the reflector registers globally while traversing a stub file
-                foreach ($file_storage->functions as $function_id => $function_storage) {
-                    $this->codebase->functions->addGlobalFunction((string) $function_id, $function_storage);
+                foreach ($file_storage->functions as $function_iid => $function_storage) {
+                    $function_id = Interner::lookup($function_iid);
+                    $this->codebase->functions->addGlobalFunction($function_id, $function_storage);
                 }
                 foreach ($file_storage->constants as $const_name => $const_type) {
                     if (!defined($const_name) || !$const_type->isMixed()) {

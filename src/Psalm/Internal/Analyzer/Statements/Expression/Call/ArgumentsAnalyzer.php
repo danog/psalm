@@ -21,8 +21,10 @@ use Psalm\Internal\Codebase\ConstantTypeResolver;
 use Psalm\Internal\Codebase\Functions;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Stubs\Generator\StubsGenerator;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
@@ -591,7 +593,7 @@ final class ArgumentsAnalyzer
 
         if ($method_id) {
             if ($method_id instanceof MethodIdentifier) {
-                $fq_class_name = $method_id->fq_class_name;
+                $fq_class_name = Interner::lookup($method_id->class_id);
             }
 
             if ($function_storage) {
@@ -599,7 +601,7 @@ final class ArgumentsAnalyzer
             } elseif (is_string($method_id)) {
                 $is_variadic = Functions::isVariadic(
                     $codebase,
-                    strtolower($method_id),
+                    Interner::intern(strtolower($method_id)),
                     $statements_analyzer->getRootFilePath(),
                 );
             } else {
@@ -622,14 +624,14 @@ final class ArgumentsAnalyzer
             $declaring_method_id = $codebase->methods->getDeclaringMethodId($method_id);
 
             if ($declaring_method_id && (string)$declaring_method_id !== (string)$method_id) {
-                $self_fq_class_name = $declaring_method_id->fq_class_name;
-                $class_storage = $codebase->classlike_storage_provider->get($self_fq_class_name);
+                $self_fq_class_name = Interner::lookup($declaring_method_id->class_id);
+                $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($self_fq_class_name));
             }
 
             $appearing_method_id = $codebase->methods->getAppearingMethodId($method_id);
 
             if ($appearing_method_id && $declaring_method_id !== $appearing_method_id) {
-                $self_fq_class_name = $appearing_method_id->fq_class_name;
+                $self_fq_class_name = Interner::lookup($appearing_method_id->class_id);
             }
         }
 
@@ -1008,7 +1010,7 @@ final class ArgumentsAnalyzer
 
         if ($method_id === 'get_class' && $args === []) {
             //get_class without args only works when inside a class
-            if (!$context->self) {
+            if (!($context->self !== null)) {
                 IssueBuffer::maybeAdd(
                     new TooFewArguments(
                         'Cannot call get_class() without argument outside of class scope',
@@ -1146,7 +1148,7 @@ final class ArgumentsAnalyzer
                         $statements_analyzer,
                         $statements_analyzer->node_data->getType($arg->value),
                         $argument_offset,
-                        $context->self,
+                        Interner::lookupOrNull($context->self),
                         $context->calling_method_id ?: $context->calling_function_id,
                     );
 
@@ -1171,7 +1173,7 @@ final class ArgumentsAnalyzer
                         $statements_analyzer,
                         $statements_analyzer->node_data->getType($arg->value),
                         $argument_offset,
-                        $context->self,
+                        Interner::lookupOrNull($context->self),
                         $context->calling_method_id ?: $context->calling_function_id,
                     );
 
@@ -1322,17 +1324,18 @@ final class ArgumentsAnalyzer
         Context $context,
         PhpParser\Node\Expr\PropertyFetch $stmt,
         string $fq_class_name,
-        string $prop_name,
+        int $prop_name,
         ?string $lhs_var_id,
     ): void {
-        $property_id = $fq_class_name . '::$' . $prop_name;
+        $prop_name_id = $prop_name;
+        $property_id_class = $fq_class_name; $property_id_name = $prop_name;
 
         $codebase = $statements_analyzer->getCodebase();
-        $declaring_property_class = (string) $codebase->properties->getDeclaringClassForProperty(
-            $property_id,
+        $declaring_property_class = Interner::intern((string) Interner::lookupOrNull($codebase->properties->getDeclaringClassForProperty(
+            Interner::intern($property_id_class), $property_id_name,
             true,
             $statements_analyzer,
-        );
+        )));
 
         try {
             $declaring_class_storage = $codebase->classlike_storage_provider->get($declaring_property_class);
@@ -1340,13 +1343,13 @@ final class ArgumentsAnalyzer
             return;
         }
 
-        if (isset($declaring_class_storage->properties[$prop_name])) {
-            $property_storage = $declaring_class_storage->properties[$prop_name];
+        if (isset($declaring_class_storage->properties[$prop_name_id])) {
+            $property_storage = $declaring_class_storage->properties[$prop_name_id];
 
             InstancePropertyAssignmentAnalyzer::trackPropertyImpurity(
                 $statements_analyzer,
                 $stmt,
-                $property_id,
+                ($property_id_class . '::$' . Interner::lookup($property_id_name)),
                 $property_storage,
                 $declaring_class_storage,
                 $context,
@@ -1378,7 +1381,7 @@ final class ArgumentsAnalyzer
 
         if ($arg->value instanceof PhpParser\Node\Expr\PropertyFetch
             && $arg->value->name instanceof PhpParser\Node\Identifier) {
-            $prop_name = $arg->value->name->name;
+            $prop_name = Interner::intern($arg->value->name->name);
 
             // @todo atm only works for simple fetch, $a->foo, not $a->foo->bar
             // I guess there's a function to do this, but I couldn't locate it
@@ -1402,7 +1405,7 @@ final class ArgumentsAnalyzer
             } elseif ($var_id && isset($context->vars_in_scope[$var_id])) {
                 foreach ($context->vars_in_scope[$var_id]->getAtomicTypes() as $atomic_type) {
                     if ($atomic_type instanceof TNamedObject) {
-                        $fq_class_name = $atomic_type->value;
+                        $fq_class_name = Interner::lookup($atomic_type->name);
 
                         self::handleByRefReadonlyArg(
                             $statements_analyzer,
@@ -1597,8 +1600,8 @@ final class ArgumentsAnalyzer
             $fleshed_out_param_type = TypeExpander::expandUnion(
                 $codebase,
                 $function_param->type,
-                $class_storage->name ?? null,
-                $calling_class_storage->name ?? null,
+                (isset($class_storage->id) ? Interner::lookup($class_storage->id) : null),
+                (isset($calling_class_storage->id) ? Interner::lookup($calling_class_storage->id) : null),
                 null,
                 true,
                 false,
@@ -1646,7 +1649,7 @@ final class ArgumentsAnalyzer
                 || !$function_storage instanceof MethodStorage
                 || $function_storage->is_static
                 || ($method_id instanceof MethodIdentifier
-                    && $method_id->method_name === '__construct'))
+                    && $method_id->name_id === Sym::CONSTRUCT))
         ) {
             IssueBuffer::maybeAdd(
                 new TooManyArguments(

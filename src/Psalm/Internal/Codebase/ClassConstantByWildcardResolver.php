@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Internal\Codebase;
 
 use Psalm\Codebase;
+use Psalm\Internal\Interner;
 use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\TMixed;
 
@@ -31,7 +32,7 @@ final class ClassConstantByWildcardResolver
      * @return non-empty-array<string, Atomic>|null
      * @psalm-mutation-free
      */
-    public function resolve(string $class_name, string $constant_pattern): ?array
+    public function resolve(int $class_name, string $constant_pattern): ?array
     {
         if (!$this->codebase->classlike_storage_provider->has($class_name)) {
             return null;
