@@ -17,16 +17,22 @@ use Psalm\Tools\IdConvert\TypeStr;
 $root = rtrim($argv[1], '/') . '/';
 CanonicalNames::init($root);
 $issues = json_decode((string) file_get_contents($argv[2]), true);
+/** A message without what differs between the two checked trees: their paths (closure names embed them). */
+function pristineMessage(string $m): string
+{
+    return (string) preg_replace('~/\S*?/src/psalm/(\S*?):\d+:\d+:-:closure~', 'src/psalm/$1:closure', $m);
+}
+
 // only what the conversion introduced: the issues an unconverted tree has too (env ID_CONVERT_PRISTINE) stay
 $pristine_file = (string) getenv('ID_CONVERT_PRISTINE');
 if ($pristine_file !== '' && is_file($pristine_file)) {
     $seen_pristine = [];
     foreach (json_decode((string) file_get_contents($pristine_file), true) ?: [] as $pi) {
-        $pk = $pi['file_name'] . "\0" . $pi['type'] . "\0" . $pi['message'];
+        $pk = $pi['file_name'] . "\0" . $pi['type'] . "\0" . pristineMessage($pi['message']);
         $seen_pristine[$pk] = ($seen_pristine[$pk] ?? 0) + 1;
     }
     $issues = array_values(array_filter($issues, static function (array $ci) use (&$seen_pristine): bool {
-        $ck = $ci['file_name'] . "\0" . $ci['type'] . "\0" . $ci['message'];
+        $ck = $ci['file_name'] . "\0" . $ci['type'] . "\0" . pristineMessage($ci['message']);
         if (($seen_pristine[$ck] ?? 0) > 0) {
             $seen_pristine[$ck]--;
             return false;
@@ -114,6 +120,10 @@ foreach ($issues as $i) {
         && preg_match("/inferred type '(.+?)' does not match the declared return type '(.+?)'/", $msg, $m)
     ) {
         [$got, $want] = [$m[1], $m[2]];
+        $nullable = str_contains($got, 'null');
+    } elseif ($type === 'IdString' && preg_match('/^(\S+) /', $msg, $m)) {
+        // an id built into a string (IdStringPlugin): its name is
+        [$want, $got] = ['string', $m[1]];
         $nullable = str_contains($got, 'null');
     } elseif (in_array($type, ['InvalidOperand', 'PossiblyInvalidOperand'], true)
         && preg_match('/Cannot concatenate with a (.+)$/', $msg, $m)

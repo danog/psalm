@@ -409,7 +409,7 @@ final class Interner
             return;
         }
         self::$persist_file = $cache_directory . '/interner';
-        $pid = getmypid();
+        $pid = (int) getmypid();
         register_shutdown_function(static function () use ($pid): void {
             // the process that registered it (not a forked worker), when it interned something new
             if (getmypid() !== $pid || self::$persist_file === null || count(self::$strings) <= self::$persisted_count) {
@@ -428,6 +428,7 @@ final class Interner
         if (self::$persist_file === null || !is_file(self::$persist_file)) {
             return;
         }
+        /** @psalm-suppress MixedAssignment the serialized table */
         $data = @unserialize((string) @file_get_contents(self::$persist_file));
         if (is_array($data)) {
             /** @var array<int, string> $data */
