@@ -45,6 +45,9 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
     private string $src;
     private bool $in_trait = false;
     private ?string $parentClass = null;
+    private ?string $selfClass = null;
+    /** @var ?SplObjectStorage<Arg, true> */
+    private ?SplObjectStorage $spread_done = null;
     /** @var SplObjectStorage<Node, Node> */
     private SplObjectStorage $parent;
     /** @var list<array{int, int, string}> */
@@ -65,8 +68,10 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
     {
         $file = $event->getStatementsSource()->getFilePath();
         $root = dirname(__DIR__, 2);
+        $extra = array_filter(explode(':', (string) getenv('ID_REFACTOR_ROOTS')));
         if (!str_starts_with($file, $root . '/src/') && !str_starts_with($file, $root . '/tests/')
             && !str_starts_with($file, $root . '/examples/')
+            && array_filter($extra, static fn(string $r): bool => str_starts_with($file, $r)) === []
         ) {
             return null;
         }
@@ -82,8 +87,10 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
             if ($storage instanceof \Psalm\Storage\MethodStorage && $storage->defining_fqcln !== null) {
                 $cs = $h->codebase->classlike_storage_provider->find(Interner::intern($storage->defining_fqcln));
                 $h->parentClass = $cs?->parent_class;
+                $h->selfClass = $storage->defining_fqcln;
             }
             $h->parent = new SplObjectStorage();
+            $h->spread_done = new SplObjectStorage();
             $stmt = $event->getStmt();
             $body = $stmt instanceof Expr\ArrowFunction ? [$stmt->expr] : ($stmt->getStmts() ?? []);
             $h->index($body, $stmt);
@@ -136,9 +143,25 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
         if ($this->in_trait && $fetch->var instanceof Expr\Variable && $fetch->var->name === 'this'
             && $this->traitUsersCovered($prop)
         ) {
-            return [$prop, $cands[0][2]];
+            return [$prop, $cands[0][2], $cands[0][3] ?? 'lookup'];
         }
         $t = $this->types->getType($fetch->var);
+        $has_object = false;
+        foreach ($t?->getAtomicTypes() ?? [] as $a0) {
+            $has_object = $has_object || $a0 instanceof TNamedObject;
+        }
+        if (!$has_object && $fetch->var instanceof Expr\Variable && is_string($fetch->var->name)) {
+            $t = null;
+            // no type recorded here (inside isset() Psalm keeps none): the class of a `new C(...)` the function
+            // assigns to that variable
+            foreach ($this->parent as $m) {
+                if ($m instanceof Expr\Assign && $m->var instanceof Expr\Variable && $m->var->name === $fetch->var->name
+                    && $m->expr instanceof Expr\New_ && $m->expr->class instanceof Name
+                ) {
+                    $t = new \Psalm\Type\Union([new TNamedObject((string) ($m->expr->class->attrs()->resolvedName ?? $m->expr->class->toString()))]);
+                }
+            }
+        }
         if ($t === null) {
             return null;
         }
@@ -165,13 +188,13 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
             if (!$a instanceof TNamedObject) {
                 return null; // not an object of a known class
             }
-            $cls = $a->value;
+            $cls = SymNames::named($a);
             $found = null;
             foreach ($cands as $c) {
                 if (strcasecmp($cls, $c[0]) === 0
                     || $this->codebase->classExtendsOrImplements(Interner::intern($cls), Interner::intern($c[0]))
                 ) {
-                    $found = [$c[1], $c[2]];
+                    $found = [$c[1], $c[2], $c[3] ?? 'lookup'];
                 }
             }
             if ($found === null) {
@@ -185,7 +208,7 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
             $dropped[] = $cls;
         }
         if ($match !== null && $kept !== []) {
-            return ['mixed', $match[1], array_values(array_unique($kept))];
+            return ['mixed', $match[1], array_values(array_unique($kept)), $match[2]];
         }
         return $match;
     }
@@ -215,12 +238,15 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
                 return;
             }
             $class = (string) ($call->class->attrs()->resolvedName ?? $call->class->toString());
+            if (in_array(strtolower($class), ['self', 'static'], true)) {
+                $class = $this->selfClass;
+            }
         }
         if ($class === null) {
             return;
         }
         try {
-            $mid = $this->codebase->methods->getDeclaringMethodId(new \Psalm\Internal\MethodIdentifier($class, '__construct'));
+            $mid = $this->codebase->methods->getDeclaringMethodId(new \Psalm\Internal\MethodIdentifier(\Psalm\Internal\Interner::intern($class), \Psalm\Internal\Sym::CONSTRUCT));
             if ($mid === null) {
                 return;
             }
@@ -228,7 +254,7 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
         } catch (Throwable) {
             return;
         }
-        $declaring = $ms->defining_fqcln ?? $mid->fq_class_name;
+        $declaring = $ms->defining_fqcln ?? \Psalm\Internal\Interner::lookup($mid->class_id);
         foreach (self::fields() as [$fclass, $prop, $id]) {
             if (strcasecmp($declaring, $fclass) !== 0) {
                 continue;
@@ -238,11 +264,29 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
                     continue;
                 }
                 foreach ($call->getArgs() as $j => $a) {
+                    if ($a->unpack && $j <= $i) {
+                        // a spread list supplying this parameter: every element becomes its id (once per list)
+                        if (isset($this->spread_done[$a])) {
+                            break;
+                        }
+                        $this->spread_done[$a] = true;
+                        $v = $a->value;
+                        $this->edits[] = [$v->getStartFilePos(), $v->getStartFilePos(), 'array_map(Interner::intern(...), '];
+                        $this->edits[] = [$v->getEndFilePos() + 1, $v->getEndFilePos() + 1, ')'];
+                        break;
+                    }
                     if (($a->name !== null && $a->name->name === $prop) || ($a->name === null && $j === $i)) {
                         if ($a->name !== null) {
                             $this->edits[] = [$a->name->getStartFilePos(), $a->name->getEndFilePos() + 1, $id];
                         }
                         $v = $a->value;
+                        if ($v instanceof Expr\StaticCall && $v->class instanceof Name && $v->name instanceof Identifier
+                            && strtolower($v->class->getLast()) === 'interner' && strtolower($v->name->name) === 'lookup'
+                            && count($v->getArgs()) === 1
+                        ) {
+                            $this->edits[] = [$v->getStartFilePos(), $v->getEndFilePos() + 1, $this->text($v->getArgs()[0]->value)];
+                            continue;
+                        }
                         if ($v instanceof \PhpParser\Node\Scalar\String_) {
                             [$text, $new] = SymNames::forLiteral($v->value);
                             if ($new !== null) {
@@ -274,10 +318,10 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
                 continue;
             }
             if ($pair[0] === 'mixed') {
-                $this->mixedRead($n, $pair[1], $pair[2]);
+                $this->mixedRead($n, $pair[1], $pair[2], $pair[3]);
                 continue;
             }
-            [, $id] = $pair;
+            [, $id, $fn] = $pair;
             $p = $this->parent[$n];
             // a trait body is analyzed once per using class: `$this` is a different class in each
             if ($this->in_trait && $n->var instanceof Expr\Variable && $n->var->name === 'this'
@@ -299,7 +343,7 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
                 $this->edits[] = [$p->expr->getEndFilePos() + 1, $p->expr->getEndFilePos() + 1, ')'];
                 continue;
             }
-            if ($p instanceof Expr\AssignOp || $p instanceof Expr\AssignRef || ($p instanceof Arg && $p->byRef)
+            if ((($p instanceof Expr\AssignOp || $p instanceof Expr\AssignRef) && $p->var === $n) || ($p instanceof Arg && $p->byRef)
                 || $p instanceof Stmt\Unset_ || $p instanceof Expr\PreInc || $p instanceof Expr\PostInc
             ) {
                 self::out(['kind' => 'manual', 'site' => $this->file . ':' . $n->getStartLine(), 'why' => $p->getType()]);
@@ -338,11 +382,11 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
                 // `$x->s ?? E` (a null or unset receiver falls through to E)
                 $recv = $this->text($n->var);
                 $this->edits[] = [$p->getStartFilePos(), $p->getEndFilePos() + 1,
-                    '(isset(' . $recv . '->' . $id . ') ? Interner::lookup(' . $recv . '->' . $id . ') : ' . $this->text($p->right) . ')'];
+                    '(isset(' . $recv . '->' . $id . ') ? Interner::' . $fn . '(' . $recv . '->' . $id . ') : ' . $this->text($p->right) . ')'];
                 $done[$p->right] = true;
                 continue;
             }
-            $this->replaceRead($n, 'Interner::lookup(' . $this->text($n->var) . '->' . $id . ')');
+            $this->replaceRead($n, 'Interner::' . $fn . '(' . $this->text($n->var) . '->' . $id . ')');
         }
     }
 
@@ -382,7 +426,7 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
             }
             $found = null;
             foreach (self::fields() as [$c, $p, $id]) {
-                if ($p === $prop && (strcasecmp($st->name, $c) === 0
+                if ($p === $prop && (strcasecmp(\Psalm\Internal\Interner::lookup($st->id), $c) === 0
                     || $this->codebase->classExtendsOrImplements($st->id, Interner::intern($c)))
                 ) {
                     $found = $id;
@@ -402,7 +446,7 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
      *
      * @param list<string> $dropped the classes keeping the property
      */
-    private function mixedRead(Expr\PropertyFetch|Expr\NullsafePropertyFetch $n, string $id, array $dropped): void
+    private function mixedRead(Expr\PropertyFetch|Expr\NullsafePropertyFetch $n, string $id, array $dropped, string $fn = 'lookup'): void
     {
         $p = $this->parent[$n];
         $pure = static function (Expr $e) use (&$pure): bool {
@@ -417,7 +461,7 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
         }
         $recv = $this->text($n->var);
         $conds = implode(' || ', array_map(static fn(string $c): string => $recv . ' instanceof \\' . $c, $dropped));
-        $this->replaceRead($n, '(' . $conds . ' ? ' . $this->text($n) . ' : Interner::lookup(' . $recv . '->' . $id . '))', true);
+        $this->replaceRead($n, '(' . $conds . ' ? ' . $this->text($n) . ' : Interner::' . $fn . '(' . $recv . '->' . $id . '))', true);
     }
 
     private function assignsId(Expr\PropertyFetch|Expr\NullsafePropertyFetch $f, string $id): bool

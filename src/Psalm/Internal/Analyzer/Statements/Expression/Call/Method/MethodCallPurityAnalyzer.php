@@ -43,7 +43,7 @@ final class MethodCallPurityAnalyzer
         // $stmt->var->getAttribute('pure', false)
         return $statements_analyzer->node_data->isPureCompatible($var)
             || ($var->getAttributes()->external_mutation_free ?? false)
-            || $method_id->fq_class_name === $context->self;
+            || Interner::lookup($method_id->class_id) === $context->self;
     }
 
     /**
@@ -212,7 +212,7 @@ final class MethodCallPurityAnalyzer
                 } else {
                     $new_type = AssignmentAnalyzer::getExpandedPropertyType(
                         $codebase,
-                        $class_storage->name,
+                        Interner::lookup($class_storage->id),
                         $name,
                         $class_storage,
                     ) ?? Type::getMixed();

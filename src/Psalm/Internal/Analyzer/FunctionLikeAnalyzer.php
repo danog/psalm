@@ -2134,7 +2134,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 foreach ($overridden_method_ids as $overridden_method_id) {
                     $parent_method_storage = $codebase->methods->getStorage($overridden_method_id);
 
-                    $overridden_fq_class_name = $overridden_method_id->fq_class_name;
+                    $overridden_fq_class_name = Interner::lookup($overridden_method_id->class_id);
 
                     $parent_storage = $classlike_storage_provider->get(Interner::intern($overridden_fq_class_name));
 
@@ -2154,10 +2154,10 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                     if ($implementer_appearing_method_id
                         && $implementer_appearing_method_id !== $implementer_declaring_method_id
                     ) {
-                        $appearing_fq_class_name = $implementer_appearing_method_id->fq_class_name;
-                        $appearing_method_name = $implementer_appearing_method_id->method_name;
+                        $appearing_fq_class_name = Interner::lookup($implementer_appearing_method_id->class_id);
+                        $appearing_method_name = Interner::lookupLc($implementer_appearing_method_id->name_id);
 
-                        $declaring_fq_class_name = $implementer_declaring_method_id->fq_class_name;
+                        $declaring_fq_class_name = Interner::lookup($implementer_declaring_method_id->class_id);
 
                         $appearing_class_storage = $classlike_storage_provider->get(
                             Interner::intern($appearing_fq_class_name),

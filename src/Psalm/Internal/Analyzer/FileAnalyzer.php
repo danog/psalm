@@ -361,8 +361,8 @@ class FileAnalyzer extends SourceAnalyzer
         Context $this_context,
         bool $from_project_analyzer = false,
     ): void {
-        $fq_class_name = $method_id->fq_class_name;
-        $method_name = $method_id->method_name;
+        $fq_class_name = Interner::lookup($method_id->class_id);
+        $method_name = Interner::lookupLc($method_id->name_id);
         $fq_class_name_lc = strtolower($fq_class_name);
 
         if (isset($this->class_analyzers_to_analyze[$fq_class_name_lc])) {
@@ -422,8 +422,8 @@ class FileAnalyzer extends SourceAnalyzer
      */
     public function getFunctionLikeAnalyzer(MethodIdentifier $method_id): ?MethodAnalyzer
     {
-        $fq_class_name = $method_id->fq_class_name;
-        $method_name = $method_id->method_name;
+        $fq_class_name = Interner::lookup($method_id->class_id);
+        $method_name = Interner::lookupLc($method_id->name_id);
 
         $fq_class_name_lc = strtolower($fq_class_name);
 

@@ -69,7 +69,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
 
         $source_fqcln_lc = strtolower($source_fqcln);
 
-        $method_id = new MethodIdentifier($source_fqcln, $method_name_lc);
+        $method_id = new MethodIdentifier(Interner::intern($source_fqcln), Interner::intern($method_name_lc));
 
         if (!$storage) {
             try {
@@ -111,8 +111,8 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
     ): void {
         $codebase_methods = $codebase->methods;
 
-        if ($method_id->fq_class_name === 'Closure'
-            && $method_id->method_name === 'fromcallable'
+        if (Interner::lookup($method_id->class_id) === 'Closure'
+            && Interner::lookupLc($method_id->name_id) === 'fromcallable'
         ) {
             return;
         }
@@ -196,7 +196,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
 
             if (IssueBuffer::accepts(
                 new UndefinedMethod(
-                    'Method ' . $method_id->fq_class_name . '::' . $written_name
+                    'Method ' . Interner::lookup($method_id->class_id) . '::' . $written_name
                         . ' does not exist (incorrect casing of ' . $declared . ')',
                     $code_location,
                     (string) $method_id,
@@ -265,8 +265,8 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
     ): bool {
         $codebase = $source->getCodebase();
 
-        $fq_classlike_name = $method_id->fq_class_name;
-        $method_name = $method_id->method_name;
+        $fq_classlike_name = Interner::lookup($method_id->class_id);
+        $method_name = Interner::lookupLc($method_id->name_id);
 
         if ($codebase->methods->visibility_provider->has($fq_classlike_name)) {
             $method_visible = $codebase->methods->visibility_provider->isMethodVisible(
@@ -294,7 +294,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
         $appearing_method_class = null;
 
         if ($appearing_method_id) {
-            $appearing_method_class = $appearing_method_id->fq_class_name;
+            $appearing_method_class = Interner::lookup($appearing_method_id->class_id);
 
             // if the calling class is the same, we know the method exists, so it must be visible
             if ($appearing_method_class === $context->self) {
@@ -302,7 +302,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
             }
         }
 
-        $declaring_method_class = $declaring_method_id->fq_class_name;
+        $declaring_method_class = Interner::lookup($declaring_method_id->class_id);
 
         if ($source->getSource() instanceof TraitAnalyzer
             && strtolower($declaring_method_class) === strtolower((string) $source->getFQCLN())
@@ -377,8 +377,8 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
         $function_name = (string)$this->function->name;
 
         return new MethodIdentifier(
-            $context_self ?: (string) $this->source->getFQCLN(),
-            strtolower($function_name),
+            Interner::intern($context_self ?: (string) $this->source->getFQCLN()),
+            Interner::intern(strtolower($function_name)),
         );
     }
 

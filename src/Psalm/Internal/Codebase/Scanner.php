@@ -475,7 +475,7 @@ final class Scanner
             }
             $changed = true;
             $stub->methods[$method_name_lc_id] = $method_storage;
-            $method_id = new MethodIdentifier($stub->name, $method_name_lc);
+            $method_id = new MethodIdentifier(Interner::intern(Interner::lookup($stub->id)), Interner::intern($method_name_lc));
             $stub->declaring_method_ids[$method_name_lc_id] ??= $method_id;
             $stub->appearing_method_ids[$method_name_lc_id] ??= $method_id;
             if ($method_storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PRIVATE) {
@@ -489,9 +489,9 @@ final class Scanner
             }
             $changed = true;
             $stub->properties[$property_name_id] = $property_storage;
-            $property_id = $stub->name . '::$' . $property_name;
+            $property_id = Interner::lookup($stub->id) . '::$' . $property_name;
             // the declaring map holds the class, the other two hold the property id
-            $stub->declaring_property_ids[$property_name_id] ??= $stub->name;
+            $stub->declaring_property_ids[$property_name_id] ??= Interner::lookup($stub->id);
             $stub->appearing_property_ids[$property_name_id] ??= $property_id;
             if ($property_storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PRIVATE) {
                 $stub->inheritable_property_ids[$property_name_id] ??= $property_id;
@@ -513,7 +513,7 @@ final class Scanner
      */
     private function unpopulate(ClassLikeStorage $storage, array $seen): void
     {
-        $lc = strtolower($storage->name);
+        $lc = strtolower(Interner::lookup($storage->id));
         if (isset($seen[$lc])) {
             return;
         }

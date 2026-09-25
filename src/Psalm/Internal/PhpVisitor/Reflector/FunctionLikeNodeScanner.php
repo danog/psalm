@@ -184,7 +184,7 @@ final class FunctionLikeNodeScanner
                         $this->file_storage,
                         $this->aliases,
                         $attr,
-                        $this->classlike_storage->name ?? null,
+                        (isset($this->classlike_storage->id) ? Interner::lookup($this->classlike_storage->id) : null),
                     );
                 }
             }
@@ -285,7 +285,7 @@ final class FunctionLikeNodeScanner
                             $cond_id,
                             $cond_id,
                             $function_stmt->cond,
-                            $this->classlike_storage->name ?? null,
+                            (isset($this->classlike_storage->id) ? Interner::lookup($this->classlike_storage->id) : null),
                             $this->file_scanner,
                             null,
                         );
@@ -675,7 +675,7 @@ final class FunctionLikeNodeScanner
                         break;
                 }
 
-                $fq_classlike_name = $classlike_storage->name;
+                $fq_classlike_name = Interner::lookup($classlike_storage->id);
 
                 $property_id = $fq_classlike_name . '::$' . $param_storage->name;
 
@@ -701,7 +701,7 @@ final class FunctionLikeNodeScanner
                     $this->file_storage,
                     $this->aliases,
                     $attr,
-                    $this->classlike_storage->name ?? null,
+                    (isset($this->classlike_storage->id) ? Interner::lookup($this->classlike_storage->id) : null),
                 );
 
                 if ($attribute->fq_class_name === 'Psalm\\Pure'
@@ -1078,7 +1078,7 @@ final class FunctionLikeNodeScanner
                 throw new LogicException('$this->classlike_storage should not be null');
             }
 
-            $fq_classlike_name = $this->classlike_storage->name;
+            $fq_classlike_name = Interner::lookup($this->classlike_storage->id);
 
             $method_name_lc = strtolower($stmt->name->name);
             $method_name_lc_id = Interner::intern($method_name_lc);
@@ -1178,8 +1178,8 @@ final class FunctionLikeNodeScanner
             }
 
             $method_id = new MethodIdentifier(
-                $fq_classlike_name,
-                $method_name_lc,
+                Interner::intern($fq_classlike_name),
+                Interner::intern($method_name_lc),
             );
 
             $storage->is_static = $stmt->isStatic();

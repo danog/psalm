@@ -9,6 +9,7 @@ use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\Codebase\Methods;
 use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\Comparator\CallableTypeComparator;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TClassString;
@@ -323,7 +324,7 @@ final class CompiledProbeTest extends TestCase
         $codebase = $this->project_analyzer->getCodebase();
 
         $strlen = CallableTypeComparator::getCallableFromAtomic($codebase, new TLiteralString('strlen'));
-        $create = $codebase->methods->getStorage(new MethodIdentifier('DateTime', 'createfrominterface'));
+        $create = $codebase->methods->getStorage(new MethodIdentifier(Sym::DATE_TIME, Sym::C_CREATEFROMINTERFACE));
         $param = $codebase->file_storage_provider->get($file_path)
             ->functions[Interner::intern('takescallableobject')]->params[0]->type;
         $class_string = $param?->getSingleAtomic();

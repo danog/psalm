@@ -162,7 +162,7 @@ final class Populator
     /** @param array<string, bool> $dependent_classlikes */
     private function populateClassLikeStorage(ClassLikeStorage $storage, array $dependent_classlikes = []): void
     {
-        $fq_classlike_name_lc = strtolower($storage->name);
+        $fq_classlike_name_lc = strtolower(Interner::lookup($storage->id));
         $fq_classlike_name_lc_id = Interner::intern($fq_classlike_name_lc);
 
         if ($storage->populated) {
@@ -176,7 +176,7 @@ final class Populator
             if ($storage->location) {
                 IssueBuffer::maybeAdd(
                     new CircularReference(
-                        'Circular reference discovered when loading ' . $storage->name,
+                        'Circular reference discovered when loading ' . Interner::lookup($storage->id),
                         $storage->location,
                     ),
                 );
@@ -292,7 +292,7 @@ final class Populator
 
         $this->populateOverriddenMethods($storage, $storage_provider);
 
-        $this->progress->debug('Have populated ' . $storage->name . "\n");
+        $this->progress->debug('Have populated ' . Interner::lookup($storage->id) . "\n");
 
         $storage->populated = true;
 
@@ -313,7 +313,7 @@ final class Populator
             unset($this->invalid_class_storages[$fq_classlike_name_lc]);
             foreach ($invalid_dependencies as $dependency) {
                 // Dependencies may not be fully set yet, so we have to loop through dependencies of dependencies
-                $dependencies = [strtolower($dependency->name) => true];
+                $dependencies = [strtolower(Interner::lookup($dependency->id)) => true];
                 do {
                     $current_dependency_name = key(array_splice($dependencies, 0, 1)); // Key shift
                     $current_dependency = $storage_provider->get(Interner::intern($current_dependency_name));
@@ -323,7 +323,7 @@ final class Populator
                         if ($dependency->location) {
                             IssueBuffer::maybeAdd(
                                 new CircularReference(
-                                    'Circular reference discovered when loading ' . $dependency->name,
+                                    'Circular reference discovered when loading ' . Interner::lookup($dependency->id),
                                     $dependency->location,
                                 ),
                             );
@@ -367,13 +367,13 @@ final class Populator
                 continue;
             }
 
-            $implemented_interface_storage->dependent_classlikes[strtolower($storage->name)] = true;
+            $implemented_interface_storage->dependent_classlikes[strtolower(Interner::lookup($storage->id))] = true;
 
             foreach ($implemented_interface_storage->methods as $method_name_id => $method) {
                 if ($method->visibility === ClassLikeAnalyzer::VISIBILITY_PUBLIC) {
                     $interface_method_implementers[$method_name_id][] = new MethodIdentifier(
-                        $implemented_interface_storage->name,
-                        Interner::lookupLc($method_name_id),
+                        Interner::intern(Interner::lookup($implemented_interface_storage->id)),
+                        Interner::intern(Interner::lookupLc($method_name_id)),
                     );
                 }
             }
@@ -388,7 +388,7 @@ final class Populator
                         && !$method_storage->signature_return_type->isVoid()
                         && $method_storage->return_type === $method_storage->signature_return_type
                     ) {
-                        $interface_fqcln = $interface_method_ids[0]->fq_class_name;
+                        $interface_fqcln = Interner::lookup($interface_method_ids[0]->class_id);
                         $interface_storage = $storage_provider->get(Interner::intern($interface_fqcln));
 
                         if (isset($interface_storage->methods[$method_name_id])) {
@@ -405,7 +405,7 @@ final class Populator
             }
 
             foreach ($interface_method_ids as $interface_method_id) {
-                $storage->overridden_method_ids[$method_name_id][$interface_method_id->fq_class_name]
+                $storage->overridden_method_ids[$method_name_id][Interner::lookup($interface_method_id->class_id)]
                     = $interface_method_id;
             }
         }
@@ -421,13 +421,13 @@ final class Populator
                 $declaring_class_storages = [];
 
                 foreach ($overridden_method_ids as $declaring_method_id) {
-                    $declaring_class = $declaring_method_id->fq_class_name;
+                    $declaring_class = Interner::lookup($declaring_method_id->class_id);
                     $declaring_class_storage
                         = $declaring_class_storages[$declaring_class]
                         = $this->classlike_storage_provider->get(Interner::intern($declaring_class));
 
                     $declaring_overridden_ids = ($declaring_class_storage->overridden_method_ids[$method_name_id] ?? [])
-                        + [$declaring_method_id->fq_class_name => $declaring_method_id];
+                        + [Interner::lookup($declaring_method_id->class_id) => $declaring_method_id];
 
                     $candidate_overridden_ids = $candidate_overridden_ids === null
                         ? $declaring_overridden_ids
@@ -435,8 +435,8 @@ final class Populator
                 }
 
                 foreach ($overridden_method_ids as $declaring_method_id) {
-                    $declaring_class = $declaring_method_id->fq_class_name;
-                    $declaring_method_name = $declaring_method_id->method_name;
+                    $declaring_class = Interner::lookup($declaring_method_id->class_id);
+                    $declaring_method_name = Interner::lookupLc($declaring_method_id->name_id);
                     $declaring_class_storage = $declaring_class_storages[$declaring_class];
 
                     $declaring_method_storage = $declaring_class_storage->methods[$declaring_method_id->name_id]
@@ -457,14 +457,14 @@ final class Populator
                             $method_storage->inherited_return_type = true;
                         } else {
                             if (in_array(
-                                $storage->documenting_method_ids[$method_name_id]->fq_class_name,
+                                Interner::lookup($storage->documenting_method_ids[$method_name_id]->class_id),
                                 $declaring_class_storage->parent_interfaces,
                             )) {
                                 $storage->documenting_method_ids[$method_name_id] = $declaring_method_id;
                                 $method_storage->inherited_return_type = true;
                             } else {
                                 $documenting_class_storage = $declaring_class_storages
-                                    [$storage->documenting_method_ids[$method_name_id]->fq_class_name];
+                                    [Interner::lookup($storage->documenting_method_ids[$method_name_id]->class_id)];
 
                                 if (!in_array(
                                     $declaring_class,
@@ -634,7 +634,7 @@ final class Populator
         $storage->pseudo_property_get_types += $parent_storage->pseudo_property_get_types;
         $storage->pseudo_property_set_types += $parent_storage->pseudo_property_set_types;
 
-        $parent_storage->dependent_classlikes[strtolower($storage->name)] = true;
+        $parent_storage->dependent_classlikes[strtolower(Interner::lookup($storage->id))] = true;
 
         foreach ($parent_storage->pseudo_static_methods as $method_name_id => $pseudo_method) {
             if (!isset($storage->methods[$method_name_id])) {
@@ -679,7 +679,7 @@ final class Populator
         self::extendTemplateParams($storage, $interface_storage, false);
 
         $new_parents = array_keys($interface_storage->parent_interfaces);
-        $new_parents[] = $interface_storage->name;
+        $new_parents[] = Interner::lookup($interface_storage->id);
         foreach ($new_parents as $new_parent) {
             try {
                 $new_parent = strtolower(
@@ -692,7 +692,7 @@ final class Populator
                 continue;
             }
 
-            $new_parent_interface_storage->dependent_classlikes[strtolower($storage->name)] = true;
+            $new_parent_interface_storage->dependent_classlikes[strtolower(Interner::lookup($storage->id))] = true;
         }
     }
 
@@ -703,19 +703,19 @@ final class Populator
     ): void {
         if ($parent_storage->yield && !$storage->yield) {
             $storage->yield = $parent_storage->yield;
-            $storage->declaring_yield_fqcn ??= $parent_storage->name;
+            $storage->declaring_yield_fqcn ??= Interner::lookup($parent_storage->id);
         }
         if ($parent_storage->template_types) {
-            $storage->template_extended_params[$parent_storage->name] = [];
+            $storage->template_extended_params[Interner::lookup($parent_storage->id)] = [];
 
-            if (isset($storage->template_extended_offsets[$parent_storage->name])) {
-                foreach ($storage->template_extended_offsets[$parent_storage->name] as $i => $type) {
+            if (isset($storage->template_extended_offsets[Interner::lookup($parent_storage->id)])) {
+                foreach ($storage->template_extended_offsets[Interner::lookup($parent_storage->id)] as $i => $type) {
                     $parent_template_type_names = array_keys($parent_storage->template_types);
 
                     $mapped_name = $parent_template_type_names[$i] ?? null;
 
                     if ($mapped_name) {
-                        $storage->template_extended_params[$parent_storage->name][$mapped_name]
+                        $storage->template_extended_params[Interner::lookup($parent_storage->id)][$mapped_name]
                             = $type;
                     }
                 }
@@ -734,7 +734,7 @@ final class Populator
                 foreach ($parent_storage->template_types as $template_name => $template_type_map) {
                     foreach ($template_type_map as $template_type) {
                         $default_param = $template_type->setProperties(['from_docblock' => false]);
-                        $storage->template_extended_params[$parent_storage->name][$template_name] = $default_param;
+                        $storage->template_extended_params[Interner::lookup($parent_storage->id)][$template_name] = $default_param;
                     }
                 }
 
@@ -786,14 +786,14 @@ final class Populator
         $storage->parent_interfaces = [...$parent_interface_storage->parent_interfaces, ...$storage->parent_interfaces];
 
         if (isset($storage->parent_interfaces[strtolower(UnitEnum::class)])) {
-            $storage->declaring_property_ids[Interner::intern('name')] = $storage->name;
-            $storage->appearing_property_ids[Interner::intern('name')] = "{$storage->name}::\$name";
+            $storage->declaring_property_ids[Interner::intern('name')] = Interner::lookup($storage->id);
+            $storage->appearing_property_ids[Interner::intern('name')] = "" . Interner::lookup($storage->id) . "::\$name";
             $storage->properties[Interner::intern('name')] = new PropertyStorage();
             $storage->properties[Interner::intern('name')]->type = new Union([new TNonEmptyString()]);
         }
         if (isset($storage->parent_interfaces[strtolower(BackedEnum::class)])) {
-            $storage->declaring_property_ids[Interner::intern('value')] = $storage->name;
-            $storage->appearing_property_ids[Interner::intern('value')] = "{$storage->name}::\$value";
+            $storage->declaring_property_ids[Interner::intern('value')] = Interner::lookup($storage->id);
+            $storage->appearing_property_ids[Interner::intern('value')] = "" . Interner::lookup($storage->id) . "::\$value";
             $storage->properties[Interner::intern('value')] = new PropertyStorage();
             $storage->properties[Interner::intern('value')]->type = new Union([new TInt(), new TString()]);
         }
@@ -975,7 +975,7 @@ final class Populator
 
             IssueBuffer::maybeAdd(
                 new UndefinedTrait(
-                    $trait_real_type . ' ' . $trait_storage->name . ' is not a trait',
+                    $trait_real_type . ' ' . Interner::lookup($trait_storage->id) . ' is not a trait',
                     $location,
                 ),
                 $storage->suppressed_issues,
@@ -1018,7 +1018,7 @@ final class Populator
         ClassLikeStorage $storage,
         ClassLikeStorage $parent_storage,
     ): void {
-        $fq_class_name = $storage->name;
+        $fq_class_name = Interner::lookup($storage->id);
         $fq_class_name_lc = strtolower($fq_class_name);
 
         if ($parent_storage->sealed_methods !== null) {
@@ -1048,8 +1048,8 @@ final class Populator
                 }
 
                 $implemented_method_id = new MethodIdentifier(
-                    $fq_class_name,
-                    $aliased_method_name,
+                    Interner::intern($fq_class_name),
+                    Interner::intern($aliased_method_name),
                 );
 
                 $storage->appearing_method_ids[$aliased_method_name_id] =
@@ -1067,7 +1067,7 @@ final class Populator
 
                     $storage->potential_declaring_method_ids[$aliased_method_name_id][$this_method_id] = true;
 
-                    $parent_method_id = strtolower($parent_storage->name) . '::' . $method_name_lc;
+                    $parent_method_id = strtolower(Interner::lookup($parent_storage->id)) . '::' . $method_name_lc;
                     $storage->potential_declaring_method_ids[$aliased_method_name_id][$parent_method_id] = true;
                 }
             }
@@ -1080,13 +1080,13 @@ final class Populator
                 || $parent_storage->preserve_constructor_signature
             ) {
                 if ($parent_storage->is_trait) {
-                    $declaring_class = $declaring_method_id->fq_class_name;
+                    $declaring_class = Interner::lookup($declaring_method_id->class_id);
                     $declaring_class_storage = $this->classlike_storage_provider->get(Interner::intern($declaring_class));
 
                     if (isset($declaring_class_storage->methods[$method_name_lc_id])
                         && $declaring_class_storage->methods[$method_name_lc_id]->abstract
                     ) {
-                        $storage->overridden_method_ids[$method_name_lc_id][$declaring_method_id->fq_class_name]
+                        $storage->overridden_method_ids[$method_name_lc_id][Interner::lookup($declaring_method_id->class_id)]
                             = $declaring_method_id;
                     }
                 } else {
@@ -1114,7 +1114,7 @@ final class Populator
                     if ($declaring_method_storage === null
                         || $declaring_visibility !== ClassLikeAnalyzer::VISIBILITY_PRIVATE
                     ) {
-                        $storage->overridden_method_ids[$method_name_lc_id][$declaring_method_id->fq_class_name]
+                        $storage->overridden_method_ids[$method_name_lc_id][Interner::lookup($declaring_method_id->class_id)]
                             = $declaring_method_id;
                     }
                 }
@@ -1188,7 +1188,7 @@ final class Populator
                 continue;
             }
 
-            $implemented_property_id = $storage->name . '::$' . $property_name;
+            $implemented_property_id = Interner::lookup($storage->id) . '::$' . $property_name;
 
             $storage->appearing_property_ids[$property_name_id] =
                 $parent_storage->is_trait ? $implemented_property_id : $appearing_property_id;

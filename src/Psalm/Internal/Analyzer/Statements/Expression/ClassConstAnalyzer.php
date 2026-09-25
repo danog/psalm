@@ -150,7 +150,7 @@ final class ClassConstAnalyzer
             if ($stmt->name instanceof PhpParser\Node\Identifier && $stmt->name->name === 'class') {
                 if ($codebase->classlikes->classExists(Interner::intern($fq_class_name), null, $context)) {
                     $const_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
-                    $fq_class_name = $const_class_storage->name;
+                    $fq_class_name = Interner::lookup($const_class_storage->id);
 
                     if ($const_class_storage->deprecated && $fq_class_name !== $context->self) {
                         IssueBuffer::maybeAdd(
@@ -748,10 +748,10 @@ final class ClassConstAnalyzer
                 ) {
                     IssueBuffer::maybeAdd(
                         new InvalidConstantAssignmentValue(
-                            "{$class_storage->name}::{$const->name->name} with declared type "
+                            "" . Interner::lookup($class_storage->id) . "::{$const->name->name} with declared type "
                             . "{$const_storage_type->getId()} cannot be assigned type {$assigned_type->getId()}",
                             $const_storage->stmt_location,
-                            "{$class_storage->name}::{$const->name->name}",
+                            "" . Interner::lookup($class_storage->id) . "::{$const->name->name}",
                         ),
                         $const_storage->suppressed_issues,
                     );
@@ -798,12 +798,12 @@ final class ClassConstAnalyzer
                         // Contravariant
                         IssueBuffer::maybeAdd(
                             new LessSpecificClassConstantType(
-                                "The type \"{$const_storage->type->getId()}\" for {$class_storage->name}::"
+                                "The type \"{$const_storage->type->getId()}\" for " . Interner::lookup($class_storage->id) . "::"
                                     . "{$const_name} is more general than the type "
                                     . "\"{$parent_const_storage->type->getId()}\" inherited from "
-                                    . "{$parent_classlike_storage->name}::{$const_name}",
+                                    . "" . Interner::lookup($parent_classlike_storage->id) . "::{$const_name}",
                                 $type_location,
-                                "{$class_storage->name}::{$const_name}",
+                                "" . Interner::lookup($class_storage->id) . "::{$const_name}",
                             ),
                             $const_storage->suppressed_issues,
                         );
@@ -811,12 +811,12 @@ final class ClassConstAnalyzer
                         // Completely different
                         IssueBuffer::maybeAdd(
                             new InvalidClassConstantType(
-                                "The type \"{$const_storage->type->getId()}\" for {$class_storage->name}::"
+                                "The type \"{$const_storage->type->getId()}\" for " . Interner::lookup($class_storage->id) . "::"
                                     . "{$const_name} does not satisfy the type "
                                     . "\"{$parent_const_storage->type->getId()}\" inherited from "
-                                    . "{$parent_classlike_storage->name}::{$const_name}",
+                                    . "" . Interner::lookup($parent_classlike_storage->id) . "::{$const_name}",
                                 $type_location,
-                                "{$class_storage->name}::{$const_name}",
+                                "" . Interner::lookup($class_storage->id) . "::{$const_name}",
                             ),
                             $const_storage->suppressed_issues,
                         );
@@ -828,9 +828,9 @@ final class ClassConstAnalyzer
                     IssueBuffer::maybeAdd(
                         new OverriddenFinalConstant(
                             "{$const_name} cannot be overridden because it is marked as final in "
-                                . $parent_classlike_storage->name,
+                                . Interner::lookup($parent_classlike_storage->id),
                             $type_location,
-                            "{$class_storage->name}::{$const_name}",
+                            "" . Interner::lookup($class_storage->id) . "::{$const_name}",
                         ),
                         $const_storage->suppressed_issues,
                     );
@@ -875,23 +875,23 @@ final class ClassConstAnalyzer
                     && $codebase->analysis_php_version_id < 8_01_00
                 ) {
                     $interface_overrides[strtolower($interface)] = new OverriddenInterfaceConstant(
-                        "{$class_storage->name}::{$const_name} cannot override constant from $interface",
+                        "" . Interner::lookup($class_storage->id) . "::{$const_name} cannot override constant from $interface",
                         $const_storage->location,
-                        "{$class_storage->name}::{$const_name}",
+                        "" . Interner::lookup($class_storage->id) . "::{$const_name}",
                     );
                 }
                 if ($interface_const_storage !== null && $const_storage->location !== null) {
                     assert($parent_classlike_storage !== null);
                     if (!isset($parent_classlike_storage->parent_interfaces[strtolower($interface)])
-                        && !isset($interface_storage->parent_interfaces[strtolower($parent_classlike_storage->name)])
+                        && !isset($interface_storage->parent_interfaces[strtolower(Interner::lookup($parent_classlike_storage->id))])
                         && $interface_const_storage !== $parent_const_storage
                     ) {
                         IssueBuffer::maybeAdd(
                             new AmbiguousConstantInheritance(
-                                "Ambiguous inheritance of {$class_storage->name}::{$const_name} from $interface and "
-                                    . $parent_classlike_storage->name,
+                                "Ambiguous inheritance of " . Interner::lookup($class_storage->id) . "::{$const_name} from $interface and "
+                                    . Interner::lookup($parent_classlike_storage->id),
                                 $const_storage->location,
-                                "{$class_storage->name}::{$const_name}",
+                                "" . Interner::lookup($class_storage->id) . "::{$const_name}",
                             ),
                             $const_storage->suppressed_issues,
                         );
@@ -908,13 +908,13 @@ final class ClassConstAnalyzer
             if ($parent_const_storage !== null) {
                 if ($const_storage->location !== null && $interface_const_storage !== null) {
                     assert($parent_classlike_storage !== null);
-                    if (!isset($parent_class_storage->class_implements[strtolower($parent_classlike_storage->name)])) {
+                    if (!isset($parent_class_storage->class_implements[strtolower(Interner::lookup($parent_classlike_storage->id))])) {
                         IssueBuffer::maybeAdd(
                             new AmbiguousConstantInheritance(
-                                "Ambiguous inheritance of {$class_storage->name}::{$const_name} from "
-                                    . "$parent_classlike_storage->name and $parent_class",
+                                "Ambiguous inheritance of " . Interner::lookup($class_storage->id) . "::{$const_name} from "
+                                    . "" . Interner::lookup($parent_classlike_storage->id) . " and $parent_class",
                                 $const_storage->location,
-                                "{$class_storage->name}::{$const_name}",
+                                "" . Interner::lookup($class_storage->id) . "::{$const_name}",
                             ),
                             $const_storage->suppressed_issues,
                         );

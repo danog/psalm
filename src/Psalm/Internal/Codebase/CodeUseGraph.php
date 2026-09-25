@@ -222,7 +222,7 @@ final class CodeUseGraph
      */
     public static function classNodeFor(ClassLikeStorage $storage): int
     {
-        return self::$class_nodes_by_id[$storage->id] ??= Interner::intern(self::KIND_CLASS . ' ' . strtolower($storage->name));
+        return self::$class_nodes_by_id[$storage->id] ??= Interner::intern(self::KIND_CLASS . ' ' . strtolower(Interner::lookup($storage->id)));
     }
 
     /**

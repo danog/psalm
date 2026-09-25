@@ -13,6 +13,7 @@ use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Issue\InvalidClone;
 use Psalm\Issue\MixedClone;
 use Psalm\Issue\PossiblyInvalidClone;
@@ -68,8 +69,8 @@ final class CloneAnalyzer
                         $invalid_clones[] = $clone_type_part->getId();
                     } else {
                         $clone_method_id = new MethodIdentifier(
-                            Interner::lookup($clone_type_part->name),
-                            '__clone',
+                            $clone_type_part->name,
+                            Sym::CLONE,
                         );
 
                         $does_method_exist = $codebase->methodExists(

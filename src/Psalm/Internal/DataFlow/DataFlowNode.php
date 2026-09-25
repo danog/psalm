@@ -273,8 +273,8 @@ final class DataFlowNode implements Stringable
         }
 
         $method_id = new MethodIdentifier(
-            strtolower(ltrim(substr($cased_method_id, 0, $separator_pos), '\\')),
-            strtolower(substr($cased_method_id, $separator_pos + 2)),
+            Interner::intern(strtolower(ltrim(substr($cased_method_id, 0, $separator_pos), '\\'))),
+            Interner::intern(strtolower(substr($cased_method_id, $separator_pos + 2))),
         );
 
         $declaring_id = $methods->getDeclaringMethodId($method_id);

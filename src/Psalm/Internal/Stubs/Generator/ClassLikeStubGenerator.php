@@ -159,7 +159,7 @@ final class ClassLikeStubGenerator
      */
     private static function getPropertyNodes(ClassLikeStorage $storage): array
     {
-        $namespace_name = implode('\\', array_slice(explode('\\', $storage->name), 0, -1));
+        $namespace_name = implode('\\', array_slice(explode('\\', Interner::lookup($storage->id)), 0, -1));
 
         $property_nodes = [];
 
@@ -216,7 +216,7 @@ final class ClassLikeStubGenerator
      * @return list<PhpParser\Node\Stmt\ClassMethod>
      */
     private static function getMethodNodes(ClassLikeStorage $storage): array {
-        $namespace_name = implode('\\', array_slice(explode('\\', $storage->name), 0, -1));
+        $namespace_name = implode('\\', array_slice(explode('\\', Interner::lookup($storage->id)), 0, -1));
         $method_nodes = [];
 
         foreach ($storage->methods as $method_storage) {

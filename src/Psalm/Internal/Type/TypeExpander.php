@@ -1045,7 +1045,7 @@ final class TypeExpander
 
         $all_sealed = true;
         $properties = [];
-        foreach ([$class_storage->name, ...array_values($class_storage->parent_classes)] as $class) {
+        foreach ([Interner::lookup($class_storage->id), ...array_values($class_storage->parent_classes)] as $class) {
             if (!$codebase->classExists(Interner::intern($class))) {
                 continue;
             }

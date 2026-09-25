@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Internal\Provider;
 
 use Psalm\Config;
+use Psalm\Internal\Interner;
 use Psalm\Storage\ClassLikeStorage;
 use UnexpectedValueException;
 
@@ -65,7 +66,7 @@ class ClassLikeStorageCacheProvider
 
     public function writeToCache(ClassLikeStorage $storage, string $file_path, string $file_contents): void
     {
-        $fq_classlike_name_lc = strtolower($storage->name);
+        $fq_classlike_name_lc = strtolower(Interner::lookup($storage->id));
 
         $this->items[$file_path."\0".$fq_classlike_name_lc] = [hash('xxh128', $file_contents), $storage];
     }

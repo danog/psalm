@@ -6,6 +6,7 @@ use Exception;
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Issue\PluginIssue;
 use Psalm\IssueBuffer;
@@ -35,8 +36,7 @@ final class FunctionCasingChecker implements AfterFunctionCallAnalysisInterface,
         }
 
         try {
-            /** @psalm-suppress ArgumentTypeCoercion */
-            $method_id = new MethodIdentifier(...explode('::', $declaring_method_id));
+            $method_id = new MethodIdentifier(...array_map(Interner::intern(...), explode('::', $declaring_method_id)));
             $function_storage = $codebase->methods->getStorage($method_id);
 
             if ($function_storage->cased_name === '__call') {

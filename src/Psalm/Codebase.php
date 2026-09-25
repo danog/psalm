@@ -911,13 +911,13 @@ final class Codebase
         );
 
         if ($storage->is_trait) {
-            $this->classlikes->addFullyQualifiedTraitName($storage->name, $file_path);
+            $this->classlikes->addFullyQualifiedTraitName(Interner::lookup($storage->id), $file_path);
         } elseif ($storage->is_interface) {
-            $this->classlikes->addFullyQualifiedInterfaceName($storage->name, $file_path);
+            $this->classlikes->addFullyQualifiedInterfaceName(Interner::lookup($storage->id), $file_path);
         } elseif ($storage->is_enum) {
-            $this->classlikes->addFullyQualifiedEnumName($storage->name, $file_path);
+            $this->classlikes->addFullyQualifiedEnumName(Interner::lookup($storage->id), $file_path);
         } else {
-            $this->classlikes->addFullyQualifiedClassName($storage->name, $file_path);
+            $this->classlikes->addFullyQualifiedClassName(Interner::lookup($storage->id), $file_path);
         }
     }
 
@@ -1357,8 +1357,7 @@ final class Codebase
     {
         if (strpos($symbol, '::')) {
             $symbol = substr($symbol, 0, -2);
-            /** @psalm-suppress ArgumentTypeCoercion */
-            $method_id = new MethodIdentifier(...explode('::', $symbol));
+            $method_id = new MethodIdentifier(...array_map(Interner::intern(...), explode('::', $symbol)));
 
             $declaring_method_id = $this->methods->getDeclaringMethodId($method_id);
 
@@ -1407,8 +1406,7 @@ final class Codebase
             if (strpos($reference->symbol, '()')) {
                 $symbol = substr($reference->symbol, 0, -2);
 
-                /** @psalm-suppress ArgumentTypeCoercion */
-                $method_id = new MethodIdentifier(...explode('::', $symbol));
+                $method_id = new MethodIdentifier(...array_map(Interner::intern(...), explode('::', $symbol)));
 
                 $declaring_method_id = $this->methods->getDeclaringMethodId(
                     $method_id,
@@ -1546,8 +1544,8 @@ final class Codebase
             return new PHPMarkdownContent(
                 ($storage->abstract ? 'abstract ' : '') .
                     'class ' .
-                    $storage->name,
-                $storage->name,
+                    Interner::lookup($storage->id),
+                Interner::lookup($storage->id),
                 $storage->description,
             );
         } catch (InvalidArgumentException) {
@@ -1629,9 +1627,8 @@ final class Codebase
                 if (strpos($reference->symbol, '()')) {
                     $symbol = substr($reference->symbol, 0, -2);
 
-                    /** @psalm-suppress ArgumentTypeCoercion */
                     $method_id = new MethodIdentifier(
-                        ...explode('::', $symbol),
+                        ...array_map(Interner::intern(...), explode('::', $symbol)),
                     );
 
                     $declaring_method_id = $this->methods->getDeclaringMethodId(
@@ -1838,8 +1835,7 @@ final class Codebase
         $signature_label = '';
         $signature_documentation = null;
         if (str_contains($function_symbol, '::')) {
-            /** @psalm-suppress ArgumentTypeCoercion */
-            $method_id = new MethodIdentifier(...explode('::', $function_symbol));
+            $method_id = new MethodIdentifier(...array_map(Interner::intern(...), explode('::', $function_symbol)));
 
             $declaring_method_id = $this->methods->getDeclaringMethodId($method_id);
 

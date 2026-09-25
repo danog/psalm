@@ -84,7 +84,7 @@ final class VersionStubTest extends TestCase
         $this->assertNull(
             $method?->signature_return_type,
             'the stub declares getIterator() without a native return type;'
-            . ' storage name=' . $storage->name
+            . ' storage name=' . Interner::lookup($storage->id)
             . ' interface=' . var_export($storage->is_interface, true)
             . ' file=' . ($storage->location?->file_path ?? 'none')
             . ' methods=' . implode(',', array_map(Interner::lookupLc(...), array_keys($storage->methods)))
@@ -129,14 +129,14 @@ final class VersionStubTest extends TestCase
 
         $codebase = $this->project_analyzer->getCodebase();
 
-        $local = $codebase->methods->getStorage(new MethodIdentifier('LocalStringable', 'render'));
+        $local = $codebase->methods->getStorage(new MethodIdentifier(Sym::C_LOCAL_STRINGABLE, Sym::C_RENDER));
 
         $this->assertNull(
             $local->signature_return_type,
             'a docblock @return does not give the method a signature return type',
         );
 
-        $stringable = $codebase->methods->getStorage(new MethodIdentifier('Stringable', '__tostring'));
+        $stringable = $codebase->methods->getStorage(new MethodIdentifier(Sym::STRINGABLE, Sym::TO_STRING));
 
         $stringable_storage = $codebase->classlike_storage_provider->get(Interner::intern('Stringable'));
 
@@ -190,7 +190,7 @@ final class VersionStubTest extends TestCase
             $storage = $codebase->classlike_storage_provider->get(Interner::intern($name));
 
             $this->assertTrue(
-                $codebase->methods->methodExists($codebase, new MethodIdentifier($name, 'getattributes')),
+                $codebase->methods->methodExists($codebase, new MethodIdentifier(Interner::intern($name), Sym::C_GETATTRIBUTES)),
                 $name . '::getAttributes() is declared by stubs/Reflection.phpstub;'
                 . ' storage file=' . ($storage->location?->file_path ?? 'none')
                 . ' parent=' . ($storage->parent_class ?? 'none')

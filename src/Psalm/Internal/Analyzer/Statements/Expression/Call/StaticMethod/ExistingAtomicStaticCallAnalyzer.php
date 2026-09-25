@@ -73,8 +73,8 @@ final class ExistingAtomicStaticCallAnalyzer
         bool &$moved_call,
         ?TemplateResult $inferred_template_result = null,
     ): void {
-        $fq_class_name = $method_id->fq_class_name;
-        $method_name_lc = $method_id->method_name;
+        $fq_class_name = Interner::lookup($method_id->class_id);
+        $method_name_lc = Interner::lookupLc($method_id->name_id);
 
         $codebase = $statements_analyzer->getCodebase();
         $config = $codebase->config;
@@ -98,7 +98,7 @@ final class ExistingAtomicStaticCallAnalyzer
                 return;
             }
 
-            $appearing_method_class_name = $appearing_method_id->fq_class_name;
+            $appearing_method_class_name = Interner::lookup($appearing_method_id->class_id);
 
             if ($codebase->classExtends(Interner::intern($context->self), Interner::intern($appearing_method_class_name))) {
                 $old_context_include_location = $context->include_location;
@@ -153,7 +153,7 @@ final class ExistingAtomicStaticCallAnalyzer
             $class_storage,
             $method_name_lc,
             $lhs_type_part,
-            !$statements_analyzer->isStatic() && $method_id->fq_class_name === $context->self,
+            !$statements_analyzer->isStatic() && Interner::lookup($method_id->class_id) === $context->self,
         );
 
         if ($found_generic_params
@@ -228,8 +228,8 @@ final class ExistingAtomicStaticCallAnalyzer
             && $declaring_method_id
             && (string) $declaring_method_id !== (string) $method_id
         ) {
-            $declaring_fq_class_name = $declaring_method_id->fq_class_name;
-            $declaring_method_name = $declaring_method_id->method_name;
+            $declaring_fq_class_name = Interner::lookup($declaring_method_id->class_id);
+            $declaring_method_name = Interner::lookupLc($declaring_method_id->name_id);
 
             if ($codebase->methods->return_type_provider->has($declaring_fq_class_name)) {
                 $return_type_candidate = $codebase->methods->return_type_provider->getReturnType(
@@ -276,7 +276,7 @@ final class ExistingAtomicStaticCallAnalyzer
                                 new TNamedObject($context->self),
                             ]),
                         new Union([
-                            new TNamedObject($method_id->fq_class_name),
+                            new TNamedObject(Interner::lookup($method_id->class_id)),
                         ]),
                     ))
             ) {
@@ -369,7 +369,7 @@ final class ExistingAtomicStaticCallAnalyzer
                         && $stmt->class instanceof PhpParser\Node\Name
                     ) {
                         $new_method_id = substr($transformation, 0, -4);
-                        $old_declaring_fq_class_name = $declaring_method_id->fq_class_name;
+                        $old_declaring_fq_class_name = Interner::lookup($declaring_method_id->class_id);
                         [$new_fq_class_name, $new_method_name] = explode('::', $new_method_id);
 
                         if ($codebase->classlikes->handleClassLikeReferenceInMigration(
@@ -632,7 +632,7 @@ final class ExistingAtomicStaticCallAnalyzer
     ): array {
         if ($template_type->param_name === 'TFunctionArgCount') {
             return [
-                'fn-' . $method_id->method_name => [
+                'fn-' . Interner::lookupLc($method_id->name_id) => [
                     new TemplateBound(
                         Type::getInt(false, count($stmt->getArgs())),
                     ),
@@ -642,7 +642,7 @@ final class ExistingAtomicStaticCallAnalyzer
 
         if ($template_type->param_name === 'TPhpMajorVersion') {
             return [
-                'fn-' . $method_id->method_name => [
+                'fn-' . Interner::lookupLc($method_id->name_id) => [
                     new TemplateBound(
                         Type::getInt(false, $codebase->getMajorAnalysisPhpVersion()),
                     ),
@@ -652,7 +652,7 @@ final class ExistingAtomicStaticCallAnalyzer
 
         if ($template_type->param_name === 'TPhpVersionId') {
             return [
-                'fn-' . $method_id->method_name => [
+                'fn-' . Interner::lookupLc($method_id->name_id) => [
                     new TemplateBound(
                         Type::getInt(
                             false,

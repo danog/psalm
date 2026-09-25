@@ -21,6 +21,7 @@ use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TypeExpander;
 use Psalm\Issue\MixedMethodCall;
@@ -209,8 +210,8 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
                 $method_name_type = $statements_analyzer->node_data->getType($stmt->name);
                 if ($method_name_type && $method_name_type->isSingleStringLiteral()) {
                     $method_identifier = new MethodIdentifier(
-                        $fq_class_name,
-                        strtolower($method_name_type->getSingleStringLiteral()->value),
+                        Interner::intern($fq_class_name),
+                        Interner::intern(strtolower($method_name_type->getSingleStringLiteral()->value)),
                     );
                     //the call to methodExists will register that the method was called from somewhere
                     if ($codebase->methodExists(
@@ -254,7 +255,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
         $method_name_lc = strtolower($method_name_node->name);
         $method_name_lc_id = Interner::intern($method_name_lc);
 
-        $method_id = new MethodIdentifier($fq_class_name, $method_name_lc);
+        $method_id = new MethodIdentifier(Interner::intern($fq_class_name), Interner::intern($method_name_lc));
 
         $args = $stmt->isFirstClassCallable() ? [] : $stmt->getArgs();
 
@@ -293,7 +294,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
             if ($codebase->methods->existence_provider->has($fq_class_name)) {
                 $method_exists = $codebase->methods->existence_provider->doesMethodExist(
                     $fq_class_name,
-                    $method_id->method_name,
+                    Interner::lookupLc($method_id->name_id),
                     $source,
                     null,
                 );
@@ -364,7 +365,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
         }
 
         if (($fake_method_exists
-                && $codebase->methodExists(new MethodIdentifier($fq_class_name, '__call')))
+                && $codebase->methodExists(new MethodIdentifier(Interner::intern($fq_class_name), Sym::CALL)))
             || !$naive_method_exists
             || !MethodAnalyzer::isMethodVisible(
                 $method_id,
@@ -380,10 +381,10 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
 
                     if (isset($interface_storage->methods[$method_name_lc_id])) {
                         $interface_has_method = true;
-                        $fq_class_name = $interface_storage->name;
+                        $fq_class_name = Interner::lookup($interface_storage->id);
                         $method_id = new MethodIdentifier(
-                            $fq_class_name,
-                            $method_name_lc,
+                            Interner::intern($fq_class_name),
+                            Interner::intern($method_name_lc),
                         );
                         break;
                     }
@@ -392,7 +393,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
 
             if (!$interface_has_method
                 && $codebase->methodExists(
-                    new MethodIdentifier($fq_class_name, '__call'),
+                    new MethodIdentifier(Interner::intern($fq_class_name), Sym::CALL),
                     $context->calling_method_id,
                     $codebase->collect_locations
                         ? new CodeLocation($source, $stmt->name)
@@ -441,10 +442,10 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
             && $context->self
             && $fq_class_name !== $context->self
             && $codebase->methodExists(
-                new MethodIdentifier($context->self, $method_name_lc),
+                new MethodIdentifier(Interner::intern($context->self), Interner::intern($method_name_lc)),
             )
         ) {
-            $method_id = new MethodIdentifier($context->self, $method_name_lc);
+            $method_id = new MethodIdentifier(Interner::intern($context->self), Interner::intern($method_name_lc));
             $cased_method_id = $context->self . '::' . $method_name_node->name;
             $fq_class_name = $context->self;
         }
@@ -774,8 +775,8 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
 
                         if ($lhs_type_part_new instanceof TNamedObject) {
                             $new_method_id = new MethodIdentifier(
-                                Interner::lookup($lhs_type_part_new->name),
-                                $method_name_lc,
+                                $lhs_type_part_new->name,
+                                Interner::intern($method_name_lc),
                             );
 
                             $mixin_class_storage = $codebase->classlike_storage_provider->get(
@@ -846,8 +847,8 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
             }
 
             $new_method_id = new MethodIdentifier(
-                Interner::lookup($mixin->name),
-                $method_name_lc,
+                $mixin->name,
+                Interner::intern($method_name_lc),
             );
 
             if ($codebase->methodExists(
@@ -885,7 +886,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
                 $lhs_type_expanded = TypeExpander::expandUnion(
                     $codebase,
                     new Union([$lhs_type_part]),
-                    $mixin_declaring_class_storage->name,
+                    Interner::lookup($mixin_declaring_class_storage->id),
                     $fq_class_name,
                     $class_storage->parent_class,
                     true,
@@ -901,7 +902,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
 
                 $mixin_class_storage = $codebase->classlike_storage_provider->get($mixin->name);
 
-                $fq_class_name = $mixin_class_storage->name;
+                $fq_class_name = Interner::lookup($mixin_class_storage->id);
                 $mixin_class_storage->mixin_declaring_fqcln = $class_storage->mixin_declaring_fqcln;
                 $class_storage = $mixin_class_storage;
                 $naive_method_exists = true;
@@ -937,10 +938,10 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
 
             if ($callableArgumentCount > $providedArgumentsCount) {
                 $result->too_few_arguments = true;
-                $result->too_few_arguments_method_ids[] = new MethodIdentifier('callable-object', '__invoke');
+                $result->too_few_arguments_method_ids[] = new MethodIdentifier(Sym::CALLABLE_OBJECT, Sym::INVOKE);
             } elseif ($providedArgumentsCount > $callableArgumentCount) {
                 $result->too_many_arguments = true;
-                $result->too_many_arguments_method_ids[] = new MethodIdentifier('callable-object', '__invoke');
+                $result->too_many_arguments_method_ids[] = new MethodIdentifier(Sym::CALLABLE_OBJECT, Sym::INVOKE);
             }
 
             $template_result = $inferred_template_result ?? new TemplateResult([], []);

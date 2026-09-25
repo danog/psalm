@@ -34,7 +34,7 @@ final class DropStringFieldDeclPlugin implements PluginEntryPointInterface, Afte
                     json_encode($row, JSON_UNESCAPED_SLASHES) . "\n", FILE_APPEND | LOCK_EX);
             };
             foreach (json_decode((string) getenv('DROP_FIELDS'), true) ?: [] as [$class, $prop, $id]) {
-                if (strcasecmp($storage->name, $class) !== 0) {
+                if (strcasecmp(\Psalm\Internal\Interner::lookup($storage->id), $class) !== 0) {
                     continue;
                 }
                 // does the class already have the id property (declared here or inherited)?
@@ -62,8 +62,60 @@ final class DropStringFieldDeclPlugin implements PluginEntryPointInterface, Afte
                     if ($param->flags === 0 || !$param->var instanceof \PhpParser\Node\Expr\Variable || $param->var->name !== $prop) {
                         continue;
                     }
-                    if ($has_id && !isset($storage->properties[\Psalm\Internal\Interner::intern($prop)])) {
-                        $emit(['kind' => 'manual', 'site' => $file . ':' . $param->getStartLine(), 'why' => 'promoted ' . $prop . ' next to ' . $id]);
+                    if ($has_id) {
+                        // the constructor derives the id from the string: `$this->id = Interner::intern($prop);`
+                        // -> the promoted parameter is the id, the separate declaration and assignment go
+                        $assign = null;
+                        foreach ($ctor->stmts ?? [] as $st) {
+                            if ($st instanceof Stmt\Expression && $st->expr instanceof \PhpParser\Node\Expr\Assign
+                                && $st->expr->var instanceof \PhpParser\Node\Expr\PropertyFetch
+                                && $st->expr->var->name instanceof \PhpParser\Node\Identifier && $st->expr->var->name->name === $id
+                                && $st->expr->expr instanceof \PhpParser\Node\Expr\StaticCall
+                                && strtolower($st->expr->expr->class->toString()) === 'interner'
+                                && count($st->expr->expr->getArgs()) === 1
+                                && $st->expr->expr->getArgs()[0]->value instanceof \PhpParser\Node\Expr\Variable
+                                && $st->expr->expr->getArgs()[0]->value->name === $prop
+                            ) {
+                                $assign = $st;
+                            }
+                        }
+                        $id_decl = null;
+                        foreach ($stmt->getProperties() as $pp) {
+                            if (count($pp->props) === 1 && $pp->props[0]->name->name === $id) {
+                                $id_decl = $pp;
+                            }
+                        }
+                        if ($assign === null || $id_decl === null) {
+                            $emit(['kind' => 'manual', 'site' => $file . ':' . $param->getStartLine(), 'why' => 'promoted ' . $prop . ' next to ' . $id]);
+                            continue;
+                        }
+                        $edits = self::retype($param->type, $param->var, $param->default, $id, $file, $emit);
+                        foreach ([$id_decl, $assign] as $gone) {
+                            $doc = $gone->getDocComment();
+                            $start = $doc !== null ? $doc->getStartFilePos() : $gone->getStartFilePos();
+                            $ls = strrpos(substr($src, 0, $start), "\n") + 1;
+                            $le = strpos($src, "\n", $gone->getEndFilePos()) + 1;
+                            if ($gone === $id_decl && substr($src, $le, 1) === "\n") {
+                                $le++;
+                            }
+                            $edits[] = [$ls, $le, ''];
+                        }
+                        // the constructor's other reads of the string parameter
+                        $finder = new \PhpParser\NodeFinder();
+                        foreach ($finder->find($ctor->stmts ?? [], static fn(\PhpParser\Node $x): bool =>
+                            $x instanceof \PhpParser\Node\Expr\Variable && $x->name === $prop) as $v) {
+                            if ($v->getStartFilePos() >= $assign->getStartFilePos() && $v->getEndFilePos() <= $assign->getEndFilePos()) {
+                                continue;
+                            }
+                            $edits[] = [$v->getStartFilePos(), $v->getEndFilePos() + 1, 'Interner::lookup($this->' . $id . ')'];
+                        }
+                        // its @param line
+                        $cdoc = $ctor->getDocComment();
+                        if ($cdoc !== null && preg_match('/@param\s+\S+\s+\$' . preg_quote($prop, '/') . '\b/', $cdoc->getText(), $m, PREG_OFFSET_CAPTURE)) {
+                            $b = $cdoc->getStartFilePos() + $m[0][1];
+                            $edits[] = [$b, $b + strlen($m[0][0]), '@param int $' . $id];
+                        }
+                        $emit(['kind' => 'edit', 'file' => $file, 'site' => $file . ':promoted:' . $prop, 'edits' => $edits]);
                         continue;
                     }
                     $edits = self::retype($param->type, $param->var, $param->default, $id, $file, $emit);

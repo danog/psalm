@@ -81,15 +81,15 @@ final class StaticCallAnalyzer extends CallAnalyzer
 
                     $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
-                    $fq_class_name = $class_storage->name;
+                    $fq_class_name = Interner::lookup($class_storage->id);
 
                     if ($context->collect_initializations
                         && isset($stmt->name->name)
                         && $stmt->name->name === '__construct'
                         && isset($class_storage->declaring_method_ids[Sym::CONSTRUCT])) {
-                        $construct_fq_class_name = $class_storage->declaring_method_ids[Sym::CONSTRUCT]->fq_class_name;
+                        $construct_fq_class_name = Interner::lookup($class_storage->declaring_method_ids[Sym::CONSTRUCT]->class_id);
                         $construct_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($construct_fq_class_name));
-                        $construct_fq_class_name = $construct_class_storage->name;
+                        $construct_fq_class_name = Interner::lookup($construct_class_storage->id);
 
                         foreach ($construct_class_storage->properties as $property_name_id => $property_storage) {
                             $property_name = Interner::lookup($property_name_id);

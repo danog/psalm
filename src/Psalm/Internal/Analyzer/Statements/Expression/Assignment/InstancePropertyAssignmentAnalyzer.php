@@ -31,6 +31,7 @@ use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TemplateResult;
@@ -445,13 +446,13 @@ final class InstancePropertyAssignmentAnalyzer
                 $real,
             );
             $codebase->analyzer->addMutableClass(
-                $declaring_class_storage->name,
+                Interner::lookup($declaring_class_storage->id),
                 $mut,
             );
         } else {
             // e.g. the property of an array element: the class is still being mutated from outside
             $codebase->analyzer->addMutableClass(
-                $declaring_class_storage->name,
+                Interner::lookup($declaring_class_storage->id),
                 Mutations::LEVEL_EXTERNAL,
             );
         }
@@ -676,7 +677,7 @@ final class InstancePropertyAssignmentAnalyzer
 
         if ($statements_analyzer->taint_flow_graph
             && $declaring_property_class
-            && $declaring_property_class !== $class_storage->name
+            && $declaring_property_class !== Interner::lookup($class_storage->id)
             && ($stmt instanceof PhpParser\Node\Expr\PropertyFetch
                 || $stmt instanceof PhpParser\Node\Expr\StaticPropertyFetch)
             && $stmt->name instanceof PhpParser\Node\Identifier
@@ -1038,8 +1039,8 @@ final class InstancePropertyAssignmentAnalyzer
 
                     if (!$codebase->methodExists(
                         new MethodIdentifier(
-                            $fq_class_name,
-                            '__set',
+                            Interner::intern($fq_class_name),
+                            Sym::SET,
                         ),
                     )) {
                         return null;
@@ -1067,7 +1068,7 @@ final class InstancePropertyAssignmentAnalyzer
 
         $has_magic_setter = false;
 
-        $set_method_id = new MethodIdentifier($fq_class_name, '__set');
+        $set_method_id = new MethodIdentifier(Interner::intern($fq_class_name), Sym::SET);
 
         if ((!$codebase->propertyExists($property_id, false, $statements_analyzer, $context)
                 || ($lhs_var_id !== '$this'

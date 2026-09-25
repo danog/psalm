@@ -15,6 +15,7 @@ use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\Comparator\AtomicTypeComparator;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
@@ -437,8 +438,8 @@ final class ConcatAnalyzer
             foreach ($operand_type->getAtomicTypes() as $atomic_type) {
                 if ($atomic_type instanceof TNamedObject) {
                     $to_string_method_id = new MethodIdentifier(
-                        Interner::lookup($atomic_type->name),
-                        '__tostring',
+                        $atomic_type->name,
+                        Sym::TO_STRING,
                     );
 
                     if ($codebase->methodExists(

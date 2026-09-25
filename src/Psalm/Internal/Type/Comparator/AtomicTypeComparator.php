@@ -256,7 +256,7 @@ final class AtomicTypeComparator
             if (($input_type_part instanceof TObjectWithProperties
                     && $input_type_part->is_stringable_object_only)
                 || ($input_type_part instanceof TNamedObject
-                    && $codebase->methodExists(new MethodIdentifier(Interner::lookup($input_type_part->name), '__tostring')))
+                    && $codebase->methodExists(new MethodIdentifier($input_type_part->name, Sym::TO_STRING)))
             ) {
                 return true;
             }
@@ -649,8 +649,8 @@ final class AtomicTypeComparator
 
                     if ($codebase->methodExists(
                         new MethodIdentifier(
-                            Interner::lookup($input_type_part->name),
-                            '__tostring',
+                            $input_type_part->name,
+                            Sym::TO_STRING,
                         ),
                     )) {
                         if ($atomic_comparison_result) {
@@ -689,7 +689,7 @@ final class AtomicTypeComparator
                 || (
                     $input_type_part instanceof TNamedObject &&
                     $codebase->classOrInterfaceExists($input_type_part->name) &&
-                    $codebase->methodExists(new MethodIdentifier(Interner::lookup($input_type_part->name), '__invoke'))
+                    $codebase->methodExists(new MethodIdentifier($input_type_part->name, Sym::INVOKE))
                 )
             )
         ) {

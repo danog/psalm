@@ -24,7 +24,7 @@ final class DocTagPlugin implements PluginEntryPointInterface, AfterClassLikeAna
     public static function afterStatementAnalysis(AfterClassLikeAnalysisEvent $event): ?bool
     {
         $stmt = $event->getStmt();
-        $name = $event->getClasslikeStorage()->name;
+        $name = \Psalm\Internal\Interner::lookup($event->getClasslikeStorage()->id);
         $file = $event->getStatementsSource()->getFilePath();
         foreach (json_decode((string) getenv('DOC_TAG_EDITS'), true) ?: [] as [$class, $method, $old, $new]) {
             if (strcasecmp($class, $name) !== 0) {

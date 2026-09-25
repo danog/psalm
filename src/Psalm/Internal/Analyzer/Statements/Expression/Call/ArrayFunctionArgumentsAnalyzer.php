@@ -797,8 +797,8 @@ final class ArrayFunctionArgumentsAnalyzer
                         }
 
                         $function_id_part = new MethodIdentifier(
-                            $callable_fq_class_name,
-                            strtolower($method_name),
+                            Interner::intern($callable_fq_class_name),
+                            Interner::intern(strtolower($method_name)),
                         );
 
                         try {

@@ -51,29 +51,29 @@ final class ClassNameScanPlugin implements PluginEntryPointInterface, AfterCodeb
                 $t = $prop->type ?? $prop->signature_type;
                 $k = self::stringKind($t, (string) $pname);
                 if ($k !== null) {
-                    self::out(['kind' => 'slot', 'slot' => 'property', 'class' => $storage->name, 'name' => (string) $pname,
+                    self::out(['kind' => 'slot', 'slot' => 'property', 'class' => \Psalm\Internal\Interner::lookup($storage->id), 'name' => (string) $pname,
                         'type' => $t?->getId(), 'what' => $k, 'static' => $prop->is_static, 'file' => $file,
                         'line' => $prop->location?->getLineNumber()]);
                 }
             }
             foreach ($storage->methods as $ms) {
-                if ($ms->defining_fqcln !== null && strcasecmp($ms->defining_fqcln, $storage->name) !== 0) {
+                if ($ms->defining_fqcln !== null && strcasecmp($ms->defining_fqcln, \Psalm\Internal\Interner::lookup($storage->id)) !== 0) {
                     continue;
                 }
-                $mid = $storage->name . '::' . ($ms->cased_name ?? '?');
+                $mid = \Psalm\Internal\Interner::lookup($storage->id) . '::' . ($ms->cased_name ?? '?');
                 foreach ($ms->params as $p) {
                     $t = $p->type ?? $p->signature_type;
                     $k = self::stringKind($t, $p->name);
                     if ($k !== null) {
-                        self::out(['kind' => 'slot', 'slot' => 'param', 'class' => $storage->name, 'method' => $mid,
+                        self::out(['kind' => 'slot', 'slot' => 'param', 'class' => \Psalm\Internal\Interner::lookup($storage->id), 'method' => $mid,
                             'name' => $p->name, 'type' => $t?->getId(), 'what' => $k, 'file' => $file,
-                            'line' => $p->location?->getLineNumber(), 'public_api' => !str_contains($storage->name, '\\Internal\\')]);
+                            'line' => $p->location?->getLineNumber(), 'public_api' => !str_contains(\Psalm\Internal\Interner::lookup($storage->id), '\\Internal\\')]);
                     }
                 }
                 $rt = $ms->return_type ?? $ms->signature_return_type;
                 $k = self::stringKind($rt, (string) $ms->cased_name);
                 if ($k !== null) {
-                    self::out(['kind' => 'slot', 'slot' => 'return', 'class' => $storage->name, 'method' => $mid,
+                    self::out(['kind' => 'slot', 'slot' => 'return', 'class' => \Psalm\Internal\Interner::lookup($storage->id), 'method' => $mid,
                         'name' => (string) $ms->cased_name, 'type' => $rt?->getId(), 'what' => $k, 'file' => $file,
                         'line' => $ms->location?->getLineNumber()]);
                 }

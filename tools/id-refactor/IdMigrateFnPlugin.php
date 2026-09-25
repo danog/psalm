@@ -32,6 +32,8 @@ use SplObjectStorage;
 use Throwable;
 
 /** The method-body half of IdMigratePlugin (the two hook interfaces share a method name). */
+require_once __DIR__ . '/SymNames.php';
+
 final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctionLikeAnalysisInterface
 {
     /** @var ?array<int, string> */
@@ -241,7 +243,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
         }
         try {
             [$mid] = explode('|', $callee, 2);
-            $ms = $this->codebase->methods->getStorage(new MethodIdentifier(...explode('::', $mid, 2)));
+            $ms = $this->codebase->methods->getStorage(new MethodIdentifier(...array_map(\Psalm\Internal\Interner::intern(...), explode('::', $mid, 2))));
             return ($ms->params[$idx] ?? null)?->by_ref ?? false;
         } catch (Throwable) {
             return true;
@@ -274,7 +276,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
             $named = [];
             foreach ($t->getAtomicTypes() as $a) {
                 if ($a instanceof TNamedObject) {
-                    $named[] = $a->value;
+                    $named[] = SymNames::named($a);
                 } elseif (!$a instanceof \Psalm\Type\Atomic\TNull) {
                     return [null, 0];
                 }
@@ -304,7 +306,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
             return [null, 0];
         }
         try {
-            $decl = $this->codebase->methods->getDeclaringMethodId(new MethodIdentifier((string) $class, strtolower($method)));
+            $decl = $this->codebase->methods->getDeclaringMethodId(new MethodIdentifier(\Psalm\Internal\Interner::intern((string) $class), \Psalm\Internal\Interner::intern(strtolower($method))));
         } catch (Throwable) {
             return [null, 0];
         }
@@ -333,8 +335,8 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
         if ($pname === null) {
             return [null, 0];
         }
-        $defining = $ms->defining_fqcln ?? $decl->fq_class_name;
-        return [strtolower($defining . '::' . $decl->method_name) . '|' . $pname, $idx];
+        $defining = $ms->defining_fqcln ?? \Psalm\Internal\Interner::lookup($decl->class_id);
+        return [strtolower($defining . '::' . \Psalm\Internal\Interner::lookupLc($decl->name_id)) . '|' . $pname, $idx];
     }
 
     /** The slot a read expression reads, or null. */
@@ -358,7 +360,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
                 $named = [];
                 foreach ($t->getAtomicTypes() as $a) {
                     if ($a instanceof TNamedObject) {
-                        $named[] = $a->value;
+                        $named[] = SymNames::named($a);
                     } elseif (!$a instanceof \Psalm\Type\Atomic\TNull) {
                         return null;
                     }
@@ -403,7 +405,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
             $named = [];
             foreach ($t?->getAtomicTypes() ?? [] as $a) {
                 if ($a instanceof TNamedObject) {
-                    $named[] = $a->value;
+                    $named[] = SymNames::named($a);
                 } elseif (!$a instanceof \Psalm\Type\Atomic\TNull) {
                     return null;
                 }
@@ -414,7 +416,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
             $class = $named[0];
         }
         try {
-            $decl = $this->codebase->methods->getDeclaringMethodId(new MethodIdentifier((string) $class, strtolower($call->name->name)));
+            $decl = $this->codebase->methods->getDeclaringMethodId(new MethodIdentifier(\Psalm\Internal\Interner::intern((string) $class), \Psalm\Internal\Interner::intern(strtolower($call->name->name))));
             if ($decl === null) {
                 return null;
             }
@@ -425,7 +427,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
         if ($ms->signature_return_type?->getId() !== 'string') {
             return null;
         }
-        return strtolower(($ms->defining_fqcln ?? $decl->fq_class_name) . '::' . $decl->method_name);
+        return strtolower(($ms->defining_fqcln ?? \Psalm\Internal\Interner::lookup($decl->class_id)) . '::' . \Psalm\Internal\Interner::lookupLc($decl->name_id));
     }
 
     private function propSlot(string $cls, string $prop): ?string
@@ -443,7 +445,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
         if ($ps === null || $ps->signature_type?->getId() !== 'string') {
             return null;
         }
-        return 'F:' . strtolower($ds->name) . '|' . $prop;
+        return 'F:' . strtolower(\Psalm\Internal\Interner::lookup($ds->id)) . '|' . $prop;
     }
 
     /** @param array<Node> $nodes */
@@ -528,7 +530,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
         [$mid, $pname] = explode('|', $callee, 2);
         [$c, $m] = explode('::', $mid, 2);
         try {
-            $ms = $this->codebase->methods->getStorage(new MethodIdentifier($c, $m));
+            $ms = $this->codebase->methods->getStorage(new MethodIdentifier(\Psalm\Internal\Interner::intern($c), \Psalm\Internal\Interner::intern($m)));
         } catch (Throwable) {
             return false;
         }
@@ -591,13 +593,13 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
                     return null;
                 }
                 $cand = null;
-                $named = strcasecmp($a->value, TNamedObject::class) === 0
-                    || $this->codebase->classExtendsOrImplements(Interner::intern($a->value), Interner::intern(TNamedObject::class));
+                $named = strcasecmp(SymNames::named($a), TNamedObject::class) === 0
+                    || $this->codebase->classExtendsOrImplements(Interner::intern(SymNames::named($a)), Interner::intern(TNamedObject::class));
                 if ($prop === 'value' && $named) {
                     $cand = 'name';
-                } elseif ($prop === 'name' && strcasecmp($a->value, ClassLikeStorage::class) === 0) {
+                } elseif ($prop === 'name' && strcasecmp(SymNames::named($a), ClassLikeStorage::class) === 0) {
                     $cand = 'id';
-                } elseif ($prop === 'fq_class_name' && strcasecmp($a->value, MethodIdentifier::class) === 0) {
+                } elseif ($prop === 'fq_class_name' && strcasecmp(SymNames::named($a), MethodIdentifier::class) === 0) {
                     $cand = 'class_id';
                 }
                 if ($cand === null || ($to !== null && $to !== $cand)) {

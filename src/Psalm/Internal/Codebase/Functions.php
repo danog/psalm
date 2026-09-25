@@ -18,6 +18,7 @@ use Psalm\Internal\Provider\FileStorageProvider;
 use Psalm\Internal\Provider\FunctionExistenceProvider;
 use Psalm\Internal\Provider\FunctionParamsProvider;
 use Psalm\Internal\Provider\FunctionReturnTypeProvider;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\Comparator\CallableTypeComparator;
 use Psalm\StatementsSource;
 use Psalm\Storage\FunctionStorage;
@@ -489,8 +490,8 @@ final class Functions
                 foreach ($count_type->getAtomicTypes() as $atomic_count_type) {
                     if ($atomic_count_type instanceof TNamedObject) {
                         $count_method_id = new MethodIdentifier(
-                            Interner::lookup($atomic_count_type->name),
-                            'count',
+                            $atomic_count_type->name,
+                            Sym::COUNT,
                         );
 
                         try {

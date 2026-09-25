@@ -14,6 +14,7 @@ use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Provider\NodeDataProvider;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
@@ -419,7 +420,7 @@ final class CallableTypeComparator
             if ($method_id && $method_id !== 'not-callable') {
                 try {
                     $method_storage = $codebase->methods->getStorage($method_id);
-                    $method_fqcln = $method_id->fq_class_name;
+                    $method_fqcln = Interner::lookup($method_id->class_id);
 
                     $converted_return_type = null;
 
@@ -450,8 +451,8 @@ final class CallableTypeComparator
             && $codebase->classExists($input_type_part->name, null, $context)
         ) {
             $invoke_id = new MethodIdentifier(
-                Interner::lookup($input_type_part->name),
-                '__invoke',
+                $input_type_part->name,
+                Sym::INVOKE,
             );
 
             if ($codebase->methodExists($invoke_id)) {
@@ -488,7 +489,7 @@ final class CallableTypeComparator
 
                 if ($declaring_method_id) {
                     $method_storage = $codebase->methods->getStorage($declaring_method_id);
-                    $method_fqcln = $invoke_id->fq_class_name;
+                    $method_fqcln = Interner::lookup($invoke_id->class_id);
                     $converted_return_type = null;
                     if ($method_storage->return_type) {
                         $converted_return_type = TypeExpander::expandUnion(
@@ -630,8 +631,8 @@ final class CallableTypeComparator
         }
 
         return new MethodIdentifier(
-            $class_name,
-            strtolower($method_name),
+            Interner::intern($class_name),
+            Interner::intern(strtolower($method_name)),
         );
     }
 }

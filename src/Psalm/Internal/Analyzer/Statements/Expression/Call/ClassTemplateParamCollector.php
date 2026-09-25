@@ -63,7 +63,7 @@ final class ClassTemplateParamCollector
                     continue;
                 }
 
-                $fq_overridden_class = $overridden_method_id->fq_class_name;
+                $fq_overridden_class = Interner::lookup($overridden_method_id->class_id);
 
                 $overridden_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_overridden_class));
 
@@ -101,7 +101,7 @@ final class ClassTemplateParamCollector
 
                 foreach ($class_storage->template_types as $type_name => $_) {
                     if (isset($lhs_type_part->type_params[$i])) {
-                        $class_template_params[$type_name][$class_storage->name]
+                        $class_template_params[$type_name][Interner::lookup($class_storage->id)]
                             = $lhs_type_part->type_params[$i];
                     }
 
@@ -132,9 +132,9 @@ final class ClassTemplateParamCollector
                 }
 
                 if ($class_storage !== $static_class_storage
-                    && isset($e[$class_storage->name][$type_name])
+                    && isset($e[Interner::lookup($class_storage->id)][$type_name])
                 ) {
-                    $input_type_extends = $e[$class_storage->name][$type_name];
+                    $input_type_extends = $e[Interner::lookup($class_storage->id)][$type_name];
 
                     $output_type_extends = self::resolveTemplateParam(
                         $codebase,
@@ -145,10 +145,10 @@ final class ClassTemplateParamCollector
                     );
 
                     $class_template_params[$type_name] = [
-                        $class_storage->name => $output_type_extends ?? Type::getMixed(),
+                        Interner::lookup($class_storage->id) => $output_type_extends ?? Type::getMixed(),
                     ];
                 } else {
-                    $class_template_params[$type_name] = [$class_storage->name => Type::getMixed()];
+                    $class_template_params[$type_name] = [Interner::lookup($class_storage->id) => Type::getMixed()];
                 }
             }
         }
@@ -157,15 +157,15 @@ final class ClassTemplateParamCollector
             foreach ($type_map as $type) {
                 foreach ($candidate_class_storages as $candidate_class_storage) {
                     if ($candidate_class_storage !== $static_class_storage
-                        && isset($e[$candidate_class_storage->name][$type_name])
-                        && !isset($class_template_params[$type_name][$candidate_class_storage->name])
+                        && isset($e[Interner::lookup($candidate_class_storage->id)][$type_name])
+                        && !isset($class_template_params[$type_name][Interner::lookup($candidate_class_storage->id)])
                     ) {
-                        $class_template_params[$type_name][$candidate_class_storage->name] = new Union(
+                        $class_template_params[$type_name][Interner::lookup($candidate_class_storage->id)] = new Union(
                             self::expandType(
                                 $codebase,
-                                $e[$candidate_class_storage->name][$type_name],
+                                $e[Interner::lookup($candidate_class_storage->id)][$type_name],
                                 $e,
-                                $static_class_storage->name,
+                                Interner::lookup($static_class_storage->id),
                                 $static_class_storage->template_types,
                             ),
                         );
@@ -174,7 +174,7 @@ final class ClassTemplateParamCollector
 
                 if (!$self_call) {
                     if (!isset($class_template_params[$type_name])) {
-                        $class_template_params[$type_name][$class_storage->name] = $type;
+                        $class_template_params[$type_name][Interner::lookup($class_storage->id)] = $type;
                     }
                 }
             }

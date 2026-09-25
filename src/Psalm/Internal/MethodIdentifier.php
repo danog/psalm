@@ -25,16 +25,6 @@ final class MethodIdentifier implements Stringable
     use UnserializeMemoryUsageSuppressionTrait;
 
     /**
-     * The interned class name (pzoom's `MethodIdentifier(StrId, StrId)`): storages are looked up by it.
-     */
-    public readonly int $class_id;
-
-    /**
-     * The interned (lowercase) method name: the class-like storages key their method maps by it.
-     */
-    public readonly int $name_id;
-
-    /**
      * Memo of __toString (the identifier is stringified as a map key on most hot paths); public so the
      * cache serializer sees it like every other property.
      *
@@ -44,13 +34,11 @@ final class MethodIdentifier implements Stringable
     public ?string $string_memo = null;
 
     /**
-     * @param lowercase-string $method_name
+     * @param int $name_id
      * @psalm-mutation-free
      */
-    public function __construct(public readonly string $fq_class_name, public readonly string $method_name)
+    public function __construct(public readonly int $class_id, public readonly int $name_id)
     {
-        $this->class_id = Interner::intern($fq_class_name);
-        $this->name_id = Interner::intern($method_name);
     }
 
 
@@ -73,7 +61,7 @@ final class MethodIdentifier implements Stringable
         // remove leading backslash if it exists
         $method_id = ltrim($method_id, '\\');
         $method_id_parts = explode('::', $method_id);
-        return new self($method_id_parts[0], strtolower($method_id_parts[1]));
+        return new self(Interner::intern($method_id_parts[0]), Interner::intern(strtolower($method_id_parts[1])));
     }
 
     /** @return non-empty-string */
@@ -83,7 +71,7 @@ final class MethodIdentifier implements Stringable
         if ($this->string_memo !== null) {
             return $this->string_memo;
         }
-        $string = $this->fq_class_name . '::' . $this->method_name;
+        $string = Interner::lookup($this->class_id) . '::' . Interner::lookupLc($this->name_id);
         /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
         $this->string_memo = $string;
         return $string;

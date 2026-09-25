@@ -21,6 +21,7 @@ use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\Comparator\CallableTypeComparator;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TypeCombiner;
@@ -808,7 +809,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
                             $parts = explode('::', strtolower($var_type_part->value));
                             $fq_class_name = $parts[0];
                             $fq_class_name = (string) preg_replace('/^\\\/', '', $fq_class_name, 1);
-                            $potential_method_id = new MethodIdentifier($fq_class_name, $parts[1]);
+                            $potential_method_id = new MethodIdentifier(Interner::intern($fq_class_name), Interner::intern($parts[1]));
                         } else {
                             $function_call_info->new_function_name = new VirtualFullyQualified(
                                 $var_type_part->value,
@@ -835,8 +836,8 @@ final class FunctionCallAnalyzer extends CallAnalyzer
                     || !$codebase->classlikes->classOrInterfaceExists($var_type_part->name, null, $context)
                     || !$codebase->methodExists(
                         new MethodIdentifier(
-                            Interner::lookup($var_type_part->name),
-                            '__invoke',
+                            $var_type_part->name,
+                            Sym::INVOKE,
                         ),
                     )
                 ) {

@@ -18,6 +18,7 @@ use Psalm\Internal\Codebase\VariableUseGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Issue\DocblockTypeContradiction;
 use Psalm\Issue\ImpureMethodCall;
 use Psalm\Issue\InvalidOperand;
@@ -475,8 +476,8 @@ final class BinaryOpAnalyzer
                     try {
                         $storage = $codebase->methods->getStorage(
                             new MethodIdentifier(
-                                Interner::lookup($atomic_type->name),
-                                '__tostring',
+                                $atomic_type->name,
+                                Sym::TO_STRING,
                             ),
                         );
                     } catch (UnexpectedValueException) {
@@ -507,8 +508,8 @@ final class BinaryOpAnalyzer
                     try {
                         $storage = $codebase->methods->getStorage(
                             new MethodIdentifier(
-                                Interner::lookup($atomic_type->name),
-                                '__tostring',
+                                $atomic_type->name,
+                                Sym::TO_STRING,
                             ),
                         );
                     } catch (UnexpectedValueException) {

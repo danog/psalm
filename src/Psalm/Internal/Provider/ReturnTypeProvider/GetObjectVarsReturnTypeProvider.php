@@ -151,7 +151,7 @@ final class GetObjectVarsReturnTypeProvider implements FunctionReturnTypeProvide
                     $properties,
                     null,
                     $class_storage->final
-                        || $class_storage->name === UnitEnum::class
+                        || Interner::lookup($class_storage->id) === UnitEnum::class
                         || $codebase->interfaceExtends($class_storage->id, Sym::UNIT_ENUM)
                             ? null
                             : [Type::getString(), Type::getMixed()],

@@ -86,7 +86,7 @@ final class IdMigratePlugin implements PluginEntryPointInterface, AfterClassLike
                 $name = $pp->name->name;
                 $default = $pp->default;
                 $doc = self::docType($prop->getDocComment(), '@var', null);
-                self::out(['kind' => 'decl', 'slot' => 'F:' . strtolower($storage->name) . '|' . $name, 'file' => $file,
+                self::out(['kind' => 'decl', 'slot' => 'F:' . strtolower(\Psalm\Internal\Interner::lookup($storage->id)) . '|' . $name, 'file' => $file,
                     'type' => [$prop->type->getStartFilePos(), $prop->type->getEndFilePos() + 1],
                     'doc' => $doc, 'fixed' => $default === null, 'why' => $default === null ? null : 'default'
                     , 'readonly' => $prop->isReadonly()]);

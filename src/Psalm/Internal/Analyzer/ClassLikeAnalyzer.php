@@ -341,7 +341,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                 || ($enum_exists && !$codebase->classlikes->enumHasCorrectCasing($fq_class_name)))
         ) {
             $incorrect_casing_of = $codebase->classlike_storage_provider->has(Interner::intern($fq_class_name))
-                ? $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name))->name
+                ? Interner::lookup($codebase->classlike_storage_provider->get(Interner::intern($fq_class_name))->id)
                 : null;
             $class_exists = false;
             $interface_exists = false;
@@ -718,7 +718,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         if ($expected_param_count > $given_param_count) {
             IssueBuffer::maybeAdd(
                 new MissingTemplateParam(
-                    $storage->name . ' has missing template params when extending ' . $parent_storage->name
+                    Interner::lookup($storage->id) . ' has missing template params when extending ' . Interner::lookup($parent_storage->id)
                         . ', expecting ' . $expected_param_count,
                     $code_location,
                 ),
@@ -727,7 +727,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         } elseif ($expected_param_count < $given_param_count) {
             IssueBuffer::maybeAdd(
                 new TooManyTemplateParams(
-                    $storage->name . ' has too many template params when extending ' . $parent_storage->name
+                    Interner::lookup($storage->id) . ' has too many template params when extending ' . Interner::lookup($parent_storage->id)
                         . ', expecting ' . $expected_param_count,
                     $code_location,
                 ),
@@ -743,7 +743,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
             if ($expected_param_count > $storage_param_count) {
                 IssueBuffer::maybeAdd(
                     new MissingTemplateParam(
-                        $storage->name . ' requires the same number of template params as ' . $parent_storage->name
+                        Interner::lookup($storage->id) . ' requires the same number of template params as ' . Interner::lookup($parent_storage->id)
                             . ' but saw ' . $storage_param_count,
                         $code_location,
                     ),
@@ -752,7 +752,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
             } else {
                 IssueBuffer::maybeAdd(
                     new TooManyTemplateParams(
-                        $storage->name . ' requires the same number of template params as ' . $parent_storage->name
+                        Interner::lookup($storage->id) . ' requires the same number of template params as ' . Interner::lookup($parent_storage->id)
                             . ' but saw ' . $storage_param_count,
                         $code_location,
                     ),
@@ -771,8 +771,8 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                 foreach ($type_map as $declaring_class => $template_type) {
                 }
 
-                if (isset($storage->template_extended_params[$parent_storage->name][$template_name])) {
-                    $extended_type = $storage->template_extended_params[$parent_storage->name][$template_name];
+                if (isset($storage->template_extended_params[Interner::lookup($parent_storage->id)][$template_name])) {
+                    $extended_type = $storage->template_extended_params[Interner::lookup($parent_storage->id)][$template_name];
 
                     if (isset($parent_storage->template_covariants[$i])
                         && !$parent_storage->template_covariants[$i]
@@ -812,7 +812,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                                     ),
                                     $storage->suppressed_issues + $this->getSuppressedIssues(),
                                 );
-                            } elseif ($storage->template_types[$t->param_name][$storage->name]->getId()
+                            } elseif ($storage->template_types[$t->param_name][Interner::lookup($storage->id)]->getId()
                                 !== $template_type->getId()
                             ) {
                                 IssueBuffer::maybeAdd(
@@ -822,7 +822,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                                             . ' with constraint ' . $template_type->getId()
                                             . ' with a child template param ' . $t->param_name
                                             . ' with different constraint '
-                                            . $storage->template_types[$t->param_name][$storage->name]->getId(),
+                                            . $storage->template_types[$t->param_name][Interner::lookup($storage->id)]->getId(),
                                         $code_location,
                                     ),
                                     $storage->suppressed_issues + $this->getSuppressedIssues(),

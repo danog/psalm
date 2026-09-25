@@ -37,4 +37,11 @@ final class SymNames
         $name = 'C_' . preg_replace('/[^A-Z0-9_]/', '_', implode('__', $words));
         return ['Sym::' . $name, [$name, $value, $literal]];
     }
+
+    /** The class name a named-object atom stands for (before or after its string field was dropped). */
+    public static function named(\Psalm\Type\Atomic\TNamedObject $a): string
+    {
+        /** @psalm-suppress UndefinedPropertyFetch, MixedReturnStatement */
+        return property_exists($a, 'value') ? $a->value : Interner::lookup($a->name);
+    }
 }

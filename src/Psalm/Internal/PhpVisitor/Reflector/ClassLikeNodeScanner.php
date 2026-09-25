@@ -329,11 +329,11 @@ final class ClassLikeNodeScanner
                     $storage->direct_class_interfaces['backedenum'] = 'BackedEnum';
                     $this->file_storage->required_interfaces['backedenum'] = 'BackedEnum';
                     $this->codebase->scanner->queueClassLikeForScanning('BackedEnum');
-                    $storage->declaring_method_ids[Sym::FROM] = new MethodIdentifier('BackedEnum', 'from');
+                    $storage->declaring_method_ids[Sym::FROM] = new MethodIdentifier(Sym::BACKED_ENUM, Sym::FROM);
                     $storage->appearing_method_ids[Sym::FROM] = $storage->declaring_method_ids[Sym::FROM];
                     $storage->declaring_method_ids[Sym::TRY_FROM] = new MethodIdentifier(
-                        'BackedEnum',
-                        'tryfrom',
+                        Sym::BACKED_ENUM,
+                        Sym::TRY_FROM,
                     );
                     $storage->appearing_method_ids[Sym::TRY_FROM] = $storage->declaring_method_ids[Sym::TRY_FROM];
                 } else {
@@ -356,8 +356,8 @@ final class ClassLikeNodeScanner
             $storage->final = true;
 
             $storage->declaring_method_ids[Sym::CASES] = new MethodIdentifier(
-                'UnitEnum',
-                'cases',
+                Sym::UNIT_ENUM,
+                Sym::CASES,
             );
             $storage->appearing_method_ids[Sym::CASES] = $storage->declaring_method_ids[Sym::CASES];
 
@@ -660,8 +660,8 @@ final class ClassLikeNodeScanner
                 } else {
                     $storage->pseudo_methods[$lc_method_name_id] = $pseudo_method_storage;
                     $storage->declaring_pseudo_method_ids[$lc_method_name_id] = new MethodIdentifier(
-                        $fq_classlike_name,
-                        $lc_method_name,
+                        Interner::intern($fq_classlike_name),
+                        Interner::intern($lc_method_name),
                     );
                 }
             }
@@ -736,7 +736,7 @@ final class ClassLikeNodeScanner
                 }
 
                 if ($key === 0) {
-                    $storage->mixin_declaring_fqcln = $storage->name;
+                    $storage->mixin_declaring_fqcln = Interner::lookup($storage->id);
                 }
             }
 
@@ -790,14 +790,14 @@ final class ClassLikeNodeScanner
                 }
             }
             if ($name_types !== []) {
-                $storage->declaring_property_ids[Interner::intern('name')] = $storage->name;
-                $storage->appearing_property_ids[Interner::intern('name')] = "{$storage->name}::\$name";
+                $storage->declaring_property_ids[Interner::intern('name')] = Interner::lookup($storage->id);
+                $storage->appearing_property_ids[Interner::intern('name')] = "" . Interner::lookup($storage->id) . "::\$name";
                 $storage->properties[Interner::intern('name')] = new PropertyStorage();
                 $storage->properties[Interner::intern('name')]->type = new Union($name_types);
             }
             if ($values_types !== []) {
-                $storage->declaring_property_ids[Interner::intern('value')] = $storage->name;
-                $storage->appearing_property_ids[Interner::intern('value')] = "{$storage->name}::\$value";
+                $storage->declaring_property_ids[Interner::intern('value')] = Interner::lookup($storage->id);
+                $storage->appearing_property_ids[Interner::intern('value')] = "" . Interner::lookup($storage->id) . "::\$value";
                 $storage->properties[Interner::intern('value')] = new PropertyStorage();
                 $storage->properties[Interner::intern('value')]->type = new Union($values_types);
             }
@@ -817,7 +817,7 @@ final class ClassLikeNodeScanner
                     $this->file_storage,
                     $this->aliases,
                     $attr,
-                    $this->storage->name ?? null,
+                    (isset($this->storage->id) ? Interner::lookup($this->storage->id) : null),
                 );
 
                 if ($attribute->fq_class_name === 'Psalm\\Deprecated'
@@ -874,7 +874,7 @@ final class ClassLikeNodeScanner
 
         $classlike_storage = $this->storage;
 
-        $fq_classlike_name = $classlike_storage->name;
+        $fq_classlike_name = Interner::lookup($classlike_storage->id);
 
         if (PropertyMap::inPropertyMap($fq_classlike_name)) {
             $mapped_properties = PropertyMap::getPropertyMap()[strtolower($fq_classlike_name)];
@@ -1016,7 +1016,7 @@ final class ClassLikeNodeScanner
     ): void {
         if (trim($extended_class_name) === '') {
             $storage->docblock_issues[] = new InvalidDocblock(
-                'Extended class cannot be empty in docblock for ' . $storage->name,
+                'Extended class cannot be empty in docblock for ' . Interner::lookup($storage->id),
                 new CodeLocation($this->file_scanner, $node, null, true),
             );
 
@@ -1038,7 +1038,7 @@ final class ClassLikeNodeScanner
             );
         } catch (TypeParseTreeException $e) {
             $storage->docblock_issues[] = new InvalidDocblock(
-                $e->getMessage() . ' in docblock for ' . $storage->name,
+                $e->getMessage() . ' in docblock for ' . Interner::lookup($storage->id),
                 new CodeLocation($this->file_scanner, $node, null, true),
             );
 
@@ -1100,7 +1100,7 @@ final class ClassLikeNodeScanner
     ): void {
         if (trim($implemented_class_name) === '') {
             $storage->docblock_issues[] = new InvalidDocblock(
-                'Extended class cannot be empty in docblock for ' . $storage->name,
+                'Extended class cannot be empty in docblock for ' . Interner::lookup($storage->id),
                 new CodeLocation($this->file_scanner, $node, null, true),
             );
 
@@ -1122,7 +1122,7 @@ final class ClassLikeNodeScanner
             );
         } catch (TypeParseTreeException $e) {
             $storage->docblock_issues[] = new InvalidDocblock(
-                $e->getMessage() . ' in docblock for ' . $storage->name,
+                $e->getMessage() . ' in docblock for ' . Interner::lookup($storage->id),
                 new CodeLocation($this->file_scanner, $node, null, true),
             );
 
@@ -1186,7 +1186,7 @@ final class ClassLikeNodeScanner
     ): void {
         if (trim($used_class_name) === '') {
             $storage->docblock_issues[] = new InvalidDocblock(
-                'Extended class cannot be empty in docblock for ' . $storage->name,
+                'Extended class cannot be empty in docblock for ' . Interner::lookup($storage->id),
                 new CodeLocation($this->file_scanner, $node, null, true),
             );
 
@@ -1208,7 +1208,7 @@ final class ClassLikeNodeScanner
             );
         } catch (TypeParseTreeException $e) {
             $storage->docblock_issues[] = new InvalidDocblock(
-                $e->getMessage() . ' in docblock for ' . $storage->name,
+                $e->getMessage() . ' in docblock for ' . Interner::lookup($storage->id),
                 new CodeLocation($this->file_scanner, $node, null, true),
             );
 
@@ -1258,7 +1258,7 @@ final class ClassLikeNodeScanner
             $storage->template_type_uses_count[$generic_class_lc] = count($atomic_type->type_params);
 
             foreach ($atomic_type->type_params as $type_param) {
-                $used_type_parameters[] = $type_param->replaceClassLike('self', $storage->name);
+                $used_type_parameters[] = $type_param->replaceClassLike('self', Interner::lookup($storage->id));
             }
 
             $storage->template_extended_offsets[Interner::lookup($atomic_type->name)] = $used_type_parameters;
@@ -1277,14 +1277,14 @@ final class ClassLikeNodeScanner
         $storage = $class_storage->methods[Sym::CONSTRUCT] = new MethodStorage();
 
         $storage->cased_name = '__construct';
-        $storage->defining_fqcln = $class_storage->name;
+        $storage->defining_fqcln = Interner::lookup($class_storage->id);
 
         $storage->allowed_mutations = Mutations::LEVEL_NONE;
         $storage->mutation_free_assumed = true;
 
         $class_storage->declaring_method_ids[Sym::CONSTRUCT] = new MethodIdentifier(
-            $class_storage->name,
-            '__construct',
+            Interner::intern(Interner::lookup($class_storage->id)),
+            Sym::CONSTRUCT,
         );
 
         $class_storage->inheritable_method_ids[Sym::CONSTRUCT]
@@ -1401,7 +1401,7 @@ final class ClassLikeNodeScanner
                         $this->file_storage,
                         $this->aliases,
                         $attr,
-                        $this->storage->name ?? null,
+                        (isset($this->storage->id) ? Interner::lookup($this->storage->id) : null),
                     );
 
                     if ($attr->fq_class_name === 'Psalm\\Deprecated'
@@ -1469,7 +1469,7 @@ final class ClassLikeNodeScanner
                     new MissingClassConstType(
                         sprintf(
                             'Class constant "%s::%s" should have a declared type.',
-                            $storage->name,
+                            Interner::lookup($storage->id),
                             $const->name->name,
                         ),
                         new CodeLocation($this->file_scanner, $const),
@@ -1547,7 +1547,7 @@ final class ClassLikeNodeScanner
                 $this->file_storage,
                 $this->aliases,
                 $stmt,
-                $this->storage->name ?? null,
+                (isset($this->storage->id) ? Interner::lookup($this->storage->id) : null),
             );
 
             foreach ($attrs as $attribute) {
@@ -1840,7 +1840,7 @@ final class ClassLikeNodeScanner
                 $this->file_storage,
                 $this->aliases,
                 $stmt,
-                $this->storage->name ?? null,
+                (isset($this->storage->id) ? Interner::lookup($this->storage->id) : null),
             );
 
             foreach ($attrs as $attribute) {

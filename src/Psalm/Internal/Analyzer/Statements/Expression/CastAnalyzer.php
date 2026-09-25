@@ -15,6 +15,7 @@ use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\TypeCombiner;
 use Psalm\Internal\Type\TypeVariableTracker;
 use Psalm\Issue\InvalidCast;
@@ -828,8 +829,8 @@ final class CastAnalyzer
                 foreach ($intersection_types as $intersection_type) {
                     if ($intersection_type instanceof TNamedObject) {
                         $intersection_method_id = new MethodIdentifier(
-                            Interner::lookup($intersection_type->name),
-                            '__tostring',
+                            $intersection_type->name,
+                            Sym::TO_STRING,
                         );
 
                         if ($codebase->methodExists(

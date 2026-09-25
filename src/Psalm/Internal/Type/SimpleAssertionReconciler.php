@@ -892,14 +892,14 @@ final class SimpleAssertionReconciler extends Reconciler
             if ($type instanceof TNamedObject
                 && $codebase->classOrInterfaceExists($type->name)
             ) {
-                if (!$codebase->methodExists(new MethodIdentifier(Interner::lookup($type->name), strtolower($method_name)))) {
+                if (!$codebase->methodExists(new MethodIdentifier($type->name, Interner::intern(strtolower($method_name))))) {
                     $match_found = false;
 
                     $extra_types = $type->extra_types;
                     foreach ($type->extra_types as $k => $extra_type) {
                         if ($extra_type instanceof TNamedObject
                             && $codebase->classOrInterfaceExists($extra_type->name)
-                            && $codebase->methodExists(new MethodIdentifier(Interner::lookup($extra_type->name), strtolower($method_name)))
+                            && $codebase->methodExists(new MethodIdentifier($extra_type->name, Interner::intern(strtolower($method_name))))
                         ) {
                             $match_found = true;
                         } elseif ($extra_type instanceof TObjectWithProperties) {
@@ -2611,7 +2611,7 @@ final class SimpleAssertionReconciler extends Reconciler
                 $redundant = false;
             } elseif ($type instanceof TNamedObject
                 && $codebase->classExists($type->name)
-                && $codebase->methodExists(new MethodIdentifier(Interner::lookup($type->name), '__invoke'))
+                && $codebase->methodExists(new MethodIdentifier($type->name, Sym::INVOKE))
             ) {
                 $callable_types[] = $type;
             } elseif ($type::class === TString::class

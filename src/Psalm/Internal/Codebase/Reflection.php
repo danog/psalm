@@ -289,8 +289,8 @@ final class Reflection
         }
 
         $class_storage->declaring_method_ids[$method_name_lc_id] = new MethodIdentifier(
-            $declaring_class->name,
-            $method_name_lc,
+            Interner::intern($declaring_class->name),
+            Interner::intern($method_name_lc),
         );
 
         $class_storage->inheritable_method_ids[$method_name_lc_id]
@@ -527,7 +527,7 @@ final class Reflection
             $storage->declaring_method_ids[$method_name_id] = $declaring_method_id;
             $storage->inheritable_method_ids[$method_name_id] = $declaring_method_id;
 
-            $storage->overridden_method_ids[$method_name_id][$declaring_method_id->fq_class_name]
+            $storage->overridden_method_ids[$method_name_id][Interner::lookup($declaring_method_id->class_id)]
                 = $declaring_method_id;
         }
     }

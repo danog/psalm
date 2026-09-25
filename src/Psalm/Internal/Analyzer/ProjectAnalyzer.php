@@ -564,9 +564,9 @@ final class ProjectAnalyzer
                 && $destination_pos === (strlen($destination) - 1)
             ) {
                 foreach ($this->codebase->classlike_storage_provider->getAll() as $class_storage) {
-                    if (str_starts_with($source, substr($class_storage->name, 0, $source_pos))) {
-                        $this->to_refactor[$class_storage->name]
-                            = substr($destination, 0, -1) . substr($class_storage->name, $source_pos);
+                    if (str_starts_with($source, substr(Interner::lookup($class_storage->id), 0, $source_pos))) {
+                        $this->to_refactor[Interner::lookup($class_storage->id)]
+                            = substr($destination, 0, -1) . substr(Interner::lookup($class_storage->id), $source_pos);
                     }
                 }
 
@@ -600,7 +600,7 @@ final class ProjectAnalyzer
 
                 $destination_class_storage = $this->codebase->classlike_storage_provider->create($destination);
 
-                $destination_class_storage->name = $destination;
+                $destination_class_storage->id = Interner::intern($destination);
 
                 if ($source_class_storage->aliases) {
                     $destination_class_storage->aliases = clone $source_class_storage->aliases;
@@ -617,15 +617,15 @@ final class ProjectAnalyzer
             }
 
             $source_method_id = new MethodIdentifier(
-                $source_parts[0],
-                strtolower($source_parts[1]),
+                \Psalm\Internal\Interner::intern($source_parts[0]),
+                \Psalm\Internal\Interner::intern(strtolower($source_parts[1])),
             );
 
             if ($this->codebase->methodExists($source_method_id)) {
                 if ($this->codebase->methodExists(
                     new MethodIdentifier(
-                        $destination_parts[0],
-                        strtolower($destination_parts[1]),
+                        \Psalm\Internal\Interner::intern($destination_parts[0]),
+                        \Psalm\Internal\Interner::intern(strtolower($destination_parts[1])),
                     ),
                 )) {
                     throw new RefactorException(
@@ -647,7 +647,7 @@ final class ProjectAnalyzer
 
                     if (!$source_method_storage->is_static
                         && !isset(
-                            $destination_class_storage->parent_classes[strtolower($source_method_id->fq_class_name)],
+                            $destination_class_storage->parent_classes[strtolower(Interner::lookup($source_method_id->class_id))],
                         )
                     ) {
                         throw new RefactorException(
@@ -1262,7 +1262,7 @@ final class ProjectAnalyzer
         string $root_file_path,
         string $root_file_name,
     ): void {
-        $fq_class_name = $original_method_id->fq_class_name;
+        $fq_class_name = Interner::lookup($original_method_id->class_id);
 
         $appearing_method_id = $this->codebase->methods->getAppearingMethodId($original_method_id);
 
@@ -1271,7 +1271,7 @@ final class ProjectAnalyzer
             return;
         }
 
-        $appearing_fq_class_name = $appearing_method_id->fq_class_name;
+        $appearing_fq_class_name = Interner::lookup($appearing_method_id->class_id);
 
         $appearing_class_storage = $this->classlike_storage_provider->get(Interner::intern($appearing_fq_class_name));
 

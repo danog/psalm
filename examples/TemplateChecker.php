@@ -14,8 +14,10 @@ use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\ClassLikeNameOptions;
 use Psalm\Internal\Analyzer\MethodAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Provider\NodeDataProvider;
+use Psalm\Internal\Sym;
 use Psalm\Node\Stmt\VirtualClass;
 use Psalm\Node\Stmt\VirtualClassMethod;
 use Psalm\Storage\MethodStorage;
@@ -62,8 +64,7 @@ final class TemplateAnalyzer extends Psalm\Internal\Analyzer\FileAnalyzer
                     throw new InvalidArgumentException('Could not interpret doc comment correctly');
                 }
 
-                /** @psalm-suppress ArgumentTypeCoercion */
-                $method_id = new MethodIdentifier(...explode('::', $matches[1]));
+                $method_id = new MethodIdentifier(...array_map(Interner::intern(...), explode('::', $matches[1])));
 
                 $this_params = $this->checkMethod($method_id, $first_stmt, $codebase);
 
@@ -96,7 +97,7 @@ final class TemplateAnalyzer extends Psalm\Internal\Analyzer\FileAnalyzer
     {
         if (ClassLikeAnalyzer::checkFullyQualifiedClassLikeName(
             $this,
-            $method_id->fq_class_name,
+            Interner::lookup($method_id->class_id),
             new CodeLocation($this, $stmt),
             null,
             [],
@@ -107,20 +108,20 @@ final class TemplateAnalyzer extends Psalm\Internal\Analyzer\FileAnalyzer
         }
 
         $this_context = new Context();
-        $this_context->self = $method_id->fq_class_name;
+        $this_context->self = Interner::lookup($method_id->class_id);
 
         $class_storage = $codebase->classlike_storage_provider->get($method_id->class_id);
 
-        $this_context->vars_in_scope['$this'] = new Union([new TNamedObject($class_storage->name)]);
+        $this_context->vars_in_scope['$this'] = new Union([new TNamedObject(Interner::lookup($class_storage->id))]);
 
         $this->project_analyzer->getMethodMutations(
-            new MethodIdentifier($method_id->fq_class_name, '__construct'),
+            new MethodIdentifier(Interner::intern(Interner::lookup($method_id->class_id)), Sym::CONSTRUCT),
             $this_context,
             $this->getRootFilePath(),
             $this->getRootFileName(),
         );
 
-        $this_context->vars_in_scope['$this'] = new Union([new TNamedObject($class_storage->name)]);
+        $this_context->vars_in_scope['$this'] = new Union([new TNamedObject(Interner::lookup($class_storage->id))]);
 
         // check the actual method
         $this->project_analyzer->getMethodMutations(

@@ -64,6 +64,15 @@ $names = [
     // added by tools/id-refactor
     'C_NON_EMPTY_ARRAY' => 'non-empty-array',
     'C_ARRAY' => 'array',
+    // added by tools/id-refactor
+    'C_CREATEFROMINTERFACE' => 'createfrominterface',
+    'C_FOO__BAR' => 'Foo\\Bar',
+    'C_BAZ' => 'Baz',
+    'C_FOO_CONTROLLER' => 'FooController',
+    'C_BARBAR' => 'barbar',
+    'C_LOCAL_STRINGABLE' => 'LocalStringable',
+    'C_RENDER' => 'render',
+    'C_GETATTRIBUTES' => 'getattributes',
 ];
 
 // Member (method, property, constant) names: the storages key their member maps by the id of the canonical

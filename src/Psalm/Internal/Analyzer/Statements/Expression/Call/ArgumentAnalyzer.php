@@ -22,6 +22,7 @@ use Psalm\Internal\Codebase\ConstantTypeResolver;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\Comparator\CallableTypeComparator;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
@@ -330,15 +331,15 @@ final class ArgumentAnalyzer
 
         $param_type = $function_param->getExpandedType(
             $codebase,
-            $classlike_storage->name ?? null,
-            $static_classlike_storage->name ?? null,
+            (isset($classlike_storage->id) ? Interner::lookup($classlike_storage->id) : null),
+            (isset($static_classlike_storage->id) ? Interner::lookup($static_classlike_storage->id) : null),
             $parent_class,
             $static_classlike_storage->final ?? false,
         ) ?? TypeExpander::expandUnion(
             $codebase,
             $param_type,
-            $classlike_storage->name ?? null,
-            $static_classlike_storage->name ?? null,
+            (isset($classlike_storage->id) ? Interner::lookup($classlike_storage->id) : null),
+            (isset($static_classlike_storage->id) ? Interner::lookup($static_classlike_storage->id) : null),
             $parent_class,
             true,
             false,
@@ -427,7 +428,7 @@ final class ArgumentAnalyzer
                 $arg_type_param,
                 $argument_offset,
                 !$statements_analyzer->isStatic()
-                    && (!$method_id || $method_id->method_name !== '__construct')
+                    && (!$method_id || Interner::lookupLc($method_id->name_id) !== '__construct')
                     ? $context->self
                     : null,
                 $context->calling_method_id ?: $context->calling_function_id,
@@ -464,8 +465,8 @@ final class ArgumentAnalyzer
             $param_type = TypeExpander::expandUnion(
                 $codebase,
                 $param_type,
-                $classlike_storage->name ?? null,
-                $static_classlike_storage->name ?? null,
+                (isset($classlike_storage->id) ? Interner::lookup($classlike_storage->id) : null),
+                (isset($static_classlike_storage->id) ? Interner::lookup($static_classlike_storage->id) : null),
                 $parent_class,
                 true,
                 false,
@@ -478,8 +479,8 @@ final class ArgumentAnalyzer
             ? TypeExpander::expandUnion(
                 $codebase,
                 $function_param->signature_type,
-                $classlike_storage->name ?? null,
-                $static_classlike_storage->name ?? null,
+                (isset($classlike_storage->id) ? Interner::lookup($classlike_storage->id) : null),
+                (isset($static_classlike_storage->id) ? Interner::lookup($static_classlike_storage->id) : null),
                 $parent_class,
             )
             : null;
@@ -747,7 +748,7 @@ final class ArgumentAnalyzer
                 && !$param_type->from_docblock
                 && !$param_type->had_template
                 && $method_id
-                && !str_starts_with($method_id->method_name, '__')
+                && !str_starts_with(Interner::lookupLc($method_id->name_id), '__')
             ) {
                 $declaring_method_id = $codebase->methods->getDeclaringMethodId($method_id);
 
@@ -943,8 +944,8 @@ final class ArgumentAnalyzer
                     ) {
                         $parts = explode('::', $atomic_type->value);
                         $potential_method_id = new MethodIdentifier(
-                            $parts[0],
-                            strtolower($parts[1]),
+                            Interner::intern($parts[0]),
+                            Interner::intern(strtolower($parts[1])),
                         );
                     }
 
@@ -1129,19 +1130,19 @@ final class ArgumentAnalyzer
                     $parts = explode('::', $input_type_part->value);
                     /** @psalm-suppress PossiblyUndefinedIntArrayOffset */
                     $potential_method_id = new MethodIdentifier(
-                        $parts[0],
-                        strtolower($parts[1]),
+                        Interner::intern($parts[0]),
+                        Interner::intern(strtolower($parts[1])),
                     );
 
                     if ($codebase->analysis_php_version_id >= 8_02_00
                         && in_array(
-                            strtolower($potential_method_id->fq_class_name),
+                            strtolower(Interner::lookup($potential_method_id->class_id)),
                             ['self', 'parent', 'static'],
                             true,
                         )) {
                         IssueBuffer::maybeAdd(
                             new DeprecatedConstant(
-                                'Use of "' . $potential_method_id->fq_class_name . '" in callables is deprecated',
+                                'Use of "' . Interner::lookup($potential_method_id->class_id) . '" in callables is deprecated',
                                 $arg_location,
                             ),
                             $statements_analyzer->getSuppressedIssues(),
@@ -1428,12 +1429,12 @@ final class ArgumentAnalyzer
         $method_identifier = $cased_method_id !== null ? ' of ' . $cased_method_id : '';
 
         if (!$method_id
-            || $potential_method_id->fq_class_name !== $context->self
-            || $method_id->fq_class_name !== $context->self) {
+            || Interner::lookup($potential_method_id->class_id) !== $context->self
+            || Interner::lookup($method_id->class_id) !== $context->self) {
             if ($input_type_part instanceof TKeyedArray) {
                 [$lhs,] = $input_type_part->properties;
             } else {
-                $lhs = Type::getString($potential_method_id->fq_class_name);
+                $lhs = Type::getString(Interner::lookup($potential_method_id->class_id));
             }
 
             try {
@@ -1446,13 +1447,13 @@ final class ArgumentAnalyzer
                         || ($lhs_atomic instanceof TNamedObject
                             && !$lhs_atomic->definite_class
                             && Interner::lookup($lhs_atomic->name) === $context->self))) {
-                    if ($potential_method_id->fq_class_name !== $context->self
+                    if (Interner::lookup($potential_method_id->class_id) !== $context->self
                         || ($cased_method_id !== null
                             && !$method_id
                             && !in_array($cased_method_id, self::PHP_NATIVE_NON_PUBLIC_CB, true))
                         || ($method_id
-                            && $method_id->fq_class_name !== $context->self
-                            && $method_id->fq_class_name !== 'Closure')
+                            && Interner::lookup($method_id->class_id) !== $context->self
+                            && Interner::lookup($method_id->class_id) !== 'Closure')
                     ) {
                         if ($method_storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PUBLIC) {
                             IssueBuffer::maybeAdd(
@@ -1624,13 +1625,13 @@ final class ArgumentAnalyzer
                                 }
 
                                 $function_id_part = new MethodIdentifier(
-                                    $callable_fq_class_name,
-                                    strtolower($method_name),
+                                    Interner::intern($callable_fq_class_name),
+                                    Interner::intern(strtolower($method_name)),
                                 );
 
                                 $call_method_id = new MethodIdentifier(
-                                    $callable_fq_class_name,
-                                    '__call',
+                                    Interner::intern($callable_fq_class_name),
+                                    Sym::CALL,
                                 );
 
                                 if (!$codebase->classOrInterfaceOrEnumExists(
@@ -1885,9 +1886,9 @@ final class ArgumentAnalyzer
         if (!$specialize_taint
             && $taint_flow_graph
             && $method_id
-            && $method_id->method_name !== '__construct'
+            && Interner::lookupLc($method_id->name_id) !== '__construct'
         ) {
-            $fq_classlike_name = $method_id->fq_class_name;
+            $fq_classlike_name = Interner::lookup($method_id->class_id);
             $cased_method_name = explode('::', $cased_method_id)[1];
 
             $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_classlike_name));
@@ -1903,13 +1904,13 @@ final class ArgumentAnalyzer
                 // the node id is created.
                 $new_sink = DataFlowNode::getForMethodArgumentById(
                     $codebase->methods,
-                    $dependent_classlike_storage->name . '::' . $cased_method_name,
+                    Interner::lookup($dependent_classlike_storage->id) . '::' . $cased_method_name,
                     $argument_offset,
                     null,
                     $function_param,
                 ) ?? DataFlowNode::getForCallableArg(
                     'inherited-method',
-                    $dependent_classlike_storage->name . '::' . $cased_method_name,
+                    Interner::lookup($dependent_classlike_storage->id) . '::' . $cased_method_name,
                     $argument_offset,
                 );
 

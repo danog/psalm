@@ -8,6 +8,7 @@ use Override;
 use Psalm\Internal\Codebase\ClassLikes;
 use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
+use Psalm\Internal\Sym;
 use Psalm\Storage\ClassLikeStorage;
 use Psalm\Tests\TestCase;
 
@@ -29,7 +30,7 @@ final class ClassLikesTest extends TestCase
     {
         $this->classlikes->addClassAlias('Foo', 'Bar');
 
-        $classStorage = new ClassLikeStorage('Baz');
+        $classStorage = new ClassLikeStorage(Sym::C_BAZ);
         $classStorage->class_implements['bar'] = 'Bar';
         // what the populator records: implemented names by canonical id (the alias resolves to Foo)
         $classStorage->class_implements_ids[$this->storage_provider->canonicalId(Interner::intern('Bar'))] = true;

@@ -26,6 +26,7 @@ use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TypeExpander;
@@ -264,7 +265,7 @@ final class AtomicPropertyFetchAnalyzer
         );
 
         // add method before changing fq_class_name
-        $get_method_id = new MethodIdentifier($fq_class_name, '__get');
+        $get_method_id = new MethodIdentifier(Interner::intern($fq_class_name), Sym::GET);
 
         if (!$naive_property_exists) {
             if ($class_storage->namedMixins) {
@@ -638,8 +639,8 @@ final class AtomicPropertyFetchAnalyzer
                 $stmt_type = TypeExpander::expandUnion(
                     $codebase,
                     $class_storage->pseudo_property_get_types[Interner::intern('$' . $prop_name)],
-                    $class_storage->name,
-                    $class_storage->name,
+                    Interner::lookup($class_storage->id),
+                    Interner::lookup($class_storage->id),
                     $class_storage->parent_class,
                 );
 
@@ -769,7 +770,7 @@ final class AtomicPropertyFetchAnalyzer
         $template_types = CallAnalyzer::getTemplateTypesForCall(
             $codebase,
             $property_declaring_class_storage,
-            $property_declaring_class_storage->name,
+            Interner::lookup($property_declaring_class_storage->id),
             $property_class_storage,
             $property_class_storage->template_types ?: [],
         );
@@ -785,7 +786,7 @@ final class AtomicPropertyFetchAnalyzer
                         $i++;
 
                         if ($i === $param_offset) {
-                            $template_types[$calling_param_name][$property_class_storage->name] = $lhs_param_type;
+                            $template_types[$calling_param_name][Interner::lookup($property_class_storage->id)] = $lhs_param_type;
                             break;
                         }
                     }
@@ -793,8 +794,8 @@ final class AtomicPropertyFetchAnalyzer
             }
 
             foreach ($template_types as $type_name => $_) {
-                if (isset($extended_types[$property_declaring_class_storage->name][$type_name])) {
-                    $mapped_type = $extended_types[$property_declaring_class_storage->name][$type_name];
+                if (isset($extended_types[Interner::lookup($property_declaring_class_storage->id)][$type_name])) {
+                    $mapped_type = $extended_types[Interner::lookup($property_declaring_class_storage->id)][$type_name];
 
                     foreach ($mapped_type->getAtomicTypes() as $mapped_type_atomic) {
                         if (!$mapped_type_atomic instanceof TTemplateParam) {
@@ -814,7 +815,7 @@ final class AtomicPropertyFetchAnalyzer
                         }
 
                         if ($position !== false && isset($lhs_type_part->type_params[$position])) {
-                            $template_types[$type_name][$property_declaring_class_storage->name]
+                            $template_types[$type_name][Interner::lookup($property_declaring_class_storage->id)]
                                 = $lhs_type_part->type_params[$position];
                         }
                     }
@@ -1196,7 +1197,7 @@ final class AtomicPropertyFetchAnalyzer
                     return;
                 }
 
-                if (!$codebase->methodExists(new MethodIdentifier($fq_class_name, '__set'))) {
+                if (!$codebase->methodExists(new MethodIdentifier(Interner::intern($fq_class_name), Sym::SET))) {
                     return;
                 }
             }
@@ -1340,8 +1341,8 @@ final class AtomicPropertyFetchAnalyzer
             $class_property_type = TypeExpander::expandUnion(
                 $codebase,
                 $class_property_type,
-                $declaring_class_storage->name,
-                $declaring_class_storage->name,
+                Interner::lookup($declaring_class_storage->id),
+                Interner::lookup($declaring_class_storage->id),
                 $declaring_class_storage->parent_class,
             );
 

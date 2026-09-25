@@ -174,7 +174,7 @@ final class CodebaseTest extends TestCase
                 $stmt = $event->getStmt();
                 $storage = $event->getStorage();
                 $codebase = $event->getCodebase();
-                if ($storage->name === 'Psalm\\CurrentTest\\C' && $stmt instanceof Class_) {
+                if (Interner::lookup($storage->id) === 'Psalm\\CurrentTest\\C' && $stmt instanceof Class_) {
                     $storage->custom_metadata['fqcn'] = (string)($stmt->attrs()->namespacedName ?? $stmt->name);
                     $storage->custom_metadata['extends'] = $stmt->extends instanceof Name
                         ? (string)$stmt->extends->attrs()->resolvedName

@@ -86,7 +86,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
             $fq_class_name = (string) $context->self;
         }
 
-        $method_name_lc = $method_id->method_name;
+        $method_name_lc = Interner::lookupLc($method_id->name_id);
 
         $cased_method_id = $fq_class_name . '::' . $stmt_name->name;
 
@@ -193,7 +193,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                 $trait_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_trait_name_lc));
 
                 if (isset($trait_storage->methods[$method_id->name_id])) {
-                    $trait_method_id = new MethodIdentifier($trait_storage->name, $method_name_lc);
+                    $trait_method_id = new MethodIdentifier(Interner::intern(Interner::lookup($trait_storage->id)), Interner::intern($method_name_lc));
 
                     $class_template_params = ClassTemplateParamCollector::collect(
                         $codebase,

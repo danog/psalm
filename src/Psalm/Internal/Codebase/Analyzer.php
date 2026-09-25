@@ -690,7 +690,7 @@ final class Analyzer
             }
 
             foreach ($classlike_storage->appearing_method_ids as $appearing_method_id) {
-                if (strtolower($appearing_method_id->fq_class_name) !== $fq_class_name_lc) {
+                if (strtolower(Interner::lookup($appearing_method_id->class_id)) !== $fq_class_name_lc) {
                     continue;
                 }
 

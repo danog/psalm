@@ -21,6 +21,7 @@ use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\TemplateBound;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
@@ -124,7 +125,7 @@ final class NewAnalyzer extends CallAnalyzer
                 switch ($stmt->class->getFirst()) {
                     case 'self':
                         $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($context->self));
-                        $fq_class_name = $class_storage->name;
+                        $fq_class_name = Interner::lookup($class_storage->id);
                         break;
 
                     case 'parent':
@@ -134,7 +135,7 @@ final class NewAnalyzer extends CallAnalyzer
                     case 'static':
                         // @todo maybe we can do better here
                         $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($context->self));
-                        $fq_class_name = $class_storage->name;
+                        $fq_class_name = Interner::lookup($class_storage->id);
 
                         if (!$class_storage->final) {
                             $can_extend = true;
@@ -394,7 +395,7 @@ final class NewAnalyzer extends CallAnalyzer
             );
         }
 
-        $method_id = new MethodIdentifier($fq_class_name, '__construct');
+        $method_id = new MethodIdentifier(Interner::intern($fq_class_name), Sym::CONSTRUCT);
 
         if ($codebase->methodExists(
             $method_id,
@@ -977,8 +978,8 @@ final class NewAnalyzer extends CallAnalyzer
                 if ($lhs_type_part->as_type) {
                     $codebase->methodExists(
                         new MethodIdentifier(
-                            Interner::lookup($lhs_type_part->as_type->name),
-                            '__construct',
+                            $lhs_type_part->as_type->name,
+                            Sym::CONSTRUCT,
                         ),
                         $context->calling_method_id,
                         $codebase->collect_locations

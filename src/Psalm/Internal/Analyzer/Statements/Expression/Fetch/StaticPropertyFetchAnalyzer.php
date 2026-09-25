@@ -380,8 +380,8 @@ final class StaticPropertyFetchAnalyzer
                 $context->vars_in_scope[$var_id] = TypeExpander::expandUnion(
                     $codebase,
                     $property->type,
-                    $class_storage->name,
-                    $class_storage->name,
+                    Interner::lookup($class_storage->id),
+                    Interner::lookup($class_storage->id),
                     $class_storage->parent_class,
                 );
             } else {

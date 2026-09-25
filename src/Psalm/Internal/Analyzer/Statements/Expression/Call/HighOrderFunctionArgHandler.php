@@ -208,8 +208,8 @@ final class HighOrderFunctionArgHandler
                 }
 
                 $method_id = new MethodIdentifier(
-                    Interner::lookup($lhs_type->name),
-                    strtolower((string)$input_arg_expr->name),
+                    $lhs_type->name,
+                    Interner::intern(strtolower((string)$input_arg_expr->name)),
                 );
 
                 return new HighOrderFunctionArgInfo(
@@ -224,8 +224,8 @@ final class HighOrderFunctionArgHandler
                 $input_arg_expr->name instanceof PhpParser\Node\Identifier
             ) {
                 $method_id = new MethodIdentifier(
-                    (string)$input_arg_expr->class->attrs()->resolvedName,
-                    strtolower($input_arg_expr->name->toString()),
+                    Interner::intern((string)$input_arg_expr->class->attrs()->resolvedName),
+                    Interner::intern(strtolower($input_arg_expr->name->toString())),
                 );
 
                 return new HighOrderFunctionArgInfo(

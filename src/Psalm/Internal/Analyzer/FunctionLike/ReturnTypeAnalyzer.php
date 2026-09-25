@@ -791,8 +791,8 @@ final class ReturnTypeAnalyzer
             $fleshed_out_return_type = TypeExpander::expandUnion(
                 $codebase,
                 $storage->return_type,
-                $classlike_storage->name ?? null,
-                $classlike_storage->name ?? null,
+                (isset($classlike_storage->id) ? Interner::lookup($classlike_storage->id) : null),
+                (isset($classlike_storage->id) ? Interner::lookup($classlike_storage->id) : null),
                 $parent_class,
             );
 
@@ -814,8 +814,8 @@ final class ReturnTypeAnalyzer
         $fleshed_out_signature_type = TypeExpander::expandUnion(
             $codebase,
             $storage->signature_return_type,
-            $classlike_storage->name ?? null,
-            $classlike_storage->name ?? null,
+            (isset($classlike_storage->id) ? Interner::lookup($classlike_storage->id) : null),
+            (isset($classlike_storage->id) ? Interner::lookup($classlike_storage->id) : null),
             $parent_class,
         );
 
@@ -837,8 +837,8 @@ final class ReturnTypeAnalyzer
             $fleshed_out_return_type = TypeExpander::expandUnion(
                 $codebase,
                 $storage->return_type,
-                $classlike_storage->name ?? null,
-                $classlike_storage->name ?? null,
+                (isset($classlike_storage->id) ? Interner::lookup($classlike_storage->id) : null),
+                (isset($classlike_storage->id) ? Interner::lookup($classlike_storage->id) : null),
                 $parent_class,
                 true,
                 true,

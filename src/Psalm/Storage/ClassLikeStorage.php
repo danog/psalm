@@ -397,11 +397,6 @@ final class ClassLikeStorage implements HasAttributesInterface
      * @psalm-mutation-free
      */
     /**
-     * The interned declared name (pzoom's `name: StrId`): what storages are keyed by and what types carry.
-     */
-    public int $id;
-
-    /**
      * The ids of every ancestor class (pzoom's `all_parent_classes`), derived from parent_classes at populate.
      *
      * @var array<int, true>
@@ -450,9 +445,8 @@ final class ClassLikeStorage implements HasAttributesInterface
      * @psalm-external-mutation-free
      * @psalm-mutation-free
      */
-    public function __construct(public string $name)
+    public function __construct(public int $id)
     {
-        $this->id = Interner::intern($name);
     }
 
     /**

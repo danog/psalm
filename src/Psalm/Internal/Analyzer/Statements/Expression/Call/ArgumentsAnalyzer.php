@@ -592,7 +592,7 @@ final class ArgumentsAnalyzer
 
         if ($method_id) {
             if ($method_id instanceof MethodIdentifier) {
-                $fq_class_name = $method_id->fq_class_name;
+                $fq_class_name = Interner::lookup($method_id->class_id);
             }
 
             if ($function_storage) {
@@ -623,14 +623,14 @@ final class ArgumentsAnalyzer
             $declaring_method_id = $codebase->methods->getDeclaringMethodId($method_id);
 
             if ($declaring_method_id && (string)$declaring_method_id !== (string)$method_id) {
-                $self_fq_class_name = $declaring_method_id->fq_class_name;
+                $self_fq_class_name = Interner::lookup($declaring_method_id->class_id);
                 $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($self_fq_class_name));
             }
 
             $appearing_method_id = $codebase->methods->getAppearingMethodId($method_id);
 
             if ($appearing_method_id && $declaring_method_id !== $appearing_method_id) {
-                $self_fq_class_name = $appearing_method_id->fq_class_name;
+                $self_fq_class_name = Interner::lookup($appearing_method_id->class_id);
             }
         }
 
@@ -1599,8 +1599,8 @@ final class ArgumentsAnalyzer
             $fleshed_out_param_type = TypeExpander::expandUnion(
                 $codebase,
                 $function_param->type,
-                $class_storage->name ?? null,
-                $calling_class_storage->name ?? null,
+                (isset($class_storage->id) ? Interner::lookup($class_storage->id) : null),
+                (isset($calling_class_storage->id) ? Interner::lookup($calling_class_storage->id) : null),
                 null,
                 true,
                 false,
@@ -1648,7 +1648,7 @@ final class ArgumentsAnalyzer
                 || !$function_storage instanceof MethodStorage
                 || $function_storage->is_static
                 || ($method_id instanceof MethodIdentifier
-                    && $method_id->method_name === '__construct'))
+                    && Interner::lookupLc($method_id->name_id) === '__construct'))
         ) {
             IssueBuffer::maybeAdd(
                 new TooManyArguments(

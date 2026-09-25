@@ -178,7 +178,7 @@ final class ClassLikeStorageProvider
         $cached_value = $this->cache->getLatestFromCache($fq_classlike_name_lc, $file_path, $file_contents);
 
         self::$storage[$fq_classlike_name_lc] = $cached_value;
-        Interner::intern($cached_value->name);
+        $cached_value->id;
         self::$by_id[$cached_value->id] = $cached_value;
         self::$canonical = [];
         self::$canonical_ids = [];
@@ -257,7 +257,7 @@ final class ClassLikeStorageProvider
     {
         $fq_classlike_name_lc = strtolower($fq_classlike_name);
 
-        $storage = new ClassLikeStorage($fq_classlike_name);
+        $storage = new ClassLikeStorage(Interner::intern($fq_classlike_name));
         self::$storage[$fq_classlike_name_lc] = $storage;
         self::$by_id[$storage->id] = $storage;
         self::$canonical = [];

@@ -103,8 +103,8 @@ abstract class CallAnalyzer
             )
         ) {
             $method_id = new MethodIdentifier(
-                $fq_class_name,
-                $method_name_lc,
+                Interner::intern($fq_class_name),
+                Interner::intern($method_name_lc),
             );
 
             if ((string) $method_id !== $source->getId()) {
@@ -134,7 +134,7 @@ abstract class CallAnalyzer
             ) &&
             $source->getMethodName() !== $method_name
         ) {
-            $method_id = new MethodIdentifier($fq_class_name, $method_name_lc);
+            $method_id = new MethodIdentifier(Interner::intern($fq_class_name), Interner::intern($method_name_lc));
 
             $declaring_method_id = $codebase->methods->getDeclaringMethodId($method_id);
 
@@ -147,8 +147,8 @@ abstract class CallAnalyzer
                             $fq_class_name = Interner::lookup($atomic_type->name);
 
                             $method_id = new MethodIdentifier(
-                                $fq_class_name,
-                                $method_name_lc,
+                                Interner::intern($fq_class_name),
+                                Interner::intern($method_name_lc),
                             );
 
                             $alt_declaring_method_id = $codebase->methods->getDeclaringMethodId($method_id);
@@ -167,8 +167,8 @@ abstract class CallAnalyzer
                             if ($intersection_type instanceof TNamedObject) {
                                 $fq_class_name = Interner::lookup($intersection_type->name);
                                 $method_id = new MethodIdentifier(
-                                    $fq_class_name,
-                                    $method_name_lc,
+                                    Interner::intern($fq_class_name),
+                                    Interner::intern($method_name_lc),
                                 );
 
                                 $alt_declaring_method_id = $codebase->methods->getDeclaringMethodId($method_id);
@@ -200,7 +200,7 @@ abstract class CallAnalyzer
 
             $is_final = $method_storage->final;
 
-            if ($method_name !== $declaring_method_id->method_name) {
+            if ($method_name !== Interner::lookupLc($declaring_method_id->name_id)) {
                 $appearing_method_id = $codebase->methods->getAppearingMethodId($method_id);
 
                 if ($appearing_method_id) {
@@ -239,9 +239,9 @@ abstract class CallAnalyzer
                 $old_calling_method_id = $context->calling_method_id;
 
                 if ($fq_class_name === $source->getFQCLN()) {
-                    $class_analyzer->getMethodMutations($declaring_method_id->method_name, $context);
+                    $class_analyzer->getMethodMutations(Interner::lookupLc($declaring_method_id->name_id), $context);
                 } else {
-                    $declaring_fq_class_name = $declaring_method_id->fq_class_name;
+                    $declaring_fq_class_name = Interner::lookup($declaring_method_id->class_id);
 
                     $old_self = $context->self;
                     $context->self = $declaring_fq_class_name;
@@ -294,8 +294,8 @@ abstract class CallAnalyzer
 
         $method_params = $codebase->methods->getMethodParams($method_id, $statements_analyzer, $args, $context);
 
-        $fq_class_name = $method_id->fq_class_name;
-        $method_name = $method_id->method_name;
+        $fq_class_name = Interner::lookup($method_id->class_id);
+        $method_name = Interner::lookupLc($method_id->name_id);
 
         $fq_class_name = strtolower($codebase->classlikes->getUnAliasedName($fq_class_name));
 
@@ -306,7 +306,7 @@ abstract class CallAnalyzer
         if (isset($class_storage->declaring_method_ids[$method_id->name_id])) {
             $declaring_method_id = $class_storage->declaring_method_ids[$method_id->name_id];
 
-            $declaring_fq_class_name = $declaring_method_id->fq_class_name;
+            $declaring_fq_class_name = Interner::lookup($declaring_method_id->class_id);
 
             if ($declaring_fq_class_name !== $fq_class_name) {
                 $declaring_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($declaring_fq_class_name));
@@ -397,7 +397,7 @@ abstract class CallAnalyzer
             ) {
                 foreach ($calling_class_storage->template_extended_params as $class_name => $type_map) {
                     foreach ($type_map as $template_name => $type) {
-                        if ($class_name === $declaring_class_storage->name) {
+                        if ($class_name === Interner::lookup($declaring_class_storage->id)) {
                             $output_type = null;
 
                             foreach ($type->getAtomicTypes() as $atomic_type) {
@@ -418,7 +418,7 @@ abstract class CallAnalyzer
                                 );
                             }
 
-                            $template_types[$template_name][$declaring_class_storage->name] = $output_type;
+                            $template_types[$template_name][Interner::lookup($declaring_class_storage->id)] = $output_type;
                         }
                     }
                 }
@@ -438,7 +438,7 @@ abstract class CallAnalyzer
                     $codebase,
                     $type,
                     $appearing_class_name,
-                    $calling_class_storage->name ?? null,
+                    (isset($calling_class_storage->id) ? Interner::lookup($calling_class_storage->id) : null),
                     null,
                     true,
                     false,

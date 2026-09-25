@@ -883,8 +883,8 @@ class Reconciler
                             } else {
                                 if (str_ends_with($property_name, '()')) {
                                     $method_id = new MethodIdentifier(
-                                        Interner::lookup($existing_key_type_part->name),
-                                        strtolower(substr($property_name, 0, -2)),
+                                        $existing_key_type_part->name,
+                                        Interner::intern(strtolower(substr($property_name, 0, -2))),
                                     );
 
                                     if (!$codebase->methodExists($method_id)) {
@@ -899,7 +899,7 @@ class Reconciler
                                         return null;
                                     }
 
-                                    $declaring_class = $declaring_method_id->fq_class_name;
+                                    $declaring_class = Interner::lookup($declaring_method_id->class_id);
 
                                     $method_return_type = $codebase->getMethodReturnType(
                                         $method_id,
@@ -1004,8 +1004,8 @@ class Reconciler
             return TypeExpander::expandUnion(
                 $codebase,
                 $class_property_type,
-                $declaring_class_storage->name,
-                $declaring_class_storage->name,
+                Interner::lookup($declaring_class_storage->id),
+                Interner::lookup($declaring_class_storage->id),
                 null,
             );
         }

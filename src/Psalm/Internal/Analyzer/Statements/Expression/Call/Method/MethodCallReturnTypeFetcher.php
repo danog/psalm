@@ -16,6 +16,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\ExpressionIdentifier;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Sym;
 use Psalm\Internal\Type\TemplateBound;
@@ -63,8 +64,8 @@ final class MethodCallReturnTypeFetcher
     ): Union {
         $call_map_id = $declaring_method_id ?? $method_id;
 
-        $fq_class_name = $method_id->fq_class_name;
-        $method_name = $method_id->method_name;
+        $fq_class_name = Interner::lookup($method_id->class_id);
+        $method_name = Interner::lookupLc($method_id->name_id);
 
         $class_storage = $codebase->methods->getClassLikeStorageForMethod($method_id);
         $method_storage = ($class_storage->methods[$method_id->name_id] ?? null);
@@ -81,11 +82,11 @@ final class MethodCallReturnTypeFetcher
             return Type::getClosure();
         }
 
-        if ($codebase->methods->return_type_provider->has($premixin_method_id->fq_class_name)) {
+        if ($codebase->methods->return_type_provider->has(Interner::lookup($premixin_method_id->class_id))) {
             $return_type_candidate = $codebase->methods->return_type_provider->getReturnType(
                 $statements_analyzer,
-                $premixin_method_id->fq_class_name,
-                $premixin_method_id->method_name,
+                Interner::lookup($premixin_method_id->class_id),
+                Interner::lookupLc($premixin_method_id->name_id),
                 $stmt,
                 $context,
                 new CodeLocation($statements_analyzer->getSource(), $stmt->name),
@@ -97,10 +98,10 @@ final class MethodCallReturnTypeFetcher
             }
         }
 
-        if ($premixin_method_id->method_name === 'getcode'
-            && $premixin_method_id->fq_class_name !== Exception::class
-            && $premixin_method_id->fq_class_name !== RuntimeException::class
-            && $premixin_method_id->fq_class_name !== PDOException::class
+        if (Interner::lookupLc($premixin_method_id->name_id) === 'getcode'
+            && Interner::lookup($premixin_method_id->class_id) !== Exception::class
+            && Interner::lookup($premixin_method_id->class_id) !== RuntimeException::class
+            && Interner::lookup($premixin_method_id->class_id) !== PDOException::class
             && (
                 $codebase->classImplements($premixin_method_id->class_id, Sym::THROWABLE)
                 || $codebase->interfaceExtends($premixin_method_id->class_id, Sym::THROWABLE)
@@ -110,8 +111,8 @@ final class MethodCallReturnTypeFetcher
         }
 
         if ($declaring_method_id && $declaring_method_id !== $method_id) {
-            $declaring_fq_class_name = $declaring_method_id->fq_class_name;
-            $declaring_method_name = $declaring_method_id->method_name;
+            $declaring_fq_class_name = Interner::lookup($declaring_method_id->class_id);
+            $declaring_method_name = Interner::lookupLc($declaring_method_id->name_id);
 
             if ($codebase->methods->return_type_provider->has($declaring_fq_class_name)) {
                 $return_type_candidate = $codebase->methods->return_type_provider->getReturnType(
@@ -417,7 +418,7 @@ final class MethodCallReturnTypeFetcher
                     $taint_flow_graph->addPath(
                         $method_call_node,
                         $var_node,
-                        'method-call-' . $method_id->method_name,
+                        'method-call-' . Interner::lookupLc($method_id->name_id),
                         $added_taints,
                         $removed_taints,
                     );
@@ -551,7 +552,7 @@ final class MethodCallReturnTypeFetcher
             $bindable_template_types = $return_type_candidate->getTemplateTypes();
 
             foreach ($bindable_template_types as $template_type) {
-                if ($template_type->defining_class !== $method_id->fq_class_name
+                if ($template_type->defining_class !== Interner::lookup($method_id->class_id)
                     && !isset(
                         $template_result->lower_bounds
                             [$template_type->param_name]
@@ -560,7 +561,7 @@ final class MethodCallReturnTypeFetcher
                 ) {
                     if ($template_type->param_name === 'TFunctionArgCount') {
                         $template_result->lower_bounds[$template_type->param_name] = [
-                            'fn-' . $method_id->method_name => [
+                            'fn-' . Interner::lookupLc($method_id->name_id) => [
                                 new TemplateBound(
                                     Type::getInt(false, $arg_count),
                                 ),
@@ -568,7 +569,7 @@ final class MethodCallReturnTypeFetcher
                         ];
                     } elseif ($template_type->param_name === 'TPhpMajorVersion') {
                         $template_result->lower_bounds[$template_type->param_name] = [
-                            'fn-' . $method_id->method_name => [
+                            'fn-' . Interner::lookupLc($method_id->name_id) => [
                                 new TemplateBound(
                                     Type::getInt(false, $codebase->getMajorAnalysisPhpVersion()),
                                 ),
@@ -576,7 +577,7 @@ final class MethodCallReturnTypeFetcher
                         ];
                     } elseif ($template_type->param_name === 'TPhpVersionId') {
                         $template_result->lower_bounds[$template_type->param_name] = [
-                            'fn-' . $method_id->method_name => [
+                            'fn-' . Interner::lookupLc($method_id->name_id) => [
                                 new TemplateBound(
                                     Type::getInt(
                                         false,

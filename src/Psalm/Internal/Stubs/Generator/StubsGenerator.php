@@ -64,7 +64,7 @@ final class StubsGenerator
         $psalm_base = dirname(__DIR__, 5);
 
         foreach ($class_provider->getAll() as $storage) {
-            if (str_starts_with($storage->name, 'Psalm\\')) {
+            if (str_starts_with(Interner::lookup($storage->id), 'Psalm\\')) {
                 continue;
             }
 
@@ -78,7 +78,7 @@ final class StubsGenerator
                 continue;
             }
 
-            $name_parts = explode('\\', $storage->name);
+            $name_parts = explode('\\', Interner::lookup($storage->id));
 
             $classlike_name = array_pop($name_parts);
             $namespace_name = implode('\\', $name_parts);

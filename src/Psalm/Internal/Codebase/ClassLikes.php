@@ -505,7 +505,7 @@ final class ClassLikes
             return false;
         }
         if ($from_api && !$storage->populated) {
-            throw new UnpopulatedClasslikeException($storage->name);
+            throw new UnpopulatedClasslikeException(Interner::lookup($storage->id));
         }
         return isset($storage->parent_class_ids[$possible_parent])
             || isset($storage->parent_class_ids[$this->classlike_storage_provider->canonicalId($possible_parent)]);
@@ -801,8 +801,8 @@ final class ClassLikes
                 $appearing_method_id = $classlike_storage->appearing_method_ids[$method_name_id] ?? null;
 
                 if ($appearing_method_id !== null
-                    && strtolower($appearing_method_id->fq_class_name) === $fq_class_name_lc
-                    && strtolower($declaring_method_id->fq_class_name) !== $fq_class_name_lc
+                    && strtolower(Interner::lookup($appearing_method_id->class_id)) === $fq_class_name_lc
+                    && strtolower(Interner::lookup($declaring_method_id->class_id)) !== $fq_class_name_lc
                 ) {
                     // a trait method is analysed (and records its references) once per using class,
                     // as `UsingClass::method`, while calls resolve to the declaring `Trait::method`
@@ -828,8 +828,8 @@ final class ClassLikes
 
                         if (isset($interface_storage->methods[$method_name_id])) {
                             $parent_method_ids[$fq_interface_name_lc] = new MethodIdentifier(
-                                $interface_storage->name,
-                                $method_name,
+                                Interner::intern(Interner::lookup($interface_storage->id)),
+                                Interner::intern($method_name),
                             );
                         }
                     }
@@ -893,9 +893,9 @@ final class ClassLikes
                         } else {
                             IssueBuffer::maybeAdd(
                                 new UnusedClass(
-                                    'Class ' . $classlike_storage->name . ' is never used',
+                                    'Class ' . Interner::lookup($classlike_storage->id) . ' is never used',
                                     $classlike_storage->location,
-                                    $classlike_storage->name,
+                                    Interner::lookup($classlike_storage->id),
                                 ),
                                 $classlike_storage->suppressed_issues,
                             );
@@ -911,11 +911,11 @@ final class ClassLikes
                     ) {
                         IssueBuffer::maybeAdd(
                             new ClassMustBeFinal(
-                                'Class ' . $classlike_storage->name
+                                'Class ' . Interner::lookup($classlike_storage->id)
                                     . ' is never extended and is not part of the public API'
                                     .', and thus must be made final.',
                                 $classlike_storage->location,
-                                $classlike_storage->name,
+                                Interner::lookup($classlike_storage->id),
                             ),
                             $classlike_storage->suppressed_issues,
                             true,
@@ -1008,7 +1008,7 @@ final class ClassLikes
             }
             IssueBuffer::maybeAdd(
                 new MissingInterfaceImmutableAnnotation(
-                    $storage->name
+                    Interner::lookup($storage->id)
                     . ' must be marked with either @psalm-pure, @psalm-immutable, @psalm-mutation-free,'
                     . ' @psalm-external-mutation-free or @psalm-mutable to aid security analysis',
                     $storage->location,
@@ -1031,7 +1031,7 @@ final class ClassLikes
 
         IssueBuffer::maybeAdd(
             new MissingImmutableAnnotation(
-                $msg ?? ($storage->name . ' must be marked '.Mutations::TO_ATTRIBUTE_CLASSLIKE[
+                $msg ?? (Interner::lookup($storage->id) . ' must be marked '.Mutations::TO_ATTRIBUTE_CLASSLIKE[
                     $allowed_mutations
                 ].' to aid security analysis,'
                     .' run with --alter --issues=MissingImmutableAnnotation to fix this'),
@@ -1063,7 +1063,7 @@ final class ClassLikes
 
             try {
                 $source_method_storage = $methods->getStorage(
-                    new MethodIdentifier(...$source_parts),
+                    new MethodIdentifier(...array_map(Interner::intern(...), $source_parts)),
                 );
             } catch (InvalidArgumentException) {
                 continue;
@@ -1167,8 +1167,8 @@ final class ClassLikes
                     $replace_type = TypeExpander::expandUnion(
                         $codebase,
                         $source_property_storage->type,
-                        $source_classlike_storage->name,
-                        $source_classlike_storage->name,
+                        Interner::lookup($source_classlike_storage->id),
+                        Interner::lookup($source_classlike_storage->id),
                         $source_classlike_storage->parent_class,
                     );
 
@@ -1639,7 +1639,7 @@ final class ClassLikes
                 $fq_class_name,
                 $destination_class_storage->aliases->namespace,
                 $destination_class_storage->aliases->uses_flipped,
-                $destination_class_storage->name,
+                Interner::lookup($destination_class_storage->id),
                 $allow_self,
             ) . ($add_class_constant ? '::class' : ''),
         );
@@ -1677,7 +1677,7 @@ final class ClassLikes
             $type->toNamespacedString(
                 $destination_class_storage->aliases->namespace,
                 $destination_class_storage->aliases->uses_flipped,
-                $destination_class_storage->name,
+                Interner::lookup($destination_class_storage->id),
                 false,
             ),
         );
@@ -1783,9 +1783,9 @@ final class ClassLikes
 
         foreach ($classlike_storage->appearing_method_ids as $method_name_id => $appearing_method_id) {
             $method_name = Interner::lookupLc($method_name_id);
-            $appearing_fq_classlike_name = $appearing_method_id->fq_class_name;
+            $appearing_fq_classlike_name = Interner::lookup($appearing_method_id->class_id);
 
-            if ($appearing_fq_classlike_name !== $classlike_storage->name) {
+            if ($appearing_fq_classlike_name !== Interner::lookup($classlike_storage->id)) {
                 continue;
             }
 
@@ -1798,8 +1798,8 @@ final class ClassLikes
             } else {
                 $declaring_method_id = $classlike_storage->declaring_method_ids[$method_name_id];
 
-                $declaring_fq_classlike_name = $declaring_method_id->fq_class_name;
-                $declaring_method_name = $declaring_method_id->method_name;
+                $declaring_fq_classlike_name = Interner::lookup($declaring_method_id->class_id);
+                $declaring_method_name = Interner::lookupLc($declaring_method_id->name_id);
 
                 try {
                     $declaring_classlike_storage = $this->classlike_storage_provider->get(Interner::intern($declaring_fq_classlike_name));
@@ -1854,7 +1854,7 @@ final class ClassLikes
                 ) {
                     $method_location = $method_storage->location;
 
-                    $method_id = $classlike_storage->name . '::' . $method_storage->cased_name;
+                    $method_id = Interner::lookup($classlike_storage->id) . '::' . $method_storage->cased_name;
 
                     if ($method_storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PRIVATE) {
                         $has_parent_references = false;
@@ -1872,7 +1872,7 @@ final class ClassLikes
                         }
 
                         $has_variable_calls = $codebase->analyzer->hasMixedMemberName($method_name)
-                            || $codebase->analyzer->hasMixedMemberName(strtolower($classlike_storage->name . '::'));
+                            || $codebase->analyzer->hasMixedMemberName(strtolower(Interner::lookup($classlike_storage->id) . '::'));
 
                         if (isset($classlike_storage->overridden_method_ids[$method_name_id])) {
                             foreach ($classlike_storage->overridden_method_ids[$method_name_id] as $parent_method_id) {
@@ -1964,7 +1964,7 @@ final class ClassLikes
                         }
                     } elseif (!isset($classlike_storage->declaring_method_ids[Sym::CALL])) {
                         $has_variable_calls = $codebase->analyzer->hasMixedMemberName(
-                            strtolower($classlike_storage->name . '::'),
+                            strtolower(Interner::lookup($classlike_storage->id) . '::'),
                         ) || $codebase->analyzer->hasMixedMemberName($method_name);
 
                         if ($method_name === '__construct') {
@@ -2023,7 +2023,7 @@ final class ClassLikes
                     && $method_storage->return_type_location
                     && !$method_storage->return_type->isVoid()
                     && !$method_storage->return_type->isNever()
-                    && $method_id->method_name !== '__tostring'
+                    && Interner::lookupLc($method_id->name_id) !== '__tostring'
                     && ($method_storage->is_static || !$method_storage->probably_fluent)
                 ) {
                     $method_return_referenced = $codebase->code_use_graph->isUsed(
@@ -2057,9 +2057,9 @@ final class ClassLikes
     private function checkMethodParamReferences(ClassLikeStorage $classlike_storage): void
     {
         foreach ($classlike_storage->appearing_method_ids as $method_name_id => $appearing_method_id) {
-            $appearing_fq_classlike_name = $appearing_method_id->fq_class_name;
+            $appearing_fq_classlike_name = Interner::lookup($appearing_method_id->class_id);
 
-            if ($appearing_fq_classlike_name !== $classlike_storage->name) {
+            if ($appearing_fq_classlike_name !== Interner::lookup($classlike_storage->id)) {
                 continue;
             }
 
@@ -2070,8 +2070,8 @@ final class ClassLikes
             } else {
                 $declaring_method_id = $classlike_storage->declaring_method_ids[$method_name_id];
 
-                $declaring_fq_classlike_name = $declaring_method_id->fq_class_name;
-                $declaring_method_name = $declaring_method_id->method_name;
+                $declaring_fq_classlike_name = Interner::lookup($declaring_method_id->class_id);
+                $declaring_method_name = Interner::lookupLc($declaring_method_id->name_id);
 
                 try {
                     $declaring_classlike_storage = $this->classlike_storage_provider->get(Interner::intern($declaring_fq_classlike_name));
@@ -2125,9 +2125,9 @@ final class ClassLikes
 
         foreach ($classlike_storage->appearing_method_ids as $method_name_id => $appearing_method_id) {
             $method_name = Interner::lookupLc($method_name_id);
-            $appearing_fq_classlike_name = $appearing_method_id->fq_class_name;
+            $appearing_fq_classlike_name = Interner::lookup($appearing_method_id->class_id);
 
-            if ($appearing_fq_classlike_name !== $classlike_storage->name) {
+            if ($appearing_fq_classlike_name !== Interner::lookup($classlike_storage->id)) {
                 continue;
             }
 
@@ -2140,8 +2140,8 @@ final class ClassLikes
             } else {
                 $declaring_method_id = $classlike_storage->declaring_method_ids[$method_name_id];
 
-                $declaring_fq_classlike_name = $declaring_method_id->fq_class_name;
-                $declaring_method_name = $declaring_method_id->method_name;
+                $declaring_fq_classlike_name = Interner::lookup($declaring_method_id->class_id);
+                $declaring_method_name = Interner::lookupLc($declaring_method_id->name_id);
 
                 try {
                     $declaring_classlike_storage = $this->classlike_storage_provider->get(Interner::intern($declaring_fq_classlike_name));
@@ -2214,7 +2214,7 @@ final class ClassLikes
                                     $method_name,
                                 )
                                     || $codebase->analyzer->hasMixedMemberName(
-                                        strtolower($classlike_storage->name . '::'),
+                                        strtolower(Interner::lookup($classlike_storage->id) . '::'),
                                     );
 
                                 if ($has_variable_calls) {
@@ -2257,7 +2257,7 @@ final class ClassLikes
                 continue;
             }
 
-            $property_node = CodeUseGraph::propertyNode(strtolower($classlike_storage->name), $property_name);
+            $property_node = CodeUseGraph::propertyNode(strtolower(Interner::lookup($classlike_storage->id)), $property_name);
             $property_referenced = $codebase->code_use_graph->isUsed($property_node);
 
             $property_constructor_referenced = false;
@@ -2269,7 +2269,7 @@ final class ClassLikes
 
                 if (count($property_references) === 1) {
                     $constructor_node = CodeUseGraph::functionLikeNode(
-                        strtolower($classlike_storage->name) . '::__construct',
+                        strtolower(Interner::lookup($classlike_storage->id)) . '::__construct',
                     );
 
                     $property_constructor_referenced = isset($property_references[$constructor_node])
@@ -2280,7 +2280,7 @@ final class ClassLikes
             if ((!$property_referenced || $property_constructor_referenced)
                 && $property_storage->location
             ) {
-                $property_id = $classlike_storage->name . '::$' . $property_name;
+                $property_id = Interner::lookup($classlike_storage->id) . '::$' . $property_name;
 
                 if ($property_storage->visibility === ClassLikeAnalyzer::VISIBILITY_PUBLIC
                     || $property_storage->visibility === ClassLikeAnalyzer::VISIBILITY_PROTECTED
@@ -2288,7 +2288,7 @@ final class ClassLikes
                     $has_parent_references = isset($classlike_storage->overridden_property_ids[$property_name_id]);
 
                     $has_variable_calls = $codebase->analyzer->hasMixedMemberName('$' . $property_name)
-                        || $codebase->analyzer->hasMixedMemberName(strtolower($classlike_storage->name) . '::$');
+                        || $codebase->analyzer->hasMixedMemberName(strtolower(Interner::lookup($classlike_storage->id)) . '::$');
 
                     foreach ($classlike_storage->parent_classes as $parent_method_fqcln) {
                         if ($codebase->analyzer->hasMixedMemberName(
@@ -2624,7 +2624,7 @@ final class ClassLikes
 
         $types = [];
         foreach ($resolved_enums as $enum_case_name => $_) {
-            $types[$enum_case_name] = new TEnumCase($class_like_storage->name, $enum_case_name);
+            $types[$enum_case_name] = new TEnumCase(Interner::lookup($class_like_storage->id), $enum_case_name);
         }
 
         return new Union(array_values($types));

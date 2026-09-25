@@ -6,6 +6,7 @@ namespace Psalm\Tests\Internal\Provider;
 
 use Override;
 use Psalm\Config;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\ClassLikeStorageCacheProvider;
 use Psalm\Storage\ClassLikeStorage;
 use UnexpectedValueException;
@@ -54,8 +55,8 @@ final class SharedStubClassLikeStorageCacheProvider extends ClassLikeStorageCach
     #[Override]
     public function writeToCache(ClassLikeStorage $storage, string $file_path, string $file_contents): void
     {
-        $this->files_by_class[strtolower($storage->name)][strtolower($file_path)] = true;
-        $this->shared[strtolower($file_path) . "\0" . strtolower($storage->name)] = [$this->php_version_id . ':' . hash('xxh128', $file_contents), $storage];
+        $this->files_by_class[strtolower(Interner::lookup($storage->id))][strtolower($file_path)] = true;
+        $this->shared[strtolower($file_path) . "\0" . strtolower(Interner::lookup($storage->id))] = [$this->php_version_id . ':' . hash('xxh128', $file_contents), $storage];
     }
 
     #[Override]

@@ -29,7 +29,7 @@ final class ReferenceMapGenerator
                 continue;
             }
 
-            $fq_classlike_name = $storage->name;
+            $fq_classlike_name = Interner::lookup($storage->id);
 
             if (isset($expected_references[$fq_classlike_name])) {
                 $reference_dictionary[$fq_classlike_name]

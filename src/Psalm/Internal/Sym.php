@@ -113,6 +113,22 @@ final class Sym
     public const C_NON_EMPTY_ARRAY = 8512398112518824018;
     /** `array` */
     public const C_ARRAY = 3603170802494522190;
+    /** `createfrominterface` */
+    public const C_CREATEFROMINTERFACE = 8081241978594644683;
+    /** `Foo\Bar` */
+    public const C_FOO__BAR = 5094806515607143651;
+    /** `Baz` */
+    public const C_BAZ = 6817238695589345062;
+    /** `FooController` */
+    public const C_FOO_CONTROLLER = 2341512253251835884;
+    /** `barbar` */
+    public const C_BARBAR = 4138705422022095310;
+    /** `LocalStringable` */
+    public const C_LOCAL_STRINGABLE = 3677484737423667505;
+    /** `render` */
+    public const C_RENDER = 1634736678115320266;
+    /** `getattributes` */
+    public const C_GETATTRIBUTES = 7952769968126523042;
     /** `__construct` */
     public const CONSTRUCT = 3382564448877090733;
     /** `__destruct` */
@@ -240,6 +256,14 @@ final class Sym
         'object',
         'non-empty-array',
         'array',
+        'createfrominterface',
+        'Foo\\Bar',
+        'Baz',
+        'FooController',
+        'barbar',
+        'LocalStringable',
+        'render',
+        'getattributes',
         '__construct',
         '__destruct',
         '__call',

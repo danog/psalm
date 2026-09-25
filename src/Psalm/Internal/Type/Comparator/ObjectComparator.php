@@ -473,7 +473,7 @@ final class ObjectComparator
             return true;
         }
 
-        if (ExpressionAnalyzer::isMock(strtolower($input_storage->name))) {
+        if (ExpressionAnalyzer::isMock(strtolower(Interner::lookup($input_storage->id)))) {
             return true;
         }
 

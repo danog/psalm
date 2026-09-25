@@ -1039,7 +1039,7 @@ final class ForeachAnalyzer
             $key_type = self::getExtendedType(
                 'TKey',
                 'Traversable',
-                $generic_storage->name,
+                Interner::lookup($generic_storage->id),
                 $generic_storage->template_extended_params,
                 $generic_storage->template_types,
                 $passed_type_params,
@@ -1048,7 +1048,7 @@ final class ForeachAnalyzer
             $value_type = self::getExtendedType(
                 'TValue',
                 'Traversable',
-                $generic_storage->name,
+                Interner::lookup($generic_storage->id),
                 $generic_storage->template_extended_params,
                 $generic_storage->template_types,
                 $passed_type_params,
