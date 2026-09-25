@@ -734,7 +734,7 @@ final class Codebase
     }
 
     /**
-     * @param array<string> $candidate_files
+     * @param list<string> $candidate_files
      */
     public function reloadFiles(ProjectAnalyzer $project_analyzer, array $candidate_files, bool $force = false): void
     {
@@ -2659,7 +2659,7 @@ final class Codebase
     }
 
     /**
-     * @param array<string, mixed> $phantom_classes
+     * @param array<string, bool> $phantom_classes
      */
     public function queueClassLikeForScanning(
         string $fq_classlike_name,

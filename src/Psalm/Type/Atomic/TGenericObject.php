@@ -11,10 +11,14 @@ use Psalm\Internal\Type\TemplateResult;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
 
+use function assert;
 use function count;
 use function implode;
 use function strrpos;
 use function substr;
+use Psalm\Type\MutableTypeVisitor;
+use Psalm\Type\TypeVisitor;
+use Psalm\Type\TypeNode;
 
 /**
  * Denotes an object type that has generic parameters e.g. `ArrayObject<string, Foo\Bar>`
@@ -133,13 +137,80 @@ final class TGenericObject extends TNamedObject
         return $this->value;
     }
 
+    #[Override]
+    public function visit(TypeVisitor $visitor): bool
+    {
+        foreach ($this->type_params as $child) {
+            if ($visitor->traverse($child) === false) {
+                return false;
+            }
+        }
+        foreach ($this->extra_types as $child) {
+            if ($visitor->traverse($child) === false) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /**
-     * @psalm-pure
+     * @param TypeNode $node
+     * @param-out TypeNode $node
+     *
+     * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
-    protected function getChildNodeKeys(): array
+    public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        return [...parent::getChildNodeKeys(), 'type_params'];
+        assert($node instanceof self);
+        $self = $node;
+        $values = $self->type_params;
+        $changed = false;
+        $result = true;
+        foreach ($values as &$child) {
+            $child_orig = $child;
+            $result = $visitor->traverse($child);
+            $changed = $changed || $child !== $child_orig;
+        }
+        unset($child);
+        if ($changed) {
+            if (!$cloned) {
+                $self = clone $self;
+                $cloned = true;
+            }
+            $self->type_params = $values;
+        }
+        if ($result === false) {
+            $node = $self;
+            return false;
+        }
+        $values = $self->extra_types;
+        $changed = false;
+        $result = true;
+        foreach ($values as &$child) {
+            $child_orig = $child;
+            $result = $visitor->traverse($child);
+            $changed = $changed || $child !== $child_orig;
+        }
+        unset($child);
+        if ($changed) {
+            if (!$cloned) {
+                $self = clone $self;
+                $cloned = true;
+            }
+            $rekeyed = [];
+            foreach ($values as $child) {
+                $rekeyed[$child->getKey()] = $child;
+            }
+            $values = $rekeyed;
+            $self->extra_types = $values;
+        }
+        if ($result === false) {
+            $node = $self;
+            return false;
+        }
+        $node = $self;
+        return true;
     }
 
     /**
@@ -218,5 +289,16 @@ final class TGenericObject extends TNamedObject
             $this->is_static,
             $intersection ?? $this->extra_types,
         );
+    }
+
+    /** @param array<lowercase-string, string> $aliased_classes */
+    #[Override]
+    protected function getNamespacedBase(
+        ?string $namespace,
+        array $aliased_classes,
+        ?string $this_class,
+        bool $use_phpdoc_format,
+    ): string {
+        return parent::toNamespacedString($namespace, $aliased_classes, $this_class, $use_phpdoc_format);
     }
 }

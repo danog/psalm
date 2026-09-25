@@ -33,7 +33,7 @@ final class ProtocolStreamReader implements ProtocolReader
     private bool $is_accepting_new_requests = true;
     private int $parsing_mode = self::PARSE_HEADERS;
     private string $buffer = '';
-    /** @var string[] */
+    /** @var list<string> */
     private array $headers = [];
     private ?int $content_length = null;
     private bool $did_emit_close = false;

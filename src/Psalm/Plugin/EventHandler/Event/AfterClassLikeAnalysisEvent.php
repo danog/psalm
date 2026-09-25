@@ -19,7 +19,7 @@ final class AfterClassLikeAnalysisEvent
     /**
      * Called after a statement has been checked
      *
-     * @param FileManipulation[]   $file_replacements
+     * @param list<FileManipulation>   $file_replacements
      * @internal
      * @psalm-mutation-free
      */
@@ -65,7 +65,7 @@ final class AfterClassLikeAnalysisEvent
     }
 
     /**
-     * @return FileManipulation[]
+     * @return list<FileManipulation>
      * @psalm-mutation-free
      */
     public function getFileReplacements(): array
@@ -74,7 +74,7 @@ final class AfterClassLikeAnalysisEvent
     }
 
     /**
-     * @param FileManipulation[] $file_replacements
+     * @param list<FileManipulation> $file_replacements
      * @psalm-external-mutation-free
      */
     public function setFileReplacements(array $file_replacements): void

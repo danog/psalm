@@ -590,7 +590,12 @@ final class NewAnalyzer extends CallAnalyzer
                             $template_name,
                             $storage->template_extended_params,
                             array_map(
+                                /**
+                                 * @param array<string, list<TemplateBound>> $type_map
+                                 * @return array<string, Union>
+                                 */
                                 static fn(array $type_map): array => array_map(
+                                    /** @param list<TemplateBound> $bounds */
                                     static fn(array $bounds): Union
                                         => TemplateStandinTypeReplacer::getMostSpecificTypeFromBounds(
                                             $bounds,
@@ -734,7 +739,7 @@ final class NewAnalyzer extends CallAnalyzer
         }
 
         if ($storage->isExternalMutationFree()) {
-            $stmt->setAttribute('external_mutation_free', true);
+            $stmt->attrs()->external_mutation_free = true;
             $stmt_type = $statements_analyzer->node_data->getType($stmt);
 
             if ($stmt_type) {

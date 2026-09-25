@@ -76,6 +76,10 @@ final class VersionUtils
             return null;
         }
 
+        if (\defined('PSALM_COMPILED')) {
+            return null;
+        }
+
         $phar_filename = Phar::running(true);
 
         if (!$phar_filename) {

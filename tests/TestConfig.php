@@ -14,7 +14,12 @@ use function getcwd;
 
 final class TestConfig extends Config
 {
-    public const INIT_PROJECT_FILES_NOW = true;
+    #[Override]
+    public function initProjectFilesNow(): bool
+    {
+        return true;
+    }
+
     private static ?ProjectFileFilter $cached_project_files = null;
 
     public function __construct()
@@ -66,6 +71,21 @@ final class TestConfig extends Config
 
         $this->collectPredefinedConstants();
         $this->collectPredefinedFunctions();
+    }
+
+    /**
+     * The tests write `TestConfig::loadFromXML(...)` and expect a config with the test defaults
+     * (`throw_exception`, error level 1, the fixture project files) that the XML then refines.
+     *
+     * @param non-empty-string $file_contents
+     */
+    public static function loadFromXML(
+        string $base_dir,
+        string $file_contents,
+        ?string $current_dir = null,
+        ?string $file_path = null,
+    ): Config {
+        return Config::loadFromXMLInto(new self(), $base_dir, $file_contents, $current_dir, $file_path);
     }
 
     /**

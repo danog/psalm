@@ -27,7 +27,6 @@ use function in_array;
 final class ClassLikeStorage implements HasAttributesInterface
 {
     use CustomMetadataTrait;
-    use UnserializeMemoryUsageSuppressionTrait;
 
     /**
      * @var array<string, ClassConstantStorage>
@@ -51,7 +50,7 @@ final class ClassLikeStorage implements HasAttributesInterface
     public array $internal = [];
 
     /**
-     * @var TTemplateParam[]
+     * @var list<TTemplateParam>
      */
     public array $templatedMixins = [];
 
@@ -266,7 +265,7 @@ final class ClassLikeStorage implements HasAttributesInterface
     public array $inheritable_property_ids = [];
 
     /**
-     * @var array<string, array<string>>
+     * @var array<string, list<string>>
      */
     public array $overridden_property_ids = [];
 

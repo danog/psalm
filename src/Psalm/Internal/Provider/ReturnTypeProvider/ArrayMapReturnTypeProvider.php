@@ -43,6 +43,7 @@ use function assert;
 use function count;
 use function explode;
 use function in_array;
+use function max;
 use function reset;
 use function str_contains;
 use function substr;
@@ -53,7 +54,7 @@ use function substr;
 final class ArrayMapReturnTypeProvider implements FunctionReturnTypeProviderInterface
 {
     /**
-     * @return array<lowercase-string>
+     * @return list<lowercase-string>
      * @psalm-pure
      */
     #[Override]
@@ -115,17 +116,16 @@ final class ArrayMapReturnTypeProvider implements FunctionReturnTypeProviderInte
             }
 
             $null = Type::getNull();
-            $array_arg_types = array_map(null, ...$array_arg_types);
             $array_arg_types = array_map(
-                /** @param non-empty-array<?Union> $sub */
-                static function (array $sub) use ($null) {
+                /** @param non-empty-list<Union|null> $sub */
+                static function (array $sub) use ($null): Union {
                     $sub = array_map(
-                        static fn(?Union $t) => $t ?? $null,
+                        static fn(?Union $t): Union => $t ?? $null,
                         $sub,
                     );
                     return new Union([TKeyedArray::make($sub, null, null, true)]);
                 },
-                $array_arg_types,
+                self::zipColumns($array_arg_types),
             );
 
             if (!$array_arg_types) {
@@ -293,7 +293,7 @@ final class ArrayMapReturnTypeProvider implements FunctionReturnTypeProviderInte
     }
 
     /**
-     * @param array<string, array<array<int, Assertion>>>|null $assertions
+     * @param array<string, array<int, list<Assertion>>>|null $assertions
      */
     private static function executeFakeCall(
         StatementsAnalyzer $statements_analyzer,
@@ -376,7 +376,7 @@ final class ArrayMapReturnTypeProvider implements FunctionReturnTypeProviderInte
      * @param list<PhpParser\Node\Arg> $array_args
      * @param int|null $fake_var_discriminator Set the fake variable id to a known value with the discriminator
      *                                         as a substring, and don't clear it from the context.
-     * @param array<string, array<array<int, Assertion>>>|null $assertions
+     * @param array<string, array<int, list<Assertion>>>|null $assertions
      */
     public static function getReturnTypeFromMappingIds(
         StatementsAnalyzer $statements_source,
@@ -539,5 +539,29 @@ final class ArrayMapReturnTypeProvider implements FunctionReturnTypeProviderInte
                 unset($context->vars_in_scope[$var_in_scope]);
             }
         }
+    }
+
+    /**
+     * The value lists zipped column by column (`array_map(null, ...$lists)`): the i-th entry holds the i-th
+     * value of every list, null where a list is shorter.
+     *
+     * @param non-empty-list<list<Union>> $lists
+     * @return list<non-empty-list<Union|null>>
+     */
+    private static function zipColumns(array $lists): array
+    {
+        $width = 0;
+        foreach ($lists as $list) {
+            $width = max($width, count($list));
+        }
+        $columns = [];
+        for ($i = 0; $i < $width; $i++) {
+            $column = [];
+            foreach ($lists as $list) {
+                $column[] = $list[$i] ?? null;
+            }
+            $columns[] = $column;
+        }
+        return $columns;
     }
 }

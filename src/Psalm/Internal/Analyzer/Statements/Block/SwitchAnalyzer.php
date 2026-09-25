@@ -14,7 +14,6 @@ use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Scope\SwitchScope;
 use Psalm\Type;
 use Psalm\Type\Reconciler;
-use SplFixedArray;
 
 use function array_merge;
 use function count;
@@ -56,7 +55,7 @@ final class SwitchAnalyzer
                 || $stmt->cond instanceof PhpParser\Node\Expr\StaticCall
             )
         ) {
-            $switch_var_id = '$__tmp_switch__' . (int) $stmt->cond->getAttribute('startFilePos');
+            $switch_var_id = '$__tmp_switch__' . $stmt->cond->getStartFilePos();
 
             $condition_type = $statements_analyzer->node_data->getType($stmt->cond) ?? Type::getMixed();
 
@@ -68,7 +67,8 @@ final class SwitchAnalyzer
         // the last statement always breaks, by default
         $last_case_exit_type = 'break';
 
-        $case_exit_types = new SplFixedArray(count($stmt->cases));
+        /** @var array<int, string> $case_exit_types */
+        $case_exit_types = [];
 
         $has_default = false;
 
@@ -203,7 +203,7 @@ final class SwitchAnalyzer
                 }
             }
 
-            $stmt->setAttribute('allMatched', true);
+            $stmt->attrs()->allMatched = true;
         } elseif ($switch_scope->possibly_redefined_vars) {
             foreach ($switch_scope->possibly_redefined_vars as $var_id => $type) {
                 if (isset($context->vars_in_scope[$var_id])) {

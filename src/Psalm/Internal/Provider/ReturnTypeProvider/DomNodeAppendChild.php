@@ -18,6 +18,7 @@ final class DomNodeAppendChild implements MethodReturnTypeProviderInterface
 {
     /**
      * @psalm-pure
+     * @return list<string>
      */
     #[Override]
     public static function getClassLikeNames(): array

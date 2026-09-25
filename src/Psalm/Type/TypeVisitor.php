@@ -36,7 +36,7 @@ abstract class TypeVisitor
 
     /**
      * @psalm-external-mutation-free
-     * @param non-empty-array<TypeNode> $nodes
+     * @param non-empty-array<array-key, TypeNode> $nodes
      */
     public function traverseArray(array $nodes): void
     {

@@ -12,6 +12,7 @@ use PhpParser\Node\Expr\ConstFetch;
 use Psalm\Aliases;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
+use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\Scanner\UnresolvedConstant\ArrayOffsetFetch;
 use Psalm\Internal\Scanner\UnresolvedConstant\ArraySpread;
 use Psalm\Internal\Scanner\UnresolvedConstant\ArrayValue;
@@ -414,16 +415,18 @@ final class ExpressionResolver
 
         if ($function->name->getParts() === ['function_exists']
             && isset($function->getArgs()[0])
-            && $function->getArgs()[0]->value instanceof PhpParser\Node\Scalar\String_
-            && function_exists($function->getArgs()[0]->value->value)
+            && ($function_name_node = $function->getArgs()[0]->value) instanceof PhpParser\Node\Scalar\String_
         ) {
-            $reflection_function = new ReflectionFunction($function->getArgs()[0]->value->value);
-
-            if ($reflection_function->isInternal()) {
-                return true;
+            // `if (!function_exists('random_bytes'))` asks what the ANALYSED code's PHP provides,
+            // not what this one does: a compiled program provides far less than PHP, and the call
+            // map is its description of PHP's own functions
+            if (\defined('PSALM_COMPILED')) {
+                if (InternalCallMapHandler::inCallMap($function_name_node->value)) {
+                    return true;
+                }
+            } elseif (function_exists($function_name_node->value)) {
+                return (new ReflectionFunction($function_name_node->value))->isInternal();
             }
-
-            return false;
         }
 
         if ($function->name->getParts() === ['class_exists']
@@ -431,14 +434,15 @@ final class ExpressionResolver
         ) {
             $string_value = null;
 
-            if ($function->getArgs()[0]->value instanceof PhpParser\Node\Scalar\String_) {
-                $string_value = $function->getArgs()[0]->value->value;
-            } elseif ($function->getArgs()[0]->value instanceof PhpParser\Node\Expr\ClassConstFetch
-                && $function->getArgs()[0]->value->class instanceof PhpParser\Node\Name
-                && $function->getArgs()[0]->value->name instanceof PhpParser\Node\Identifier
-                && strtolower($function->getArgs()[0]->value->name->name) === 'class'
+            $first_arg_value = $function->getArgs()[0]->value;
+            if ($first_arg_value instanceof PhpParser\Node\Scalar\String_) {
+                $string_value = $first_arg_value->value;
+            } elseif ($first_arg_value instanceof PhpParser\Node\Expr\ClassConstFetch
+                && $first_arg_value->class instanceof PhpParser\Node\Name
+                && $first_arg_value->name instanceof PhpParser\Node\Identifier
+                && strtolower($first_arg_value->name->name) === 'class'
             ) {
-                $string_value = (string) $function->getArgs()[0]->value->class->getAttribute('resolvedName');
+                $string_value = (string) $first_arg_value->class->attrs()->resolvedName;
             }
 
             if ($string_value && class_exists($string_value)) {
@@ -461,14 +465,15 @@ final class ExpressionResolver
         ) {
             $string_value = null;
 
-            if ($function->getArgs()[0]->value instanceof PhpParser\Node\Scalar\String_) {
-                $string_value = $function->getArgs()[0]->value->value;
-            } elseif ($function->getArgs()[0]->value instanceof PhpParser\Node\Expr\ClassConstFetch
-                && $function->getArgs()[0]->value->class instanceof PhpParser\Node\Name
-                && $function->getArgs()[0]->value->name instanceof PhpParser\Node\Identifier
-                && strtolower($function->getArgs()[0]->value->name->name) === 'class'
+            $first_arg_value = $function->getArgs()[0]->value;
+            if ($first_arg_value instanceof PhpParser\Node\Scalar\String_) {
+                $string_value = $first_arg_value->value;
+            } elseif ($first_arg_value instanceof PhpParser\Node\Expr\ClassConstFetch
+                && $first_arg_value->class instanceof PhpParser\Node\Name
+                && $first_arg_value->name instanceof PhpParser\Node\Identifier
+                && strtolower($first_arg_value->name->name) === 'class'
             ) {
-                $string_value = (string) $function->getArgs()[0]->value->class->getAttribute('resolvedName');
+                $string_value = (string) $first_arg_value->class->attrs()->resolvedName;
             }
 
             if ($string_value && interface_exists($string_value)) {
@@ -491,14 +496,15 @@ final class ExpressionResolver
         ) {
             $string_value = null;
 
-            if ($function->getArgs()[0]->value instanceof PhpParser\Node\Scalar\String_) {
-                $string_value = $function->getArgs()[0]->value->value;
-            } elseif ($function->getArgs()[0]->value instanceof PhpParser\Node\Expr\ClassConstFetch
-                && $function->getArgs()[0]->value->class instanceof PhpParser\Node\Name
-                && $function->getArgs()[0]->value->name instanceof PhpParser\Node\Identifier
-                && strtolower($function->getArgs()[0]->value->name->name) === 'class'
+            $first_arg_value = $function->getArgs()[0]->value;
+            if ($first_arg_value instanceof PhpParser\Node\Scalar\String_) {
+                $string_value = $first_arg_value->value;
+            } elseif ($first_arg_value instanceof PhpParser\Node\Expr\ClassConstFetch
+                && $first_arg_value->class instanceof PhpParser\Node\Name
+                && $first_arg_value->name instanceof PhpParser\Node\Identifier
+                && strtolower($first_arg_value->name->name) === 'class'
             ) {
-                $string_value = (string) $function->getArgs()[0]->value->class->getAttribute('resolvedName');
+                $string_value = (string) $first_arg_value->class->attrs()->resolvedName;
             }
 
             // We're using class_exists here because enum_exists doesn't exist on old versions of PHP
@@ -520,15 +526,12 @@ final class ExpressionResolver
 
         if ($function->name->getParts() === ['defined']
             && isset($function->getArgs()[0])
-            && $function->getArgs()[0]->value instanceof PhpParser\Node\Scalar\String_
+            && ($const_name_node = $function->getArgs()[0]->value) instanceof PhpParser\Node\Scalar\String_
         ) {
-            $predefined_constants = get_defined_constants(true);
-            if (isset($predefined_constants['user'])) {
-                unset($predefined_constants['user']);
-            }
-            $predefined_constants = array_merge(...array_values($predefined_constants));
+            // the runtime's own (non-user) constants
+            $predefined_constants = get_defined_constants();
 
-            return isset($predefined_constants[$function->getArgs()[0]->value->value]);
+            return isset($predefined_constants[$const_name_node->value]);
         }
 
         return null;

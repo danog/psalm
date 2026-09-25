@@ -157,14 +157,12 @@ final class InternalCallMapHandler
 
                 if ($arg->unpack && !$function_param->is_variadic) {
                     if ($arg_type->hasArray()) {
-                        /**
-                         * @var TArray|TKeyedArray
-                         */
                         $array_atomic_type = $arg_type->getArray();
 
                         if ($array_atomic_type instanceof TKeyedArray) {
                             $arg_type = $array_atomic_type->getGenericValueType();
                         } else {
+                            assert($array_atomic_type instanceof TArray);
                             $arg_type = $array_atomic_type->type_params[1];
                         }
                     }
@@ -223,11 +221,13 @@ final class InternalCallMapHandler
     {
         $call_map_key = strtolower($function_id);
 
+        // ask for the map first: a change of analysis version reloads it and drops the callables
+        // derived from the previous one, which describe the previous version's signatures
+        $call_map = self::getCallMap();
+
         if (isset(self::$call_map_callables[$call_map_key])) {
             return self::$call_map_callables[$call_map_key];
         }
-
-        $call_map = self::getCallMap();
 
         if (!isset($call_map[$call_map_key])) {
             return null;
@@ -255,6 +255,8 @@ final class InternalCallMapHandler
 
             /** @var string $arg_name - key type changed with above array_shift */
             foreach ($call_map_function_args as $arg_name => $arg_type) {
+                // parameter names are strings (index 0 holds the return type)
+                $arg_name = (string) $arg_name;
                 $by_reference = false;
                 $optional = false;
                 $variadic = false;
@@ -357,9 +359,24 @@ final class InternalCallMapHandler
         );
 
         /** @var non-empty-array<lowercase-string, array<int|string, string>> */
-        $call_map = require(dirname(__DIR__, 4) . "/dictionaries/CallMap_$analyzer_version_int.php");
+        $call_map = match ($analyzer_version_int) {
+            70 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_70.php'),
+            71 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_71.php'),
+            72 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_72.php'),
+            73 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_73.php'),
+            74 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_74.php'),
+            80 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_80.php'),
+            81 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_81.php'),
+            82 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_82.php'),
+            83 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_83.php'),
+            84 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_84.php'),
+            85 => require(dirname(__DIR__, 4) . '/dictionaries/CallMap_85.php'),
+            default => throw new UnexpectedValueException('No call map for PHP version ' . $analyzer_version_int),
+        };
 
         self::$call_map = $call_map;
+        // the callables derived from the previous map describe the previous version's signatures
+        self::$call_map_callables = [];
 
         assert(!empty(self::$call_map));
 

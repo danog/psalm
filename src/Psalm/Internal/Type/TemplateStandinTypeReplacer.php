@@ -459,7 +459,7 @@ final class TemplateStandinTypeReplacer
      * that match the base type (normally the param type of the method). These matches are used to infer
      * more template types
      *
-     * Example: when passing `array<string|int>` to a function that expects `array<T>`, a rule in this method
+     * Example: when passing `list<string|int>` to a function that expects `list<T>`, a rule in this method
      * identifies the matching atomic types for `T` as `string|int`
      *
      * @return list<Atomic>
@@ -1168,6 +1168,7 @@ final class TemplateStandinTypeReplacer
 
     /**
      * @param array<string, array<string, non-empty-list<TemplateBound>>>  $template_types
+     * @param array<string, bool> $visited_classes
      * @psalm-external-mutation-free
      */
     public static function getRootTemplateType(
@@ -1268,6 +1269,7 @@ final class TemplateStandinTypeReplacer
     /**
      * @param TGenericObject|TNamedObject|TIterable $input_type_part
      * @param TGenericObject|TIterable $container_type_part
+     * @param array<int, bool>|null $container_type_params_covariant
      * @psalm-external-mutation-free
      * @return list<Union>
      */

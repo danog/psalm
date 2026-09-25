@@ -18,6 +18,6 @@ final class PropertyPlugin implements PluginEntryPointInterface
     {
         require_once __DIR__ . '/Hook/FooPropertyProvider.php';
 
-        $registration->registerHooksFromClass(FooPropertyProvider::class);
+        $registration->registerHooksFromClass(new FooPropertyProvider());
     }
 }

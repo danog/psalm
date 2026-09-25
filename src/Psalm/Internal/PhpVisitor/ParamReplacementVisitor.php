@@ -41,8 +41,8 @@ final class ParamReplacementVisitor extends PhpParser\NodeVisitorAbstract
         if ($node instanceof PhpParser\Node\Expr\Variable) {
             if ($node->name === $this->old_name) {
                 $this->replacements[] = new FileManipulation(
-                    (int) $node->getAttribute('startFilePos') + 1,
-                    (int) $node->getAttribute('endFilePos') + 1,
+                    $node->getStartFilePos() + 1,
+                    $node->getEndFilePos() + 1,
                     $this->new_name,
                 );
             } elseif ($node->name === $this->new_name) {
@@ -52,8 +52,8 @@ final class ParamReplacementVisitor extends PhpParser\NodeVisitorAbstract
                 }
 
                 $this->replacements[] = new FileManipulation(
-                    (int) $node->getAttribute('startFilePos') + 1,
-                    (int) $node->getAttribute('endFilePos') + 1,
+                    $node->getStartFilePos() + 1,
+                    $node->getEndFilePos() + 1,
                     $this->new_name . '_new',
                 );
 

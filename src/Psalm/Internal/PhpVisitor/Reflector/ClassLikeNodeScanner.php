@@ -168,6 +168,17 @@ final class ClassLikeNodeScanner
             if ($this->codebase->classlike_storage_provider->has($fq_classlike_name_lc)) {
                 $duplicate_storage = $this->codebase->classlike_storage_provider->get($fq_classlike_name_lc);
 
+                // Psalm's own stubs describe the classes PHP itself provides; another file declaring a
+                // class of the same name does not get to replace that description (a compiled program
+                // carries shims for those classes, and its own source would otherwise win)
+                if ($duplicate_storage->location !== null
+                    && $duplicate_storage->location->file_path !== $this->file_path
+                    && Config::isOwnStubFile($duplicate_storage->location->file_path)
+                    && !$this->config->isStubFile($this->file_path)
+                ) {
+                    return false;
+                }
+
                 // don't override data from files that are getting analyzed with data from stubs
                 // if the stubs contain the same class
                 if (!$duplicate_storage->stubbed
@@ -177,7 +188,18 @@ final class ClassLikeNodeScanner
                     return false;
                 }
 
-                if (!$this->codebase->register_stub_files) {
+                // a compiled program's own sources are how it provides the classes PHP provides: code
+                // being analysed that declares one of them (`interface Stringable` on PHP 7.4) is not
+                // redeclaring anything the interpreter would have had, so its declaration stands
+                if (\defined('PSALM_COMPILED')
+                    && !$this->codebase->register_stub_files
+                    && $duplicate_storage->location !== null
+                    && $duplicate_storage->location->file_path !== $this->file_path
+                    && !$this->config->isInProjectDirs($duplicate_storage->location->file_path)
+                    && $this->config->isInProjectDirs($this->file_path)
+                ) {
+                    $this->codebase->classlike_storage_provider->remove($fq_classlike_name_lc);
+                } elseif (!$this->codebase->register_stub_files) {
                     if (!$duplicate_storage->stmt_location
                         || $duplicate_storage->stmt_location->file_path !== $this->file_path
                         || $class_location->getHash() !== $duplicate_storage->stmt_location->getHash()
@@ -414,6 +436,10 @@ final class ClassLikeNodeScanner
 
                 usort(
                     $docblock_info->templates,
+                    /**
+                     * @param array{string, ?string, ?string, bool, int} $l
+                     * @param array{string, ?string, ?string, bool, int} $r
+                     */
                     static fn(array $l, array $r): int => $l[4] > $r[4] ? 1 : -1,
                 );
 
@@ -502,7 +528,7 @@ final class ClassLikeNodeScanner
                     $yield_type->queueClassLikesForScanning(
                         $this->codebase,
                         $this->file_storage,
-                        $storage->template_types ?: [],
+                        array_fill_keys(array_keys($storage->template_types ?: []), true),
                     );
 
                     $storage->yield = $yield_type;
@@ -590,7 +616,7 @@ final class ClassLikeNodeScanner
                         $pseudo_property_type->queueClassLikesForScanning(
                             $this->codebase,
                             $this->file_storage,
-                            $storage->template_types ?: [],
+                            array_fill_keys(array_keys($storage->template_types ?: []), true),
                         );
 
                         if ($property['tag'] !== 'property-read' && $property['tag'] !== 'psalm-property-read') {
@@ -689,7 +715,7 @@ final class ClassLikeNodeScanner
                 $mixin_type->queueClassLikesForScanning(
                     $this->codebase,
                     $this->file_storage,
-                    $storage->template_types ?: [],
+                    array_fill_keys(array_keys($storage->template_types ?: []), true),
                 );
 
                 if ($mixin_type->isSingle()) {
@@ -1025,7 +1051,7 @@ final class ClassLikeNodeScanner
         $extended_union_type->queueClassLikesForScanning(
             $this->codebase,
             $this->file_storage,
-            $storage->template_types ?: [],
+            array_fill_keys(array_keys($storage->template_types ?: []), true),
         );
 
         foreach ($extended_union_type->getAtomicTypes() as $atomic_type) {
@@ -1111,7 +1137,7 @@ final class ClassLikeNodeScanner
         $implemented_union_type->queueClassLikesForScanning(
             $this->codebase,
             $this->file_storage,
-            $storage->template_types ?: [],
+            array_fill_keys(array_keys($storage->template_types ?: []), true),
         );
 
         foreach ($implemented_union_type->getAtomicTypes() as $atomic_type) {
@@ -1197,7 +1223,7 @@ final class ClassLikeNodeScanner
         $used_union_type->queueClassLikesForScanning(
             $this->codebase,
             $this->file_storage,
-            $storage->template_types ?: [],
+            array_fill_keys(array_keys($storage->template_types ?: []), true),
         );
 
         foreach ($used_union_type->getAtomicTypes() as $atomic_type) {
@@ -2000,7 +2026,7 @@ final class ClassLikeNodeScanner
     }
 
     /**
-     * @param array<string>    $type_alias_comment_lines
+     * @param list<string>    $type_alias_comment_lines
      * @param array<string, TypeAlias> $type_aliases
      * @return array<string, InlineTypeAlias>
      * @throws DocblockParseException if there was a problem parsing the docblock

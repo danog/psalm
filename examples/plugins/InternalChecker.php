@@ -43,10 +43,10 @@ final class InternalChecker implements AfterClassLikeAnalysisInterface
                 $docblock_start = $docblock->getStartFilePos();
                 $parsed_docblock = DocComment::parsePreservingLength($docblock);
             } else {
-                $docblock_start = (int) $stmt->getAttribute('startFilePos');
+                $docblock_start = (int) $stmt->attrs()->startFilePos;
                 $parsed_docblock = new ParsedDocblock('', []);
             }
-            $docblock_end = (int) $stmt->getAttribute('startFilePos');
+            $docblock_end = (int) $stmt->attrs()->startFilePos;
 
             $parsed_docblock->tags['internal'] = [''];
             $new_docblock_content = $parsed_docblock->render('');

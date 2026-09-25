@@ -32,7 +32,7 @@ final class UnusedAssignmentRemover
     private array $removed_unref_vars = [];
 
     /**
-     * @param array<PhpParser\Node\Stmt>   $stmts
+     * @param list<PhpParser\Node\Stmt>   $stmts
      * @param array<string, CodeLocation> $var_loc_map
      */
     public function findUnusedAssignment(
@@ -234,7 +234,7 @@ final class UnusedAssignmentRemover
     }
 
     /**
-     * @param  array<PhpParser\Node\Stmt>   $stmts
+     * @param  list<PhpParser\Node\Stmt>   $stmts
      * @return array{
      *          0: PhpParser\Node\Stmt|null,
      *          1: PhpParser\Node\Expr\Assign|PhpParser\Node\Expr\AssignOp|PhpParser\Node\Expr\AssignRef|null

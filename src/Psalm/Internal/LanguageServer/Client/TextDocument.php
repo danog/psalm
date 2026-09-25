@@ -27,7 +27,7 @@ final class TextDocument
     /**
      * Diagnostics notification are sent from the server to the client to signal results of validation runs.
      *
-     * @param Diagnostic[] $diagnostics
+     * @param list<Diagnostic> $diagnostics
      */
     public function publishDiagnostics(string $uri, array $diagnostics, ?int $version = null): void
     {

@@ -10,9 +10,6 @@ use function exec;
 use function file_get_contents;
 use function glob;
 use function implode;
-use function is_array;
-use function is_bool;
-use function is_string;
 use function json_decode;
 use function preg_match;
 use function trim;
@@ -119,9 +116,9 @@ final class HackConformanceTest extends TestCase
         exec($cmd, $lines);
 
         /** @var list<string> $lines */
-        $decoded = json_decode(implode("\n", $lines), true);
+        $decoded = self::decodeHarnessJson(implode("\n", $lines));
 
-        if (!is_array($decoded) || !isset($decoded['available']) || !is_bool($decoded['available'])) {
+        if ($decoded === null || !isset($decoded['available'])) {
             return self::$harness = [
                 'available' => false,
                 'reason' => 'the Hack conformance runner produced no usable output',
@@ -132,21 +129,17 @@ final class HackConformanceTest extends TestCase
         if ($decoded['available'] === false) {
             return self::$harness = [
                 'available' => false,
-                'reason' => self::stringOr($decoded['reason'] ?? null, 'harness unavailable'),
+                'reason' => $decoded['reason'] ?? 'harness unavailable',
                 'results' => [],
             ];
         }
 
         $results = [];
 
-        foreach (self::toArray($decoded['results'] ?? null) as $name => $row) {
-            if (!is_string($name) || !is_array($row)) {
-                continue;
-            }
-
+        foreach ($decoded['results'] ?? [] as $name => $row) {
             $results[$name] = [
-                'actual' => self::stringOr($row['actual'] ?? null, ''),
-                'output' => self::stringOr($row['output'] ?? null, ''),
+                'actual' => $row['actual'] ?? '',
+                'output' => $row['output'] ?? '',
             ];
         }
 
@@ -158,22 +151,17 @@ final class HackConformanceTest extends TestCase
     }
 
     /**
-     * The value if it is a string, otherwise the fallback — used to read a
-     * field out of the untyped JSON the runner emits.
+     * The runner's JSON (bin/hack-conformance/run.php --json), decoded in the shape it emits.
+     * A run that produced no output at all decodes to null.
      *
-     * @psalm-pure
+     * @return array{
+     *     available?: bool,
+     *     reason?: string,
+     *     results?: array<string, array{actual?: string, output?: string}>
+     * }|null
      */
-    private static function stringOr(mixed $value, string $default): string
+    private static function decodeHarnessJson(string $json): ?array
     {
-        return is_string($value) ? $value : $default;
-    }
-
-    /**
-     * @return array<array-key, mixed>
-     * @psalm-pure
-     */
-    private static function toArray(mixed $value): array
-    {
-        return is_array($value) ? $value : [];
+        return json_decode($json, true);
     }
 }

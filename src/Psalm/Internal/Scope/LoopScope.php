@@ -45,7 +45,7 @@ final class LoopScope
     public array $protected_var_ids = [];
 
     /**
-     * @var string[]
+     * @var array<int, string>
      */
     public array $final_actions = [];
 

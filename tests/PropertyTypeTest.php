@@ -1189,11 +1189,10 @@ final class PropertyTypeTest extends TestCase
                         /**
                          * Constructs a finally node.
                          *
-                         * @param list<Node\Stmt> $stmts      Statements
-                         * @param array<string, mixed>  $attributes Additional attributes
+                         * @param list<Node\Stmt> $stmts Statements
                          */
-                        public function __construct(array $stmts = array(), array $attributes = array()) {
-                            parent::__construct($attributes);
+                        public function __construct(array $stmts = array()) {
+                            $this->attributes = new \PhpParser\NodeAttributes();
                             $this->stmts = $stmts;
                         }
 
@@ -1201,11 +1200,20 @@ final class PropertyTypeTest extends TestCase
                             return array("stmts");
                         }
 
+                        public function getSubNode(string $name) : mixed {
+                            return $name === "stmts" ? $this->stmts : null;
+                        }
+
+                        public function setSubNode(string $name, mixed $value) : void {
+                        }
+
                         public function getType() : string {
                             return "Stmt_Finally";
                         }
                     }',
                 'assertions' => [],
+                'ignored_issues' => [],
+                'php_version' => '8.0',
             ],
             'privatePropertyAccessible' => [
                 'code' => '<?php

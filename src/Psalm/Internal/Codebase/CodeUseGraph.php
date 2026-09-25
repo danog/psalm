@@ -34,7 +34,6 @@ use function substr;
  * referenced from other unused code (including cycles of otherwise
  * unreferenced code) is correctly reported as unused.
  *
- * @psalm-import-type MutationInfo from MutationLevelResolver
  * @internal
  */
 final class CodeUseGraph
@@ -541,10 +540,9 @@ final class CodeUseGraph
     /**
      * Records the mutations performed by an analysed function-like.
      *
-     * @param MutationInfo $info
      * @psalm-external-mutation-free
      */
-    public function addMutationInfo(string $node_id, array $info): void
+    public function addMutationInfo(string $node_id, MutationInfo $info): void
     {
         $this->mutation_info[$node_id] = $info;
     }
@@ -567,7 +565,7 @@ final class CodeUseGraph
     public function markMutationInfoStale(string $node_id): void
     {
         if (isset($this->mutation_info[$node_id])) {
-            $this->mutation_info[$node_id]['fresh'] = false;
+            $this->mutation_info[$node_id]->fresh = false;
         }
     }
 
@@ -956,10 +954,12 @@ final class CodeUseGraph
             }
         }
 
-        $mutation_info = $this->mutation_info;
+        $mutation_info = [];
 
-        foreach ($mutation_info as $node_id => $_) {
-            $mutation_info[$node_id]['fresh'] = false;
+        foreach ($this->mutation_info as $node_id => $info) {
+            $stale = clone $info;
+            $stale->fresh = false;
+            $mutation_info[$node_id] = $stale;
         }
 
         return [

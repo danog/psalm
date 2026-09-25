@@ -18,7 +18,10 @@ use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\RuntimeCaches;
 use Psalm\Tests\Internal\Provider\FakeParserCacheProvider;
 
+use function array_keys;
+use function json_encode;
 use function assert;
+use function basename;
 use function dirname;
 use function explode;
 use function getcwd;
@@ -28,6 +31,7 @@ use function strlen;
 use function strpos;
 use function substr;
 
+use const JSON_THROW_ON_ERROR;
 use const DIRECTORY_SEPARATOR;
 
 final class StubTest extends TestCase
@@ -1504,5 +1508,45 @@ final class StubTest extends TestCase
 
         $this->expectExceptionMessage('TaintedHtml - src/somefile.php');
         $this->analyzeFile($file_path, new Context());
+    }
+    /**
+     * A config's autoloader is scanned, so what it declares is known even when it cannot be run:
+     * a compiled program has no way to execute the PHP file the config names.
+     */
+    public function testAutoloaderContentsAreScanned(): void
+    {
+        $config = TestConfig::loadFromXML(
+            dirname(__DIR__),
+            '<?xml version="1.0"?>
+            <psalm errorLevel="1" autoloader="tests/fixtures/stubs/polyfill.phpstub">
+                <projectFiles><directory name="src" /></projectFiles>
+            </psalm>',
+        );
+
+        $codebase = $this->getProjectAnalyzerWithConfig($config)->getCodebase();
+        $autoloader = (string) $config->autoloader;
+
+        $scanned = $codebase->file_storage_provider->has($autoloader);
+
+        $actual = [
+            'autoloader' => basename($autoloader),
+            'scanned' => $scanned ? 'yes' : 'no',
+            'functions' => $scanned
+                ? implode(',', array_keys($codebase->file_storage_provider->get($autoloader)->functions))
+                : '-',
+            'known' => $codebase->functions->hasStubbedFunction('new_random_bytes') ? 'yes' : 'no',
+        ];
+
+        $this->assertSame(
+            [
+                'autoloader' => 'polyfill.phpstub',
+                'scanned' => 'yes',
+                // random_bytes is declared under `if (!function_exists(...))`, which is false here
+                'functions' => 'new_random_bytes',
+                'known' => 'yes',
+            ],
+            $actual,
+            json_encode($actual, JSON_THROW_ON_ERROR),
+        );
     }
 }

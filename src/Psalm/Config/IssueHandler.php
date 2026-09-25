@@ -19,7 +19,10 @@ use function substr;
 
 use const SCANDIR_SORT_NONE;
 
-/** @internal */
+/**
+ * @internal
+ * @psalm-import-type FileFilterConfig from FileFilter
+ */
 final class IssueHandler
 {
     private string $error_level = Config::REPORT_ERROR;
@@ -56,9 +59,9 @@ final class IssueHandler
         return $this->custom_levels;
     }
 
+    /** @param list<FileFilterConfig> $customLevels */
     public function setCustomLevels(array $customLevels, string $base_dir): void
     {
-        /** @var array $customLevel */
         foreach ($customLevels as $customLevel) {
             $this->custom_levels[] = ErrorLevelFileFilter::loadFromArray($customLevel, $base_dir, true);
         }
@@ -198,6 +201,7 @@ final class IssueHandler
                 && $issue_name !== 'PsalmInternalError'
                 && $issue_name !== 'ParseError'
                 && $issue_name !== 'PluginIssue'
+                && $issue_name !== 'IssueRegistry'
                 && $issue_name !== 'MixedIssue'
                 && $issue_name !== 'MixedIssueTrait',
         );

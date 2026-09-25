@@ -856,7 +856,7 @@ final class LanguageServer extends Dispatcher
      *  - 4 = Log
      * @see MessageType
      * @param string  $message The log message to send to the client.
-     * @param mixed[] $context The log context
+     * @param list<mixed> $context The log context
      */
     public function log(int $type, string $message, array $context = []): void
     {
@@ -964,7 +964,7 @@ final class LanguageServer extends Dispatcher
         if (!str_ends_with($first, ':')) {
             $first = rawurlencode($first);
         }
-        $parts = array_map('rawurlencode', $parts);
+        $parts = array_map(static fn(string $part): string => rawurlencode($part), $parts);
         array_unshift($parts, $first);
         $filepath = implode('/', $parts);
 

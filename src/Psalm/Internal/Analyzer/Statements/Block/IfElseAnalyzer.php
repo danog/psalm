@@ -96,7 +96,7 @@ final class IfElseAnalyzer
             }
         }
 
-        $branch_point = $context->branch_point ?: (int) $stmt->getAttribute('startFilePos');
+        $branch_point = $context->branch_point ?: $stmt->getStartFilePos();
 
         try {
             $if_conditional_scope = IfConditionalAnalyzer::analyze(
@@ -177,8 +177,8 @@ final class IfElseAnalyzer
             ? Algebra::simplifyCNF([...$entry_clauses, ...$if_clauses])
             : $if_clauses;
 
-        if ($if_context->reconciled_expression_clauses) {
-            $reconciled_expression_clauses = $if_context->reconciled_expression_clauses;
+        if ($if_context->getReconciledExpressionClauses()) {
+            $reconciled_expression_clauses = $if_context->getReconciledExpressionClauses();
 
             $if_context->clauses = array_values(
                 array_filter(
@@ -286,7 +286,7 @@ final class IfElseAnalyzer
                 $else_context,
                 $context,
                 $codebase,
-                $else_context->branch_point ?: (int) $stmt->getAttribute('startFilePos'),
+                $else_context->branch_point ?: $stmt->getStartFilePos(),
             ) === false) {
                 return false;
             }
@@ -294,7 +294,7 @@ final class IfElseAnalyzer
 
         if ($stmt->else) {
             if ($codebase->alter_code && $else_context->branch_point === null) {
-                $else_context->branch_point = (int) $stmt->getAttribute('startFilePos');
+                $else_context->branch_point = $stmt->getStartFilePos();
             }
         }
 
@@ -367,14 +367,14 @@ final class IfElseAnalyzer
         ];
 
         $context->possibly_assigned_var_ids = [
-            ...$context->possibly_assigned_var_ids,
-            ...$if_scope->possibly_assigned_var_ids ?: [],
+            ...$context->getPossiblyAssignedVarIds(),
+            ...$if_scope->getPossiblyAssignedVarIds() ?: [],
         ];
 
         // vars can only be defined/redefined if there was an else (defined in every block)
         $context->assigned_var_ids = array_merge(
-            $context->assigned_var_ids,
-            $if_scope->assigned_var_ids ?: [],
+            $context->getAssignedVarIds(),
+            $if_scope->getAssignedVarIds() ?: [],
         );
 
         if ($if_scope->new_vars) {

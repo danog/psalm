@@ -39,7 +39,11 @@ use const DIRECTORY_SEPARATOR;
 use const GLOB_NOSORT;
 use const JSON_THROW_ON_ERROR;
 
-/** @internal */
+/**
+ * @internal
+ *
+ * @psalm-import-type ComposerJson from Composer
+ */
 final class Creator
 {
     private const TEMPLATE = '<?xml version="1.0"?>
@@ -111,7 +115,7 @@ final class Creator
     }
 
     /**
-     * @param array<IssueData>  $issues
+     * @param list<IssueData>  $issues
      * @psalm-mutation-free
      */
     public static function getLevel(array $issues, int $counted_types): int
@@ -202,12 +206,7 @@ final class Creator
             try {
                 $composer_json_contents = file_get_contents($composer_json_location);
                 assert($composer_json_contents !== false);
-                $composer_json = json_decode(
-                    $composer_json_contents,
-                    true,
-                    512,
-                    JSON_THROW_ON_ERROR,
-                );
+                $composer_json = Composer::decodeComposerJson($composer_json_contents);
             } catch (JsonException $e) {
                 throw new ConfigCreationException(
                     'Invalid composer.json at ' . $composer_json_location . ': ' . $e->getMessage(),
@@ -234,9 +233,8 @@ final class Creator
     }
 
     /**
+     * @param ComposerJson $composer_json
      * @return list<string>
-     * @psalm-suppress MixedAssignment
-     * @psalm-suppress MixedArgument
      */
     private static function getPsr4Or0Paths(string $current_dir, array $composer_json): array
     {
@@ -289,7 +287,7 @@ final class Creator
     {
         $nodes = [];
 
-        /** @var string[] */
+        /** @var list<string> */
         $php_files = [
             ...glob($current_dir . DIRECTORY_SEPARATOR . '*.php', GLOB_NOSORT) ?: [],
             ...glob($current_dir . DIRECTORY_SEPARATOR . '**/*.php', GLOB_NOSORT) ?: [],

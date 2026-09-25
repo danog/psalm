@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace Psalm\Type\Atomic;
 
 use Override;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type\Atomic;
+use Psalm\Type\MutableTypeVisitor;
+use Psalm\Type\TypeVisitor;
+use Psalm\Type\TypeNode;
+
+use function assert;
 
 /**
  * Type that resolves to a keyed-array with properties of a class as keys and
@@ -18,7 +22,6 @@ use Psalm\Type\Atomic;
  */
 final class TPropertiesOf extends Atomic
 {
-    use UnserializeMemoryUsageSuppressionTrait;
     // These should match the values of
     // `Psalm\Internal\Analyzer\ClassLikeAnalyzer::VISIBILITY_*`, as they are
     // used to compared against properties visibility.
@@ -79,13 +82,41 @@ final class TPropertiesOf extends Atomic
         };
     }
 
+    #[Override]
+    public function visit(TypeVisitor $visitor): bool
+    {
+        if ($visitor->traverse($this->classlike_type) === false) {
+            return false;
+        }
+        return true;
+    }
+
     /**
-     * @psalm-pure
+     * @param TypeNode $node
+     * @param-out TypeNode $node
+     *
+     * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
-    protected function getChildNodeKeys(): array
+    public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        return ['classlike_type'];
+        assert($node instanceof self);
+        $self = $node;
+        $value = $self->classlike_type;
+        $result = $visitor->traverse($value);
+        if ($value !== $self->classlike_type) {
+            if (!$cloned) {
+                $self = clone $self;
+                $cloned = true;
+            }
+            $self->classlike_type = $value;
+        }
+        if ($result === false) {
+            $node = $self;
+            return false;
+        }
+        $node = $self;
+        return true;
     }
 
     #[Override]

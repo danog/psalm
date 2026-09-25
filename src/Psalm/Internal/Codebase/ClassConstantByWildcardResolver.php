@@ -28,7 +28,7 @@ final class ClassConstantByWildcardResolver
     }
 
     /**
-     * @return non-empty-array<array-key,Atomic>|null
+     * @return non-empty-array<string, Atomic>|null
      * @psalm-mutation-free
      */
     public function resolve(string $class_name, string $constant_pattern): ?array
@@ -47,7 +47,7 @@ final class ClassConstantByWildcardResolver
         $types = [];
         foreach ($constants as $class_constant_storage) {
             if (! $class_constant_storage->type) {
-                $types[] = [new TMixed()];
+                $types[] = ['mixed' => new TMixed()];
                 continue;
             }
 

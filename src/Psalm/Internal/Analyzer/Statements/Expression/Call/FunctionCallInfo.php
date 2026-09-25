@@ -56,6 +56,7 @@ final class FunctionCallInfo
 
     public bool $allow_named_args = true;
 
+    /** @var array<string, bool> */
     public array $byref_uses = [];
 
     /**

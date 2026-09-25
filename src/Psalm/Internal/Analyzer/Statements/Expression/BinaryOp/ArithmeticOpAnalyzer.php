@@ -294,8 +294,8 @@ final class ArithmeticOpAnalyzer
     }
 
     /**
-     * @param string[] $invalid_left_messages
-     * @param string[] $invalid_right_messages
+     * @param list<string> $invalid_left_messages
+     * @param list<string> $invalid_right_messages
      * @psalm-suppress ComplexMethod Unavoidably complex method.
      */
     private static function analyzeOperands(
@@ -706,16 +706,7 @@ final class ArithmeticOpAnalyzer
             || $parent instanceof PhpParser\Node\Expr\BinaryOp\Mod
             || $parent instanceof PhpParser\Node\Expr\BinaryOp\Pow
         ) {
-            $non_decimal_type = null;
-            if ($left_type_part instanceof TNamedObject
-                && strtolower($left_type_part->value) === "decimal\\decimal"
-            ) {
-                $non_decimal_type = $right_type_part;
-            } elseif ($right_type_part instanceof TNamedObject
-                && strtolower($right_type_part->value) === "decimal\\decimal"
-            ) {
-                $non_decimal_type = $left_type_part;
-            }
+            $non_decimal_type = self::otherOperandOfDecimal($left_type_part, $right_type_part);
             if ($non_decimal_type !== null) {
                 if ($non_decimal_type instanceof TInt
                     || $non_decimal_type instanceof TNumericString
@@ -810,11 +801,8 @@ final class ArithmeticOpAnalyzer
                 if ($parent instanceof PhpParser\Node\Expr\BinaryOp\Div) {
                     $result_type = new Union([new TInt(), new TFloat()]);
                 } else {
-                    $left_is_positive = ($left_type_part instanceof TLiteralInt && $left_type_part->value > 0)
-                        || ($left_type_part instanceof TIntRange && $left_type_part->isPositive());
-
-                    $right_is_positive = ($right_type_part instanceof TLiteralInt && $right_type_part->value > 0)
-                        || ($right_type_part instanceof TIntRange && $right_type_part->isPositive());
+                    $left_is_positive = self::isPositiveInt($left_type_part);
+                    $right_is_positive = self::isPositiveInt($right_type_part);
 
                     if ($parent instanceof PhpParser\Node\Expr\BinaryOp\Minus) {
                         $always_positive = false;
@@ -1033,6 +1021,22 @@ final class ArithmeticOpAnalyzer
         }
 
         return $calculated_type;
+    }
+
+    /**
+     * Whether an int type is known to hold only positive values: a positive literal or a positive range.
+     */
+    private static function isPositiveInt(TInt $part): bool
+    {
+        if ($part instanceof TLiteralInt) {
+            return $part->value > 0;
+        }
+
+        if ($part instanceof TIntRange) {
+            return $part->isPositive();
+        }
+
+        return false;
     }
 
     private static function analyzeOperandsBetweenIntRange(
@@ -1470,5 +1474,25 @@ final class ArithmeticOpAnalyzer
             $new_result_type,
             $result_type,
         );
+    }
+
+    /**
+     * The operand paired with a Decimal\Decimal, or null when neither side is one.
+     */
+    private static function otherOperandOfDecimal(Atomic $left_type_part, Atomic $right_type_part): ?Atomic
+    {
+        if ($left_type_part instanceof TNamedObject
+            && strtolower($left_type_part->value) === "decimal\\decimal"
+        ) {
+            return $right_type_part;
+        }
+
+        if ($right_type_part instanceof TNamedObject
+            && strtolower($right_type_part->value) === "decimal\\decimal"
+        ) {
+            return $left_type_part;
+        }
+
+        return null;
     }
 }

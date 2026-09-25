@@ -35,19 +35,19 @@ final class FunctionParamsProvider
     {
         self::$handlers = [];
 
-        $this->registerClass(ArrayFilterParamsProvider::class);
-        $this->registerClass(ArrayMultisortParamsProvider::class);
-        $this->registerClass(ArrayUArrayParamsProvider::class);
+        $this->registerClass(new ArrayFilterParamsProvider());
+        $this->registerClass(new ArrayMultisortParamsProvider());
+        $this->registerClass(new ArrayUArrayParamsProvider());
     }
 
     /**
-     * @param class-string<FunctionParamsProviderInterface> $class
+     * @param FunctionParamsProviderInterface $class
      */
-    public function registerClass(string $class): void
+    public function registerClass(FunctionParamsProviderInterface $class): void
     {
-        $callable = $class::getFunctionParams(...);
+        $callable = $class->getFunctionParams(...);
 
-        foreach ($class::getFunctionIds() as $function_id) {
+        foreach ($class->getFunctionIds() as $function_id) {
             $this->registerClosure($function_id, $callable);
         }
     }

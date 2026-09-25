@@ -180,7 +180,7 @@ final class MutableUnion implements TypeNode
 
     /**
      * @psalm-external-mutation-free
-     * @param non-empty-array<Atomic>  $types
+     * @param non-empty-list<Atomic>|non-empty-array<string, Atomic>  $types
      */
     public function setTypes(array $types): self
     {
@@ -439,15 +439,17 @@ final class MutableUnion implements TypeNode
     public function freeze(): Union
     {
         /** @psalm-suppress InvalidArgument It's actually filtered internally */
-        return new Union($this->getAtomicTypes(), get_object_vars($this));
+        return new Union($this->getAtomicTypes(), $this->getConstructionProperties());
     }
 
     /**
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
+     * @param TypeNode $node
      */
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
+        assert($node instanceof self);
         $result = true;
         $changed = false;
         foreach ($node->types as &$type) {

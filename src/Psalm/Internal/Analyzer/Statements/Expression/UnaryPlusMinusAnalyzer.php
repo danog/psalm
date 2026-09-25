@@ -23,6 +23,8 @@ use RuntimeException;
 
 use function is_int;
 
+use const PHP_INT_MIN;
+
 /**
  * @internal
  */
@@ -54,8 +56,11 @@ final class UnaryPlusMinusAnalyzer
                         continue;
                     }
                     if ($type_part instanceof TLiteralInt) {
-                        /** @var int|float $value */
-                        $value = -$type_part->value;
+                        // negating the smallest integer overflows to a float, which `-$value` on its
+                        // own cannot express
+                        $value = $type_part->value === PHP_INT_MIN
+                            ? -(float) $type_part->value
+                            : -$type_part->value;
                         $type_part = is_int($value) ? new TLiteralInt($value) : new TLiteralFloat($value);
                     } elseif ($type_part instanceof TLiteralFloat) {
                         $type_part = new TLiteralFloat(-$type_part->value);

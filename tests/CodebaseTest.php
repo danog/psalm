@@ -176,12 +176,12 @@ final class CodebaseTest extends TestCase
                 $storage = $event->getStorage();
                 $codebase = $event->getCodebase();
                 if ($storage->name === 'Psalm\\CurrentTest\\C' && $stmt instanceof Class_) {
-                    $storage->custom_metadata['fqcn'] = (string)($stmt->getAttribute('namespacedName') ?? $stmt->name);
+                    $storage->custom_metadata['fqcn'] = (string)($stmt->attrs()->namespacedName ?? $stmt->name);
                     $storage->custom_metadata['extends'] = $stmt->extends instanceof Name
-                        ? (string)$stmt->extends->getAttribute('resolvedName')
+                        ? (string)$stmt->extends->attrs()->resolvedName
                         : '';
                     $storage->custom_metadata['implements'] = array_map(
-                        static fn(Name $aspect): string => (string)$aspect->getAttribute('resolvedName'),
+                        static fn(Name $aspect): string => (string)$aspect->attrs()->resolvedName,
                         $stmt->implements,
                     );
                     $storage->custom_metadata['a'] = 'b';
@@ -193,7 +193,7 @@ final class CodebaseTest extends TestCase
             }
         };
         (new PluginRegistrationSocket($this->codebase->config, $this->codebase))
-            ->registerHooksFromClass(get_class($hook));
+            ->registerHooksFromClass($hook);
         $this->codebase->classlike_storage_provider->cache = new ClassLikeStorageCacheProvider($this->codebase->config, '', false);
 
         $this->analyzeFile('somefile.php', new Context);
@@ -268,7 +268,7 @@ final class CodebaseTest extends TestCase
         };
 
         (new PluginRegistrationSocket($this->codebase->config, $this->codebase))
-            ->registerHooksFromClass(get_class($eventHandler));
+            ->registerHooksFromClass($eventHandler);
 
         $this->analyzeFile('somefile.php', new Context);
         self::assertSame(0, IssueBuffer::getErrorCount());
@@ -317,7 +317,7 @@ final class CodebaseTest extends TestCase
         };
 
         (new PluginRegistrationSocket($this->codebase->config, $this->codebase))
-            ->registerHooksFromClass(get_class($eventHandler));
+            ->registerHooksFromClass($eventHandler);
 
         $this->analyzeFile(
             (string) getcwd() . DIRECTORY_SEPARATOR . 'tests' . DIRECTORY_SEPARATOR . 'somefile.php',

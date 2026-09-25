@@ -236,7 +236,7 @@ final class MethodCallAnalyzer extends CallAnalyzer
                 }
 
                 if ($result->can_memoize) {
-                    $stmt->setAttribute('memoizable', true);
+                    $stmt->attrs()->memoizable = true;
                 }
             }
         }

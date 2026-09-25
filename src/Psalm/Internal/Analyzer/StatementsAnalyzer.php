@@ -141,6 +141,8 @@ final class StatementsAnalyzer extends SourceAnalyzer
 
     private ?ParsedDocblock $parsed_docblock = null;
 
+    private int $depth = 0;
+
     private ?string $fake_this_class = null;
 
     public ?TaintFlowGraph $taint_flow_graph = null;
@@ -156,8 +158,6 @@ final class StatementsAnalyzer extends SourceAnalyzer
      * @psalm-internal Psalm\Internal\Analyzer
      */
     public array $foreach_var_locations = [];
-
-    private int $depth = 0;
 
     /**
      * Tracks bounds for the type variables minted while these statements are
@@ -179,7 +179,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
     public function __construct(
         protected SourceAnalyzer $source,
         public NodeDataProvider $node_data,
-        private readonly bool $root_scope,
+        private readonly bool $root_scope = false,
     ) {
         $this->file_analyzer = $source->getFileAnalyzer();
         $this->codebase = $source->getCodebase();
@@ -233,7 +233,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
     /**
      * Checks an array of statements for validity
      *
-     * @param  array<PhpParser\Node\Stmt>   $stmts
+     * @param  list<PhpParser\Node\Stmt>   $stmts
      * @return null|false
      */
     public function analyze(
@@ -294,7 +294,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
     }
 
     /**
-     * @param  array<PhpParser\Node\Stmt>   $stmts
+     * @param  list<PhpParser\Node\Stmt>   $stmts
      */
     private function hoistFunctions(array $stmts, Context $context): void
     {
@@ -341,7 +341,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
     }
 
     /**
-     * @param  array<PhpParser\Node\Stmt>   $stmts
+     * @param  list<PhpParser\Node\Stmt>   $stmts
      */
     private static function hoistConstants(
         StatementsAnalyzer $statements_analyzer,
@@ -724,7 +724,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
         }
 
         foreach ($checked_types as [$check_type_line, $is_exact]) {
-            [$checked_var, $check_type_string] = array_map('trim', explode('=', $check_type_line, 2)) + ['', ''];
+            [$checked_var, $check_type_string] = array_map(static fn(string $part): string => trim($part), explode('=', $check_type_line, 2)) + ['', ''];
 
             if ($check_type_string === '' || $checked_var === '') {
                 IssueBuffer::maybeAdd(
@@ -908,7 +908,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
     }
 
     /**
-     * @param  array<PhpParser\Node\Stmt>   $stmts
+     * @param  list<PhpParser\Node\Stmt>   $stmts
      */
     public function checkUnreferencedVars(array $stmts, Context $context): void
     {
@@ -1214,7 +1214,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
     }
 
     /**
-     * @return array<string, array<array-key, CodeLocation>>
+     * @return array<string, array<string, CodeLocation>>
      * @psalm-mutation-free
      */
     public function getUncaughtThrows(Context $context): array

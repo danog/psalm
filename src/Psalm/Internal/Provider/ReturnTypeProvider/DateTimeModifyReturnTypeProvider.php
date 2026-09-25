@@ -20,6 +20,7 @@ final class DateTimeModifyReturnTypeProvider implements MethodReturnTypeProvider
 {
     /**
      * @psalm-pure
+     * @return list<string>
      */
     #[Override]
     public static function getClassLikeNames(): array

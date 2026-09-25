@@ -462,7 +462,7 @@ final class AssertionFinder
                 throw new UnexpectedValueException('$count_equality_position value');
             }
 
-            /** @var PhpParser\Node\Expr\FuncCall $count_expr */
+            assert($count_expr instanceof PhpParser\Node\Expr\FuncCall);
             $var_name = ExpressionIdentifier::getExtendedVarId(
                 $count_expr->getArgs()[0]->value,
                 $this_class_name,
@@ -688,7 +688,7 @@ final class AssertionFinder
                 throw new UnexpectedValueException('$count_inequality_position value');
             }
 
-            /** @var PhpParser\Node\Expr\FuncCall $count_expr */
+            assert($count_expr instanceof PhpParser\Node\Expr\FuncCall);
             $var_name = ExpressionIdentifier::getExtendedVarId(
                 $count_expr->getArgs()[0]->value,
                 $this_class_name,
@@ -757,6 +757,25 @@ final class AssertionFinder
     }
 
     /**
+     * The negation of an assertion of a union type: not any one of its members, so every member
+     * negated, all of them at once.
+     *
+     * @param non-empty-list<Assertion> $rules
+     * @return non-empty-list<non-empty-list<Assertion>>
+     * @psalm-pure
+     */
+    private static function negatedRules(array $rules): array
+    {
+        $negated = [];
+
+        foreach ($rules as $rule) {
+            $negated[] = [$rule->getNegation()];
+        }
+
+        return $negated;
+    }
+
+    /**
      * @return list<non-empty-array<string, non-empty-list<non-empty-list<Assertion>>>>
      */
     public static function processFunctionCall(
@@ -796,18 +815,18 @@ final class AssertionFinder
         } elseif (self::hasCallableCheck($expr)) {
             if ($first_var_name) {
                 $if_types[$first_var_name] = [[new IsType(new TCallable())]];
-            } elseif ($expr->getArgs()[0]->value instanceof PhpParser\Node\Expr\Array_
-                && isset($expr->getArgs()[0]->value->items[0], $expr->getArgs()[0]->value->items[1])
-                && $expr->getArgs()[0]->value->items[1]->value instanceof PhpParser\Node\Scalar\String_
+            } elseif (($callable_array = $expr->getArgs()[0]->value) instanceof PhpParser\Node\Expr\Array_
+                && isset($callable_array->items[0], $callable_array->items[1])
+                && ($method_name_node = $callable_array->items[1]->value) instanceof PhpParser\Node\Scalar\String_
             ) {
                 $first_var_name_in_array_argument = ExpressionIdentifier::getExtendedVarId(
-                    $expr->getArgs()[0]->value->items[0]->value,
+                    $callable_array->items[0]->value,
                     $this_class_name,
                     $source,
                 );
                 if ($first_var_name_in_array_argument) {
                     $if_types[$first_var_name_in_array_argument] = [
-                        [new HasMethod($expr->getArgs()[0]->value->items[1]->value->value)],
+                        [new HasMethod($method_name_node->value)],
                     ];
                 }
             }
@@ -841,10 +860,10 @@ final class AssertionFinder
         } elseif ($expr->name instanceof PhpParser\Node\Name
             && strtolower($expr->name->getFirst()) === 'method_exists'
             && isset($expr->getArgs()[1])
-            && $expr->getArgs()[1]->value instanceof PhpParser\Node\Scalar\String_
+            && ($method_name_node = $expr->getArgs()[1]->value) instanceof PhpParser\Node\Scalar\String_
         ) {
             if ($first_var_name) {
-                $if_types[$first_var_name] = [[new HasMethod($expr->getArgs()[1]->value->value)]];
+                $if_types[$first_var_name] = [[new HasMethod($method_name_node->value)]];
             }
         } elseif (self::hasInArrayCheck($expr) && $source instanceof StatementsAnalyzer) {
             return self::getInarrayAssertions($expr, $source, $first_var_name);
@@ -1001,7 +1020,7 @@ final class AssertionFinder
                     }
 
                     if ($var_name) {
-                        $if_types[$var_name] = [[$assertion->rule[0]]];
+                        $if_types[$var_name] = [$assertion->rule];
                     }
                 } elseif ($assertion->var_id === '$this') {
                     if (!$expr instanceof PhpParser\Node\Expr\MethodCall) {
@@ -1021,7 +1040,7 @@ final class AssertionFinder
                     );
 
                     if ($var_id) {
-                        $if_types[$var_id] = [[$assertion->rule[0]]];
+                        $if_types[$var_id] = [$assertion->rule];
                     }
                 } elseif (is_string($assertion->var_id)) {
                     $is_function = str_ends_with($assertion->var_id, '()');
@@ -1092,7 +1111,7 @@ final class AssertionFinder
                         );
                         continue;
                     }
-                    $if_types[$assertion_var_id] = [[$assertion->rule[0]]];
+                    $if_types[$assertion_var_id] = [$assertion->rule];
                 }
 
                 if ($if_types) {
@@ -1141,7 +1160,7 @@ final class AssertionFinder
                     }
 
                     if ($var_name) {
-                        $if_types[$var_name] = [[$assertion->rule[0]->getNegation()]];
+                        $if_types[$var_name] = self::negatedRules($assertion->rule);
                     }
                 } elseif ($assertion->var_id === '$this' && $expr instanceof PhpParser\Node\Expr\MethodCall) {
                     $var_id = ExpressionIdentifier::getExtendedVarId(
@@ -1151,7 +1170,7 @@ final class AssertionFinder
                     );
 
                     if ($var_id) {
-                        $if_types[$var_id] = [[$assertion->rule[0]->getNegation()]];
+                        $if_types[$var_id] = self::negatedRules($assertion->rule);
                     }
                 } elseif (is_string($assertion->var_id)) {
                     $is_function = str_ends_with($assertion->var_id, '()');
@@ -1204,17 +1223,15 @@ final class AssertionFinder
                             }
                         }
 
-                        $rule = $assertion->rule[0]->getNegation();
-
                         $assertion_var_id = str_replace($var_id, $arg_var_id, $assertion->var_id);
 
-                        $if_types[$assertion_var_id] = [[$rule]];
+                        $if_types[$assertion_var_id] = self::negatedRules($assertion->rule);
                     } elseif (!$expr instanceof PhpParser\Node\Expr\FuncCall) {
                         $var_id = $assertion->var_id;
                         if (str_starts_with($var_id, 'self::')) {
                             $var_id = $this_class_name.'::'.substr($var_id, 6);
                         }
-                        $if_types[$var_id] = [[$assertion->rule[0]->getNegation()]];
+                        $if_types[$var_id] = self::negatedRules($assertion->rule);
                     } else {
                         IssueBuffer::maybeAdd(
                             new InvalidDocblock(
@@ -2513,7 +2530,7 @@ final class AssertionFinder
             throw new UnexpectedValueException('$gettype_position value');
         }
 
-        /** @var PhpParser\Node\Expr\FuncCall $gettype_expr */
+        assert($gettype_expr instanceof PhpParser\Node\Expr\FuncCall);
         $var_name = ExpressionIdentifier::getExtendedVarId(
             $gettype_expr->getArgs()[0]->value,
             $this_class_name,
@@ -2579,7 +2596,7 @@ final class AssertionFinder
             throw new UnexpectedValueException('$gettype_position value');
         }
 
-        /** @var PhpParser\Node\Expr\FuncCall $get_debug_type_expr */
+        assert($get_debug_type_expr instanceof PhpParser\Node\Expr\FuncCall);
         $var_name = ExpressionIdentifier::getExtendedVarId(
             $get_debug_type_expr->getArgs()[0]->value,
             $this_class_name,
@@ -3235,14 +3252,14 @@ final class AssertionFinder
             throw new UnexpectedValueException('$gettype_position value');
         }
 
-        /** @var PhpParser\Node\Expr\FuncCall $gettype_expr */
+        assert($gettype_expr instanceof PhpParser\Node\Expr\FuncCall);
         $var_name = ExpressionIdentifier::getExtendedVarId(
             $gettype_expr->getArgs()[0]->value,
             $this_class_name,
             $source,
         );
 
-        /** @var PhpParser\Node\Scalar\String_ $string_expr */
+        assert($string_expr instanceof PhpParser\Node\Scalar\String_);
         $var_type = $string_expr->value;
 
         if (!isset(ClassLikeAnalyzer::GETTYPE_TYPES[$var_type])) {
@@ -3297,7 +3314,7 @@ final class AssertionFinder
             throw new UnexpectedValueException('$gettype_position value');
         }
 
-        /** @var PhpParser\Node\Expr\FuncCall $get_debug_type_expr */
+        assert($get_debug_type_expr instanceof PhpParser\Node\Expr\FuncCall);
         $var_name = ExpressionIdentifier::getExtendedVarId(
             $get_debug_type_expr->getArgs()[0]->value,
             $this_class_name,
@@ -3550,12 +3567,13 @@ final class AssertionFinder
     ): array {
         $if_types = [];
 
-        if ($expr->getArgs()[0]->value instanceof PhpParser\Node\Expr\ClassConstFetch
-            && $expr->getArgs()[0]->value->name instanceof PhpParser\Node\Identifier
-            && strtolower($expr->getArgs()[0]->value->name->name) === 'class'
-            && $expr->getArgs()[0]->value->class instanceof PhpParser\Node\Name
-            && count($expr->getArgs()[0]->value->class->getParts()) === 1
-            && strtolower($expr->getArgs()[0]->value->class->getFirst()) === 'static'
+        $first_arg_value = $expr->getArgs()[0]->value;
+        if ($first_arg_value instanceof PhpParser\Node\Expr\ClassConstFetch
+            && $first_arg_value->name instanceof PhpParser\Node\Identifier
+            && strtolower($first_arg_value->name->name) === 'class'
+            && $first_arg_value->class instanceof PhpParser\Node\Name
+            && count($first_arg_value->class->getParts()) === 1
+            && strtolower($first_arg_value->class->getFirst()) === 'static'
         ) {
             $first_var_name = '$this';
         }
@@ -3811,9 +3829,10 @@ final class AssertionFinder
                     }
                 }
 
-                if ($expr->getArgs()[0]->value instanceof PhpParser\Node\Expr\ClassConstFetch
-                    && $expr->getArgs()[0]->value->name instanceof PhpParser\Node\Identifier
-                    && $expr->getArgs()[0]->value->name->name !== 'class'
+                $first_arg_value = $expr->getArgs()[0]->value;
+                if ($first_arg_value instanceof PhpParser\Node\Expr\ClassConstFetch
+                    && $first_arg_value->name instanceof PhpParser\Node\Identifier
+                    && $first_arg_value->name->name !== 'class'
                 ) {
                     $const_type = null;
 
@@ -3897,7 +3916,7 @@ final class AssertionFinder
                 throw new UnexpectedValueException('$count_equality_position value');
             }
 
-            /** @var PhpParser\Node\Expr\FuncCall $counted_expr */
+            assert($counted_expr instanceof PhpParser\Node\Expr\FuncCall);
             $var_name = ExpressionIdentifier::getExtendedVarId(
                 $counted_expr->getArgs()[0]->value,
                 $this_class_name,
@@ -3926,7 +3945,7 @@ final class AssertionFinder
                 throw new UnexpectedValueException('$count_inequality_position value');
             }
 
-            /** @var PhpParser\Node\Expr\FuncCall $count_expr */
+            assert($count_expr instanceof PhpParser\Node\Expr\FuncCall);
             $var_name = ExpressionIdentifier::getExtendedVarId(
                 $count_expr->getArgs()[0]->value,
                 $this_class_name,
@@ -4009,7 +4028,7 @@ final class AssertionFinder
                 throw new UnexpectedValueException('$count_equality_position value');
             }
 
-            /** @var PhpParser\Node\Expr\FuncCall $count_expr */
+            assert($count_expr instanceof PhpParser\Node\Expr\FuncCall);
             $var_name = ExpressionIdentifier::getExtendedVarId(
                 $count_expr->getArgs()[0]->value,
                 $this_class_name,
@@ -4034,7 +4053,7 @@ final class AssertionFinder
                 throw new UnexpectedValueException('$count_inequality_position value');
             }
 
-            /** @var PhpParser\Node\Expr\FuncCall $count_expr */
+            assert($count_expr instanceof PhpParser\Node\Expr\FuncCall);
             $var_name = ExpressionIdentifier::getExtendedVarId(
                 $count_expr->getArgs()[0]->value,
                 $this_class_name,

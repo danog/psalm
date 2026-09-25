@@ -101,13 +101,17 @@ final class Populator
         FileStorageProvider::populated();
     }
 
+    /** @param array<string, bool> $dependent_classlikes */
     private function populateClassLikeStorage(ClassLikeStorage $storage, array $dependent_classlikes = []): void
     {
+        $fq_classlike_name_lc = strtolower($storage->name);
+
         if ($storage->populated) {
+            // an already populated storage (a stub shared by several codebases) may still be the missing
+            // dependency of classes populated before it appeared
+            $this->populateInvalidDependents($fq_classlike_name_lc, $dependent_classlikes);
             return;
         }
-
-        $fq_classlike_name_lc = strtolower($storage->name);
 
         if (isset($dependent_classlikes[$fq_classlike_name_lc])) {
             if ($storage->location) {
@@ -233,8 +237,22 @@ final class Populator
 
         $storage->populated = true;
 
+        $this->populateInvalidDependents($fq_classlike_name_lc, $dependent_classlikes);
+    }
+
+    /**
+     * Classes populated while `$fq_classlike_name_lc` was missing are populated again now that it exists.
+     *
+     * @param array<string, bool> $dependent_classlikes
+     */
+    private function populateInvalidDependents(string $fq_classlike_name_lc, array $dependent_classlikes): void
+    {
+        $storage_provider = $this->classlike_storage_provider;
         if (isset($this->invalid_class_storages[$fq_classlike_name_lc])) {
-            foreach ($this->invalid_class_storages[$fq_classlike_name_lc] as $dependency) {
+            // taken before populating: populating a dependency populates this class's storage again
+            $invalid_dependencies = $this->invalid_class_storages[$fq_classlike_name_lc];
+            unset($this->invalid_class_storages[$fq_classlike_name_lc]);
+            foreach ($invalid_dependencies as $dependency) {
                 // Dependencies may not be fully set yet, so we have to loop through dependencies of dependencies
                 $dependencies = [strtolower($dependency->name) => true];
                 do {
@@ -260,9 +278,17 @@ final class Populator
                 unset($dependency->invalid_dependencies[$fq_classlike_name_lc]);
                 $this->populateClassLikeStorage($dependency, $dependent_classlikes);
             }
-
-            unset($this->invalid_class_storages[$fq_classlike_name_lc]);
         }
+    }
+
+    /**
+     * @param array<string, MethodIdentifier> $a
+     * @param array<string, MethodIdentifier> $b
+     * @return array<string, MethodIdentifier>
+     */
+    private static function intersectOverriddenIds(array $a, array $b): array
+    {
+        return array_intersect_key($a, $b);
     }
 
     private function populateOverriddenMethods(
@@ -341,17 +367,12 @@ final class Populator
                         = $declaring_class_storages[$declaring_class]
                         = $this->classlike_storage_provider->get($declaring_class);
 
-                    if ($candidate_overridden_ids === null) {
-                        $candidate_overridden_ids
-                            = ($declaring_class_storage->overridden_method_ids[$method_name] ?? [])
-                                + [$declaring_method_id->fq_class_name => $declaring_method_id];
-                    } else {
-                        $candidate_overridden_ids = array_intersect_key(
-                            $candidate_overridden_ids,
-                            ($declaring_class_storage->overridden_method_ids[$method_name] ?? [])
-                                + [$declaring_method_id->fq_class_name => $declaring_method_id],
-                        );
-                    }
+                    $declaring_overridden_ids = ($declaring_class_storage->overridden_method_ids[$method_name] ?? [])
+                        + [$declaring_method_id->fq_class_name => $declaring_method_id];
+
+                    $candidate_overridden_ids = $candidate_overridden_ids === null
+                        ? $declaring_overridden_ids
+                        : self::intersectOverriddenIds($candidate_overridden_ids, $declaring_overridden_ids);
                 }
 
                 foreach ($overridden_method_ids as $declaring_method_id) {
@@ -417,6 +438,7 @@ final class Populator
         }
     }
 
+    /** @param array<string, bool> $dependent_classlikes */
     private function populateDataFromTrait(
         ClassLikeStorage $storage,
         ClassLikeStorageProvider $storage_provider,
@@ -485,6 +507,7 @@ final class Populator
         return new Union($extended_types);
     }
 
+    /** @param array<string, bool> $dependent_classlikes */
     private function populateDataFromParentClass(
         ClassLikeStorage $storage,
         ClassLikeStorageProvider $storage_provider,
@@ -573,6 +596,7 @@ final class Populator
         $parent_storage->has_children = true;
     }
 
+    /** @param array<string, bool> $dependent_classlikes */
     private function populateInterfaceData(
         ClassLikeStorage $storage,
         ClassLikeStorage $interface_storage,
@@ -672,6 +696,7 @@ final class Populator
         }
     }
 
+    /** @param array<string, bool> $dependent_classlikes */
     private function populateInterfaceDataFromParentInterface(
         ClassLikeStorage $storage,
         ClassLikeStorageProvider $storage_provider,
@@ -715,6 +740,7 @@ final class Populator
         }
     }
 
+    /** @param array<string, bool> $dependent_classlikes */
     private function populateDataFromImplementedInterface(
         ClassLikeStorage $storage,
         ClassLikeStorageProvider $storage_provider,

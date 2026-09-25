@@ -6,7 +6,7 @@ namespace Psalm\Tests;
 
 use DOMAttr;
 use DOMDocument;
-use DOMXPath;
+use DOMElement;
 use Override;
 use PHPUnit\Framework\Constraint\Constraint;
 use Psalm\Config;
@@ -18,6 +18,7 @@ use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\Provider\FakeFileProvider;
 use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\RuntimeCaches;
+use Psalm\Issue\IssueRegistry;
 use Psalm\Issue\UnusedBaselineEntry;
 use Psalm\Issue\UnusedIssueHandlerSuppression;
 use Psalm\Tests\Internal\Provider\FakeParserCacheProvider;
@@ -166,14 +167,22 @@ final class DocumentationTest extends TestCase
         $schema = new DOMDocument();
         $schema->load(__DIR__ . '/../config.xsd', LIBXML_NONET);
 
-        $xpath = new DOMXPath($schema);
-        $xpath->registerNamespace('xs', 'http://www.w3.org/2001/XMLSchema');
-
-        /** @var iterable<mixed, DOMAttr> $handlers */
-        $handlers = $xpath->query('//xs:complexType[@name="IssueHandlersType"]/xs:choice/xs:element/@name');
+        // //xs:complexType[@name="IssueHandlersType"]/xs:choice/xs:element/@name, walked with the DOM API
         $handler_types = [];
-        foreach ($handlers as $handler) {
-            $handler_types[] = $handler->value;
+        foreach ($schema->getElementsByTagNameNS('http://www.w3.org/2001/XMLSchema', 'complexType') as $complex_type) {
+            if (!$complex_type instanceof DOMElement || $complex_type->getAttribute('name') !== 'IssueHandlersType') {
+                continue;
+            }
+            foreach ($complex_type->childNodes as $choice) {
+                if ($choice->nodeName !== 'xs:choice') {
+                    continue;
+                }
+                foreach ($choice->childNodes as $element) {
+                    if ($element instanceof DOMElement && $element->nodeName === 'xs:element') {
+                        $handler_types[] = $element->getAttribute('name');
+                    }
+                }
+            }
         }
         sort($handler_types);
 
@@ -385,10 +394,8 @@ final class DocumentationTest extends TestCase
         $all_shortcodes = [];
 
         foreach ($all_issues as $issue_type) {
-            /** @var class-string $issue_class */
-            $issue_class = '\\Psalm\\Issue\\' . $issue_type;
-            /** @var int $shortcode */
-            $shortcode = $issue_class::SHORTCODE;
+            $shortcode = IssueRegistry::shortcode($issue_type);
+            $this->assertNotNull($shortcode, 'Unknown issue type ' . $issue_type);
             $all_shortcodes[$shortcode][] = $issue_type;
         }
 
@@ -466,16 +473,27 @@ final class DocumentationTest extends TestCase
                 return $this->inner->toString();
             }
 
+            /**
+             * Untyped, as the parameter of the method it overrides is: a narrower one would not be
+             * a compatible signature.
+             *
+             * @param string $other
+             * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
+             */
             #[Override]
-            protected function matches(mixed $other): bool
+            protected function matches($other): bool
             {
                 return $this->inner->matches($other);
             }
 
+            /**
+             * @param string $other
+             * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
+             */
             #[Override]
-            protected function failureDescription(mixed $other): string
+            protected function failureDescription($other): string
             {
-                return $this->exporter()->shortenedExport($other) . ' ' . $this->toString();
+                return self::export($other) . ' ' . $this->toString();
             }
         };
     }

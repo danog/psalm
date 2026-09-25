@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Type;
 
+use Psalm\Type\Union;
+
 use Psalm\Aliases;
 use Psalm\Exception\TypeParseTreeException;
 use Psalm\Internal\Type\TypeAlias\InlineTypeAlias;
@@ -360,7 +362,7 @@ final class TypeTokenizer
     }
 
     /**
-     * @param array<string, mixed>|null       $template_type_map
+     * @param array<string, array<string, Union>|true>|null $template_type_map
      * @param array<string, TypeAlias>|null   $type_aliases
      * @return list<array{0: string, 1: int, 2?: string}>
      * @psalm-external-mutation-free

@@ -91,31 +91,7 @@ class CodeLocation
     public const CATCH_VAR = 6;
     public const FUNCTION_PHPDOC_METHOD = 7;
 
-    private const PROPERTY_KEYS_FOR_UNSERIALIZE = [
-        'file_path' => 'file_path',
-        'file_name' => 'file_name',
-        'raw_line_number' => 'raw_line_number',
-        "\0" . self::class . "\0" . 'end_line_number' => 'end_line_number',
-        'raw_file_start' => 'raw_file_start',
-        'raw_file_end' => 'raw_file_end',
-        "\0*\0" . 'file_start' => 'file_start',
-        "\0*\0" . 'file_end' => 'file_end',
-        "\0*\0" . 'single_line' => 'single_line',
-        "\0*\0" . 'preview_start' => 'preview_start',
-        "\0" . self::class . "\0" . 'preview_end' => 'preview_end',
-        "\0" . self::class . "\0" . 'selection_start' => 'selection_start',
-        "\0" . self::class . "\0" . 'selection_end' => 'selection_end',
-        "\0" . self::class . "\0" . 'column_from' => 'column_from',
-        "\0" . self::class . "\0" . 'column_to' => 'column_to',
-        "\0" . self::class . "\0" . 'snippet' => 'snippet',
-        "\0" . self::class . "\0" . 'text' => 'text',
-        'docblock_start' => 'docblock_start',
-        "\0" . self::class . "\0" . 'docblock_start_line_number' => 'docblock_start_line_number',
-        "\0*\0" . 'docblock_line_number' => 'docblock_line_number',
-        "\0" . self::class . "\0" . 'regex_type' => 'regex_type',
-        "\0" . self::class . "\0" . 'have_recalculated' => 'have_recalculated',
-        'previous_location' => 'previous_location',
-    ];
+    // serialized property keys: see __unserialize()
 
     public function __construct(
         FileSource $file_source,
@@ -127,9 +103,9 @@ class CodeLocation
         ?int $comment_line = null,
     ) {
         /** @psalm-suppress ImpureMethodCall Actually mutation-free just not marked */
-        $this->file_start = (int)$stmt->getAttribute('startFilePos');
+        $this->file_start = $stmt->getStartFilePos();
         /** @psalm-suppress ImpureMethodCall Actually mutation-free just not marked */
-        $this->file_end = (int)$stmt->getAttribute('endFilePos');
+        $this->file_end = $stmt->getEndFilePos();
         $this->raw_file_start = $this->file_start;
         $this->raw_file_end = $this->file_end;
         $this->file_path = $file_source->getFilePath();
@@ -158,13 +134,12 @@ class CodeLocation
      *
      * @see \Psalm\Storage\UnserializeMemoryUsageSuppressionTrait
      * @psalm-external-mutation-free
+     * @param array<string, never> $properties objects are never unserialized in the compiled program
      */
     public function __unserialize(array $properties): void
     {
-        foreach (self::PROPERTY_KEYS_FOR_UNSERIALIZE as $key => $property_name) {
-            /** @psalm-suppress PossiblyUndefinedStringArrayOffset */
-            $this->$property_name = $properties[$key];
-        }
+        // objects are never unserialized in the compiled program; property names cannot be looked up dynamically
+        throw new \LogicException('Unserialization of ' . self::class . ' is not supported');
     }
 
     /**

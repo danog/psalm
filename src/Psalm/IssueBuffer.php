@@ -121,13 +121,14 @@ final class IssueBuffer
      */
     private static array $used_suppressions = [];
 
-    /** @var array<array-key,mixed> */
+    /** @var array<string, string|int|float|list<string>> */
+    /** @var array<string, string|int|float|list<string>> */
     private static array $server = [];
 
     /**
      * This will add an issue to be emitted if it's not suppressed and return if it has been added
      *
-     * @param string[]  $suppressed_issues
+     * @param array<array-key, string>  $suppressed_issues
      */
     public static function accepts(CodeIssue $e, array $suppressed_issues = [], bool $is_fixable = false): bool
     {
@@ -149,7 +150,7 @@ final class IssueBuffer
     /**
      * This will add an issue to be emitted if it's not suppressed
      *
-     * @param string[]  $suppressed_issues
+     * @param array<array-key, string>  $suppressed_issues
      */
     public static function maybeAdd(CodeIssue $e, array $suppressed_issues = [], bool $is_fixable = false): void
     {
@@ -190,7 +191,7 @@ final class IssueBuffer
      * - We're in a recording state
      * - The issue is included in the list of issues to be suppressed in param
      *
-     * @param string[] $suppressed_issues
+     * @param array<array-key, string> $suppressed_issues
      */
     public static function isSuppressed(CodeIssue $e, array $suppressed_issues = []): bool
     {
@@ -356,7 +357,7 @@ final class IssueBuffer
         foreach ($recorded_issues as $issue) {
             [$from] = $issue->code_location->getSelectionBounds();
 
-            if ($issue::getIssueType() !== $issue_type || $from !== $file_offset) {
+            if ($issue->getIssueType() !== $issue_type || $from !== $file_offset) {
                 $filtered_issues[] = $issue;
             }
         }
@@ -730,7 +731,7 @@ final class IssueBuffer
 
         if ($codebase->config->eventDispatcher->after_analysis) {
             $source_control_info = null;
-            $build_info = (new BuildInfoCollector(self::$server))->collect();
+            $build_info = (new BuildInfoCollector(array_filter(self::$server, 'is_string')))->collect();
 
             try {
                 $source_control_info = (new GitInfoCollector())->collect();
@@ -1149,7 +1150,7 @@ final class IssueBuffer
 
     /**
      * @internal
-     * @param array<array-key,mixed> $server
+     * @param array<string, string|int|float|list<string>> $server
      * @psalm-external-mutation-free
      */
     final public static function captureServer(array $server): void
@@ -1158,7 +1159,7 @@ final class IssueBuffer
     }
     /**
      * @internal
-     * @return array<array-key,mixed>
+     * @return array<string, string|int|float|list<string>>
      * @psalm-external-mutation-free
      */
     final public static function getServer(): array

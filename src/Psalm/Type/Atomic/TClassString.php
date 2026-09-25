@@ -12,6 +12,7 @@ use Psalm\Internal\Type\TemplateStandinTypeReplacer;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
 
+use function assert;
 use function array_values;
 use function count;
 use function preg_quote;
@@ -19,6 +20,9 @@ use function preg_replace;
 use function str_contains;
 use function stripos;
 use function strtolower;
+use Psalm\Type\MutableTypeVisitor;
+use Psalm\Type\TypeVisitor;
+use Psalm\Type\TypeNode;
 
 /**
  * Denotes the `class-string` type, used to describe a string representing a valid PHP class.
@@ -146,9 +150,42 @@ class TClassString extends TString
     }
 
     #[Override]
-    protected function getChildNodeKeys(): array
+    public function visit(TypeVisitor $visitor): bool
     {
-        return $this->as_type ? ['as_type'] : [];
+        if ($this->as_type !== null && $visitor->traverse($this->as_type) === false) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * @param TypeNode $node
+     * @param-out TypeNode $node
+     *
+     * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
+     */
+    #[Override]
+    public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
+    {
+        assert($node instanceof self);
+        $self = $node;
+        if ($self->as_type !== null) {
+            $value = $self->as_type;
+            $result = $visitor->traverse($value);
+            if ($value !== $self->as_type) {
+                if (!$cloned) {
+                    $self = clone $self;
+                    $cloned = true;
+                }
+                $self->as_type = $value;
+            }
+            if ($result === false) {
+                $node = $self;
+                return false;
+            }
+        }
+        $node = $self;
+        return true;
     }
 
     /**

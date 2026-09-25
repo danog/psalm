@@ -21,7 +21,6 @@ use Psalm\IssueBuffer;
 use Psalm\StatementsSource;
 use Psalm\Storage\ClassLikeStorage;
 use Psalm\Storage\MethodStorage;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use UnexpectedValueException;
 
 use function in_array;
@@ -33,7 +32,6 @@ use function strtolower;
  */
 final class MethodAnalyzer extends FunctionLikeAnalyzer
 {
-    use UnserializeMemoryUsageSuppressionTrait;
     // https://github.com/php/php-src/blob/a83923044c48982c80804ae1b45e761c271966d3/Zend/zend_enum.c#L77-L95
     private const FORBIDDEN_ENUM_METHODS = [
         '__construct',
@@ -97,7 +95,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
     /**
      * Determines whether a given method is static or not
      *
-     * @param  array<string>   $suppressed_issues
+     * @param  array<array-key, string>   $suppressed_issues
      */
     public static function checkStatic(
         MethodIdentifier $method_id,
@@ -165,7 +163,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
     }
 
     /**
-     * @param  string[]     $suppressed_issues
+     * @param  array<array-key, string>     $suppressed_issues
      * @param  lowercase-string|null  $calling_method_id
      */
     public static function checkMethodExists(

@@ -39,7 +39,7 @@ final class GitInfo extends SourceControlInfo
      *
      * @param string $branch  branch name
      * @param CommitInfo $head    HEAD commit
-     * @param RemoteInfo[]  $remotes remote repositories
+     * @param list<RemoteInfo>  $remotes remote repositories
      * @psalm-mutation-free
      */
     public function __construct(
@@ -53,6 +53,9 @@ final class GitInfo extends SourceControlInfo
     }
 
     #[Override]
+    /**
+     * @return array{branch: string, head: array{id: ?string, author_name: ?string, author_email: ?string, committer_name: ?string, committer_email: ?string, message: ?string, date: ?int}, remotes: list<array{name: ?string, url: ?string}>}
+     */
     public function toArray(): array
     {
         $remotes = [];
@@ -89,7 +92,7 @@ final class GitInfo extends SourceControlInfo
     /**
      * Return remote repositories.
      *
-     * @return RemoteInfo[]
+     * @return list<RemoteInfo>
      */
     public function getRemotes(): array
     {

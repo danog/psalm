@@ -19,6 +19,7 @@ final class PdoStatementSetFetchMode implements MethodParamsProviderInterface
 {
     /**
      * @psalm-pure
+     * @return list<string>
      */
     #[Override]
     public static function getClassLikeNames(): array

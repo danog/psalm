@@ -26,6 +26,11 @@ abstract class MutableTypeVisitor
      * @param-out T $node
      * @psalm-suppress ReferenceConstraintViolation
      */
+    /**
+     * @template T of TypeNode
+     * @param T $node
+     * @param-out T $node
+     */
     public function traverse(TypeNode &$node): bool
     {
         $nodeOrig = $node;
@@ -39,11 +44,11 @@ abstract class MutableTypeVisitor
             return false;
         }
 
-        return $node::visitMutable($this, $node, $node !== $nodeOrig);
+        return $node->visitMutable($this, $node, $node !== $nodeOrig);
     }
 
     /**
-     * @template T as array<TypeNode>
+     * @template T as array<array-key, TypeNode>
      * @param T $nodes
      * @param-out T $nodes
      */

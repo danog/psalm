@@ -111,6 +111,9 @@ final class Functions
         }
 
         if (!$root_file_path || !$checked_file_path) {
+            // deliberately NOT registering a call-map function here, nor at the lookup below: a
+            // caller asking about a callable knows the shape it wants, and the throw is what sends
+            // it to the call-map overload matching that shape rather than the map's first entry
             if ($this->reflection->hasFunction($function_id)) {
                 return $this->reflection->getFunctionStorage($function_id);
             }
@@ -221,6 +224,19 @@ final class Functions
         $predefined_functions = $statements_analyzer->getCodebase()->config->getPredefinedFunctions();
 
         if (isset($predefined_functions[$function_id])) {
+            /** @psalm-suppress ArgumentTypeCoercion */
+            if ($this->reflection->registerFunction($function_id) === false) {
+                return false;
+            }
+
+            return true;
+        }
+
+        if (\defined('PSALM_COMPILED') && InternalCallMapHandler::inCallMap($function_id)) {
+            // a compiled program's runtime provides only the functions it can call by name, so
+            // get_defined_functions() lists far fewer than PHP does: the functions PHP itself
+            // provides are the ones the call map describes. Register it as the predefined branch
+            // above does, so that its storage can be fetched later.
             /** @psalm-suppress ArgumentTypeCoercion */
             if ($this->reflection->registerFunction($function_id) === false) {
                 return false;

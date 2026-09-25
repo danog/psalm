@@ -462,6 +462,12 @@ final class InternalCallMapHandlerTest extends TestCase
             return;
         }
 
+        if ($function->isUserDefined()) {
+            // a polyfill standing in for an extension this build lacks: its signature is the
+            // polyfill author's, not the engine's, and the call map describes the engine
+            $this->markTestSkipped("Function $functionName comes from a polyfill, not from PHP");
+        }
+
         /** @var string $entryReturnType */
         $entryReturnType = array_shift($callMapEntry);
 
@@ -484,7 +490,9 @@ final class InternalCallMapHandlerTest extends TestCase
                     return new ReflectionMethod($functionName);
                 }
 
-                return ReflectionMethod::createFromMethodName($functionName);
+                /** @var ReflectionMethod $method */
+                $method = ReflectionMethod::createFromMethodName($functionName);
+                return $method;
             }
 
             /** @var callable-string $functionName */

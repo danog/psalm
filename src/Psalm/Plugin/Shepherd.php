@@ -47,6 +47,14 @@ use const STDERR;
 
 /**
  * @api
+ * @psalm-type ShepherdPayload = array{
+ *     build: array<string, string>,
+ *     git: array{branch: string, head: array{id: ?string, author_name: ?string, author_email: ?string, committer_name: ?string, committer_email: ?string, message: ?string, date: ?int}, remotes: list<array{name: ?string, url: ?string}>}|array<never, never>,
+ *     issues: list<\Psalm\Internal\Analyzer\IssueData>,
+ *     coverage: list<int>,
+ *     level: int<1, 8>,
+ *     versions: array<string, string>
+ * }
  */
 final class Shepherd implements AfterAnalysisInterface
 {
@@ -75,14 +83,7 @@ final class Shepherd implements AfterAnalysisInterface
     }
 
     /**
-     * @return array{
-     *     build: array,
-     *     git: array,
-     *     issues: array,
-     *     coverage: list<int>,
-     *     level: int<1, 8>,
-     *     versions: array<string, string>
-     * }|null
+     * @return ShepherdPayload|null
      */
     private static function collectPayloadToSend(AfterAnalysisEvent $event): ?array
     {
@@ -128,13 +129,17 @@ final class Shepherd implements AfterAnalysisInterface
         ];
     }
 
+    /** @param ShepherdPayload $rawPayload */
     private static function sendPayload(string $endpoint, array $rawPayload): void
     {
         $payload = json_encode($rawPayload, JSON_THROW_ON_ERROR);
 
         // Prepare new cURL resource
         $ch = curl_init($endpoint);
-        assert($ch !== false);
+        if ($ch === false) {
+            fwrite(STDERR, "Shepherd error: no HTTP client available to send the results to $endpoint." . PHP_EOL);
+            return;
+        }
         // Reporting is best-effort and must not stall the analysis result.
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);

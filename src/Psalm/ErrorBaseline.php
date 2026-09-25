@@ -244,7 +244,7 @@ final class ErrorBaseline
         if ($include_php_versions) {
             $extensions = [...get_loaded_extensions(), ...get_loaded_extensions(true)];
 
-            usort($extensions, 'strnatcasecmp');
+            usort($extensions, static fn(string $a, string $b): int => strnatcasecmp($a, $b));
 
             $filesNode->setAttribute('php-version', implode(";\n\t", [
                 'php:' . PHP_VERSION,
@@ -283,7 +283,7 @@ final class ErrorBaseline
         $xml = preg_replace_callback(
             '/<files (psalm-version="[^"]+") php-version="(.+)"(\/?>)\n/',
             /**
-             * @param string[] $matches
+             * @param array<array-key, string> $matches
              */
             static fn(array $matches): string => sprintf(
                 "<files\n  %s\n  php-version=\"\n    %s\n  \"\n%s\n",

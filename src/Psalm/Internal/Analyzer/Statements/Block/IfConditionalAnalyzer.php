@@ -101,10 +101,10 @@ final class IfConditionalAnalyzer
 
         $pre_condition_vars_in_scope = $outer_context->vars_in_scope;
 
-        $referenced_var_ids = $outer_context->cond_referenced_var_ids;
+        $referenced_var_ids = $outer_context->getCondReferencedVarIds();
         $outer_context->cond_referenced_var_ids = [];
 
-        $pre_assigned_var_ids = $outer_context->assigned_var_ids;
+        $pre_assigned_var_ids = $outer_context->getAssignedVarIds();
         $outer_context->assigned_var_ids = [];
 
         $if_context = null;
@@ -125,13 +125,13 @@ final class IfConditionalAnalyzer
             throw new ScopeAnalysisException();
         }
 
-        $first_cond_assigned_var_ids = $outer_context->assigned_var_ids;
+        $first_cond_assigned_var_ids = $outer_context->getAssignedVarIds();
         $outer_context->assigned_var_ids = array_merge(
             $pre_assigned_var_ids,
             $first_cond_assigned_var_ids,
         );
 
-        $first_cond_referenced_var_ids = $outer_context->cond_referenced_var_ids;
+        $first_cond_referenced_var_ids = $outer_context->getCondReferencedVarIds();
         $outer_context->cond_referenced_var_ids = array_merge(
             $referenced_var_ids,
             $first_cond_referenced_var_ids,
@@ -177,7 +177,7 @@ final class IfConditionalAnalyzer
             $if_conditional_context->inside_conditional = $was_inside_conditional;
 
             /** @var array<string, bool> */
-            $more_cond_referenced_var_ids = $if_conditional_context->cond_referenced_var_ids;
+            $more_cond_referenced_var_ids = $if_conditional_context->getCondReferencedVarIds();
             $if_conditional_context->cond_referenced_var_ids = array_merge(
                 $more_cond_referenced_var_ids,
                 $referenced_var_ids,
@@ -189,7 +189,7 @@ final class IfConditionalAnalyzer
             );
 
             /** @var array<string, int> */
-            $more_cond_assigned_var_ids = $if_conditional_context->assigned_var_ids;
+            $more_cond_assigned_var_ids = $if_conditional_context->getAssignedVarIds();
             $if_conditional_context->assigned_var_ids = array_merge(
                 $more_cond_assigned_var_ids,
                 $assigned_var_ids,

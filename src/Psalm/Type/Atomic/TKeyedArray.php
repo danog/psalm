@@ -11,7 +11,6 @@ use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
 use Psalm\Internal\Type\TypeCombiner;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
@@ -28,6 +27,9 @@ use function ksort;
 use function preg_match;
 use function sort;
 use function str_replace;
+use Psalm\Type\MutableTypeVisitor;
+use Psalm\Type\TypeVisitor;
+use Psalm\Type\TypeNode;
 
 /**
  * Represents an 'object-like array' - an array with known keys.
@@ -38,7 +40,6 @@ use function str_replace;
  */
 final class TKeyedArray extends Atomic
 {
-    use UnserializeMemoryUsageSuppressionTrait;
 
     /**
      * Constructs a new instance of a generic type
@@ -726,13 +727,79 @@ final class TKeyedArray extends Atomic
         return $this;
     }
 
+    #[Override]
+    public function visit(TypeVisitor $visitor): bool
+    {
+        foreach ($this->properties as $child) {
+            if ($visitor->traverse($child) === false) {
+                return false;
+            }
+        }
+        if ($this->fallback_params !== null) {
+            foreach ($this->fallback_params as $child) {
+                if ($visitor->traverse($child) === false) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     /**
-     * @psalm-pure
+     * @param TypeNode $node
+     * @param-out TypeNode $node
+     *
+     * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
-    protected function getChildNodeKeys(): array
+    public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        return ['properties', 'fallback_params'];
+        assert($node instanceof self);
+        $self = $node;
+        $values = $self->properties;
+        $changed = false;
+        $result = true;
+        foreach ($values as &$child) {
+            $child_orig = $child;
+            $result = $visitor->traverse($child);
+            $changed = $changed || $child !== $child_orig;
+        }
+        unset($child);
+        if ($changed) {
+            if (!$cloned) {
+                $self = clone $self;
+                $cloned = true;
+            }
+            $self->properties = $values;
+        }
+        if ($result === false) {
+            $node = $self;
+            return false;
+        }
+        if ($self->fallback_params !== null) {
+            $values = $self->fallback_params;
+            $changed = false;
+            $result = true;
+            foreach ($values as &$child) {
+                $child_orig = $child;
+                $result = $visitor->traverse($child);
+                $changed = $changed || $child !== $child_orig;
+            }
+            unset($child);
+            if ($changed) {
+                if (!$cloned) {
+                    $self = clone $self;
+                    $cloned = true;
+                }
+                $self->fallback_params = $values;
+            }
+            if ($result === false) {
+                $node = $self;
+                return false;
+            }
+        }
+        $node = $self;
+        return true;
     }
 
     #[Override]

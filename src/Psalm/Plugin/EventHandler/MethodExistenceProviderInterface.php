@@ -4,15 +4,17 @@ declare(strict_types=1);
 
 namespace Psalm\Plugin\EventHandler;
 
+use Psalm\Plugin\HookInterface;
+
 use Psalm\Plugin\EventHandler\Event\MethodExistenceProviderEvent;
 
 /**
  * @api
  */
-interface MethodExistenceProviderInterface
+interface MethodExistenceProviderInterface extends HookInterface
 {
     /**
-     * @return array<string>
+     * @return list<string>
      */
     public static function getClassLikeNames(): array;
 

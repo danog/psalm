@@ -62,12 +62,12 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
     private readonly bool $scan_deep;
 
     /**
-     * @var array<FunctionLikeNodeScanner>
+     * @var list<FunctionLikeNodeScanner>
      */
     private array $functionlike_node_scanners = [];
 
     /**
-     * @var array<ClassLikeNodeScanner>
+     * @var list<ClassLikeNodeScanner>
      */
     private array $classlike_node_scanners = [];
 
@@ -76,6 +76,9 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
     private ?Expr $exists_cond_expr = null;
 
     private ?int $skip_if_descendants = null;
+
+    /** Line after which top-level code is unreachable (a top-level `return;` in a compile-time-true `if`) */
+    private ?int $unreachable_after_line = null;
 
     /**
      * @var array<string, TypeAlias>
@@ -108,6 +111,10 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
     #[Override]
     public function enterNode(PhpParser\Node $node): ?int
     {
+        if ($this->unreachable_after_line !== null && $node->getStartLine() > $this->unreachable_after_line) {
+            return PhpParser\NodeVisitor::DONT_TRAVERSE_CHILDREN;
+        }
+
         foreach ($node->getComments() as $comment) {
             if ($comment instanceof PhpParser\Comment\Doc && !$node instanceof PhpParser\Node\Stmt\ClassLike) {
                 try {
@@ -327,14 +334,25 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
             if (!$this->functionlike_node_scanners) {
                 $this->exists_cond_expr = $node->cond;
 
-                if (ExpressionResolver::enterConditional(
+                $enter_conditional = ExpressionResolver::enterConditional(
                     $this->codebase,
                     $this->file_path,
                     $this->exists_cond_expr,
-                ) === false
-                ) {
+                );
+
+                if ($enter_conditional === false) {
                     // the else node should terminate the agreement
                     $this->skip_if_descendants = $node->else ? $node->else->getLine() : $node->getLine();
+                } elseif ($enter_conditional === true
+                    && false
+                    && !$this->classlike_node_scanners
+                    && !$node->elseifs
+                    && !$node->else
+                    && $node->stmts
+                    && end($node->stmts) instanceof PhpParser\Node\Stmt\Return_
+                ) {
+                    // `if (PHP_VERSION_ID >= X) { ...; return; }` at the top level: the rest of the file is dead
+                    $this->unreachable_after_line = $node->getEndLine();
                 }
             }
         } elseif ($node instanceof PhpParser\Node\Stmt\Else_) {
@@ -450,10 +468,10 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
             $this->aliases->constants_flipped,
         );
 
-        $this->file_storage->namespace_aliases[(int) $node->getAttribute('startFilePos')] = $this->aliases;
+        $this->file_storage->namespace_aliases[$node->getStartFilePos()] = $this->aliases;
 
         if ($node->stmts) {
-            $this->aliases->namespace_first_stmt_start = (int) $node->stmts[0]->getAttribute('startFilePos');
+            $this->aliases->namespace_first_stmt_start = $node->stmts[0]->getStartFilePos();
         }
     }
 
@@ -483,10 +501,10 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
         }
 
         if (!$this->aliases->uses_start) {
-            $this->aliases->uses_start = (int) $node->getAttribute('startFilePos');
+            $this->aliases->uses_start = $node->getStartFilePos();
         }
 
-        $this->aliases->uses_end = (int) $node->getAttribute('endFilePos') + 1;
+        $this->aliases->uses_end = $node->getEndFilePos() + 1;
     }
 
     private function handleGroupUse(PhpParser\Node\Stmt\GroupUse $node): void
@@ -516,10 +534,10 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
         }
 
         if (!$this->aliases->uses_start) {
-            $this->aliases->uses_start = (int) $node->getAttribute('startFilePos');
+            $this->aliases->uses_start = $node->getStartFilePos();
         }
 
-        $this->aliases->uses_end = (int) $node->getAttribute('endFilePos') + 1;
+        $this->aliases->uses_end = $node->getEndFilePos() + 1;
     }
 
     /**
@@ -528,6 +546,10 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
     #[Override]
     public function leaveNode(PhpParser\Node $node)
     {
+        if ($this->unreachable_after_line !== null && $node->getStartLine() > $this->unreachable_after_line) {
+            return null;
+        }
+
         if ($node instanceof PhpParser\Node\Stmt\Namespace_) {
             if (!$this->file_storage->aliases) {
                 throw new UnexpectedValueException('File storage liases should not be null');
@@ -677,6 +699,7 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
 
     /**
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ReturnTypeHint.MissingAnyTypeHint
+     * @param list<\PhpParser\Node> $nodes
      */
     #[Override]
     public function afterTraverse(array $nodes)

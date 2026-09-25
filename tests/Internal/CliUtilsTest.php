@@ -133,6 +133,7 @@ final class CliUtilsTest extends TestCase
      * @dataProvider provideGetPathsToCheck
      * @param list<string>|null $expected
      * @param list<string> $_input
+     * @param list<string> $fpaths
      */
     public function testGetPathsToCheckWillReturnExpectedValue(?array $expected, array $_input, array $fpaths = []): void
     {

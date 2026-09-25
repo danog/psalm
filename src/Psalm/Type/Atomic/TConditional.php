@@ -8,9 +8,13 @@ use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
+use Psalm\Type\MutableTypeVisitor;
+use Psalm\Type\TypeVisitor;
+use Psalm\Type\TypeNode;
+
+use function assert;
 
 /**
  * Internal representation of a conditional return type in phpdoc. For example ($param1 is int ? int : string)
@@ -20,7 +24,6 @@ use Psalm\Type\Union;
  */
 final class TConditional extends Atomic
 {
-    use UnserializeMemoryUsageSuppressionTrait;
     public function __construct(
         public string $param_name,
         public string $defining_class,
@@ -114,13 +117,73 @@ final class TConditional extends Atomic
         return '';
     }
 
+    #[Override]
+    public function visit(TypeVisitor $visitor): bool
+    {
+        if ($visitor->traverse($this->conditional_type) === false) {
+            return false;
+        }
+        if ($visitor->traverse($this->if_type) === false) {
+            return false;
+        }
+        if ($visitor->traverse($this->else_type) === false) {
+            return false;
+        }
+        return true;
+    }
+
     /**
-     * @psalm-pure
+     * @param TypeNode $node
+     * @param-out TypeNode $node
+     *
+     * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
-    protected function getChildNodeKeys(): array
+    public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        return ['conditional_type', 'if_type', 'else_type'];
+        assert($node instanceof self);
+        $self = $node;
+        $value = $self->conditional_type;
+        $result = $visitor->traverse($value);
+        if ($value !== $self->conditional_type) {
+            if (!$cloned) {
+                $self = clone $self;
+                $cloned = true;
+            }
+            $self->conditional_type = $value;
+        }
+        if ($result === false) {
+            $node = $self;
+            return false;
+        }
+        $value = $self->if_type;
+        $result = $visitor->traverse($value);
+        if ($value !== $self->if_type) {
+            if (!$cloned) {
+                $self = clone $self;
+                $cloned = true;
+            }
+            $self->if_type = $value;
+        }
+        if ($result === false) {
+            $node = $self;
+            return false;
+        }
+        $value = $self->else_type;
+        $result = $visitor->traverse($value);
+        if ($value !== $self->else_type) {
+            if (!$cloned) {
+                $self = clone $self;
+                $cloned = true;
+            }
+            $self->else_type = $value;
+        }
+        if ($result === false) {
+            $node = $self;
+            return false;
+        }
+        $node = $self;
+        return true;
     }
 
     /**

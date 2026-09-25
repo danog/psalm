@@ -18,6 +18,6 @@ final class StoragePlugin implements PluginEntryPointInterface
     {
         require_once __DIR__ . '/Hook/CustomArrayMapFunctionStorageProvider.php';
 
-        $registration->registerHooksFromClass(CustomArrayMapFunctionStorageProvider::class);
+        $registration->registerHooksFromClass(new CustomArrayMapFunctionStorageProvider());
     }
 }

@@ -289,7 +289,7 @@ final class DocblockParser
     public static function handlePsalmInternal(ParsedDocblock $parsed_docblock): array
     {
         if (isset($parsed_docblock->tags['psalm-internal'])) {
-            $psalm_internal = array_map("trim", $parsed_docblock->tags['psalm-internal']);
+            $psalm_internal = array_map(static fn(string $line): string => trim($line), $parsed_docblock->tags['psalm-internal']);
 
             if (count($psalm_internal) !== count(array_filter($psalm_internal))) {
                 throw new DocblockParseException('psalm-internal annotation used without specifying namespace');
@@ -304,7 +304,9 @@ final class DocblockParser
     }
 
     /**
-     * @psalm-assert-if-true array<array-key, non-empty-string> $arr
+     * @template T
+     * @param array<array-key, T> $arr
+     * @psalm-assert-if-true list<non-empty-string> $arr
      * @psalm-pure
      */
     private static function assertArrayOfNonEmptyString(array $arr): bool

@@ -35,7 +35,7 @@ use const PHP_URL_USER;
 final class ParseUrlReturnTypeProvider implements FunctionReturnTypeProviderInterface
 {
     /**
-     * @return array<lowercase-string>
+     * @return list<lowercase-string>
      * @psalm-pure
      */
     #[Override]

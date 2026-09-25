@@ -18,7 +18,7 @@ use function strlen;
 final class Message implements Stringable
 {
     /**
-     * @var string[]
+     * @var list<string>
      */
     public array $headers;
 
@@ -43,7 +43,7 @@ final class Message implements Stringable
     }
 
     /**
-     * @param string[] $headers
+     * @param list<string> $headers
      * @psalm-mutation-free
      */
     public function __construct(public ?MessageBody $body = null, array $headers = [])

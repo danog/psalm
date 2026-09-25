@@ -20,7 +20,7 @@ final class TemplateBound
         /**
          * This is the depth at which the template appears in a given type.
          *
-         * In the type Foo<T, Bar<T, array<T>>> the type T appears at three different depths.
+         * In the type Foo<T, Bar<T, list<T>>> the type T appears at three different depths.
          *
          * The shallowest-appearance of the template takes prominence when inferring the type of T.
          */

@@ -45,51 +45,66 @@ use const GLOB_ONLYDIR;
 /**
  * @psalm-consistent-constructor
  * @api
+ *
+ * @psalm-type FileFilterEntry = array{name: string, ignoreTypeStats?: bool, resolveSymlinks?: bool, useStrictTypes?: bool}
+ * @psalm-type FileFilterNamed = array{name: string}
+ * @psalm-type FileFilterConfig = array{
+ *     allowMissingFiles?: bool,
+ *     directory?: list<FileFilterEntry>,
+ *     file?: list<FileFilterNamed>,
+ *     referencedClass?: list<FileFilterNamed>,
+ *     referencedMethod?: list<FileFilterNamed>,
+ *     referencedFunction?: list<FileFilterNamed>,
+ *     referencedProperty?: list<FileFilterNamed>,
+ *     referencedVariable?: list<FileFilterNamed>,
+ *     referencedConstant?: list<FileFilterNamed>,
+ *     type?: string
+ * }
  */
 class FileFilter
 {
     /**
-     * @var array<string>
+     * @var list<string>
      */
     protected array $directories = [];
 
     /**
-     * @var array<string>
+     * @var list<string>
      */
     protected array $files = [];
 
     /**
-     * @var array<string>
+     * @var list<string>
      */
     protected array $fq_classlike_names = [];
 
     /**
-     * @var array<non-empty-string>
+     * @var list<non-empty-string>
      */
     protected array $fq_classlike_patterns = [];
 
     /**
-     * @var array<non-empty-string>
+     * @var list<non-empty-string>
      */
     protected array $method_ids = [];
 
     /**
-     * @var array<string>
+     * @var list<string>
      */
     protected array $property_ids = [];
 
     /**
-     * @var array<string>
+     * @var list<string>
      */
     protected array $class_constant_ids = [];
 
     /**
-     * @var array<string>
+     * @var list<string>
      */
     protected array $var_names = [];
 
     /**
-     * @var array<string>
+     * @var list<string>
      */
     protected array $files_lowercase = [];
 
@@ -111,6 +126,7 @@ class FileFilter
     }
 
     /**
+     * @param FileFilterConfig $config
      * @return static
      */
     public static function loadFromArray(
@@ -123,7 +139,6 @@ class FileFilter
         $filter = new static($inclusive);
 
         if (isset($config['directory']) && is_iterable($config['directory'])) {
-            /** @var array $directory */
             foreach ($config['directory'] as $directory) {
                 $directory_path = (string) ($directory['name'] ?? '');
                 $ignore_type_stats = (bool) ($directory['ignoreTypeStats'] ?? false);
@@ -249,7 +264,6 @@ class FileFilter
         }
 
         if (isset($config['file']) && is_iterable($config['file'])) {
-            /** @var array $file */
             foreach ($config['file'] as $file) {
                 $file_path = (string) ($file['name'] ?? '');
 
@@ -310,7 +324,6 @@ class FileFilter
         }
 
         if (isset($config['referencedClass']) && is_iterable($config['referencedClass'])) {
-            /** @var array $referenced_class */
             foreach ($config['referencedClass'] as $referenced_class) {
                 $class_name = strtolower((string) ($referenced_class['name'] ?? ''));
 
@@ -324,7 +337,6 @@ class FileFilter
         }
 
         if (isset($config['referencedMethod']) && is_iterable($config['referencedMethod'])) {
-            /** @var array $referenced_method */
             foreach ($config['referencedMethod'] as $referenced_method) {
                 $method_id = $referenced_method['name'] ?? '';
                 if (!is_string($method_id)
@@ -343,7 +355,6 @@ class FileFilter
         }
 
         if (isset($config['referencedFunction']) && is_iterable($config['referencedFunction'])) {
-            /** @var array $referenced_function */
             foreach ($config['referencedFunction'] as $referenced_function) {
                 $function_id = $referenced_function['name'] ?? '';
                 if (!is_string($function_id)
@@ -364,21 +375,18 @@ class FileFilter
         }
 
         if (isset($config['referencedProperty']) && is_iterable($config['referencedProperty'])) {
-            /** @var array $referenced_property */
             foreach ($config['referencedProperty'] as $referenced_property) {
                 $filter->property_ids[] = strtolower((string) ($referenced_property['name'] ?? ''));
             }
         }
 
         if (isset($config['referencedConstant']) && is_iterable($config['referencedConstant'])) {
-            /** @var array $referenced_constant */
             foreach ($config['referencedConstant'] as $referenced_constant) {
                 $filter->class_constant_ids[] = strtolower((string) ($referenced_constant['name'] ?? ''));
             }
         }
 
         if (isset($config['referencedVariable']) && is_iterable($config['referencedVariable'])) {
-            /** @var array $referenced_variable */
             foreach ($config['referencedVariable'] as $referenced_variable) {
                 $filter->var_names[] = strtolower((string) ($referenced_variable['name'] ?? ''));
             }
@@ -392,6 +400,7 @@ class FileFilter
         string $base_dir,
         bool $inclusive,
     ): static {
+        /** @var FileFilterConfig $config */
         $config = [];
         $config['allowMissingFiles'] = ((string) $e['allowMissingFiles']) === 'true';
 
@@ -481,7 +490,7 @@ class FileFilter
     /**
      * @mutation-free
      * @param non-empty-list<non-empty-string> $parts
-     * @return array<string|false>
+     * @return array<int, string|false>
      */
     private static function recursiveGlob(array $parts, bool $only_dir): array
     {
@@ -491,11 +500,11 @@ class FileFilter
             } else {
                 $list = array_filter(
                     glob($parts[0], GLOB_NOSORT) ?: [],
-                    'file_exists',
+                    static fn(string $path): bool => file_exists($path),
                 );
             }
 
-            return array_map('realpath', $list);
+            return array_map(static fn(string $path): string|false => realpath($path), $list);
         }
 
         $first_dir = self::slashify($parts[0]);
@@ -650,7 +659,7 @@ class FileFilter
     }
 
     /**
-     * @return array<string>
+     * @return list<string>
      */
     public function getDirectories(): array
     {
@@ -658,7 +667,7 @@ class FileFilter
     }
 
     /**
-     * @return array<string>
+     * @return list<string>
      */
     public function getFiles(): array
     {

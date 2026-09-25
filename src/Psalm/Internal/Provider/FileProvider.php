@@ -122,6 +122,7 @@ class FileProvider
         unset($this->temp_files[$file_path]);
     }
 
+    /** @return array<string, string> */
     public function getOpenFilesPath(): array
     {
         return $this->open_files_paths;
@@ -168,7 +169,7 @@ class FileProvider
     }
 
     /**
-     * @param array<string> $file_extensions
+     * @param array<int, string> $file_extensions
      * @param null|callable(string):bool $filter
      * @return list<string>
      */
@@ -184,8 +185,7 @@ class FileProvider
         if ($filter !== null) {
             $iterator = new RecursiveCallbackFilterIterator(
                 $iterator,
-                /** @param mixed $_ */
-                static function (string $current, mixed $_, RecursiveIterator $iterator) use ($filter): bool {
+                static function (string $current, string $_, RecursiveIterator $iterator) use ($filter): bool {
                     if ($iterator->hasChildren()) {
                         $path = $current . DIRECTORY_SEPARATOR;
                     } else {

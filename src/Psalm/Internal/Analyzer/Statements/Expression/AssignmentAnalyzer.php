@@ -107,6 +107,7 @@ final class AssignmentAnalyzer
 {
     /**
      * @param  PhpParser\Node\Expr|null $assign_value  This has to be null to support list destructuring
+     * @param array<string, bool> $not_ignored_docblock_var_ids
      */
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
@@ -172,7 +173,7 @@ final class AssignmentAnalyzer
 
         if ($extended_var_id) {
             unset($context->cond_referenced_var_ids[$extended_var_id]);
-            $context->assigned_var_ids[$extended_var_id] = (int) $assign_var->getAttribute('startFilePos');
+            $context->assigned_var_ids[$extended_var_id] = $assign_var->getStartFilePos();
             $context->possibly_assigned_var_ids[$extended_var_id] = true;
         }
 
@@ -217,7 +218,9 @@ final class AssignmentAnalyzer
 
         if ($assign_value) {
             if ($var_id && $assign_value instanceof PhpParser\Node\Expr\Closure) {
-                $assign_value->setAttribute('assigned_var_id', $var_id);
+                // getAttributes() returns a copy: write through setAttributes()
+                $closure_attributes = $assign_value->getAttributes();
+                $closure_attributes->assigned_var_id = $var_id;
 
                 foreach ($assign_value->uses as $closure_use) {
                     if ($closure_use->byRef
@@ -226,9 +229,10 @@ final class AssignmentAnalyzer
                     ) {
                         $context->vars_in_scope[$var_id] = Type::getClosure();
                         $context->vars_possibly_in_scope[$var_id] = true;
-                        $assign_value->setAttribute('recursive_var_id', $var_id);
+                        $closure_attributes->recursive_var_id = $var_id;
                     }
                 }
+                $assign_value->setAttributes($closure_attributes);
             }
 
             $was_inside_general_use = $context->inside_general_use;
@@ -627,6 +631,7 @@ final class AssignmentAnalyzer
 
     /**
      * @param list<VarDocblockComment> $var_comments
+     * @param array<string, bool> $not_ignored_docblock_var_ids
      */
     private static function analyzeDocComment(
         StatementsAnalyzer $statements_analyzer,
@@ -705,6 +710,9 @@ final class AssignmentAnalyzer
         }
     }
 
+    /**
+     * @param array<string, bool> $not_ignored_docblock_var_ids
+     */
     public static function assignTypeFromVarDocblock(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\Node $stmt,
@@ -1159,7 +1167,7 @@ final class AssignmentAnalyzer
                 }
             }
 
-            $context->assigned_var_ids[$var_id] = (int) $stmt->getAttribute('startFilePos');
+            $context->assigned_var_ids[$var_id] = $stmt->getStartFilePos();
 
             $context->vars_in_scope[$var_id] = $by_ref_out_type;
 
@@ -1392,7 +1400,7 @@ final class AssignmentAnalyzer
 
                 if ($list_var_id) {
                     $context->vars_possibly_in_scope[$list_var_id] = true;
-                    $context->assigned_var_ids[$list_var_id] = (int)$var->getAttribute('startFilePos');
+                    $context->assigned_var_ids[$list_var_id] = $var->getStartFilePos();
                     $context->possibly_assigned_var_ids[$list_var_id] = true;
 
                     $already_in_scope = isset($context->vars_in_scope[$list_var_id]);

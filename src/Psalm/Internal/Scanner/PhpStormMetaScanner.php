@@ -46,11 +46,13 @@ final class PhpStormMetaScanner
 
         $map = [];
 
-        if ($args[1]->value->name->getParts() === ['map']
-            && $args[1]->value->getArgs()
-            && $args[1]->value->getArgs()[0]->value instanceof PhpParser\Node\Expr\Array_
+        $meta_call = $args[1]->value;
+        $meta_call_first_arg = $meta_call->getArgs() ? $meta_call->getArgs()[0]->value : null;
+
+        if ($meta_call->name->getParts() === ['map']
+            && $meta_call_first_arg instanceof PhpParser\Node\Expr\Array_
         ) {
-            foreach ($args[1]->value->getArgs()[0]->value->items as $array_item) {
+            foreach ($meta_call_first_arg->items as $array_item) {
                 if ($array_item
                     && $array_item->key instanceof PhpParser\Node\Scalar\String_
                 ) {
@@ -71,7 +73,7 @@ final class PhpStormMetaScanner
                     && $array_item->key->name instanceof PhpParser\Node\Identifier
                 ) {
                     /** @var string|null $resolved_name */
-                    $resolved_name =  $array_item->key->class->getAttribute('resolvedName');
+                    $resolved_name =  $array_item->key->class->attrs()->resolvedName;
                     if (!$resolved_name) {
                         continue;
                     }
@@ -105,20 +107,18 @@ final class PhpStormMetaScanner
 
         $type_offset = null;
 
-        if ($args[1]->value->name->getParts() === ['type']
-            && $args[1]->value->getArgs()
-            && $args[1]->value->getArgs()[0]->value instanceof PhpParser\Node\Scalar\Int_
+        if ($meta_call->name->getParts() === ['type']
+            && $meta_call_first_arg instanceof PhpParser\Node\Scalar\Int_
         ) {
-            $type_offset = $args[1]->value->getArgs()[0]->value->value;
+            $type_offset = $meta_call_first_arg->value;
         }
 
         $element_type_offset = null;
 
-        if ($args[1]->value->name->getParts() === ['elementType']
-            && $args[1]->value->getArgs()
-            && $args[1]->value->getArgs()[0]->value instanceof PhpParser\Node\Scalar\Int_
+        if ($meta_call->name->getParts() === ['elementType']
+            && $meta_call_first_arg instanceof PhpParser\Node\Scalar\Int_
         ) {
-            $element_type_offset = $args[1]->value->getArgs()[0]->value->value;
+            $element_type_offset = $meta_call_first_arg->value;
         }
 
         if ($identifier instanceof PhpParser\Node\Expr\StaticCall
@@ -135,10 +135,9 @@ final class PhpStormMetaScanner
 
             if ($map) {
                 $offset = 0;
-                if ($identifier->getArgs()
-                    && $identifier->getArgs()[0]->value instanceof PhpParser\Node\Scalar\Int_
-                ) {
-                    $offset = $identifier->getArgs()[0]->value->value;
+                $identifier_first_arg = $identifier->getArgs() ? $identifier->getArgs()[0]->value : null;
+                if ($identifier_first_arg instanceof PhpParser\Node\Scalar\Int_) {
+                    $offset = $identifier_first_arg->value;
                 }
 
                 $codebase->methods->return_type_provider->registerClosure(
@@ -285,10 +284,9 @@ final class PhpStormMetaScanner
 
             if ($map) {
                 $offset = 0;
-                if ($identifier->getArgs()
-                    && $identifier->getArgs()[0]->value instanceof PhpParser\Node\Scalar\Int_
-                ) {
-                    $offset = $identifier->getArgs()[0]->value->value;
+                $identifier_first_arg = $identifier->getArgs() ? $identifier->getArgs()[0]->value : null;
+                if ($identifier_first_arg instanceof PhpParser\Node\Scalar\Int_) {
+                    $offset = $identifier_first_arg->value;
                 }
 
                 $codebase->functions->return_type_provider->registerClosure(

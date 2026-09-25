@@ -20,7 +20,7 @@ use function count;
 final class StrReplaceReturnTypeProvider implements FunctionReturnTypeProviderInterface
 {
     /**
-     * @return array<lowercase-string>
+     * @return list<lowercase-string>
      * @psalm-pure
      */
     #[Override]
@@ -59,12 +59,12 @@ final class StrReplaceReturnTypeProvider implements FunctionReturnTypeProviderIn
                 /**
                  * @var string $replaced_string
                  */
-                $replaced_string = call_user_func(
-                    $function_id,
-                    $first_arg->getSingleStringLiteral()->value,
-                    $second_arg->getSingleStringLiteral()->value,
-                    $subject_type->getSingleStringLiteral()->value,
-                );
+                $search = $first_arg->getSingleStringLiteral()->value;
+                $replace = $second_arg->getSingleStringLiteral()->value;
+                $subject = $subject_type->getSingleStringLiteral()->value;
+                $replaced_string = $function_id === 'str_ireplace'
+                    ? str_ireplace($search, $replace, $subject)
+                    : str_replace($search, $replace, $subject);
                 return Type::getString($replaced_string);
             }
         }

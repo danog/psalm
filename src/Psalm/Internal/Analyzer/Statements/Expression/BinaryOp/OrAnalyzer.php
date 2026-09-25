@@ -81,7 +81,7 @@ final class OrAnalyzer
                     $context,
                     $codebase,
                     $if_scope,
-                    $context->branch_point ?: (int) $stmt->getAttribute('startFilePos'),
+                    $context->branch_point ?: $stmt->getStartFilePos(),
                 );
 
                 $left_context = $if_conditional_scope->if_context;
@@ -96,10 +96,10 @@ final class OrAnalyzer
                 return false;
             }
         } else {
-            $pre_referenced_var_ids = $context->cond_referenced_var_ids;
+            $pre_referenced_var_ids = $context->getCondReferencedVarIds();
             $context->cond_referenced_var_ids = [];
 
-            $pre_assigned_var_ids = $context->assigned_var_ids;
+            $pre_assigned_var_ids = $context->getAssignedVarIds();
 
             $post_leaving_if_context = clone $context;
 
@@ -117,9 +117,11 @@ final class OrAnalyzer
 
             IfConditionalAnalyzer::handleParadoxicalCondition($statements_analyzer, $stmt->left);
 
+            $left_context_assigned_var_ids = $left_context->getAssignedVarIds();
+
             foreach ($left_context->vars_in_scope as $var_id => $type) {
                 if (!isset($context->vars_in_scope[$var_id])) {
-                    if (isset($left_context->assigned_var_ids[$var_id])) {
+                    if (isset($left_context_assigned_var_ids[$var_id])) {
                         $context->vars_in_scope[$var_id] = $type;
                     }
                 } else {
@@ -131,16 +133,16 @@ final class OrAnalyzer
                 }
             }
 
-            $left_referenced_var_ids = $left_context->cond_referenced_var_ids;
+            $left_referenced_var_ids = $left_context->getCondReferencedVarIds();
             $left_context->cond_referenced_var_ids = [
                 ...$pre_referenced_var_ids,
                 ...$left_referenced_var_ids,
             ];
 
-            $left_assigned_var_ids = array_diff_key($left_context->assigned_var_ids, $pre_assigned_var_ids);
+            $left_assigned_var_ids = array_diff_key($left_context->getAssignedVarIds(), $pre_assigned_var_ids);
             $left_context->assigned_var_ids = [
                 ...$pre_assigned_var_ids,
-                ...$left_context->assigned_var_ids,
+                ...$left_context->getAssignedVarIds(),
             ];
 
             $left_referenced_var_ids = array_diff_key($left_referenced_var_ids, $left_assigned_var_ids);
@@ -175,8 +177,8 @@ final class OrAnalyzer
             }
         }
 
-        if ($left_context->reconciled_expression_clauses) {
-            $reconciled_expression_clauses = $left_context->reconciled_expression_clauses;
+        if ($left_context->getReconciledExpressionClauses()) {
+            $reconciled_expression_clauses = $left_context->getReconciledExpressionClauses();
 
             $negated_left_clauses = array_values(
                 array_filter(
@@ -246,7 +248,7 @@ final class OrAnalyzer
         if ($changed_var_ids) {
             $partitioned_clauses = Context::removeReconciledClauses($right_context->clauses, $changed_var_ids);
             $right_context->clauses = $partitioned_clauses[0];
-            $right_context->reconciled_expression_clauses = $context->reconciled_expression_clauses;
+            $right_context->reconciled_expression_clauses = $context->getReconciledExpressionClauses();
 
             foreach ($partitioned_clauses[1] as $clause) {
                 $right_context->reconciled_expression_clauses[] = $clause->hash;
@@ -262,10 +264,10 @@ final class OrAnalyzer
 
         $right_context->if_body_context = null;
 
-        $pre_referenced_var_ids = $right_context->cond_referenced_var_ids;
+        $pre_referenced_var_ids = $right_context->getCondReferencedVarIds();
         $right_context->cond_referenced_var_ids = [];
 
-        $pre_assigned_var_ids = $right_context->assigned_var_ids;
+        $pre_assigned_var_ids = $right_context->getAssignedVarIds();
         $right_context->assigned_var_ids = [];
 
         if (ExpressionAnalyzer::analyze($statements_analyzer, $stmt->right, $right_context) === false) {
@@ -274,10 +276,10 @@ final class OrAnalyzer
 
         IfConditionalAnalyzer::handleParadoxicalCondition($statements_analyzer, $stmt->right);
 
-        $right_referenced_var_ids = $right_context->cond_referenced_var_ids;
+        $right_referenced_var_ids = $right_context->getCondReferencedVarIds();
         $right_context->cond_referenced_var_ids = array_merge($pre_referenced_var_ids, $right_referenced_var_ids);
 
-        $right_assigned_var_ids = $right_context->assigned_var_ids;
+        $right_assigned_var_ids = $right_context->getAssignedVarIds();
         $right_context->assigned_var_ids = array_merge($pre_assigned_var_ids, $right_assigned_var_ids);
 
         $right_cond_id = spl_object_id($stmt->right);
@@ -361,11 +363,11 @@ final class OrAnalyzer
         }
 
         $context->cond_referenced_var_ids = [
-            ...$right_context->cond_referenced_var_ids,
-            ...$context->cond_referenced_var_ids,
+            ...$right_context->getCondReferencedVarIds(),
+            ...$context->getCondReferencedVarIds(),
         ];
 
-        $context->assigned_var_ids = [...$context->assigned_var_ids, ...$right_context->assigned_var_ids];
+        $context->assigned_var_ids = [...$context->getAssignedVarIds(), ...$right_context->getAssignedVarIds()];
 
         if ($context->if_body_context) {
             $if_body_context = $context->if_body_context;
@@ -387,13 +389,13 @@ final class OrAnalyzer
             }
 
             $if_body_context->cond_referenced_var_ids = [
-                ...$context->cond_referenced_var_ids,
-                ...$if_body_context->cond_referenced_var_ids,
+                ...$context->getCondReferencedVarIds(),
+                ...$if_body_context->getCondReferencedVarIds(),
             ];
 
             $if_body_context->assigned_var_ids = [
-                ...$context->assigned_var_ids,
-                ...$if_body_context->assigned_var_ids,
+                ...$context->getAssignedVarIds(),
+                ...$if_body_context->getAssignedVarIds(),
             ];
 
             $if_body_context->updateChecks($context);

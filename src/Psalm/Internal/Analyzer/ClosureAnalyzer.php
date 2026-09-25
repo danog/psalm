@@ -16,7 +16,6 @@ use Psalm\Issue\ImpureFunctionCall;
 use Psalm\Issue\PossiblyUndefinedVariable;
 use Psalm\Issue\UndefinedVariable;
 use Psalm\IssueBuffer;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type;
 use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\Union;
@@ -33,7 +32,6 @@ use function strtolower;
  */
 final class ClosureAnalyzer extends FunctionLikeAnalyzer
 {
-    use UnserializeMemoryUsageSuppressionTrait;
     /**
      * @param PhpParser\Node\Expr\Closure|PhpParser\Node\Expr\ArrowFunction $function
      */
@@ -43,7 +41,7 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
 
         $function_id = strtolower($source->getFilePath())
             . ':' . $function->getLine()
-            . ':' . (int)$function->getAttribute('startFilePos')
+            . ':' . $function->getStartFilePos()
             . ':-:closure';
 
         $this->closure_id = $function_id;
@@ -71,15 +69,13 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
      */
     public function getRecursiveVarId(): ?string
     {
-        /** @var mixed $var_id */
-        $var_id = $this->function->getAttribute('recursive_var_id');
-
-        return is_string($var_id) ? $var_id : null;
+        return $this->function->getAttributes()->recursive_var_id;
     }
 
 
     /** @psalm-mutation-free */
     #[Override]
+    /** @return array<string, array<string, \Psalm\Type\Union>> */
     public function getTemplateTypeMap(): ?array
     {
         return $this->source->getTemplateTypeMap();
@@ -92,7 +88,7 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
     {
         return strtolower($this->getFilePath())
             . ':' . $this->function->getLine()
-            . ':' . (int)$this->function->getAttribute('startFilePos')
+            . ':' . $this->function->getStartFilePos()
             . ':-:closure';
     }
 

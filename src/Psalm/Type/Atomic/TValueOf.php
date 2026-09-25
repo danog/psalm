@@ -7,13 +7,15 @@ namespace Psalm\Type\Atomic;
 use Override;
 use Psalm\Codebase;
 use Psalm\Storage\EnumCaseStorage;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
 
 use function array_map;
 use function array_values;
 use function assert;
+use Psalm\Type\MutableTypeVisitor;
+use Psalm\Type\TypeVisitor;
+use Psalm\Type\TypeNode;
 
 /**
  * Represents a value of an array or enum.
@@ -23,7 +25,6 @@ use function assert;
  */
 final class TValueOf extends Atomic
 {
-    use UnserializeMemoryUsageSuppressionTrait;
     public function __construct(public Union $type, bool $from_docblock = false)
     {
         parent::__construct($from_docblock);
@@ -56,13 +57,41 @@ final class TValueOf extends Atomic
         ));
     }
 
+    #[Override]
+    public function visit(TypeVisitor $visitor): bool
+    {
+        if ($visitor->traverse($this->type) === false) {
+            return false;
+        }
+        return true;
+    }
+
     /**
-     * @psalm-pure
+     * @param TypeNode $node
+     * @param-out TypeNode $node
+     *
+     * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
-    protected function getChildNodeKeys(): array
+    public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        return ['type'];
+        assert($node instanceof self);
+        $self = $node;
+        $value = $self->type;
+        $result = $visitor->traverse($value);
+        if ($value !== $self->type) {
+            if (!$cloned) {
+                $self = clone $self;
+                $cloned = true;
+            }
+            $self->type = $value;
+        }
+        if ($result === false) {
+            $node = $self;
+            return false;
+        }
+        $node = $self;
+        return true;
     }
 
 

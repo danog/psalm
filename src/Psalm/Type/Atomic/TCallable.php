@@ -10,9 +10,13 @@ use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Storage\FunctionLikeParameter;
 use Psalm\Storage\Mutations;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
+use Psalm\Type\MutableTypeVisitor;
+use Psalm\Type\TypeVisitor;
+use Psalm\Type\TypeNode;
+
+use function assert;
 
 /**
  * Denotes the `callable` type. Can result from an `is_callable` check.
@@ -22,7 +26,6 @@ use Psalm\Type\Union;
  */
 final class TCallable extends Atomic
 {
-    use UnserializeMemoryUsageSuppressionTrait;
     use CallableTrait;
 
     public string $value = 'callable';
@@ -128,9 +131,71 @@ final class TCallable extends Atomic
     }
 
     #[Override]
-    protected function getChildNodeKeys(): array
+    public function visit(TypeVisitor $visitor): bool
     {
-        return $this->getCallableChildNodeKeys();
+        if ($this->params !== null) {
+            foreach ($this->params as $child) {
+                if ($visitor->traverse($child) === false) {
+                    return false;
+                }
+            }
+        }
+        if ($this->return_type !== null && $visitor->traverse($this->return_type) === false) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * @param TypeNode $node
+     * @param-out TypeNode $node
+     *
+     * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
+     */
+    #[Override]
+    public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
+    {
+        assert($node instanceof self);
+        $self = $node;
+        if ($self->params !== null) {
+            $values = $self->params;
+            $changed = false;
+            $result = true;
+            foreach ($values as &$child) {
+                $child_orig = $child;
+                $result = $visitor->traverse($child);
+                $changed = $changed || $child !== $child_orig;
+            }
+            unset($child);
+            if ($changed) {
+                if (!$cloned) {
+                    $self = clone $self;
+                    $cloned = true;
+                }
+                $self->params = $values;
+            }
+            if ($result === false) {
+                $node = $self;
+                return false;
+            }
+        }
+        if ($self->return_type !== null) {
+            $value = $self->return_type;
+            $result = $visitor->traverse($value);
+            if ($value !== $self->return_type) {
+                if (!$cloned) {
+                    $self = clone $self;
+                    $cloned = true;
+                }
+                $self->return_type = $value;
+            }
+            if ($result === false) {
+                $node = $self;
+                return false;
+            }
+        }
+        $node = $self;
+        return true;
     }
 
     /**

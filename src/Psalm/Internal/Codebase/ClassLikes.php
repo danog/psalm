@@ -1394,8 +1394,8 @@ final class ClassLikes
                 $intended_fq_class_name,
                 $destination_class,
                 $source->getFilePath(),
-                (int) $class_name_node->getAttribute('startFilePos'),
-                (int) $class_name_node->getAttribute('endFilePos') + 1,
+                $class_name_node->getStartFilePos(),
+                $class_name_node->getEndFilePos() + 1,
                 $class_name_node instanceof PhpParser\Node\Scalar\MagicConst\Class_,
                 $was_self,
             );
@@ -1414,8 +1414,8 @@ final class ClassLikes
                 $destination_class_name = array_pop($destination_parts);
 
                 $file_manipulations[] = new FileManipulation(
-                    (int) $class_name_node->getAttribute('startFilePos'),
-                    (int) $class_name_node->getAttribute('endFilePos') + 1,
+                    $class_name_node->getStartFilePos(),
+                    $class_name_node->getEndFilePos() + 1,
                     $destination_class_name,
                 );
 
@@ -1459,8 +1459,8 @@ final class ClassLikes
             }
 
             $file_manipulations[] = new FileManipulation(
-                (int) $class_name_node->getAttribute('startFilePos'),
-                (int) $class_name_node->getAttribute('endFilePos') + 1,
+                $class_name_node->getStartFilePos(),
+                $class_name_node->getEndFilePos() + 1,
                 Type::getStringFromFQCLN(
                     $new_fq_class_name,
                     $source_namespace,
@@ -1490,8 +1490,8 @@ final class ClassLikes
                 $file_manipulations = [];
 
                 $file_manipulations[] = new FileManipulation(
-                    (int) $class_name_node->getAttribute('startFilePos'),
-                    (int) $class_name_node->getAttribute('endFilePos') + 1,
+                    $class_name_node->getStartFilePos(),
+                    $class_name_node->getEndFilePos() + 1,
                     $destination_class_name,
                 );
 
@@ -1503,8 +1503,8 @@ final class ClassLikes
                         : $fq_class_name,
                     $destination_class,
                     $source->getFilePath(),
-                    (int) $class_name_node->getAttribute('startFilePos'),
-                    (int) $class_name_node->getAttribute('endFilePos') + 1,
+                    $class_name_node->getStartFilePos(),
+                    $class_name_node->getEndFilePos() + 1,
                     $class_name_node instanceof PhpParser\Node\Scalar\MagicConst\Class_,
                 );
             }
@@ -1518,15 +1518,15 @@ final class ClassLikes
                     $fq_class_name,
                     $calling_fq_class_name,
                     $source->getFilePath(),
-                    (int) $class_name_node->getAttribute('startFilePos'),
-                    (int) $class_name_node->getAttribute('endFilePos') + 1,
+                    $class_name_node->getStartFilePos(),
+                    $class_name_node->getEndFilePos() + 1,
                 );
             } else {
                 $file_manipulations = [];
 
                 $file_manipulations[] = new FileManipulation(
-                    (int) $class_name_node->getAttribute('startFilePos'),
-                    (int) $class_name_node->getAttribute('endFilePos') + 1,
+                    $class_name_node->getStartFilePos(),
+                    $class_name_node->getEndFilePos() + 1,
                     Type::getStringFromFQCLN(
                         $fq_class_name,
                         $source->getNamespace(),
@@ -1791,6 +1791,7 @@ final class ClassLikes
 
     /**
      * @param ReflectionProperty::IS_PUBLIC|ReflectionProperty::IS_PROTECTED|ReflectionProperty::IS_PRIVATE $visibility
+     * @param array<string, true> $visited_constant_ids
      */
     public function getClassConstantType(
         string $class_name,
@@ -2602,6 +2603,9 @@ final class ClassLikes
         }
     }
 
+    /**
+     * @param array<string, true> $visited_constant_ids
+     */
     private function getConstantType(
         ClassLikeStorage $class_like_storage,
         string $constant_name,

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Diff;
 
+use PhpParser\Node\Stmt;
 use Psalm\Storage\ImmutableNonCloneableTrait;
 
 /**
@@ -26,10 +27,10 @@ final class DiffElem
     public function __construct(
         /** @var int One of the TYPE_* constants */
         public readonly int $type,
-        /** @var mixed Is null for add operations */
-        public readonly mixed $old,
-        /** @var mixed Is null for remove operations */
-        public readonly mixed $new,
+        /** Is null for add operations */
+        public readonly Stmt|string|null $old,
+        /** Is null for remove operations */
+        public readonly Stmt|string|null $new,
     ) {
     }
 }

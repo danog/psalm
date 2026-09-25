@@ -38,13 +38,12 @@ final class PHPMarkdownContent extends MarkupContent implements JsonSerializable
      * meaning if a null is sent then this will not compute
      *
      * @psalm-mutation-free
+     * @return array{kind: ?string, value: ?string}
      */
     #[Override]
     #[ReturnTypeWillChange]
-    public function jsonSerialize(): mixed
+    public function jsonSerialize(): array
     {
-        $vars = get_object_vars($this);
-        unset($vars['title'], $vars['description'], $vars['code']);
-        return $vars;
+        return ['kind' => $this->kind, 'value' => $this->value];
     }
 }

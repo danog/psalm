@@ -18,6 +18,6 @@ final class MethodPlugin implements PluginEntryPointInterface
     {
         require_once __DIR__ . '/Hook/FooMethodProvider.php';
 
-        $registration->registerHooksFromClass(FooMethodProvider::class);
+        $registration->registerHooksFromClass(new FooMethodProvider());
     }
 }

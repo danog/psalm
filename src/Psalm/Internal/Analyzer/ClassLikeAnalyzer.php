@@ -241,7 +241,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
     }
 
     /**
-     * @param  array<string>    $suppressed_issues
+     * @param  array<array-key, string>    $suppressed_issues
      */
     public static function checkFullyQualifiedClassLikeName(
         StatementsSource $statements_source,
@@ -447,7 +447,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         Aliases $aliases,
     ): string {
         /** @var string|null */
-        $resolved_name = $class_name->getAttribute('resolvedName');
+        $resolved_name = $class_name->attrs()->resolvedName;
 
         if ($resolved_name) {
             return $resolved_name;
@@ -537,6 +537,8 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
 
     /**
      * Gets the Psalm type from a particular value
+     *
+     * @param scalar|null|list<scalar|null|list<scalar|null|list<scalar|null>|array<string, scalar|null>>|array<string, scalar|null|list<scalar|null>|array<string, scalar|null>>>|array<string, scalar|null|list<scalar|null|list<scalar|null>|array<string, scalar|null>>|array<string, scalar|null|list<scalar|null>|array<string, scalar|null>>> $value
      */
     public static function getTypeFromValue(mixed $value): Union
     {
@@ -569,7 +571,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
     }
 
     /**
-     * @param  string[]         $suppressed_issues
+     * @param  array<array-key, string>         $suppressed_issues
      */
     public static function checkPropertyVisibility(
         string $property_id,

@@ -13,10 +13,14 @@ use Psalm\Internal\Type\TemplateStandinTypeReplacer;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
 
+use function assert;
 use function array_keys;
 use function array_map;
 use function count;
 use function implode;
+use Psalm\Type\MutableTypeVisitor;
+use Psalm\Type\TypeVisitor;
+use Psalm\Type\TypeNode;
 
 /**
  * Denotes an object with specified member variables e.g. `object{foo:int, bar:string}`.
@@ -62,8 +66,8 @@ final class TObjectWithProperties extends TObject
         $cloned = clone $this;
         $cloned->properties = $properties;
 
-        $cloned->is_stringable_object_only =
-            $cloned->properties === [] && $cloned->methods === ['__tostring' => 'string'];
+        $stringable_only = $cloned->properties === [] && $cloned->methods === ['__tostring' => 'string'];
+        $cloned->is_stringable_object_only = $stringable_only;
 
         return $cloned;
     }
@@ -79,8 +83,8 @@ final class TObjectWithProperties extends TObject
         $cloned = clone $this;
         $cloned->methods = $methods;
 
-        $cloned->is_stringable_object_only =
-            $cloned->properties === [] && $cloned->methods === ['__tostring' => 'string'];
+        $stringable_only = $cloned->properties === [] && $cloned->methods === ['__tostring' => 'string'];
+        $cloned->is_stringable_object_only = $stringable_only;
 
         return $cloned;
     }
@@ -305,13 +309,80 @@ final class TObjectWithProperties extends TObject
         );
     }
 
+    #[Override]
+    public function visit(TypeVisitor $visitor): bool
+    {
+        foreach ($this->properties as $child) {
+            if ($visitor->traverse($child) === false) {
+                return false;
+            }
+        }
+        foreach ($this->extra_types as $child) {
+            if ($visitor->traverse($child) === false) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /**
-     * @psalm-pure
+     * @param TypeNode $node
+     * @param-out TypeNode $node
+     *
+     * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
-    protected function getChildNodeKeys(): array
+    public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        return ['properties', 'extra_types'];
+        assert($node instanceof self);
+        $self = $node;
+        $values = $self->properties;
+        $changed = false;
+        $result = true;
+        foreach ($values as &$child) {
+            $child_orig = $child;
+            $result = $visitor->traverse($child);
+            $changed = $changed || $child !== $child_orig;
+        }
+        unset($child);
+        if ($changed) {
+            if (!$cloned) {
+                $self = clone $self;
+                $cloned = true;
+            }
+            $self->properties = $values;
+        }
+        if ($result === false) {
+            $node = $self;
+            return false;
+        }
+        $values = $self->extra_types;
+        $changed = false;
+        $result = true;
+        foreach ($values as &$child) {
+            $child_orig = $child;
+            $result = $visitor->traverse($child);
+            $changed = $changed || $child !== $child_orig;
+        }
+        unset($child);
+        if ($changed) {
+            if (!$cloned) {
+                $self = clone $self;
+                $cloned = true;
+            }
+            $rekeyed = [];
+            foreach ($values as $child) {
+                $rekeyed[$child->getKey()] = $child;
+            }
+            $values = $rekeyed;
+            $self->extra_types = $values;
+        }
+        if ($result === false) {
+            $node = $self;
+            return false;
+        }
+        $node = $self;
+        return true;
     }
 
     #[Override]

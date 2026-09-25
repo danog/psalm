@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
-use Psalm\Codebase;
-use Psalm\Config;
 use Psalm\Internal\Analyzer\IssueData;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
-use Psalm\Internal\Codebase\Analyzer;
-use Psalm\Internal\EventDispatcher;
+use Psalm\Internal\IncludeCollector;
+use Psalm\Tests\Internal\Provider\FakeParserCacheProvider;
+use Psalm\Internal\Provider\Providers;
 use Psalm\IssueBuffer;
 use Psalm\Report\ReportOptions;
 
+use function dirname;
 use function microtime;
 use function ob_get_clean;
 use function ob_start;
@@ -108,21 +108,7 @@ final class IssueBufferTest extends TestCase
             'four.php' => ['MissingPropertyType' => ['o' => 1, 's' => ["snippet-4-multiline\nwith-carriage-return"]] ],
         ];
 
-        $analyzer = $this->createMock(Analyzer::class);
-        $analyzer->method('getTotalTypeCoverage')->willReturn([0, 0]);
-
-        $eventDispatcher = $this->createMock(EventDispatcher::class);
-
-        $config = $this->createMock(Config::class);
-        $config->eventDispatcher = $eventDispatcher;
-
-        $codebase = $this->createMock(Codebase::class);
-        $codebase->analyzer = $analyzer;
-        $codebase->config = $config;
-
-        $projectAnalyzer = $this->createMock(ProjectAnalyzer::class);
-        $projectAnalyzer->method('getCodebase')->willReturn($codebase);
-
+        $projectAnalyzer = $this->emptyProjectAnalyzer();
         $projectAnalyzer->stdout_report_options = new ReportOptions();
         $projectAnalyzer->generated_report_options = [];
 
@@ -133,9 +119,32 @@ final class IssueBufferTest extends TestCase
         IssueBuffer::clear();
     }
 
+    /** A project analyzer over an empty project (nothing analyzed: zero type coverage, no issues). */
+    private function emptyProjectAnalyzer(): ProjectAnalyzer
+    {
+        $config = TestConfig::loadFromXML(
+            dirname(__DIR__) . DIRECTORY_SEPARATOR,
+            '<?xml version="1.0"?>
+            <psalm
+                errorLevel="1"
+            ></psalm>',
+        );
+
+        $config->setIncludeCollector(new IncludeCollector());
+
+        return new ProjectAnalyzer(
+            $config,
+            new Providers(
+                $this->file_provider,
+                new FakeParserCacheProvider(),
+            ),
+            new ReportOptions(),
+        );
+    }
+
     public function testPrintSuccessMessageWorks(): void
     {
-        $project_analyzer = $this->createMock(ProjectAnalyzer::class);
+        $project_analyzer = $this->emptyProjectAnalyzer();
         $project_analyzer->stdout_report_options = new ReportOptions;
         ob_start();
         IssueBuffer::printSuccessMessage($project_analyzer);

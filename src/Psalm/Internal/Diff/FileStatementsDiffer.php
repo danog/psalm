@@ -54,11 +54,11 @@ final class FileStatementsDiffer extends AstDiffer
                     || ($a instanceof PhpParser\Node\Stmt\GroupUse
                         && $b instanceof PhpParser\Node\Stmt\GroupUse)
                 ) {
-                    $a_start = (int)$a->getAttribute('startFilePos');
-                    $a_end = (int)$a->getAttribute('endFilePos');
+                    $a_start = $a->getStartFilePos();
+                    $a_end = $a->getEndFilePos();
 
-                    $b_start = (int)$b->getAttribute('startFilePos');
-                    $b_end = (int)$b->getAttribute('endFilePos');
+                    $b_start = $b->getStartFilePos();
+                    $b_end = $b->getEndFilePos();
 
                     $a_size = $a_end - $a_start;
                     $b_size = $b_end - $b_start;
@@ -147,12 +147,12 @@ final class FileStatementsDiffer extends AstDiffer
                     if ($doc = $diff_elem->old->getDocComment()) {
                         $start = $doc->getStartFilePos();
                     } else {
-                        $start = (int)$diff_elem->old->getAttribute('startFilePos');
+                        $start = $diff_elem->old->getStartFilePos();
                     }
 
                     $deletion_ranges[] = [
                         $start,
-                        (int)$diff_elem->old->getAttribute('endFilePos'),
+                        $diff_elem->old->getEndFilePos(),
                     ];
                 }
             } elseif ($diff_elem->type === DiffElem::TYPE_ADD) {

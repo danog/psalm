@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace Psalm;
 
-use Amp\Serialization\NativeSerializer;
-use Amp\Serialization\Serializer;
 use Composer\Autoload\ClassLoader;
 use Composer\Semver\Constraint\Constraint;
 use Composer\Semver\VersionParser;
 use DOMAttr;
 use DOMDocument;
 use DOMElement;
+use Closure;
 use InvalidArgumentException;
 use JsonException;
 use LogicException;
@@ -27,17 +26,17 @@ use Psalm\Internal\Analyzer\FileAnalyzer;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\CliUtils;
 use Psalm\Internal\Composer;
+use Psalm\Internal\Composer\AutoloadMap;
 use Psalm\Internal\EventDispatcher;
-use Psalm\Internal\Fork\IgbinarySerializer;
-use Psalm\Internal\GzipSerializer;
 use Psalm\Internal\IncludeCollector;
-use Psalm\Internal\Lz4Serializer;
+use Psalm\Internal\PluginInstantiator;
 use Psalm\Internal\Provider\AddRemoveTaints\HtmlFunctionTainter;
 use Psalm\Internal\Scanner\FileScanner;
 use Psalm\Issue\ArgumentIssue;
 use Psalm\Issue\ClassConstantIssue;
 use Psalm\Issue\ClassIssue;
 use Psalm\Issue\CodeIssue;
+use Psalm\Issue\IssueRegistry;
 use Psalm\Issue\ConfigIssue;
 use Psalm\Issue\FunctionIssue;
 use Psalm\Issue\MethodIssue;
@@ -46,6 +45,7 @@ use Psalm\Issue\PropertyIssue;
 use Psalm\Issue\VariableIssue;
 use Psalm\Plugin\PluginEntryPointInterface;
 use Psalm\Plugin\PluginFileExtensionsInterface;
+use Psalm\Plugin\HookInterface;
 use Psalm\Plugin\PluginInterface;
 use Psalm\Progress\Progress;
 use Psalm\Progress\VoidProgress;
@@ -82,7 +82,6 @@ use function getcwd;
 use function glob;
 use function implode;
 use function in_array;
-use function is_a;
 use function is_array;
 use function is_dir;
 use function is_file;
@@ -99,6 +98,7 @@ use function preg_match;
 use function preg_quote;
 use function preg_replace;
 use function realpath;
+use function ltrim;
 use function reset;
 use function rmdir;
 use function rtrim;
@@ -137,13 +137,20 @@ use const SCANDIR_SORT_NONE;
  * @api
  * @psalm-suppress PropertyNotSetInConstructor
  * @psalm-consistent-constructor
+ *
+ * @psalm-import-type ComposerJson from Composer
+ * @psalm-import-type FileFilterConfig from \Psalm\Config\FileFilter
  */
 final class Config
 {
     /**
-     * @var bool
+     * Whether the project analyzer collects the project files while it is constructed (tests do, the CLI
+     * does it later, once the config is complete). Overridden by the test config.
      */
-    public const INIT_PROJECT_FILES_NOW = false;
+    public function initProjectFilesNow(): bool
+    {
+        return false;
+    }
 
     final public const DEFAULT_BASELINE_NAME = 'psalm-baseline.xml';
     private const DEFAULT_FILE_NAMES = [
@@ -157,7 +164,7 @@ final class Config
     final public const REPORT_SUPPRESS = 'suppress';
 
     /**
-     * @var array<string>
+     * @var list<string>
      */
     public static array $ERROR_LEVELS = [
         self::REPORT_INFO,
@@ -166,7 +173,7 @@ final class Config
     ];
 
     /**
-     * @var array
+     * @var list<string>
      */
     private const MIXED_ISSUES = [
         'MixedArgument',
@@ -264,14 +271,22 @@ final class Config
     private array $file_extensions = ['php'];
 
     /**
-     * @var array<string, class-string<FileScanner>>
+     * @var array<string, Closure(string, string, bool): FileScanner> file extension => scanner factory
      */
     private array $filetype_scanners = [];
 
     /**
-     * @var array<string, class-string<FileAnalyzer>>
+     * @var array<string, Closure(ProjectAnalyzer, string, string): FileAnalyzer> file extension => analyzer factory
      */
     private array $filetype_analyzers = [];
+
+    /**
+     * How to instantiate the plugin classes named in config files (plugin entry points, hook handlers
+     * loaded from files): the program is compiled, classes are never loaded or instantiated by name.
+     *
+     * @var array<string, Closure(): (PluginInterface|HookInterface)>
+     */
+    private static array $plugin_factories = [];
 
     /**
      * @var array<string, string>
@@ -433,7 +448,7 @@ final class Config
     public float $long_scan_warning = 10.0;
 
     /**
-     * @var string[]
+     * @var list<string>
      */
     public array $plugin_paths = [];
 
@@ -446,7 +461,7 @@ final class Config
 
     public bool $allow_named_arg_calls = true;
 
-    /** @var array<string, mixed> */
+    /** @var array<string, scalar|null> */
     private array $predefined_constants = [];
 
     /** @var array<callable-string, bool> */
@@ -454,6 +469,13 @@ final class Config
 
     /** @var list<ClassLoader> $autoloaders */
     private array $autoloaders = [];
+
+    /**
+     * Composer's autoload rules, read from the project's metadata rather than from a registered
+     * ClassLoader, so that the compiled analyzer -- which cannot require() vendor/autoload.php --
+     * resolves a dependency's classes to the same files the interpreted one does.
+     */
+    private ?AutoloadMap $autoload_map = null;
 
     public string $hash = '';
 
@@ -495,7 +517,7 @@ final class Config
     public string $trigger_error_exits = 'default';
 
     /**
-     * @var string[]
+     * @var list<string>
      */
     public array $internal_stubs = [];
 
@@ -737,9 +759,30 @@ final class Config
             $current_dir = $base_dir;
         }
 
+        return self::loadFromXMLInto(new self(), $base_dir, $file_contents, $current_dir, $file_path);
+    }
+
+    /**
+     * Fills a config that the caller built, so a subclass gets its own defaults applied first
+     * (`new static()` would depend on which class name the call was written with).
+     *
+     * @param non-empty-string $file_contents
+     * @throws ConfigException
+     */
+    public static function loadFromXMLInto(
+        Config $config,
+        string $base_dir,
+        string $file_contents,
+        ?string $current_dir = null,
+        ?string $file_path = null,
+    ): Config {
+        if ($current_dir === null) {
+            $current_dir = $base_dir;
+        }
+
         self::validateXmlConfig($base_dir, $file_contents);
 
-        return self::fromXmlAndPaths($base_dir, $file_contents, $current_dir, $file_path);
+        return self::fromXmlAndPaths($config, $base_dir, $file_contents, $current_dir, $file_path);
     }
 
     /**
@@ -789,6 +832,8 @@ final class Config
                 'Missing psalm node',
             );
         }
+
+        assert($psalm_node instanceof DOMElement);
 
         if (!$psalm_node->hasAttribute('xmlns')) {
             $psalm_node->setAttribute('xmlns', self::CONFIG_NAMESPACE);
@@ -913,6 +958,7 @@ final class Config
         $psalm_element_item = $dom_document->getElementsByTagName('psalm')->item(0);
         assert($psalm_element_item !== null);
         $attributes = $psalm_element_item->attributes;
+        assert($attributes !== null);
 
         foreach ($attributes as $attribute) {
             if (in_array($attribute->name, $deprecated_attributes, true)) {
@@ -939,13 +985,12 @@ final class Config
      * @throws ConfigException
      */
     private static function fromXmlAndPaths(
+        Config $config,
         string $base_dir,
         string $file_contents,
         string $current_dir,
         ?string $config_path,
     ): self {
-        $config = new static();
-
         $dom_document = self::loadDomDocument($base_dir, $file_contents);
 
         if (null !== $config_path) {
@@ -1030,7 +1075,7 @@ final class Config
         if (file_exists($composer_json_path)) {
             $composer_json_contents = file_get_contents($composer_json_path);
             assert($composer_json_contents !== false);
-            $composer_json = json_decode($composer_json_contents, true, 512, JSON_THROW_ON_ERROR);
+            $composer_json = Composer::decodeComposerJson($composer_json_contents);
             if (!is_array($composer_json)) {
                 throw new UnexpectedValueException('Invalid composer.json at ' . $composer_json_path);
             }
@@ -1091,8 +1136,8 @@ final class Config
 
         $no_cache = false;
         if (isset($config_xml['noCache'])) {
-            $no_cache = (string) $config_xml['noCache'];
-            $no_cache = $no_cache === '1' || $no_cache === 'true';
+            $no_cache_text = (string) $config_xml['noCache'];
+            $no_cache = $no_cache_text === '1' || $no_cache_text === 'true';
         }
         if ($no_cache) {
             $config->cache_directory = null;
@@ -1180,15 +1225,15 @@ final class Config
         }
 
         if (isset($config_xml['errorLevel'])) {
-            $attribute_text = (int) $config_xml['errorLevel'];
+            $error_level = (int) $config_xml['errorLevel'];
 
-            if (!in_array($attribute_text, [1, 2, 3, 4, 5, 6, 7, 8], true)) {
+            if (!in_array($error_level, [1, 2, 3, 4, 5, 6, 7, 8], true)) {
                 throw new ConfigException(
                     'Invalid error level ' . $config_xml['errorLevel'],
                 );
             }
 
-            $config->level = $attribute_text;
+            $config->level = $error_level;
         } else {
             $config->level = 2;
         }
@@ -1208,18 +1253,18 @@ final class Config
         }
 
         if (isset($config_xml['maxStringLength'])) {
-            $attribute_text = (int)$config_xml['maxStringLength'];
-            $config->max_string_length = $attribute_text;
+            $max_string_length = (int)$config_xml['maxStringLength'];
+            $config->max_string_length = $max_string_length;
         }
 
         if (isset($config_xml['maxShapedArraySize'])) {
-            $attribute_text = (int)$config_xml['maxShapedArraySize'];
-            $config->max_shaped_array_size = $attribute_text;
+            $max_shaped_array_size = (int)$config_xml['maxShapedArraySize'];
+            $config->max_shaped_array_size = $max_shaped_array_size;
         }
 
         if (isset($config_xml['longScanWarning'])) {
-            $attribute_text = (float)$config_xml['longScanWarning'];
-            $config->long_scan_warning = $attribute_text;
+            $long_scan_warning = (float)$config_xml['longScanWarning'];
+            $config->long_scan_warning = $long_scan_warning;
         }
 
         if (isset($config_xml['inferPropertyTypesFromConstructor'])) {
@@ -1501,12 +1546,29 @@ final class Config
         $this->autoloaders = $autoloaders;
     }
 
+    /** @psalm-external-mutation-free */
+    public function setComposerAutoloadMap(?AutoloadMap $autoload_map): void
+    {
+        $this->autoload_map = $autoload_map;
+    }
+
+    /**
+     * The files Composer loads unconditionally: where a dependency's functions and constants live.
+     *
+     * @return list<string>
+     */
+    public function getComposerAutoloadedFiles(): array
+    {
+        return $this->autoload_map?->getAutoloadedFiles() ?? [];
+    }
+
     /** @return array<string, IssueHandler> */
     public function getIssueHandlers(): array
     {
         return $this->issue_handlers;
     }
 
+    /** @param list<FileFilterConfig> $config */
     public function setAdvancedErrorLevel(string $issue_key, array $config, ?string $default_error_level = null): void
     {
         $this->issue_handlers[$issue_key] = new IssueHandler();
@@ -1516,6 +1578,7 @@ final class Config
         $this->issue_handlers[$issue_key]->setCustomLevels($config, $this->base_dir);
     }
 
+    /** @param list<FileFilterConfig> $config */
     public function safeSetAdvancedErrorLevel(
         string $issue_key,
         array $config,
@@ -1666,28 +1729,13 @@ final class Config
             $project_analyzer->progress->debug('Initialized plugin ' . $plugin_class_name . ' successfully' . PHP_EOL);
         }
 
-        foreach ($this->filetype_scanner_paths as $extension => $path) {
-            $fq_class_name = $this->getPluginClassForPath(
-                $codebase,
-                $path,
-                FileScanner::class,
+        foreach ([...$this->filetype_scanner_paths, ...$this->filetype_analyzer_paths] as $path) {
+            // classes are never loaded from files (the program is compiled): file type scanners and
+            // analyzers are registered by plugins (FileExtensionsInterface)
+            throw new ConfigException(
+                'Cannot load a file type scanner or analyzer from ' . $path
+                . ': register it from a plugin with FileExtensionsInterface instead',
             );
-
-            self::requirePath($path);
-
-            $this->filetype_scanners[$extension] = $fq_class_name;
-        }
-
-        foreach ($this->filetype_analyzer_paths as $extension => $path) {
-            $fq_class_name = $this->getPluginClassForPath(
-                $codebase,
-                $path,
-                FileAnalyzer::class,
-            );
-
-            self::requirePath($path);
-
-            $this->filetype_analyzers[$extension] = $fq_class_name;
         }
 
         foreach ($this->plugin_paths as $path) {
@@ -1699,9 +1747,41 @@ final class Config
             }
         }
 
-        new HtmlFunctionTainter();
+        $socket->registerHooksFromClass(new HtmlFunctionTainter());
+    }
 
-        $socket->registerHooksFromClass(HtmlFunctionTainter::class);
+    /**
+     * Registers how to instantiate a plugin class named in config files (`<pluginClass class="..."/>`,
+     * `<plugin filename="..."/>`).
+     *
+     * @param Closure(): (PluginInterface|HookInterface) $factory
+     */
+    public static function registerPluginFactory(string $pluginClassName, Closure $factory): void
+    {
+        self::$plugin_factories[ltrim($pluginClassName, '\\')] = $factory;
+    }
+
+    /**
+     * An instance of a plugin class named in a config file.
+     *
+     * @throws ConfigException when no factory was registered for the class
+     */
+    /**
+     * A registered factory wins (tests register theirs); otherwise the class is built by name, which
+     * the interpreted analyzer does by autoloading it and the compiled one from its table of compiled-in
+     * plugin classes.
+     *
+     * @param string|null $path the file a `<plugin filename="...">` entry names
+     */
+    public static function instantiatePluginClass(
+        string $pluginClassName,
+        ?string $path = null,
+    ): PluginInterface|HookInterface {
+        $factory = self::$plugin_factories[ltrim($pluginClassName, '\\')] ?? null;
+        if ($factory !== null) {
+            return $factory();
+        }
+        return PluginInstantiator::instantiate($pluginClassName, $path);
     }
 
     private function loadPlugin(ProjectAnalyzer $projectAnalyzer, string $pluginClassName): PluginInterface
@@ -1710,31 +1790,46 @@ final class Config
             return $this->plugins[$pluginClassName];
         }
         try {
-            // Below will attempt to load plugins from the project directory first.
-            // Failing that, it will use registered autoload chain, which will load
-            // plugins from Psalm directory or phar file. If that fails as well, it
-            // will fall back to project autoloader. It may seem that the last step
-            // will always fail, but it's only true if project uses Composer autoloader
-            if (false !== $pluginclas_class_path = $this->getComposerFilePathForClassLike($pluginClassName)) {
-                $projectAnalyzer->progress->debug(
-                    'Loading plugin ' . $pluginClassName . ' via require' . PHP_EOL,
-                );
-
-                self::requirePath($pluginclas_class_path);
-            } else {
-                if (!class_exists($pluginClassName)) {
-                    throw new UnexpectedValueException($pluginClassName . ' is not a known class');
-                }
-            }
-            if (!is_a($pluginClassName, PluginInterface::class, true)) {
+            $plugin = self::instantiatePluginClass($pluginClassName);
+            if (!$plugin instanceof PluginInterface) {
                 throw new UnexpectedValueException($pluginClassName . ' is not a PluginInterface implementation');
             }
-            $this->plugins[$pluginClassName] = new $pluginClassName;
+            $this->plugins[$pluginClassName] = $plugin;
             $projectAnalyzer->progress->debug('Loaded plugin ' . $pluginClassName . PHP_EOL);
-            return $this->plugins[$pluginClassName];
+            return $plugin;
         } catch (Throwable $e) {
             throw new ConfigException('Failed to load plugin ' . $pluginClassName, 0, $e);
         }
+    }
+
+    /**
+     * True for one of Psalm's own stub files: its description of a class PHP provides is the one to
+     * keep, whatever else on disk happens to declare a class of that name.
+     *
+     * @psalm-mutation-free
+     */
+    public static function isOwnStubFile(string $file_path): bool
+    {
+        $stubs_dir = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'stubs' . DIRECTORY_SEPARATOR;
+
+        return str_starts_with($file_path, $stubs_dir);
+    }
+
+    /**
+     * True for a file this config reads as a stub: Psalm's own, an extension's, or one the project
+     * asked for. A class declared in one of these is a description, not code to analyse.
+     *
+     * @psalm-mutation-free
+     */
+    public function isStubFile(string $file_path): bool
+    {
+        // Psalm's own stubs are stub files whether or not the lists have been built yet: preloading
+        // happens before visitStubFiles() fills internal_stubs, and the version stubs add members to
+        // classes the core stubs describe
+        return self::isOwnStubFile($file_path)
+            || in_array($file_path, $this->internal_stubs, true)
+            || in_array($file_path, $this->stub_files, true)
+            || in_array($file_path, $this->preloaded_stub_files, true);
     }
 
     /**
@@ -1742,49 +1837,12 @@ final class Config
      */
     private static function requirePath(string $path): void
     {
+        if (\defined('PSALM_COMPILED')) {
+            // every class of the program is compiled in: nothing to load
+            return;
+        }
         /** @psalm-suppress UnresolvableInclude */
         require_once($path);
-    }
-
-    /**
-     * @template T
-     * @param  T::class $must_extend
-     * @return class-string<T>
-     */
-    private function getPluginClassForPath(Codebase $codebase, string $path, string $must_extend): string
-    {
-        $file_storage = $codebase->createFileStorageForPath($path);
-        $file_to_scan = new FileScanner($path, $this->shortenFileName($path), true);
-        $file_to_scan->scan(
-            $codebase,
-            $file_storage,
-        );
-
-        $declared_classes = ClassLikeAnalyzer::getClassesForFile($codebase, $path);
-
-        if (!count($declared_classes)) {
-            throw new InvalidArgumentException(
-                'Plugins must have at least one class in the file - ' . $path . ' has ' .
-                    count($declared_classes),
-            );
-        }
-
-        $fq_class_name = reset($declared_classes);
-
-        if (!$codebase->classlikes->classExtends(
-            $fq_class_name,
-            $must_extend,
-        )
-        ) {
-            throw new InvalidArgumentException(
-                'This plugin must extend ' . $must_extend . ' - ' . $path . ' does not',
-            );
-        }
-
-        /**
-         * @var class-string<T>
-         */
-        return $fq_class_name;
     }
 
     public function shortenFileName(string $to): string
@@ -1806,18 +1864,20 @@ final class Config
         $from = str_replace('\\', '/', $from);
         $to   = str_replace('\\', '/', $to);
 
-        $from     = explode('/', $from);
-        $to       = explode('/', $to);
-        $relPath  = $to;
+        // SSA: distinct names for the exploded path segment lists so the string vars above stay `string` (one type
+        // per variable name, pzoom-style — no `string|list<string>` union local).
+        $from_parts = explode('/', $from);
+        $to_parts   = explode('/', $to);
+        $relPath    = $to_parts;
 
-        foreach ($from as $depth => $dir) {
+        foreach ($from_parts as $depth => $dir) {
             // find first non-matching dir
-            if ($dir === $to[$depth]) {
+            if ($dir === $to_parts[$depth]) {
                 // ignore this directory
                 array_shift($relPath);
             } else {
                 // get number of remaining dirs to $from
-                $remaining = count($from) - $depth;
+                $remaining = count($from_parts) - $depth;
                 if ($remaining > 1) {
                     // add traversals up to first matching dir
                     $padLength = (count($relPath) + $remaining - 1) * -1;
@@ -1955,8 +2015,7 @@ final class Config
             && $e instanceof PluginIssue
             && !isset($this->issue_handlers[$issue_type])
         ) {
-            /** @var int */
-            $issue_level = $e::ERROR_LEVEL;
+            $issue_level = $e->getErrorLevel();
 
             if ($issue_level > 0 && $issue_level < $this->level) {
                 $reporting_level = self::REPORT_INFO;
@@ -2129,15 +2188,11 @@ final class Config
             return $this->issue_handlers[$issue_type]->getReportingLevelForFile($file_path);
         }
 
-        // this string is replaced by scoper for Phars, so be careful
-        $issue_class = 'Psalm\\Issue\\' . $issue_type;
+        $issue_level = IssueRegistry::errorLevel($issue_type);
 
-        if (!class_exists($issue_class) || !is_a($issue_class, CodeIssue::class, true)) {
+        if ($issue_level === null) {
             return self::REPORT_ERROR;
         }
-
-        /** @var int */
-        $issue_level = $issue_class::ERROR_LEVEL;
 
         if ($issue_level > 0 && $issue_level < $this->level) {
             return self::REPORT_INFO;
@@ -2224,7 +2279,7 @@ final class Config
     }
 
     /**
-     * @return array<string>
+     * @return list<string>
      * @psalm-mutation-free
      */
     public function getProjectDirectories(): array
@@ -2237,7 +2292,7 @@ final class Config
     }
 
     /**
-     * @return array<string>
+     * @return list<string>
      * @psalm-mutation-free
      */
     public function getProjectFiles(): array
@@ -2250,7 +2305,7 @@ final class Config
     }
 
     /**
-     * @return array<string>
+     * @return list<string>
      * @psalm-mutation-free
      */
     public function getExtraDirectories(): array
@@ -2289,7 +2344,7 @@ final class Config
     }
 
     /**
-     * @return array<string, class-string<FileScanner>>
+     * @return array<string, Closure(string, string, bool): FileScanner>
      */
     public function getFiletypeScanners(): array
     {
@@ -2297,7 +2352,7 @@ final class Config
     }
 
     /**
-     * @return array<string, class-string<FileAnalyzer>>
+     * @return array<string, Closure(ProjectAnalyzer, string, string): FileAnalyzer>
      */
     public function getFiletypeAnalyzers(): array
     {
@@ -2320,7 +2375,45 @@ final class Config
 
         $core_generic_files = [];
 
-        if (PHP_VERSION_ID < 8_00_00 && $codebase->analysis_php_version_id >= 8_00_00) {
+        // Likewise for the classes PHP provides at every version: a compiled program cannot reflect
+        // them either, and until they are registered anything that names one (DatePeriod implements
+        // IteratorAggregate, say) resolves it through the interpreter instead -- which, for a compiled
+        // program, means its own transpiled shim rather than the stub that describes the real class.
+        if (\defined('PSALM_COMPILED')) {
+            $core_stubs_dir = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'stubs' . DIRECTORY_SEPARATOR;
+
+            foreach ([
+                'CoreGenericClasses.phpstub',
+                'CoreGenericIterators.phpstub',
+                'CoreImmutableClasses.phpstub',
+                'SPL.phpstub',
+                'Reflection.phpstub',
+            ] as $core_stub) {
+                $core_stub_path = $core_stubs_dir . $core_stub;
+
+                if (!file_exists($core_stub_path)) {
+                    throw new UnexpectedValueException('Cannot locate ' . $core_stub_path);
+                }
+
+                $core_generic_files[] = $core_stub_path;
+            }
+
+            // and the extensions' classes, for the same reason: a class named by the code under
+            // analysis is looked up while it is being scanned, long before the stub files are visited
+            $ext_stubs_dir = $core_stubs_dir . 'extensions' . DIRECTORY_SEPARATOR;
+
+            foreach ($this->php_extensions as $ext => $enabled) {
+                $ext_stub_path = $ext_stubs_dir . $ext . '.phpstub';
+
+                if ($enabled && file_exists($ext_stub_path)) {
+                    $core_generic_files[] = $ext_stub_path;
+                }
+            }
+        }
+
+        // a compiled program has no reflection of the running PHP's own classes: the version stubs
+        // are the only source for them, whatever version the runtime reports
+        if ((\defined('PSALM_COMPILED') || PHP_VERSION_ID < 8_00_00) && $codebase->analysis_php_version_id >= 8_00_00) {
             $stringable_path = dirname(__DIR__, 2) . '/stubs/Php80.phpstub';
 
             if (!file_exists($stringable_path)) {
@@ -2330,7 +2423,9 @@ final class Config
             $core_generic_files[] = $stringable_path;
         }
 
-        if (PHP_VERSION_ID < 8_01_00 && $codebase->analysis_php_version_id >= 8_01_00) {
+        // a compiled program has no reflection of the running PHP's own classes: the version stubs
+        // are the only source for them, whatever version the runtime reports
+        if ((\defined('PSALM_COMPILED') || PHP_VERSION_ID < 8_01_00) && $codebase->analysis_php_version_id >= 8_01_00) {
             $stringable_path = dirname(__DIR__, 2) . '/stubs/Php81.phpstub';
 
             if (!file_exists($stringable_path)) {
@@ -2340,7 +2435,9 @@ final class Config
             $core_generic_files[] = $stringable_path;
         }
 
-        if (PHP_VERSION_ID < 8_02_00 && $codebase->analysis_php_version_id >= 8_02_00) {
+        // a compiled program has no reflection of the running PHP's own classes: the version stubs
+        // are the only source for them, whatever version the runtime reports
+        if ((\defined('PSALM_COMPILED') || PHP_VERSION_ID < 8_02_00) && $codebase->analysis_php_version_id >= 8_02_00) {
             $stringable_path = dirname(__DIR__, 2) . '/stubs/Php82.phpstub';
 
             if (!file_exists($stringable_path)) {
@@ -2350,7 +2447,9 @@ final class Config
             $core_generic_files[] = $stringable_path;
         }
 
-        if (PHP_VERSION_ID < 8_04_00 && $codebase->analysis_php_version_id >= 8_04_00) {
+        // a compiled program has no reflection of the running PHP's own classes: the version stubs
+        // are the only source for them, whatever version the runtime reports
+        if ((\defined('PSALM_COMPILED') || PHP_VERSION_ID < 8_04_00) && $codebase->analysis_php_version_id >= 8_04_00) {
             $stringable_path = dirname(__DIR__, 2) . '/stubs/Php84.phpstub';
 
             if (!file_exists($stringable_path)) {
@@ -2360,7 +2459,9 @@ final class Config
             $core_generic_files[] = $stringable_path;
         }
 
-        if (PHP_VERSION_ID < 8_05_00 && $codebase->analysis_php_version_id >= 8_05_00) {
+        // a compiled program has no reflection of the running PHP's own classes: the version stubs
+        // are the only source for them, whatever version the runtime reports
+        if ((\defined('PSALM_COMPILED') || PHP_VERSION_ID < 8_05_00) && $codebase->analysis_php_version_id >= 8_05_00) {
             $stringable_path = dirname(__DIR__, 2) . '/stubs/Php85.phpstub';
 
             if (!file_exists($stringable_path)) {
@@ -2540,7 +2641,7 @@ final class Config
     }
 
     /**
-     * @return array<string, mixed>
+     * @return array<string, scalar|null>
      */
     public function getPredefinedConstants(): array
     {
@@ -2549,7 +2650,9 @@ final class Config
 
     public function collectPredefinedConstants(): void
     {
-        $this->predefined_constants = get_defined_constants();
+        /** @var array<string, scalar|null> $constants PHP constants are scalars (arrays are unused by Psalm) */
+        $constants = get_defined_constants();
+        $this->predefined_constants = $constants;
     }
 
     /**
@@ -2593,15 +2696,30 @@ final class Config
             = $this->base_dir . DIRECTORY_SEPARATOR . 'vendor'
                 . DIRECTORY_SEPARATOR . 'composer' . DIRECTORY_SEPARATOR . 'autoload_files.php';
 
-        if (file_exists($vendor_autoload_files_path)) {
+        if (!\defined('PSALM_COMPILED') && file_exists($vendor_autoload_files_path)) {
             $this->include_collector->runAndCollect(
-                static fn(): array =>
-                    /**
-                     * @psalm-suppress UnresolvableInclude
-                     * @var string[]
-                     */
-                    require $vendor_autoload_files_path,
+                /**
+                 * @return list<string>
+                 * @psalm-suppress UnresolvableInclude
+                 */
+                static fn(): array => require $vendor_autoload_files_path,
             );
+        }
+
+        // Requiring vendor/autoload.php is what normally puts Composer's always-loaded files in
+        // get_included_files(); a compiled analyzer never ran it, so name them from the metadata.
+        $already_included = [];
+
+        foreach ($this->include_collector->getIncludedFiles() as $included_file) {
+            $already_included[$included_file] = true;
+        }
+
+        foreach ($this->getComposerAutoloadedFiles() as $autoload_file) {
+            $real_path = realpath($autoload_file);
+
+            if ($real_path !== false && !isset($already_included[$real_path])) {
+                $this->include_collector->addIncludedFile($real_path);
+            }
         }
 
         $codebase = $project_analyzer->getCodebase();
@@ -2614,6 +2732,10 @@ final class Config
             $codebase->classlikes->forgetMissingClassLikes();
 
             $this->include_collector->runAndCollect($this->requireAutoloader(...));
+
+            // a compiled program cannot require PHP source; naming the autoloader here is how its
+            // contents are scanned either way (requiring it reports the same file)
+            $this->include_collector->addIncludedFile($this->autoloader);
         }
 
         $this->collectPredefinedConstants();
@@ -2641,6 +2763,10 @@ final class Config
     /** @return string|false */
     public function getComposerFilePathForClassLike(string $fq_classlike_name): string|bool
     {
+        if ($this->autoload_map !== null) {
+            return $this->autoload_map->findFile($fq_classlike_name);
+        }
+
         foreach ($this->autoloaders as $autoloader) {
             $f = $autoloader->findFile($fq_classlike_name);
             if ($f !== false) {
@@ -2652,11 +2778,13 @@ final class Config
 
     public function getPotentialComposerFilePathForClassLike(string $class): ?string
     {
-        if (!$this->autoloaders) {
+        if ($this->autoload_map !== null) {
+            $psr4_prefixes = $this->autoload_map->getPrefixesPsr4();
+        } elseif ($this->autoloaders) {
+            $psr4_prefixes = reset($this->autoloaders)->getPrefixesPsr4();
+        } else {
             return null;
         }
-
-        $psr4_prefixes = reset($this->autoloaders)->getPrefixesPsr4();
 
         // PSR-4 lookup
         $logicalPathPsr4 = str_replace('\\', DIRECTORY_SEPARATOR, $class) . '.php';
@@ -2818,7 +2946,53 @@ final class Config
      */
     private function setBooleanAttribute(string $name, bool $value): void
     {
-        $this->$name = $value;
+        match ($name) {
+            'array_cache' => $this->array_cache = $value,
+            'use_docblock_types' => $this->use_docblock_types = $value,
+            'use_docblock_property_types' => $this->use_docblock_property_types = $value,
+            'docblock_property_types_seal_properties' => $this->docblock_property_types_seal_properties = $value,
+            'throw_exception' => $this->throw_exception = $value,
+            'hide_external_errors' => $this->hide_external_errors = $value,
+            'hide_all_errors_except_passed_files' => $this->hide_all_errors_except_passed_files = $value,
+            'resolve_from_config_file' => $this->resolve_from_config_file = $value,
+            'allow_includes' => $this->allow_includes = $value,
+            'ignore_include_side_effects' => $this->ignore_include_side_effects = $value,
+            'respect_include_once' => $this->respect_include_once = $value,
+            'strict_binary_operands' => $this->strict_binary_operands = $value,
+            'allow_bool_to_literal_bool_comparison' => $this->allow_bool_to_literal_bool_comparison = $value,
+            'remember_property_assignments_after_call' => $this->remember_property_assignments_after_call = $value,
+            'disable_var_parsing' => $this->disable_var_parsing = $value,
+            'allow_string_standin_for_class' => $this->allow_string_standin_for_class = $value,
+            'disable_suppress_all' => $this->disable_suppress_all = $value,
+            'use_phpdoc_method_without_magic_or_parent' => $this->use_phpdoc_method_without_magic_or_parent = $value,
+            'use_phpdoc_property_without_magic_or_parent' => $this->use_phpdoc_property_without_magic_or_parent = $value,
+            'memoize_method_calls' => $this->memoize_method_calls = $value,
+            'hoist_constants' => $this->hoist_constants = $value,
+            'add_param_default_to_docblock_type' => $this->add_param_default_to_docblock_type = $value,
+            'check_for_throws_docblock' => $this->check_for_throws_docblock = $value,
+            'check_for_throws_in_global_scope' => $this->check_for_throws_in_global_scope = $value,
+            'ignore_internal_falsable_issues' => $this->ignore_internal_falsable_issues = $value,
+            'ignore_internal_nullable_issues' => $this->ignore_internal_nullable_issues = $value,
+            'include_php_versions_in_error_baseline' => $this->include_php_versions_in_error_baseline = $value,
+            'ensure_array_string_offsets_exist' => $this->ensure_array_string_offsets_exist = $value,
+            'ensure_array_int_offsets_exist' => $this->ensure_array_int_offsets_exist = $value,
+            'ensure_override_attribute' => $this->ensure_override_attribute = $value,
+            'show_mixed_issues' => $this->show_mixed_issues = $value,
+            'skip_checks_on_unresolvable_includes' => $this->skip_checks_on_unresolvable_includes = $value,
+            'seal_all_methods' => $this->seal_all_methods = $value,
+            'seal_all_properties' => $this->seal_all_properties = $value,
+            'run_taint_analysis' => $this->run_taint_analysis = $value,
+            'use_phpstorm_meta_path' => $this->use_phpstorm_meta_path = $value,
+            'allow_internal_named_arg_calls' => $this->allow_internal_named_arg_calls = $value,
+            'allow_named_arg_calls' => $this->allow_named_arg_calls = $value,
+            'find_unused_psalm_suppress' => $this->find_unused_psalm_suppress = $value,
+            'find_unused_baseline_entry' => $this->find_unused_baseline_entry = $value,
+            'find_unused_issue_handler_suppression' => $this->find_unused_issue_handler_suppression = $value,
+            'report_info' => $this->report_info = $value,
+            'restrict_return_types' => $this->restrict_return_types = $value,
+            'limit_method_complexity' => $this->limit_method_complexity = $value,
+            default => throw new UnexpectedValueException('Unknown boolean attribute ' . $name),
+        };
     }
 
     /**
@@ -2833,12 +3007,12 @@ final class Config
             try {
                 $composer_json_contents = file_get_contents($composer_json_path);
                 assert($composer_json_contents !== false);
-                $composer_json = json_decode($composer_json_contents, true, 512, JSON_THROW_ON_ERROR);
+                $composer_json = Composer::decodeComposerJson($composer_json_contents);
             } catch (JsonException) {
                 $composer_json = null;
             }
 
-            if (!$composer_json) {
+            if (!is_array($composer_json)) {
                 throw new UnexpectedValueException('Invalid composer.json at ' . $composer_json_path);
             }
             $php_version = $composer_json['require']['php'] ?? null;
@@ -2893,16 +3067,6 @@ final class Config
         return $this->universal_object_crates;
     }
 
-    /** @internal */
-    public function getCacheSerializer(): Serializer
-    {
-        $s = $this->use_igbinary ? new IgbinarySerializer : new NativeSerializer();
-        return match ($this->compressor) {
-            'deflate' => new GzipSerializer($s),
-            'lz4' => new Lz4Serializer($s),
-            'off' => $s
-        };
-    }
 
     /**
      * @internal
@@ -2910,6 +3074,9 @@ final class Config
      */
     public function requireAutoloader(): void
     {
+        if (\defined('PSALM_COMPILED')) {
+            return;
+        }
         /** @psalm-suppress UnresolvableInclude */
         require $this->autoloader;
     }

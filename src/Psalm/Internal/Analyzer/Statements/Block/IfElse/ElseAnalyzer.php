@@ -93,10 +93,10 @@ final class ElseAnalyzer
 
         $old_else_context = clone $else_context;
 
-        $pre_stmts_assigned_var_ids = $else_context->assigned_var_ids;
+        $pre_stmts_assigned_var_ids = $else_context->getAssignedVarIds();
         $else_context->assigned_var_ids = [];
 
-        $pre_possibly_assigned_var_ids = $else_context->possibly_assigned_var_ids;
+        $pre_possibly_assigned_var_ids = $else_context->getPossiblyAssignedVarIds();
         $else_context->possibly_assigned_var_ids = [];
 
         if ($else) {
@@ -114,11 +114,11 @@ final class ElseAnalyzer
         }
 
         /** @var array<string, int> */
-        $new_assigned_var_ids = $else_context->assigned_var_ids;
+        $new_assigned_var_ids = $else_context->getAssignedVarIds();
         $else_context->assigned_var_ids += $pre_stmts_assigned_var_ids;
 
         /** @var array<string, bool> */
-        $new_possibly_assigned_var_ids = $else_context->possibly_assigned_var_ids;
+        $new_possibly_assigned_var_ids = $else_context->getPossiblyAssignedVarIds();
         $else_context->possibly_assigned_var_ids += $pre_possibly_assigned_var_ids;
 
         if ($else) {
@@ -219,7 +219,7 @@ final class ElseAnalyzer
 
                 $if_scope->possibly_assigned_var_ids = array_merge(
                     $possibly_assigned_var_ids,
-                    $if_scope->possibly_assigned_var_ids,
+                    $if_scope->getPossiblyAssignedVarIds(),
                 );
             }
         }

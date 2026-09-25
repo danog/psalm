@@ -6,8 +6,8 @@ namespace Psalm\Internal\Json;
 
 use RuntimeException;
 
-use function array_walk_recursive;
 use function bin2hex;
+use function is_array;
 use function is_string;
 use function json_encode;
 use function json_last_error_msg;
@@ -21,6 +21,9 @@ use const JSON_UNESCAPED_UNICODE;
  * Provides ability of pretty printed JSON output.
  *
  * @internal
+ *
+ * @psalm-type JsonScalar = scalar|null
+ * @psalm-type JsonValue = JsonScalar|list<JsonScalar|list<JsonScalar>|array<string, JsonScalar>>|array<string, JsonScalar|list<JsonScalar>|array<string, JsonScalar>>
  */
 final class Json
 {
@@ -56,7 +59,7 @@ final class Json
     public const DEFAULT = 0;
 
     /**
-     * @param array<array-key, mixed> $data
+     * @param list<JsonValue>|array<string, JsonValue> $data
      * @psalm-pure
      */
     public static function encode(array $data, ?int $options = null): string
@@ -79,26 +82,43 @@ final class Json
         return $result;
     }
 
-    /** @psalm-pure */
+    /**
+     * A scrubbed copy: the elements change as they are copied rather than through a by-reference
+     * walk, whose callback parameter has no type a generated program can express.
+     *
+     * @param list<JsonValue>|array<string, JsonValue> $data
+     * @return list<JsonValue>|array<string, JsonValue>
+     * @psalm-pure
+     */
     private static function scrub(array $data): array
     {
+        $scrubbed = [];
+
+        foreach ($data as $key => $value) {
+            if (is_string($value)) {
+                $scrubbed[$key] = self::scrubString($value);
+            } elseif (is_array($value)) {
+                $scrubbed[$key] = self::scrub($value);
+            } else {
+                $scrubbed[$key] = $value;
+            }
+        }
+
+        return $scrubbed;
+    }
+
+    /**
+     * The string with every byte that is not valid UTF-8 spelled out, so that it can be encoded.
+     *
+     * @psalm-pure
+     */
+    private static function scrubString(string $value): string
+    {
         /** @psalm-suppress ImpureFunctionCall */
-        array_walk_recursive(
-            $data,
-            /**
-             * @psalm-pure
-             * @param mixed $value
-             */
-            function (mixed &$value): void {
-                if (is_string($value)) {
-                    $value = preg_replace_callback(
-                        self::INVALID_UTF_REGEXP,
-                        static fn(array $matches): string => '<Invalid UTF-8: 0x' . bin2hex($matches[0] ?? '') . '>',
-                        $value,
-                    );
-                }
-            },
-        );
-        return $data;
+        return preg_replace_callback(
+            self::INVALID_UTF_REGEXP,
+            static fn(array $matches): string => '<Invalid UTF-8: 0x' . bin2hex((string) ($matches[0] ?? '')) . '>',
+            $value,
+        ) ?? $value;
     }
 }

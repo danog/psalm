@@ -17,11 +17,13 @@ use function json_last_error_msg;
 
 /**
  * @internal
+ *
+ * @psalm-type ComposerPackage = array{name?: string|scalar|null, extra?: array{psalm?: array{pluginClass?: string|scalar|null}|scalar|null}|scalar|null}
  */
 final class ComposerLock
 {
     /**
-     * @param string[] $file_names
+     * @param array<int, string> $file_names
      * @psalm-mutation-free
      */
     public function __construct(
@@ -34,12 +36,12 @@ final class ComposerLock
      *      name: string,
      *      extra: array{psalm: array{pluginClass: string}}
      * } $package
+     * @param ComposerPackage $package
      * @psalm-pure
      */
-    public function isPlugin(mixed $package): bool
+    public function isPlugin(array $package): bool
     {
-        return is_array($package)
-            && isset($package['name'], $package['extra']['psalm']['pluginClass'])
+        return isset($package['name'], $package['extra']['psalm']['pluginClass'])
             && is_string($package['name'])
             && is_array($package['extra'])
             && is_array($package['extra']['psalm'])
@@ -60,22 +62,29 @@ final class ComposerLock
         return $ret;
     }
 
+    /** @return array{packages?: list<ComposerPackage>|scalar|null, packages-dev?: list<ComposerPackage>|scalar|null} */
     private function read(string $file_name): array
     {
         $file_contents = file_get_contents($file_name);
         assert($file_contents !== false);
 
-        $contents = json_decode($file_contents, true);
+        $contents = self::decodeLock($file_contents);
 
         if ($error = json_last_error()) {
             throw new RuntimeException(json_last_error_msg(), $error);
         }
 
-        if (!is_array($contents)) {
+        if ($contents === null) {
             throw new RuntimeException('Malformed ' . $file_name . ', expecting JSON-encoded object');
         }
 
         return $contents;
+    }
+
+    /** @return array{packages?: list<ComposerPackage>|scalar|null, packages-dev?: list<ComposerPackage>|scalar|null}|null */
+    private static function decodeLock(string $json): ?array
+    {
+        return json_decode($json, true);
     }
 
     /**
@@ -85,7 +94,6 @@ final class ComposerLock
     {
         $packages = $this->getAllPackages();
         $ret = [];
-        /** @psalm-suppress MixedAssignment */
         foreach ($packages as $package) {
             if ($this->isPlugin($package)) {
                 $ret[] = $package;
@@ -95,6 +103,7 @@ final class ComposerLock
         return $ret;
     }
 
+    /** @return list<ComposerPackage> */
     private function getAllPackages(): array
     {
         $packages = [];

@@ -19,7 +19,7 @@ final class AfterExpressionAnalysisEvent
     /**
      * Called after an expression has been checked
      *
-     * @param FileManipulation[]   $file_replacements
+     * @param list<FileManipulation>   $file_replacements
      * @internal
      * @psalm-mutation-free
      */
@@ -65,7 +65,7 @@ final class AfterExpressionAnalysisEvent
     }
 
     /**
-     * @return FileManipulation[]
+     * @return list<FileManipulation>
      * @psalm-mutation-free
      */
     public function getFileReplacements(): array
@@ -74,7 +74,7 @@ final class AfterExpressionAnalysisEvent
     }
 
     /**
-     * @param FileManipulation[] $file_replacements
+     * @param list<FileManipulation> $file_replacements
      * @psalm-external-mutation-free
      */
     public function setFileReplacements(array $file_replacements): void

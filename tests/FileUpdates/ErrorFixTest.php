@@ -98,14 +98,23 @@ final class ErrorFixTest extends TestCase
             $codebase->analyzer->analyzeFiles($this->project_analyzer, 1, false);
 
             $expected_count = 0;
+            $descriptions = [];
 
             $data = IssueBuffer::clear();
 
             foreach ($data as $file_issues) {
                 $expected_count += count($file_issues);
+
+                foreach ($file_issues as $issue) {
+                    $descriptions[] = $issue->type . ' ' . $issue->file_name . ':' . $issue->line_from;
+                }
             }
 
-            $this->assertSame($error_counts[$i], $expected_count);
+            $this->assertSame(
+                $error_counts[$i],
+                $expected_count,
+                'stage ' . $i . ': ' . implode(', ', $descriptions),
+            );
         }
     }
 

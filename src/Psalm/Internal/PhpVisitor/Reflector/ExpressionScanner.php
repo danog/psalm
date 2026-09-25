@@ -69,9 +69,9 @@ final class ExpressionScanner
                 || $node instanceof PhpParser\Node\Expr\StaticPropertyFetch
                 || $node instanceof PhpParser\Node\Expr\ClassConstFetch
                 || $node instanceof PhpParser\Node\Expr\StaticCall)
-            && $node->class instanceof PhpParser\Node\Name
+            && ($class_name_node = $node->class) instanceof PhpParser\Node\Name
         ) {
-            $fq_classlike_name = ClassLikeAnalyzer::getFQCLNFromNameObject($node->class, $aliases);
+            $fq_classlike_name = ClassLikeAnalyzer::getFQCLNFromNameObject($class_name_node, $aliases);
 
             if (!in_array(strtolower($fq_classlike_name), ['self', 'static', 'parent'], true)) {
                 $codebase->scanner->queueClassLikeForScanning(
@@ -267,8 +267,10 @@ final class ExpressionScanner
                 && $first_arg->name instanceof PhpParser\Node\Identifier
                 && strtolower($first_arg->name->name) === 'class'
             ) {
-                /** @var string */
-                $first_arg_value = $first_arg->class->getAttribute('resolvedName');
+                $first_resolved = $first_arg->class->attrs()->resolvedName;
+                $first_arg_value = $first_resolved instanceof PhpParser\Node\Name
+                    ? $first_resolved->toString()
+                    : $first_resolved;
             } else {
                 $first_arg_value = null;
             }
@@ -280,8 +282,10 @@ final class ExpressionScanner
                 && $second_arg->name instanceof PhpParser\Node\Identifier
                 && strtolower($second_arg->name->name) === 'class'
             ) {
-                /** @var string */
-                $second_arg_value = $second_arg->class->getAttribute('resolvedName');
+                $second_resolved = $second_arg->class->attrs()->resolvedName;
+                $second_arg_value = $second_resolved instanceof PhpParser\Node\Name
+                    ? $second_resolved->toString()
+                    : $second_resolved;
             } else {
                 $second_arg_value = null;
             }

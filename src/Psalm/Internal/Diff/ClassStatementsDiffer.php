@@ -42,17 +42,17 @@ final class ClassStatementsDiffer extends AstDiffer
                 PhpParser\Node\Stmt $b,
                 string $a_code,
                 string $b_code,
-                bool &$body_change = false,
+                BodyChange $body_change = new BodyChange(),
             ) use (&$diff_map): bool {
                 if ($a::class !== $b::class) {
                     return false;
                 }
 
-                $a_start = (int)$a->getAttribute('startFilePos');
-                $a_end = (int)$a->getAttribute('endFilePos');
+                $a_start = $a->getStartFilePos();
+                $a_end = $a->getEndFilePos();
 
-                $b_start = (int)$b->getAttribute('startFilePos');
-                $b_end = (int)$b->getAttribute('endFilePos');
+                $b_start = $b->getStartFilePos();
+                $b_end = $b->getEndFilePos();
 
                 $a_comments_end = $a_start;
                 $b_comments_end = $b_start;
@@ -63,7 +63,7 @@ final class ClassStatementsDiffer extends AstDiffer
                 $b_comments = $b->getComments();
 
                 $signature_change = false;
-                $body_change = false;
+                $body_change->changed = false;
 
                 if ($a_comments) {
                     if (!$b_comments) {
@@ -109,7 +109,7 @@ final class ClassStatementsDiffer extends AstDiffer
 
                     if ($a->stmts) {
                         $first_stmt = $a->stmts[0];
-                        $a_stmts_start = (int) $first_stmt->getAttribute('startFilePos');
+                        $a_stmts_start = $first_stmt->getStartFilePos();
 
                         if ($a_stmt_comments = $first_stmt->getComments()) {
                             $a_stmts_start = $a_stmt_comments[0]->getStartFilePos();
@@ -120,7 +120,7 @@ final class ClassStatementsDiffer extends AstDiffer
 
                     if ($b->stmts) {
                         $first_stmt = $b->stmts[0];
-                        $b_stmts_start = (int) $first_stmt->getAttribute('startFilePos');
+                        $b_stmts_start = $first_stmt->getStartFilePos();
 
                         if ($b_stmt_comments = $first_stmt->getComments()) {
                             $b_stmts_start = $b_stmt_comments[0]->getStartFilePos();
@@ -132,7 +132,7 @@ final class ClassStatementsDiffer extends AstDiffer
                     $a_body_size = $a_end - $a_stmts_start;
                     $b_body_size = $b_end - $b_stmts_start;
 
-                    $body_change = $a_body_size !== $b_body_size
+                    $body_change->changed = $a_body_size !== $b_body_size
                         || substr($a_code, $a_stmts_start, $a_end - $a_stmts_start)
                             !== substr($b_code, $b_stmts_start, $b_end - $b_stmts_start);
 
@@ -165,10 +165,10 @@ final class ClassStatementsDiffer extends AstDiffer
                     }
 
                     if ($a->type && $b->type) {
-                        $a_type_start = (int) $a->type->getAttribute('startFilePos');
-                        $a_type_end = (int) $a->type->getAttribute('endFilePos');
-                        $b_type_start = (int) $b->type->getAttribute('startFilePos');
-                        $b_type_end = (int) $b->type->getAttribute('endFilePos');
+                        $a_type_start = $a->type->getStartFilePos();
+                        $a_type_end = $a->type->getEndFilePos();
+                        $b_type_start = $b->type->getStartFilePos();
+                        $b_type_end = $b->type->getEndFilePos();
                         if (substr($a_code, $a_type_start, $a_type_end - $a_type_start + 1)
                             !== substr($b_code, $b_type_start, $b_type_end - $b_type_start + 1)
                         ) {
@@ -176,13 +176,13 @@ final class ClassStatementsDiffer extends AstDiffer
                         }
                     }
 
-                    $body_change = substr($a_code, $a_comments_end, $a_end - $a_comments_end)
+                    $body_change->changed = substr($a_code, $a_comments_end, $a_end - $a_comments_end)
                         !== substr($b_code, $b_comments_end, $b_end - $b_comments_end);
                 } else {
                     $signature_change = true;
                 }
 
-                if (!$signature_change && !$body_change) {
+                if (!$signature_change && !$body_change->changed) {
                     $diff_map[] = [$a_start, $a_end, $b_start - $a_start, $b->getLine() - $a->getLine()];
                 }
 
@@ -216,7 +216,7 @@ final class ClassStatementsDiffer extends AstDiffer
                     }
                 } elseif ($diff_elem->old instanceof PhpParser\Node\Stmt\TraitUse) {
                     foreach ($diff_elem->old->traits as $trait) {
-                        $keep[] = $name_lc . '&' . strtolower((string) $trait->getAttribute('resolvedName'));
+                        $keep[] = $name_lc . '&' . strtolower((string) $trait->attrs()->resolvedName);
                     }
                 }
             } elseif ($diff_elem->type === DiffElem::TYPE_KEEP_SIGNATURE) {
@@ -254,7 +254,7 @@ final class ClassStatementsDiffer extends AstDiffer
                     }
                 } elseif ($affected_elem instanceof PhpParser\Node\Stmt\TraitUse) {
                     foreach ($affected_elem->traits as $trait) {
-                        $add_or_delete[] = $name_lc . '&' . strtolower((string) $trait->getAttribute('resolvedName'));
+                        $add_or_delete[] = $name_lc . '&' . strtolower((string) $trait->attrs()->resolvedName);
                     }
                 }
 
@@ -262,12 +262,12 @@ final class ClassStatementsDiffer extends AstDiffer
                     if ($doc = $affected_elem->getDocComment()) {
                         $start = $doc->getStartFilePos();
                     } else {
-                        $start = (int)$affected_elem->getAttribute('startFilePos');
+                        $start = $affected_elem->getStartFilePos();
                     }
 
                     $deletion_ranges[] = [
                         $start,
-                        (int)$affected_elem->getAttribute('endFilePos'),
+                        $affected_elem->getEndFilePos(),
                     ];
                 }
             }

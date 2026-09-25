@@ -31,7 +31,7 @@ final class ScopeAnalyzer
     public const ACTION_RETURN = 'RETURN';
 
     /**
-     * @param array<PhpParser\Node> $stmts
+     * @param list<PhpParser\Node> $stmts
      * @param list<'loop'|'switch'> $break_types
      * @param bool $return_is_exit Exit and Throw statements are treated differently from return if this is false
      * @return list<self::ACTION_*>
@@ -235,7 +235,7 @@ final class ScopeAnalyzer
                     static fn(string $action): bool => $action !== self::ACTION_NONE,
                 );
 
-                if ($has_default_terminator || $stmt->getAttribute('allMatched', false)) {
+                if ($has_default_terminator || ($stmt->attrs()->allMatched ?? false)) {
                     return array_values(array_unique([...$control_actions, ...$all_case_actions]));
                 }
 
@@ -389,7 +389,7 @@ final class ScopeAnalyzer
     }
 
     /**
-     * @param   array<PhpParser\Node> $stmts
+     * @param   list<PhpParser\Node> $stmts
      */
     public static function onlyThrowsOrExits(NodeTypeProvider $type_provider, array $stmts): bool
     {
@@ -420,7 +420,7 @@ final class ScopeAnalyzer
     }
 
     /**
-     * @param array<PhpParser\Node> $stmts
+     * @param list<PhpParser\Node> $stmts
      * @psalm-mutation-free
      */
     public static function onlyThrows(array $stmts): bool

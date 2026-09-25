@@ -8,14 +8,17 @@ use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Type\TemplateResult;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
 
+use function assert;
 use function count;
 use function implode;
 use function substr;
+use Psalm\Type\MutableTypeVisitor;
+use Psalm\Type\TypeVisitor;
+use Psalm\Type\TypeNode;
 
 /**
  * denotes the `iterable` type(which can also result from an `is_iterable` check).
@@ -25,12 +28,40 @@ use function substr;
  */
 final class TIterable extends Atomic
 {
-    use UnserializeMemoryUsageSuppressionTrait;
     use HasIntersectionTrait;
     /**
      * @use GenericTrait<array{Union, Union}>
      */
     use GenericTrait;
+
+    #[Override]
+    protected function getIntersectionId(bool $exact): string
+    {
+        // the id of an iterable/array never carries intersections (as before: only named objects did)
+        return '';
+    }
+
+    /** @param array<lowercase-string, string> $aliased_classes */
+    #[Override]
+    protected function getNamespacedBase(
+        ?string $namespace,
+        array $aliased_classes,
+        ?string $this_class,
+        bool $use_phpdoc_format,
+    ): string {
+        return $this->value;
+    }
+
+    /** @param array<lowercase-string, string> $aliased_classes */
+    #[Override]
+    protected function getIntersectionNamespacedString(
+        ?string $namespace,
+        array $aliased_classes,
+        ?string $this_class,
+    ): string {
+        // the namespaced string of an iterable/array never carries intersections (as before: only named objects did)
+        return '';
+    }
 
     /**
      * @var array{Union, Union}
@@ -133,13 +164,80 @@ final class TIterable extends Atomic
         return true;
     }
 
+    #[Override]
+    public function visit(TypeVisitor $visitor): bool
+    {
+        foreach ($this->type_params as $child) {
+            if ($visitor->traverse($child) === false) {
+                return false;
+            }
+        }
+        foreach ($this->extra_types as $child) {
+            if ($visitor->traverse($child) === false) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /**
-     * @psalm-pure
+     * @param TypeNode $node
+     * @param-out TypeNode $node
+     *
+     * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
-    protected function getChildNodeKeys(): array
+    public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        return ['type_params', 'extra_types'];
+        assert($node instanceof self);
+        $self = $node;
+        $values = $self->type_params;
+        $changed = false;
+        $result = true;
+        foreach ($values as &$child) {
+            $child_orig = $child;
+            $result = $visitor->traverse($child);
+            $changed = $changed || $child !== $child_orig;
+        }
+        unset($child);
+        if ($changed) {
+            if (!$cloned) {
+                $self = clone $self;
+                $cloned = true;
+            }
+            $self->type_params = $values;
+        }
+        if ($result === false) {
+            $node = $self;
+            return false;
+        }
+        $values = $self->extra_types;
+        $changed = false;
+        $result = true;
+        foreach ($values as &$child) {
+            $child_orig = $child;
+            $result = $visitor->traverse($child);
+            $changed = $changed || $child !== $child_orig;
+        }
+        unset($child);
+        if ($changed) {
+            if (!$cloned) {
+                $self = clone $self;
+                $cloned = true;
+            }
+            $rekeyed = [];
+            foreach ($values as $child) {
+                $rekeyed[$child->getKey()] = $child;
+            }
+            $values = $rekeyed;
+            $self->extra_types = $values;
+        }
+        if ($result === false) {
+            $node = $self;
+            return false;
+        }
+        $node = $self;
+        return true;
     }
 
     /**

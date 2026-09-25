@@ -18,6 +18,6 @@ final class AfterAnalysisPlugin implements PluginEntryPointInterface
     {
         require_once __DIR__ . '/Hook/AfterAnalysis.php';
 
-        $registration->registerHooksFromClass(AfterAnalysis::class);
+        $registration->registerHooksFromClass(new AfterAnalysis());
     }
 }

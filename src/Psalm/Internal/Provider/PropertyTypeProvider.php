@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider;
 
+use Psalm\Plugin\HookInterface;
+
 use Closure;
 use Psalm\Context;
 use Psalm\Internal\Provider\PropertyTypeProvider\DomDocumentPropertyTypeProvider;
@@ -12,7 +14,6 @@ use Psalm\Plugin\EventHandler\PropertyTypeProviderInterface;
 use Psalm\StatementsSource;
 use Psalm\Type\Union;
 
-use function is_subclass_of;
 use function strtolower;
 
 /**
@@ -23,7 +24,7 @@ final class PropertyTypeProvider
     /**
      * @var array<
      *   lowercase-string,
-     *   array<Closure(PropertyTypeProviderEvent): ?Union>
+     *   list<Closure(PropertyTypeProviderEvent): ?Union>
      * >
      */
     private static array $handlers = [];
@@ -32,18 +33,18 @@ final class PropertyTypeProvider
     {
         self::$handlers = [];
 
-        $this->registerClass(DomDocumentPropertyTypeProvider::class);
+        $this->registerClass(new DomDocumentPropertyTypeProvider());
     }
 
     /**
-     * @param class-string $class
+     * Registers a provider object (classes are never looked up by name: the program is compiled).
      */
-    public function registerClass(string $class): void
+    public function registerClass(HookInterface $class): void
     {
-        if (is_subclass_of($class, PropertyTypeProviderInterface::class, true)) {
-            $callable = $class::getPropertyType(...);
+        if ($class instanceof PropertyTypeProviderInterface) {
+            $callable = $class->getPropertyType(...);
 
-            foreach ($class::getClassLikeNames() as $fq_classlike_name) {
+            foreach ($class->getClassLikeNames() as $fq_classlike_name) {
                 $this->registerClosure($fq_classlike_name, $callable);
             }
         }

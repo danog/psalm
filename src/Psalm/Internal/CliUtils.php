@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal;
 
+use Psalm\Internal\Composer;
+
 use Composer\Autoload\ClassLoader;
 use JsonException;
 use Phar;
@@ -12,6 +14,7 @@ use Psalm\Config\Creator;
 use Psalm\Exception\ConfigException;
 use Psalm\Exception\ConfigNotFoundException;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
+use Psalm\Internal\Composer\AutoloadMap;
 use Psalm\Report;
 use RuntimeException;
 use UnexpectedValueException;
@@ -60,6 +63,9 @@ use const STDIN;
 
 /**
  * @internal
+ *
+ * @psalm-import-type ComposerJson from Composer
+ * @psalm-type CliOptions = array<string, string|false|list<string|false>>
  */
 final class CliUtils
 {
@@ -69,6 +75,10 @@ final class CliUtils
         bool $has_explicit_root,
         string $vendor_dir,
     ): array {
+        if (\defined('PSALM_COMPILED')) {
+            // a compiled program has no composer autoloaders to load
+            return [];
+        }
         $autoload_roots = [$current_dir];
 
         $psalm_dir = dirname(__DIR__, 3);
@@ -129,11 +139,11 @@ final class CliUtils
 
         $autoloaders = [];
         foreach ($autoload_files as $file) {
-            /**
-             * @psalm-suppress UnresolvableInclude
-             * @var mixed
-             */
-            $autoloader = ErrorHandler::runWithExceptionsSuppressed(static fn(): mixed => require_once $file);
+            // the compiled analyzer cannot run the project's autoloader (it is not part of the program): the
+            // autoload files are only located, never loaded
+            $autoloader = ErrorHandler::runWithExceptionsSuppressed(static function () use ($file): ClassLoader|bool|int {
+                return file_exists($file);
+            });
 
             if ($autoloader instanceof ClassLoader
             ) {
@@ -141,15 +151,8 @@ final class CliUtils
             }
         }
 
-        if (!$autoloaders && !$in_phar) {
-            if (!$autoload_files) {
-                fwrite(STDERR, 'Failed to find a valid Composer autoloader' . "\n");
-            } else {
-                fwrite(
-                    STDERR,
-                    'Failed to find a valid Composer autoloader in ' . implode(', ', $autoload_files) . "\n",
-                );
-            }
+        if (!$autoloaders && !$in_phar && !$autoload_files) {
+            fwrite(STDERR, 'Failed to find a valid Composer autoloader' . "\n");
 
             fwrite(
                 STDERR,
@@ -177,7 +180,7 @@ final class CliUtils
         try {
             $composer_file_contents = file_get_contents($composer_json_path);
             assert($composer_file_contents !== false);
-            $composer_json = json_decode($composer_file_contents, true, 512, JSON_THROW_ON_ERROR);
+            $composer_json = Composer::decodeComposerJson($composer_file_contents);
         } catch (JsonException $e) {
             fwrite(
                 STDERR,
@@ -253,6 +256,7 @@ final class CliUtils
     }
 
     /**
+     * @param string|list<string|false>|false|null $f_paths
      * @return list<string>|null
      */
     public static function getPathsToCheck(string|array|false|null $f_paths): ?array
@@ -271,8 +275,8 @@ final class CliUtils
         $filtered_input_paths = [];
 
         for ($i = 0, $iMax = count($input_paths); $i < $iMax; ++$i) {
-            /** @var string */
             $input_path = $input_paths[$i];
+            assert(is_string($input_path));
 
             if ($input_path[0] === '-' && strlen($input_path) === 2) {
                 if ($input_path[1] === 'c' || $input_path[1] === 'f' || $input_path[1] === 'r') {
@@ -419,6 +423,7 @@ final class CliUtils
         }
 
         $config->setComposerClassLoader($autoloaders);
+        $config->setComposerAutoloadMap(AutoloadMap::fromProject($current_dir, self::getVendorDir($current_dir)));
 
         return $config;
     }
@@ -478,6 +483,9 @@ final class CliUtils
         file_put_contents($config_file, $amended_config_file_contents);
     }
 
+    /**
+     * @param CliOptions $options
+     */
     public static function getPathToConfig(array $options): ?string
     {
         $path_to_config = isset($options['c']) && is_string($options['c']) ? realpath($options['c']) : null;
@@ -490,7 +498,7 @@ final class CliUtils
     }
 
     /**
-     * @param array<string,string|false|list<mixed>> $options
+     * @param CliOptions $options
      * @throws ConfigException
      */
     public static function setMemoryLimit(array $options, string $display_error = 'stderr'): void
@@ -513,6 +521,9 @@ final class CliUtils
         }
     }
 
+    /**
+     * @param CliOptions $options
+     */
     public static function initPhpVersion(array $options, Config $config, ProjectAnalyzer $project_analyzer): void
     {
         $source = null;

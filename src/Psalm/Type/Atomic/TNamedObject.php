@@ -12,10 +12,14 @@ use Psalm\Storage\Mutations;
 use Psalm\Type;
 use Psalm\Type\Atomic;
 
+use function assert;
 use function array_map;
 use function implode;
 use function strrpos;
 use function substr;
+use Psalm\Type\MutableTypeVisitor;
+use Psalm\Type\TypeVisitor;
+use Psalm\Type\TypeNode;
 
 /**
  * Denotes an object type where the type of the object is known e.g. `Exception`, `Throwable`, `Foo\Bar`
@@ -115,7 +119,32 @@ class TNamedObject extends Atomic
         return $this->value;
     }
 
-    #[Override]
+    /**
+     * The `&Other` suffix of this type's id, with the `&static` a generic object would otherwise
+     * lose (the non-generic id below spells it out itself). Declared here rather than in
+     * HasIntersectionTrait so the trait never reads a property only this class has.
+     */
+    protected function getIntersectionId(bool $exact): string
+    {
+        $suffix = '';
+
+        if ($this->extra_types) {
+            $suffix = '&' . implode(
+                '&',
+                array_map(
+                    static fn(Atomic $type): string => $type->getId($exact, true),
+                    $this->extra_types,
+                ),
+            );
+        }
+
+        if ($this->is_static) {
+            $suffix .= '&static';
+        }
+
+        return $suffix;
+    }
+
     public function getId(bool $exact = true, bool $nested = false): string
     {
         if ($this->extra_types) {
@@ -246,13 +275,57 @@ class TNamedObject extends Atomic
         }
         return $this;
     }
+    #[Override]
+    public function visit(TypeVisitor $visitor): bool
+    {
+        foreach ($this->extra_types as $child) {
+            if ($visitor->traverse($child) === false) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /**
-     * @psalm-pure
+     * @param TypeNode $node
+     * @param-out TypeNode $node
+     *
+     * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
-    protected function getChildNodeKeys(): array
+    public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        return ['extra_types'];
+        // SSA/typed-local (transpiler): narrow $node BEFORE the assignment so $self's storage type is the concrete
+        // `self` (not the TypeNode union), letting $self->extra_types be a typed write on the concrete Rc<T>.
+        assert($node instanceof self);
+        $self = $node;
+        $values = $self->extra_types;
+        $changed = false;
+        $result = true;
+        foreach ($values as &$child) {
+            $child_orig = $child;
+            $result = $visitor->traverse($child);
+            $changed = $changed || $child !== $child_orig;
+        }
+        unset($child);
+        if ($changed) {
+            if (!$cloned) {
+                $self = clone $self;
+                $cloned = true;
+            }
+            $rekeyed = [];
+            foreach ($values as $child) {
+                $rekeyed[$child->getKey()] = $child;
+            }
+            $values = $rekeyed;
+            $self->extra_types = $values;
+        }
+        if ($result === false) {
+            $node = $self;
+            return false;
+        }
+        $node = $self;
+        return true;
     }
 
     /**

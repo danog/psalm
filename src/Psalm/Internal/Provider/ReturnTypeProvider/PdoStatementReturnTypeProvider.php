@@ -24,6 +24,7 @@ final class PdoStatementReturnTypeProvider implements MethodReturnTypeProviderIn
 {
     /**
      * @psalm-pure
+     * @return list<string>
      */
     #[Override]
     public static function getClassLikeNames(): array

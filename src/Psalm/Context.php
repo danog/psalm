@@ -254,9 +254,56 @@ final class Context
     public array $possibly_assigned_var_ids = [];
 
     /**
+     * The vars assigned to since the list was last reset, and where each was assigned.
+     *
+     * Read through this rather than the property: assigning `[]` narrows the property to the empty
+     * array, and the analysis calls that fill it again do not widen it back.
+     *
+     * @return array<string, int>
+     * @psalm-mutation-free
+     */
+    public function getAssignedVarIds(): array
+    {
+        return $this->assigned_var_ids;
+    }
+
+    /**
+     * The vars that may have been assigned to since the list was last reset.
+     *
+     * @return array<string, bool>
+     * @psalm-mutation-free
+     */
+    public function getPossiblyAssignedVarIds(): array
+    {
+        return $this->possibly_assigned_var_ids;
+    }
+
+    /**
+     * The vars referenced in conditionals since the list was last reset.
+     *
+     * @return array<string, bool>
+     * @psalm-mutation-free
+     */
+    public function getCondReferencedVarIds(): array
+    {
+        return $this->cond_referenced_var_ids;
+    }
+
+    /**
+     * The hashed clauses already factored in, as recorded so far.
+     *
+     * @return list<string|int>
+     * @psalm-mutation-free
+     */
+    public function getReconciledExpressionClauses(): array
+    {
+        return $this->reconciled_expression_clauses;
+    }
+
+    /**
      * A list of classes or interfaces that may have been thrown
      *
-     * @var array<string, array<array-key, CodeLocation>>
+     * @var array<string, array<string, CodeLocation>>
      */
     public array $possibly_thrown_exceptions = [];
 
@@ -376,6 +423,7 @@ final class Context
      *
      * @param  bool        $has_leaving_statements   whether or not the parent scope is abandoned between
      *                                               $start_context and $end_context
+     * @param  array<int, string>  $vars_to_update
      * @param  array<string, bool>  $updated_vars
      */
     public function update(
@@ -578,7 +626,7 @@ final class Context
     }
 
     /**
-     * @param Clause[]             $clauses
+     * @param list<Clause>             $clauses
      * @param array<string, bool>  $changed_var_ids
      * @return array{list<Clause>, list<Clause>}
      * @psalm-pure
@@ -608,7 +656,7 @@ final class Context
     }
 
     /**
-     * @param  Clause[]               $clauses
+     * @param  list<Clause>               $clauses
      * @return list<Clause>
      */
     public static function filterClauses(
@@ -706,22 +754,29 @@ final class Context
             $statements_analyzer,
         );
 
-        foreach ($this->vars_in_scope as $var_id => &$type) {
+        foreach ($this->vars_in_scope as $var_id => $type) {
             if (preg_match('/' . preg_quote($remove_var_id, '/') . '[\]\[\-]/', $var_id)) {
+                // gone: the dependent atomics below have nothing left to replace
                 $this->remove($var_id, false);
+                continue;
             }
 
             $builder = null;
             foreach ($type->getAtomicTypes() as $atomic_type) {
-                if ($atomic_type instanceof DependentType
-                    && $atomic_type->getVarId() === $remove_var_id
-                ) {
+                if (!$atomic_type instanceof DependentType) {
+                    continue;
+                }
+                // SSA: bind the narrowed atomic to a single-typed local so the transpiler resolves its
+                // DependentType-only methods statically instead of via the dynamic protocol (Psalm records the
+                // narrowed type on this fresh variable's nodes, unlike the reused foreach variable).
+                $dependent_type = $atomic_type;
+                if ($dependent_type->getVarId() === $remove_var_id) {
                     $builder ??= $type->getBuilder();
-                    $builder->addType($atomic_type->getReplacement());
+                    $builder->addType($dependent_type->getReplacement());
                 }
             }
             if ($builder) {
-                $type = $builder->freeze();
+                $this->vars_in_scope[$var_id] = $builder->freeze();
             }
         }
     }

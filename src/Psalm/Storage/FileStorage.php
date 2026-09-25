@@ -15,7 +15,6 @@ use Psalm\Type\Union;
 final class FileStorage
 {
     use CustomMetadataTrait;
-    use UnserializeMemoryUsageSuppressionTrait;
 
     /**
      * @var array<lowercase-string, string>
@@ -84,7 +83,7 @@ final class FileStorage
 
     public ?Aliases $aliases = null;
 
-    /** @var Aliases[] */
+    /** @var array<int, Aliases> keyed by the namespace statement's start position */
     public array $namespace_aliases = [];
 
     /**

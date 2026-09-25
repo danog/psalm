@@ -74,7 +74,8 @@ use const PHP_INT_MAX;
  *      mixed_counts: array<string, array{0: int, 1: int}>,
  *      mixed_member_names: array<string, array<string, bool>>,
  *      function_timings: array<string, float>,
- *      file_manipulations: array<string, FileManipulation[]>,
+ *      file_manipulations: array<string, list<FileManipulation>>,
+ *      method_references_to_class_members: array<string, array<string,bool>>,
  *      method_dependencies: array<string, array<string,bool>>,
  *      method_param_uses: array<string, array<int, array<string, bool>>>,
  *      analyzed_methods: array<string, array<string, int>>,
@@ -138,7 +139,7 @@ final class Analyzer
     /**
      * We may update fewer files than we analyse (i.e. for dead code detection)
      *
-     * @var array<string>|null
+     * @var list<string>|null
      */
     private ?array $files_to_update = null;
 
@@ -208,7 +209,7 @@ final class Analyzer
     }
 
     /**
-     * @param array<string> $files_to_update
+     * @param list<string> $files_to_update
      * @psalm-external-mutation-free
      */
     public function setFilesToUpdate(array $files_to_update): void
@@ -320,7 +321,7 @@ final class Analyzer
 
             // Wait for all tasks to complete and collect the results.
             await($pool->runAll(new InitAnalyzerTask));
-            $pool->run($this->files_to_analyze, AnalyzerTask::class, $task_done_closure);
+            $pool->run($this->files_to_analyze, static fn(string $file): AnalyzerTask => new AnalyzerTask($file), $task_done_closure);
             $forked_pool_data = $pool->runAll(new ShutdownAnalyzerTask);
 
             $this->progress->debug('Collecting forked analysis results' . "\n");
@@ -1012,8 +1013,8 @@ final class Analyzer
             throw new UnexpectedValueException('non-empty node_type expected');
         }
 
-        $this->type_map[$file_path][(int)$node->getAttribute('startFilePos')] = [
-            ($parent_node ? (int)$parent_node->getAttribute('endFilePos') : (int)$node->getAttribute('endFilePos')) + 1,
+        $this->type_map[$file_path][$node->getStartFilePos()] = [
+            ($parent_node ? $parent_node->getEndFilePos() : $node->getEndFilePos()) + 1,
             $node_type,
         ];
     }
@@ -1049,8 +1050,8 @@ final class Analyzer
             throw new UnexpectedValueException('non-empty node_type expected');
         }
 
-        $this->reference_map[$file_path][(int)$node->getAttribute('startFilePos')] = [
-            (int)$node->getAttribute('endFilePos') + 1,
+        $this->reference_map[$file_path][$node->getStartFilePos()] = [
+            $node->getEndFilePos() + 1,
             $reference,
         ];
     }
@@ -1401,6 +1402,11 @@ final class Analyzer
     /**
      * @psalm-mutation-free
      */
+    public function resetAnalyzedMethods(): void
+    {
+        $this->analyzed_methods = [];
+    }
+
     public function isMethodAlreadyAnalyzed(string $file_path, string $method_id, bool $is_constructor = false): bool
     {
         if ($is_constructor) {
@@ -1422,10 +1428,10 @@ final class Analyzer
 
         $filetype_analyzers = $config->getFiletypeAnalyzers();
         if (isset($filetype_analyzers[$extension])) {
-            $file_analyzer = new $filetype_analyzers[$extension](
+            $file_analyzer = $filetype_analyzers[$extension](
                 ProjectAnalyzer::getInstance(),
                 $file_path,
-                $file_name
+                $file_name,
             );
         } else {
             $file_analyzer = new FileAnalyzer(ProjectAnalyzer::getInstance(), $file_path, $file_name);

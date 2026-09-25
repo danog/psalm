@@ -227,7 +227,7 @@ final class Psalter
         $autoloaders = $include_collector->runAndCollect(
             // we ignore the FQN because of a hack in scoper.inc that needs full path
             // phpcs:ignore SlevomatCodingStandard.Namespaces.ReferenceUsedNamesOnly.ReferenceViaFullyQualifiedName
-            /** @return list<ClassLoader> */
+            /** @return list<\Composer\Autoload\ClassLoader> */
             static fn(): array =>
                 CliUtils::requireAutoloaders($current_dir, isset($options['r']), $vendor_dir),
         );
@@ -503,8 +503,8 @@ final class Psalter
     }
 
     /**
-     * @param array<string, false|list<mixed>|string> $options
-     * @param-out array<string, false|list<mixed>|string> $options
+     * @param array<string, false|list<string|false>|string> $options
+     * @param-out array<string, false|list<string|false>|string> $options
      */
     private static function syncShortOptions(array &$options): void
     {
@@ -543,6 +543,7 @@ final class Psalter
         assert($codeowners_file != false);
 
         $codeowner_lines = array_map(
+            /** @return array{string, list<string>} */
             static function (string $line): array {
                 $line_parts = preg_split('/\s+/', $line);
                 if ($line_parts === false) {
@@ -597,6 +598,7 @@ final class Psalter
     /**
      * @param array<string, array<int, string>> $codeowner_files
      * @return list<string>
+     * @param list<string|false> $desired_codeowners
      */
     private static function loadCodeownersFiles(array $desired_codeowners, array $codeowner_files): array
     {

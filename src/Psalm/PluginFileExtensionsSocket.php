@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace Psalm;
 
+use Closure;
 use LogicException;
 use Override;
 use Psalm\Internal\Analyzer\FileAnalyzer;
+use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\Scanner\FileScanner;
 use Psalm\Plugin\FileExtensionsInterface;
 
-use function class_exists;
 use function in_array;
-use function is_a;
 use function sprintf;
 
 /**
@@ -21,12 +21,12 @@ use function sprintf;
 final class PluginFileExtensionsSocket implements FileExtensionsInterface
 {
     /**
-     * @var array<string, class-string<FileScanner>>
+     * @var array<string, Closure(string, string, bool): FileScanner>
      */
     private array $additionalFileTypeScanners = [];
 
     /**
-     * @var array<string, class-string<FileAnalyzer>>
+     * @var array<string, Closure(ProjectAnalyzer, string, string): FileAnalyzer>
      */
     private array $additionalFileTypeAnalyzers = [];
 
@@ -46,21 +46,11 @@ final class PluginFileExtensionsSocket implements FileExtensionsInterface
 
     /**
      * @param string $fileExtension e.g. `'html'`
-     * @param class-string<FileScanner> $className
+     * @param Closure(string, string, bool): FileScanner $factory
      */
     #[Override]
-    public function addFileTypeScanner(string $fileExtension, string $className): void
+    public function addFileTypeScanner(string $fileExtension, Closure $factory): void
     {
-        if (!class_exists($className) || !is_a($className, FileScanner::class, true)) {
-            throw new LogicException(
-                sprintf(
-                    'Class %s must be of type %s',
-                    $className,
-                    FileScanner::class,
-                ),
-                1_622_727_271,
-            );
-        }
         if (isset($this->config->getFiletypeScanners()[$fileExtension])
             || isset($this->additionalFileTypeScanners[$fileExtension])
         ) {
@@ -69,12 +59,12 @@ final class PluginFileExtensionsSocket implements FileExtensionsInterface
                 1_622_727_272,
             );
         }
-        $this->additionalFileTypeScanners[$fileExtension] = $className;
+        $this->additionalFileTypeScanners[$fileExtension] = $factory;
         $this->addFileExtension($fileExtension);
     }
 
     /**
-     * @return array<string, class-string<FileScanner>>
+     * @return array<string, Closure(string, string, bool): FileScanner>
      */
     public function getAdditionalFileTypeScanners(): array
     {
@@ -83,21 +73,11 @@ final class PluginFileExtensionsSocket implements FileExtensionsInterface
 
     /**
      * @param string $fileExtension e.g. `'html'`
-     * @param class-string<FileAnalyzer> $className
+     * @param Closure(ProjectAnalyzer, string, string): FileAnalyzer $factory
      */
     #[Override]
-    public function addFileTypeAnalyzer(string $fileExtension, string $className): void
+    public function addFileTypeAnalyzer(string $fileExtension, Closure $factory): void
     {
-        if (!class_exists($className) || !is_a($className, FileAnalyzer::class, true)) {
-            throw new LogicException(
-                sprintf(
-                    'Class %s must be of type %s',
-                    $className,
-                    FileAnalyzer::class,
-                ),
-                1_622_727_281,
-            );
-        }
         if (isset($this->config->getFiletypeAnalyzers()[$fileExtension])
             || isset($this->additionalFileTypeAnalyzers[$fileExtension])
         ) {
@@ -106,12 +86,12 @@ final class PluginFileExtensionsSocket implements FileExtensionsInterface
                 1_622_727_282,
             );
         }
-        $this->additionalFileTypeAnalyzers[$fileExtension] = $className;
+        $this->additionalFileTypeAnalyzers[$fileExtension] = $factory;
         $this->addFileExtension($fileExtension);
     }
 
     /**
-     * @return array<string, class-string<FileAnalyzer>>
+     * @return array<string, Closure(ProjectAnalyzer, string, string): FileAnalyzer>
      */
     public function getAdditionalFileTypeAnalyzers(): array
     {

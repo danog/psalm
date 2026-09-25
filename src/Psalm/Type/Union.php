@@ -13,6 +13,8 @@ use Psalm\Type\Atomic\TLiteralFloat;
 use Psalm\Type\Atomic\TLiteralInt;
 use Psalm\Type\Atomic\TLiteralString;
 
+use function assert;
+use function array_key_exists;
 use function get_object_vars;
 
 /**
@@ -190,50 +192,18 @@ final class Union implements TypeNode
 
     public bool $different = false;
 
-    private const PROPERTY_KEYS_FOR_UNSERIALIZE = [
-        "\0" . self::class . "\0" . 'types' => 'types',
-        'from_docblock' => 'from_docblock',
-        'from_calculation' => 'from_calculation',
-        'from_property' => 'from_property',
-        'from_static_property' => 'from_static_property',
-        'initialized' => 'initialized',
-        'initialized_class' => 'initialized_class',
-        'checked' => 'checked',
-        'failed_reconciliation' => 'failed_reconciliation',
-        'ignore_nullable_issues' => 'ignore_nullable_issues',
-        'ignore_falsable_issues' => 'ignore_falsable_issues',
-        'ignore_isset' => 'ignore_isset',
-        'possibly_undefined' => 'possibly_undefined',
-        'possibly_undefined_from_try' => 'possibly_undefined_from_try',
-        'explicit_never' => 'explicit_never',
-        'had_template' => 'had_template',
-        'from_template_default' => 'from_template_default',
-        "\0" . self::class . "\0" . 'literal_string_types' => 'literal_string_types',
-        "\0" . self::class . "\0" . 'typed_class_strings' => 'typed_class_strings',
-        "\0" . self::class . "\0" . 'literal_int_types' => 'literal_int_types',
-        "\0" . self::class . "\0" . 'literal_float_types' => 'literal_float_types',
-        'by_ref' => 'by_ref',
-        'reference_free' => 'reference_free',
-        'allow_mutations' => 'allow_mutations',
-        'has_mutations' => 'has_mutations',
-        "\0" . self::class . "\0" . 'id' => 'id',
-        "\0" . self::class . "\0" . 'exact_id' => 'exact_id',
-        'parent_nodes' => 'parent_nodes',
-        'propagate_parent_nodes' => 'propagate_parent_nodes',
-        'different' => 'different',
-    ];
+    // serialized property keys: see __unserialize()
 
     /**
      * Suppresses memory usage when unserializing objects.
      *
      * @see \Psalm\Storage\UnserializeMemoryUsageSuppressionTrait
+     * @param array<string, never> $properties objects are never unserialized in the compiled program
      */
     public function __unserialize(array $properties): void
     {
-        foreach (self::PROPERTY_KEYS_FOR_UNSERIALIZE as $key => $property_name) {
-            /** @psalm-suppress PossiblyUndefinedStringArrayOffset */
-            $this->$property_name = $properties[$key];
-        }
+        // objects are never unserialized in the compiled program; property names cannot be looked up dynamically
+        throw new \LogicException('Unserialization of ' . self::class . ' is not supported');
     }
 
     /**
@@ -243,14 +213,94 @@ final class Union implements TypeNode
     public function setProperties(array $properties): self
     {
         $obj = null;
-        foreach ($properties as $key => $value) {
-            if ($this->{$key} !== $value) {
-                if ($obj === null) {
-                    $obj = clone $this;
-                }
-                /** @psalm-suppress ImpurePropertyAssignment We just cloned this object */
-                $obj->{$key} = $value;
-            }
+        /** @psalm-suppress ImpurePropertyAssignment We just cloned this object */
+        if (array_key_exists('from_docblock', $properties) && $this->from_docblock !== $properties['from_docblock']) {
+            $obj ??= clone $this;
+            $obj->from_docblock = $properties['from_docblock'];
+        }
+        if (array_key_exists('from_calculation', $properties) && $this->from_calculation !== $properties['from_calculation']) {
+            $obj ??= clone $this;
+            $obj->from_calculation = $properties['from_calculation'];
+        }
+        if (array_key_exists('from_property', $properties) && $this->from_property !== $properties['from_property']) {
+            $obj ??= clone $this;
+            $obj->from_property = $properties['from_property'];
+        }
+        if (array_key_exists('from_static_property', $properties) && $this->from_static_property !== $properties['from_static_property']) {
+            $obj ??= clone $this;
+            $obj->from_static_property = $properties['from_static_property'];
+        }
+        if (array_key_exists('initialized', $properties) && $this->initialized !== $properties['initialized']) {
+            $obj ??= clone $this;
+            $obj->initialized = $properties['initialized'];
+        }
+        if (array_key_exists('initialized_class', $properties) && $this->initialized_class !== $properties['initialized_class']) {
+            $obj ??= clone $this;
+            $obj->initialized_class = $properties['initialized_class'];
+        }
+        if (array_key_exists('checked', $properties) && $this->checked !== $properties['checked']) {
+            $obj ??= clone $this;
+            $obj->checked = $properties['checked'];
+        }
+        if (array_key_exists('failed_reconciliation', $properties) && $this->failed_reconciliation !== $properties['failed_reconciliation']) {
+            $obj ??= clone $this;
+            $obj->failed_reconciliation = $properties['failed_reconciliation'];
+        }
+        if (array_key_exists('ignore_nullable_issues', $properties) && $this->ignore_nullable_issues !== $properties['ignore_nullable_issues']) {
+            $obj ??= clone $this;
+            $obj->ignore_nullable_issues = $properties['ignore_nullable_issues'];
+        }
+        if (array_key_exists('ignore_falsable_issues', $properties) && $this->ignore_falsable_issues !== $properties['ignore_falsable_issues']) {
+            $obj ??= clone $this;
+            $obj->ignore_falsable_issues = $properties['ignore_falsable_issues'];
+        }
+        if (array_key_exists('ignore_isset', $properties) && $this->ignore_isset !== $properties['ignore_isset']) {
+            $obj ??= clone $this;
+            $obj->ignore_isset = $properties['ignore_isset'];
+        }
+        if (array_key_exists('possibly_undefined', $properties) && $this->possibly_undefined !== $properties['possibly_undefined']) {
+            $obj ??= clone $this;
+            $obj->possibly_undefined = $properties['possibly_undefined'];
+        }
+        if (array_key_exists('possibly_undefined_from_try', $properties) && $this->possibly_undefined_from_try !== $properties['possibly_undefined_from_try']) {
+            $obj ??= clone $this;
+            $obj->possibly_undefined_from_try = $properties['possibly_undefined_from_try'];
+        }
+        if (array_key_exists('explicit_never', $properties) && $this->explicit_never !== $properties['explicit_never']) {
+            $obj ??= clone $this;
+            $obj->explicit_never = $properties['explicit_never'];
+        }
+        if (array_key_exists('had_template', $properties) && $this->had_template !== $properties['had_template']) {
+            $obj ??= clone $this;
+            $obj->had_template = $properties['had_template'];
+        }
+        if (array_key_exists('from_template_default', $properties) && $this->from_template_default !== $properties['from_template_default']) {
+            $obj ??= clone $this;
+            $obj->from_template_default = $properties['from_template_default'];
+        }
+        if (array_key_exists('by_ref', $properties) && $this->by_ref !== $properties['by_ref']) {
+            $obj ??= clone $this;
+            $obj->by_ref = $properties['by_ref'];
+        }
+        if (array_key_exists('reference_free', $properties) && $this->reference_free !== $properties['reference_free']) {
+            $obj ??= clone $this;
+            $obj->reference_free = $properties['reference_free'];
+        }
+        if (array_key_exists('allow_mutations', $properties) && $this->allow_mutations !== $properties['allow_mutations']) {
+            $obj ??= clone $this;
+            $obj->allow_mutations = $properties['allow_mutations'];
+        }
+        if (array_key_exists('has_mutations', $properties) && $this->has_mutations !== $properties['has_mutations']) {
+            $obj ??= clone $this;
+            $obj->has_mutations = $properties['has_mutations'];
+        }
+        if (array_key_exists('different', $properties) && $this->different !== $properties['different']) {
+            $obj ??= clone $this;
+            $obj->different = $properties['different'];
+        }
+        if (array_key_exists('parent_nodes', $properties) && $this->parent_nodes !== $properties['parent_nodes']) {
+            $obj ??= clone $this;
+            $obj->parent_nodes = $properties['parent_nodes'];
         }
         return $obj ?? $this;
     }
@@ -330,7 +380,7 @@ final class Union implements TypeNode
 
     /**
      * @psalm-mutation-free
-     * @param non-empty-array<Atomic>  $types
+     * @param non-empty-list<Atomic>|non-empty-array<string, Atomic>  $types
      */
     public function setTypes(array $types): self
     {
@@ -346,7 +396,7 @@ final class Union implements TypeNode
     public function getBuilder(): MutableUnion
     {
         /** @psalm-suppress InvalidArgument It's actually filtered internally */
-        return new MutableUnion($this->getAtomicTypes(), get_object_vars($this));
+        return new MutableUnion($this->getAtomicTypes(), $this->getConstructionProperties());
     }
 
     /**
@@ -361,14 +411,19 @@ final class Union implements TypeNode
     }
 
     /**
+     * @param TypeNode $node
+     * @param-out TypeNode $node
+     *
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
+        assert($node instanceof self);
+        $self = $node;
         $result = true;
         $changed = false;
-        $types = $node->types;
+        $types = $self->types;
         foreach ($types as &$type) {
             $type_orig = $type;
             $result = $visitor->traverse($type);
@@ -380,8 +435,10 @@ final class Union implements TypeNode
         unset($type);
 
         if ($changed) {
-            $node = $node->setTypes($types);
+            $self = $self->setTypes($types);
         }
+
+        $node = $self;
 
         return $result;
     }

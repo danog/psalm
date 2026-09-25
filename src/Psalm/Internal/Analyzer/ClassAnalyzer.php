@@ -149,7 +149,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
     ): string {
         $class_name = preg_replace('/[^A-Za-z0-9]/', '_', $file_path)
             . '_' . $class->getLine()
-            . '_' . (int)$class->getAttribute('startFilePos');
+            . '_' . $class->getStartFilePos();
 
         $fq_class_name = Type::getFQCLNFromString(
             $class_name,
@@ -245,7 +245,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                         $first_statement_pos = $this->getFileAnalyzer()->getFirstStatementOffset();
 
                         if ($first_statement_pos === -1) {
-                            $first_statement_pos = (int) $class->getAttribute('startFilePos');
+                            $first_statement_pos = $class->getStartFilePos();
                         }
 
                         $file_manipulations = [
@@ -516,8 +516,8 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                             if ($property_id === $original_property_id) {
                                 $file_manipulations = [
                                     new FileManipulation(
-                                        (int) $prop->name->getAttribute('startFilePos'),
-                                        (int) $prop->name->getAttribute('endFilePos') + 1,
+                                        $prop->name->getStartFilePos(),
+                                        $prop->name->getEndFilePos() + 1,
                                         '$' . $new_property_name,
                                     ),
                                 ];
@@ -550,8 +550,8 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                         if ($const_id === $original_const_id) {
                             $file_manipulations = [
                                 new FileManipulation(
-                                    (int) $const->name->getAttribute('startFilePos'),
-                                    (int) $const->name->getAttribute('endFilePos') + 1,
+                                    $const->name->getStartFilePos(),
+                                    $const->name->getEndFilePos() + 1,
                                     $new_const_name,
                                 ),
                             ];
@@ -666,6 +666,9 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         }
     }
 
+    /**
+     * @param list<PhpParser\Node\Stmt> $stmts
+     */
     public static function addContextProperties(
         StatementsSource $statements_source,
         ClassLikeStorage $storage,
@@ -1061,6 +1064,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
 
         /** @var PhpParser\Node\Stmt\Class_ */
         $class = $this->class;
+        assert($class instanceof PhpParser\Node\Stmt\Class_);
         $classlike_storage_provider = $codebase->classlike_storage_provider;
         $class_storage = $classlike_storage_provider->get($fq_class_name_lc);
 
@@ -1218,8 +1222,8 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
 
                 $fake_constructor_attributes = [
                     'startLine' => $class->extends->getLine(),
-                    'startFilePos' => $class->extends->getAttribute('startFilePos'),
-                    'endFilePos' => $class->extends->getAttribute('endFilePos'),
+                    'startFilePos' => $class->extends->getStartFilePos(),
+                    'endFilePos' => $class->extends->getEndFilePos(),
                 ];
 
                 $fake_call_attributes = $fake_constructor_attributes
@@ -1227,7 +1231,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                         'comments' => [new PhpParser\Comment\Doc(
                             '/** @psalm-suppress InaccessibleMethod */',
                             $class->extends->getLine(),
-                            (int) $class->extends->getAttribute('startFilePos'),
+                            $class->extends->getStartFilePos(),
                         )],
                     ];
 
@@ -1798,8 +1802,8 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             $trait_safe_method_id,
         );
 
-        $start = (int)$stmt->getAttribute('startFilePos');
-        $end = (int)$stmt->getAttribute('endFilePos');
+        $start = $stmt->getStartFilePos();
+        $end = $stmt->getEndFilePos();
 
         $comments = $stmt->getComments();
 

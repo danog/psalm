@@ -266,15 +266,15 @@ final class ArrayFetchAnalyzer
                 && ($stmt->var instanceof PhpParser\Node\Expr\ClassConstFetch
                     || $stmt->var instanceof PhpParser\Node\Expr\ConstFetch)
             ) {
-                /**
-                 * @var TArray|TKeyedArray
-                 */
                 $array_type = $stmt_var_type->getArray();
 
                 if ($array_type instanceof TArray) {
                     $const_array_key_type = $array_type->type_params[0];
-                } else {
+                } elseif ($array_type instanceof TKeyedArray) {
                     $const_array_key_type = $array_type->getGenericKeyType();
+                } else {
+                    // a class-string map: its keys are class strings
+                    $const_array_key_type = Type::getString();
                 }
 
                 if ($dim_var_id
@@ -2061,7 +2061,7 @@ final class ArrayFetchAnalyzer
     }
 
     /**
-     * @param Atomic[] $offset_types
+     * @param array<string, Atomic> $offset_types
      */
     private static function checkArrayOffsetType(
         MutableUnion $offset_type,

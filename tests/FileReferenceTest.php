@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Tests;
 
 use Override;
+use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\Codebase\CodeUseGraph;
@@ -13,6 +14,7 @@ use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\RuntimeCaches;
 use Psalm\Tests\Internal\Provider\FakeParserCacheProvider;
 
+use function array_map;
 use function array_values;
 use function count;
 use function is_array;
@@ -64,14 +66,25 @@ final class FileReferenceTest extends TestCase
         $found_references = $this->project_analyzer->getCodebase()->findReferencesToSymbol($symbol);
         $found_references = array_values($found_references);
 
-        $this->assertSame(count($found_references), count($expected_locations));
+        $this->assertSame(
+            count($found_references),
+            count($expected_locations),
+            'found ' . implode(', ', array_map(
+                static fn(CodeLocation $loc): string => $loc->getLineNumber() . ':' . $loc->getColumn()
+                    . ':' . $loc->getSelectedText(),
+                $found_references,
+            )),
+        );
 
-        foreach ($found_references as &$loc) {
-            $loc = $loc->getLineNumber() . ':' . $loc->getColumn()
-                    . ':' . $loc->getSelectedText();
-        } unset($loc);
+        // a new list rather than a by-reference rewrite: the elements change type, which the
+        // reference's write-back cannot express
+        $described_references = array_map(
+            static fn(CodeLocation $loc): string => $loc->getLineNumber() . ':' . $loc->getColumn()
+                . ':' . $loc->getSelectedText(),
+            $found_references,
+        );
 
-        $this->assertEquals($expected_locations, $found_references);
+        $this->assertEquals($expected_locations, $described_references);
     }
 
     public function testReferenceLocationsAreRemovedWithTheirSourceNode(): void
@@ -155,21 +168,12 @@ final class FileReferenceTest extends TestCase
 
         $graph = $this->project_analyzer->getCodebase()->code_use_graph;
 
-        /**
-         * @psalm-suppress MixedAssignment
-         * @psalm-pure
-         */
-        $ksort_recursive = function (array &$arr) use (&$ksort_recursive): void {
-            ksort($arr);
-            foreach ($arr as &$value) {
-                if (is_array($value)) {
-                    $ksort_recursive($value);
-                }
-            }
-        };
-
         $all = $graph->getAllReferences();
-        $ksort_recursive($all);
+        ksort($all);
+        foreach ($all as &$value) {
+            ksort($value);
+        }
+        unset($value);
         $this->assertSame($expected_references, $all);
     }
 

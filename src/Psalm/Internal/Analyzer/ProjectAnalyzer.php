@@ -196,7 +196,7 @@ final class ProjectAnalyzer
     private const PHP_SUPPORTED_VERSIONS_REGEX = '^(5\.[456]|7\.[01234]|8\.[012345])(\..*)?$';
 
     /**
-     * @param array<ReportOptions> $generated_report_options
+     * @param list<ReportOptions> $generated_report_options
      */
     public function __construct(
         Config $config,
@@ -245,7 +245,7 @@ final class ProjectAnalyzer
 
         $this->config->processPluginFileExtensions($this);
 
-        if ($this->config::INIT_PROJECT_FILES_NOW) {
+        if ($this->config->initProjectFilesNow()) {
             $this->initExtraFiles();
             $this->initProjectFiles();
         }
@@ -309,7 +309,7 @@ final class ProjectAnalyzer
     }
 
     /**
-     * @param  array<string>  $report_file_paths
+     * @param  list<string>  $report_file_paths
      * @return list<ReportOptions>
      */
     public static function getFileReportOptions(array $report_file_paths, bool $show_info = true): array
@@ -499,7 +499,7 @@ final class ProjectAnalyzer
                     $this->config->visitPreloadedStubFiles($this->codebase, $this->progress);
                     $this->visitAutoloadFiles();
 
-                    $this->checkDiffFilesWithConfig($this->config, $file_list);
+                    $this->checkDiffFilesWithConfig($this->config, array_values($file_list));
 
                     $this->config->initializePlugins($this);
 
@@ -931,7 +931,7 @@ final class ProjectAnalyzer
     }
 
     /**
-     * @param  array<string>    $file_list
+     * @param  list<string>    $file_list
      */
     private function checkDiffFilesWithConfig(Config $config, array $file_list = []): void
     {
@@ -991,7 +991,7 @@ final class ProjectAnalyzer
     }
 
     /**
-     * @param string[] $paths_to_check
+     * @param list<string> $paths_to_check
      */
     public function checkPaths(array $paths_to_check): void
     {
@@ -1099,7 +1099,7 @@ final class ProjectAnalyzer
     }
 
     /**
-     * @param array<string>  $diff_files
+     * @param list<string>  $diff_files
      * @return array<string, string>
      * @psalm-external-mutation-free
      */

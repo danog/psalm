@@ -12,8 +12,11 @@ use Psalm\Internal\Provider\StatementsProvider;
 
 use function array_map;
 use function count;
+use function json_encode;
 use function get_class;
 use function strpos;
+
+use const JSON_THROW_ON_ERROR;
 use function var_export;
 
 final class FileDiffTest extends TestCase
@@ -21,6 +24,10 @@ final class FileDiffTest extends TestCase
     /**
      * @dataProvider getChanges
      * @param string[] $same_methods
+     * @param string[] $same_signatures
+     * @param string[] $changed_methods
+     * @param array<array-key, array{int, int}> $diff_map_offsets
+     * @param list<array{int, int}> $deletion_ranges
      */
     public function testCode(
         string $a,
@@ -109,7 +116,7 @@ final class FileDiffTest extends TestCase
         $b_stmts = StatementsProvider::parseStatements($b, 7_04_00, $has_errors, null, $a, $a_stmts_copy, $file_changes);
         $b_clean_stmts = StatementsProvider::parseStatements($b, 7_04_00, $has_errors);
 
-        $this->assertTreesEqual($b_clean_stmts, $b_stmts);
+        $this->assertTreesEqual($b_clean_stmts, $b_stmts, json_encode($file_changes, JSON_THROW_ON_ERROR));
 
         $diff = FileStatementsDiffer::diff($a_stmts, $b_clean_stmts, $a, $b);
 
@@ -146,7 +153,7 @@ final class FileDiffTest extends TestCase
      * @param  array<int, PhpParser\Node\Stmt>  $a
      * @param  array<int, PhpParser\Node\Stmt>  $b
      */
-    private function assertTreesEqual(array $a, array $b): void
+    private function assertTreesEqual(array $a, array $b, string $context = ''): void
     {
         $this->assertSame(count($a), count($b));
 
@@ -174,16 +181,25 @@ final class FileDiffTest extends TestCase
             }
 
             $this->assertSame(
-                $a_stmt->getAttribute('startFilePos'),
-                $b_stmt->getAttribute('startFilePos'),
+                $a_stmt->attrs()->startFilePos,
+                $b_stmt->attrs()->startFilePos,
+                'start of ' . get_class($a_stmt) . ' on line ' . $a_stmt->getLine()
+                    . ' [' . $a_stmt->attrs()->startFilePos . '..' . $a_stmt->attrs()->endFilePos . ']'
+                    . '; partial is ' . get_class($b_stmt) . ' on line ' . $b_stmt->getLine()
+                    . ' [' . $b_stmt->attrs()->startFilePos . '..' . $b_stmt->attrs()->endFilePos . ']'
+                    . '; changes ' . $context,
             );
             $this->assertSame(
-                $a_stmt->getAttribute('endFilePos'),
-                $b_stmt->getAttribute('endFilePos'),
-                ($a_stmt instanceof PhpParser\Node\Stmt\Expression
+                $a_stmt->attrs()->endFilePos,
+                $b_stmt->attrs()->endFilePos,
+                'end of ' . ($a_stmt instanceof PhpParser\Node\Stmt\Expression
                     ? get_class($a_stmt->expr)
                     : get_class($a_stmt))
-                    . ' on line ' . $a_stmt->getLine(),
+                    . ' on line ' . $a_stmt->getLine()
+                    . ' [' . $a_stmt->attrs()->startFilePos . '..' . $a_stmt->attrs()->endFilePos . ']'
+                    . '; partial is on line ' . $b_stmt->getLine()
+                    . ' [' . $b_stmt->attrs()->startFilePos . '..' . $b_stmt->attrs()->endFilePos . ']'
+                    . '; changes ' . $context,
             );
             $this->assertSame($a_stmt->getLine(), $b_stmt->getLine());
 
@@ -193,7 +209,7 @@ final class FileDiffTest extends TestCase
                 /**
                  * @psalm-suppress MixedArgument
                  */
-                $this->assertTreesEqual($a_stmt->stmts, $b_stmt->stmts);
+                $this->assertTreesEqual($a_stmt->stmts, $b_stmt->stmts, $context);
             }
         }
     }

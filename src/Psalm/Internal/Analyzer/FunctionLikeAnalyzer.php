@@ -22,6 +22,7 @@ use Psalm\Internal\Analyzer\FunctionLike\ReturnTypeCollector;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\FunctionCallReturnTypeFetcher;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Codebase\CodeUseGraph;
+use Psalm\Internal\Codebase\MutationInfo;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
 use Psalm\Internal\FileManipulation\FunctionDocblockManipulator;
@@ -109,7 +110,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
     protected Codebase $codebase;
 
     /**
-     * @var array<string>
+     * @var array<array-key, string>
      */
     protected array $suppressed_issues;
 
@@ -351,8 +352,8 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             ) {
                 $file_manipulations = [
                     new FileManipulation(
-                        (int) $this->function->name->getAttribute('startFilePos'),
-                        (int) $this->function->name->getAttribute('endFilePos') + 1,
+                        $this->function->name->getStartFilePos(),
+                        $this->function->name->getEndFilePos() + 1,
                         $new_method_name,
                     ),
                 ];
@@ -386,7 +387,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
         if ($byref_uses) {
             $ref_context = clone $context;
-            $var = '$__tmp_byref_closure_if__' . (int) $this->function->getAttribute('startFilePos');
+            $var = '$__tmp_byref_closure_if__' . $this->function->getStartFilePos();
 
             $ref_context->vars_in_scope[$var] = Type::getBool();
 
@@ -613,20 +614,20 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             } elseif ($storage->location && ($node_id = $this->getMutationNodeId()) !== null) {
                 // the final level depends on the callees' levels: resolved after analysis,
                 // which reports MissingPureAnnotation and queues the fix (see MutationLevelResolver)
-                $codebase->code_use_graph->addMutationInfo($node_id, [
-                    'intrinsic' => $this->intrinsic_mutations,
-                    'allowed' => $storage->allowed_mutations,
-                    'callees' => $this->deferred_callees,
-                    'location' => $storage->location,
-                    'cased_name' => $storage->cased_name ?? '{closure}',
-                    'suppressed_issues' => $storage->suppressed_issues,
-                    'class' => $storage instanceof MethodStorage ? $storage->defining_fqcln : null,
-                    'start' => (int) $this->function->getAttribute('startFilePos'),
-                    'fresh' => true,
+                $codebase->code_use_graph->addMutationInfo($node_id, new MutationInfo(
+                    $this->intrinsic_mutations,
+                    $storage->allowed_mutations,
+                    $this->deferred_callees,
+                    $storage->location,
+                    $storage->cased_name ?? '{closure}',
+                    $storage->suppressed_issues,
+                    $storage instanceof MethodStorage ? $storage->defining_fqcln : null,
+                    $this->function->getStartFilePos(),
+                    true,
                     // inline callbacks are not worth annotating, closures assigned to a variable are
-                    'report' => !$this->function instanceof Closure
-                        || $this->function->getAttribute('assigned_var_id') !== null,
-                ]);
+                    !$this->function instanceof Closure
+                        || $this->function->getAttributes()->assigned_var_id !== null,
+                ));
             }
         }
 
@@ -1444,7 +1445,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
     }
 
     /**
-     * @param FunctionLikeParameter[] $params
+     * @param list<FunctionLikeParameter> $params
      */
     private function alterParams(
         Codebase $codebase,
@@ -1569,7 +1570,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
     }
 
     /**
-     * @param array<PhpParser\Node\Stmt> $function_stmts
+     * @param list<PhpParser\Node\Stmt> $function_stmts
      */
     public function verifyReturnType(
         array $function_stmts,
@@ -1874,7 +1875,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
     /**
      * Get a list of suppressed issues
      *
-     * @return array<string>
+     * @return array<array-key, string>
      */
     #[Override]
     public function getSuppressedIssues(): array
@@ -2276,7 +2277,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             $did_match_param = false;
 
             foreach ($this->function->params as $param) {
-                if ($param->var->getAttribute('endFilePos') === $original_location->raw_file_end) {
+                if ($param->var->attrs()->endFilePos === $original_location->raw_file_end) {
                     $did_match_param = true;
                     break;
                 }

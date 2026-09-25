@@ -149,8 +149,8 @@ final class ElseIfAnalyzer
             ? Algebra::simplifyCNF([...$entry_clauses, ...$elseif_clauses])
             : $elseif_clauses;
 
-        if ($elseif_context->reconciled_expression_clauses) {
-            $reconciled_expression_clauses = $elseif_context->reconciled_expression_clauses;
+        if ($elseif_context->getReconciledExpressionClauses()) {
+            $reconciled_expression_clauses = $elseif_context->getReconciledExpressionClauses();
 
             $elseif_context->clauses = array_values(
                 array_filter(
@@ -170,8 +170,8 @@ final class ElseIfAnalyzer
                 $omit_keys = array_reduce(
                     $entry_clauses,
                     /**
-                     * @param array<string> $carry
-                     * @return array<string>
+                     * @param list<string> $carry
+                     * @return list<string>
                      */
                     static fn(array $carry, Clause $clause): array
                         => array_merge($carry, array_keys($clause->possibilities)),
@@ -259,9 +259,9 @@ final class ElseIfAnalyzer
             }
         }
 
-        $pre_stmts_assigned_var_ids = $elseif_context->assigned_var_ids;
+        $pre_stmts_assigned_var_ids = $elseif_context->getAssignedVarIds();
         $elseif_context->assigned_var_ids = [];
-        $pre_stmts_possibly_assigned_var_ids = $elseif_context->possibly_assigned_var_ids;
+        $pre_stmts_possibly_assigned_var_ids = $elseif_context->getPossiblyAssignedVarIds();
         $elseif_context->possibly_assigned_var_ids = [];
 
         if ($statements_analyzer->analyze(
@@ -277,11 +277,11 @@ final class ElseIfAnalyzer
         }
 
         /** @var array<string, int> */
-        $new_stmts_assigned_var_ids = $elseif_context->assigned_var_ids;
+        $new_stmts_assigned_var_ids = $elseif_context->getAssignedVarIds();
         $elseif_context->assigned_var_ids = $pre_stmts_assigned_var_ids + $new_stmts_assigned_var_ids;
 
         /** @var array<string, bool> */
-        $new_stmts_possibly_assigned_var_ids = $elseif_context->possibly_assigned_var_ids;
+        $new_stmts_possibly_assigned_var_ids = $elseif_context->getPossiblyAssignedVarIds();
         $elseif_context->possibly_assigned_var_ids =
             $pre_stmts_possibly_assigned_var_ids + $new_stmts_possibly_assigned_var_ids;
 
@@ -386,7 +386,7 @@ final class ElseIfAnalyzer
                     ];
                     $if_scope->possibly_assigned_var_ids = array_merge(
                         $possibly_assigned_var_ids,
-                        $if_scope->possibly_assigned_var_ids,
+                        $if_scope->getPossiblyAssignedVarIds(),
                     );
                 }
 
@@ -401,7 +401,7 @@ final class ElseIfAnalyzer
                 ];
                 $if_scope->possibly_assigned_var_ids = array_merge(
                     $possibly_assigned_var_ids,
-                    $if_scope->possibly_assigned_var_ids,
+                    $if_scope->getPossiblyAssignedVarIds(),
                 );
             }
         }

@@ -57,7 +57,7 @@ final class TernaryAnalyzer
                 $context,
                 $codebase,
                 $if_scope,
-                $context->branch_point ?: (int) $stmt->getAttribute('startFilePos'),
+                $context->branch_point ?: $stmt->getStartFilePos(),
             );
 
             // this is the context for stuff that happens within the first operand of the ternary
@@ -134,8 +134,8 @@ final class TernaryAnalyzer
             ? Algebra::simplifyCNF([...$entry_clauses, ...$if_clauses])
             : $if_clauses;
 
-        if ($if_context->reconciled_expression_clauses) {
-            $reconciled_expression_clauses = $if_context->reconciled_expression_clauses;
+        if ($if_context->getReconciledExpressionClauses()) {
+            $reconciled_expression_clauses = $if_context->getReconciledExpressionClauses();
 
             $ternary_context_clauses = array_values(
                 array_filter(
@@ -211,8 +211,8 @@ final class TernaryAnalyzer
             }
 
             $context->cond_referenced_var_ids = [
-                ...$context->cond_referenced_var_ids,
-                ...$if_context->cond_referenced_var_ids,
+                ...$context->getCondReferencedVarIds(),
+                ...$if_context->getCondReferencedVarIds(),
             ];
         }
 
@@ -243,8 +243,8 @@ final class TernaryAnalyzer
             return false;
         }
 
-        $assign_var_ifs = $if_context->assigned_var_ids;
-        $assign_var_else = $t_else_context->assigned_var_ids;
+        $assign_var_ifs = $if_context->getAssignedVarIds();
+        $assign_var_else = $t_else_context->getAssignedVarIds();
         $assign_all = array_intersect_key($assign_var_ifs, $assign_var_else);
 
         //if the same var was assigned in both branches
@@ -296,8 +296,8 @@ final class TernaryAnalyzer
         ];
 
         $context->cond_referenced_var_ids = [
-            ...$context->cond_referenced_var_ids,
-            ...$t_else_context->cond_referenced_var_ids,
+            ...$context->getCondReferencedVarIds(),
+            ...$t_else_context->getCondReferencedVarIds(),
         ];
 
         $lhs_type = null;

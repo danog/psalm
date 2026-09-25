@@ -14,6 +14,19 @@ final class AtomicMethodCallAnalysisResult
 {
     public ?Union $return_type = null;
 
+    /**
+     * The return type gathered so far.
+     *
+     * Read through this rather than the property where it was just reset: assigning `null` narrows
+     * the property to null, and the analysis that fills it again does not widen it back.
+     *
+     * @psalm-mutation-free
+     */
+    public function getReturnType(): ?Union
+    {
+        return $this->return_type;
+    }
+
     public bool $returns_by_ref = false;
 
     public bool $has_mock = false;
@@ -23,7 +36,7 @@ final class AtomicMethodCallAnalysisResult
     public bool $has_mixed_method_call = false;
 
     /**
-     * @var array<string>
+     * @var list<string>
      */
     public array $invalid_method_call_types = [];
 
@@ -33,17 +46,17 @@ final class AtomicMethodCallAnalysisResult
     public array $existent_method_ids = [];
 
     /**
-     * @var array<string>
+     * @var list<string>
      */
     public array $non_existent_class_method_ids = [];
 
     /**
-     * @var array<string>
+     * @var list<string>
      */
     public array $non_existent_interface_method_ids = [];
 
     /**
-     * @var array<string>
+     * @var list<string>
      */
     public array $non_existent_magic_method_ids = [];
 

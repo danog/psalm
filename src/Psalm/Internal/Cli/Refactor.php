@@ -194,7 +194,7 @@ final class Refactor
         $autoloaders = $include_collector->runAndCollect(
             // we ignore the FQN because of a hack in scoper.inc that needs full path
             // phpcs:ignore SlevomatCodingStandard.Namespaces.ReferenceUsedNamesOnly.ReferenceViaFullyQualifiedName
-            /** @return list<ClassLoader> */
+            /** @return list<\Composer\Autoload\ClassLoader> */
             static fn(): array =>
                 CliUtils::requireAutoloaders($current_dir, isset($options['r']), $vendor_dir),
         );

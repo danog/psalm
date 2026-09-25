@@ -64,7 +64,7 @@ use function strtolower;
  */
 final class CastAnalyzer
 {
-    /** @var string[] */
+    /** @var list<string> */
     private const PSEUDO_CASTABLE_CLASSES = [
         'SimpleXMLElement',
         'DOMNode',
@@ -1019,8 +1019,8 @@ final class CastAnalyzer
                 && isset($project_analyzer->getIssuesToFix()['RedundantCastGivenDocblockType'])
             ) {
                 $file_manipulation = new FileManipulation(
-                    (int) $stmt->getAttribute('startFilePos'),
-                    (int) $stmt->expr->getAttribute('startFilePos'),
+                    $stmt->getStartFilePos(),
+                    $stmt->expr->getStartFilePos(),
                     '',
                 );
             }
@@ -1034,8 +1034,8 @@ final class CastAnalyzer
                 && isset($project_analyzer->getIssuesToFix()['RedundantCast'])
             ) {
                 $file_manipulation = new FileManipulation(
-                    (int) $stmt->getAttribute('startFilePos'),
-                    (int) $stmt->expr->getAttribute('startFilePos'),
+                    $stmt->getStartFilePos(),
+                    $stmt->expr->getStartFilePos(),
                     '',
                 );
             }

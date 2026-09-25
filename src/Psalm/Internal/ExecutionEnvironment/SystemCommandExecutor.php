@@ -21,7 +21,7 @@ final class SystemCommandExecutor
      * Execute command.
      *
      * @throws RuntimeException
-     * @return string[]
+     * @return list<string>
      */
     public function execute(string $command): array
     {
@@ -32,7 +32,7 @@ final class SystemCommandExecutor
         exec($command, $result, $returnValue);
 
         if ($returnValue === 0) {
-            /** @var string[] */
+            /** @var list<string> */
             return $result;
         }
 

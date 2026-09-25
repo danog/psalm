@@ -7,7 +7,6 @@ namespace Psalm\Internal\Analyzer;
 use PhpParser;
 use Psalm\Config;
 use Psalm\Context;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use UnexpectedValueException;
 
 use function is_string;
@@ -19,7 +18,6 @@ use function strtolower;
  */
 final class FunctionAnalyzer extends FunctionLikeAnalyzer
 {
-    use UnserializeMemoryUsageSuppressionTrait;
     /**
      * @psalm-mutation-free
      */

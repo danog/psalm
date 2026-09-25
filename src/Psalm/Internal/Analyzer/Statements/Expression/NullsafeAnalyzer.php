@@ -37,7 +37,7 @@ final class NullsafeAnalyzer
             ExpressionAnalyzer::analyze($statements_analyzer, $stmt->var, $context);
             $context->inside_general_use = $was_inside_general_use;
 
-            $tmp_name = '__tmp_nullsafe__' . (int) $stmt->var->getAttribute('startFilePos');
+            $tmp_name = '__tmp_nullsafe__' . $stmt->var->getStartFilePos();
 
             $condition_type = $statements_analyzer->node_data->getType($stmt->var);
 

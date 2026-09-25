@@ -39,11 +39,11 @@ final class ExitAnalyzer
         $forbidden = null;
 
         if (isset($config->forbidden_functions['exit'])
-            && $stmt->getAttribute('kind') === Exit_::KIND_EXIT
+            && $stmt->attrs()->kind === Exit_::KIND_EXIT
         ) {
             $forbidden = 'exit';
         } elseif (isset($config->forbidden_functions['die'])
-            && $stmt->getAttribute('kind') === Exit_::KIND_DIE
+            && $stmt->attrs()->kind === Exit_::KIND_DIE
         ) {
             $forbidden = 'die';
         }
@@ -115,7 +115,7 @@ final class ExitAnalyzer
         }
 
         if ($expr_type && !$expr_type->isInt()) {
-            $function_name = $stmt->getAttribute('kind') === Exit_::KIND_DIE ? 'die' : 'exit';
+            $function_name = $stmt->attrs()->kind === Exit_::KIND_DIE ? 'die' : 'exit';
             $statements_analyzer->signalMutation(
                 Mutations::LEVEL_EXTERNAL,
                 $context,

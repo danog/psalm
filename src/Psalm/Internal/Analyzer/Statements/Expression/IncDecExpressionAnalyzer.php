@@ -87,7 +87,7 @@ final class IncDecExpressionAnalyzer
                 $context->vars_in_scope[$var_id] = $result_type;
 
                 if ($codebase->find_unused_variables && $stmt->var instanceof PhpParser\Node\Expr\Variable) {
-                    $context->assigned_var_ids[$var_id] = (int) $stmt->var->getAttribute('startFilePos');
+                    $context->assigned_var_ids[$var_id] = $stmt->var->getStartFilePos();
                     $context->possibly_assigned_var_ids[$var_id] = true;
                 }
 

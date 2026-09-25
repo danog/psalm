@@ -9,12 +9,12 @@ use Psalm\Config;
 use function file_exists;
 use function file_get_contents;
 use function file_put_contents;
-use function is_array;
-use function serialize;
+use function json_decode;
+use function json_encode;
 use function touch;
-use function unserialize;
 
 use const DIRECTORY_SEPARATOR;
+use const JSON_THROW_ON_ERROR;
 
 /**
  * Used to determine which files reference other files, necessary for using the --diff
@@ -55,19 +55,17 @@ class ProjectCacheProvider
             return null;
         }
 
-        /** @var mixed $data */
-        $data = unserialize($contents, ['allowed_classes' => false]);
+        return self::decodeCustomTaints($contents);
+    }
 
-        if (!is_array($data)
-            || !isset($data['count'], $data['custom'], $data['map'])
-            || !is_array($data['custom'])
-            || !is_array($data['map'])
-        ) {
-            return null;
-        }
-
-        /** @var array{count: int, custom: array<int, string>, map: array<string, int>} */
-        return $data;
+    /**
+     * The custom taints cache file is JSON (the compiled analyzer has no serialize()).
+     *
+     * @return array{count: int, custom: array<int, string>, map: array<string, int>}|null
+     */
+    private static function decodeCustomTaints(string $contents): ?array
+    {
+        return json_decode($contents, true);
     }
 
     /**
@@ -83,7 +81,7 @@ class ProjectCacheProvider
 
         file_put_contents(
             $cache_directory . DIRECTORY_SEPARATOR . self::CUSTOM_TAINTS_NAME,
-            serialize($data),
+            json_encode($data, JSON_THROW_ON_ERROR),
         );
     }
 

@@ -6,7 +6,6 @@ namespace Psalm\Internal\Type;
 
 use Psalm\Type\Union;
 
-use function array_replace_recursive;
 
 /**
  * This class captures the result of running Psalm's argument analysis with
@@ -68,8 +67,17 @@ final class TemplateResult
         }
 
         $instance = clone $this;
-        /** @var array<string, array<string, non-empty-list<TemplateBound>>> $lower_bounds */
-        $lower_bounds = array_replace_recursive($instance->lower_bounds, $result->lower_bounds);
+        $lower_bounds = $instance->lower_bounds;
+        foreach ($result->lower_bounds as $template_name => $classes) {
+            foreach ($classes as $class_name => $bounds) {
+                $merged = $lower_bounds[$template_name][$class_name] ?? [];
+                foreach ($bounds as $i => $bound) {
+                    $merged[$i] = $bound;
+                }
+                /** @var non-empty-list<TemplateBound> $merged */
+                $lower_bounds[$template_name][$class_name] = $merged;
+            }
+        }
         $instance->lower_bounds = $lower_bounds;
         $instance->template_types = [...$instance->template_types, ...$result->template_types];
 

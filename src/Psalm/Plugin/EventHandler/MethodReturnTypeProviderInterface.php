@@ -4,16 +4,18 @@ declare(strict_types=1);
 
 namespace Psalm\Plugin\EventHandler;
 
+use Psalm\Plugin\HookInterface;
+
 use Psalm\Plugin\EventHandler\Event\MethodReturnTypeProviderEvent;
 use Psalm\Type\Union;
 
 /**
  * @api
  */
-interface MethodReturnTypeProviderInterface
+interface MethodReturnTypeProviderInterface extends HookInterface
 {
     /**
-     * @return array<string>
+     * @return list<string>
      */
     public static function getClassLikeNames(): array;
 

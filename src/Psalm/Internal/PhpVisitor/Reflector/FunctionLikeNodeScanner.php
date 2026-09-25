@@ -60,6 +60,7 @@ use function array_keys;
 use function array_pop;
 use function array_search;
 use function count;
+use function function_exists;
 use function end;
 use function explode;
 use function in_array;
@@ -1051,18 +1052,21 @@ final class FunctionLikeNodeScanner
                     return [$function_id, $storage, null, null, null, null, false, null, true];
                 }
 
-                if (isset($this->config->getPredefinedFunctions()[$function_id])) {
-                    /** @psalm-suppress ArgumentTypeCoercion */
-                    $reflection_function = new ReflectionFunction($function_id);
+                // get_defined_functions() lists only the compiled program's own functions, so a
+                // compiled program asks the runtime which ones it provides instead. The call map is
+                // not the question: it describes extensions that may not be loaded at all.
+                $already_defined = \defined('PSALM_COMPILED')
+                    ? function_exists($function_id)
+                    : isset($this->config->getPredefinedFunctions()[$function_id]);
 
-                    if ($reflection_function->getFileName() !== $this->file_path) {
-                        IssueBuffer::maybeAdd(
-                            new DuplicateFunction(
-                                'Method ' . $function_id . ' has already been defined as a core function',
-                                new CodeLocation($this->file_scanner, $stmt, null, true),
-                            ),
-                        );
-                    }
+                /** @psalm-suppress ArgumentTypeCoercion */
+                if ($already_defined && (new ReflectionFunction($function_id))->getFileName() !== $this->file_path) {
+                    IssueBuffer::maybeAdd(
+                        new DuplicateFunction(
+                            'Method ' . $function_id . ' has already been defined as a core function',
+                            new CodeLocation($this->file_scanner, $stmt, null, true),
+                        ),
+                    );
                 }
             }
         } elseif ($stmt instanceof PhpParser\Node\Stmt\ClassMethod) {
@@ -1208,7 +1212,7 @@ final class FunctionLikeNodeScanner
         ) {
             $function_id = $cased_function_id = strtolower($this->file_path)
                 . ':' . $stmt->getLine()
-                . ':' . (int)$stmt->getAttribute('startFilePos') . ':-:closure';
+                . ':' . $stmt->getStartFilePos() . ':-:closure';
 
             $storage = $this->storage = $this->file_storage->functions[$function_id] = new FunctionStorage();
 
@@ -1224,7 +1228,7 @@ final class FunctionLikeNodeScanner
         } elseif ($stmt instanceof PhpParser\Node\PropertyHook) {
             $function_id = $cased_function_id = strtolower($this->file_path)
                 . ':' . $stmt->getLine()
-                . ':' . (int)$stmt->getAttribute('startFilePos') . ':-:hook';
+                . ':' . $stmt->getStartFilePos() . ':-:hook';
 
             $storage = $this->storage = $this->file_storage->functions[$function_id] = new FunctionStorage();
         } else {

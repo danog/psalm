@@ -6,8 +6,12 @@ namespace Psalm\Tests\Config;
 
 use InvalidArgumentException;
 use Override;
-use PHPUnit\Framework\MockObject\MockObject;
 use Psalm\Config;
+use Psalm\Example\Plugin\ComposerBased\EchoChecker;
+use Psalm\Example\Plugin\PreventFloatAssignmentChecker;
+use Psalm\Example\Plugin\SafeArrayKeyChecker;
+use Psalm\Example\Plugin\StringChecker;
+use Psalm\Example\Plugin\TaintActiveRecords;
 use Psalm\Context;
 use Psalm\Exception\CodeException;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
@@ -23,10 +27,17 @@ use Psalm\Plugin\EventHandler\Event\AfterEveryFunctionCallAnalysisEvent;
 use Psalm\PluginRegistrationSocket;
 use Psalm\Report;
 use Psalm\Report\ReportOptions;
+use Psalm\Test\Config\Plugin\AfterAnalysisPlugin;
+use Psalm\Test\Config\Plugin\FilePlugin;
+use Psalm\Test\Config\Plugin\FunctionPlugin;
+use Psalm\Test\Config\Plugin\MethodPlugin;
+use Psalm\Test\Config\Plugin\PropertyPlugin;
+use Psalm\Tests\Config\Plugin\ExtendingPlugin;
+use Psalm\Tests\Config\Plugin\ExtendingPluginRegistration;
+use Psalm\Tests\Config\Plugin\StoragePlugin;
 use Psalm\Tests\Internal\Provider\FakeParserCacheProvider;
 use Psalm\Tests\TestCase;
 use Psalm\Tests\TestConfig;
-use stdClass;
 
 use function dirname;
 use function get_class;
@@ -48,6 +59,34 @@ final class PluginTest extends TestCase
         // hack to isolate Psalm from PHPUnit cli arguments
         global $argv;
         $argv = [];
+
+        // plugin classes named in the config files below (the program is compiled: registered explicitly)
+        Config::registerPluginFactory(
+            ExtendingPluginRegistration::class,
+            static fn(): ExtendingPluginRegistration => new ExtendingPluginRegistration(),
+        );
+        Config::registerPluginFactory(FilePlugin::class, static fn(): FilePlugin => new FilePlugin());
+        Config::registerPluginFactory(PropertyPlugin::class, static fn(): PropertyPlugin => new PropertyPlugin());
+        Config::registerPluginFactory(MethodPlugin::class, static fn(): MethodPlugin => new MethodPlugin());
+        Config::registerPluginFactory(FunctionPlugin::class, static fn(): FunctionPlugin => new FunctionPlugin());
+        Config::registerPluginFactory(AfterAnalysisPlugin::class, static fn(): AfterAnalysisPlugin => new AfterAnalysisPlugin());
+        Config::registerPluginFactory(StoragePlugin::class, static fn(): StoragePlugin => new StoragePlugin());
+        // the example plugins the config files below load by filename: a compiled program instantiates a
+        // plugin class only through a registered factory
+        Config::registerPluginFactory(StringChecker::class, static fn(): StringChecker => new StringChecker());
+        Config::registerPluginFactory(
+            PreventFloatAssignmentChecker::class,
+            static fn(): PreventFloatAssignmentChecker => new PreventFloatAssignmentChecker(),
+        );
+        Config::registerPluginFactory(EchoChecker::class, static fn(): EchoChecker => new EchoChecker());
+        Config::registerPluginFactory(
+            TaintActiveRecords::class,
+            static fn(): TaintActiveRecords => new TaintActiveRecords(),
+        );
+        Config::registerPluginFactory(
+            SafeArrayKeyChecker::class,
+            static fn(): SafeArrayKeyChecker => new SafeArrayKeyChecker(),
+        );
 
         new TestConfig();
     }
@@ -463,8 +502,6 @@ final class PluginTest extends TestCase
 
     public function testInheritedHookHandlersAreCalled(): void
     {
-        require_once dirname(__DIR__) . '/fixtures/stubs/extending_plugin_entrypoint.phpstub';
-
         $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
             TestConfig::loadFromXML(
                 dirname(__DIR__, 2) . DIRECTORY_SEPARATOR,
@@ -476,17 +513,18 @@ final class PluginTest extends TestCase
                         <directory name="src" />
                     </projectFiles>
                     <plugins>
-                        <pluginClass class="ExtendingPluginRegistration" />
+                        <pluginClass class="Psalm\\Tests\\Config\\Plugin\\ExtendingPluginRegistration" />
                     </plugins>
                 </psalm>',
             ),
         );
 
         $this->project_analyzer->getCodebase()->config->initializePlugins($this->project_analyzer);
-        $this->assertContains(
-            'ExtendingPlugin',
-            $this->project_analyzer->getCodebase()->config->eventDispatcher->after_function_checks,
-        );
+
+        $handlers = $this->project_analyzer->getCodebase()->config->eventDispatcher->after_function_checks;
+
+        $this->assertCount(1, $handlers);
+        $this->assertInstanceOf(ExtendingPlugin::class, $handlers[0]);
     }
 
     public function testAfterCodebasePopulatedHookIsLoaded(): void
@@ -521,10 +559,10 @@ final class PluginTest extends TestCase
 
         $config = $codebase->config;
 
-        (new PluginRegistrationSocket($config, $codebase))->registerHooksFromClass(get_class($hook));
+        (new PluginRegistrationSocket($config, $codebase))->registerHooksFromClass($hook);
 
         $this->assertContains(
-            get_class($hook),
+            $hook,
             $this->project_analyzer->getCodebase()->config->eventDispatcher->after_codebase_populated,
         );
     }
@@ -881,22 +919,14 @@ final class PluginTest extends TestCase
             ),
         );
 
-        $mock = $this->getMockBuilder(stdClass::class)->setMethods(['check'])->getMock();
-        $mock->expects($this->exactly(4))
-            ->method('check')
-            ->withConsecutive(
-                [$this->equalTo('b')],
-                [$this->equalTo('array_map')],
-                [$this->equalTo('fopen')],
-                [$this->equalTo('a')],
-            );
-        $plugin = new class($mock) implements AfterEveryFunctionCallAnalysisInterface {
-            private static MockObject $m;
+        $spy = new FunctionCallSpy();
+        $plugin = new class($spy) implements AfterEveryFunctionCallAnalysisInterface {
+            private static FunctionCallSpy $m;
 
             /**
              * @psalm-mutation-free
              */
-            public function __construct(MockObject $m)
+            public function __construct(FunctionCallSpy $m)
             {
                 self::$m = $m;
             }
@@ -908,13 +938,12 @@ final class PluginTest extends TestCase
             public static function afterEveryFunctionCallAnalysis(AfterEveryFunctionCallAnalysisEvent $event): void
             {
                 $function_id = $event->getFunctionId();
-                /** @psalm-suppress UndefinedInterfaceMethod */
                 self::$m->check($function_id);
             }
         };
 
         $this->project_analyzer->getCodebase()->config->initializePlugins($this->project_analyzer);
-        $this->project_analyzer->getCodebase()->config->eventDispatcher->after_every_function_checks[] = get_class($plugin);
+        $this->project_analyzer->getCodebase()->config->eventDispatcher->after_every_function_checks[] = $plugin;
 
         $file_path = (string) getcwd() . '/src/somefile.php';
 
@@ -934,6 +963,8 @@ final class PluginTest extends TestCase
         );
 
         $this->analyzeFile($file_path, new Context());
+
+        $this->assertSame(['b', 'array_map', 'fopen', 'a'], $spy->calls);
     }
 
     public function testAddTaints(): void
@@ -1121,5 +1152,17 @@ final class PluginTest extends TestCase
         );
 
         $this->analyzeFile($file_path, new Context());
+    }
+}
+
+/** Records the function ids a plugin was called for (in call order). */
+final class FunctionCallSpy
+{
+    /** @var list<string> */
+    public array $calls = [];
+
+    public function check(string $function_id): void
+    {
+        $this->calls[] = $function_id;
     }
 }

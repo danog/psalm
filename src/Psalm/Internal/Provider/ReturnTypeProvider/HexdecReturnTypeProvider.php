@@ -18,7 +18,7 @@ use Psalm\Type\Union;
 final class HexdecReturnTypeProvider implements FunctionReturnTypeProviderInterface
 {
     /**
-     * @return array<lowercase-string>
+     * @return list<lowercase-string>
      * @psalm-pure
      */
     #[Override]

@@ -13,6 +13,7 @@ use Psalm\Internal\Provider\ClassLikeStorageProvider;
 final class ReferenceMapGenerator
 {
     /**
+     * @param array<string, true> $expected_references
      * @return array<string, string>
      * @psalm-external-mutation-free
      */

@@ -80,7 +80,7 @@ use const ARRAY_FILTER_USE_KEY;
 final class AtomicPropertyFetchAnalyzer
 {
     /**
-     * @param array<string> $invalid_fetch_types $invalid_fetch_types
+     * @param list<string> $invalid_fetch_types $invalid_fetch_types
      * @psalm-suppress ComplexMethod Unavoidably complex method.
      */
     public static function analyze(
@@ -436,8 +436,8 @@ final class AtomicPropertyFetchAnalyzer
                 if ($declaring_property_id === $original_property_id) {
                     $file_manipulations = [
                         new FileManipulation(
-                            (int) $stmt->name->getAttribute('startFilePos'),
-                            (int) $stmt->name->getAttribute('endFilePos') + 1,
+                            $stmt->name->getStartFilePos(),
+                            $stmt->name->getEndFilePos() + 1,
                             $new_property_name,
                         ),
                     ];
@@ -1132,7 +1132,7 @@ final class AtomicPropertyFetchAnalyzer
     }
 
     /**
-     * @param  array<Atomic>     $intersection_types
+     * @param  array<string, Atomic>     $intersection_types
      */
     private static function handleNonExistentClass(
         StatementsAnalyzer $statements_analyzer,

@@ -7,6 +7,7 @@ namespace Psalm\Tests\Config\Plugin\EventHandler\AddTaints;
 use Override;
 use Psalm\Config;
 use Psalm\Context;
+use Psalm\Example\Plugin\TaintActiveRecords;
 use Psalm\Exception\CodeException;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\IncludeCollector;
@@ -14,6 +15,7 @@ use Psalm\Internal\Provider\FakeFileProvider;
 use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\RuntimeCaches;
 use Psalm\Report\ReportOptions;
+use Psalm\Tests\Config\Plugin\EventHandler\AddTaints\TaintBadDataPlugin;
 use Psalm\Tests\Internal\Provider\FakeParserCacheProvider;
 use Psalm\Tests\TestCase;
 use Psalm\Tests\TestConfig;
@@ -59,6 +61,7 @@ final class AddTaintsInterfaceTest extends TestCase
 
     private function setupProjectAnalyzerWithTaintBadDataPlugin(): void
     {
+        Config::registerPluginFactory(TaintBadDataPlugin::class, static fn(): TaintBadDataPlugin => new TaintBadDataPlugin());
         $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
             TestConfig::loadFromXML(
                 dirname(__DIR__, 5) . DIRECTORY_SEPARATOR,
@@ -87,6 +90,10 @@ final class AddTaintsInterfaceTest extends TestCase
 
     private function setupProjectAnalyzerWithActiveRecordPlugin(): void
     {
+        Config::registerPluginFactory(
+            TaintActiveRecords::class,
+            static fn(): TaintActiveRecords => new TaintActiveRecords(),
+        );
         $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
             TestConfig::loadFromXML(
                 dirname(__DIR__, 5) . DIRECTORY_SEPARATOR,

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider;
 
+use Psalm\Plugin\HookInterface;
+
 use Closure;
 use Psalm\CodeLocation;
 use Psalm\Context;
@@ -11,7 +13,6 @@ use Psalm\Plugin\EventHandler\Event\MethodVisibilityProviderEvent;
 use Psalm\Plugin\EventHandler\MethodVisibilityProviderInterface;
 use Psalm\StatementsSource;
 
-use function is_subclass_of;
 use function strtolower;
 
 /**
@@ -22,7 +23,7 @@ final class MethodVisibilityProvider
     /**
      * @var array<
      *   lowercase-string,
-     *   array<Closure(MethodVisibilityProviderEvent): ?bool>
+     *   list<Closure(MethodVisibilityProviderEvent): ?bool>
      * >
      */
     private static array $handlers = [];
@@ -35,16 +36,12 @@ final class MethodVisibilityProvider
         self::$handlers = [];
     }
 
-    /**
-     * @param class-string<LegacyMethodVisibilityProviderInterface>
-     *     |class-string<MethodVisibilityProviderInterface> $class
-     */
-    public function registerClass(string $class): void
+    public function registerClass(HookInterface $class): void
     {
-        if (is_subclass_of($class, MethodVisibilityProviderInterface::class, true)) {
-            $callable = $class::isMethodVisible(...);
+        if ($class instanceof MethodVisibilityProviderInterface) {
+            $callable = $class->isMethodVisible(...);
 
-            foreach ($class::getClassLikeNames() as $fq_classlike_name) {
+            foreach ($class->getClassLikeNames() as $fq_classlike_name) {
                 $this->registerClosure($fq_classlike_name, $callable);
             }
         }

@@ -500,7 +500,7 @@ abstract class CallAnalyzer
                 && $callable_arg->right instanceof PhpParser\Node\Scalar\String_
                 && preg_match('/^::[A-Za-z0-9]+$/', $callable_arg->right->value)
             ) {
-                $r = (string) $callable_arg->left->class->getAttribute('resolvedName') . $callable_arg->right->value;
+                $r = (string) $callable_arg->left->class->attrs()->resolvedName . $callable_arg->right->value;
                 assert($r !== '');
                 return [$r];
             }
@@ -630,7 +630,7 @@ abstract class CallAnalyzer
 
     /**
      * @param Identifier|Name $expr
-     * @param  Possibilities[] $var_assertions
+     * @param  array<int, Possibilities> $var_assertions
      * @param  list<PhpParser\Node\Arg> $args
      */
     public static function applyAssertionsToContext(

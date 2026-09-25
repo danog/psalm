@@ -31,7 +31,7 @@ return [
     // Undocumented classes from here on.
     //
     'phpparser\\node\\expr\\array_' => [
-        'items' => 'array<int, PhpParser\\Node\\Expr\\ArrayItem|null>',
+        'items' => 'list<PhpParser\\Node\\ArrayItem|null>',
     ],
     'phpparser\\node\\expr\\arrowfunction' => [
         'params' => 'list<PhpParser\\Node\\Param>',
@@ -40,7 +40,7 @@ return [
         'params' => 'list<PhpParser\\Node\\Param>',
     ],
     'phpparser\\node\\expr\\list_' => [
-        'items' => 'array<int, PhpParser\\Node\\Expr\\ArrayItem|null>',
+        'items' => 'list<PhpParser\\Node\\ArrayItem|null>',
     ],
     'phpparser\\node\\expr\\shellexec' => [
         'parts' => 'list<PhpParser\\Node>',

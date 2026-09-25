@@ -195,9 +195,7 @@ function checkFileRegression(): int
             ),
         );
 
-        $hook_class = get_class($hook);
-
-        $this->project_analyzer->getCodebase()->config->eventDispatcher->after_codebase_populated[] = $hook_class;
+        $this->project_analyzer->getCodebase()->config->eventDispatcher->after_codebase_populated[] = $hook;
 
         ob_start();
         $this->project_analyzer->check('tests/fixtures/DummyProject');

@@ -15,6 +15,7 @@ use function get_object_vars;
 
 /**
  * @api
+ * @psalm-import-type DataFlowNodeDataArray from DataFlowNodeData
  */
 final class XmlReport extends Report
 {
@@ -24,31 +25,37 @@ final class XmlReport extends Report
         $xml = ArrayToXml::convert(
             [
                 'item' => array_map(
+                    /** @return array<string, scalar|null|list<array<string, scalar|null>>> */
                     static function (IssueData $issue_data): array {
-                        $issue_data = get_object_vars($issue_data);
-                        unset($issue_data['dupe_key']);
+                        $data = $issue_data->toArray();
+                        unset($data['dupe_key']);
 
-                        if (null !== $issue_data['taint_trace']) {
-                            $issue_data['taint_trace'] = array_map(
-                                static fn($trace): array => (array) $trace,
-                                $issue_data['taint_trace'],
+                        if (null !== $data['taint_trace']) {
+                            $data['taint_trace'] = array_map(
+                                /**
+                                 * @param DataFlowNodeData|array{label: string, entry_path_type: string} $trace
+                                 * @return DataFlowNodeDataArray|array{label: string, entry_path_type: string}
+                                 */
+                        static fn(DataFlowNodeData|array $trace): array => $trace instanceof DataFlowNodeData ? $trace->toArray() : $trace,
+                                $data['taint_trace'],
                             );
                         }
 
                         // replace null values, as XML serializers tend to have problems with them
-                        $issue_data['taint_trace'] ??= '';
+                        $data['taint_trace'] ??= '';
 
-                        if (null !== $issue_data['other_references']) {
-                            $issue_data['other_references'] = array_map(
-                                static fn(DataFlowNodeData $reference): array => (array) $reference,
-                                $issue_data['other_references'],
+                        if (null !== $data['other_references']) {
+                            $data['other_references'] = array_map(
+                                /** @return DataFlowNodeDataArray */
+                                static fn(DataFlowNodeData $reference): array => $reference->toArray(),
+                                $data['other_references'],
                             );
                         }
 
                         // replace null values, as XML serializers tend to have problems with them
-                        $issue_data['other_references'] ??= '';
+                        $data['other_references'] ??= '';
 
-                        return $issue_data;
+                        return $data;
                     },
                     $this->issues_data,
                 ),

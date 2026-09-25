@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Psalm\Tests\FileManipulation;
 
 use Override;
+use Psalm\Config;
 use Psalm\Context;
+use Psalm\Example\Plugin\ClassUnqualifier;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\Provider\FakeFileProvider;
 use Psalm\Internal\Provider\Providers;
@@ -75,6 +77,11 @@ abstract class FileManipulationTestCase extends TestCase
         );
 
         if (empty($issues_to_fix)) {
+            // a plugin class is only ever instantiated through a registered factory
+            Config::registerPluginFactory(
+                ClassUnqualifier::class,
+                static fn(): ClassUnqualifier => new ClassUnqualifier(),
+            );
             $config->addPluginPath('examples/plugins/ClassUnqualifier.php');
             $config->initializePlugins($this->project_analyzer);
         }

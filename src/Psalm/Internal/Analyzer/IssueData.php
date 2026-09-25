@@ -53,4 +53,59 @@ final class IssueData
             default => '',
         };
     }
+    /**
+     * All properties by name (the report formats' view of an issue).
+     *
+     * @return array{
+     *     severity: self::SEVERITY_*,
+     *     line_from: int,
+     *     line_to: int,
+     *     type: string,
+     *     message: string,
+     *     file_name: string,
+     *     file_path: string,
+     *     snippet: string,
+     *     selected_text: string,
+     *     from: int,
+     *     to: int,
+     *     snippet_from: int,
+     *     snippet_to: int,
+     *     column_from: int,
+     *     column_to: int,
+     *     shortcode: int,
+     *     error_level: int,
+     *     taint_trace: ?list<DataFlowNodeData|array{label: string, entry_path_type: string}>,
+     *     other_references: ?list<DataFlowNodeData>,
+     *     dupe_key: ?string,
+     *     link: string,
+     * }
+     */
+    public function toArray(): array
+    {
+        // `link` is declared before the promoted properties, and that is the order the reports
+        // have always serialised it in
+        return [
+            'link' => $this->link,
+            'severity' => $this->severity,
+            'line_from' => $this->line_from,
+            'line_to' => $this->line_to,
+            'type' => $this->type,
+            'message' => $this->message,
+            'file_name' => $this->file_name,
+            'file_path' => $this->file_path,
+            'snippet' => $this->snippet,
+            'selected_text' => $this->selected_text,
+            'from' => $this->from,
+            'to' => $this->to,
+            'snippet_from' => $this->snippet_from,
+            'snippet_to' => $this->snippet_to,
+            'column_from' => $this->column_from,
+            'column_to' => $this->column_to,
+            'shortcode' => $this->shortcode,
+            'error_level' => $this->error_level,
+            'taint_trace' => $this->taint_trace,
+            'other_references' => $this->other_references,
+            'dupe_key' => $this->dupe_key,
+        ];
+    }
 }

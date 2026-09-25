@@ -649,7 +649,7 @@ final class FunctionLikeDocblockScanner
         $namespaced_type->queueClassLikesForScanning(
             $codebase,
             $file_storage,
-            $function_template_types + $class_template_types,
+            array_fill_keys(array_keys($function_template_types + $class_template_types), true),
         );
 
         $assertion_type_parts = [];
@@ -818,7 +818,7 @@ final class FunctionLikeDocblockScanner
             $new_param_type->queueClassLikesForScanning(
                 $codebase,
                 $file_storage,
-                $storage->template_types ?: [],
+                array_fill_keys(array_keys($storage->template_types ?: []), true),
             );
 
             if ($storage->template_types) {
@@ -836,14 +836,13 @@ final class FunctionLikeDocblockScanner
             }
 
             if (!$docblock_param_variadic && $storage_param->is_variadic && $new_param_type->hasArray()) {
-                /**
-                 * @var TArray|TKeyedArray
-                 */
                 $array_type = $new_param_type->getArray();
 
                 if ($array_type instanceof TKeyedArray) {
                     $new_param_type = $array_type->getGenericValueType();
                 } else {
+                    // a variadic parameter's docblock type is a list or an array<K, V>, never a class-string map
+                    assert($array_type instanceof TArray);
                     $new_param_type = $array_type->type_params[1];
                 }
             }
@@ -1408,7 +1407,7 @@ final class FunctionLikeDocblockScanner
         $out_type->queueClassLikesForScanning(
             $codebase,
             $file_storage,
-            $storage->template_types ?: [],
+            array_fill_keys(array_keys($storage->template_types ?: []), true),
         );
 
         foreach ($storage->params as $param_storage) {

@@ -1536,65 +1536,7 @@ final class FilterUtils
         );
 
         // https://www.php.net/manual/en/filter.filters.sanitize.php
-        $sanitize_filters = array(
-            FILTER_SANITIZE_EMAIL => array(
-                'flags' => array(),
-                'options' => array(),
-            ),
-            FILTER_SANITIZE_ENCODED => array(
-                'flags' => array(
-                    FILTER_FLAG_STRIP_LOW,
-                    FILTER_FLAG_STRIP_HIGH,
-                    FILTER_FLAG_STRIP_BACKTICK,
-                    FILTER_FLAG_ENCODE_LOW,
-                    FILTER_FLAG_ENCODE_HIGH,
-                ),
-                'options' => array(),
-            ),
-            FILTER_SANITIZE_NUMBER_FLOAT => array(
-                'flags' => array(
-                    FILTER_FLAG_ALLOW_FRACTION,
-                    FILTER_FLAG_ALLOW_THOUSAND,
-                    FILTER_FLAG_ALLOW_SCIENTIFIC,
-                ),
-                'options' => array(),
-            ),
-            FILTER_SANITIZE_NUMBER_INT => array(
-                'flags' => array(),
-                'options' => array(),
-            ),
-            FILTER_SANITIZE_SPECIAL_CHARS => array(
-                'flags' => array(
-                    FILTER_FLAG_STRIP_LOW,
-                    FILTER_FLAG_STRIP_HIGH,
-                    FILTER_FLAG_STRIP_BACKTICK,
-                    FILTER_FLAG_ENCODE_HIGH,
-                ),
-                'options' => array(),
-            ),
-            FILTER_SANITIZE_FULL_SPECIAL_CHARS => array(
-                'flags' => array(
-                    FILTER_FLAG_NO_ENCODE_QUOTES,
-                ),
-                'options' => array(),
-            ),
-            FILTER_SANITIZE_URL => array(
-                'flags' => array(),
-                'options' => array(),
-            ),
-            FILTER_UNSAFE_RAW => array(
-                'flags' => array(
-                    FILTER_FLAG_STRIP_LOW,
-                    FILTER_FLAG_STRIP_HIGH,
-                    FILTER_FLAG_STRIP_BACKTICK,
-                    FILTER_FLAG_ENCODE_LOW,
-                    FILTER_FLAG_ENCODE_HIGH,
-                    FILTER_FLAG_ENCODE_AMP,
-                ),
-                'options' => array(),
-            ),
-
-        );
+        $sanitize_filters = self::sanitizeFilterTable();
 
         if ($codebase->analysis_php_version_id <= 7_03_00) {
             // FILTER_SANITIZE_MAGIC_QUOTES
@@ -1636,6 +1578,9 @@ final class FilterUtils
         // validation filters all match bitmask 0x100
         // all support FILTER_NULL_ON_FAILURE flag https://www.php.net/manual/en/filter.filters.flags.php
         $general_filter_flags_validate = array_merge($general_filter_flags, array(FILTER_NULL_ON_FAILURE));
+
+        /** @var array<int, array{flags: list<int>, options: array<string, Union>}> $validate_filters */
+
 
         $validate_filters = array(
             FILTER_VALIDATE_BOOLEAN => array(
@@ -1738,6 +1683,8 @@ final class FilterUtils
         }
 
         // https://www.php.net/manual/en/filter.filters.misc.php
+        /** @var array<int, array{flags: list<int>, options: array<string, Union>}> $other_filters */
+
         $other_filters = array(
             FILTER_CALLBACK => array(
                 // the docs say that all flags are ignored
@@ -1751,5 +1698,73 @@ final class FilterUtils
         );
 
         return $sanitize_filters + $validate_filters + $other_filters;
+    }
+
+    /**
+     * The sanitize filters and their flags/options (the table PHP defines).
+     *
+     * @return array<int, array{flags: list<int>, options: array<string, Union>}>
+     */
+    private static function sanitizeFilterTable(): array
+    {
+        return array(
+            FILTER_SANITIZE_EMAIL => array(
+                'flags' => array(),
+                'options' => array(),
+            ),
+            FILTER_SANITIZE_ENCODED => array(
+                'flags' => array(
+                    FILTER_FLAG_STRIP_LOW,
+                    FILTER_FLAG_STRIP_HIGH,
+                    FILTER_FLAG_STRIP_BACKTICK,
+                    FILTER_FLAG_ENCODE_LOW,
+                    FILTER_FLAG_ENCODE_HIGH,
+                ),
+                'options' => array(),
+            ),
+            FILTER_SANITIZE_NUMBER_FLOAT => array(
+                'flags' => array(
+                    FILTER_FLAG_ALLOW_FRACTION,
+                    FILTER_FLAG_ALLOW_THOUSAND,
+                    FILTER_FLAG_ALLOW_SCIENTIFIC,
+                ),
+                'options' => array(),
+            ),
+            FILTER_SANITIZE_NUMBER_INT => array(
+                'flags' => array(),
+                'options' => array(),
+            ),
+            FILTER_SANITIZE_SPECIAL_CHARS => array(
+                'flags' => array(
+                    FILTER_FLAG_STRIP_LOW,
+                    FILTER_FLAG_STRIP_HIGH,
+                    FILTER_FLAG_STRIP_BACKTICK,
+                    FILTER_FLAG_ENCODE_HIGH,
+                ),
+                'options' => array(),
+            ),
+            FILTER_SANITIZE_FULL_SPECIAL_CHARS => array(
+                'flags' => array(
+                    FILTER_FLAG_NO_ENCODE_QUOTES,
+                ),
+                'options' => array(),
+            ),
+            FILTER_SANITIZE_URL => array(
+                'flags' => array(),
+                'options' => array(),
+            ),
+            FILTER_UNSAFE_RAW => array(
+                'flags' => array(
+                    FILTER_FLAG_STRIP_LOW,
+                    FILTER_FLAG_STRIP_HIGH,
+                    FILTER_FLAG_STRIP_BACKTICK,
+                    FILTER_FLAG_ENCODE_LOW,
+                    FILTER_FLAG_ENCODE_HIGH,
+                    FILTER_FLAG_ENCODE_AMP,
+                ),
+                'options' => array(),
+            ),
+
+        );
     }
 }

@@ -30,7 +30,7 @@ final class ReturnTypeCollector
     /**
      * Gets the return types from a list of statements
      *
-     * @param  array<PhpParser\Node>     $stmts
+     * @param  list<PhpParser\Node>     $stmts
      * @param  list<Union>               $yield_types
      * @return list<Union>               a list of return types
      * @psalm-suppress ComplexMethod to be refactored

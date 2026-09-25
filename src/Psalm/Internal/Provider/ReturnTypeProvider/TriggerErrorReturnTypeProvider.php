@@ -29,7 +29,7 @@ use const E_USER_WARNING;
 final class TriggerErrorReturnTypeProvider implements FunctionReturnTypeProviderInterface
 {
     /**
-     * @return array<lowercase-string>
+     * @return list<lowercase-string>
      * @psalm-pure
      */
     #[Override]

@@ -58,6 +58,7 @@ use function spl_object_id;
  */
 final class ConstantTypeResolver
 {
+    /** @param array<string, true> $visited_constant_ids */
     public static function resolve(
         ClassLikes $classlikes,
         UnresolvedConstantComponent $c,
@@ -365,6 +366,8 @@ final class ConstantTypeResolver
 
     /**
      * Note: This takes an array, but any array should only contain other arrays and scalars.
+     *
+     * @param array<array-key, scalar|null|array<array-key, scalar|null|array<array-key, scalar|null>>>|string|int|float|bool|UnitEnum|null $value
      */
     public static function getLiteralTypeFromScalarValue(array|string|int|float|bool|UnitEnum|null $value): Atomic
     {
@@ -377,7 +380,6 @@ final class ConstantTypeResolver
             }
 
             $types = [];
-            /** @var array|scalar|null $val */
             foreach ($value as $key => $val) {
                 $types[$key] = new Union([self::getLiteralTypeFromScalarValue($val)]);
             }

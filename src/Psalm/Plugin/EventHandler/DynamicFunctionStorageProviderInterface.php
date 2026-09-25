@@ -4,16 +4,18 @@ declare(strict_types=1);
 
 namespace Psalm\Plugin\EventHandler;
 
+use Psalm\Plugin\HookInterface;
+
 use Psalm\Plugin\DynamicFunctionStorage;
 use Psalm\Plugin\EventHandler\Event\DynamicFunctionStorageProviderEvent;
 
 /**
  * @api
  */
-interface DynamicFunctionStorageProviderInterface
+interface DynamicFunctionStorageProviderInterface extends HookInterface
 {
     /**
-     * @return array<lowercase-string>
+     * @return list<lowercase-string>
      */
     public static function getFunctionIds(): array;
 

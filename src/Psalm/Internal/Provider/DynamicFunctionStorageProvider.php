@@ -26,20 +26,20 @@ use function strtolower;
  */
 final class DynamicFunctionStorageProvider
 {
-    /** @var array<lowercase-string, array<Closure(DynamicFunctionStorageProviderEvent): ?DynamicFunctionStorage>> */
+    /** @var array<lowercase-string, list<Closure(DynamicFunctionStorageProviderEvent): ?DynamicFunctionStorage>> */
     private static array $handlers = [];
 
     /** @var array<lowercase-string, ?FunctionStorage> */
     private static array $dynamic_storages = [];
 
     /**
-     * @param class-string<DynamicFunctionStorageProviderInterface> $class
+     * @param DynamicFunctionStorageProviderInterface $class
      */
-    public function registerClass(string $class): void
+    public function registerClass(DynamicFunctionStorageProviderInterface $class): void
     {
-        $callable = $class::getFunctionStorage(...);
+        $callable = $class->getFunctionStorage(...);
 
-        foreach ($class::getFunctionIds() as $function_id) {
+        foreach ($class->getFunctionIds() as $function_id) {
             $this->registerClosure($function_id, $callable);
         }
     }
@@ -74,7 +74,7 @@ final class DynamicFunctionStorageProvider
 
         $dynamic_storage_id = strtolower($statements_analyzer->getFilePath())
             . ':' . $stmt->getLine()
-            . ':' . (int)$stmt->getAttribute('startFilePos')
+            . ':' . $stmt->getStartFilePos()
             . ':dynamic-storage'
             . ':-:' . strtolower($function_id);
 

@@ -55,11 +55,11 @@ final class NamespaceStatementsDiffer extends AstDiffer
                     || ($a instanceof PhpParser\Node\Stmt\GroupUse
                         && $b instanceof PhpParser\Node\Stmt\GroupUse)
                 ) {
-                    $a_start = (int)$a->getAttribute('startFilePos');
-                    $a_end = (int)$a->getAttribute('endFilePos');
+                    $a_start = $a->getStartFilePos();
+                    $a_end = $a->getEndFilePos();
 
-                    $b_start = (int)$b->getAttribute('startFilePos');
-                    $b_end = (int)$b->getAttribute('endFilePos');
+                    $b_start = $b->getStartFilePos();
+                    $b_end = $b->getEndFilePos();
 
                     $a_size = $a_end - $a_start;
                     $b_size = $b_end - $b_start;

@@ -7,6 +7,7 @@ namespace Psalm\Tests;
 use Override;
 use PHPUnit\Framework\TestCase as BaseTestCase;
 use Psalm\Config;
+use Psalm\Codebase;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\FileAnalyzer;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
@@ -19,6 +20,8 @@ use Psalm\Internal\Type\TypeTokenizer;
 use Psalm\Internal\VersionUtils;
 use Psalm\IssueBuffer;
 use Psalm\Tests\Internal\Provider\FakeParserCacheProvider;
+use Psalm\Tests\Internal\Provider\SharedStubClassLikeStorageCacheProvider;
+use Psalm\Tests\Internal\Provider\SharedStubFileStorageCacheProvider;
 use Psalm\Type\Union;
 use Throwable;
 
@@ -54,6 +57,13 @@ class TestCase extends BaseTestCase
      */
     protected FakeFileProvider $file_provider;
 
+    private static ?SharedStubFileStorageCacheProvider $shared_file_storage_cache = null;
+
+    private static ?SharedStubClassLikeStorageCacheProvider $shared_classlike_storage_cache = null;
+
+    /** The codebase the stubs were preloaded into, so each one is preloaded once and early. */
+    private static ?Codebase $stubs_preloaded_for = null;
+
     /**
      * @psalm-suppress PropertyNotSetInConstructor
      */
@@ -88,13 +98,22 @@ class TestCase extends BaseTestCase
 
         RuntimeCaches::clearAll();
 
+        self::$stubs_preloaded_for = null;
+
         $this->file_provider = new FakeFileProvider();
 
         $this->testConfig = $this->makeConfig();
 
+        // stub files are scanned once per process and their storages shared by every test (PHP re-scans them
+        // for each test; the compiled suite would spend nearly all of its time doing that)
+        self::$shared_classlike_storage_cache ??= new SharedStubClassLikeStorageCacheProvider($this->testConfig);
+        self::$shared_file_storage_cache ??= new SharedStubFileStorageCacheProvider($this->testConfig, self::$shared_classlike_storage_cache);
+
         $providers = new Providers(
             $this->file_provider,
             new FakeParserCacheProvider(),
+            getenv('PSALM_NO_SHARED_STUBS') ? null : self::$shared_file_storage_cache,
+            getenv('PSALM_NO_SHARED_STUBS') ? null : self::$shared_classlike_storage_cache,
         );
 
         $this->project_analyzer = new ProjectAnalyzer(
@@ -120,8 +139,29 @@ class TestCase extends BaseTestCase
      */
     public function addFile(string $file_path, string $contents): void
     {
+        $this->preloadStubFiles();
         $this->file_provider->registerFile($file_path, $contents);
         $this->project_analyzer->getCodebase()->scanner->addFileToShallowScan($file_path);
+    }
+
+    /**
+     * As an analysis run does: the classes PHP itself provides are described by Psalm's own stubs
+     * before anything scanned names one, or a compiled program resolves one through its own shim.
+     *
+     * Before any file of the test is queued: this scan registers whatever the scanner already holds,
+     * and it registers it as a stub.
+     */
+    private function preloadStubFiles(): void
+    {
+        $codebase = $this->project_analyzer->getCodebase();
+
+        if (self::$stubs_preloaded_for === $codebase) {
+            return;
+        }
+
+        self::$stubs_preloaded_for = $codebase;
+
+        $codebase->config->visitPreloadedStubFiles($codebase);
     }
 
     /**
@@ -129,6 +169,7 @@ class TestCase extends BaseTestCase
      */
     public function addStubFile(string $file_path, string $contents): void
     {
+        $this->preloadStubFiles();
         $this->file_provider->registerFile($file_path, $contents);
         $this->project_analyzer->getConfig()->addStubFile($file_path);
     }
@@ -139,9 +180,19 @@ class TestCase extends BaseTestCase
         $this->project_analyzer->initProjectFiles();
         $codebase = $this->project_analyzer->getCodebase();
 
+        // the shared stub storages depend on the analyzed PHP version (version-specific stubs extend classes);
+        // a test class with its own setUp() (own providers) has none
+        if (self::$shared_file_storage_cache !== null && self::$shared_classlike_storage_cache !== null) {
+            self::$shared_file_storage_cache->php_version_id = $codebase->analysis_php_version_id;
+            self::$shared_classlike_storage_cache->php_version_id = $codebase->analysis_php_version_id;
+            self::$shared_file_storage_cache->enabled = $codebase->classlike_storage_provider->cache === self::$shared_classlike_storage_cache;
+        }
+
         if ($taint_flow_tracking) {
             $this->project_analyzer->trackTaintedInputs();
         }
+
+        $this->preloadStubFiles();
 
         $codebase->addFilesToAnalyze([$file_path => $file_path]);
 
@@ -203,28 +254,40 @@ class TestCase extends BaseTestCase
         self::assertTrue($res, $message);
     }
 
+    /**
+     * @param array<array-key, array<array-key, string>> $array
+     */
     public static function assertArrayKeysAreStrings(array $array, string $message = ''): void
     {
-        $validKeys = array_filter($array, 'is_string', ARRAY_FILTER_USE_KEY);
+        $validKeys = array_filter($array, static fn(int|string $key): bool => is_string($key), ARRAY_FILTER_USE_KEY);
         self::assertTrue(count($array) === count($validKeys), $message);
     }
 
+    /**
+     * @param array<array-key, string> $array
+     */
     public static function assertArrayKeysAreZeroOrString(array $array, string $message = ''): void
     {
-        $isZeroOrString = /** @param mixed $key */ static fn($key): bool => $key === 0 || is_string($key);
+        $isZeroOrString = /** @param array-key $key */ static fn($key): bool => $key === 0 || is_string($key);
         $validKeys = array_filter($array, $isZeroOrString, ARRAY_FILTER_USE_KEY);
         self::assertTrue(count($array) === count($validKeys), $message);
     }
 
+    /**
+     * @param array<array-key, array<array-key, string>> $array
+     */
     public static function assertArrayValuesAreArrays(array $array, string $message = ''): void
     {
-        $validValues = array_filter($array, 'is_array');
+        $validValues = array_filter($array, static fn(array $value): bool => is_array($value));
         self::assertTrue(count($array) === count($validValues), $message);
     }
 
+    /**
+     * @param array<array-key, string> $array
+     */
     public static function assertArrayValuesAreStrings(array $array, string $message = ''): void
     {
-        $validValues = array_filter($array, 'is_string');
+        $validValues = array_filter($array, static fn(string $value): bool => is_string($value));
         self::assertTrue(count($array) === count($validValues), $message);
     }
 

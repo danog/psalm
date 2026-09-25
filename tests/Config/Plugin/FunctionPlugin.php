@@ -18,6 +18,6 @@ final class FunctionPlugin implements PluginEntryPointInterface
     {
         require_once __DIR__ . '/Hook/MagicFunctionProvider.php';
 
-        $registration->registerHooksFromClass(MagicFunctionProvider::class);
+        $registration->registerHooksFromClass(new MagicFunctionProvider());
     }
 }

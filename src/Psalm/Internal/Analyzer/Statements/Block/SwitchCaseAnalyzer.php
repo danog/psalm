@@ -44,6 +44,7 @@ use Psalm\Type\Reconciler;
 
 use function array_diff_key;
 use function array_intersect_key;
+use function assert;
 use function array_merge;
 use function count;
 use function in_array;
@@ -59,6 +60,7 @@ final class SwitchCaseAnalyzer
 {
     /**
      * @return null|false
+     * @param list<ScopeAnalyzer::ACTION_*> $case_actions
      */
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
@@ -81,7 +83,7 @@ final class SwitchCaseAnalyzer
         $case_context = clone $original_context;
 
         if ($codebase->alter_code && $case_context->branch_point === null) {
-            $case_context->branch_point = (int) $stmt->getAttribute('startFilePos');
+            $case_context->branch_point = $stmt->getStartFilePos();
         }
 
         $case_scope = $case_context->case_scope = new CaseScope($case_context);
@@ -125,8 +127,9 @@ final class SwitchCaseAnalyzer
                 ),
             );
 
-            /** @var PhpParser\Node\Expr */
-            $switch_condition = $traverser->traverse([$switch_condition])[0];
+            $cloned_switch_condition = $traverser->traverse([$switch_condition])[0];
+            assert($cloned_switch_condition instanceof PhpParser\Node\Expr);
+            $switch_condition = $cloned_switch_condition;
 
             if ($fake_switch_condition) {
                 $statements_analyzer->node_data->setType(
@@ -694,8 +697,8 @@ final class SwitchCaseAnalyzer
     }
 
     /**
-     * @param array<PhpParser\Node\ArrayItem> $in_array_values
-     * @return ?array<PhpParser\Node\ArrayItem>
+     * @param list<PhpParser\Node\ArrayItem> $in_array_values
+     * @return ?list<PhpParser\Node\ArrayItem>
      */
     private static function getOptionsFromNestedOr(
         PhpParser\Node\Expr $case_equality_expr,

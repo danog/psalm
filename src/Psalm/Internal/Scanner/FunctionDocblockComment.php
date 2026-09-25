@@ -86,12 +86,12 @@ final class FunctionDocblockComment
     /**
      * Represents the flow from function params to return type
      *
-     * @var array<string>
+     * @var list<string>
      */
     public array $flows = [];
 
     /**
-     * @var array<string>
+     * @var list<string>
      */
     public array $added_taints = [];
 

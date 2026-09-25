@@ -36,7 +36,7 @@ use const SORT_STRING;
 final class ArrayMultisortParamsProvider implements FunctionParamsProviderInterface
 {
     /**
-     * @return array<lowercase-string>
+     * @return list<lowercase-string>
      * @psalm-pure
      */
     #[Override]

@@ -11,7 +11,6 @@ use Psalm\Type\Union;
  */
 final class MethodStorage extends FunctionLikeStorage
 {
-    use UnserializeMemoryUsageSuppressionTrait;
     public bool $is_static = false;
 
     public int $visibility = 0;

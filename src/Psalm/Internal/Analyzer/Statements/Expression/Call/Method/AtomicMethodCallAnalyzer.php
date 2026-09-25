@@ -572,13 +572,15 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
                 $intersection_result->existent_method_ids,
             );
 
-            if ($intersection_result->return_type) {
+            $intersection_return_type = $intersection_result->getReturnType();
+
+            if ($intersection_return_type) {
                 if (!$all_intersection_return_type || $all_intersection_return_type->isMixed()) {
-                    $all_intersection_return_type = $intersection_result->return_type;
+                    $all_intersection_return_type = $intersection_return_type;
                 } else {
                     $all_intersection_return_type = Type::intersectUnionTypes(
                         $all_intersection_return_type,
-                        $intersection_result->return_type,
+                        $intersection_return_type,
                         $codebase,
                     ) ?? Type::getMixed();
                 }

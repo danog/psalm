@@ -44,6 +44,15 @@ final class IncludeCollector
         return $ret;
     }
 
+    /**
+     * A file that was not run but is to be treated as included: a compiled program cannot require
+     * PHP source, so the autoloader it would have run is scanned instead.
+     */
+    public function addIncludedFile(string $file_path): void
+    {
+        $this->included_files = array_values(array_unique([...$this->included_files, $file_path]));
+    }
+
     /** @return list<string> */
     public function getIncludedFiles(): array
     {

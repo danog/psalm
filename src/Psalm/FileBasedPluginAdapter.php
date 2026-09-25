@@ -7,13 +7,12 @@ namespace Psalm;
 use Override;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Scanner\FileScanner;
+use Psalm\Plugin\HookInterface;
 use Psalm\Plugin\PluginEntryPointInterface;
 use Psalm\Plugin\RegistrationInterface;
 use SimpleXMLElement;
 use UnexpectedValueException;
 
-use function assert;
-use function class_exists;
 use function count;
 use function reset;
 use function str_replace;
@@ -45,12 +44,14 @@ final class FileBasedPluginAdapter implements PluginEntryPointInterface
     {
         $fq_class_name = $this->getPluginClassForPath($this->path);
 
-        /** @psalm-suppress UnresolvableInclude */
-        require_once($this->path);
+        // the interpreted analyzer loads the file for the class; the compiled one has it compiled in
+        $plugin = Config::instantiatePluginClass($fq_class_name, $this->path);
 
-        assert(class_exists($fq_class_name));
+        if (!$plugin instanceof HookInterface) {
+            throw new UnexpectedValueException($fq_class_name . ' does not implement a plugin hook interface');
+        }
 
-        $registration->registerHooksFromClass($fq_class_name);
+        $registration->registerHooksFromClass($plugin);
     }
 
     private function getPluginClassForPath(string $path): string

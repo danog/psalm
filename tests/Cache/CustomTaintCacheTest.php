@@ -24,6 +24,7 @@ use Psalm\Tests\TestCase;
 use Psalm\Type\TaintKind;
 
 use function Amp\Sync\createChannelPair;
+use function function_exists;
 use function Amp\async;
 
 /**
@@ -178,6 +179,11 @@ final class CustomTaintCacheTest extends TestCase
      */
     private function taintChannelPair(): array
     {
+        if (!function_exists('Amp\\Sync\\createChannelPair')) {
+            // amphp is not part of a compiled build, which has no worker pool to talk to
+            $this->markTestSkipped('Amp channels are not available');
+        }
+
         /**
          * @var array{
          *     Channel<array{id: int|null, count: int}, string>,
@@ -191,6 +197,7 @@ final class CustomTaintCacheTest extends TestCase
      * Answer taint-registration requests on $channel through $registry's single registry, like Pool does.
      *
      * @param Channel<string, array{id: int|null, count: int}> $channel
+     * @return Future<null>
      */
     private function pumpTaintRequests(Channel $channel, Codebase $registry): Future
     {

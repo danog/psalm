@@ -22,9 +22,11 @@ use UnexpectedValueException;
 
 use function file_get_contents;
 use function json_decode;
+use function json_encode;
 use function ob_end_clean;
 use function ob_start;
 use function preg_replace;
+use function str_replace;
 use function unlink;
 
 use const JSON_THROW_ON_ERROR;
@@ -103,11 +105,35 @@ final class ReportOutputTest extends TestCase
         $this->analyzeFile('taintflow-test/vulnerable.php', new Context(), true, true);
     }
 
+    /**
+     * The document is fourteen levels deep, so the type has to be self-similar: written this way the
+     * levels collapse into one recursive type that holds any depth.
+     *
+     * @return array<string, scalar|null
+     *     |list<scalar|null|list<scalar|null>|array<string, scalar|null>>
+     *     |array<string, scalar|null|list<scalar|null>|array<string, scalar|null>>>
+     */
+    private static function decodeSarifFixture(): array
+    {
+        $json = file_get_contents(__DIR__ . '/sarif.json');
+        assert($json !== false);
+
+        // the report carries the running Psalm's version, which depends on the checkout rather
+        // than on anything this test is about
+        $json = str_replace(
+            '"version": "dev-master@",',
+            '"version": ' . json_encode(PSALM_VERSION, JSON_THROW_ON_ERROR) . ',',
+            $json,
+        );
+
+        return json_decode($json, true, flags: JSON_THROW_ON_ERROR);
+    }
+
     public function testSarifReport(): void
     {
         $this->analyzeTaintFlowFilesForReport();
 
-        $issue_data = json_decode(file_get_contents(__DIR__.'/sarif.json'), true, flags: JSON_THROW_ON_ERROR);
+        $issue_data = self::decodeSarifFixture();
 
         $sarif_report_options = ProjectAnalyzer::getFileReportOptions([__DIR__ . '/test-report.sarif'])[0];
 

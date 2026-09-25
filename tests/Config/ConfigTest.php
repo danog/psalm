@@ -32,11 +32,11 @@ use Psalm\Tests\TestConfig;
 use function array_map;
 use function dirname;
 use function error_get_last;
-use function get_class;
 use function getcwd;
 use function implode;
 use function in_array;
 use function is_array;
+use function is_link;
 use function preg_match;
 use function realpath;
 use function set_error_handler;
@@ -51,7 +51,7 @@ final class ConfigTest extends TestCase
 {
     protected ProjectAnalyzer $project_analyzer;
 
-    /** @var callable(int, string, string=, int=, array=):bool|null */
+    /** @var (callable(int, string, string=, int=): bool)|null */
     protected $original_error_handler = null;
 
     #[Override]
@@ -179,7 +179,9 @@ final class ConfigTest extends TestCase
             !isset($last_error['message']) ||
             !in_array($last_error['message'], $no_symlinking_error);
 
-        @symlink(dirname(__DIR__, 1) . '/fixtures/symlinktest/a', dirname(__DIR__, 1) . '/fixtures/symlinktest/ignored/b');
+        $link_path = dirname(__DIR__, 1) . '/fixtures/symlinktest/ignored/b';
+
+        @symlink(dirname(__DIR__, 1) . '/fixtures/symlinktest/a', $link_path);
 
         if ($check_symlink_error) {
             $last_error = error_get_last();
@@ -187,6 +189,11 @@ final class ConfigTest extends TestCase
             if (is_array($last_error) && in_array($last_error['message'], $no_symlinking_error)) {
                 $this->markTestSkipped($last_error['message']);
             }
+        }
+
+        if (!is_link($link_path)) {
+            // whatever the reason, there is no symlink to ignore here
+            $this->markTestSkipped('Cannot create a symlink');
         }
 
         $this->project_analyzer = $this->getProjectAnalyzerWithConfig(
@@ -1683,8 +1690,6 @@ final class ConfigTest extends TestCase
     {
         return [
             'regular' => [0, null], // flags, expected exception code
-            'invalid scanner class' => [FileTypeSelfRegisteringPlugin::FLAG_SCANNER_INVALID, 1_622_727_271],
-            'invalid analyzer class' => [FileTypeSelfRegisteringPlugin::FLAG_ANALYZER_INVALID, 1_622_727_281],
             'override scanner' => [FileTypeSelfRegisteringPlugin::FLAG_SCANNER_TWICE, 1_622_727_272],
             'override analyzer' => [FileTypeSelfRegisteringPlugin::FLAG_ANALYZER_TWICE, 1_622_727_282],
         ];
@@ -1697,22 +1702,19 @@ final class ConfigTest extends TestCase
     public function pluginRegistersScannerAndAnalyzer(int $flags, ?int $expectedExceptionCode): void
     {
         $extension = uniqid('test');
-        $names = [
-            'scanner' => uniqid('PsalmTestFileTypeScanner'),
-            'analyzer' => uniqid('PsalmTestFileTypeAnalyzer'),
-            'extension' => $extension,
-        ];
-        $scannerMock = $this->getMockBuilder(FileScanner::class)
-            ->setMockClassName($names['scanner'])
-            ->disableOriginalConstructor()
-            ->getMock();
-        $analyzerMock = $this->getMockBuilder(FileAnalyzer::class)
-            ->setMockClassName($names['analyzer'])
-            ->disableOriginalConstructor()
-            ->getMock();
+        $scanner_factory = static fn(string $file_path, string $file_name, bool $will_analyze): FileScanner
+            => new FileScanner($file_path, $file_name, $will_analyze);
+        $analyzer_factory = static fn(ProjectAnalyzer $project_analyzer, string $file_path, string $file_name): FileAnalyzer
+            => new FileAnalyzer($project_analyzer, $file_path, $file_name);
 
-        FileTypeSelfRegisteringPlugin::$names = $names;
+        FileTypeSelfRegisteringPlugin::$extension = $extension;
+        FileTypeSelfRegisteringPlugin::$scanner_factory = $scanner_factory;
+        FileTypeSelfRegisteringPlugin::$analyzer_factory = $analyzer_factory;
         FileTypeSelfRegisteringPlugin::$flags = $flags;
+        Config::registerPluginFactory(
+            FileTypeSelfRegisteringPlugin::class,
+            static fn(): FileTypeSelfRegisteringPlugin => new FileTypeSelfRegisteringPlugin(),
+        );
 
         $xml = sprintf(
             '<?xml version="1.0"?>
@@ -1739,8 +1741,9 @@ final class ConfigTest extends TestCase
         }
 
         self::assertContains($extension, $config->getFileExtensions());
-        self::assertSame(get_class($scannerMock), $config->getFiletypeScanners()[$extension] ?? null);
-        self::assertSame(get_class($analyzerMock), $config->getFiletypeAnalyzers()[$extension] ?? null);
+        // closures compare by identity (no Debug rendering for a failure message)
+        self::assertTrue($scanner_factory === ($config->getFiletypeScanners()[$extension] ?? null));
+        self::assertTrue($analyzer_factory === ($config->getFiletypeAnalyzers()[$extension] ?? null));
         self::assertNull($expectedExceptionCode, 'Expected exception code was not thrown');
     }
 

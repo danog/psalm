@@ -20,7 +20,7 @@ use Psalm\Type\Union;
 final class AfterMethodCallAnalysisEvent
 {
     /**
-     * @param FileManipulation[] $file_replacements
+     * @param list<FileManipulation> $file_replacements
      * @internal
      * @psalm-mutation-free
      */
@@ -95,7 +95,7 @@ final class AfterMethodCallAnalysisEvent
     }
 
     /**
-     * @return FileManipulation[]
+     * @return list<FileManipulation>
      * @psalm-mutation-free
      */
     public function getFileReplacements(): array
@@ -112,7 +112,7 @@ final class AfterMethodCallAnalysisEvent
     }
 
     /**
-     * @param FileManipulation[] $file_replacements
+     * @param list<FileManipulation> $file_replacements
      * @psalm-external-mutation-free
      */
     public function setFileReplacements(array $file_replacements): void

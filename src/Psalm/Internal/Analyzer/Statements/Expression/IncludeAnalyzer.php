@@ -327,15 +327,8 @@ final class IncludeAnalyzer
         }
 
         if ($stmt instanceof PhpParser\Node\Expr\ArrayDimFetch) {
-            if ($stmt->var instanceof PhpParser\Node\Expr\Variable
-                && $stmt->var->name === 'GLOBALS'
-                && $stmt->dim instanceof PhpParser\Node\Scalar\String_
-            ) {
-                if (isset($GLOBALS[$stmt->dim->value]) && is_string($GLOBALS[$stmt->dim->value])) {
-                    /** @var string */
-                    return $GLOBALS[$stmt->dim->value];
-                }
-            }
+            // `include $GLOBALS['x']`: the analyzer process has no globals of the analyzed project (the compiled
+            // analyzer has none at all), so such a path cannot be resolved
         } elseif ($stmt instanceof PhpParser\Node\Expr\BinaryOp\Concat) {
             $left_string = self::getPathTo($stmt->left, $type_provider, $statements_analyzer, $file_name, $config);
             $right_string = self::getPathTo($stmt->right, $type_provider, $statements_analyzer, $file_name, $config);
@@ -389,12 +382,19 @@ final class IncludeAnalyzer
         } elseif ($stmt instanceof PhpParser\Node\Expr\ConstFetch) {
             $const_name = implode('', $stmt->name->getParts());
 
-            if (defined($const_name)) {
-                $constant_value = constant($const_name);
+            // a constant the analyzed project defines, as scanning it recorded the value: the
+            // analyzer's own runtime has it only when the project's file happened to be executed
+            $stubbed_type = $statements_analyzer?->getCodebase()->getStubbedConstantType($const_name);
 
-                if (is_string($constant_value)) {
-                    return $constant_value;
-                }
+            if ($stubbed_type?->isSingleStringLiteral()) {
+                return $stubbed_type->getSingleStringLiteral()->value;
+            }
+
+            // a builtin constant of the analyzer's runtime
+            $constant_value = get_defined_constants()[$const_name] ?? null;
+
+            if (is_string($constant_value)) {
+                return $constant_value;
             }
         } elseif ($stmt instanceof PhpParser\Node\Scalar\MagicConst\Dir) {
             return dirname($file_name);

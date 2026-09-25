@@ -536,6 +536,25 @@ final class TypeParser
     }
 
     /**
+     * The values reachable by OR-ing one more mask bit: the bit itself, then the bit with every value so far.
+     *
+     * @param list<int> $potential_values
+     * @return list<int>
+     */
+    private static function combineMask(int $ith, array $potential_values): array
+    {
+        $new_values = [$ith];
+
+        if ($ith !== 0) {
+            foreach ($potential_values as $potential_value) {
+                $new_values[] = $ith | $potential_value;
+            }
+        }
+
+        return [...$new_values, ...$potential_values];
+    }
+
+    /**
      * @param non-empty-list<int>  $potential_ints
      * @return non-empty-list<TLiteralInt>
      * @psalm-pure
@@ -546,21 +565,10 @@ final class TypeParser
         $potential_values = [];
 
         foreach ($potential_ints as $ith) {
-            $new_values = [];
-
-            $new_values[] = $ith;
-
-            if ($ith !== 0) {
-                foreach ($potential_values as $potential_value) {
-                    $new_values[] = $ith | $potential_value;
-                }
-            }
-
-            $potential_values = [...$new_values, ...$potential_values];
+            $potential_values = self::combineMask($ith, $potential_values);
         }
 
-        array_unshift($potential_values, 0);
-        $potential_values = array_unique($potential_values);
+        $potential_values = array_unique([0, ...$potential_values]);
 
         return array_map(
             static fn($int): TLiteralInt => new TLiteralInt($int, $from_docblock),
@@ -929,6 +937,7 @@ final class TypeParser
         }
 
         if ($generic_type_value === 'int-mask') {
+            /** @var list<TLiteralInt|TClassConstant> $atomic_types */
             $atomic_types = [];
 
             foreach ($generic_params as $generic_param) {
@@ -944,8 +953,9 @@ final class TypeParser
 
                 if ($atomic_type instanceof TNamedObject) {
                     if (defined($atomic_type->value)) {
-                        /** @var mixed */
-                        $constant_value = constant($atomic_type->value);
+                        /** @var scalar|null|list<scalar|null>|array<string, scalar|null> */
+                        // a builtin constant of the analyzer's runtime (its own table; no dynamic constant lookup)
+                        $constant_value = get_defined_constants()[$atomic_type->value] ?? null;
 
                         if (!is_int($constant_value)) {
                             throw new TypeParseTreeException(
@@ -961,10 +971,13 @@ final class TypeParser
                     }
                 }
 
-                if (!$atomic_type instanceof TLiteralInt
-                    && !($atomic_type instanceof TClassConstant
-                        && !str_contains($atomic_type->const_name, '*'))
-                ) {
+                if ($atomic_type instanceof TClassConstant && str_contains($atomic_type->const_name, '*')) {
+                    throw new TypeParseTreeException(
+                        'int-mask types must all be integer values or scalar class constants',
+                    );
+                }
+
+                if (!$atomic_type instanceof TLiteralInt && !$atomic_type instanceof TClassConstant) {
                     throw new TypeParseTreeException(
                         'int-mask types must all be integer values or scalar class constants',
                     );
@@ -1195,9 +1208,8 @@ final class TypeParser
 
         if ($onlyTKeyedArray) {
             /**
-             * @var array<TKeyedArray> $intersection_types
-             * @var TKeyedArray $first_type
-             * @var TKeyedArray $last_type
+             * @var Atomic $first_type
+             * @var Atomic $last_type
              */
             return self::getTypeFromKeyedArrays(
                 $codebase,
@@ -1231,10 +1243,9 @@ final class TypeParser
         if ($first_type instanceof TKeyedArray) {
             // assume all types are keyed arrays
             array_unshift($keyed_intersection_types, $first_type);
-            /** @var TKeyedArray $last_type */
+            /** @var Atomic $last_type */
             $last_type = end($keyed_intersection_types);
 
-            /** @var array<TKeyedArray> $keyed_intersection_types */
             return self::getTypeFromKeyedArrays(
                 $codebase,
                 $keyed_intersection_types,
@@ -1247,7 +1258,10 @@ final class TypeParser
         if ($intersect_static
             && $first_type instanceof TNamedObject
         ) {
-            $first_type->is_static = true;
+            // typed-local (transpiler): write is_static on a TNamedObject-typed local, not the Atomic-typed $first_type
+            $named_first = $first_type;
+            $named_first->is_static = true;
+            $first_type = $named_first;
         }
 
         if ($keyed_intersection_types) {
@@ -1493,18 +1507,19 @@ final class TypeParser
                 } else {
                     $property_key = $property_branch->value;
                 }
+                $literal_key_int = ArrayAnalyzer::getLiteralArrayKeyInt($property_key);
                 if ($is_list && (
-                        ArrayAnalyzer::getLiteralArrayKeyInt($property_key) === false
+                        $literal_key_int === false
                         || ($had_optional && !$property_maybe_undefined)
                         || $type === 'array'
                         || $type === 'callable-array'
-                        || $previous_property_key != ($property_key - 1)
+                        || $previous_property_key !== $literal_key_int - 1
                     )
                 ) {
                     $is_list = false;
                 }
                 $had_explicit = true;
-                $previous_property_key = $property_key;
+                $previous_property_key = $literal_key_int === false ? -1 : $literal_key_int;
 
                 if ($property_key[0] === '\'' || $property_key[0] === '"') {
                     $property_key = stripslashes(substr($property_key, 1, -1));
@@ -1618,7 +1633,7 @@ final class TypeParser
     }
 
     /**
-     * @param non-empty-array<Atomic> $intersection_types
+     * @param non-empty-array<int, Atomic> $intersection_types
      * @return non-empty-array<string,TIterable|TNamedObject|TCallableObject|TTemplateParam|TObjectWithProperties|TKeyedArray>
      */
     private static function extractKeyedIntersectionTypes(
@@ -1702,8 +1717,8 @@ final class TypeParser
     }
 
     /**
-     * @param array<Atomic> $intersection_types
-     * @return array<Atomic>
+     * @param array<string, Atomic>|list<Atomic> $intersection_types
+     * @return array<string, Atomic>|list<Atomic>
      */
     private static function resolveTypeAliases(Codebase $codebase, array $intersection_types): array
     {
@@ -1746,9 +1761,10 @@ final class TypeParser
     }
 
     /**
-     * @param array<TKeyedArray> $intersection_types
-     * @param TKeyedArray|TArray $first_type
-     * @param TKeyedArray|TArray $last_type
+     * Merges the keyed arrays of an intersection (an unsealed `array` at either end is dropped, other
+     * members are ignored: the caller has checked that only keyed arrays remain).
+     *
+     * @param non-empty-array<string, Atomic> $intersection_types
      */
     private static function getTypeFromKeyedArrays(
         Codebase $codebase,
@@ -1769,6 +1785,10 @@ final class TypeParser
         $all_sealed = true;
 
         foreach ($intersection_types as $intersection_type) {
+            if (!$intersection_type instanceof TKeyedArray) {
+                continue;
+            }
+
             if ($intersection_type->fallback_params !== null) {
                 $all_sealed = false;
             }

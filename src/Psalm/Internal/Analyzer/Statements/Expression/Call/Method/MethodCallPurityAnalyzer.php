@@ -41,7 +41,7 @@ final class MethodCallPurityAnalyzer
         // Already checked in isPureCompatible below
         // $stmt->var->getAttribute('pure', false)
         return $statements_analyzer->node_data->isPureCompatible($var)
-            || $var->getAttribute('external_mutation_free', false)
+            || ($var->getAttributes()->external_mutation_free ?? false)
             || $method_id->fq_class_name === $context->self;
     }
 
@@ -134,10 +134,10 @@ final class MethodCallPurityAnalyzer
                     && !$method_storage->assertions
                     && !$method_storage->if_true_assertions
                 ) {
-                    $stmt->setAttribute('memoizable', true);
+                    $stmt->attrs()->memoizable = true;
 
                     if ($method_storage->containing_class_allowed_mutations === Mutations::LEVEL_INTERNAL_READ) {
-                        $stmt->setAttribute('pure', true);
+                        $stmt->attrs()->pure = true;
                     }
                 }
 
@@ -168,7 +168,7 @@ final class MethodCallPurityAnalyzer
                         $statements_analyzer->getSuppressedIssues(),
                     );
                 } elseif (!$method_storage->mutation_free_assumed) {
-                    $stmt->setAttribute('pure', true);
+                    $stmt->attrs()->pure = true;
                 }
             }
         }

@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Psalm\Plugin\EventHandler;
 
+use Psalm\Plugin\HookInterface;
+
 use Psalm\Plugin\EventHandler\Event\AfterExpressionAnalysisEvent;
 
 /**
  * @api
  */
-interface AfterExpressionAnalysisInterface
+interface AfterExpressionAnalysisInterface extends HookInterface
 {
     /**
      * Called after an expression has been checked

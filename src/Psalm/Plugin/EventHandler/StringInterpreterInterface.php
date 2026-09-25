@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace Psalm\Plugin\EventHandler;
 
+use Psalm\Plugin\HookInterface;
+
 use Psalm\Plugin\EventHandler\Event\StringInterpreterEvent;
 use Psalm\Type\Atomic\TLiteralString;
 
 /**
  * @api
  */
-interface StringInterpreterInterface
+interface StringInterpreterInterface extends HookInterface
 {
     /**
      * Called after a statement has been checked

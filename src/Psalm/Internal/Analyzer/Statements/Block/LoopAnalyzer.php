@@ -43,7 +43,7 @@ final class LoopAnalyzer
      *
      * @param  list<PhpParser\Node\Stmt>    $stmts
      * @param  list<PhpParser\Node\Expr>    $pre_conditions
-     * @param  PhpParser\Node\Expr[]        $post_expressions
+     * @param  list<PhpParser\Node\Expr>        $post_expressions
      * @return false|null
      */
     public static function analyze(
@@ -526,7 +526,7 @@ final class LoopAnalyzer
      * @param array<string, Union> $init_var_types
      * @param array<string, int> $assigned_var_ids
      * @param list<PhpParser\Node\Expr> $pre_conditions
-     * @param PhpParser\Node\Expr[] $post_expressions
+     * @param list<PhpParser\Node\Expr> $post_expressions
      * @return false|null
      */
     public static function analyzeForOrWhile(
@@ -553,7 +553,7 @@ final class LoopAnalyzer
         $codebase = $statements_analyzer->getCodebase();
 
         if ($codebase->alter_code && $for_context->branch_point === null) {
-            $for_context->branch_point = (int) $stmt->getAttribute('startFilePos');
+            $for_context->branch_point = $stmt->getStartFilePos();
         }
 
         $loop_scope = new LoopScope($for_context, $context);
@@ -746,7 +746,7 @@ final class LoopAnalyzer
         Context $outer_context,
         bool $is_do,
     ): array {
-        $pre_referenced_var_ids = $loop_context->cond_referenced_var_ids;
+        $pre_referenced_var_ids = $loop_context->getCondReferencedVarIds();
         $loop_context->cond_referenced_var_ids = [];
 
         $was_inside_conditional = $loop_context->inside_conditional;
@@ -761,7 +761,7 @@ final class LoopAnalyzer
 
         $loop_context->inside_conditional = $was_inside_conditional;
 
-        $new_referenced_var_ids = $loop_context->cond_referenced_var_ids;
+        $new_referenced_var_ids = $loop_context->getCondReferencedVarIds();
         $loop_context->cond_referenced_var_ids = array_merge($pre_referenced_var_ids, $new_referenced_var_ids);
 
         $always_assigned_before_loop_body_vars = Context::getNewOrUpdatedVarIds($outer_context, $loop_context);

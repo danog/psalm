@@ -23,7 +23,6 @@ use function implode;
 abstract class FunctionLikeStorage implements HasAttributesInterface, Stringable
 {
     use CustomMetadataTrait;
-    use UnserializeMemoryUsageSuppressionTrait;
 
     public ?CodeLocation $location = null;
 
@@ -169,7 +168,7 @@ abstract class FunctionLikeStorage implements HasAttributesInterface, Stringable
     public int $removed_taints = 0;
 
     /**
-     * @var array<Union>
+     * @var list<Union>
      */
     public array $conditionally_removed_taints = [];
 
@@ -186,7 +185,7 @@ abstract class FunctionLikeStorage implements HasAttributesInterface, Stringable
     public array $attributes = [];
 
     /**
-     * @var list<array{fqn: string, params: array<int>, return: bool}>|null
+     * @var list<array{fqn: string, params: list<int>, return: bool}>|null
      */
     public ?array $proxy_calls = [];
 

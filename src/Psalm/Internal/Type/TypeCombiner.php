@@ -78,11 +78,11 @@ final class TypeCombiner
     /**
      * Combines types together
      *  - so `int + string = int|string`
-     *  - so `array<int> + array<string> = array<int|string>`
-     *  - and `array<int> + string = array<int>|string`
-     *  - and `array<never> + array<never> = array<never>`
-     *  - and `array<string> + array<never> = array<string>`
-     *  - and `array + array<string> = array<mixed>`
+     *  - so `list<int> + list<string> = list<int|string>`
+     *  - and `list<int> + string = list<int>|string`
+     *  - and `list<never> + list<never> = list<never>`
+     *  - and `list<string> + list<never> = list<string>`
+     *  - and `array + list<string> = list<mixed>`
      *
      * @psalm-external-mutation-free
      * @psalm-suppress ImpurePropertyAssignment We're not actually mutating any external instance
@@ -809,8 +809,8 @@ final class TypeCombiner
 
         if ($type instanceof TTemplateParam) {
             if (isset($combination->value_types[$type_key])) {
-                /** @var TTemplateParam */
                 $existing_template_type = $combination->value_types[$type_key];
+                assert($existing_template_type instanceof TTemplateParam);
 
                 if (!$existing_template_type->as->equals($type->as)) {
                     $existing_template_type = $existing_template_type->replaceAs(Type::combineUnionTypes(
@@ -1356,18 +1356,15 @@ final class TypeCombiner
      */
     private static function getSharedTypes(TypeCombination $combination, Codebase $codebase): array
     {
-        /** @var array<string, bool>|null */
         $shared_classlikes = null;
 
         if ($combination->strings) {
             foreach ($combination->strings as $string_type) {
                 $classlikes = self::getClassLikes($codebase, $string_type->value);
 
-                if ($shared_classlikes === null) {
-                    $shared_classlikes = $classlikes;
-                } elseif ($shared_classlikes) {
-                    $shared_classlikes = array_intersect_key($shared_classlikes, $classlikes);
-                }
+                $shared_classlikes = $shared_classlikes === null
+                    ? $classlikes
+                    : self::intersectClassLikes($shared_classlikes, $classlikes);
             }
         }
 
@@ -1376,16 +1373,27 @@ final class TypeCombiner
                 if ($value_type instanceof TNamedObject) {
                     $classlikes = self::getClassLikes($codebase, $value_type->value);
 
-                    if ($shared_classlikes === null) {
-                        $shared_classlikes = $classlikes;
-                    } elseif ($shared_classlikes) {
-                        $shared_classlikes = array_intersect_key($shared_classlikes, $classlikes);
-                    }
+                    $shared_classlikes = $shared_classlikes === null
+                        ? $classlikes
+                        : self::intersectClassLikes($shared_classlikes, $classlikes);
                 }
             }
         }
 
         return $shared_classlikes ?: [];
+    }
+
+    /**
+     * The class-likes shared so far narrowed by another type's: an empty set stays empty.
+     *
+     * @param array<string, true> $shared
+     * @param array<string, true> $classlikes
+     * @return array<string, true>
+     * @psalm-pure
+     */
+    private static function intersectClassLikes(array $shared, array $classlikes): array
+    {
+        return $shared ? array_intersect_key($shared, $classlikes) : $shared;
     }
 
     /**

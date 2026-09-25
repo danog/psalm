@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\Internal;
 
-use FilesystemIterator;
 use Psalm\Tests\TestCase;
-use RegexIterator;
 
-use function is_file;
+use function strnatcasecmp;
 use function uksort;
 
 /**
@@ -31,30 +29,23 @@ final class CallMapTest extends TestCase
      */
     public function testLoadCallMaps(): array
     {
-        /** @var iterable<string, string> */
-        $deltaFileIterator = new RegexIterator(
-            new FilesystemIterator(
-                self::DICTIONARY_PATH,
-                FilesystemIterator::CURRENT_AS_PATHNAME | FilesystemIterator::KEY_AS_FILENAME | FilesystemIterator::SKIP_DOTS,
-            ),
-            '/^CallMap_[\d]{2,}\.php$/i',
-            RegexIterator::MATCH,
-            RegexIterator::USE_KEY,
-        );
+        // the call map versions are compiled into the program: listed explicitly (closed world)
+        /** @var array<string, TCallMap> */
+        $deltaFiles = [
+            'CallMap_70.php' => require dirname(__DIR__, 2) . '/dictionaries/CallMap_70.php',
+            'CallMap_71.php' => require dirname(__DIR__, 2) . '/dictionaries/CallMap_71.php',
+            'CallMap_72.php' => require dirname(__DIR__, 2) . '/dictionaries/CallMap_72.php',
+            'CallMap_73.php' => require dirname(__DIR__, 2) . '/dictionaries/CallMap_73.php',
+            'CallMap_74.php' => require dirname(__DIR__, 2) . '/dictionaries/CallMap_74.php',
+            'CallMap_80.php' => require dirname(__DIR__, 2) . '/dictionaries/CallMap_80.php',
+            'CallMap_81.php' => require dirname(__DIR__, 2) . '/dictionaries/CallMap_81.php',
+            'CallMap_82.php' => require dirname(__DIR__, 2) . '/dictionaries/CallMap_82.php',
+            'CallMap_83.php' => require dirname(__DIR__, 2) . '/dictionaries/CallMap_83.php',
+            'CallMap_84.php' => require dirname(__DIR__, 2) . '/dictionaries/CallMap_84.php',
+            'CallMap_85.php' => require dirname(__DIR__, 2) . '/dictionaries/CallMap_85.php',
+        ];
 
-        $deltaFiles = [];
-        foreach ($deltaFileIterator as $deltaFile => $deltaFilePath) {
-            if (!is_file($deltaFilePath)) {
-                continue;
-            }
-
-            /**
-             * @var TCallMap
-             */
-            $deltaFiles[$deltaFile] = include($deltaFilePath);
-        }
-
-        uksort($deltaFiles, 'strnatcasecmp');
+        uksort($deltaFiles, strnatcasecmp(...));
 
         return $deltaFiles;
     }

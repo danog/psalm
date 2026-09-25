@@ -16,6 +16,7 @@ use Psalm\Internal\CliUtils;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\Codebase\ReferenceMapGenerator;
 use Psalm\Internal\Composer;
+use Psalm\Internal\Composer\AutoloadMap;
 use Psalm\Internal\ErrorHandler;
 use Psalm\Internal\Fork\PsalmRestarter;
 use Psalm\Internal\IncludeCollector;
@@ -106,6 +107,7 @@ require_once __DIR__ . '/../../Report.php';
 
 /**
  * @internal
+ * @psalm-type CliOptions = array<string, string|false|list<string|false>>
  */
 final class Psalm
 {
@@ -185,6 +187,7 @@ final class Psalm
      * @param array<int,string> $argv
      * @psalm-suppress ComplexMethod Maybe some of the option handling could be moved to its own function...
      */
+    /** @param list<string> $argv */
     public static function run(array $argv): void
     {
         CliUtils::checkRuntimeRequirements();
@@ -318,7 +321,11 @@ final class Psalm
             $plugins_from_options = $options['plugin'];
 
             if (is_array($plugins_from_options)) {
-                $plugins = $plugins_from_options;
+                foreach ($plugins_from_options as $plugin_path) {
+                    if (is_string($plugin_path)) {
+                        $plugins[] = $plugin_path;
+                    }
+                }
             } elseif (is_string($plugins_from_options)) {
                 $plugins = [$plugins_from_options];
             }
@@ -435,6 +442,9 @@ final class Psalm
     }
 
     /** @return int<1, max> */
+    /**
+     * @param CliOptions $options
+     */
     public static function getThreads(array $options, Config $config, bool $in_ci, bool $for_scan): int
     {
         if (defined('PHP_WINDOWS_VERSION_MAJOR')) {
@@ -470,6 +480,7 @@ final class Psalm
     }
 
     /**
+     * @param CliOptions $options
      * @psalm-pure
      */
     private static function initOutputFormat(array $options): string
@@ -498,6 +509,7 @@ final class Psalm
     }
 
     /**
+     * @param CliOptions $options
      * @psalm-pure
      */
     private static function initShowInfo(array $options): bool
@@ -507,6 +519,9 @@ final class Psalm
             : false;
     }
 
+    /**
+     * @param CliOptions $options
+     */
     /*private static function initIsDiff(array $options): bool
     {
         return !isset($options['no-diff'])
@@ -622,7 +637,10 @@ final class Psalm
         }
     }
 
-    /** @param list<ClassLoader> $autoloaders */
+    /**
+     * @param CliOptions $options
+     * @param list<ClassLoader> $autoloaders
+     */
     private static function loadConfig(
         ?string $path_to_config,
         string $current_dir,
@@ -655,6 +673,9 @@ final class Psalm
         return $config;
     }
 
+    /**
+     * @param CliOptions $options
+     */
     private static function initProgress(array $options, Config $config, bool $in_ci): Progress
     {
         $debug = array_key_exists('debug', $options) || array_key_exists('debug-by-line', $options);
@@ -682,6 +703,9 @@ final class Psalm
         return $progress;
     }
 
+    /**
+     * @param CliOptions $options
+     */
     private static function initProviders(array $options, Config $config, string $current_dir): Providers
     {
         if ($config->cache_directory === null || isset($options['i'])) {
@@ -710,7 +734,7 @@ final class Psalm
     }
 
     /**
-     * @param array{"set-baseline": mixed, ...} $options
+     * @param CliOptions $options
      * @return array<string,array<string,array{o:int, s: list<string>}>>
      */
     private static function generateBaseline(
@@ -756,7 +780,12 @@ final class Psalm
     }
 
     /**
+     * @param CliOptions $options
      * @return array<string,array<string,array{o:int, s: list<string>}>>
+     */
+    /**
+     * @param CliOptions $options
+     * @return array<string, array<string, array{o: int, s: list<string>}>>
      */
     private static function updateBaseline(array $options, Config $config): array
     {
@@ -871,6 +900,9 @@ final class Psalm
         exit('Config file created successfully. Please re-run psalm.' . PHP_EOL);
     }
 
+    /**
+     * @param CliOptions $options
+     */
     private static function initStdoutReportOptions(
         array $options,
         bool $show_info,
@@ -931,6 +963,9 @@ final class Psalm
         exit;
     }
 
+    /**
+     * @param CliOptions $options
+     */
     private static function getCurrentDir(array $options): string
     {
         $cwd = getcwd();
@@ -958,6 +993,12 @@ final class Psalm
         return $current_dir;
     }
 
+    /**
+     * @param CliOptions $options
+     */
+    /**
+     * @param CliOptions $options
+     */
     private static function restart(
         array $options,
         bool $force_jit,
@@ -1008,30 +1049,8 @@ final class Psalm
 
         $progress->write(PHP_EOL."Running on PHP ".PHP_VERSION.', Psalm '.PSALM_VERSION.'.'.PHP_EOL);
 
+        // the compiled analyzer is native code: there is no opcache and no JIT to report on
         $hasJit = false;
-        if (function_exists('opcache_get_status')) {
-            if (true === (opcache_get_status()['jit']['on'] ?? false)) {
-                $hasJit = true;
-                $progress->write(PHP_EOL
-                    . 'JIT acceleration: ON'
-                    . PHP_EOL . PHP_EOL);
-            } elseif ($force_jit) {
-                $progress->write(PHP_EOL
-                    . 'JIT acceleration: OFF (an error occurred while enabling JIT)' . PHP_EOL
-                    . 'Please report this to https://github.com/vimeo/psalm with your OS and PHP configuration!'
-                    . PHP_EOL . PHP_EOL);
-            } else {
-                $progress->write(PHP_EOL
-                    . 'JIT acceleration: OFF' . PHP_EOL
-                    . 'You can enable JIT acceleration (experimental) with --force-jit.'
-                    . PHP_EOL . PHP_EOL);
-            }
-        } else {
-            $progress->write(PHP_EOL
-                . 'JIT acceleration: OFF (opcache not installed or not enabled)' . PHP_EOL
-                . 'Install and enable the opcache extension to use JIT with --force-jit.'
-                . PHP_EOL . PHP_EOL);
-        }
         if ($force_jit && !$hasJit) {
             $progress->write('Exiting because --force-jit was set but JIT is not available.' . PHP_EOL . PHP_EOL);
             exit(1);
@@ -1070,6 +1089,10 @@ final class Psalm
     }
 
     /** @param array<int, string> $argv */
+    /**
+     * @param CliOptions $options
+     * @param list<string> $argv
+     */
     private static function forwardCliCall(array $options, array $argv): void
     {
         if (isset($options['alter'])) {
@@ -1099,8 +1122,8 @@ final class Psalm
     }
 
     /**
-     * @param array<string, false|list<mixed>|string> $options
-     * @param-out array<string, false|list<mixed>|string> $options
+     * @param CliOptions $options
+     * @param-out array<string, false|list<string|false>|string> $options
      */
     private static function syncShortOptions(array &$options): void
     {
@@ -1130,6 +1153,7 @@ final class Psalm
     }
 
     /**
+     * @param CliOptions $options
      * @param array<int, string> $args
      * @param list<ClassLoader> $autoloaders
      * @return array{Config,?string}
@@ -1155,6 +1179,7 @@ final class Psalm
             Creator::createBareConfig($current_dir, $init_source_dir, $vendor_dir);
             $config = Config::getInstance();
             $config->setComposerClassLoader($autoloaders);
+            $config->setComposerAutoloadMap(AutoloadMap::fromProject($current_dir, $vendor_dir));
         } else {
             $config = self::loadConfig(
                 $path_to_config,
@@ -1169,6 +1194,7 @@ final class Psalm
     }
 
     /**
+     * @param CliOptions $options
      * @param ?list<string> $paths_to_check
      * @return array<string,array<string,array{o:int, s: list<string>}>>
      */
@@ -1236,6 +1262,9 @@ final class Psalm
         return $issue_baseline;
     }
 
+    /**
+     * @param CliOptions $options
+     */
     private static function storeFlowGraph(array $options, ProjectAnalyzer $project_analyzer): void
     {
         /** @var string|null $dump_taint_graph */
@@ -1253,6 +1282,7 @@ final class Psalm
     }
 
     /**
+     * @param CliOptions $options
      * @return false|'always'|'auto'
      * @psalm-mutation-free
      */
@@ -1277,6 +1307,7 @@ final class Psalm
     }
 
     /**
+     * @param CliOptions $options
      * @psalm-pure
      */
     private static function shouldRunTaintAnalysis(array $options): bool
@@ -1287,6 +1318,7 @@ final class Psalm
     }
 
     /**
+     * @param CliOptions $options
      * @param false|'always'|'auto' $find_unused_code
      */
     private static function configureProjectAnalyzer(
@@ -1338,6 +1370,13 @@ final class Psalm
         }
     }
 
+    /**
+     * @param CliOptions $options
+     */
+    /**
+     * @param CliOptions $options
+     * @param list<string> $plugins
+     */
     private static function configureShepherd(Config $config, array $options, array &$plugins): void
     {
         $is_shepherd_enabled = isset($options['shepherd']) || getenv('PSALM_SHEPHERD');
@@ -1360,6 +1399,9 @@ final class Psalm
         }
     }
 
+    /**
+     * @param CliOptions $options
+     */
     private static function generateStubs(
         array $options,
         Providers $providers,

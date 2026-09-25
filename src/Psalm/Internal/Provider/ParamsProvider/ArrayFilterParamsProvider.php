@@ -34,7 +34,7 @@ use const ARRAY_FILTER_USE_KEY;
 final class ArrayFilterParamsProvider implements FunctionParamsProviderInterface
 {
     /**
-     * @return array<lowercase-string>
+     * @return list<lowercase-string>
      * @psalm-pure
      */
     #[Override]

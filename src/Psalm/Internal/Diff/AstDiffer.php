@@ -24,7 +24,18 @@ use function count;
 abstract class AstDiffer
 {
     /**
-     * @param Closure(Stmt, Stmt, string, string, bool=): bool $is_equal
+     * The Myers frontier before the first step: the furthest x reached on each diagonal k, seeded at k = 1.
+     *
+     * @return non-empty-array<int, int>
+     * @psalm-pure
+     */
+    private static function initialFrontier(): array
+    {
+        return [1 => 0];
+    }
+
+    /**
+     * @param Closure(Stmt, Stmt, string, string, BodyChange=): bool $is_equal
      * @param array<int, Stmt> $a
      * @param array<int, Stmt> $b
      * @return array{0:non-empty-list<array<int, int>>, 1: int, 2: int, 3: array<int, bool>}
@@ -39,29 +50,28 @@ abstract class AstDiffer
         $n = count($a);
         $m = count($b);
         $max = $n + $m;
-        /** @var array<int, int> $v */
-        $v = [1 => 0];
+        $v = self::initialFrontier();
         $bc = [];
         $trace = [];
         for ($d = 0; $d <= $max; ++$d) {
             $trace[] = $v;
             for ($k = -$d; $k <= $d; $k += 2) {
-                if ($k === -$d || ($k !== $d && $v[$k - 1] < $v[$k + 1])) {
-                    $x = $v[$k + 1];
+                if ($k === -$d || ($k !== $d && ($v[$k - 1] ?? 0) < ($v[$k + 1] ?? 0))) {
+                    $x = $v[$k + 1] ?? 0;
                 } else {
-                    $x = $v[$k - 1] + 1;
+                    $x = ($v[$k - 1] ?? 0) + 1;
                 }
 
                 $y = $x - $k;
 
-                $body_change = false;
+                $body_change = new BodyChange();
 
                 while ($x < $n && $y < $m && ($is_equal)($a[$x], $b[$y], $a_code, $b_code, $body_change)) {
-                    $bc[$x] = $body_change;
+                    $bc[$x] = $body_change->changed;
                     ++$x;
                     ++$y;
 
-                    $body_change = false;
+                    $body_change = new BodyChange();
                 }
 
                 $v[$k] = $x;
@@ -88,13 +98,13 @@ abstract class AstDiffer
             $v = $trace[$d];
             $k = $x - $y;
 
-            if ($k === -$d || ($k !== $d && $v[$k - 1] < $v[$k + 1])) {
+            if ($k === -$d || ($k !== $d && ($v[$k - 1] ?? 0) < ($v[$k + 1] ?? 0))) {
                 $prevK = $k + 1;
             } else {
                 $prevK = $k - 1;
             }
 
-            $prevX = $v[$prevK];
+            $prevX = $v[$prevK] ?? 0;
             $prevY = $prevX - $prevK;
 
             while ($x > $prevX && $y > $prevY) {

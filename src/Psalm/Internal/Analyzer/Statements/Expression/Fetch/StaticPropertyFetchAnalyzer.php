@@ -120,8 +120,8 @@ final class StaticPropertyFetchAnalyzer
                 $fq_class_name,
                 explode('::', $destination_method_id)[0],
                 $statements_analyzer->getFilePath(),
-                (int) $stmt->class->getAttribute('startFilePos'),
-                (int) $stmt->class->getAttribute('endFilePos') + 1,
+                $stmt->class->getStartFilePos(),
+                $stmt->class->getEndFilePos() + 1,
             );
         }
 
@@ -349,8 +349,8 @@ final class StaticPropertyFetchAnalyzer
 
                         if (strtolower($new_fq_class_name) !== $old_declaring_fq_class_name) {
                             $file_manipulations[] = new FileManipulation(
-                                (int) $stmt->class->getAttribute('startFilePos'),
-                                (int) $stmt->class->getAttribute('endFilePos') + 1,
+                                $stmt->class->getStartFilePos(),
+                                $stmt->class->getEndFilePos() + 1,
                                 Type::getStringFromFQCLN(
                                     $new_fq_class_name,
                                     $statements_analyzer->getNamespace(),
@@ -361,8 +361,8 @@ final class StaticPropertyFetchAnalyzer
                         }
 
                         $file_manipulations[] = new FileManipulation(
-                            (int) $stmt->name->getAttribute('startFilePos'),
-                            (int) $stmt->name->getAttribute('endFilePos') + 1,
+                            $stmt->name->getStartFilePos(),
+                            $stmt->name->getEndFilePos() + 1,
                             '$' . $new_property_name,
                         );
 
@@ -471,7 +471,7 @@ final class StaticPropertyFetchAnalyzer
 
                 $fake_stmt_type = $statements_analyzer->node_data->getType($fake_static_property) ?? Type::getMixed();
             } else {
-                $fake_var_name = '__fake_var_' . (string) $stmt->getAttribute('startFilePos');
+                $fake_var_name = '__fake_var_' . $stmt->getStartFilePos();
 
                 $fake_var = new VirtualVariable(
                     $fake_var_name,

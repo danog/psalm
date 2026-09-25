@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Codebase;
 
+use Closure;
 use Psalm\Codebase;
+use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
+use Psalm\Internal\MethodIdentifier;
 use Psalm\Config;
 use Psalm\Internal\Analyzer\IssueData;
 use Psalm\Internal\ErrorHandler;
@@ -229,7 +232,7 @@ final class Scanner
     }
 
     /**
-     * @param  array<string, mixed> $phantom_classes
+     * @param array<string, bool> $phantom_classes
      */
     public function queueClassLikeForScanning(
         string $fq_classlike_name,
@@ -339,7 +342,7 @@ final class Scanner
             await($pool->runAll(new InitScannerTask));
             $pool->run(
                 $files_to_scan,
-                ScannerTask::class,
+                static fn(string $file): ScannerTask => new ScannerTask($file),
                 function (): void {
                     $this->progress->taskDone(0);
                 },
@@ -455,7 +458,71 @@ final class Scanner
     }
 
     /**
-     * @param  array<string, class-string<FileScanner>>  $filetype_scanners
+     * Members a reflected definition of an internal class has and its stub lacks are kept when the stub
+     * overrides the reflected storage in place; a cached stub storage gets them the same way.
+     */
+    private function mergeReflectedMembers(ClassLikeStorage $stub, ClassLikeStorage $reflected): bool
+    {
+        $changed = false;
+        foreach ($reflected->methods as $method_name_lc => $method_storage) {
+            if (isset($stub->methods[$method_name_lc])) {
+                continue;
+            }
+            $changed = true;
+            $stub->methods[$method_name_lc] = $method_storage;
+            $method_id = new MethodIdentifier($stub->name, $method_name_lc);
+            $stub->declaring_method_ids[$method_name_lc] ??= $method_id;
+            $stub->appearing_method_ids[$method_name_lc] ??= $method_id;
+            if ($method_storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PRIVATE) {
+                $stub->inheritable_method_ids[$method_name_lc] ??= $method_id;
+            }
+        }
+        foreach ($reflected->properties as $property_name => $property_storage) {
+            if (isset($stub->properties[$property_name])) {
+                continue;
+            }
+            $changed = true;
+            $stub->properties[$property_name] = $property_storage;
+            $property_id = $stub->name . '::$' . $property_name;
+            // the declaring map holds the class, the other two hold the property id
+            $stub->declaring_property_ids[$property_name] ??= $stub->name;
+            $stub->appearing_property_ids[$property_name] ??= $property_id;
+            if ($property_storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PRIVATE) {
+                $stub->inheritable_property_ids[$property_name] ??= $property_id;
+            }
+        }
+        foreach ($reflected->constants as $const_name => $const_storage) {
+            if (!isset($stub->constants[$const_name])) {
+                $changed = true;
+                $stub->constants[$const_name] = $const_storage;
+            }
+        }
+        return $changed;
+    }
+
+    /**
+     * Marks a storage and, transitively, the classes populated from it for population again.
+     *
+     * @param array<string, true> $seen
+     */
+    private function unpopulate(ClassLikeStorage $storage, array $seen): void
+    {
+        $lc = strtolower($storage->name);
+        if (isset($seen[$lc])) {
+            return;
+        }
+        $seen[$lc] = true;
+        $storage->populated = false;
+        $this->codebase->classlike_storage_provider->makeNew($lc);
+        foreach ($storage->dependent_classlikes as $dependent_lc => $_) {
+            if ($this->codebase->classlike_storage_provider->has($dependent_lc)) {
+                $this->unpopulate($this->codebase->classlike_storage_provider->get($dependent_lc), $seen);
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, Closure(string, string, bool): FileScanner>  $filetype_scanners
      */
     private function scanFile(
         string $file_path,
@@ -477,7 +544,9 @@ final class Scanner
 
         $file_contents = $this->file_provider->getContents($file_path);
 
-        $from_cache = $this->file_storage_provider->has($file_path, $file_contents);
+        // PhpStorm meta files register their information while being traversed: never from cache
+        $from_cache = !str_ends_with($file_path, '.phpstorm.meta.php')
+            && $this->file_storage_provider->has($file_path, $file_contents);
 
         if (!$from_cache) {
             $this->file_storage_provider->create($file_path);
@@ -510,7 +579,81 @@ final class Scanner
             }
 
             foreach ($file_storage->classlikes_in_file as $fq_classlike_name) {
-                $this->codebase->exhumeClassLikeStorage($fq_classlike_name, $file_path);
+                $provider = $this->codebase->classlike_storage_provider;
+                // re-registering the stub's definition means exhuming it from the class cache: without one
+                // (a test that builds its own providers) whatever is registered has to stand
+                if ($this->codebase->register_stub_files && $provider->cache !== null && $provider->has($fq_classlike_name)) {
+                    $replaced = $provider->get($fq_classlike_name);
+                    if (!$replaced->stubbed
+                        && $replaced->stmt_location
+                        && $this->config->isInProjectDirs($replaced->stmt_location->file_path)
+                    ) {
+                        // a class of the analyzed code is not overridden by a stub (as in the stub's traversal)
+                        continue;
+                    }
+                    if ($replaced->stubbed) {
+                        // another stub file already defines this class: its traversal merged the definitions
+                        // into one storage (`$is_classlike_overridden`), which re-exhuming would undo
+                        $this->codebase->exhumeClassLikeStorage($fq_classlike_name, $file_path);
+                        continue;
+                    }
+                    // a stub replaces whatever else was registered before it, typically an internal class
+                    // reflected while scanning the analyzed files; as the stub's traversal would, whatever was
+                    // populated from the replaced definition is populated again
+                    $provider->remove($fq_classlike_name);
+
+                    try {
+                        $this->codebase->exhumeClassLikeStorage($fq_classlike_name, $file_path);
+                    } catch (UnexpectedValueException) {
+                        // the class was scanned while another cache was in place, so the stub's own storage
+                        // cannot be read back: put the replaced one back rather than losing the class
+                        $provider->addMore([strtolower($fq_classlike_name) => $replaced]);
+
+                        continue;
+                    }
+
+                    $stub_storage = $provider->get($fq_classlike_name);
+                    if ($stub_storage !== $replaced && $this->mergeReflectedMembers($stub_storage, $replaced)) {
+                        // the stub storage and everything populated from it inherit the new members
+                        $this->unpopulate($stub_storage, []);
+                    }
+                    foreach ($replaced->dependent_classlikes as $dependent_name_lc => $_) {
+                        if ($provider->has($dependent_name_lc)) {
+                            $provider->get($dependent_name_lc)->populated = false;
+                            $provider->makeNew($dependent_name_lc);
+                        }
+                    }
+                    continue;
+                }
+                if ($provider->has($fq_classlike_name) || $provider->cache !== null) {
+                    // in memory already, or re-readable from the cache; with neither there is nothing to
+                    // exhume and the class stays as the scan of this file left it
+                    try {
+                        $this->codebase->exhumeClassLikeStorage($fq_classlike_name, $file_path);
+                    } catch (UnexpectedValueException) {
+                        // no cached storage for this class, so the cached file storage describes classes
+                        // this worker never scanned: drop it and scan the file for real (dropping it is what
+                        // keeps this from looping, since the file would otherwise look cached again)
+                        $this->file_storage_provider->remove($file_path);
+                        unset($this->scanned_files[$file_path]);
+                        $this->files_to_scan[$file_path] = $file_path;
+                        $this->files_to_deep_scan[$file_path] = $file_path;
+
+                        return;
+                    }
+                }
+            }
+
+            if ($this->codebase->register_stub_files) {
+                // what the reflector registers globally while traversing a stub file
+                foreach ($file_storage->functions as $function_id => $function_storage) {
+                    $this->codebase->functions->addGlobalFunction((string) $function_id, $function_storage);
+                }
+                foreach ($file_storage->constants as $const_name => $const_type) {
+                    if (!defined($const_name) || !$const_type->isMixed()) {
+                        $this->codebase->addGlobalConstantType($const_name, $const_type);
+                    }
+                }
             }
 
             foreach ($file_storage->required_classes as $fq_classlike_name) {
@@ -554,7 +697,7 @@ final class Scanner
     }
 
     /**
-     * @param  array<string, class-string<FileScanner>>  $filetype_scanners
+     * @param  array<string, Closure(string, string, bool): FileScanner>  $filetype_scanners
      */
     private function getScannerForPath(
         string $file_path,
@@ -568,7 +711,7 @@ final class Scanner
         $file_name = $this->config->shortenFileName($file_path);
 
         if (isset($filetype_scanners[$extension])) {
-            return new $filetype_scanners[$extension]($file_path, $file_name, $will_analyze);
+            return $filetype_scanners[$extension]($file_path, $file_name, $will_analyze);
         }
 
         return new FileScanner($file_path, $file_name, $will_analyze);
@@ -612,8 +755,7 @@ final class Scanner
         }
 
         foreach ($this->config->eventDispatcher->file_path_provider_interface as $provider) {
-            /** @psalm-suppress ArgumentTypeCoercion */
-            $file_path = $provider::getClassFilePath($fq_class_name);
+            $file_path = $provider->getClassFilePath($fq_class_name);
 
             if ($file_path !== null && file_exists($file_path)) {
                 $this->progress->debug('Using custom file path provider to locate file for ' . $fq_class_name . "\n");

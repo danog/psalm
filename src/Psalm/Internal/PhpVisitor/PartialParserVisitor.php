@@ -58,16 +58,13 @@ final class PartialParserVisitor extends PhpParser\NodeVisitorAbstract
     #[Override]
     public function enterNode(PhpParser\Node $node, bool &$traverseChildren = true): int|PhpParser\Node|null
     {
-        /** @var array{startFilePos: int, endFilePos: int, startLine: int} */
-        $attrs = $node->getAttributes();
-
         if ($cs = $node->getComments()) {
             $stmt_start_pos = $cs[0]->getStartFilePos();
         } else {
-            $stmt_start_pos = $attrs['startFilePos'];
+            $stmt_start_pos = $node->getStartFilePos();
         }
 
-        $stmt_end_pos = $attrs['endFilePos'];
+        $stmt_end_pos = $node->getEndFilePos();
 
         $start_offset = 0;
         $end_offset = 0;
@@ -264,13 +261,12 @@ final class PartialParserVisitor extends PhpParser\NodeVisitorAbstract
                         if ($error_handler->hasErrors()) {
                             foreach ($error_handler->getErrors() as $error) {
                                 if ($error->hasColumnInfo()) {
-                                    /** @var array{startFilePos: int, endFilePos: int} */
                                     $error_attrs = $error->getAttributes();
                                     $error = new PhpParser\Error(
                                         $error->getRawMessage(),
                                         [
-                                            'startFilePos' => $stmt_start_pos + $error_attrs['startFilePos'] - 15,
-                                            'endFilePos' => $stmt_start_pos + $error_attrs['endFilePos'] - 15,
+                                            'startFilePos' => $stmt_start_pos + ($error_attrs->startFilePos ?? 0) - 15,
+                                            'endFilePos' => $stmt_start_pos + ($error_attrs->endFilePos ?? 0) - 15,
                                             'startLine' => $error->getStartLine() + $current_line + $line_offset,
                                         ],
                                     );
@@ -295,11 +291,9 @@ final class PartialParserVisitor extends PhpParser\NodeVisitorAbstract
                 }
 
                 if ($node->stmts) {
-                    /** @var int */
-                    $stmt_inner_start_pos = $node->stmts[0]->getAttribute('startFilePos');
+                    $stmt_inner_start_pos = $node->stmts[0]->getStartFilePos();
 
-                    /** @var int */
-                    $stmt_inner_end_pos = $node->stmts[count($node->stmts) - 1]->getAttribute('endFilePos');
+                    $stmt_inner_end_pos = $node->stmts[count($node->stmts) - 1]->getEndFilePos();
 
                     if ($node instanceof PhpParser\Node\Stmt\ClassLike) {
                         /** @psalm-suppress PossiblyFalseOperand */
@@ -346,20 +340,20 @@ final class PartialParserVisitor extends PhpParser\NodeVisitorAbstract
                         }
                     }
 
-                    $node->setAttribute('comments', $new_comments);
+                    $node->attrs()->comments = $new_comments;
 
-                    $node->setAttribute('startFilePos', $attrs['startFilePos'] + $start_offset);
+                    $node->attrs()->startFilePos = $node->getStartFilePos() + $start_offset;
                 } else {
-                    $node->setAttribute('startFilePos', $stmt_start_pos + $start_offset);
+                    $node->attrs()->startFilePos = $stmt_start_pos + $start_offset;
                 }
             }
 
             if ($end_offset !== 0) {
-                $node->setAttribute('endFilePos', $stmt_end_pos + $end_offset);
+                $node->attrs()->endFilePos = $stmt_end_pos + $end_offset;
             }
 
             if ($line_offset !== 0) {
-                $node->setAttribute('startLine', $attrs['startLine'] + $line_offset);
+                $node->attrs()->startLine = $node->getStartLine() + $line_offset;
             }
 
             return $node;

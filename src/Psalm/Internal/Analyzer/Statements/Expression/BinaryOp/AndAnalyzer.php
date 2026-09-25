@@ -54,16 +54,16 @@ final class AndAnalyzer
             return IfElseAnalyzer::analyze($statements_analyzer, $fake_if_stmt, $context) !== false;
         }
 
-        $pre_referenced_var_ids = $context->cond_referenced_var_ids;
+        $pre_referenced_var_ids = $context->getCondReferencedVarIds();
 
-        $pre_assigned_var_ids = $context->assigned_var_ids;
+        $pre_assigned_var_ids = $context->getAssignedVarIds();
 
         $left_context = clone $context;
 
         $left_context->cond_referenced_var_ids = [];
         $left_context->assigned_var_ids = [];
 
-        /** @var list<string> $left_context->reconciled_expression_clauses */
+        /** @var list<string> $left_context->getReconciledExpressionClauses() */
         $left_context->reconciled_expression_clauses = [];
 
         if (ExpressionAnalyzer::analyze($statements_analyzer, $stmt->left, $left_context) === false) {
@@ -85,24 +85,26 @@ final class AndAnalyzer
             $codebase,
         );
 
+        $left_assigned_var_ids = $left_context->getAssignedVarIds();
+
         foreach ($left_context->vars_in_scope as $var_id => $type) {
-            if (isset($left_context->assigned_var_ids[$var_id])) {
+            if (isset($left_assigned_var_ids[$var_id])) {
                 $context->vars_in_scope[$var_id] = $type;
             }
         }
 
         /** @var array<string, bool> */
-        $left_referenced_var_ids = $left_context->cond_referenced_var_ids;
+        $left_referenced_var_ids = $left_context->getCondReferencedVarIds();
         $context->cond_referenced_var_ids = array_merge($pre_referenced_var_ids, $left_referenced_var_ids);
 
-        $left_assigned_var_ids = array_diff_key($left_context->assigned_var_ids, $pre_assigned_var_ids);
+        $left_assigned_var_ids = array_diff_key($left_context->getAssignedVarIds(), $pre_assigned_var_ids);
 
         $left_referenced_var_ids = array_diff_key($left_referenced_var_ids, $left_assigned_var_ids);
 
         $context_clauses = array_merge($left_context->clauses, $left_clauses);
 
-        if ($left_context->reconciled_expression_clauses) {
-            $reconciled_expression_clauses = $left_context->reconciled_expression_clauses;
+        if ($left_context->getReconciledExpressionClauses()) {
+            $reconciled_expression_clauses = $left_context->getReconciledExpressionClauses();
 
             $context_clauses = array_values(
                 array_filter(
@@ -167,8 +169,8 @@ final class AndAnalyzer
         IfConditionalAnalyzer::handleParadoxicalCondition($statements_analyzer, $stmt->right);
 
         $context->cond_referenced_var_ids = array_merge(
-            $right_context->cond_referenced_var_ids,
-            $left_context->cond_referenced_var_ids,
+            $right_context->getCondReferencedVarIds(),
+            $left_context->getCondReferencedVarIds(),
         );
 
         if ($context->inside_conditional) {
@@ -180,8 +182,8 @@ final class AndAnalyzer
             );
 
             $context->assigned_var_ids = array_merge(
-                $left_context->assigned_var_ids,
-                $right_context->assigned_var_ids,
+                $left_context->getAssignedVarIds(),
+                $right_context->getAssignedVarIds(),
             );
         }
 
@@ -194,17 +196,17 @@ final class AndAnalyzer
             ];
 
             $if_body_context->cond_referenced_var_ids = [
-                ...$if_body_context->cond_referenced_var_ids,
-                ...$context->cond_referenced_var_ids,
+                ...$if_body_context->getCondReferencedVarIds(),
+                ...$context->getCondReferencedVarIds(),
             ];
 
             $if_body_context->assigned_var_ids = [
-                ...$if_body_context->assigned_var_ids,
-                ...$context->assigned_var_ids,
+                ...$if_body_context->getAssignedVarIds(),
+                ...$context->getAssignedVarIds(),
             ];
 
             $if_body_context->reconciled_expression_clauses = [
-                ...$if_body_context->reconciled_expression_clauses,
+                ...$if_body_context->getReconciledExpressionClauses(),
                 ...array_map(
                     /** @return string|int */
                     static fn(Clause $c) => $c->hash,

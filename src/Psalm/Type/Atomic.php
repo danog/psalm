@@ -7,6 +7,7 @@ namespace Psalm\Type;
 use InvalidArgumentException;
 use Override;
 use Psalm\Codebase;
+use UnexpectedValueException;
 use Psalm\Exception\TypeParseTreeException;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Type\TemplateResult;
@@ -15,7 +16,6 @@ use Psalm\Internal\Type\TypeAlias;
 use Psalm\Internal\Type\TypeAlias\LinkableTypeAlias;
 use Psalm\Internal\TypeVisitor\ClasslikeReplacer;
 use Psalm\Storage\Mutations;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type;
 use Psalm\Type\Atomic\TArray;
 use Psalm\Type\Atomic\TArrayKey;
@@ -85,7 +85,6 @@ use function strtolower;
  */
 abstract class Atomic implements TypeNode, Stringable
 {
-    use UnserializeMemoryUsageSuppressionTrait;
 
     /**
      * @psalm-mutation-free
@@ -660,89 +659,19 @@ abstract class Atomic implements TypeNode, Stringable
     #[Override]
     public function visit(TypeVisitor $visitor): bool
     {
-        foreach ($this->getChildNodeKeys() as $key) {
-            /** @psalm-suppress MixedAssignment */
-            $value = $this->{$key};
-            if (is_array($value)) {
-                /** @psalm-suppress MixedAssignment */
-                foreach ($value as $type) {
-                    if (!$type instanceof TypeNode) {
-                        continue;
-                    }
-
-                    if ($visitor->traverse($type) === false) {
-                        return false;
-                    }
-                }
-            } elseif ($value instanceof TypeNode) {
-                if ($visitor->traverse($value) === false) {
-                    return false;
-                }
-            }
-        }
         return true;
     }
 
     /**
+     * @param TypeNode $node
+     * @param-out TypeNode $node
      * @phpcsSuppress SlevomatCodingStandard.TypeHints.ParameterTypeHint.MissingAnyTypeHint
      */
     #[Override]
     public static function visitMutable(MutableTypeVisitor $visitor, &$node, bool $cloned): bool
     {
-        foreach ($node->getChildNodeKeys() as $key) {
-            /** @psalm-suppress MixedAssignment */
-            $value = $node->{$key};
-            $result = true;
-            if (is_array($value)) {
-                $changed = false;
-                /** @psalm-suppress MixedAssignment */
-                foreach ($value as &$type) {
-                    if (!$type instanceof TypeNode) {
-                        continue;
-                    }
-
-                    $type_orig = $type;
-                    $result = $visitor->traverse($type);
-                    $changed = $changed || $type !== $type_orig;
-                }
-                unset($type);
-            } elseif ($value instanceof TypeNode) {
-                $value_orig = $value;
-                $result = $visitor->traverse($value);
-                $changed = $value !== $value_orig;
-            } else {
-                continue;
-            }
-
-            if ($changed) {
-                if (!$cloned) {
-                    $node = clone $node;
-                    $cloned = true;
-                }
-                if ($key === 'extra_types') {
-                    /** @var array<Atomic> $value */
-                    $new = [];
-                    foreach ($value as $type) {
-                        $new[$type->getKey()] = $type;
-                    }
-                    $value = $new;
-                }
-                $node->{$key} = $value;
-            }
-            if ($result === false) {
-                return false;
-            }
-        }
+        assert($node instanceof self);
         return true;
-    }
-
-    /**
-     * @return list<string>
-     * @psalm-pure
-     */
-    protected function getChildNodeKeys(): array
-    {
-        return [];
     }
 
     #[Override]
