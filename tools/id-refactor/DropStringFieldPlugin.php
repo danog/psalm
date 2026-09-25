@@ -411,6 +411,18 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
                     continue;
                 }
             }
+            // `R === Interner::lookup(Y)` (!==): the ids compare exactly as the strings did
+            if ($p instanceof Expr\BinaryOp\Identical || $p instanceof Expr\BinaryOp\NotIdentical) {
+                $other = $p->left === $n ? $p->right : $p->left;
+                if ($other instanceof Expr\StaticCall && $other->class instanceof Name && strtolower($other->class->getLast()) === 'interner'
+                    && $other->name instanceof Identifier && strtolower($other->name->name) === 'lookup'
+                    && !$other->isFirstClassCallable() && count($other->getArgs()) === 1
+                ) {
+                    $this->renameProp($n, $id);
+                    $this->edits[] = [$other->getStartFilePos(), $other->getEndFilePos() + 1, $this->text($other->getArgs()[0]->value)];
+                    continue;
+                }
+            }
             if ($fn === 'lookupOrNull' && !$n instanceof Expr\NullsafePropertyFetch && (
                 ($p instanceof Stmt\If_ && $p->cond === $n) || ($p instanceof Stmt\ElseIf_ && $p->cond === $n)
                 || $p instanceof Expr\BooleanNot || $p instanceof Expr\BinaryOp\BooleanAnd || $p instanceof Expr\BinaryOp\BooleanOr
