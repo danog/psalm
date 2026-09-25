@@ -463,10 +463,10 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         PhpParser\Node\Name $class_name,
         Aliases $aliases,
     ): int {
-        $resolved_name = Interner::lookupOrNull($class_name->attrs()->resolvedId);
+        $resolved_name = Interner::internOrNull(Interner::lookupOrNull($class_name->attrs()->resolvedId));
 
-        if ($resolved_name) {
-            return Interner::intern($resolved_name);
+        if (($resolved_name !== null)) {
+            return $resolved_name;
         }
 
         if ($class_name instanceof PhpParser\Node\Name\FullyQualified) {
@@ -620,29 +620,29 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
             $property_id,
             true,
         );
-        $appearing_property_class = $codebase->properties->getAppearingClassForProperty(
+        $appearing_property_class = Interner::internOrNull($codebase->properties->getAppearingClassForProperty(
             $property_id,
             true,
-        );
+        ));
 
-        if (!$declaring_property_class || !$appearing_property_class) {
+        if (!($declaring_property_class !== null) || !($appearing_property_class !== null)) {
             throw new UnexpectedValueException(
                 'Appearing/Declaring classes are not defined for ' . $property_id,
             );
         }
 
         // if the calling class is the same, we know the property exists, so it must be visible
-        if ($appearing_property_class === Interner::lookupOrNull($context->self)) {
+        if (Interner::lookup($appearing_property_class) === Interner::lookupOrNull($context->self)) {
             return $emit_issues ? null : true;
         }
 
         if ($source->getSource() instanceof TraitAnalyzer
-            && strtolower($declaring_property_class) === strtolower((string) $source->getFQCLN())
+            && strtolower(Interner::lookup($declaring_property_class)) === strtolower((string) $source->getFQCLN())
         ) {
             return $emit_issues ? null : true;
         }
 
-        $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($declaring_property_class));
+        $class_storage = $codebase->classlike_storage_provider->get($declaring_property_class);
 
         if (!isset($class_storage->properties[Interner::intern($property_name)])) {
             throw new UnexpectedValueException('$storage should not be null for ' . $property_id);
@@ -681,11 +681,11 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                     return null;
                 }
 
-                if ($codebase->classExtends(Interner::intern($appearing_property_class), $context->self)) {
+                if ($codebase->classExtends($appearing_property_class, $context->self)) {
                     return $emit_issues ? null : true;
                 }
 
-                if (!$codebase->classExtends($context->self, Interner::intern($appearing_property_class))) {
+                if (!$codebase->classExtends($context->self, $appearing_property_class)) {
                     if ($emit_issues) {
                         IssueBuffer::maybeAdd(
                             new InaccessibleProperty(

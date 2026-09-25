@@ -144,10 +144,10 @@ final class StaticPropertyAssignmentAnalyzer
                 return false;
             }
 
-            $declaring_property_class = (string) $codebase->properties->getDeclaringClassForProperty(
+            $declaring_property_class = (string) Interner::lookupOrNull($codebase->properties->getDeclaringClassForProperty(
                 $fq_class_name . '::$' . $prop_name->name,
                 false,
-            );
+            ));
 
             $declaring_property_id = strtolower($declaring_property_class) . '::$' . $prop_name;
 

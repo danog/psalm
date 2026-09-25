@@ -997,7 +997,7 @@ class Reconciler
         );
 
         $declaring_class_storage = $codebase->classlike_storage_provider->get(
-            Interner::intern($declaring_property_class),
+            $declaring_property_class,
         );
 
         if ($class_property_type) {

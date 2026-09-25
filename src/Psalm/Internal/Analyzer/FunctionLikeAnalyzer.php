@@ -1614,10 +1614,10 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
         $codebase = $project_analyzer->getCodebase();
         $is_final = true;
-        $fqcln = $this->source->getFQCLN();
+        $fqcln = Interner::internOrNull($this->source->getFQCLN());
 
         if ($fqcln !== null && $this instanceof MethodAnalyzer) {
-            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fqcln));
+            $class_storage = $codebase->classlike_storage_provider->get($fqcln);
             $is_final = $this->function->isFinal() || $class_storage->final;
         }
 
@@ -2135,9 +2135,9 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 foreach ($overridden_method_ids as $overridden_method_id) {
                     $parent_method_storage = $codebase->methods->getStorage($overridden_method_id);
 
-                    $overridden_fq_class_name = Interner::lookup($overridden_method_id->class_id);
+                    $overridden_fq_class_name = Interner::intern(Interner::lookup($overridden_method_id->class_id));
 
-                    $parent_storage = $classlike_storage_provider->get(Interner::intern($overridden_fq_class_name));
+                    $parent_storage = $classlike_storage_provider->get($overridden_fq_class_name);
 
                     if ($this->function->name->name === '__construct'
                         && !$parent_storage->preserve_constructor_signature
@@ -2175,7 +2175,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                     }
 
                     // we've already checked this in the class checker
-                    if (!isset($appearing_class_storage->class_implements[Interner::intern($overridden_fq_class_name)])) {
+                    if (!isset($appearing_class_storage->class_implements[$overridden_fq_class_name])) {
                         MethodComparator::compare(
                             $codebase,
                             count($overridden_method_ids) === 1 ? $this->function : null,

@@ -422,7 +422,7 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
         $trait_lc = strtolower($ns[1] . '\\' . $tm[1]);
         $pairs = [];
         foreach ($this->codebase->classlike_storage_provider->getAll() as $st) {
-            if (!isset($st->used_traits[$trait_lc])) {
+            if (!isset($st->used_traits[Interner::intern($ns[1] . '\\' . $tm[1])])) {
                 continue;
             }
             $found = null;

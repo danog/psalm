@@ -874,10 +874,10 @@ final class ClassLikeNodeScanner
 
         $classlike_storage = $this->storage;
 
-        $fq_classlike_name = Interner::lookup($classlike_storage->id);
+        $fq_classlike_name = Interner::intern(Interner::lookup($classlike_storage->id));
 
-        if (PropertyMap::inPropertyMap($fq_classlike_name)) {
-            $mapped_properties = PropertyMap::getPropertyMap()[strtolower($fq_classlike_name)];
+        if (PropertyMap::inPropertyMap(Interner::lookup($fq_classlike_name))) {
+            $mapped_properties = PropertyMap::getPropertyMap()[strtolower(Interner::lookup($fq_classlike_name))];
 
             foreach ($mapped_properties as $property_name => $public_mapped_property) {
                 $property_type = Type::parseString($public_mapped_property);
@@ -889,7 +889,7 @@ final class ClassLikeNodeScanner
                     $classlike_storage->properties[Interner::intern($property_name)] = new PropertyStorage();
                 }
 
-                $property_id = $fq_classlike_name . '::$' . $property_name;
+                $property_id = Interner::lookup($fq_classlike_name) . '::$' . $property_name;
 
                 if ($property_id === 'DateInterval::$days') {
                     $property_type = $property_type->setProperties(['ignore_falsable_issues' => true]);
@@ -897,8 +897,8 @@ final class ClassLikeNodeScanner
 
                 $classlike_storage->properties[Interner::intern($property_name)]->type = $property_type;
 
-                $classlike_storage->declaring_property_ids[Interner::intern($property_name)] = Interner::intern($fq_classlike_name);
-                $classlike_storage->appearing_property_ids[Interner::intern($property_name)] = Interner::intern($fq_classlike_name);
+                $classlike_storage->declaring_property_ids[Interner::intern($property_name)] = $fq_classlike_name;
+                $classlike_storage->appearing_property_ids[Interner::intern($property_name)] = $fq_classlike_name;
             }
         }
 

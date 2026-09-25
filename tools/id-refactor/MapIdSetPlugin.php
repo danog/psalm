@@ -525,7 +525,8 @@ final class MapIdSetPlugin implements PluginEntryPointInterface, AfterFunctionLi
                 ) {
                     $src = $e->getArgs()[0]->value;
                     if ($src instanceof Expr\Variable || $src instanceof String_ || $src instanceof Expr\StaticCall
-                        || $src instanceof Expr\ClassConstFetch
+                        || $src instanceof Expr\ClassConstFetch || $src instanceof Expr\PropertyFetch
+                        || $src instanceof Expr\BinaryOp\Concat || $src instanceof Expr\ArrayDimFetch
                     ) {
                         return $this->idOfName($src);
                     }

@@ -197,13 +197,13 @@ final class Reflection
         $interfaces = $reflected_class->getInterfaces();
 
         foreach ($interfaces as $interface) {
-            $interface_name = $interface->getName();
+            $interface_name = Interner::intern($interface->getName());
             $this->registerClass($interface);
 
             if ($reflected_class->isInterface()) {
-                $storage->parent_interfaces[Interner::intern($interface_name)] = true;
+                $storage->parent_interfaces[$interface_name] = true;
             } else {
-                $storage->class_implements[Interner::intern($interface_name)] = true;
+                $storage->class_implements[$interface_name] = true;
             }
         }
 

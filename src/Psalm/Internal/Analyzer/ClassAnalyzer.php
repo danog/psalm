@@ -692,14 +692,14 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 continue;
             }
 
-            $property_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($property_class_name));
+            $property_class_storage = $codebase->classlike_storage_provider->get($property_class_name);
 
             $property_storage = $property_class_storage->properties[$property_name_id];
 
             if ($property_class_storage->isPure() && $property_storage->location) {
                 IssueBuffer::maybeAdd(
                     new InaccessibleProperty(
-                        'Property ' . $property_class_name . '::$' . $property_name
+                        'Property ' . Interner::lookup($property_class_name) . '::$' . $property_name
                             . ' is declared in a pure class and cannot be accessed',
                         $property_storage->location,
                     ),
@@ -860,7 +860,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
 
                 if (!$property_type->isMixed()
                     && (!$property_storage->is_promoted
-                        || (strtolower($fq_class_name) !== strtolower($property_class_name)
+                        || (strtolower($fq_class_name) !== strtolower(Interner::lookup($property_class_name))
                             && isset($storage->declaring_method_ids[Sym::CONSTRUCT])
                             && strtolower(
                                 Interner::lookup($storage->declaring_method_ids[Sym::CONSTRUCT]->class_id),
@@ -877,7 +877,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             } else {
                 if (!$property_storage->has_default
                     && (!$property_storage->is_promoted
-                        || (strtolower($fq_class_name) !== strtolower($property_class_name)
+                        || (strtolower($fq_class_name) !== strtolower(Interner::lookup($property_class_name))
                             && isset($storage->declaring_method_ids[Sym::CONSTRUCT])
                             && strtolower(
                                 Interner::lookup($storage->declaring_method_ids[Sym::CONSTRUCT]->class_id),
@@ -988,7 +988,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                         IssueBuffer::maybeAdd(
                             new MismatchingDocblockPropertyType(
                                 'Parameter '
-                                    . $property_class_name . '::$' . $property_name
+                                    . Interner::lookup($property_class_name) . '::$' . $property_name
                                     . ' has wrong type \'' . $fleshed_out_type .
                                     '\', should be \'' . $property_storage->signature_type . '\'',
                                 $property_type_location,
@@ -1090,7 +1090,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                 continue;
             }
 
-            $property_class_storage = $classlike_storage_provider->get(Interner::intern($property_class_name));
+            $property_class_storage = $classlike_storage_provider->get($property_class_name);
 
             $property = $property_class_storage->properties[$property_name_id];
 
@@ -1101,7 +1101,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             }
 
             if ($property->is_promoted
-                && strtolower($property_class_name) !== $fq_class_name_lc
+                && strtolower(Interner::lookup($property_class_name)) !== $fq_class_name_lc
                 && isset($storage->declaring_method_ids[Sym::CONSTRUCT])
                 && strtolower(Interner::lookup($storage->declaring_method_ids[Sym::CONSTRUCT]->class_id)) === $fq_class_name_lc) {
                 $property_is_initialized = false;
@@ -1149,12 +1149,12 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
             }
 
             $uninitialized_variables[] = '$this->' . $property_name;
-            $uninitialized_properties[$property_class_name . '::$' . $property_name] = $property;
+            $uninitialized_properties[Interner::lookup($property_class_name) . '::$' . $property_name] = $property;
 
             if ($property->type && !$property->hook_get) {
                 // Complain about all natively typed properties and all non-mixed docblock typed properties
                 if (!$property->type->from_docblock || !$property->type->isMixed()) {
-                    $uninitialized_typed_properties[$property_class_name . '::$' . $property_name] = $property;
+                    $uninitialized_typed_properties[Interner::lookup($property_class_name) . '::$' . $property_name] = $property;
                 }
             }
         }
@@ -1578,10 +1578,10 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
 
         $property_id = $fq_class_name . '::$' . $property_name;
 
-        $declaring_property_class = $codebase->properties->getDeclaringClassForProperty(
+        $declaring_property_class = Interner::lookupOrNull($codebase->properties->getDeclaringClassForProperty(
             $property_id,
             true,
-        );
+        ));
 
         if (!$declaring_property_class) {
             return;

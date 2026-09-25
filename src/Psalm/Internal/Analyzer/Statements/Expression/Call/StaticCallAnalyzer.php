@@ -59,10 +59,10 @@ final class StaticCallAnalyzer extends CallAnalyzer
                 && in_array(strtolower($stmt->class->getFirst()), ['self', 'static', 'parent'], true)
             ) {
                 if ($stmt->class->getFirst() === 'parent') {
-                    $child_fq_class_name = Interner::lookupOrNull($context->self);
+                    $child_fq_class_name = Interner::internOrNull(Interner::lookupOrNull($context->self));
 
-                    $class_storage = $child_fq_class_name
-                        ? $codebase->classlike_storage_provider->get(Interner::intern($child_fq_class_name))
+                    $class_storage = ($child_fq_class_name !== null)
+                        ? $codebase->classlike_storage_provider->get($child_fq_class_name)
                         : null;
 
                     if (!$class_storage || !$class_storage->parent_class) {

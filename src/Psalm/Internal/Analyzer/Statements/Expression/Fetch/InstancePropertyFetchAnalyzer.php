@@ -441,7 +441,7 @@ final class InstancePropertyFetchAnalyzer
                         $statements_analyzer,
                     );
 
-                    if ($declaring_property_class) {
+                    if (($declaring_property_class !== null)) {
                         AtomicPropertyFetchAnalyzer::checkPropertyDeprecation(
                             $stmt->name->name,
                             $declaring_property_class,

@@ -120,7 +120,7 @@ final class Properties
         string $property_id,
         bool $read_mode,
         ?StatementsSource $source = null,
-    ): ?string {
+    ): ?int {
         [$fq_class_name, $property_name] = explode('::$', $property_id);
 
         if ($this->property_existence_provider->has($fq_class_name)) {
@@ -131,14 +131,14 @@ final class Properties
                 $source,
                 null,
             )) {
-                return $fq_class_name;
+                return Interner::intern($fq_class_name);
             }
         }
 
         $class_storage = $this->classlikes->getStorageFor(Interner::intern($fq_class_name));
 
         if ($class_storage && isset($class_storage->declaring_property_ids[Interner::intern($property_name)])) {
-            return Interner::lookup($class_storage->declaring_property_ids[Interner::intern($property_name)]);
+            return Interner::intern(Interner::lookup($class_storage->declaring_property_ids[Interner::intern($property_name)]));
         }
 
         return null;

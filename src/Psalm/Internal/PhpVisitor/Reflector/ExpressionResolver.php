@@ -329,9 +329,9 @@ final class ExpressionResolver
                 }
             }
             if ($stmt->name->name === 'value') {
-                return new EnumValueFetch($enum_fq_class_name, $stmt->var->name->name);
+                return new EnumValueFetch(Interner::intern($enum_fq_class_name), $stmt->var->name->name);
             } else /*if ($stmt->name->name === 'name')*/ {
-                return new EnumNameFetch($enum_fq_class_name, $stmt->var->name->name);
+                return new EnumNameFetch(Interner::intern($enum_fq_class_name), $stmt->var->name->name);
             }
         }
 

@@ -669,11 +669,11 @@ final class InstancePropertyAssignmentAnalyzer
             }
         }
 
-        $declaring_property_class = $codebase->properties->getDeclaringClassForProperty(
+        $declaring_property_class = Interner::lookupOrNull($codebase->properties->getDeclaringClassForProperty(
             $property_id,
             false,
             $statements_analyzer,
-        );
+        ));
 
         if ($statements_analyzer->taint_flow_graph
             && $declaring_property_class
@@ -1298,10 +1298,10 @@ final class InstancePropertyAssignmentAnalyzer
             }
         }
 
-        $declaring_property_class = (string)$codebase->properties->getDeclaringClassForProperty(
+        $declaring_property_class = (string)Interner::lookupOrNull($codebase->properties->getDeclaringClassForProperty(
             $property_id,
             false,
-        );
+        ));
 
         self::handlePropertyRenames(
             $codebase,
@@ -1508,7 +1508,7 @@ final class InstancePropertyAssignmentAnalyzer
             return null;
         }
 
-        $property_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($property_class_name));
+        $property_class_storage = $codebase->classlike_storage_provider->get($property_class_name);
 
         $property_storage = $property_class_storage->properties[$property_name_id];
 

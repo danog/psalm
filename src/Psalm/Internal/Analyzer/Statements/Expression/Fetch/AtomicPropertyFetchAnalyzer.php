@@ -243,7 +243,7 @@ final class AtomicPropertyFetchAnalyzer
                     $class_storage,
                     $prop_name,
                     $lhs_type_part,
-                    $fq_class_name,
+                    Interner::intern($fq_class_name),
                     $property_id,
                     $in_assignment,
                     $stmt_var_id,
@@ -345,7 +345,7 @@ final class AtomicPropertyFetchAnalyzer
             $naive_property_exists,
             $override_property_visibility,
             $class_exists,
-            Interner::internOrNull($declaring_property_class),
+            $declaring_property_class,
             $class_storage,
             $get_method_id,
             $in_assignment,
@@ -433,7 +433,7 @@ final class AtomicPropertyFetchAnalyzer
         }
 
         if ($codebase->properties_to_rename) {
-            $declaring_property_id = strtolower($declaring_property_class) . '::$' . $prop_name;
+            $declaring_property_id = strtolower(Interner::lookup($declaring_property_class)) . '::$' . $prop_name;
 
             foreach ($codebase->properties_to_rename as $original_property_id => $new_property_name) {
                 if ($declaring_property_id === $original_property_id) {
@@ -454,7 +454,7 @@ final class AtomicPropertyFetchAnalyzer
         }
 
         $declaring_class_storage = $codebase->classlike_storage_provider->get(
-            Interner::intern($declaring_property_class),
+            $declaring_property_class,
         );
 
         if (isset($declaring_class_storage->properties[$prop_name_id])) {
@@ -562,15 +562,15 @@ final class AtomicPropertyFetchAnalyzer
      */
     public static function checkPropertyDeprecation(
         string $prop_name,
-        string $declaring_property_class,
+        int $declaring_property_class,
         PhpParser\Node\Expr $stmt,
         StatementsAnalyzer $statements_analyzer,
     ): void {
         $prop_name_id = Interner::intern($prop_name);
-        $property_id = $declaring_property_class . '::$' . $prop_name;
+        $property_id = Interner::lookup($declaring_property_class) . '::$' . $prop_name;
         $codebase = $statements_analyzer->getCodebase();
         $declaring_class_storage = $codebase->classlike_storage_provider->get(
-            Interner::intern($declaring_property_class),
+            $declaring_property_class,
         );
 
         if (isset($declaring_class_storage->properties[$prop_name_id])) {
@@ -1235,7 +1235,7 @@ final class AtomicPropertyFetchAnalyzer
         ClassLikeStorage $class_storage,
         string $prop_name,
         TNamedObject $lhs_type_part,
-        ?string $declaring_property_class,
+        ?int $declaring_property_class,
         string $property_id,
         bool $in_assignment,
         ?string $stmt_var_id,
@@ -1259,9 +1259,9 @@ final class AtomicPropertyFetchAnalyzer
                     $stmt_type,
                     $lhs_type_part,
                     $class_storage,
-                    $declaring_property_class
+                    ($declaring_property_class !== null)
                         ? $codebase->classlike_storage_provider->get(
-                            Interner::intern($declaring_property_class),
+                            $declaring_property_class,
                         ) : $class_storage,
                 );
 

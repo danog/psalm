@@ -498,9 +498,9 @@ final class Analyzer
                     foreach ($all_referencing_methods[$unchanged_signature_member_id] as $referencing_method_id => $_) {
                         if (str_ends_with($referencing_method_id, '::__construct')) {
                             $referencing_base_classlike = explode('::', $referencing_method_id)[0];
-                            $unchanged_signature_classlike = explode('::', $unchanged_signature_member_id)[0];
+                            $unchanged_signature_classlike = Interner::intern(explode('::', $unchanged_signature_member_id)[0]);
 
-                            if ($referencing_base_classlike === $unchanged_signature_classlike) {
+                            if ($referencing_base_classlike === Interner::lookup($unchanged_signature_classlike)) {
                                 $newly_invalidated_methods[$referencing_method_id] = true;
                             } else {
                                 try {
@@ -513,8 +513,8 @@ final class Analyzer
                                     $referencing_storage = null;
                                 }
 
-                                if (isset($referencing_storage->used_traits[$codebase->classlike_storage_provider->canonicalId(Interner::intern($unchanged_signature_classlike))])
-                                    || isset($referencing_storage->parent_classes[$codebase->classlike_storage_provider->canonicalId(Interner::intern($unchanged_signature_classlike))])
+                                if (isset($referencing_storage->used_traits[$codebase->classlike_storage_provider->canonicalId($unchanged_signature_classlike)])
+                                    || isset($referencing_storage->parent_classes[$codebase->classlike_storage_provider->canonicalId($unchanged_signature_classlike)])
                                 ) {
                                     $newly_invalidated_methods[$referencing_method_id] = true;
                                 }

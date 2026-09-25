@@ -99,7 +99,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
         } elseif ($lc !== '__construct' && str_starts_with($lc, '__')) {
             $fixed_why = 'magic';
         } else {
-            foreach ([...array_keys($cls->parent_classes), ...array_keys($cls->class_implements)] as $anc) {
+            foreach ([...array_map(static fn(int $id): string => strtolower(Interner::lookup($id)), array_keys($cls->parent_classes)), ...array_map(static fn(int $id): string => strtolower(Interner::lookup($id)), array_keys($cls->class_implements))] as $anc) {
                 $as = $this->codebase->classlike_storage_provider->find(Interner::intern((string) $anc));
                 if ($as !== null && isset($as->methods[Interner::intern($lc)])) {
                     $fixed_why = 'overrides';
@@ -110,7 +110,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
                 // only an actual override shares the signature (breaking the plugin API is fine, as in pzoom)
                 $self_lc = strtolower($storage->defining_fqcln);
                 foreach ($this->codebase->classlike_storage_provider->getAll() as $sub) {
-                    if (isset($sub->parent_classes[$self_lc]) && isset($sub->methods[Interner::intern($lc)])
+                    if (isset($sub->parent_classes[Interner::intern($storage->defining_fqcln)]) && isset($sub->methods[Interner::intern($lc)])
                         && strcasecmp(\Psalm\Internal\Interner::lookup($sub->id), $storage->defining_fqcln) !== 0
                     ) {
                         $fixed_why = 'overridden';
@@ -506,7 +506,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
         if ($storage === null) {
             return null;
         }
-        $declaring = $storage->declaring_property_ids[Interner::intern($prop)] ?? null;
+        $declaring = (isset($storage->declaring_property_ids[Interner::intern($prop)]) ? Interner::lookup($storage->declaring_property_ids[Interner::intern($prop)]) : null);
         if ($declaring === null) {
             return null;
         }
@@ -669,9 +669,9 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
     private function isInternCall(Expr\CallLike $call): bool
     {
         return $call instanceof Expr\StaticCall && $call->class instanceof Name && $call->name instanceof Identifier
-            && strtolower($call->name->name) === 'intern'
+            && in_array(strtolower($call->name->name), ['intern', 'internornull'], true)
             && in_array(strtolower($call->class->getLast()), ['interner'], true)
-            && count($call->getArgs()) === 1;
+            && !$call->isFirstClassCallable() && count($call->getArgs()) === 1;
     }
 
     /** @param ?array{int, int} $named */

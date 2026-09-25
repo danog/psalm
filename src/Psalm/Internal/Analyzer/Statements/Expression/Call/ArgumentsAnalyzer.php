@@ -1330,11 +1330,11 @@ final class ArgumentsAnalyzer
         $property_id = $fq_class_name . '::$' . $prop_name;
 
         $codebase = $statements_analyzer->getCodebase();
-        $declaring_property_class = Interner::intern((string) $codebase->properties->getDeclaringClassForProperty(
+        $declaring_property_class = Interner::intern((string) Interner::lookupOrNull($codebase->properties->getDeclaringClassForProperty(
             $property_id,
             true,
             $statements_analyzer,
-        ));
+        )));
 
         try {
             $declaring_class_storage = $codebase->classlike_storage_provider->get($declaring_property_class);

@@ -958,10 +958,10 @@ final class ReturnTypeAnalyzer
 
         $codebase = $project_analyzer->getCodebase();
         $is_final = true;
-        $fqcln = $source->getFQCLN();
+        $fqcln = Interner::internOrNull($source->getFQCLN());
 
         if ($fqcln !== null && $function instanceof ClassMethod) {
-            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fqcln));
+            $class_storage = $codebase->classlike_storage_provider->get($fqcln);
             $is_final = $function->isFinal() || $class_storage->final;
         }
 

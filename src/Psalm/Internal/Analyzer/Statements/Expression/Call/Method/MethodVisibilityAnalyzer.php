@@ -142,7 +142,7 @@ final class MethodVisibilityAnalyzer
             // Oldest ancestor is at end of array
             $oldest_ancestor_declaring_method_id = array_pop($overridden_method_ids);
         }
-        $oldest_ancestor_declaring_method_class = (isset($oldest_ancestor_declaring_method_id->class_id) ? Interner::lookup($oldest_ancestor_declaring_method_id->class_id) : null);
+        $oldest_ancestor_declaring_method_class = (Interner::internOrNull(isset($oldest_ancestor_declaring_method_id->class_id) ? Interner::lookup($oldest_ancestor_declaring_method_id->class_id) : null));
 
         switch ($visibility) {
             case ClassLikeAnalyzer::VISIBILITY_PUBLIC:
@@ -180,13 +180,13 @@ final class MethodVisibilityAnalyzer
                 }
 
                 if ($oldest_ancestor_declaring_method_class !== null
-                    && $codebase_classlikes->classExtends(Interner::intern($oldest_ancestor_declaring_method_class), $context->self)
+                    && $codebase_classlikes->classExtends($oldest_ancestor_declaring_method_class, $context->self)
                 ) {
                     return null;
                 }
 
                 if ($oldest_ancestor_declaring_method_class !== null
-                    && !$codebase_classlikes->classExtends($context->self, Interner::intern($oldest_ancestor_declaring_method_class))
+                    && !$codebase_classlikes->classExtends($context->self, $oldest_ancestor_declaring_method_class)
                     && !$codebase_classlikes->classExtends(Interner::intern($declaring_method_class), $context->self)
                 ) {
                     if (IssueBuffer::accepts(
