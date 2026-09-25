@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Psalm\Internal\Type\Comparator;
 
 use Psalm\Codebase;
+use Psalm\Internal\Interner;
+use Psalm\Internal\Sym;
+use Psalm\Storage\ClassLikeStorage;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\TCallableObject;
@@ -99,17 +102,18 @@ final class ObjectComparator
             } else {
                 $container_was_static = $intersection_container_type->is_static;
 
-                $intersection_container_type_lower = strtolower(
-                    $codebase->classlikes->getUnAliasedName(
-                        $intersection_container_type->value,
-                    ),
-                );
+                // a named container is compared by its interned name; the lowercase spelling is only built
+                // when a class-like has no storage (see isIntersectionShallowlyContainedBy)
+                $intersection_container_type_lower = null;
             }
 
             $any_inputs_contained = false;
 
-            $container_type_is_interface = $intersection_container_type_lower
-                && $codebase->interfaceExists($intersection_container_type_lower);
+            $container_type_is_interface = $intersection_container_type instanceof TTemplateParam
+                ? false
+                : ($intersection_container_type_lower === null
+                    ? $codebase->interfaceExists($intersection_container_type->name)
+                    : $codebase->interfaceExists(Interner::intern($intersection_container_type_lower)));
 
             foreach ($intersection_input_types as $input_type_key => $intersection_input_type) {
                 if ($allow_interface_equality
@@ -121,7 +125,7 @@ final class ObjectComparator
                     $codebase,
                     $intersection_input_type,
                     $intersection_container_type,
-                    $intersection_container_type_lower,
+                    Interner::internOrNull($intersection_container_type_lower),
                     $container_was_static,
                     $allow_interface_equality,
                     $atomic_comparison_result,
@@ -180,7 +184,7 @@ final class ObjectComparator
         Codebase $codebase,
         Atomic $intersection_input_type,
         Atomic $intersection_container_type,
-        ?string $intersection_container_type_lower,
+        ?int $intersection_container_type_lower,
         bool $container_was_static,
         bool $allow_interface_equality,
         ?TypeComparisonResult $atomic_comparison_result,
@@ -227,7 +231,7 @@ final class ObjectComparator
                 }
 
                 $input_class_storage = $codebase->classlike_storage_provider->get(
-                    $intersection_input_type->defining_class,
+                    Interner::intern($intersection_input_type->defining_class),
                 );
 
                 if (isset($input_class_storage->template_extended_params
@@ -241,9 +245,7 @@ final class ObjectComparator
             return false;
         }
 
-        if ($intersection_container_type instanceof TTemplateParam
-            || $intersection_container_type_lower === null
-        ) {
+        if ($intersection_container_type instanceof TTemplateParam) {
             return false;
         }
 
@@ -251,7 +253,7 @@ final class ObjectComparator
             if ($intersection_container_type instanceof TNamedObject && $intersection_container_type->is_static) {
                 // this is extra check is redundant since we're comparing to a template as type
                 $intersection_container_type = new TNamedObject(
-                    $intersection_container_type->value,
+                    Interner::lookup($intersection_container_type->name),
                     false,
                     $intersection_container_type->definite_class,
                     $intersection_container_type->extra_types,
@@ -272,19 +274,52 @@ final class ObjectComparator
         $input_was_static = false;
 
         if ($intersection_input_type instanceof TIterable) {
-            $intersection_input_type_lower = 'iterable';
+            $intersection_input_type_lower = Sym::ITERABLE;
         } elseif ($intersection_input_type instanceof TObjectWithProperties) {
-            $intersection_input_type_lower = 'object';
+            $intersection_input_type_lower = Sym::OBJECT;
         } elseif ($intersection_input_type instanceof TCallableObject) {
-            $intersection_input_type_lower = 'callable-object';
+            $intersection_input_type_lower = Sym::CALLABLE_OBJECT;
         } else {
             $input_was_static = $intersection_input_type->is_static;
 
-            $intersection_input_type_lower = strtolower(
+            if ($intersection_container_type_lower === null && $intersection_container_type instanceof TNamedObject) {
+                // both are named class-likes: compared by interned name (pzoom's StrId path) when both have a
+                // storage; an undefined class or an alias takes the spelled path below
+                $input_storage = $codebase->classlike_storage_provider->find($intersection_input_type->name);
+                $container_storage = $codebase->classlike_storage_provider->find(
+                    $intersection_container_type->name,
+                );
+
+                if ($input_storage !== null && $container_storage !== null) {
+                    return self::isNamedShallowlyContainedBy(
+                        $codebase,
+                        $intersection_input_type->name,
+                        $input_storage,
+                        $intersection_container_type->name,
+                        $container_storage,
+                        $input_was_static,
+                        $container_was_static,
+                        $allow_interface_equality,
+                        $atomic_comparison_result,
+                    );
+                }
+            }
+
+            $intersection_input_type_lower = Interner::intern(strtolower(
                 $codebase->classlikes->getUnAliasedName(
-                    $intersection_input_type->value,
+                    Interner::lookup($intersection_input_type->name),
                 ),
-            );
+            ));
+        }
+
+        if ($intersection_container_type_lower === null) {
+            // the caller spells out every other container kind
+            assert($intersection_container_type instanceof TNamedObject);
+            $intersection_container_type_lower = Interner::intern(strtolower(
+                $codebase->classlikes->getUnAliasedName(
+                    Interner::lookup($intersection_container_type->name),
+                ),
+            ));
         }
 
         if ($intersection_container_type_lower === $intersection_input_type_lower) {
@@ -299,31 +334,31 @@ final class ObjectComparator
             return true;
         }
 
-        if ($intersection_input_type_lower === 'generator'
-            && in_array($intersection_container_type_lower, ['iterator', 'traversable', 'iterable'], true)
+        if ($intersection_input_type_lower === Sym::C_GENERATOR
+            && in_array(Interner::lookup($intersection_container_type_lower), ['iterator', 'traversable', 'iterable'], true)
         ) {
             return true;
         }
 
-        if ($intersection_container_type_lower === 'iterable') {
-            if ($intersection_input_type_lower === 'traversable'
+        if ($intersection_container_type_lower === Sym::ITERABLE) {
+            if ($intersection_input_type_lower === Sym::C_TRAVERSABLE
                 || ($codebase->classlikes->classExists($intersection_input_type_lower)
                     && $codebase->classlikes->classImplements(
                         $intersection_input_type_lower,
-                        'Traversable',
+                        Sym::TRAVERSABLE,
                     ))
                 || ($codebase->classlikes->interfaceExists($intersection_input_type_lower)
                     && $codebase->classlikes->interfaceExtends(
                         $intersection_input_type_lower,
-                        'Traversable',
+                        Sym::TRAVERSABLE,
                     ))
             ) {
                 return true;
             }
         }
 
-        if ($intersection_input_type_lower === 'traversable'
-            && $intersection_container_type_lower === 'iterable'
+        if ($intersection_input_type_lower === Sym::C_TRAVERSABLE
+            && $intersection_container_type_lower === Sym::ITERABLE
         ) {
             return true;
         }
@@ -366,7 +401,79 @@ final class ObjectComparator
             return true;
         }
 
-        if (ExpressionAnalyzer::isMock($intersection_input_type_lower)) {
+        if (ExpressionAnalyzer::isMock(Interner::lookupLc($intersection_input_type_lower))) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * The named-class-like half of isIntersectionShallowlyContainedBy() on interned names: the same decisions,
+     * with every existence and inheritance question asked by id (no lowercase copies, no alias walks).
+     */
+    private static function isNamedShallowlyContainedBy(
+        Codebase $codebase,
+        int $input_id,
+        ClassLikeStorage $input_storage,
+        int $container_id,
+        ClassLikeStorage $container_storage,
+        bool $input_was_static,
+        bool $container_was_static,
+        bool $allow_interface_equality,
+        ?TypeComparisonResult $atomic_comparison_result,
+    ): bool {
+        if ($input_storage->id === $container_storage->id) {
+            if ($container_was_static && !$input_was_static) {
+                if ($atomic_comparison_result) {
+                    $atomic_comparison_result->type_coerced = true;
+                }
+
+                return false;
+            }
+
+            return true;
+        }
+
+        if ($input_storage->id === Sym::GENERATOR
+            && ($container_storage->id === Sym::ITERATOR || $container_storage->id === Sym::TRAVERSABLE)
+        ) {
+            return true;
+        }
+
+        $input_type_is_interface = $codebase->interfaceExists($input_id);
+        $container_type_is_interface = $codebase->interfaceExists($container_id);
+
+        if ($allow_interface_equality
+            && $container_type_is_interface
+            && $input_type_is_interface
+        ) {
+            return true;
+        }
+
+        if (($codebase->classExists($input_id)
+                || $codebase->classlikes->enumExists($input_id))
+            && $codebase->classOrInterfaceExists($container_id)
+            && $codebase->classExtendsOrImplements($input_id, $container_id)
+        ) {
+            if ($container_was_static && !$input_was_static) {
+                if ($atomic_comparison_result) {
+                    $atomic_comparison_result->type_coerced = true;
+                }
+
+                return false;
+            }
+
+            return true;
+        }
+
+        if ($input_type_is_interface
+            && $codebase->interfaceExtends($input_id, $container_id)
+        ) {
+            return true;
+        }
+
+        if (ExpressionAnalyzer::isMock(strtolower(Interner::lookup($input_storage->id)))) {
             return true;
         }
 

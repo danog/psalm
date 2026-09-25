@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace Psalm\Tests;
 
 use Psalm\Context;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 
 use function array_keys;
+use function array_map;
 use function var_export;
 use function implode;
 
@@ -27,14 +30,14 @@ final class VersionStubTest extends TestCase
         $codebase->config->visitStubFiles($codebase);
 
         $this->assertTrue(
-            $codebase->classlikes->classExists('Attribute'),
+            $codebase->classlikes->classExists(Interner::intern('Attribute')),
             'Attribute is declared by stubs/CoreGenericClasses.phpstub',
         );
 
-        $storage = $codebase->classlike_storage_provider->get('Attribute');
+        $storage = $codebase->classlike_storage_provider->get(Interner::intern('Attribute'));
 
         $this->assertTrue(
-            isset($storage->methods['__construct']),
+            isset($storage->methods[Sym::CONSTRUCT]),
             'the stub declares Attribute::__construct',
         );
     }
@@ -50,14 +53,14 @@ final class VersionStubTest extends TestCase
         $codebase->config->visitStubFiles($codebase);
 
         $this->assertTrue(
-            $codebase->classlikes->classExists('Attribute'),
+            $codebase->classlikes->classExists(Interner::intern('Attribute')),
             'Attribute is declared by stubs/CoreGenericClasses.phpstub',
         );
 
-        $storage = $codebase->classlike_storage_provider->get('Attribute');
+        $storage = $codebase->classlike_storage_provider->get(Interner::intern('Attribute'));
 
         $this->assertTrue(
-            isset($storage->methods['__construct']),
+            isset($storage->methods[Sym::CONSTRUCT]),
             'the stub declares Attribute::__construct',
         );
     }
@@ -74,18 +77,18 @@ final class VersionStubTest extends TestCase
         $codebase->config->visitPreloadedStubFiles($codebase);
         $codebase->config->visitStubFiles($codebase);
 
-        $storage = $codebase->classlike_storage_provider->get('IteratorAggregate');
+        $storage = $codebase->classlike_storage_provider->get(Interner::intern('IteratorAggregate'));
 
-        $method = $storage->methods['getiterator'] ?? null;
+        $method = $storage->methods[Sym::GET_ITERATOR] ?? null;
 
         $this->assertNull(
             $method?->signature_return_type,
             'the stub declares getIterator() without a native return type;'
-            . ' storage name=' . $storage->name
+            . ' storage name=' . Interner::lookup($storage->id)
             . ' interface=' . var_export($storage->is_interface, true)
             . ' file=' . ($storage->location?->file_path ?? 'none')
-            . ' methods=' . implode(',', array_keys($storage->methods))
-            . ' defining=' . ($method?->defining_fqcln ?? 'none')
+            . ' methods=' . implode(',', array_map(Interner::lookupLc(...), array_keys($storage->methods)))
+            . ' defining=' . ((Interner::lookupOrNull($method?->declaring_class) ?? 'none'))
             . ' method_file=' . ($method?->location?->file_path ?? 'none')
             . ' signature=' . ($method?->signature_return_type === null ? 'null' : (string) $method->signature_return_type)
             . ' return=' . ($method?->return_type === null ? 'null' : (string) $method->return_type),
@@ -126,23 +129,23 @@ final class VersionStubTest extends TestCase
 
         $codebase = $this->project_analyzer->getCodebase();
 
-        $local = $codebase->methods->getStorage(new MethodIdentifier('LocalStringable', 'render'));
+        $local = $codebase->methods->getStorage(new MethodIdentifier(Sym::C_LOCAL_STRINGABLE, Sym::C_RENDER));
 
         $this->assertNull(
             $local->signature_return_type,
             'a docblock @return does not give the method a signature return type',
         );
 
-        $stringable = $codebase->methods->getStorage(new MethodIdentifier('Stringable', '__tostring'));
+        $stringable = $codebase->methods->getStorage(new MethodIdentifier(Sym::STRINGABLE, Sym::TO_STRING));
 
-        $stringable_storage = $codebase->classlike_storage_provider->get('Stringable');
+        $stringable_storage = $codebase->classlike_storage_provider->get(Interner::intern('Stringable'));
 
         $this->assertNull(
             $stringable->signature_return_type,
             'Stringable::__toString in the version stub has no native return type;'
             . ' storage file=' . ($stringable_storage->location?->file_path ?? 'none')
-            . ' methods=' . implode(',', array_keys($stringable_storage->methods))
-            . ' defining=' . ($stringable->defining_fqcln ?? 'none')
+            . ' methods=' . implode(',', array_map(Interner::lookupLc(...), array_keys($stringable_storage->methods)))
+            . ' defining=' . ((Interner::lookupOrNull($stringable->declaring_class) ?? 'none'))
             . ' method_file=' . ($stringable->location?->file_path ?? 'none')
             . ' signature=' . (string) $stringable->signature_return_type,
         );
@@ -184,14 +187,14 @@ final class VersionStubTest extends TestCase
         $codebase->config->visitStubFiles($codebase);
 
         foreach (['ReflectionClass', 'ReflectionFunction', 'ReflectionMethod', 'ReflectionProperty'] as $name) {
-            $storage = $codebase->classlike_storage_provider->get($name);
+            $storage = $codebase->classlike_storage_provider->get(Interner::intern($name));
 
             $this->assertTrue(
-                $codebase->methods->methodExists($codebase, new MethodIdentifier($name, 'getattributes')),
+                $codebase->methods->methodExists($codebase, new MethodIdentifier(Interner::intern($name), Sym::C_GETATTRIBUTES)),
                 $name . '::getAttributes() is declared by stubs/Reflection.phpstub;'
                 . ' storage file=' . ($storage->location?->file_path ?? 'none')
                 . ' parent=' . ($storage->parent_class ?? 'none')
-                . ' methods=' . implode(',', array_keys($storage->methods)),
+                . ' methods=' . implode(',', array_map(Interner::lookupLc(...), array_keys($storage->methods))),
             );
         }
     }
@@ -208,14 +211,14 @@ final class VersionStubTest extends TestCase
         $codebase->config->visitPreloadedStubFiles($codebase);
         $codebase->config->visitStubFiles($codebase);
 
-        $storage = $codebase->classlike_storage_provider->get('ReflectionClass');
+        $storage = $codebase->classlike_storage_provider->get(Interner::intern('ReflectionClass'));
 
         $this->assertTrue(
-            isset($storage->methods['newlazyghost']),
+            isset($storage->methods[Interner::intern('newlazyghost')]),
             'stubs/Php84.phpstub adds newLazyGhost();'
             . ' file=' . ($storage->location?->file_path ?? 'none')
             . ' templates=' . implode(',', array_keys($storage->template_types ?? []))
-            . ' methods=' . implode(',', array_keys($storage->methods)),
+            . ' methods=' . implode(',', array_map(Interner::lookupLc(...), array_keys($storage->methods))),
         );
 
         $this->assertSame(
@@ -225,7 +228,7 @@ final class VersionStubTest extends TestCase
         );
 
         $this->assertTrue(
-            isset($storage->methods['getattributes']),
+            isset($storage->methods[Interner::intern('getattributes')]),
             'while keeping what stubs/Reflection.phpstub declared',
         );
     }
@@ -246,14 +249,14 @@ final class VersionStubTest extends TestCase
         $codebase->scanner->queueClassLikeForScanning('Stringable');
         $codebase->scanFiles();
 
-        $reflected = $codebase->classlike_storage_provider->get('Stringable');
+        $reflected = $codebase->classlike_storage_provider->get(Interner::intern('Stringable'));
         $reflected_file = $reflected->location?->file_path ?? 'none';
-        $reflected_signature = ($reflected->methods['__tostring'] ?? null)?->signature_return_type;
+        $reflected_signature = ($reflected->methods[Sym::TO_STRING] ?? null)?->signature_return_type;
 
         $codebase->config->visitStubFiles($codebase);
 
-        $storage = $codebase->classlike_storage_provider->get('Stringable');
-        $method = $storage->methods['__tostring'] ?? null;
+        $storage = $codebase->classlike_storage_provider->get(Interner::intern('Stringable'));
+        $method = $storage->methods[Sym::TO_STRING] ?? null;
 
         $this->assertNull(
             $method?->signature_return_type,
@@ -262,7 +265,7 @@ final class VersionStubTest extends TestCase
             . ' stubbed=' . var_export($reflected->stubbed, true)
             . ' after=' . ($storage->location?->file_path ?? 'none')
             . ' after_stubbed=' . var_export($storage->stubbed, true)
-            . ' methods=' . implode(',', array_keys($storage->methods))
+            . ' methods=' . implode(',', array_map(Interner::lookupLc(...), array_keys($storage->methods)))
             . ' method_file=' . ($method?->location?->file_path ?? 'none')
             . ' signature=' . (string) $method?->signature_return_type,
         );

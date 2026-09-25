@@ -11,7 +11,9 @@ use Psalm\Internal\Analyzer\MethodAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\Method\MethodCallProhibitionAnalyzer;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Issue\InvalidClone;
 use Psalm\Issue\MixedClone;
 use Psalm\Issue\PossiblyInvalidClone;
@@ -63,12 +65,12 @@ final class CloneAnalyzer
                 } elseif ($clone_type_part instanceof TObject) {
                     $possibly_valid = true;
                 } elseif ($clone_type_part instanceof TNamedObject) {
-                    if (!$codebase->classlikes->classOrInterfaceExists($clone_type_part->value, $location, $context)) {
+                    if (!$codebase->classlikes->classOrInterfaceExists($clone_type_part->name, $location, $context)) {
                         $invalid_clones[] = $clone_type_part->getId();
                     } else {
                         $clone_method_id = new MethodIdentifier(
-                            $clone_type_part->value,
-                            '__clone',
+                            $clone_type_part->name,
+                            Sym::CLONE,
                         );
 
                         $does_method_exist = $codebase->methodExists(

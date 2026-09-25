@@ -18,6 +18,7 @@ use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Issue\AmbiguousConstantInheritance;
 use Psalm\Issue\CircularReference;
@@ -77,7 +78,7 @@ final class ClassConstAnalyzer
             $first_part_lc = strtolower($stmt->class->getFirst());
 
             if ($first_part_lc === 'self' || $first_part_lc === 'static') {
-                if (!$context->self) {
+                if (!($context->self !== null)) {
                     return !IssueBuffer::accepts(
                         new NonStaticSelfCall(
                             'Cannot use ' . $first_part_lc . ' outside class context',
@@ -87,7 +88,7 @@ final class ClassConstAnalyzer
                     );
                 }
 
-                $fq_class_name = $context->self;
+                $fq_class_name = Interner::lookup($context->self);
             } elseif ($first_part_lc === 'parent') {
                 $fq_class_name = $statements_analyzer->getParentFQCLN();
 
@@ -101,10 +102,10 @@ final class ClassConstAnalyzer
                     );
                 }
             } else {
-                $fq_class_name = ClassLikeAnalyzer::getFQCLNFromNameObject(
+                $fq_class_name = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                     $stmt->class,
                     $statements_analyzer->getAliases(),
-                );
+                ));
 
                 if ($stmt->name instanceof PhpParser\Node\Identifier) {
                     if ((!$context->inside_class_exists || $stmt->name->name !== 'class')
@@ -142,16 +143,16 @@ final class ClassConstAnalyzer
                 );
             }
 
-            if ($codebase->classlikes->classExists($fq_class_name, null, $context)) {
+            if ($codebase->classlikes->classExists(Interner::intern($fq_class_name), null, $context)) {
                 $fq_class_name = $codebase->classlikes->getUnAliasedName($fq_class_name);
             }
 
             if ($stmt->name instanceof PhpParser\Node\Identifier && $stmt->name->name === 'class') {
-                if ($codebase->classlikes->classExists($fq_class_name, null, $context)) {
-                    $const_class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
-                    $fq_class_name = $const_class_storage->name;
+                if ($codebase->classlikes->classExists(Interner::intern($fq_class_name), null, $context)) {
+                    $const_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
+                    $fq_class_name = Interner::lookup($const_class_storage->id);
 
-                    if ($const_class_storage->deprecated && $fq_class_name !== $context->self) {
+                    if ($const_class_storage->deprecated && $fq_class_name !== Interner::lookupOrNull($context->self)) {
                         IssueBuffer::maybeAdd(
                             new DeprecatedClass(
                                 'Class ' . $fq_class_name . ' is deprecated',
@@ -191,7 +192,7 @@ final class ClassConstAnalyzer
             }
 
             // if we're ignoring that the class doesn't exist, exit anyway
-            if (!$codebase->classlikes->classOrInterfaceOrEnumExists($fq_class_name, null, $context)) {
+            if (!$codebase->classlikes->classOrInterfaceOrEnumExists(Interner::intern($fq_class_name), null, $context)) {
                 return true;
             }
 
@@ -241,9 +242,9 @@ final class ClassConstAnalyzer
                 );
             }
 
-            $const_class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+            $const_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
             if ($const_class_storage->is_enum) {
-                $case = $const_class_storage->enum_cases[(string)$stmt->name] ?? null;
+                $case = $const_class_storage->enum_cases[Interner::intern((string)$stmt->name)] ?? null;
                 if ($case && $case->deprecated) {
                     IssueBuffer::maybeAdd(
                         new DeprecatedConstant(
@@ -255,16 +256,16 @@ final class ClassConstAnalyzer
                 }
             }
 
-            if ($fq_class_name === $context->self
+            if ($fq_class_name === Interner::lookupOrNull($context->self)
                 || (
                     $statements_analyzer->getSource()->getSource() instanceof TraitAnalyzer &&
                     $fq_class_name === $statements_analyzer->getSource()->getFQCLN()
                 )
             ) {
                 $class_visibility = ReflectionProperty::IS_PRIVATE;
-            } elseif ($context->self &&
-                ($codebase->classlikes->classExtends($context->self, $fq_class_name)
-                    || $codebase->classlikes->classExtends($fq_class_name, $context->self))
+            } elseif (($context->self !== null) &&
+                ($codebase->classlikes->classExtends($context->self, Interner::intern($fq_class_name))
+                    || $codebase->classlikes->classExtends(Interner::intern($fq_class_name), $context->self))
             ) {
                 $class_visibility = ReflectionProperty::IS_PROTECTED;
             } else {
@@ -295,7 +296,7 @@ final class ClassConstAnalyzer
             }
 
             if (!$class_constant_type) {
-                if ($fq_class_name !== $context->self) {
+                if ($fq_class_name !== Interner::lookupOrNull($context->self)) {
                     $class_constant_type = $codebase->classlikes->getClassConstantType(
                         $fq_class_name,
                         $stmt->name->name,
@@ -367,16 +368,16 @@ final class ClassConstAnalyzer
                 }
             }
 
-            if ($context->self
+            if (($context->self !== null)
                 && !$context->collect_initializations
                 && !$context->collect_mutations
-                && !NamespaceAnalyzer::isWithinAny($context->self, $const_class_storage->internal)
+                && !NamespaceAnalyzer::isWithinAny(Interner::lookup($context->self), $const_class_storage->internal)
             ) {
                 IssueBuffer::maybeAdd(
                     new InternalClass(
                         $fq_class_name . ' is internal to '
                             . InternalClass::listToPhrase($const_class_storage->internal)
-                            . ' but called from ' . $context->self,
+                            . ' but called from ' . Interner::lookup($context->self),
                         new CodeLocation($statements_analyzer->getSource(), $stmt),
                         $fq_class_name,
                     ),
@@ -384,7 +385,7 @@ final class ClassConstAnalyzer
                 );
             }
 
-            if ($const_class_storage->deprecated && $fq_class_name !== $context->self) {
+            if ($const_class_storage->deprecated && $fq_class_name !== Interner::lookupOrNull($context->self)) {
                 IssueBuffer::maybeAdd(
                     new DeprecatedClass(
                         'Class ' . $fq_class_name . ' is deprecated',
@@ -393,8 +394,8 @@ final class ClassConstAnalyzer
                     ),
                     $statements_analyzer->getSuppressedIssues(),
                 );
-            } elseif (isset($const_class_storage->constants[$stmt->name->name])
-                && $const_class_storage->constants[$stmt->name->name]->deprecated
+            } elseif (isset($const_class_storage->constants[Interner::intern($stmt->name->name)])
+                && $const_class_storage->constants[Interner::intern($stmt->name->name)]->deprecated
             ) {
                 IssueBuffer::maybeAdd(
                     new DeprecatedConstant(
@@ -406,8 +407,8 @@ final class ClassConstAnalyzer
             }
 
             if ($first_part_lc !== 'static' || $const_class_storage->final || $class_constant_type->from_docblock
-                || (isset($const_class_storage->constants[$stmt->name->name])
-                    && $const_class_storage->constants[$stmt->name->name]->final
+                || (isset($const_class_storage->constants[Interner::intern($stmt->name->name)])
+                    && $const_class_storage->constants[Interner::intern($stmt->name->name)]->final
                 )
             ) {
                 $stmt_type = $class_constant_type;
@@ -444,7 +445,7 @@ final class ClassConstAnalyzer
             foreach ($lhs_type->getAtomicTypes() as $lhs_atomic_type) {
                 if ($lhs_atomic_type instanceof TNamedObject) {
                     $class_string_types[] = new TClassString(
-                        $lhs_atomic_type->value,
+                        Interner::lookup($lhs_atomic_type->name),
                         $lhs_atomic_type,
                     );
                 } elseif ($lhs_atomic_type instanceof TTemplateParam
@@ -461,7 +462,7 @@ final class ClassConstAnalyzer
                     } elseif ($as_atomic_type instanceof TNamedObject) {
                         $class_string_types[] = new TTemplateParamClass(
                             $lhs_atomic_type->param_name,
-                            $as_atomic_type->value,
+                            Interner::lookup($as_atomic_type->name),
                             $as_atomic_type,
                             $lhs_atomic_type->defining_class,
                         );
@@ -488,7 +489,7 @@ final class ClassConstAnalyzer
             if ($lhs_type->isSingle()) {
                 $atomic_type = $lhs_type->getSingleAtomic();
                 if ($atomic_type instanceof TNamedObject) {
-                    $fq_class_name = $atomic_type->value;
+                    $fq_class_name = Interner::lookup($atomic_type->name);
                     $lhs_type_definite_class = $atomic_type->definite_class;
                 } elseif ($atomic_type instanceof TLiteralClassString) {
                     $fq_class_name = $atomic_type->value;
@@ -511,7 +512,7 @@ final class ClassConstAnalyzer
                 return true;
             }
 
-            if ($codebase->classlikes->classExists($fq_class_name, null, $context)) {
+            if ($codebase->classlikes->classExists(Interner::intern($fq_class_name), null, $context)) {
                 $fq_class_name = $codebase->classlikes->getUnAliasedName($fq_class_name);
             }
 
@@ -528,7 +529,7 @@ final class ClassConstAnalyzer
             }
 
             // if we're ignoring that the class doesn't exist, exit anyway
-            if (!$codebase->classlikes->classOrInterfaceOrEnumExists($fq_class_name, null, $context)) {
+            if (!$codebase->classlikes->classOrInterfaceOrEnumExists(Interner::intern($fq_class_name), null, $context)) {
                 return true;
             }
 
@@ -560,18 +561,18 @@ final class ClassConstAnalyzer
                 );
             }
 
-            $const_class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+            $const_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
-            if ($fq_class_name === $context->self
+            if ($fq_class_name === Interner::lookupOrNull($context->self)
                 || (
                     $statements_analyzer->getSource()->getSource() instanceof TraitAnalyzer &&
                     $fq_class_name === $statements_analyzer->getSource()->getFQCLN()
                 )
             ) {
                 $class_visibility = ReflectionProperty::IS_PRIVATE;
-            } elseif ($context->self &&
-                ($codebase->classlikes->classExtends($context->self, $fq_class_name)
-                    || $codebase->classlikes->classExtends($fq_class_name, $context->self))
+            } elseif (($context->self !== null) &&
+                ($codebase->classlikes->classExtends($context->self, Interner::intern($fq_class_name))
+                    || $codebase->classlikes->classExtends(Interner::intern($fq_class_name), $context->self))
             ) {
                 $class_visibility = ReflectionProperty::IS_PROTECTED;
             } else {
@@ -600,7 +601,7 @@ final class ClassConstAnalyzer
             }
 
             if (!$class_constant_type) {
-                if ($fq_class_name !== $context->self) {
+                if ($fq_class_name !== Interner::lookupOrNull($context->self)) {
                     $class_constant_type = $codebase->classlikes->getClassConstantType(
                         $fq_class_name,
                         $stmt->name->name,
@@ -659,16 +660,16 @@ final class ClassConstAnalyzer
                 }
             }
 
-            if ($context->self
+            if (($context->self !== null)
                 && !$context->collect_initializations
                 && !$context->collect_mutations
-                && !NamespaceAnalyzer::isWithinAny($context->self, $const_class_storage->internal)
+                && !NamespaceAnalyzer::isWithinAny(Interner::lookup($context->self), $const_class_storage->internal)
             ) {
                 IssueBuffer::maybeAdd(
                     new InternalClass(
                         $fq_class_name . ' is internal to '
                             . InternalClass::listToPhrase($const_class_storage->internal)
-                            . ' but called from ' . $context->self,
+                            . ' but called from ' . Interner::lookup($context->self),
                         new CodeLocation($statements_analyzer->getSource(), $stmt),
                         $fq_class_name,
                     ),
@@ -676,7 +677,7 @@ final class ClassConstAnalyzer
                 );
             }
 
-            if ($const_class_storage->deprecated && $fq_class_name !== $context->self) {
+            if ($const_class_storage->deprecated && $fq_class_name !== Interner::lookupOrNull($context->self)) {
                 IssueBuffer::maybeAdd(
                     new DeprecatedClass(
                         'Class ' . $fq_class_name . ' is deprecated',
@@ -685,8 +686,8 @@ final class ClassConstAnalyzer
                     ),
                     $statements_analyzer->getSuppressedIssues(),
                 );
-            } elseif (isset($const_class_storage->constants[$stmt->name->name])
-                && $const_class_storage->constants[$stmt->name->name]->deprecated
+            } elseif (isset($const_class_storage->constants[Interner::intern($stmt->name->name)])
+                && $const_class_storage->constants[Interner::intern($stmt->name->name)]->deprecated
             ) {
                 IssueBuffer::maybeAdd(
                     new DeprecatedConstant(
@@ -724,7 +725,7 @@ final class ClassConstAnalyzer
 
         foreach ($stmt->consts as $const) {
             ExpressionAnalyzer::analyze($statements_analyzer, $const->value, $context);
-            $const_storage = $class_storage->constants[$const->name->name];
+            $const_storage = $class_storage->constants[Interner::intern($const->name->name)];
 
             // Check assigned type matches docblock type
             if ($assigned_type = $statements_analyzer->node_data->getType($const->value)) {
@@ -747,10 +748,10 @@ final class ClassConstAnalyzer
                 ) {
                     IssueBuffer::maybeAdd(
                         new InvalidConstantAssignmentValue(
-                            "{$class_storage->name}::{$const->name->name} with declared type "
+                            "" . Interner::lookup($class_storage->id) . "::{$const->name->name} with declared type "
                             . "{$const_storage_type->getId()} cannot be assigned type {$assigned_type->getId()}",
                             $const_storage->stmt_location,
-                            "{$class_storage->name}::{$const->name->name}",
+                            "" . Interner::lookup($class_storage->id) . "::{$const->name->name}",
                         ),
                         $const_storage->suppressed_issues,
                     );
@@ -763,7 +764,8 @@ final class ClassConstAnalyzer
         ClassLikeStorage $class_storage,
         Codebase $codebase,
     ): void {
-        foreach ($class_storage->constants as $const_name => $const_storage) {
+        foreach ($class_storage->constants as $const_name_id => $const_storage) {
+            $const_name = Interner::lookup($const_name_id);
             [$parent_classlike_storage, $parent_const_storage] = self::getOverriddenConstant(
                 $class_storage,
                 $const_storage,
@@ -796,12 +798,12 @@ final class ClassConstAnalyzer
                         // Contravariant
                         IssueBuffer::maybeAdd(
                             new LessSpecificClassConstantType(
-                                "The type \"{$const_storage->type->getId()}\" for {$class_storage->name}::"
+                                "The type \"{$const_storage->type->getId()}\" for " . Interner::lookup($class_storage->id) . "::"
                                     . "{$const_name} is more general than the type "
                                     . "\"{$parent_const_storage->type->getId()}\" inherited from "
-                                    . "{$parent_classlike_storage->name}::{$const_name}",
+                                    . "" . Interner::lookup($parent_classlike_storage->id) . "::{$const_name}",
                                 $type_location,
-                                "{$class_storage->name}::{$const_name}",
+                                "" . Interner::lookup($class_storage->id) . "::{$const_name}",
                             ),
                             $const_storage->suppressed_issues,
                         );
@@ -809,12 +811,12 @@ final class ClassConstAnalyzer
                         // Completely different
                         IssueBuffer::maybeAdd(
                             new InvalidClassConstantType(
-                                "The type \"{$const_storage->type->getId()}\" for {$class_storage->name}::"
+                                "The type \"{$const_storage->type->getId()}\" for " . Interner::lookup($class_storage->id) . "::"
                                     . "{$const_name} does not satisfy the type "
                                     . "\"{$parent_const_storage->type->getId()}\" inherited from "
-                                    . "{$parent_classlike_storage->name}::{$const_name}",
+                                    . "" . Interner::lookup($parent_classlike_storage->id) . "::{$const_name}",
                                 $type_location,
-                                "{$class_storage->name}::{$const_name}",
+                                "" . Interner::lookup($class_storage->id) . "::{$const_name}",
                             ),
                             $const_storage->suppressed_issues,
                         );
@@ -826,9 +828,9 @@ final class ClassConstAnalyzer
                     IssueBuffer::maybeAdd(
                         new OverriddenFinalConstant(
                             "{$const_name} cannot be overridden because it is marked as final in "
-                                . $parent_classlike_storage->name,
+                                . Interner::lookup($parent_classlike_storage->id),
                             $type_location,
-                            "{$class_storage->name}::{$const_name}",
+                            "" . Interner::lookup($class_storage->id) . "::{$const_name}",
                         ),
                         $const_storage->suppressed_issues,
                     );
@@ -861,34 +863,35 @@ final class ClassConstAnalyzer
         string $const_name,
         Codebase $codebase,
     ): ?array {
+        $const_name_id = Interner::intern($const_name);
         $parent_classlike_storage = $interface_const_storage = $parent_const_storage = null;
         $interface_overrides = [];
-        foreach ($class_storage->class_implements ?: $class_storage->direct_interface_parents as $interface) {
-            $interface_storage = $codebase->classlike_storage_provider->get($interface);
-            $parent_const_storage = $interface_storage->constants[$const_name] ?? null;
+        foreach ($class_storage->class_implements ?: $class_storage->direct_interface_parents as $interface_id => $_) {
+            $interface_storage = $codebase->classlike_storage_provider->get($interface_id);
+            $parent_const_storage = $interface_storage->constants[$const_name_id] ?? null;
             if ($parent_const_storage !== null) {
                 if ($const_storage->location
                     && $const_storage !== $parent_const_storage
                     && $codebase->analysis_php_version_id < 8_01_00
                 ) {
-                    $interface_overrides[strtolower($interface)] = new OverriddenInterfaceConstant(
-                        "{$class_storage->name}::{$const_name} cannot override constant from $interface",
+                    $interface_overrides[$interface_id] = new OverriddenInterfaceConstant(
+                        "" . Interner::lookup($class_storage->id) . "::{$const_name} cannot override constant from " . Interner::lookup($interface_id) . "",
                         $const_storage->location,
-                        "{$class_storage->name}::{$const_name}",
+                        "" . Interner::lookup($class_storage->id) . "::{$const_name}",
                     );
                 }
                 if ($interface_const_storage !== null && $const_storage->location !== null) {
                     assert($parent_classlike_storage !== null);
-                    if (!isset($parent_classlike_storage->parent_interfaces[strtolower($interface)])
-                        && !isset($interface_storage->parent_interfaces[strtolower($parent_classlike_storage->name)])
+                    if (!isset($parent_classlike_storage->parent_interfaces[$interface_id])
+                        && !isset($interface_storage->parent_interfaces[$parent_classlike_storage->id])
                         && $interface_const_storage !== $parent_const_storage
                     ) {
                         IssueBuffer::maybeAdd(
                             new AmbiguousConstantInheritance(
-                                "Ambiguous inheritance of {$class_storage->name}::{$const_name} from $interface and "
-                                    . $parent_classlike_storage->name,
+                                "Ambiguous inheritance of " . Interner::lookup($class_storage->id) . "::{$const_name} from " . Interner::lookup($interface_id) . " and "
+                                    . Interner::lookup($parent_classlike_storage->id),
                                 $const_storage->location,
-                                "{$class_storage->name}::{$const_name}",
+                                "" . Interner::lookup($class_storage->id) . "::{$const_name}",
                             ),
                             $const_storage->suppressed_issues,
                         );
@@ -899,19 +902,19 @@ final class ClassConstAnalyzer
             }
         }
 
-        foreach ($class_storage->parent_classes as $parent_class) {
-            $parent_class_storage = $codebase->classlike_storage_provider->get($parent_class);
-            $parent_const_storage = $parent_class_storage->constants[$const_name] ?? null;
+        foreach ($class_storage->parent_classes as $parent_class_id => $_) {
+            $parent_class_storage = $codebase->classlike_storage_provider->get($parent_class_id);
+            $parent_const_storage = $parent_class_storage->constants[$const_name_id] ?? null;
             if ($parent_const_storage !== null) {
                 if ($const_storage->location !== null && $interface_const_storage !== null) {
                     assert($parent_classlike_storage !== null);
-                    if (!isset($parent_class_storage->class_implements[strtolower($parent_classlike_storage->name)])) {
+                    if (!isset($parent_class_storage->class_implements[$parent_classlike_storage->id])) {
                         IssueBuffer::maybeAdd(
                             new AmbiguousConstantInheritance(
-                                "Ambiguous inheritance of {$class_storage->name}::{$const_name} from "
-                                    . "$parent_classlike_storage->name and $parent_class",
+                                "Ambiguous inheritance of " . Interner::lookup($class_storage->id) . "::{$const_name} from "
+                                    . "" . Interner::lookup($parent_classlike_storage->id) . " and " . Interner::lookup($parent_class_id) . "",
                                 $const_storage->location,
-                                "{$class_storage->name}::{$const_name}",
+                                "" . Interner::lookup($class_storage->id) . "::{$const_name}",
                             ),
                             $const_storage->suppressed_issues,
                         );

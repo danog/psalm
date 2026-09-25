@@ -15,7 +15,7 @@ abstract class EnumPropertyFetch extends UnresolvedConstantComponent
     /**
      * @psalm-mutation-free
      */
-    public function __construct(public readonly string $fqcln, public readonly string $case)
+    public function __construct(public readonly int $fqcln, public readonly string $case)
     {
     }
 }

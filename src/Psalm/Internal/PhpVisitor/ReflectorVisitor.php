@@ -20,6 +20,7 @@ use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\CommentAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\SimpleTypeInferer;
 use Psalm\Internal\EventDispatcher;
+use Psalm\Internal\Interner;
 use Psalm\Internal\PhpVisitor\Reflector\ClassLikeNodeScanner;
 use Psalm\Internal\PhpVisitor\Reflector\ExpressionResolver;
 use Psalm\Internal\PhpVisitor\Reflector\ExpressionScanner;
@@ -27,6 +28,7 @@ use Psalm\Internal\PhpVisitor\Reflector\FunctionLikeNodeScanner;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\Scanner\FileScanner;
 use Psalm\Internal\Scanner\PhpStormMetaScanner;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\TypeAlias;
 use Psalm\Internal\Type\TypeParser;
 use Psalm\Issue\InvalidDocblock;
@@ -170,7 +172,7 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
         } elseif ($node instanceof PhpParser\Node\Stmt\TryCatch) {
             foreach ($node->catches as $catch) {
                 foreach ($catch->types as $catch_type) {
-                    $catch_fqcln = ClassLikeAnalyzer::getFQCLNFromNameObject($catch_type, $this->aliases);
+                    $catch_fqcln = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject($catch_type, $this->aliases));
 
                     if (!in_array(strtolower($catch_fqcln), ['self', 'static', 'parent'], true)) {
                         $this->codebase->scanner->queueClassLikeForScanning($catch_fqcln);
@@ -265,9 +267,9 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
                 && strtolower($node->name->name) === '__tostring'
             ) {
                 if ($classlike_storage->is_interface) {
-                    $classlike_storage->parent_interfaces['stringable'] = 'Stringable';
+                    $classlike_storage->parent_interfaces[Sym::STRINGABLE] = true;
                 } else {
-                    $classlike_storage->class_implements['stringable'] = 'Stringable';
+                    $classlike_storage->class_implements[Sym::STRINGABLE] = true;
                 }
 
                 $this->codebase->scanner->queueClassLikeForScanning('Stringable');

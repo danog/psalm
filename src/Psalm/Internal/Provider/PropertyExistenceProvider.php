@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider;
 
+use Psalm\Internal\Interner;
 use Psalm\Plugin\HookInterface;
 
 use Closure;
@@ -59,23 +60,23 @@ final class PropertyExistenceProvider
     /**
      * @psalm-external-mutation-free
      */
-    public function has(string $fq_classlike_name): bool
+    public function has(int $fq_classlike_name): bool
     {
-        return isset(self::$handlers[strtolower($fq_classlike_name)]);
+        return isset(self::$handlers[strtolower(Interner::lookup($fq_classlike_name))]);
     }
 
     public function doesPropertyExist(
-        string $fq_classlike_name,
-        string $property_name,
+        int $fq_classlike_name,
+        int $property_name,
         bool $read_mode,
         ?StatementsSource $source = null,
         ?Context $context = null,
         ?CodeLocation $code_location = null,
     ): ?bool {
-        foreach (self::$handlers[strtolower($fq_classlike_name)] ?? [] as $property_handler) {
+        foreach (self::$handlers[strtolower(Interner::lookup($fq_classlike_name))] ?? [] as $property_handler) {
             $event = new PropertyExistenceProviderEvent(
-                $fq_classlike_name,
-                $property_name,
+                Interner::lookup($fq_classlike_name),
+                Interner::lookup($property_name),
                 $read_mode,
                 $source,
                 $context,

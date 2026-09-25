@@ -7,6 +7,8 @@ namespace Psalm\Internal\Type;
 use Psalm\CodeLocation;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
+use Psalm\Internal\Interner;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\Comparator\AtomicTypeComparator;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
@@ -149,12 +151,12 @@ final class NegatedAssertionReconciler extends Reconciler
 
         if (!$is_equality
             && $assertion_type instanceof TNamedObject
-            && ($assertion_type->value === 'DateTime' || $assertion_type->value === 'DateTimeImmutable')
+            && ($assertion_type->name === Sym::DATE_TIME || $assertion_type->name === Sym::DATE_TIME_IMMUTABLE)
             && isset($existing_var_atomic_types['DateTimeInterface'])
         ) {
             $existing_var_type->removeType('DateTimeInterface');
 
-            if ($assertion_type->value === 'DateTime') {
+            if ($assertion_type->name === Sym::DATE_TIME) {
                 $existing_var_type->addType(new TNamedObject('DateTimeImmutable'));
             } else {
                 $existing_var_type->addType(new TNamedObject('DateTime'));
@@ -166,7 +168,7 @@ final class NegatedAssertionReconciler extends Reconciler
         if (!$is_equality && $assertion_type instanceof TNamedObject) {
             foreach ($existing_var_type->getAtomicTypes() as $type) {
                 $key = $type->getKey();
-                if ($type instanceof TEnumCase && $type->value === $assertion_type->value) {
+                if ($type instanceof TEnumCase && $type->name === $assertion_type->name) {
                     $existing_var_type->removeType($key);
                 }
             }
@@ -175,7 +177,7 @@ final class NegatedAssertionReconciler extends Reconciler
         $codebase = $statements_analyzer->getCodebase();
 
         if ($assertion_type instanceof TNamedObject
-            && strtolower($assertion_type->value) === 'traversable'
+            && strtolower(Interner::lookup($assertion_type->name)) === 'traversable'
             && isset($existing_var_atomic_types['iterable'])
         ) {
             /** @var TIterable */
@@ -434,17 +436,17 @@ final class NegatedAssertionReconciler extends Reconciler
                 $scalar_var_type = $assertion_type;
             }
         } else {
-            $fq_enum_name = $assertion_type->value;
+            $fq_enum_name = Interner::lookup($assertion_type->name);
             $case_name = $assertion_type->case_name;
 
             foreach ($existing_var_type->getAtomicTypes() as $atomic_type) {
                 $atomic_key = $atomic_type->getKey();
                 if ($atomic_type::class === TNamedObject::class
-                    && $atomic_type->value === $fq_enum_name
+                    && Interner::lookup($atomic_type->name) === $fq_enum_name
                 ) {
                     $codebase = $statements_analyzer->getCodebase();
 
-                    $enum_storage = $codebase->classlike_storage_provider->get($fq_enum_name);
+                    $enum_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_enum_name));
 
                     if (!$enum_storage->is_enum || !$enum_storage->enum_cases) {
                         $scalar_var_type = $assertion_type;
@@ -452,7 +454,8 @@ final class NegatedAssertionReconciler extends Reconciler
                         $existing_var_type->removeType($atomic_type->getKey());
                         $redundant = false;
 
-                        foreach ($enum_storage->enum_cases as $alt_case_name => $_) {
+                        foreach ($enum_storage->enum_cases as $alt_case_name_id => $_) {
+                            $alt_case_name = Interner::lookup($alt_case_name_id);
                             if ($alt_case_name === $case_name) {
                                 continue;
                             }
@@ -461,7 +464,7 @@ final class NegatedAssertionReconciler extends Reconciler
                         }
                     }
                 } elseif ($atomic_type instanceof TEnumCase
-                    && $atomic_type->value === $fq_enum_name
+                    && Interner::lookup($atomic_type->name) === $fq_enum_name
                     && $atomic_type->case_name !== $case_name
                 ) {
                     $did_match_literal_type = true;

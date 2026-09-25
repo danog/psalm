@@ -1,0 +1,10 @@
+[
+  ["Psalm\\Type\\Atomic\\TNamedObject", "value", "name"],
+  ["Psalm\\Type\\Atomic\\TArray", "value", "name"],
+  ["Psalm\\Type\\Atomic\\TNonEmptyArray", "value", "name"],
+  ["Psalm\\Type\\Atomic\\TIterable", "value", "name"],
+  ["Psalm\\Type\\Atomic\\TCallable", "value", "name"],
+  ["Psalm\\Internal\\MethodIdentifier", "fq_class_name", "class_id"],
+  ["Psalm\\Internal\\MethodIdentifier", "method_name", "name_id", "lookupLc"],
+  ["Psalm\\Storage\\ClassLikeStorage", "name", "id"]
+]

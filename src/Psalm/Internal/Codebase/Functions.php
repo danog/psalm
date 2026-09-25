@@ -11,12 +11,14 @@ use Psalm\Codebase;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\Method\MethodCallPurityAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Provider\DynamicFunctionStorageProvider;
 use Psalm\Internal\Provider\FileStorageProvider;
 use Psalm\Internal\Provider\FunctionExistenceProvider;
 use Psalm\Internal\Provider\FunctionParamsProvider;
 use Psalm\Internal\Provider\FunctionReturnTypeProvider;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\Comparator\CallableTypeComparator;
 use Psalm\StatementsSource;
 use Psalm\Storage\FunctionStorage;
@@ -44,7 +46,7 @@ use function substr;
 final class Functions
 {
     /**
-     * @var array<lowercase-string, FunctionStorage>
+     * @var array<int, FunctionStorage> by interned lowercase function id
      */
     private static array $stubbed_functions;
 
@@ -81,9 +83,10 @@ final class Functions
         if ($function_id[0] === '\\') {
             $function_id = substr($function_id, 1);
         }
+        $function_iid = Interner::intern($function_id);
 
-        if (isset(self::$stubbed_functions[$function_id])) {
-            return self::$stubbed_functions[$function_id];
+        if (isset(self::$stubbed_functions[$function_iid])) {
+            return self::$stubbed_functions[$function_iid];
         }
 
         $file_storage = null;
@@ -98,15 +101,16 @@ final class Functions
 
             if (isset($function_analyzers[$function_id])) {
                 $function_id = $function_analyzers[$function_id]->getFunctionId();
+                $function_iid = Interner::intern($function_id);
 
-                if (isset($file_storage->functions[$function_id])) {
-                    return $file_storage->functions[$function_id];
+                if (isset($file_storage->functions[$function_iid])) {
+                    return $file_storage->functions[$function_iid];
                 }
             }
 
             // closures can be returned here
-            if (isset($file_storage->functions[$function_id])) {
-                return $file_storage->functions[$function_id];
+            if (isset($file_storage->functions[$function_iid])) {
+                return $file_storage->functions[$function_iid];
             }
         }
 
@@ -127,12 +131,12 @@ final class Functions
             return $this->reflection->getFunctionStorage($function_id);
         }
 
-        if (!isset($file_storage->declaring_function_ids[$function_id])) {
+        if (!isset($file_storage->declaring_function_ids[$function_iid])) {
             if ($checked_file_path !== $root_file_path) {
                 $file_storage = $this->file_storage_provider->get($checked_file_path);
 
-                if (isset($file_storage->functions[$function_id])) {
-                    return $file_storage->functions[$function_id];
+                if (isset($file_storage->functions[$function_iid])) {
+                    return $file_storage->functions[$function_iid];
                 }
             }
 
@@ -141,17 +145,17 @@ final class Functions
             );
         }
 
-        $declaring_file_path = $file_storage->declaring_function_ids[$function_id];
+        $declaring_file_path = $file_storage->declaring_function_ids[$function_iid];
 
         $declaring_file_storage = $this->file_storage_provider->get($declaring_file_path);
 
-        if (!isset($declaring_file_storage->functions[$function_id])) {
+        if (!isset($declaring_file_storage->functions[$function_iid])) {
             throw new UnexpectedValueException(
                 'Not expecting ' . $function_id . ' to not have storage in ' . $declaring_file_path,
             );
         }
 
-        return $declaring_file_storage->functions[$function_id];
+        return $declaring_file_storage->functions[$function_iid];
     }
 
     /**
@@ -159,11 +163,11 @@ final class Functions
      */
     public function addGlobalFunction(string $function_id, FunctionStorage $storage): void
     {
-        self::$stubbed_functions[strtolower($function_id)] = $storage;
+        self::$stubbed_functions[Interner::intern(strtolower($function_id))] = $storage;
     }
 
     /**
-     * @param array<lowercase-string, FunctionStorage> $stubs
+     * @param array<int, FunctionStorage> $stubs
      * @psalm-external-mutation-free
      */
     public function addGlobalFunctions(array $stubs): void
@@ -176,11 +180,11 @@ final class Functions
      */
     public function hasStubbedFunction(string $function_id): bool
     {
-        return isset(self::$stubbed_functions[strtolower($function_id)]);
+        return isset(self::$stubbed_functions[Interner::intern(strtolower($function_id))]);
     }
 
     /**
-     * @return array<lowercase-string, FunctionStorage>
+     * @return array<int, FunctionStorage>
      * @psalm-external-mutation-free
      */
     public function getAllStubbedFunctions(): array
@@ -195,6 +199,7 @@ final class Functions
         StatementsAnalyzer $statements_analyzer,
         string $function_id,
     ): bool {
+        $function_iid = Interner::intern($function_id);
         if ($this->existence_provider->has($function_id)) {
             $function_exists = $this->existence_provider->doesFunctionExist($statements_analyzer, $function_id);
 
@@ -205,7 +210,7 @@ final class Functions
 
         $file_storage = $this->file_storage_provider->get($statements_analyzer->getRootFilePath());
 
-        if (isset($file_storage->declaring_function_ids[$function_id])) {
+        if (isset($file_storage->declaring_function_ids[$function_iid])) {
             return true;
         }
 
@@ -213,7 +218,7 @@ final class Functions
             return true;
         }
 
-        if (isset(self::$stubbed_functions[$function_id])) {
+        if (isset(self::$stubbed_functions[$function_iid])) {
             return true;
         }
 
@@ -359,11 +364,13 @@ final class Functions
             }
         }
 
-        $function_map = $file_storage->functions
-            + $this->getAllStubbedFunctions()
-            + $this->reflection->getFunctions()
-            + $codebase->config->getPredefinedFunctions();
-
+        // by name (the storages key their maps by id); an earlier map wins
+        $function_map = $codebase->config->getPredefinedFunctions();
+        foreach ([$this->reflection->getFunctions(), $this->getAllStubbedFunctions(), $file_storage->functions] as $map) {
+            foreach ($map as $function_iid => $function) {
+                $function_map[Interner::lookupLc($function_iid)] = $function;
+            }
+        }
         foreach ($function_map as $function_name => $function) {
             foreach ($match_function_patterns as $pattern) {
                 $pattern_lc = strtolower($pattern);
@@ -403,21 +410,22 @@ final class Functions
     /**
      * @psalm-external-mutation-free
      */
-    public static function isVariadic(Codebase $codebase, string $function_id, string $file_path): bool
+    public static function isVariadic(Codebase $codebase, int $function_id, string $file_path): bool
     {
+        $function_iid = $function_id;
         $file_storage = $codebase->file_storage_provider->get($file_path);
 
-        if (!isset($file_storage->declaring_function_ids[$function_id])) {
+        if (!isset($file_storage->declaring_function_ids[$function_iid])) {
             return false;
         }
 
-        $declaring_file_path = $file_storage->declaring_function_ids[$function_id];
+        $declaring_file_path = $file_storage->declaring_function_ids[$function_iid];
 
         $file_storage = $declaring_file_path === $file_path
             ? $file_storage
             : $codebase->file_storage_provider->get($declaring_file_path);
 
-        return isset($file_storage->functions[$function_id]) && $file_storage->functions[$function_id]->variadic;
+        return isset($file_storage->functions[$function_iid]) && $file_storage->functions[$function_iid]->variadic;
     }
 
     /**
@@ -482,8 +490,8 @@ final class Functions
                 foreach ($count_type->getAtomicTypes() as $atomic_count_type) {
                     if ($atomic_count_type instanceof TNamedObject) {
                         $count_method_id = new MethodIdentifier(
-                            $atomic_count_type->value,
-                            'count',
+                            $atomic_count_type->name,
+                            Sym::COUNT,
                         );
 
                         try {

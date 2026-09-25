@@ -16,6 +16,7 @@ use Psalm\Exception\InvalidMethodOverrideException;
 use Psalm\Exception\TypeParseTreeException;
 use Psalm\Internal\Analyzer\CommentAnalyzer;
 use Psalm\Internal\Analyzer\NamespaceAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Scanner\FileScanner;
 use Psalm\Internal\Scanner\FunctionDocblockComment;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
@@ -285,7 +286,7 @@ final class FunctionLikeDocblockScanner
                 $docblock_info->params,
                 $stmt,
                 $fake_method,
-                $classlike_storage && !$classlike_storage->is_trait ? $classlike_storage->name : null,
+                $classlike_storage && !$classlike_storage->is_trait ? Interner::lookup($classlike_storage->id) : null,
             );
         }
 
@@ -320,7 +321,7 @@ final class FunctionLikeDocblockScanner
                     $aliases,
                     $function_template_types + $class_template_types,
                     $type_aliases,
-                    $classlike_storage ? $classlike_storage->name : null,
+                    $classlike_storage ? Interner::lookup($classlike_storage->id) : null,
                 ),
                 null,
                 $function_template_types + $class_template_types,
@@ -337,7 +338,7 @@ final class FunctionLikeDocblockScanner
                     $aliases,
                     $function_template_types + $class_template_types,
                     $type_aliases,
-                    $classlike_storage ? $classlike_storage->name : null,
+                    $classlike_storage ? Interner::lookup($classlike_storage->id) : null,
                 ),
                 null,
                 $function_template_types + $class_template_types,
@@ -452,7 +453,7 @@ final class FunctionLikeDocblockScanner
             $aliases,
             $template_types,
             $type_aliases,
-            $classlike_storage && !$classlike_storage->is_trait ? $classlike_storage->name : null,
+            $classlike_storage && !$classlike_storage->is_trait ? Interner::lookup($classlike_storage->id) : null,
         );
 
         $param_type_mapping = [];
@@ -706,7 +707,7 @@ final class FunctionLikeDocblockScanner
         bool $fake_method,
         ?string $fq_classlike_name,
     ): void {
-        $base = $classlike_storage ? $classlike_storage->name . '::' : '';
+        $base = $classlike_storage ? Interner::lookup($classlike_storage->id) . '::' : '';
 
         $cased_method_id = $base . $storage->cased_name;
 
@@ -1237,7 +1238,7 @@ final class FunctionLikeDocblockScanner
                     $class_template_types,
                     $function_template_types,
                     $type_aliases,
-                    $classlike_storage && !$classlike_storage->is_trait ? $classlike_storage->name : null,
+                    $classlike_storage && !$classlike_storage->is_trait ? Interner::lookup($classlike_storage->id) : null,
                 );
 
                 if (!$assertion_type_parts) {
@@ -1284,7 +1285,7 @@ final class FunctionLikeDocblockScanner
                     $class_template_types,
                     $function_template_types,
                     $type_aliases,
-                    $classlike_storage && !$classlike_storage->is_trait ? $classlike_storage->name : null,
+                    $classlike_storage && !$classlike_storage->is_trait ? Interner::lookup($classlike_storage->id) : null,
                 );
 
                 if (!$assertion_type_parts) {
@@ -1331,7 +1332,7 @@ final class FunctionLikeDocblockScanner
                     $class_template_types,
                     $function_template_types,
                     $type_aliases,
-                    $classlike_storage && !$classlike_storage->is_trait ? $classlike_storage->name : null,
+                    $classlike_storage && !$classlike_storage->is_trait ? Interner::lookup($classlike_storage->id) : null,
                 );
 
                 if (!$assertion_type_parts) {

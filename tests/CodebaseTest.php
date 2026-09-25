@@ -11,7 +11,9 @@ use Psalm\Codebase;
 use Psalm\Context;
 use Psalm\Exception\CodeException;
 use Psalm\Exception\UnpopulatedClasslikeException;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\ClassLikeStorageCacheProvider;
+use Psalm\Internal\Sym;
 use Psalm\Issue\InvalidReturnStatement;
 use Psalm\Issue\InvalidReturnType;
 use Psalm\IssueBuffer;
@@ -173,19 +175,19 @@ final class CodebaseTest extends TestCase
                 $stmt = $event->getStmt();
                 $storage = $event->getStorage();
                 $codebase = $event->getCodebase();
-                if ($storage->name === 'Psalm\\CurrentTest\\C' && $stmt instanceof Class_) {
+                if ($storage->id === Sym::C_PSALM__CURRENT_TEST__C && $stmt instanceof Class_) {
                     $storage->custom_metadata['fqcn'] = (string)($stmt->attrs()->namespacedName ?? $stmt->name);
                     $storage->custom_metadata['extends'] = $stmt->extends instanceof Name
-                        ? (string)$stmt->extends->attrs()->resolvedName
+                        ? (string)Interner::lookupOrNull($stmt->extends->attrs()->resolvedId)
                         : '';
                     $storage->custom_metadata['implements'] = array_map(
-                        static fn(Name $aspect): string => (string)$aspect->attrs()->resolvedName,
+                        static fn(Name $aspect): string => (string)Interner::lookupOrNull($aspect->attrs()->resolvedId),
                         $stmt->implements,
                     );
                     $storage->custom_metadata['a'] = 'b';
-                    $storage->methods['m']->custom_metadata['c'] = 'd';
-                    $storage->properties['prop']->custom_metadata['e'] = 'f';
-                    $storage->methods['m']->params[0]->custom_metadata['g'] = 'h';
+                    $storage->methods[Interner::intern('m')]->custom_metadata['c'] = 'd';
+                    $storage->properties[Interner::intern('prop')]->custom_metadata['e'] = 'f';
+                    $storage->methods[Interner::intern('m')]->params[0]->custom_metadata['g'] = 'h';
                     $codebase->file_storage_provider->get('somefile.php')->custom_metadata['i'] = 'j';
                 }
             }
@@ -200,16 +202,16 @@ final class CodebaseTest extends TestCase
         $this->codebase->classlike_storage_provider->remove($fixtureNamespace . 'C');
         $this->codebase->exhumeClassLikeStorage($fixtureNamespace . 'C', 'somefile.php');
 
-        $class_storage = $this->codebase->classlike_storage_provider->get($fixtureNamespace . 'C');
+        $class_storage = $this->codebase->classlike_storage_provider->get(Interner::intern($fixtureNamespace . 'C'));
         $file_storage = $this->codebase->file_storage_provider->get('somefile.php');
 
         self::assertSame($fixtureNamespace . 'C', $class_storage->custom_metadata['fqcn']);
         self::assertSame($fixtureNamespace . 'A', $class_storage->custom_metadata['extends']);
         self::assertSame([$fixtureNamespace . 'I'], $class_storage->custom_metadata['implements']);
         self::assertSame('b', $class_storage->custom_metadata['a']);
-        self::assertSame('d', $class_storage->methods['m']->custom_metadata['c']);
-        self::assertSame('f', $class_storage->properties['prop']->custom_metadata['e']);
-        self::assertSame('h', $class_storage->methods['m']->params[0]->custom_metadata['g']);
+        self::assertSame('d', $class_storage->methods[Interner::intern('m')]->custom_metadata['c']);
+        self::assertSame('f', $class_storage->properties[Interner::intern('prop')]->custom_metadata['e']);
+        self::assertSame('h', $class_storage->methods[Interner::intern('m')]->params[0]->custom_metadata['g']);
         self::assertSame('j', $file_storage->custom_metadata['i']);
     }
 
@@ -223,7 +225,8 @@ final class CodebaseTest extends TestCase
 
         $this->expectException(UnpopulatedClasslikeException::class);
 
-        $this->codebase->classExtends('A', 'B');
+        /** @psalm-suppress UnusedMethodCall called for its exception */
+        $this->codebase->classExtends(Interner::intern('A'), Interner::intern('B'));
     }
 
     /**

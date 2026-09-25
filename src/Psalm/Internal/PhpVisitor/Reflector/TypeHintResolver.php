@@ -14,6 +14,7 @@ use Psalm\Aliases;
 use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Issue\ParseError;
 use Psalm\IssueBuffer;
 use Psalm\Storage\ClassLikeStorage;
@@ -145,14 +146,14 @@ final class TypeHintResolver
                 && ($lower_hint === 'self' || $lower_hint === 'static')
                 && !$classlike_storage->is_trait
             ) {
-                $fq_type_string = $classlike_storage->name;
+                $fq_type_string = Interner::lookup($classlike_storage->id);
 
                 if ($lower_hint === 'static') {
                     $fq_type_string .= '&static';
                 }
             } else {
                 $type_string = $hint->toString();
-                $fq_type_string = ClassLikeAnalyzer::getFQCLNFromNameObject($hint, $aliases);
+                $fq_type_string = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject($hint, $aliases));
 
                 $codebase->scanner->queueClassLikeForScanning($fq_type_string);
                 $file_storage->referenced_classlikes[strtolower($fq_type_string)] = $fq_type_string;

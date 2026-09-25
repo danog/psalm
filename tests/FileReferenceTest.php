@@ -140,7 +140,7 @@ final class FileReferenceTest extends TestCase
         $graph->markAsPublicApi($used_source);
         $graph->addEdge($used_source, $target);
         $graph->addEdge($dead_source, $target);
-        $graph->resolve(static fn(string $_): bool => false);
+        $graph->resolve(static fn(int $_): bool => false);
 
         self::assertSame([$used_source => true], $graph->getUsedReferencingNodes($target));
     }

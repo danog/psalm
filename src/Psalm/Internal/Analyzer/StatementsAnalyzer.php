@@ -44,9 +44,11 @@ use Psalm\Internal\Codebase\TaintFlowGraph;
 use Psalm\Internal\Codebase\VariableUseGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\ReferenceConstraint;
 use Psalm\Internal\Scanner\ParsedDocblock;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TypeParser;
 use Psalm\Internal\Type\TypeTokenizer;
@@ -549,7 +551,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
 
                     if ($var_comment->var_id === '$this'
                         && $var_comment->type
-                        && $codebase->classExists((string)$var_comment->type, null, $context)
+                        && $codebase->classExists(Interner::intern((string)$var_comment->type), null, $context)
                     ) {
                         $statements_analyzer->setFQCLN((string)$var_comment->type);
                     }
@@ -897,7 +899,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
             $trimmed = trim(reset($comments->tags['psalm-scope-this']));
             $scope_fqcn = Type::getFQCLNFromString($trimmed, $this->getAliases());
 
-            if (!$codebase->classExists($scope_fqcn, null, $context)) {
+            if (!$codebase->classExists(Interner::intern($scope_fqcn), null, $context)) {
                 IssueBuffer::maybeAdd(
                     new UndefinedDocblockClass(
                         'Scope class ' . $scope_fqcn . ' does not exist',
@@ -907,7 +909,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
                 );
             } else {
                 $this_type = Type::parseString($scope_fqcn);
-                $context->self = $scope_fqcn;
+                $context->self = Interner::intern($scope_fqcn);
                 $context->vars_in_scope['$this'] = $this_type;
                 $this->setFQCLN($scope_fqcn);
             }
@@ -1057,9 +1059,9 @@ final class StatementsAnalyzer extends SourceAnalyzer
                 continue;
             }
 
-            $class_storage = $codebase->classlikes->getStorageFor($atomic_type->value);
+            $class_storage = $codebase->classlikes->getStorageFor($atomic_type->name);
             while ($class_storage !== null) {
-                $destructor = $class_storage->methods['__destruct'] ?? null;
+                $destructor = $class_storage->methods[Sym::DESTRUCT] ?? null;
                 if ($destructor !== null) {
                     if ($destructor->has_mutations_annotation
                         && $destructor->allowed_mutations >= Mutations::LEVEL_EXTERNAL) {
@@ -1071,7 +1073,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
 
                 $class_storage = $class_storage->parent_class === null
                     ? null
-                    : $codebase->classlikes->getStorageFor($class_storage->parent_class);
+                    : $codebase->classlikes->getStorageFor(Interner::intern($class_storage->parent_class));
             }
         }
 
@@ -1130,7 +1132,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
         $stmt_type = $this->node_data->getType($stmt);
 
         if ($stmt_type) {
-            $stmt_type = $stmt_type->addParentNodes([$use_node->id => $use_node]);
+            $stmt_type = $stmt_type->addParentNodes([$use_node->key => $use_node]);
             $this->node_data->setType($stmt, $stmt_type);
         }
 
@@ -1144,7 +1146,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
     }
 
     /**
-     * @return array<string, DataFlowNode>
+     * @return array<int, DataFlowNode>
      * @psalm-mutation-free
      */
     public function getParentNodesForPossiblyUndefinedVariable(string $undefined_var_id): array
@@ -1158,7 +1160,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
         foreach ($this->unused_var_locations as [$var_id, $original_location]) {
             if ($var_id === $undefined_var_id) {
                 $assignment_node = DataFlowNode::getForAssignment($var_id, $original_location);
-                $parent_nodes[$assignment_node->id] = $assignment_node;
+                $parent_nodes[$assignment_node->key] = $assignment_node;
             }
         }
 
@@ -1252,8 +1254,8 @@ final class StatementsAnalyzer extends SourceAnalyzer
                     foreach ($ignored_exceptions_and_descendants as $expected_exception => $_) {
                         try {
                             if ($expected_exception === strtolower($possibly_thrown_exception)
-                                || $this->codebase->classExtends($possibly_thrown_exception, $expected_exception)
-                                || $this->codebase->interfaceExtends($possibly_thrown_exception, $expected_exception)
+                                || $this->codebase->classExtends(Interner::intern($possibly_thrown_exception), Interner::intern($expected_exception))
+                                || $this->codebase->interfaceExtends(Interner::intern($possibly_thrown_exception), Interner::intern($expected_exception))
                             ) {
                                 $is_expected = true;
                                 break;

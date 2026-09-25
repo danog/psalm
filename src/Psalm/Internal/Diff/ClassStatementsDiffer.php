@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Internal\Diff;
 
 use PhpParser;
+use Psalm\Internal\Interner;
 use UnexpectedValueException;
 
 use function count;
@@ -216,7 +217,7 @@ final class ClassStatementsDiffer extends AstDiffer
                     }
                 } elseif ($diff_elem->old instanceof PhpParser\Node\Stmt\TraitUse) {
                     foreach ($diff_elem->old->traits as $trait) {
-                        $keep[] = $name_lc . '&' . strtolower((string) $trait->attrs()->resolvedName);
+                        $keep[] = $name_lc . '&' . strtolower((string) Interner::lookupOrNull($trait->attrs()->resolvedId));
                     }
                 }
             } elseif ($diff_elem->type === DiffElem::TYPE_KEEP_SIGNATURE) {
@@ -254,7 +255,7 @@ final class ClassStatementsDiffer extends AstDiffer
                     }
                 } elseif ($affected_elem instanceof PhpParser\Node\Stmt\TraitUse) {
                     foreach ($affected_elem->traits as $trait) {
-                        $add_or_delete[] = $name_lc . '&' . strtolower((string) $trait->attrs()->resolvedName);
+                        $add_or_delete[] = $name_lc . '&' . strtolower((string) Interner::lookupOrNull($trait->attrs()->resolvedId));
                     }
                 }
 

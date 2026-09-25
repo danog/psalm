@@ -14,6 +14,7 @@ use Psalm\Codebase;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Codebase\ConstantMap;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Scanner\UnresolvedConstant\ArrayOffsetFetch;
 use Psalm\Internal\Scanner\UnresolvedConstant\ArraySpread;
 use Psalm\Internal\Scanner\UnresolvedConstant\ArrayValue;
@@ -203,10 +204,10 @@ final class ExpressionResolver
                         assert($parent_fq_class_name !== null);
                         $const_fq_class_name = $parent_fq_class_name;
                     } else {
-                        $const_fq_class_name = ClassLikeAnalyzer::getFQCLNFromNameObject(
+                        $const_fq_class_name = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                             $stmt->class,
                             $aliases,
-                        );
+                        ));
                     }
                 }
 
@@ -321,16 +322,16 @@ final class ExpressionResolver
                     assert($parent_fq_class_name !== null);
                     $enum_fq_class_name = $parent_fq_class_name;
                 } else {
-                    $enum_fq_class_name = ClassLikeAnalyzer::getFQCLNFromNameObject(
+                    $enum_fq_class_name = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                         $stmt->var->class,
                         $aliases,
-                    );
+                    ));
                 }
             }
             if ($stmt->name->name === 'value') {
-                return new EnumValueFetch($enum_fq_class_name, $stmt->var->name->name);
+                return new EnumValueFetch(Interner::intern($enum_fq_class_name), $stmt->var->name->name);
             } else /*if ($stmt->name->name === 'name')*/ {
-                return new EnumNameFetch($enum_fq_class_name, $stmt->var->name->name);
+                return new EnumNameFetch(Interner::intern($enum_fq_class_name), $stmt->var->name->name);
             }
         }
 
@@ -440,7 +441,7 @@ final class ExpressionResolver
                 && $first_arg_value->name instanceof PhpParser\Node\Identifier
                 && strtolower($first_arg_value->name->name) === 'class'
             ) {
-                $string_value = (string) $first_arg_value->class->attrs()->resolvedName;
+                $string_value = (string) Interner::lookupOrNull($first_arg_value->class->attrs()->resolvedId);
             }
 
             if ($string_value && class_exists($string_value)) {
@@ -471,7 +472,7 @@ final class ExpressionResolver
                 && $first_arg_value->name instanceof PhpParser\Node\Identifier
                 && strtolower($first_arg_value->name->name) === 'class'
             ) {
-                $string_value = (string) $first_arg_value->class->attrs()->resolvedName;
+                $string_value = (string) Interner::lookupOrNull($first_arg_value->class->attrs()->resolvedId);
             }
 
             if ($string_value && interface_exists($string_value)) {
@@ -502,7 +503,7 @@ final class ExpressionResolver
                 && $first_arg_value->name instanceof PhpParser\Node\Identifier
                 && strtolower($first_arg_value->name->name) === 'class'
             ) {
-                $string_value = (string) $first_arg_value->class->attrs()->resolvedName;
+                $string_value = (string) Interner::lookupOrNull($first_arg_value->class->attrs()->resolvedId);
             }
 
             // We're using class_exists here because enum_exists doesn't exist on old versions of PHP

@@ -6,6 +6,7 @@ namespace Psalm\Type\Atomic;
 
 use Override;
 use Psalm\Codebase;
+use Psalm\Internal\Interner;
 use Psalm\Storage\EnumCaseStorage;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
@@ -33,7 +34,7 @@ final class TValueOf extends Atomic
     }
 
     /**
-     * @param non-empty-array<string,EnumCaseStorage> $cases
+     * @param non-empty-array<int, EnumCaseStorage> $cases
      */
     private static function getValueTypeForNamedObject(
         array $cases,
@@ -41,8 +42,9 @@ final class TValueOf extends Atomic
         Codebase $codebase,
     ): Union {
         if ($atomic_type instanceof TEnumCase) {
-            assert(isset($cases[$atomic_type->case_name]), 'Should\'ve been verified in TValueOf#getValueType');
-            $value = $cases[$atomic_type->case_name]->getValue($codebase->classlikes);
+            $case_id = Interner::intern($atomic_type->case_name);
+            assert(isset($cases[$case_id]), 'Should\'ve been verified in TValueOf#getValueType');
+            $value = $cases[$case_id]->getValue($codebase->classlikes);
             assert($value !== null, 'Backed enum must have a value.');
 
             return new Union([$value]);
@@ -182,14 +184,14 @@ final class TValueOf extends Atomic
                     }
                 }
             } elseif ($atomic_type instanceof TNamedObject
-                && $codebase->classlike_storage_provider->has($atomic_type->value)
+                && $codebase->classlike_storage_provider->has($atomic_type->name)
             ) {
-                $class_storage = $codebase->classlike_storage_provider->get($atomic_type->value);
+                $class_storage = $codebase->classlike_storage_provider->get($atomic_type->name);
                 $cases = $class_storage->enum_cases;
                 if (!$class_storage->is_enum
                     || $class_storage->enum_type === null
                     || $cases === []
-                    || ($atomic_type instanceof TEnumCase && !isset($cases[$atomic_type->case_name]))
+                    || ($atomic_type instanceof TEnumCase && !isset($cases[Interner::intern($atomic_type->case_name)]))
                 ) {
                     // Invalid value-of, skip
                     continue;

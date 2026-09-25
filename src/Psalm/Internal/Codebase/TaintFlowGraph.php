@@ -10,6 +10,7 @@ use Psalm\Codebase;
 use Psalm\Config;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\DataFlow\Path;
 use Psalm\Issue\TaintedCallable;
 use Psalm\Issue\TaintedCookie;
 use Psalm\Issue\TaintedCustom;
@@ -37,6 +38,7 @@ use Psalm\Progress\Progress;
 use Psalm\Type\TaintKind;
 use Webmozart\Assert\Assert;
 
+use function abs;
 use function array_pop;
 use function array_unshift;
 use function count;
@@ -81,6 +83,44 @@ final class TaintFlowGraph extends DataFlowGraph
      * @var array<string, true>
      */
     private array $specialized_calls = [];
+
+    /**
+     * @psalm-external-mutation-free
+     */
+    /**
+     * The taint graph keys its edges by the spelled-out id: it parses ids (specializations) and its
+     * bookkeeping maps hold ids as values.
+     *
+     * @psalm-external-mutation-free
+     */
+    #[Override]
+    public function addPath(
+        DataFlowNode $from,
+        DataFlowNode $to,
+        string $path_type,
+        int $added_taints = 0,
+        int $removed_taints = 0,
+    ): void {
+        $from_id = $from->id;
+        $to_id = $to->id;
+
+        if ($from_id === $to_id) {
+            return;
+        }
+
+        $length = 0;
+
+        if ($from->code_location
+            && $to->code_location
+            && $from->code_location->file_path === $to->code_location->file_path
+        ) {
+            $to_line = $to->code_location->raw_line_number;
+            $from_line = $from->code_location->raw_line_number;
+            $length = abs($to_line - $from_line);
+        }
+
+        $this->forward_edges[$from_id][$to_id] = new Path($path_type, $length, $added_taints, $removed_taints);
+    }
 
     /**
      * @psalm-external-mutation-free
@@ -446,6 +486,26 @@ final class TaintFlowGraph extends DataFlowGraph
     }
 
     /**
+     * @return list<list<string>>
+     * @psalm-mutation-free
+     */
+    #[Override]
+    public function summarizeEdges(): array
+    {
+        $edges = [];
+
+        foreach ($this->forward_edges as $source => $destinations) {
+            $edge = [(string) $source];
+            foreach ($destinations as $to_id => $_) {
+                $edge[] = (string) $to_id;
+            }
+            $edges[] = $edge;
+        }
+
+        return $edges;
+    }
+
+    /**
      * Computes the set of node ids from which at least one sink is reachable.
      *
      * The search runs backwards from the sinks over the forward edges, treating
@@ -462,11 +522,11 @@ final class TaintFlowGraph extends DataFlowGraph
         $reverse = [];
 
         foreach ($this->forward_edges as $from_id => $destinations) {
-            $this->linkSpecialization($reverse, $from_id);
+            $this->linkSpecialization($reverse, (string) $from_id);
 
             foreach ($destinations as $to_id => $_) {
-                $reverse[$to_id][$from_id] = true;
-                $this->linkSpecialization($reverse, $to_id);
+                $reverse[(string) $to_id][(string) $from_id] = true;
+                $this->linkSpecialization($reverse, (string) $to_id);
             }
         }
 
@@ -576,6 +636,7 @@ final class TaintFlowGraph extends DataFlowGraph
         $specialized_calls_key = json_encode($generated_source->specialized_calls, JSON_THROW_ON_ERROR);
 
         foreach ($this->forward_edges[$generated_source->id] as $to_id => $path) {
+            $to_id = (string) $to_id; // this graph keys its edges by spelled-out id
             if (!isset($this->nodes[$to_id])) {
                 continue;
             }

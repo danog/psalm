@@ -11,6 +11,7 @@ use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Context;
 use Psalm\Internal\Codebase\CodeUseGraph;
+use Psalm\Internal\Interner;
 use Psalm\Issue\CodeIssue;
 use Psalm\Issue\ImpureByReferenceAssignment;
 use Psalm\Issue\ImpureFunctionCall;
@@ -255,7 +256,7 @@ abstract class SourceAnalyzer implements StatementsSource
         int $mutation_level,
         ?FunctionLikeStorage $storage = null,
         bool $callee_internal_mutations_ok = false,
-        ?string $callee_id = null,
+        ?int $callee_id = null,
     ): void {
         $src = $this instanceof FunctionLikeAnalyzer
             ? $this
@@ -301,10 +302,10 @@ abstract class SourceAnalyzer implements StatementsSource
             $src->intrinsic_mutations = max($src->intrinsic_mutations, $mutation_level);
 
             if ($src->storage instanceof MethodStorage
-                && $src->storage->defining_fqcln !== null
+                && $src->storage->declaring_class !== null
             ) {
                 $src->getCodebase()->analyzer->addMutableClass(
-                    $src->storage->defining_fqcln,
+                    Interner::lookupOrNull($src->storage->declaring_class),
                     $src->intrinsic_mutations,
                 );
             }
@@ -328,7 +329,7 @@ abstract class SourceAnalyzer implements StatementsSource
         bool $overrideMsg = false,
         ?FunctionLikeStorage $storage = null,
         bool $callee_internal_mutations_ok = false,
-        ?string $callee_id = null,
+        ?int $callee_id = null,
     ): void {
         if ($context->inside_attribute) {
             return;

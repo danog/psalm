@@ -7,6 +7,7 @@ namespace Psalm\Type\Atomic;
 use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
@@ -78,7 +79,7 @@ trait GenericTrait
 
         $extra_types = $this->getIntersectionId($exact);
 
-        return $this->value . '<' . substr($s, 0, -2) . '>' . $extra_types;
+        return Interner::lookup($this->name) . '<' . substr($s, 0, -2) . '>' . $extra_types;
     }
 
     /**
@@ -226,7 +227,7 @@ trait GenericTrait
                 $add_lower_bound,
                 !($container_type_params_covariant[$offset] ?? true)
                     && $this instanceof TGenericObject
-                    ? $this->value
+                    ? Interner::lookup($this->name)
                     : null,
                 $depth + 1,
             );

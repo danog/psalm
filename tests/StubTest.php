@@ -13,12 +13,14 @@ use Psalm\Exception\InvalidClasslikeOverrideException;
 use Psalm\Exception\InvalidMethodOverrideException;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\IncludeCollector;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\FakeFileProvider;
 use Psalm\Internal\Provider\Providers;
 use Psalm\Internal\RuntimeCaches;
 use Psalm\Tests\Internal\Provider\FakeParserCacheProvider;
 
 use function array_keys;
+use function array_map;
 use function json_encode;
 use function assert;
 use function basename;
@@ -1532,7 +1534,7 @@ final class StubTest extends TestCase
             'autoloader' => basename($autoloader),
             'scanned' => $scanned ? 'yes' : 'no',
             'functions' => $scanned
-                ? implode(',', array_keys($codebase->file_storage_provider->get($autoloader)->functions))
+                ? implode(',', array_map(Interner::lookupLc(...), array_keys($codebase->file_storage_provider->get($autoloader)->functions)))
                 : '-',
             'known' => $codebase->functions->hasStubbedFunction('new_random_bytes') ? 'yes' : 'no',
         ];

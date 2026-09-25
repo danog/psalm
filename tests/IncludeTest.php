@@ -8,6 +8,7 @@ use Psalm\Config;
 use Psalm\Exception\CodeException;
 use Psalm\Internal\Analyzer\FileAnalyzer;
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
+use Psalm\Internal\Sym;
 use Psalm\Storage\ClassLikeStorage;
 
 use function getcwd;
@@ -1001,7 +1002,7 @@ final class IncludeTest extends TestCase
         // Simulate reflection overwriting the interface storage with a class
         // that lacks the interface's methods (this is what happens when a
         // vendor class with the same FQCN is loaded via reflection).
-        $overwritten = new ClassLikeStorage('Foo\\Bar');
+        $overwritten = new ClassLikeStorage(Sym::C_FOO__BAR);
         $overwritten->is_interface = false;
         $overwritten->populated = true;
 

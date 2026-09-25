@@ -21,7 +21,11 @@ use function substr;
  */
 abstract class DataFlowGraph
 {
-    /** @var array<string, array<string, Path>> */
+    /**
+     * source node key => target node key => path (the taint graph keys by the spelled-out id instead)
+     *
+     * @var array<array-key, array<array-key, Path>>
+     */
     protected array $forward_edges = [];
 
     abstract public function addNode(DataFlowNode $node): void;
@@ -36,8 +40,8 @@ abstract class DataFlowGraph
         int $added_taints = 0,
         int $removed_taints = 0,
     ): void {
-        $from_id = $from->id;
-        $to_id = $to->id;
+        $from_id = $from->key;
+        $to_id = $to->key;
 
         if ($from_id === $to_id) {
             return;
@@ -148,7 +152,7 @@ abstract class DataFlowGraph
     }
 
     /**
-     * @psalm-return list<list<string>>
+     * @psalm-return list<list<array-key>>
      * @psalm-mutation-free
      */
     public function summarizeEdges(): array

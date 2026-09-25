@@ -7,8 +7,8 @@ namespace Psalm\Internal;
 use InvalidArgumentException;
 use Override;
 use Psalm\Storage\ImmutableNonCloneableTrait;
-use Stringable;
 use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
+use Stringable;
 
 use function explode;
 use function ltrim;
@@ -34,10 +34,10 @@ final class MethodIdentifier implements Stringable
     public ?string $string_memo = null;
 
     /**
-     * @param lowercase-string $method_name
+     * @param int $name_id
      * @psalm-mutation-free
      */
-    public function __construct(public readonly string $fq_class_name, public readonly string $method_name)
+    public function __construct(public readonly int $class_id, public readonly int $name_id)
     {
     }
 
@@ -61,7 +61,7 @@ final class MethodIdentifier implements Stringable
         // remove leading backslash if it exists
         $method_id = ltrim($method_id, '\\');
         $method_id_parts = explode('::', $method_id);
-        return new self($method_id_parts[0], strtolower($method_id_parts[1]));
+        return new self(Interner::intern($method_id_parts[0]), Interner::intern(strtolower($method_id_parts[1])));
     }
 
     /** @return non-empty-string */
@@ -71,7 +71,7 @@ final class MethodIdentifier implements Stringable
         if ($this->string_memo !== null) {
             return $this->string_memo;
         }
-        $string = $this->fq_class_name . '::' . $this->method_name;
+        $string = Interner::lookup($this->class_id) . '::' . Interner::lookupLc($this->name_id);
         /** @psalm-suppress ImpurePropertyAssignment, InaccessibleProperty Cache */
         $this->string_memo = $string;
         return $string;

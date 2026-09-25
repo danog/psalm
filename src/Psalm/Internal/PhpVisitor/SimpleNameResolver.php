@@ -16,6 +16,7 @@ use PhpParser\Node\Name;
 use PhpParser\Node\NullableType;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeVisitorAbstract;
+use Psalm\Internal\Interner;
 
 /**
  * @internal
@@ -213,7 +214,7 @@ final class SimpleNameResolver extends NodeVisitorAbstract
     {
         $resolvedName = $this->nameContext->getResolvedName($name, $type);
         if (null !== $resolvedName) {
-            $name->attrs()->resolvedName = $resolvedName->toString();
+            $name->attrs()->resolvedId = Interner::intern($resolvedName->toString());
         } else {
             $namespaceName = Name\FullyQualified::concat(
                 $this->nameContext->getNamespace(),
@@ -254,7 +255,7 @@ final class SimpleNameResolver extends NodeVisitorAbstract
         $resolvedName = Name::concat($this->nameContext->getNamespace(), (string) $node->name);
 
         if (null !== $resolvedName) {
-            $node->attrs()->resolvedName = $resolvedName->toString();
+            $node->attrs()->resolvedId = Interner::intern($resolvedName->toString());
         }
     }
 }

@@ -16,8 +16,10 @@ use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Codebase\ConstantTypeResolver;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\Scanner\UnresolvedConstantComponent;
+use Psalm\Internal\Sym;
 use Psalm\Issue\InvalidAttribute;
 use Psalm\Issue\UndefinedClass;
 use Psalm\IssueBuffer;
@@ -67,14 +69,14 @@ final class AttributesAnalyzer
             if ($attribute->name instanceof FullyQualified) {
                 $fq_attribute_name = (string) $attribute->name;
             } else {
-                $fq_attribute_name = ClassLikeAnalyzer::getFQCLNFromNameObject($attribute->name, $source->getAliases());
+                $fq_attribute_name = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject($attribute->name, $source->getAliases()));
             }
 
             $attribute_name = (string) $attribute->name;
             $attribute_name_location = new CodeLocation($source, $attribute->name);
 
-            $attribute_class_storage = $codebase->classlikes->classExists($fq_attribute_name, null, $context)
-                ? $codebase->classlike_storage_provider->get($fq_attribute_name)
+            $attribute_class_storage = $codebase->classlikes->classExists(Interner::intern($fq_attribute_name), null, $context)
+                ? $codebase->classlike_storage_provider->get(Interner::intern($fq_attribute_name))
                 : null;
 
             $attribute_class_flags = self::getAttributeClassFlags(
@@ -197,8 +199,8 @@ final class AttributesAnalyzer
                     ),
                     $suppressed_issues,
                 );
-            } elseif (isset($classlike_storage->methods['__construct'])
-                && $classlike_storage->methods['__construct']->visibility !== ClassLikeAnalyzer::VISIBILITY_PUBLIC
+            } elseif (isset($classlike_storage->methods[Sym::CONSTRUCT])
+                && $classlike_storage->methods[Sym::CONSTRUCT]->visibility !== ClassLikeAnalyzer::VISIBILITY_PUBLIC
             ) {
                 IssueBuffer::maybeAdd(
                     new InvalidAttribute(
@@ -385,11 +387,11 @@ final class AttributesAnalyzer
 
         $codebase = $statements_analyzer->getCodebase();
 
-        if (!$codebase->classExists($class_string->value)) {
+        if (!$codebase->classExists(Interner::intern($class_string->value))) {
             return;
         }
 
-        $class_storage = $codebase->classlike_storage_provider->get($class_string->value);
+        $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($class_string->value));
         $arg_location = new CodeLocation($statements_analyzer, $arg);
         $class_attribute_target = self::getAttributeClassFlags(
             $statements_analyzer,

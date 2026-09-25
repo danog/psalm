@@ -7,6 +7,7 @@ namespace Psalm\Internal\DataFlow;
 use Override;
 use Psalm\CodeLocation;
 use Psalm\Internal\Codebase\Methods;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Storage\FunctionLikeParameter;
 use Psalm\Storage\FunctionLikeStorage;
@@ -46,6 +47,14 @@ use function substr;
 final class DataFlowNode implements Stringable
 {
     /**
+     * The id's 63-bit hash: what the variable-use graph keys its maps by (pzoom keys by a structured id; the
+     * spelling stays in $id for messages and for the taint graph, which parses it). A hash rather than an
+     * interned id: a node is made per assignment and use, and interning every one of them inside a forked
+     * worker made the interner delta the workers hand back grow past memory.
+     */
+    public readonly int $key;
+
+    /**
      * @psalm-mutation-free
      */
     private function __construct(
@@ -63,6 +72,7 @@ final class DataFlowNode implements Stringable
          */
         public readonly array $specialized_calls = [],
     ) {
+        $this->key = Interner::hash($id);
     }
 
     /**
@@ -263,8 +273,8 @@ final class DataFlowNode implements Stringable
         }
 
         $method_id = new MethodIdentifier(
-            strtolower(ltrim(substr($cased_method_id, 0, $separator_pos), '\\')),
-            strtolower(substr($cased_method_id, $separator_pos + 2)),
+            Interner::intern(strtolower(ltrim(substr($cased_method_id, 0, $separator_pos), '\\'))),
+            Interner::intern(strtolower(substr($cased_method_id, $separator_pos + 2))),
         );
 
         $declaring_id = $methods->getDeclaringMethodId($method_id);

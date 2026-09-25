@@ -13,7 +13,9 @@ use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\TypeCombiner;
 use Psalm\Internal\Type\TypeVariableTracker;
 use Psalm\Issue\InvalidCast;
@@ -434,15 +436,15 @@ final class CastAnalyzer
                     }
 
                     // prevent "Could not get class storage for mixed"
-                    if (!$codebase->classExists($intersection_type->value)) {
+                    if (!$codebase->classExists($intersection_type->name)) {
                         continue;
                     }
 
                     foreach (self::PSEUDO_CASTABLE_CLASSES as $pseudo_castable_class) {
-                        if (strtolower($intersection_type->value) === strtolower($pseudo_castable_class)
+                        if (strtolower(Interner::lookup($intersection_type->name)) === strtolower($pseudo_castable_class)
                             || $codebase->classExtends(
-                                $intersection_type->value,
-                                $pseudo_castable_class,
+                                $intersection_type->name,
+                                Interner::intern($pseudo_castable_class),
                             )
                         ) {
                             $castable_types[] = new TInt();
@@ -633,15 +635,15 @@ final class CastAnalyzer
                     }
 
                     // prevent "Could not get class storage for mixed"
-                    if (!$codebase->classExists($intersection_type->value)) {
+                    if (!$codebase->classExists($intersection_type->name)) {
                         continue;
                     }
 
                     foreach (self::PSEUDO_CASTABLE_CLASSES as $pseudo_castable_class) {
-                        if (strtolower($intersection_type->value) === strtolower($pseudo_castable_class)
+                        if (strtolower(Interner::lookup($intersection_type->name)) === strtolower($pseudo_castable_class)
                             || $codebase->classExtends(
-                                $intersection_type->value,
-                                $pseudo_castable_class,
+                                $intersection_type->name,
+                                Interner::intern($pseudo_castable_class),
                             )
                         ) {
                             $castable_types[] = new TFloat();
@@ -827,8 +829,8 @@ final class CastAnalyzer
                 foreach ($intersection_types as $intersection_type) {
                     if ($intersection_type instanceof TNamedObject) {
                         $intersection_method_id = new MethodIdentifier(
-                            $intersection_type->value,
-                            '__tostring',
+                            $intersection_type->name,
+                            Sym::TO_STRING,
                         );
 
                         if ($codebase->methodExists(
@@ -851,12 +853,13 @@ final class CastAnalyzer
                                 [],
                                 $intersection_method_id,
                                 $declaring_method_id,
-                                $intersection_type->value . '::__toString',
+                                Interner::lookup($intersection_type->name) . '::__toString',
                                 $context,
                             );
 
                             if ($statements_analyzer->data_flow_graph) {
-                                $parent_nodes = array_merge($return_type->parent_nodes, $parent_nodes);
+                                // keyed by node key: a union of maps, not array_merge (which renumbers int keys)
+                                $parent_nodes = $return_type->parent_nodes + $parent_nodes;
                             }
 
                             $castable_types = [...$castable_types, ...$return_type->getAtomicTypes()];
@@ -950,7 +953,7 @@ final class CastAnalyzer
      * stays intact in every mode; the removed_taints on the edge is ignored by the
      * variable-use graph and only takes effect for taint analysis.
      *
-     * @param array<string, DataFlowNode> $parent_nodes
+     * @param array<int, DataFlowNode> $parent_nodes
      */
     private static function stripCastTaints(
         StatementsAnalyzer $statements_analyzer,
@@ -982,7 +985,7 @@ final class CastAnalyzer
                 );
             }
 
-            $parent_nodes = [$cast_node->id => $cast_node];
+            $parent_nodes = [$cast_node->key => $cast_node];
         }
 
         return $result_type->setParentNodes($parent_nodes);

@@ -15,6 +15,7 @@ use Psalm\Internal\Codebase\Functions;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\Codebase\Reflection;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
 use Psalm\Internal\Provider\FileReferenceProvider;
@@ -236,7 +237,7 @@ class FileAnalyzer extends SourceAnalyzer
                         continue;
                     }
 
-                    $referenced_class_storage = $codebase->classlike_storage_provider->get($fq_source_classlike);
+                    $referenced_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_source_classlike));
                     if (!isset($referenced_class_storage->type_aliases[$alias->alias_name])) {
                         IssueBuffer::maybeAdd(
                             new InvalidTypeImport(
@@ -310,8 +311,8 @@ class FileAnalyzer extends SourceAnalyzer
             }
 
             // this can happen when stubbing
-            if (!$this->codebase->classExists($stmt->name->name)
-                && !$this->codebase->classlikes->enumExists($stmt->name->name)
+            if (!$this->codebase->classExists(Interner::intern($stmt->name->name))
+                && !$this->codebase->classlikes->enumExists(Interner::intern($stmt->name->name))
             ) {
                 return;
             }
@@ -327,7 +328,7 @@ class FileAnalyzer extends SourceAnalyzer
             }
 
             // this can happen when stubbing
-            if (!$this->codebase->interfaceExists($stmt->name->name)) {
+            if (!$this->codebase->interfaceExists(Interner::intern($stmt->name->name))) {
                 return;
             }
 
@@ -360,8 +361,8 @@ class FileAnalyzer extends SourceAnalyzer
         Context $this_context,
         bool $from_project_analyzer = false,
     ): void {
-        $fq_class_name = $method_id->fq_class_name;
-        $method_name = $method_id->method_name;
+        $fq_class_name = Interner::lookup($method_id->class_id);
+        $method_name = Interner::lookupLc($method_id->name_id);
         $fq_class_name_lc = strtolower($fq_class_name);
 
         if (isset($this->class_analyzers_to_analyze[$fq_class_name_lc])) {
@@ -421,8 +422,8 @@ class FileAnalyzer extends SourceAnalyzer
      */
     public function getFunctionLikeAnalyzer(MethodIdentifier $method_id): ?MethodAnalyzer
     {
-        $fq_class_name = $method_id->fq_class_name;
-        $method_name = $method_id->method_name;
+        $fq_class_name = Interner::lookup($method_id->class_id);
+        $method_name = Interner::lookupLc($method_id->name_id);
 
         $fq_class_name_lc = strtolower($fq_class_name);
 

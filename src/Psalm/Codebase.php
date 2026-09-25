@@ -23,6 +23,8 @@ use Psalm\CodeLocation\Raw;
 use Psalm\Exception\UnanalyzedFileException;
 use Psalm\Exception\UnpopulatedClasslikeException;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
+use Psalm\Internal\Interner;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Analyzer\FunctionLikeAnalyzer;
 use Psalm\Internal\Analyzer\NamespaceAnalyzer;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
@@ -299,6 +301,8 @@ final class Codebase
         if ($progress === null) {
             $progress = new VoidProgress();
         }
+        Interner::merge(Sym::PRELOADED);
+
         $this->file_storage_provider = $providers->file_storage_provider;
         $this->classlike_storage_provider = $providers->classlike_storage_provider;
         $this->progress = $progress;
@@ -907,13 +911,13 @@ final class Codebase
         );
 
         if ($storage->is_trait) {
-            $this->classlikes->addFullyQualifiedTraitName($storage->name, $file_path);
+            $this->classlikes->addFullyQualifiedTraitName(Interner::lookup($storage->id), $file_path);
         } elseif ($storage->is_interface) {
-            $this->classlikes->addFullyQualifiedInterfaceName($storage->name, $file_path);
+            $this->classlikes->addFullyQualifiedInterfaceName(Interner::lookup($storage->id), $file_path);
         } elseif ($storage->is_enum) {
-            $this->classlikes->addFullyQualifiedEnumName($storage->name, $file_path);
+            $this->classlikes->addFullyQualifiedEnumName(Interner::lookup($storage->id), $file_path);
         } else {
-            $this->classlikes->addFullyQualifiedClassName($storage->name, $file_path);
+            $this->classlikes->addFullyQualifiedClassName(Interner::lookup($storage->id), $file_path);
         }
     }
 
@@ -1015,11 +1019,12 @@ final class Codebase
      */
     public function getClosureStorage(string $file_path, string $closure_id): FunctionStorage
     {
+        $closure_iid = Interner::intern($closure_id);
         $file_storage = $this->file_storage_provider->get($file_path);
 
         // closures can be returned here
-        if (isset($file_storage->functions[$closure_id])) {
-            return $file_storage->functions[$closure_id];
+        if (isset($file_storage->functions[$closure_iid])) {
+            return $file_storage->functions[$closure_iid];
         }
 
         throw new UnexpectedValueException(
@@ -1067,111 +1072,66 @@ final class Codebase
     }
 
     /**
-     * Check whether a class/interface exists
+     * By interned names (pzoom's StrId lookups).
      *
-     * @psalm-external-mutation-free
+     * @psalm-mutation-free
      */
-    public function classOrInterfaceExists(
-        string $fq_class_name,
-        ?CodeLocation $code_location = null,
-        ?Context $context = null,
-    ): bool {
-        return $this->classlikes->classOrInterfaceExists(
-            $fq_class_name,
-            $code_location,
-            $context,
-        );
-    }
-
-    /**
-     * Check whether a class/interface exists
-     *
-     * @psalm-assert-if-true class-string|interface-string|enum-string $fq_class_name
-     * @psalm-external-mutation-free
-     */
-    public function classOrInterfaceOrEnumExists(
-        string $fq_class_name,
-        ?CodeLocation $code_location = null,
-        ?Context $context = null,
-    ): bool {
-        return $this->classlikes->classOrInterfaceOrEnumExists(
-            $fq_class_name,
-            $code_location,
-            $context,
-        );
+    public function classExtendsOrImplements(int $name, int $possible_parent): bool
+    {
+        return $this->classlikes->classExtends($name, $possible_parent)
+            || $this->classlikes->classImplements($name, $possible_parent);
     }
 
     /** @psalm-mutation-free */
-    public function classExtendsOrImplements(string $fq_class_name, string $possible_parent): bool
+    public function classExtends(int $name, int $possible_parent): bool
     {
-        return $this->classlikes->classExtends($fq_class_name, $possible_parent)
-            || $this->classlikes->classImplements($fq_class_name, $possible_parent);
+        return $this->classlikes->classExtends($name, $possible_parent, true);
     }
 
-    /**
-     * Determine whether or not a given class exists
-     *
-     * @psalm-external-mutation-free
-     */
-    public function classExists(
-        string $fq_class_name,
+    /** @psalm-mutation-free */
+    public function classImplements(int $name, int $interface): bool
+    {
+        return $this->classlikes->classImplements($name, $interface);
+    }
+
+    /** @psalm-mutation-free */
+    public function interfaceExtends(int $name, int $possible_parent): bool
+    {
+        return $this->classlikes->interfaceExtends($name, $possible_parent);
+    }
+
+    /** @psalm-external-mutation-free */
+    public function classExists(int $name, ?CodeLocation $code_location = null, ?Context $context = null): bool
+    {
+        return $this->classlikes->classExists($name, $code_location, $context);
+    }
+
+    /** @psalm-external-mutation-free */
+    public function interfaceExists(int $name, ?CodeLocation $code_location = null, ?Context $context = null): bool
+    {
+        return $this->classlikes->interfaceExists($name, $code_location, $context);
+    }
+
+    /** @psalm-external-mutation-free */
+    public function classOrInterfaceExists(
+        int $name,
         ?CodeLocation $code_location = null,
         ?Context $context = null,
     ): bool {
-        return $this->classlikes->classExists(
-            $fq_class_name,
-            $code_location,
-            $context,
-        );
+        return $this->classlikes->classOrInterfaceExists($name, $code_location, $context);
     }
 
-    /**
-     * Determine whether or not a class extends a parent
-     *
-     * @throws UnpopulatedClasslikeException when called on unpopulated class
-     * @throws InvalidArgumentException when class does not exist
-     * @psalm-mutation-free
-     */
-    public function classExtends(string $fq_class_name, string $possible_parent): bool
-    {
-        return $this->classlikes->classExtends($fq_class_name, $possible_parent, true);
-    }
-
-    /**
-     * Check whether a class implements an interface
-     *
-     * @psalm-mutation-free
-     */
-    public function classImplements(string $fq_class_name, string $interface): bool
-    {
-        return $this->classlikes->classImplements($fq_class_name, $interface);
-    }
-
-    /**
-     * @psalm-external-mutation-free
-     */
-    public function interfaceExists(
-        string $fq_interface_name,
+    /** @psalm-external-mutation-free */
+    public function classOrInterfaceOrEnumExists(
+        int $name,
         ?CodeLocation $code_location = null,
         ?Context $context = null,
     ): bool {
-        return $this->classlikes->interfaceExists(
-            $fq_interface_name,
-            $code_location,
-            $context,
-        );
+        return $this->classlikes->classOrInterfaceOrEnumExists($name, $code_location, $context);
     }
 
     /**
-     * @psalm-mutation-free
-     */
-    public function interfaceExtends(string $interface_name, string $possible_parent): bool
-    {
-        return $this->classlikes->interfaceExtends($interface_name, $possible_parent);
-    }
-
-    /**
-     * @return array<string, string> all interfaces extended by $interface_name
+     * @return array<int, true> all interfaces extended by $interface_name
      * @psalm-mutation-free
      */
     public function getParentInterfaces(string $fq_interface_name): array
@@ -1241,7 +1201,8 @@ final class Codebase
      * Whether or not a given property exists
      */
     public function propertyExists(
-        string $property_id,
+        int $fq_class_name,
+        int $property_name,
         bool $read_mode,
         ?StatementsSource $source = null,
         ?Context $context = null,
@@ -1249,7 +1210,7 @@ final class Codebase
     ): bool {
         return $this->properties->propertyExists(
             $this,
-            $property_id,
+            $fq_class_name, $property_name,
             $read_mode,
             $source,
             $context,
@@ -1353,7 +1314,7 @@ final class Codebase
     }
 
     /**
-     * @return array<string, MethodIdentifier>
+     * @return array<int, MethodIdentifier>
      * @psalm-mutation-free
      */
     public function getOverriddenMethodIds(MethodIdentifier $method_id): array
@@ -1397,8 +1358,7 @@ final class Codebase
     {
         if (strpos($symbol, '::')) {
             $symbol = substr($symbol, 0, -2);
-            /** @psalm-suppress ArgumentTypeCoercion */
-            $method_id = new MethodIdentifier(...explode('::', $symbol));
+            $method_id = new MethodIdentifier(...array_map(Interner::intern(...), explode('::', $symbol)));
 
             $declaring_method_id = $this->methods->getDeclaringMethodId($method_id);
 
@@ -1410,10 +1370,11 @@ final class Codebase
         }
 
         $function_id = strtolower(substr($symbol, 0, -2));
+        $function_iid = Interner::intern($function_id);
         $file_storage = $this->file_storage_provider->get($file_path);
 
-        if (isset($file_storage->functions[$function_id])) {
-            return $file_storage->functions[$function_id];
+        if (isset($file_storage->functions[$function_iid])) {
+            return $file_storage->functions[$function_iid];
         }
 
         if (!$function_id) {
@@ -1446,8 +1407,7 @@ final class Codebase
             if (strpos($reference->symbol, '()')) {
                 $symbol = substr($reference->symbol, 0, -2);
 
-                /** @psalm-suppress ArgumentTypeCoercion */
-                $method_id = new MethodIdentifier(...explode('::', $symbol));
+                $method_id = new MethodIdentifier(...array_map(Interner::intern(...), explode('::', $symbol)));
 
                 $declaring_method_id = $this->methods->getDeclaringMethodId(
                     $method_id,
@@ -1461,7 +1421,7 @@ final class Codebase
 
                 return new PHPMarkdownContent(
                     $storage->getHoverMarkdown(),
-                    "{$storage->defining_fqcln}::{$storage->cased_name}",
+                    "" . Interner::lookupOrNull($storage->declaring_class) . "::{$storage->cased_name}",
                     $storage->description,
                 );
             }
@@ -1474,15 +1434,15 @@ final class Codebase
                 $property_id = (string) preg_replace('/^\\\\/', '', $reference->symbol);
                 /** @psalm-suppress PossiblyUndefinedIntArrayOffset */
                 [$fq_class_name, $property_name] = explode('::$', $property_id);
-                $class_storage = $this->classlikes->getStorageFor($fq_class_name);
+                $class_storage = $this->classlikes->getStorageFor(Interner::intern($fq_class_name));
 
                 //Get Real Properties
-                if (isset($class_storage->declaring_property_ids[$property_name])) {
-                    $declaring_property_class = $class_storage->declaring_property_ids[$property_name];
+                if (isset($class_storage->declaring_property_ids[Interner::intern($property_name)])) {
+                    $declaring_property_class = $class_storage->declaring_property_ids[Interner::intern($property_name)];
                     $declaring_class_storage = $this->classlike_storage_provider->get($declaring_property_class);
 
-                    if (isset($declaring_class_storage->properties[$property_name])) {
-                        $storage = $declaring_class_storage->properties[$property_name];
+                    if (isset($declaring_class_storage->properties[Interner::intern($property_name)])) {
+                        $storage = $declaring_class_storage->properties[Interner::intern($property_name)];
                         return new PHPMarkdownContent(
                             "{$storage->getInfo()} {$symbol_name}",
                             $reference->symbol,
@@ -1492,19 +1452,19 @@ final class Codebase
                 }
 
                 //Get Docblock properties
-                if (isset($class_storage->pseudo_property_set_types['$'.$property_name])) {
+                if (isset($class_storage->pseudo_property_set_types[Interner::intern('$' . $property_name)])) {
                     return new PHPMarkdownContent(
                         'public '.
-                        (string) $class_storage->pseudo_property_set_types['$'.$property_name].' $'.$property_name,
+                        (string) $class_storage->pseudo_property_set_types[Interner::intern('$' . $property_name)].' $'.$property_name,
                         $reference->symbol,
                     );
                 }
 
                 //Get Docblock properties
-                if (isset($class_storage->pseudo_property_get_types['$'.$property_name])) {
+                if (isset($class_storage->pseudo_property_get_types[Interner::intern('$' . $property_name)])) {
                     return new PHPMarkdownContent(
                         'public '.
-                        (string) $class_storage->pseudo_property_get_types['$'.$property_name].' $'.$property_name,
+                        (string) $class_storage->pseudo_property_get_types[Interner::intern('$' . $property_name)].' $'.$property_name,
                         $reference->symbol,
                     );
                 }
@@ -1523,27 +1483,29 @@ final class Codebase
                 ReflectionProperty::IS_PRIVATE,
             );
 
-            if (!isset($class_constants[$const_name])) {
+            $const_name_id = Interner::intern($const_name);
+            if (!isset($class_constants[$const_name_id])) {
                 return null;
             }
 
             //Class Constant
             return new PHPMarkdownContent(
-                $class_constants[$const_name]->getHoverMarkdown($const_name),
+                $class_constants[$const_name_id]->getHoverMarkdown($const_name),
                 $fq_classlike_name . '::' . $const_name,
-                $class_constants[$const_name]->description,
+                $class_constants[$const_name_id]->description,
             );
         }
 
         //Procedural Function
         if (strpos($reference->symbol, '()')) {
             $function_id = strtolower(substr($reference->symbol, 0, -2));
+            $function_iid = Interner::intern($function_id);
             $file_storage = $this->file_storage_provider->get(
                 $reference->file_path,
             );
 
-            if (isset($file_storage->functions[$function_id])) {
-                $function_storage = $file_storage->functions[$function_id];
+            if (isset($file_storage->functions[$function_iid])) {
+                $function_storage = $file_storage->functions[$function_iid];
 
                 return new PHPMarkdownContent(
                     $function_storage->getHoverMarkdown(),
@@ -1578,13 +1540,13 @@ final class Codebase
 
         try {
             $storage = $this->classlike_storage_provider->get(
-                $reference->symbol,
+                Interner::intern($reference->symbol),
             );
             return new PHPMarkdownContent(
                 ($storage->abstract ? 'abstract ' : '') .
                     'class ' .
-                    $storage->name,
-                $storage->name,
+                    Interner::lookup($storage->id),
+                Interner::lookup($storage->id),
                 $storage->description,
             );
         } catch (InvalidArgumentException) {
@@ -1666,9 +1628,8 @@ final class Codebase
                 if (strpos($reference->symbol, '()')) {
                     $symbol = substr($reference->symbol, 0, -2);
 
-                    /** @psalm-suppress ArgumentTypeCoercion */
                     $method_id = new MethodIdentifier(
-                        ...explode('::', $symbol),
+                        ...array_map(Interner::intern(...), explode('::', $symbol)),
                     );
 
                     $declaring_method_id = $this->methods->getDeclaringMethodId(
@@ -1686,7 +1647,7 @@ final class Codebase
 
                 if (str_contains($reference->symbol, '$')) {
                     $storage = $this->properties->getStorage(
-                        $reference->symbol,
+                        Interner::intern(explode('::$', $reference->symbol)[0]), Interner::intern(explode('::$', $reference->symbol)[1]),
                     );
 
                     return $storage->location;
@@ -1703,11 +1664,12 @@ final class Codebase
                     ReflectionProperty::IS_PRIVATE,
                 );
 
-                if (!isset($class_constants[$const_name])) {
+                $const_name_id = Interner::intern($const_name);
+                if (!isset($class_constants[$const_name_id])) {
                     return null;
                 }
 
-                return $class_constants[$const_name]->location;
+                return $class_constants[$const_name_id]->location;
             }
 
             if (strpos($reference->symbol, '()')) {
@@ -1716,9 +1678,10 @@ final class Codebase
                 );
 
                 $function_id = strtolower(substr($reference->symbol, 0, -2));
+                $function_iid = Interner::intern($function_id);
 
-                if (isset($file_storage->functions[$function_id])) {
-                    return $file_storage->functions[$function_id]->location;
+                if (isset($file_storage->functions[$function_iid])) {
+                    return $file_storage->functions[$function_iid]->location;
                 }
 
                 if (!$function_id) {
@@ -1730,7 +1693,7 @@ final class Codebase
             }
 
             return $this->classlike_storage_provider->get(
-                $reference->symbol,
+                Interner::intern($reference->symbol),
             )->location;
         } catch (UnexpectedValueException $e) {
             error_log($e->getMessage());
@@ -1873,8 +1836,7 @@ final class Codebase
         $signature_label = '';
         $signature_documentation = null;
         if (str_contains($function_symbol, '::')) {
-            /** @psalm-suppress ArgumentTypeCoercion */
-            $method_id = new MethodIdentifier(...explode('::', $function_symbol));
+            $method_id = new MethodIdentifier(...array_map(Interner::intern(...), explode('::', $function_symbol)));
 
             $declaring_method_id = $this->methods->getDeclaringMethodId($method_id);
 
@@ -2112,7 +2074,7 @@ final class Codebase
         foreach ($type->getAtomicTypes() as $atomic_type) {
             if ($atomic_type instanceof TNamedObject) {
                 try {
-                    $class_storage = $this->classlike_storage_provider->get($atomic_type->value);
+                    $class_storage = $this->classlike_storage_provider->get($atomic_type->name);
 
                     $method_storages = [];
                     foreach ($class_storage->declaring_method_ids as $declaring_method_id) {
@@ -2170,7 +2132,8 @@ final class Codebase
 
                     if ($gap === '->') {
                         $pseudo_property_types = [];
-                        foreach ($class_storage->pseudo_property_get_types as $property_name => $type) {
+                        foreach ($class_storage->pseudo_property_get_types as $property_name_id => $type) {
+                            $property_name = Interner::lookup($property_name_id);
                             $pseudo_property_types[$property_name] = new CompletionItem(
                                 str_replace('$', '', $property_name),
                                 CompletionItemKind::PROPERTY,
@@ -2182,7 +2145,8 @@ final class Codebase
                             );
                         }
 
-                        foreach ($class_storage->pseudo_property_set_types as $property_name => $type) {
+                        foreach ($class_storage->pseudo_property_set_types as $property_name_id => $type) {
+                            $property_name = Interner::lookup($property_name_id);
                             $pseudo_property_types[$property_name] = new CompletionItem(
                                 str_replace('$', '', $property_name),
                                 CompletionItemKind::PROPERTY,
@@ -2197,10 +2161,11 @@ final class Codebase
                         $completion_items = [...$completion_items, ...array_values($pseudo_property_types)];
                     }
 
-                    foreach ($class_storage->declaring_property_ids as $property_name => $declaring_class) {
+                    foreach ($class_storage->declaring_property_ids as $property_name_id => $declaring_class) {
+                        $property_name = Interner::lookup($property_name_id);
                         try {
                             $property_storage = $this->properties->getStorage(
-                                $declaring_class . '::$' . $property_name,
+                                $declaring_class, Interner::intern($property_name),
                             );
                         } catch (UnexpectedValueException $e) {
                             error_log($e->getMessage());
@@ -2223,7 +2188,8 @@ final class Codebase
                         }
                     }
 
-                    foreach ($class_storage->constants as $const_name => $const) {
+                    foreach ($class_storage->constants as $const_name_id => $const) {
+                        $const_name = Interner::lookup($const_name_id);
                         $completion_items[] = new CompletionItem(
                             $const_name,
                             CompletionItemKind::VARIABLE,
@@ -2237,11 +2203,11 @@ final class Codebase
 
                     if ($gap === '->') {
                         foreach ($class_storage->namedMixins as $mixin) {
-                            if (in_array($mixin->value, $ignore_fq_class_names)) {
+                            if (in_array(Interner::lookup($mixin->name), $ignore_fq_class_names)) {
                                 continue;
                             }
                             $mixin_completion_items = $this->getCompletionItemsForClassishThing(
-                                $mixin->value,
+                                Interner::lookup($mixin->name),
                                 $gap,
                                 $snippets_supported,
                                 [ClassLikeAnalyzer::VISIBILITY_PUBLIC],
@@ -2307,7 +2273,7 @@ final class Codebase
 
         foreach ($file_storage->classlikes_in_file as $fq_class_name => $_) {
             try {
-                $class_storage = $this->classlike_storage_provider->get($fq_class_name);
+                $class_storage = $this->classlike_storage_provider->get(Interner::intern($fq_class_name));
             } catch (Exception) {
                 continue;
             }
@@ -2381,7 +2347,7 @@ final class Codebase
             }
 
             try {
-                $class_storage = $this->classlike_storage_provider->get($fq_class_name);
+                $class_storage = $this->classlike_storage_provider->get(Interner::intern($fq_class_name));
                 $description = $class_storage->description;
             } catch (Exception) {
                 $description = null;
@@ -2681,7 +2647,7 @@ final class Codebase
 
         $this->taint_flow_graph->addSource($source);
 
-        return $expr_type->addParentNodes([$source->id => $source]);
+        return $expr_type->addParentNodes([$source->key => $source]);
     }
 
     /**

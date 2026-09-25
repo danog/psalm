@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
+use Psalm\Internal\Sym;
 use Psalm\Type\Union;
 
 /**
@@ -24,7 +25,7 @@ final class TNonEmptyArray extends TArray
         array $type_params,
         public ?int $count = null,
         public ?int $min_count = null,
-        public string $value = 'non-empty-array',
+        public int $name = Sym::C_NON_EMPTY_ARRAY,
         bool $from_docblock = false,
     ) {
         parent::__construct($type_params, $from_docblock);

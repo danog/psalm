@@ -15,6 +15,7 @@ use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Codebase\TaintFlowGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\Comparator\CallableTypeComparator;
 use Psalm\Internal\Type\TemplateBound;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
@@ -353,19 +354,19 @@ final class FunctionCallReturnTypeFetcher
                 case 'get_called_class':
                     return new Union([
                         new TClassString(
-                            $context->self ?: 'object',
-                            $context->self ? new TNamedObject($context->self, true) : null,
+                            (Interner::lookupOrNull($context->self) ?? 'object'),
+                            ($context->self !== null) ? new TNamedObject(Interner::lookup($context->self), true) : null,
                         ),
                     ]);
 
                 case 'get_parent_class':
-                    if ($context->self && $codebase->classExists($context->self, null, $context)) {
+                    if (($context->self !== null) && $codebase->classExists($context->self, null, $context)) {
                         $classlike_storage = $codebase->classlike_storage_provider->get($context->self);
 
                         if ($classlike_storage->parent_classes) {
                             return new Union([
                                 new TClassString(
-                                    array_values($classlike_storage->parent_classes)[0],
+                                    array_map(Interner::lookup(...), array_keys($classlike_storage->parent_classes))[0],
                                 ),
                             ]);
                         }
@@ -640,7 +641,7 @@ final class FunctionCallReturnTypeFetcher
             }
         }
 
-        $stmt_type = $stmt_type->addParentNodes([$return_node->id => $return_node]);
+        $stmt_type = $stmt_type->addParentNodes([$return_node->key => $return_node]);
 
         // Argument entry / sinks: connect each argument to the function's per-parameter node
         // (getForMethodArgument). This carries taint into an analyzed body (whose param->return
@@ -806,7 +807,7 @@ final class FunctionCallReturnTypeFetcher
         );
         $graph->addSource($source);
 
-        $stmt_type = $stmt_type->addParentNodes([$source->id => $source]);
+        $stmt_type = $stmt_type->addParentNodes([$source->key => $source]);
     }
 
     private static function taintReturnType(
@@ -893,9 +894,9 @@ final class FunctionCallReturnTypeFetcher
                 $removed_taints | $conditionally_removed_taints,
             );
 
-            $stmt_type = $stmt_type->addParentNodes([$assignment_node->id => $assignment_node]);
+            $stmt_type = $stmt_type->addParentNodes([$assignment_node->key => $assignment_node]);
         } else {
-            $stmt_type = $stmt_type->addParentNodes([$function_call_node->id => $function_call_node]);
+            $stmt_type = $stmt_type->addParentNodes([$function_call_node->key => $function_call_node]);
         }
 
         if (!$taint_flow_graph) {

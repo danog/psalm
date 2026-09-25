@@ -12,6 +12,7 @@ use Psalm\Context;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\ClassLikeNameOptions;
 use Psalm\Internal\Analyzer\MethodAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TemplateBound;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
@@ -115,7 +116,7 @@ final class TypeChecker extends TypeVisitor
                 $this->source->getFilePath(),
                 $this->code_location->raw_file_start + $span->offset_start,
                 $this->code_location->raw_file_start + $span->offset_end,
-                $atomic->value,
+                Interner::lookup($atomic->name),
             );
         }
 
@@ -124,7 +125,7 @@ final class TypeChecker extends TypeVisitor
             && $span->text !== null
         ) {
             $codebase->addReferenceToClass(
-                strtolower($atomic->value),
+                strtolower(Interner::lookup($atomic->name)),
                 $this->code_location,
                 $this->context,
             );
@@ -136,10 +137,10 @@ final class TypeChecker extends TypeVisitor
             );
         }
 
-        if (!isset($this->phantom_classes[strtolower($atomic->value)])) {
+        if (!isset($this->phantom_classes[strtolower(Interner::lookup($atomic->name))])) {
             if (ClassLikeAnalyzer::checkFullyQualifiedClassLikeName(
                 $this->source,
-                $atomic->value,
+                Interner::lookup($atomic->name),
                 $this->code_location,
                 $this->context,
                 $this->suppressed_issues,
@@ -150,11 +151,11 @@ final class TypeChecker extends TypeVisitor
             }
         }
 
-        $fq_class_name_lc = strtolower($atomic->value);
+        $fq_class_name_lc = Interner::intern(strtolower(Interner::lookup($atomic->name)));
 
         if (!$this->inherited
             && $codebase->classlike_storage_provider->has($fq_class_name_lc)
-            && $this->source->getFQCLN() !== $atomic->value
+            && $this->source->getFQCLN() !== Interner::lookup($atomic->name)
         ) {
             $class_storage = $codebase->classlike_storage_provider->get($fq_class_name_lc);
 
@@ -162,18 +163,18 @@ final class TypeChecker extends TypeVisitor
                 if ($class_storage->is_interface) {
                     IssueBuffer::maybeAdd(
                         new DeprecatedInterface(
-                            'Interface ' . $atomic->value . ' is marked as deprecated',
+                            'Interface ' . Interner::lookup($atomic->name) . ' is marked as deprecated',
                             $this->code_location,
-                            $atomic->value,
+                            Interner::lookup($atomic->name),
                         ),
                         $this->source->getSuppressedIssues() + $this->suppressed_issues,
                     );
                 } else {
                     IssueBuffer::maybeAdd(
                         new DeprecatedClass(
-                            'Class ' . $atomic->value . ' is marked as deprecated',
+                            'Class ' . Interner::lookup($atomic->name) . ' is marked as deprecated',
                             $this->code_location,
-                            $atomic->value,
+                            Interner::lookup($atomic->name),
                         ),
                         $this->source->getSuppressedIssues() + $this->suppressed_issues,
                     );
@@ -191,7 +192,7 @@ final class TypeChecker extends TypeVisitor
         $codebase = $this->source->getCodebase();
 
         try {
-            $class_storage = $codebase->classlike_storage_provider->get(strtolower($atomic->value));
+            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern(strtolower(Interner::lookup($atomic->name))));
         } catch (InvalidArgumentException) {
             return;
         }
@@ -205,7 +206,7 @@ final class TypeChecker extends TypeVisitor
         if ($template_type_count > $template_param_count) {
             IssueBuffer::maybeAdd(
                 new MissingTemplateParam(
-                    $atomic->value . ' has missing template params, expecting '
+                    Interner::lookup($atomic->name) . ' has missing template params, expecting '
                         . $template_type_count,
                     $this->code_location,
                 ),
@@ -341,7 +342,7 @@ final class TypeChecker extends TypeVisitor
         ) {
             $codebase = $this->source->getCodebase();
 
-            $class_storage = $codebase->classlike_storage_provider->get($atomic->defining_class);
+            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($atomic->defining_class));
 
             $template_offset = $class_storage->template_types
                 ? array_search($atomic->param_name, array_keys($class_storage->template_types), true)

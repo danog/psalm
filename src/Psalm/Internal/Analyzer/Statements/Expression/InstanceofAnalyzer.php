@@ -10,6 +10,7 @@ use Psalm\Context;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Type;
 
 use function implode;
@@ -51,7 +52,7 @@ final class InstanceofAnalyzer
                 );
 
                 if ($codebase->store_node_types
-                    && $fq_class_name
+                    && Interner::lookup($fq_class_name)
                     && !$context->collect_initializations
                     && !$context->collect_mutations
                 ) {
@@ -59,7 +60,7 @@ final class InstanceofAnalyzer
                         $statements_analyzer->getFilePath(),
                         $stmt->class,
                         $codebase->classlikes->classOrInterfaceOrEnumExists($fq_class_name, null, $context)
-                            ? $fq_class_name
+                            ? Interner::lookup($fq_class_name)
                             : '*'
                                 . ($stmt->class instanceof PhpParser\Node\Name\FullyQualified
                                     ? '\\'
@@ -68,10 +69,10 @@ final class InstanceofAnalyzer
                     );
                 }
 
-                if (!isset($context->phantom_classes[strtolower($fq_class_name)])) {
+                if (!isset($context->phantom_classes[strtolower(Interner::lookup($fq_class_name))])) {
                     if (ClassLikeAnalyzer::checkFullyQualifiedClassLikeName(
                         $statements_analyzer,
-                        $fq_class_name,
+                        Interner::lookup($fq_class_name),
                         new CodeLocation($statements_analyzer->getSource(), $stmt->class),
                         $context,
                         $statements_analyzer->getSuppressedIssues(),
@@ -85,7 +86,7 @@ final class InstanceofAnalyzer
                         $codebase,
                         $statements_analyzer,
                         $stmt->class,
-                        $fq_class_name,
+                        Interner::lookup($fq_class_name),
                         $context,
                     );
                 }

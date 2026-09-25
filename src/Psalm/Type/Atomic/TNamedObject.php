@@ -7,6 +7,8 @@ namespace Psalm\Type\Atomic;
 use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Storage\Mutations;
 use Psalm\Type;
@@ -31,7 +33,10 @@ class TNamedObject extends Atomic
 {
     use HasIntersectionTrait;
 
-    public string $value;
+    /**
+     * The interned class name (pzoom's `name: StrId`): storages are looked up and names compared by it.
+     */
+    public int $name;
 
     public bool $is_static_resolved = false;
 
@@ -53,7 +58,8 @@ class TNamedObject extends Atomic
             $value = substr($value, 1);
         }
 
-        $this->value = $value;
+        
+        $this->name = Interner::intern($value);
         $this->extra_types = $extra_types;
         parent::__construct($from_docblock);
     }
@@ -81,11 +87,13 @@ class TNamedObject extends Atomic
         if ($value[0] === '\\') {
             $value = substr($value, 1);
         }
-        if ($value === $this->value) {
+        if ($value === Interner::lookup($this->name)) {
             return $this;
         }
         $cloned = clone $this;
-        $cloned->value = $value;
+        
+        /** @psalm-suppress ImpureMethodCall the interner only grows */
+        $cloned->name = Interner::intern($value);
         return $cloned;
     }
     /**
@@ -97,14 +105,16 @@ class TNamedObject extends Atomic
         if ($value[0] === '\\') {
             $value = substr($value, 1);
         }
-        if ($value === $this->value
+        if ($value === Interner::lookup($this->name)
             && $this->is_static === $is_static
             && $this->is_static_resolved === $is_static_resolved
         ) {
             return $this;
         }
         $cloned = clone $this;
-        $cloned->value = $value;
+        
+        /** @psalm-suppress ImpureMethodCall the interner only grows */
+        $cloned->name = Interner::intern($value);
         $cloned->is_static = $is_static;
         $cloned->is_static_resolved = $is_static;
         return $cloned;
@@ -113,10 +123,10 @@ class TNamedObject extends Atomic
     protected function computeKey(bool $include_extra = true): string
     {
         if ($include_extra && $this->extra_types) {
-            return $this->value . '&' . implode('&', $this->extra_types);
+            return Interner::lookup($this->name) . '&' . implode('&', $this->extra_types);
         }
 
-        return $this->value;
+        return Interner::lookup($this->name);
     }
 
     /**
@@ -148,7 +158,7 @@ class TNamedObject extends Atomic
     protected function computeId(bool $exact = true, bool $nested = false): string
     {
         if ($this->extra_types) {
-            return $this->value . '&' . implode(
+            return Interner::lookup($this->name) . '&' . implode(
                 '&',
                 array_map(
                     static fn(Atomic $type): string => $type->getId($exact, true),
@@ -157,7 +167,7 @@ class TNamedObject extends Atomic
             );
         }
 
-        return $this->is_static && $exact ? $this->value . '&static' : $this->value;
+        return $this->is_static && $exact ? Interner::lookup($this->name) . '&static' : Interner::lookup($this->name);
     }
 
     /**
@@ -170,7 +180,7 @@ class TNamedObject extends Atomic
         ?string $this_class,
         bool $use_phpdoc_format,
     ): string {
-        if ($this->value === 'static') {
+        if ($this->name === Sym::STATIC) {
             return 'static';
         }
 
@@ -182,7 +192,7 @@ class TNamedObject extends Atomic
         );
 
         return Type::getStringFromFQCLN(
-            $this->value,
+            Interner::lookup($this->name),
             $namespace,
             $aliased_classes,
             $this_class,
@@ -201,11 +211,11 @@ class TNamedObject extends Atomic
         ?string $this_class,
         int $analysis_php_version_id,
     ): ?string {
-        if ($this->value === 'static') {
+        if ($this->name === Sym::STATIC) {
             return $analysis_php_version_id >= 8_00_00 ? 'static' : null;
         }
 
-        if ($this->is_static && $this->value === $this_class) {
+        if ($this->is_static && Interner::lookup($this->name) === $this_class) {
             return $analysis_php_version_id >= 8_00_00 ? 'static' : 'self';
         }
 
@@ -220,7 +230,7 @@ class TNamedObject extends Atomic
     #[Override]
     public function canBeFullyExpressedInPhp(int $analysis_php_version_id): bool
     {
-        return ($this->value !== 'static' && $this->is_static === false) || $analysis_php_version_id >= 8_00_00;
+        return ($this->name !== Sym::STATIC && $this->is_static === false) || $analysis_php_version_id >= 8_00_00;
     }
 
     /**

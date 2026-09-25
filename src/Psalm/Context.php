@@ -374,10 +374,10 @@ final class Context
      */
     public function __construct(
         /**
-         * @var string|null
+         * @var ?int
          * The name of the current class. Null if outside a class.
          */
-        public ?string $self = null,
+        public ?int $self = null,
     ) {
     }
 

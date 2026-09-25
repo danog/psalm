@@ -19,6 +19,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\Call\ClassTemplateParamCollect
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
@@ -104,8 +105,8 @@ final class ReturnAnalyzer
                 $comment_type = TypeExpander::expandUnion(
                     $codebase,
                     $var_comment->type,
-                    $context->self,
-                    $context->self,
+                    Interner::lookupOrNull($context->self),
+                    Interner::lookupOrNull($context->self),
                     $statements_analyzer->getParentFQCLN(),
                 );
 
@@ -270,15 +271,15 @@ final class ReturnAnalyzer
                     $context,
                 );
 
-                if ($storage instanceof MethodStorage && $context->self) {
-                    $self_class = $context->self;
+                if ($storage instanceof MethodStorage && ($context->self !== null)) {
+                    $self_class = Interner::lookup($context->self);
 
                     [, $method_name] = explode('::', $cased_method_id);
 
                     // in a trait body the declared type is read through the using class (the trait's
                     // `self`/`static` and templates bound to it), as the function-level check did
                     $lookup_method_id = $source->getSource() instanceof TraitAnalyzer
-                        ? new MethodIdentifier($self_class, strtolower($method_name))
+                        ? new MethodIdentifier(Interner::intern($self_class), Interner::intern(strtolower($method_name)))
                         : MethodIdentifier::fromMethodIdReference($cased_method_id);
 
                     $declared_return_type = $codebase->methods->getMethodReturnType(
@@ -316,9 +317,9 @@ final class ReturnAnalyzer
                         $using_storage = $codebase->classlike_storage_provider->get($using_class);
                         $local_return_type = TypeExpander::expandUnion(
                             $codebase,
-                            $declared_return_type->replaceClassLike(strtolower($trait_name), $using_class),
-                            $using_class,
-                            $using_class,
+                            $declared_return_type->replaceClassLike(strtolower($trait_name), Interner::lookup($using_class)),
+                            Interner::lookup($using_class),
+                            Interner::lookup($using_class),
                             $using_storage->parent_class,
                             true,
                             true,
@@ -336,7 +337,7 @@ final class ReturnAnalyzer
                     if ($storage instanceof MethodStorage) {
                         [$fq_class_name, $method_name] = explode('::', $cased_method_id);
 
-                        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+                        $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
                         $found_generic_params = ClassTemplateParamCollector::collect(
                             $codebase,

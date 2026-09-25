@@ -11,6 +11,8 @@ use Psalm\Internal\Analyzer\ClassAnalyzer;
 use Psalm\Internal\Analyzer\SourceAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\AtomicPropertyFetchAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
+use Psalm\Internal\Sym;
 use Psalm\Plugin\EventHandler\Event\FunctionReturnTypeProviderEvent;
 use Psalm\Plugin\EventHandler\FunctionReturnTypeProviderInterface;
 use Psalm\Type;
@@ -62,11 +64,11 @@ final class GetObjectVarsReturnTypeProvider implements FunctionReturnTypeProvide
             if ($object_type instanceof Atomic\TEnumCase) {
                 $properties = ['name' => new Union([Type::getAtomicStringFromLiteral($object_type->case_name)])];
                 $codebase = $statements_source->getCodebase();
-                $enum_classlike_storage = $codebase->classlike_storage_provider->get($object_type->value);
+                $enum_classlike_storage = $codebase->classlike_storage_provider->get($object_type->name);
                 if ($enum_classlike_storage->enum_type === null) {
                     return TKeyedArray::make($properties);
                 }
-                $enum_case_storage = $enum_classlike_storage->enum_cases[$object_type->case_name];
+                $enum_case_storage = $enum_classlike_storage->enum_cases[Interner::intern($object_type->case_name)];
                 $case_value = $enum_case_storage->getValue($statements_source->getCodebase()->classlikes);
 
                 if ($case_value !== null) {
@@ -84,11 +86,11 @@ final class GetObjectVarsReturnTypeProvider implements FunctionReturnTypeProvide
             }
 
             if ($object_type instanceof TNamedObject) {
-                if (strtolower($object_type->value) === strtolower(stdClass::class)) {
+                if (strtolower(Interner::lookup($object_type->name)) === strtolower(stdClass::class)) {
                     return self::$fallback;
                 }
                 $codebase = $statements_source->getCodebase();
-                $class_storage = $codebase->classlikes->getStorageFor($object_type->value);
+                $class_storage = $codebase->classlikes->getStorageFor($object_type->name);
 
                 if (null === $class_storage) {
                     return self::$fallback;
@@ -103,9 +105,10 @@ final class GetObjectVarsReturnTypeProvider implements FunctionReturnTypeProvide
                 }
 
                 $properties = [];
-                foreach ($class_storage->appearing_property_ids as $name => $property_id) {
+                foreach ($class_storage->appearing_property_ids as $name_id => $property_id) {
+                    $name = Interner::lookup($name_id);
                     if (ClassAnalyzer::checkPropertyVisibility(
-                        $property_id,
+                        $property_id, $name_id,
                         $context,
                         $statements_source,
                         $location,
@@ -113,7 +116,7 @@ final class GetObjectVarsReturnTypeProvider implements FunctionReturnTypeProvide
                         false,
                     ) === true) {
                         $property_type = $codebase->properties->getPropertyType(
-                            $property_id,
+                            $property_id, $name_id,
                             false,
                             $statements_source,
                             $context,
@@ -148,8 +151,8 @@ final class GetObjectVarsReturnTypeProvider implements FunctionReturnTypeProvide
                     $properties,
                     null,
                     $class_storage->final
-                        || $class_storage->name === UnitEnum::class
-                        || $codebase->interfaceExtends($class_storage->name, UnitEnum::class)
+                        || Interner::lookup($class_storage->id) === UnitEnum::class
+                        || $codebase->interfaceExtends($class_storage->id, Sym::UNIT_ENUM)
                             ? null
                             : [Type::getString(), Type::getMixed()],
                 );

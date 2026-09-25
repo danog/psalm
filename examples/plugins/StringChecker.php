@@ -4,6 +4,7 @@ namespace Psalm\Example\Plugin;
 
 use PhpParser;
 use Psalm\CodeLocation;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Issue\InvalidClass;
 use Psalm\Issue\UndefinedMethod;
@@ -57,7 +58,7 @@ final class StringChecker implements AfterExpressionAnalysisInterface
             && $expr->right instanceof PhpParser\Node\Scalar\String_
             && preg_match('/^::[A-Za-z0-9]+$/', $expr->right->value)
         ) {
-            $method_id = ((string) $expr->left->class->attrs()->resolvedName) . $expr->right->value;
+            $method_id = ((string) Interner::lookupOrNull($expr->left->class->attrs()->resolvedId)) . $expr->right->value;
 
             $appearing_method_id = $codebase->getAppearingMethodId(MethodIdentifier::fromMethodIdReference($method_id));
 

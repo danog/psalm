@@ -26,8 +26,10 @@ use Psalm\Internal\Analyzer\ClassLikeNameOptions;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\ArrayFetchAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
 use Psalm\Internal\Provider\NodeDataProvider;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TypeExpander;
 use Psalm\Issue\DocblockTypeContradiction;
@@ -1261,10 +1263,10 @@ final class AssertionFinder
     ): array {
         if ($stmt->class instanceof PhpParser\Node\Name) {
             if (!in_array(strtolower($stmt->class->getFirst()), ['self', 'static', 'parent'], true)) {
-                $instanceof_class = ClassLikeAnalyzer::getFQCLNFromNameObject(
+                $instanceof_class = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                     $stmt->class,
                     $source->getAliases(),
-                );
+                ));
 
                 if ($source instanceof StatementsAnalyzer) {
                     $codebase = $source->getCodebase();
@@ -2542,10 +2544,10 @@ final class AssertionFinder
         } elseif ($whichclass_expr instanceof PhpParser\Node\Expr\ClassConstFetch
             && $whichclass_expr->class instanceof PhpParser\Node\Name
         ) {
-            $var_type = ClassLikeAnalyzer::getFQCLNFromNameObject(
+            $var_type = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                 $whichclass_expr->class,
                 $source->getAliases(),
-            );
+            ));
         } else {
             throw new UnexpectedValueException('Shouldn’t get here');
         }
@@ -2608,10 +2610,10 @@ final class AssertionFinder
         } elseif ($whichclass_expr instanceof PhpParser\Node\Expr\ClassConstFetch
             && $whichclass_expr->class instanceof PhpParser\Node\Name
         ) {
-            $var_type = ClassLikeAnalyzer::getFQCLNFromNameObject(
+            $var_type = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                 $whichclass_expr->class,
                 $source->getAliases(),
-            );
+            ));
         } else {
             throw new UnexpectedValueException('Shouldn’t get here');
         }
@@ -2676,10 +2678,10 @@ final class AssertionFinder
         } elseif ($whichclass_expr instanceof PhpParser\Node\Expr\ClassConstFetch
             && $whichclass_expr->class instanceof PhpParser\Node\Name
         ) {
-            $var_type = ClassLikeAnalyzer::getFQCLNFromNameObject(
+            $var_type = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                 $whichclass_expr->class,
                 $source->getAliases(),
-            );
+            ));
 
             if ($var_type === 'self' || $var_type === 'static') {
                 $var_type = $this_class_name;
@@ -3325,10 +3327,10 @@ final class AssertionFinder
         } elseif ($whichclass_expr instanceof PhpParser\Node\Expr\ClassConstFetch
             && $whichclass_expr->class instanceof PhpParser\Node\Name
         ) {
-            $var_type = ClassLikeAnalyzer::getFQCLNFromNameObject(
+            $var_type = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                 $whichclass_expr->class,
                 $source->getAliases(),
-            );
+            ));
         } else {
             throw new UnexpectedValueException('Shouldn’t get here');
         }
@@ -3397,10 +3399,10 @@ final class AssertionFinder
         if ($whichclass_expr instanceof PhpParser\Node\Expr\ClassConstFetch
             && $whichclass_expr->class instanceof PhpParser\Node\Name
         ) {
-            $var_type = ClassLikeAnalyzer::getFQCLNFromNameObject(
+            $var_type = Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                 $whichclass_expr->class,
                 $source->getAliases(),
-            );
+            ));
 
             if ($var_type === 'self' || $var_type === 'static') {
                 $var_type = $this_class_name;
@@ -3632,10 +3634,10 @@ final class AssertionFinder
                         // do nothing
                     } else {
                         $object = new TNamedObject(
-                            ClassLikeAnalyzer::getFQCLNFromNameObject(
+                            Interner::lookup(ClassLikeAnalyzer::getFQCLNFromNameObject(
                                 $class_node,
                                 $source->getAliases(),
-                            ),
+                            )),
                         );
                         $if_types[$first_var_name] = [[new IsAClass($object, $third_arg_value === 'true')]];
                     }
@@ -4148,7 +4150,7 @@ final class AssertionFinder
                         && $inside_negation
                         && $source instanceof StatementsAnalyzer
                     ) {
-                        if ($codebase->interfaceExists($instanceof_type->value)) {
+                        if ($codebase->interfaceExists($instanceof_type->name)) {
                             continue;
                         }
 
@@ -4267,11 +4269,11 @@ final class AssertionFinder
                 return 'Variable ' . $name . ' is not an object so the assertion cannot be applied';
             }
 
-            $class_definition = $class_provider->get($type->value);
-            $property_definition = $class_definition->properties[$property] ?? null;
+            $class_definition = $class_provider->get($type->name);
+            $property_definition = $class_definition->properties[Interner::intern($property)] ?? null;
 
             if (!$property_definition instanceof PropertyStorage) {
-                $magic_type = $class_definition->pseudo_property_get_types['$' . $property] ?? null;
+                $magic_type = $class_definition->pseudo_property_get_types[Interner::intern('$' . $property)] ?? null;
                 if ($magic_type === null) {
                     return sprintf(
                         'Property %s is not defined on variable %s so the assertion cannot be applied',
@@ -4280,9 +4282,9 @@ final class AssertionFinder
                     );
                 }
 
-                $magic_getter = $class_definition->methods['__get'] ?? null;
+                $magic_getter = $class_definition->methods[Sym::GET] ?? null;
                 if ($magic_getter === null || !$magic_getter->isMutationFree()) {
-                    return "{$class_definition->name}::__get is not mutation-free, so the assertion cannot be applied";
+                    return "" . Interner::lookup($class_definition->id) . "::__get is not mutation-free, so the assertion cannot be applied";
                 }
             }
         }

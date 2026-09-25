@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Internal\Type\Comparator;
 
 use Psalm\Codebase;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Type;
@@ -353,7 +354,7 @@ final class KeyedArrayComparator
         TNamedObject $input_type_part,
         TObjectWithProperties $container_type_part,
     ): ?TObjectWithProperties {
-        $storage = $codebase->classlikes->getStorageFor($input_type_part->value);
+        $storage = $codebase->classlikes->getStorageFor($input_type_part->name);
 
         if (!$storage) {
             return null;
@@ -378,13 +379,14 @@ final class KeyedArrayComparator
 
         $properties = [];
 
-        foreach ($storage->appearing_property_ids as $property_name => $property_id) {
+        foreach ($storage->appearing_property_ids as $property_name_id => $property_id) {
+            $property_name = Interner::lookup($property_name_id);
             if (!isset($container_type_part->properties[$property_name])) {
                 continue;
             }
 
-            $property_type = $codebase->properties->hasStorage($property_id)
-                ? $codebase->properties->getStorage($property_id)->type
+            $property_type = $codebase->properties->hasStorage($property_id, $property_name_id)
+                ? $codebase->properties->getStorage($property_id, $property_name_id)->type
                 : null;
 
             $properties[$property_name] = $property_type ?? Type::getMixed();

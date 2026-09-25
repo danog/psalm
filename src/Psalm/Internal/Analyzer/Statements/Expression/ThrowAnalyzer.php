@@ -9,6 +9,7 @@ use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Issue\InvalidThrow;
 use Psalm\IssueBuffer;
@@ -78,7 +79,7 @@ final class ThrowAnalyzer
                     $hash = $codelocation->getHash();
                     foreach ($throw_type->getAtomicTypes() as $throw_atomic_type) {
                         if ($throw_atomic_type instanceof TNamedObject) {
-                            $context->possibly_thrown_exceptions[$throw_atomic_type->value][$hash] = $codelocation;
+                            $context->possibly_thrown_exceptions[Interner::lookup($throw_atomic_type->name)][$hash] = $codelocation;
                         }
                     }
                 }

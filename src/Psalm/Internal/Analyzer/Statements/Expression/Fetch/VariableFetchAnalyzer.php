@@ -453,7 +453,7 @@ final class VariableFetchAnalyzer
                 );
 
                 $stmt_type = $stmt_type->setParentNodes([
-                    $assignment_node->id => $assignment_node,
+                    $assignment_node->key => $assignment_node,
                 ]);
             }
 
@@ -532,7 +532,7 @@ final class VariableFetchAnalyzer
         $graph->addSource($taint_source);
 
         $type = $type->setParentNodes([
-            $taint_source->id => $taint_source,
+            $taint_source->key => $taint_source,
         ]);
     }
 

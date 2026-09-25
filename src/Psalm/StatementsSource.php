@@ -86,13 +86,13 @@ interface StatementsSource extends FileSource
      * @param Mutations::LEVEL_* $mutation_level
      * @param bool $callee_internal_mutations_ok whether mutations of the callee's own instance
      *        (e.g. of a freshly constructed object) are fine for the caller
-     * @param ?string $callee_id the graph node of the callee, when it can't be derived from its storage (closures)
+     * @param ?int $callee_id the graph node of the callee, when it can't be derived from its storage (closures)
      */
     public function signalMutationOnlyInferred(
         int $mutation_level,
         ?FunctionLikeStorage $storage = null,
         bool $callee_internal_mutations_ok = false,
-        ?string $callee_id = null,
+        ?int $callee_id = null,
     ): void;
 
     /**
@@ -111,6 +111,6 @@ interface StatementsSource extends FileSource
         bool $overrideMsg = false,
         ?FunctionLikeStorage $storage = null,
         bool $callee_internal_mutations_ok = false,
-        ?string $callee_id = null,
+        ?int $callee_id = null,
     ): void;
 }

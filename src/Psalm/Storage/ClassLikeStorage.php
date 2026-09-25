@@ -10,6 +10,7 @@ use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Config;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\TypeAlias\ClassTypeAlias;
 use Psalm\Issue\CodeIssue;
@@ -30,7 +31,7 @@ final class ClassLikeStorage implements HasAttributesInterface
     use UnserializeMemoryUsageSuppressionTrait;
 
     /**
-     * @var array<string, ClassConstantStorage>
+     * @var array<int, ClassConstantStorage>
      */
     public array $constants = [];
 
@@ -60,7 +61,7 @@ final class ClassLikeStorage implements HasAttributesInterface
      */
     public array $namedMixins = [];
 
-    public ?string $mixin_declaring_fqcln = null;
+    public ?int $mixin_declaring_fqcln = null;
 
     public ?bool $sealed_properties = null;
 
@@ -83,28 +84,28 @@ final class ClassLikeStorage implements HasAttributesInterface
     /**
      * Interfaces this class implements directly
      *
-     * @var array<lowercase-string, string>
+     * @var array<int, true>
      */
     public array $direct_class_interfaces = [];
 
     /**
      * Interfaces this class implements explicitly and implicitly
      *
-     * @var array<lowercase-string, string>
+     * @var array<int, true>
      */
     public array $class_implements = [];
 
     /**
      * Parent interfaces listed explicitly
      *
-     * @var array<lowercase-string, string>
+     * @var array<int, true>
      */
     public array $direct_interface_parents = [];
 
     /**
      * Parent interfaces
      *
-     * @var  array<lowercase-string, string>
+     * @var  array<int, true>
      */
     public array $parent_interfaces = [];
 
@@ -116,28 +117,11 @@ final class ClassLikeStorage implements HasAttributesInterface
     /**
      * Parent classes
      *
-     * @var array<lowercase-string, string>
+     * @var array<int, true>
      */
     public array $parent_classes = [];
 
     public ?CodeLocation $location = null;
-
-    /**
-     * Every method callable on the class-like, own and inherited, by lowercased name: the declaring class's
-     * MethodStorage objects, shared (pzoom flattens ancestor methods into every descendant, Arc-shared).
-     * Filled at populate from declaring_method_ids.
-     *
-     * @var array<lowercase-string, MethodStorage>
-     */
-    public array $all_methods = [];
-
-    /**
-     * Every property of the class-like, own and inherited, by name: the declaring class's PropertyStorage
-     * objects, shared. Filled at populate from declaring_property_ids.
-     *
-     * @var array<string, PropertyStorage>
-     */
-    public array $all_properties = [];
 
     public ?CodeLocation $stmt_location = null;
 
@@ -152,7 +136,7 @@ final class ClassLikeStorage implements HasAttributesInterface
     public bool $trait_used = false;
 
     /**
-     * @var array<lowercase-string, string>
+     * @var array<int, true>
      */
     public array $used_traits = [];
 
@@ -190,17 +174,17 @@ final class ClassLikeStorage implements HasAttributesInterface
     public bool $specialize_instance = false;
 
     /**
-     * @var array<lowercase-string, MethodStorage>
+     * @var array<int, MethodStorage>
      */
     public array $methods = [];
 
     /**
-     * @var array<lowercase-string, MethodStorage>
+     * @var array<int, MethodStorage>
      */
     public array $pseudo_methods = [];
 
     /**
-     * @var array<lowercase-string, MethodStorage>
+     * @var array<int, MethodStorage>
      */
     public array $pseudo_static_methods = [];
 
@@ -212,17 +196,17 @@ final class ClassLikeStorage implements HasAttributesInterface
      *
      * This property contains all pseudo methods declared on ancestors.
      *
-     * @var array<lowercase-string, MethodIdentifier>
+     * @var array<int, MethodIdentifier>
      */
     public array $declaring_pseudo_method_ids = [];
 
     /**
-     * @var array<lowercase-string, MethodIdentifier>
+     * @var array<int, MethodIdentifier>
      */
     public array $declaring_method_ids = [];
 
     /**
-     * @var array<lowercase-string, MethodIdentifier>
+     * @var array<int, MethodIdentifier>
      */
     public array $appearing_method_ids = [];
 
@@ -231,59 +215,59 @@ final class ClassLikeStorage implements HasAttributesInterface
      * great-grandparent, etc **including traits and interfaces**. Ancestors that don't have their own declaration are
      * skipped.
      *
-     * @var array<lowercase-string, array<string, MethodIdentifier>>
+     * @var array<int, array<int, MethodIdentifier>>
      */
     public array $overridden_method_ids = [];
 
     /**
-     * @var array<lowercase-string, MethodIdentifier>
+     * @var array<int, MethodIdentifier>
      */
     public array $documenting_method_ids = [];
 
     /**
-     * @var array<lowercase-string, MethodIdentifier>
+     * @var array<int, MethodIdentifier>
      */
     public array $inheritable_method_ids = [];
 
     /**
-     * @var array<lowercase-string, array<string, bool>>
+     * @var array<int, array<int, bool>>
      */
     public array $potential_declaring_method_ids = [];
 
     /**
-     * @var array<string, PropertyStorage>
+     * @var array<int, PropertyStorage>
      */
     public array $properties = [];
 
     /**
-     * @var array<string, Union>
+     * @var array<int, Union>
      */
     public array $pseudo_property_set_types = [];
 
     /**
-     * @var array<string, Union>
+     * @var array<int, Union>
      */
     public array $pseudo_property_get_types = [];
 
     /**
-     * @var array<string, string>
+     * @var array<int, int>
      */
     public array $declaring_property_ids = [];
 
     /**
-     * @var array<string, string>
+     * @var array<int, int>
      */
     public array $appearing_property_ids = [];
 
     public ?Union $inheritors = null;
 
     /**
-     * @var array<string, string>
+     * @var array<int, int>
      */
     public array $inheritable_property_ids = [];
 
     /**
-     * @var array<string, list<string>>
+     * @var array<int, list<int>>
      */
     public array $overridden_property_ids = [];
 
@@ -394,7 +378,7 @@ final class ClassLikeStorage implements HasAttributesInterface
     public array $attributes = [];
 
     /**
-     * @var array<string, EnumCaseStorage>
+     * @var array<int, EnumCaseStorage>
      */
     public array $enum_cases = [];
 
@@ -412,7 +396,29 @@ final class ClassLikeStorage implements HasAttributesInterface
     /**
      * @psalm-mutation-free
      */
-    public function __construct(public string $name)
+
+    /**
+     * Every method callable on the class-like, own and inherited, by lowercased name: the declaring class's
+     * MethodStorage objects, shared (pzoom flattens ancestor methods into every descendant, Arc-shared).
+     * Filled at populate from declaring_method_ids.
+     *
+     * @var array<int, MethodStorage>
+     */
+    public array $all_methods = [];
+
+    /**
+     * Every property of the class-like, own and inherited, by name: the declaring class's PropertyStorage
+     * objects, shared. Filled at populate from declaring_property_ids.
+     *
+     * @var array<int, PropertyStorage>
+     */
+    public array $all_properties = [];
+
+    /**
+     * @psalm-external-mutation-free
+     * @psalm-mutation-free
+     */
+    public function __construct(public int $id)
     {
     }
 
@@ -460,12 +466,12 @@ final class ClassLikeStorage implements HasAttributesInterface
             return true;
         }
 
-        foreach ($this->parent_classes as $parent_class) {
+        foreach ($this->parent_classes as $parent_class_id => $_) {
             // skip missing dependencies
-            if (!$codebase->classlike_storage_provider->has($parent_class)) {
+            if (!$codebase->classlike_storage_provider->has($parent_class_id)) {
                 continue;
             }
-            $parent_class_storage = $codebase->classlike_storage_provider->get($parent_class);
+            $parent_class_storage = $codebase->classlike_storage_provider->get($parent_class_id);
             if ($parent_class_storage->hasAttribute($fq_class_name)) {
                 return true;
             }
