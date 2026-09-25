@@ -1849,7 +1849,8 @@ function case_use_graph(): string
 
 function run_all(): string
 {
-    return check('use_graph', case_use_graph(), 'public-api,root:x,class:b,d::q,a::m,b::n')
+    return check('cond_return', case_cond_return(), 'fallback:n7:n7')
+        . check('use_graph', case_use_graph(), 'public-api,root:x,class:b,d::q,a::m,b::n')
         . check('queue_pop', case_queue_pop(), 'root,a,b,c,d')
         . check('const_table', case_const_table(), 'inf,nan,null,30719,eol,absent,10')
         . check('object_union_narrowing', case_object_union_narrowing(), 'L,2L,str,7,n,')
@@ -3876,4 +3877,27 @@ function case_borrow_return(): string
     $k = $l->getNames()['k'];
     return $n . ':' . $s . ':' . count($owned) . ':' . count($l->getItems()) . ':' . count($names) . ':' . $in . ':' . $k
         . ':' . ($l->getInner()?->getInner() === null ? 'null' : 'obj');
+}
+
+final class CondRet
+{
+    /**
+     * @psalm-pure
+     * @return ($id is null ? null : string)
+     */
+    public static function lookupOrNull(?int $id): ?string
+    {
+        return $id === null ? null : 'n' . $id;
+    }
+}
+
+/** A conditional return type (`($x is null ? null : string)`) is a nullable string: `??` falls back on null. */
+function case_cond_return(): string
+{
+    $a = null;
+    $b = 7;
+    $x = CondRet::lookupOrNull($a) ?? 'fallback';
+    $y = CondRet::lookupOrNull($b) ?? 'fallback';
+    $z = CondRet::lookupOrNull($b);
+    return $x . ':' . $y . ':' . ($z ?? 'none');
 }

@@ -609,7 +609,8 @@ final class TypeMapper
             return $this->anyRoot('TObject (declared object)');
         }
         if ($atomic instanceof TConditional) {
-            return $this->combine([$this->map($atomic->if_type), $this->map($atomic->else_type)]);
+            // both branches as one Psalm union (`null` and `string` make `?string`, not a two-variant union)
+            return $this->map(\Psalm\Type::combineUnionTypes($atomic->if_type, $atomic->else_type));
         }
         if ($atomic instanceof TClassConstant) {
             // Resolve `Foo::BAR` to the constant's declared/inferred type rather than falling back to Mixed.
