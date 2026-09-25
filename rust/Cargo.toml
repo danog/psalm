@@ -1,0 +1,49 @@
+[workspace]
+resolver = "2"
+members = ["php-rt"]
+
+# Iteration builds: no optimization, no LTO, many codegen units, line tables only for backtraces.
+[profile.dev]
+opt-level = 0
+debug = "line-tables-only"
+incremental = false
+codegen-units = 256
+lto = "off"
+
+[profile.test]
+inherits = "dev"
+
+# Only for final measurements, never while iterating.
+[profile.release]
+opt-level = 2
+debug = 1
+codegen-units = 32
+lto = "off"
+
+# Running the test suite: light optimization, still no LTO and many codegen units so builds stay feasible.
+[profile.fast]
+inherits = "dev"
+opt-level = 2
+
+# psalm_src at opt-level 2 needs more memory than this machine has next to the session (rustc OOM-killed at 3.8 GB RSS)
+[profile.fast.package.psalm_src]
+opt-level = 1
+
+# psalm_tests is test scaffolding (fixtures, data providers, the harness); it just calls into the analysis
+# code in psalm_src/psalm_base. Optimizing its 232 giant data-provider functions cost >10 min of opt-2
+# codegen for no runtime benefit, so build it unoptimized. Runtime speed comes from psalm_src/base.
+[profile.fast.package.psalm_tests]
+opt-level = 0
+
+[profile.fast.package.php-rt]
+opt-level = 3
+
+# The measurement build: what a release of the port would ship as. Kept separate from `fast`
+# (opt-level 1 on the generated crate) so iteration builds stay short.
+[profile.bench]
+inherits = "release"
+opt-level = 3
+codegen-units = 16
+lto = "thin"
+debug = 1
+panic = "unwind"
