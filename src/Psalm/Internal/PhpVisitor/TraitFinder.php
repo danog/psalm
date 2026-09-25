@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\PhpVisitor;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use PhpParser;
 use ReflectionClass;
@@ -30,7 +32,7 @@ final class TraitFinder extends PhpParser\NodeVisitorAbstract
      * @psalm-mutation-free
      */
     public function __construct(
-        private readonly string $fq_trait_name,
+        private readonly int $fq_trait_name,
     ) {
     }
 
@@ -45,13 +47,13 @@ final class TraitFinder extends PhpParser\NodeVisitorAbstract
                 // compare ends of names, a temporary hack because PHPParser caches
                 // may not have that attribute
 
-                $fq_trait_name_parts = explode('\\', $this->fq_trait_name);
+                $fq_trait_name_parts = explode('\\', Interner::lookup($this->fq_trait_name));
 
                 /** @psalm-suppress PossiblyNullPropertyFetch */
                 if ($node->name->name !== null && strcasecmp($node->name->name, end($fq_trait_name_parts)) === 0) {
                     $this->matching_trait_nodes[] = $node;
                 }
-            } elseif (strcasecmp($resolved_name, $this->fq_trait_name) === 0) {
+            } elseif (strcasecmp($resolved_name, Interner::lookup($this->fq_trait_name)) === 0) {
                 $this->matching_trait_nodes[] = $node;
             }
         }
@@ -71,12 +73,12 @@ final class TraitFinder extends PhpParser\NodeVisitorAbstract
             return null;
         }
 
-        if (count($this->matching_trait_nodes) === 1 || !trait_exists($this->fq_trait_name)) {
+        if (count($this->matching_trait_nodes) === 1 || !trait_exists(Interner::lookup($this->fq_trait_name))) {
             return $this->matching_trait_nodes[0];
         }
 
         try {
-            $reflection_trait = new ReflectionClass($this->fq_trait_name);
+            $reflection_trait = new ReflectionClass(Interner::lookup($this->fq_trait_name));
         } catch (Throwable) {
             return null;
         }

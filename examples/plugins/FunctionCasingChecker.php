@@ -2,6 +2,8 @@
 
 namespace Psalm\Example\Plugin;
 
+use Psalm\Internal\Interner;
+
 use Exception;
 use PhpParser;
 use Psalm\CodeLocation;
@@ -36,21 +38,21 @@ final class FunctionCasingChecker implements AfterFunctionCallAnalysisInterface,
 
         try {
             /** @psalm-suppress ArgumentTypeCoercion */
-            $method_id = new MethodIdentifier(...explode('::', $declaring_method_id));
+            $method_id = new MethodIdentifier(...Interner::internList(explode('::', $declaring_method_id)));
             $function_storage = $codebase->methods->getStorage($method_id);
 
-            if ($function_storage->cased_name === '__call') {
+            if ($function_storage->cased_name === Interner::intern('__call')) {
                 return;
             }
 
-            if ($function_storage->cased_name === '__callStatic') {
+            if ($function_storage->cased_name === Interner::intern('__callStatic')) {
                 return;
             }
 
             if ($function_storage->cased_name !== (string)$expr->name) {
                 IssueBuffer::maybeAdd(
                     new IncorrectFunctionCasing(
-                        'Function is incorrectly cased, expecting ' . $function_storage->cased_name,
+                        'Function is incorrectly cased, expecting ' . Interner::lookup($function_storage->cased_name),
                         new CodeLocation($statements_source, $expr->name),
                     ),
                     $statements_source->getSuppressedIssues(),
@@ -84,12 +86,12 @@ final class FunctionCasingChecker implements AfterFunctionCallAnalysisInterface,
                 return;
             }
 
-            $function_name_parts = explode('\\', $function_storage->cased_name);
+            $function_name_parts = explode('\\', Interner::lookup($function_storage->cased_name));
 
             if (end($function_name_parts) !== $expr->name->getLast()) {
                 IssueBuffer::maybeAdd(
                     new IncorrectFunctionCasing(
-                        'Function is incorrectly cased, expecting ' . $function_storage->cased_name,
+                        'Function is incorrectly cased, expecting ' . Interner::lookup($function_storage->cased_name),
                         new CodeLocation($statements_source, $expr->name),
                     ),
                     $statements_source->getSuppressedIssues(),

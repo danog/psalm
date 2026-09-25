@@ -944,7 +944,7 @@ final class FilterUtils
                     if (($atomic_type instanceof TLiteralInt && $atomic_type->value === 1)
                         || ($atomic_type instanceof TLiteralFloat && $atomic_type->value === 1.0)
                         || ($atomic_type instanceof TLiteralString
-                            && in_array(strtolower($atomic_type->value), ['1', 'true', 'on', 'yes'], true))
+                            && in_array($atomic_type->value, ['1', 'true', 'on', 'yes'], true))
                     ) {
                         $filter_types[] = new TTrue();
                         continue;
@@ -955,7 +955,7 @@ final class FilterUtils
                             ($atomic_type instanceof TLiteralInt && $atomic_type->value === 0)
                             || ($atomic_type instanceof TLiteralFloat && $atomic_type->value === 0.0)
                             || ($atomic_type instanceof TLiteralString
-                                && in_array(strtolower($atomic_type->value), ['0', 'false', 'off', 'no', ''], true)
+                                && in_array($atomic_type->value, ['0', 'false', 'off', 'no', ''], true)
                             )
                         )
                     ) {

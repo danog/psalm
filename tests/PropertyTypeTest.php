@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
+use Psalm\Internal\Interner;
+
 use DateTime;
 use Override;
 use Psalm\Config;
@@ -501,7 +503,7 @@ final class PropertyTypeTest extends TestCase
 
     public function testUniversalObjectCrates(): void
     {
-        Config::getInstance()->addUniversalObjectCrate(DateTime::class);
+        Config::getInstance()->addUniversalObjectCrate(Interner::intern(DateTime::class));
 
         $this->addFile(
             'somefile.php',

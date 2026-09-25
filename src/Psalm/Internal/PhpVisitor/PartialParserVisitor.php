@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\PhpVisitor;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use PhpParser;
 use PhpParser\ErrorHandler\Collecting;
@@ -201,7 +203,7 @@ final class PartialParserVisitor extends PhpParser\NodeVisitorAbstract
                             || !$replacement_stmts[0] instanceof PhpParser\Node\Stmt\ClassLike
                             || count($replacement_stmts[0]->stmts) !== 1
                         ) {
-                            $hacky_class_fix = self::balanceBrackets($fake_class);
+                            $hacky_class_fix = self::balanceBrackets(Interner::intern($fake_class));
 
                             if ($replacement_stmts
                                 && $replacement_stmts[0] instanceof PhpParser\Node\Stmt\ClassLike
@@ -379,9 +381,9 @@ final class PartialParserVisitor extends PhpParser\NodeVisitorAbstract
     /**
      * @psalm-pure
      */
-    private static function balanceBrackets(string $fake_class): string
+    private static function balanceBrackets(int $fake_class): string
     {
-        $tokens = token_get_all($fake_class);
+        $tokens = token_get_all(Interner::lookup($fake_class));
 
         $brace_count = 0;
 

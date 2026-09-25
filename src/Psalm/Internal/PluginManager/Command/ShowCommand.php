@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\PluginManager\Command;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use Psalm\Internal\PluginManager\PluginListFactory;
 use Symfony\Component\Console\Command\Command;
@@ -61,14 +63,14 @@ final class ShowCommand extends Command
             /**
              * @return array{0: null|string, 1: string}
              */
-            static fn(string $class, ?string $package): array => [$package, $class];
+            static fn(int $class, ?string $package): array => [$package, $class];
 
         $io->section('Enabled');
         if (count($enabled)) {
             $io->table(
                 ['Package', 'Class'],
                 array_map(
-                    $formatRow,
+                    Interner::intern($formatRow),
                     array_keys($enabled),
                     array_values($enabled),
                 ),
@@ -82,7 +84,7 @@ final class ShowCommand extends Command
             $io->table(
                 ['Package', 'Class'],
                 array_map(
-                    $formatRow,
+                    Interner::intern($formatRow),
                     array_keys($available),
                     array_values($available),
                 ),

@@ -19,7 +19,7 @@ final class DynamicTemplateProvider
      * @psalm-mutation-free
      */
     public function __construct(
-        private readonly string $defining_class,
+        private readonly int $defining_class,
     ) {
     }
 

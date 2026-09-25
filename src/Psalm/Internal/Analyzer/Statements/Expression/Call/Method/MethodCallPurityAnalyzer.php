@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\Call\Method;
 
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use PhpParser\Node\Expr;
 use Psalm\CodeLocation;
@@ -42,7 +44,7 @@ final class MethodCallPurityAnalyzer
         // $stmt->var->getAttribute('pure', false)
         return $statements_analyzer->node_data->isPureCompatible($var)
             || $var->getAttribute('external_mutation_free', false)
-            || $method_id->fq_class_name === $context->self;
+            || Interner::lookup($method_id->fq_class_name) === $context->self;
     }
 
     /**
@@ -212,7 +214,7 @@ final class MethodCallPurityAnalyzer
                     $new_type = AssignmentAnalyzer::getExpandedPropertyType(
                         $codebase,
                         $class_storage->name,
-                        $name,
+                        Interner::intern($name),
                         $class_storage,
                     ) ?? Type::getMixed();
 

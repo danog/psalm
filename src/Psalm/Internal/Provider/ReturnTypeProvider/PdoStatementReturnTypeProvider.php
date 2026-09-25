@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider\ReturnTypeProvider;
 
+use Psalm\Internal\Sym;
+
 use Override;
 use Psalm\Config;
 use Psalm\Plugin\EventHandler\Event\MethodReturnTypeProviderEvent;
@@ -60,7 +62,7 @@ final class PdoStatementReturnTypeProvider implements MethodReturnTypeProviderIn
         
         foreach ($call_args as $call_arg) {
             $arg_name = $call_arg->name;
-            if (!isset($arg_name) || $arg_name->name === "mode") {
+            if (!isset($arg_name) || $arg_name->name === Sym::C_MODE) {
                 $arg_type = $source->getNodeTypeProvider()->getType($call_arg->value);
                 if (isset($arg_type) && $arg_type->isSingleIntLiteral()) {
                     $fetch_mode = $arg_type->getSingleIntLiteral()->value;

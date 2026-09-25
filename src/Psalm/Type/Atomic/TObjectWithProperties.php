@@ -34,7 +34,7 @@ final class TObjectWithProperties extends TObject
      * Constructs a new instance of a generic type
      *
      * @param array<string|int, Union> $properties
-     * @param array<lowercase-string, string> $methods
+     * @param array<int, string> $methods
      * @param array<string, TNamedObject|TTemplateParam|TIterable|TObjectWithProperties|TCallableObject> $extra_types
      */
     public function __construct(
@@ -69,7 +69,7 @@ final class TObjectWithProperties extends TObject
     }
 
     /**
-     * @param array<lowercase-string, string> $methods
+     * @param array<int, string> $methods
      */
     public function setMethods(array $methods): self
     {
@@ -132,7 +132,7 @@ final class TObjectWithProperties extends TObject
     public function toNamespacedString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         bool $use_phpdoc_format,
     ): string {
         if ($use_phpdoc_format) {
@@ -171,7 +171,7 @@ final class TObjectWithProperties extends TObject
     public function toPhpString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         int $analysis_php_version_id,
     ): string {
         return $this->getKey();
@@ -224,8 +224,8 @@ final class TObjectWithProperties extends TObject
         ?StatementsAnalyzer $statements_analyzer = null,
         ?Atomic $input_type = null,
         ?int $input_arg_offset = null,
-        ?string $calling_class = null,
-        ?string $calling_function = null,
+        ?int $calling_class = null,
+        ?int $calling_function = null,
         bool $replace = true,
         bool $add_lower_bound = false,
         int $depth = 0,

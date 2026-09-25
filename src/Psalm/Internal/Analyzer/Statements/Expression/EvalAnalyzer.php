@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
+use Psalm\Internal\Sym;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
@@ -77,7 +79,7 @@ final class EvalAnalyzer
             }
         }
 
-        if (isset($codebase->config->forbidden_functions['eval'])) {
+        if (isset($codebase->config->forbidden_functions[Sym::C_EVAL])) {
             IssueBuffer::maybeAdd(
                 new ForbiddenCode(
                     'You have forbidden the use of eval',

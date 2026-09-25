@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider;
 
+use Psalm\Internal\Interner;
+
 use Closure;
 use PhpParser\Node\Arg;
 use Psalm\CodeLocation;
@@ -48,7 +50,7 @@ final class FunctionParamsProvider
         $callable = $class::getFunctionParams(...);
 
         foreach ($class::getFunctionIds() as $function_id) {
-            $this->registerClosure($function_id, $callable);
+            $this->registerClosure(Interner::intern($function_id), $callable);
         }
     }
 
@@ -56,17 +58,17 @@ final class FunctionParamsProvider
      * @param Closure(FunctionParamsProviderEvent): ?array<int, FunctionLikeParameter> $c
      * @psalm-external-mutation-free
      */
-    public function registerClosure(string $fq_classlike_name, Closure $c): void
+    public function registerClosure(int $fq_classlike_name, Closure $c): void
     {
-        self::$handlers[strtolower($fq_classlike_name)][] = $c;
+        self::$handlers[$fq_classlike_name][] = $c;
     }
 
     /**
      * @psalm-external-mutation-free
      */
-    public function has(string $fq_classlike_name): bool
+    public function has(int $fq_classlike_name): bool
     {
-        return isset(self::$handlers[strtolower($fq_classlike_name)]);
+        return isset(self::$handlers[$fq_classlike_name]);
     }
 
     /**

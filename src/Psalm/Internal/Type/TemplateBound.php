@@ -34,7 +34,7 @@ final class TemplateBound
         /**
          * When non-null, indicates an equality template bound (vs a lower or upper bound)
          */
-        public ?string $equality_bound_classlike = null,
+        public ?int $equality_bound_classlike = null,
         /**
          * Where the bound was recorded, when it constrains a type variable
          */

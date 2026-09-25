@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\Internal\Codebase;
 
+use Psalm\Internal\Interner;
+
 use Closure;
 use Psalm\Internal\Codebase\CodeUseGraph;
 use Psalm\Tests\TestCase;
@@ -76,7 +78,7 @@ final class CodeUseGraphTest extends TestCase
     public function testWriteEdgeDoesNotMarkPropertyUsed(): void
     {
         $graph = new CodeUseGraph();
-        $property = CodeUseGraph::propertyNode('a\\c', 'value');
+        $property = CodeUseGraph::propertyNode(Interner::intern('a\\c'), Interner::intern('value'));
 
         // a read from top-level code of /read.php, a write from /write.php
         $graph->addReference($property, null, null, CodeUseGraph::EDGE_USE, '/read.php');

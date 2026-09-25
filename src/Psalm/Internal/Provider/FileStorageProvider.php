@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider;
 
+use Psalm\Internal\Interner;
+
 use InvalidArgumentException;
 use Psalm\Storage\FileStorage;
 
@@ -88,12 +90,12 @@ final class FileStorageProvider
     }
 
     /**
-     * @return array<lowercase-string, FileStorage>
+     * @return array<int, FileStorage>
      * @psalm-external-mutation-free
      */
     public static function getAll(): array
     {
-        return self::$storage;
+        return Interner::internKeys(self::$storage);
     }
 
     /**
@@ -106,7 +108,7 @@ final class FileStorageProvider
     }
 
     /**
-     * @param array<lowercase-string, FileStorage> $more
+     * @param array<int, FileStorage> $more
      * @psalm-external-mutation-free
      */
     public function addMore(array $more): void

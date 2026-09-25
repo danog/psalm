@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Codebase;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use Psalm\Codebase;
 use Psalm\Config;
 use Psalm\Internal\Analyzer\IssueData;
@@ -59,6 +63,7 @@ use const PHP_EOL;
  * }
  *
  * @psalm-type  PoolData = array{
+ *     interner: list<string>,
  *     classlikes_data:array{
  *         array<lowercase-string, bool>,
  *         array<lowercase-string, bool>,
@@ -133,7 +138,7 @@ final class Scanner
     private array $store_scan_failure = [];
 
     /**
-     * @var array<string, bool>
+     * @var array<int, bool>
      */
     private array $reflected_classlikes_lc = [];
 
@@ -200,18 +205,18 @@ final class Scanner
     /**
      * @psalm-external-mutation-free
      */
-    public function removeClassLike(string $fq_classlike_name_lc): void
+    public function removeClassLike(int $fq_classlike_name_lc): void
     {
         unset(
-            $this->classlike_files[$fq_classlike_name_lc],
-            $this->deep_scanned_classlike_files[$fq_classlike_name_lc],
+            $this->classlike_files[Interner::lookup($fq_classlike_name_lc)],
+            $this->deep_scanned_classlike_files[Interner::lookup($fq_classlike_name_lc)],
         );
     }
 
     /**
      * @psalm-external-mutation-free
      */
-    public function setClassLikeFilePath(string $fq_classlike_name_lc, string $file_path): void
+    public function setClassLikeFilePath(int $fq_classlike_name_lc, string $file_path): void
     {
         $this->classlike_files[$fq_classlike_name_lc] = $file_path;
     }
@@ -219,36 +224,36 @@ final class Scanner
     /**
      * @psalm-mutation-free
      */
-    public function getClassLikeFilePath(string $fq_classlike_name_lc): string
+    public function getClassLikeFilePath(int $fq_classlike_name_lc): string
     {
-        if (!isset($this->classlike_files[$fq_classlike_name_lc])) {
-            throw new UnexpectedValueException('Could not find file for ' . $fq_classlike_name_lc);
+        if (!isset($this->classlike_files[Interner::lookup($fq_classlike_name_lc)])) {
+            throw new UnexpectedValueException('Could not find file for ' . Interner::lookup($fq_classlike_name_lc));
         }
 
-        return $this->classlike_files[$fq_classlike_name_lc];
+        return $this->classlike_files[Interner::lookup($fq_classlike_name_lc)];
     }
 
     /**
      * @param  array<string, mixed> $phantom_classes
      */
     public function queueClassLikeForScanning(
-        string $fq_classlike_name,
+        int $fq_classlike_name,
         bool $analyze_too = false,
         bool $store_failure = true,
         array $phantom_classes = [],
     ): void {
-        if ($fq_classlike_name[0] === '\\') {
-            $fq_classlike_name = substr($fq_classlike_name, 1);
+        if (Interner::lookup($fq_classlike_name)[0] === '\\') {
+            $fq_classlike_name = substr(Interner::lookup($fq_classlike_name), 1);
         }
 
-        $fq_classlike_name_lc = strtolower($fq_classlike_name);
+        $fq_classlike_name_lc = $fq_classlike_name;
 
-        if ($fq_classlike_name_lc === 'static') {
+        if ($fq_classlike_name_lc === Sym::C_STATIC) {
             return;
         }
 
         // avoid checking classes that we know will just end in failure
-        if ($fq_classlike_name_lc === 'null' || str_ends_with($fq_classlike_name_lc, '\null')) {
+        if ($fq_classlike_name_lc === Sym::C_NULL || str_ends_with($fq_classlike_name_lc, '\null')) {
             return;
         }
 
@@ -354,6 +359,8 @@ final class Scanner
             foreach ($forked_pool_data as $pool_data) {
                 $pool_data = $pool_data->await();
 
+                Interner::merge($pool_data['interner']);
+
                 IssueBuffer::addIssues($pool_data['issues']);
 
                 $this->codebase->statements_provider->addChangedMembers(
@@ -374,7 +381,7 @@ final class Scanner
                     $this->codebase->taint_flow_graph->addGraph($pool_data['taint_data']);
                 }
 
-                $this->codebase->file_storage_provider->addMore($pool_data['file_storage']);
+                $this->codebase->file_storage_provider->addMore(Interner::internKeys($pool_data['file_storage']));
                 $this->codebase->classlike_storage_provider->addMore($pool_data['classlike_storage']);
 
                 $this->codebase->classlikes->addThreadData($pool_data['classlikes_data']);
@@ -382,7 +389,7 @@ final class Scanner
                 $this->addThreadData($pool_data['scanner_data']);
 
                 $this->codebase->addGlobalConstantTypes($pool_data['global_constants']);
-                $this->codebase->functions->addGlobalFunctions($pool_data['global_functions']);
+                $this->codebase->functions->addGlobalFunctions(Interner::internKeys($pool_data['global_functions']));
             }
         } else {
             foreach ($files_to_scan as $file_path => $_) {
@@ -403,18 +410,18 @@ final class Scanner
         $this->classes_to_scan = [];
 
         foreach ($classes_to_scan as $fq_classlike_name) {
-            $fq_classlike_name_lc = strtolower($fq_classlike_name);
+            $fq_classlike_name_lc = $fq_classlike_name;
 
             if (isset($this->reflected_classlikes_lc[$fq_classlike_name_lc])) {
                 continue;
             }
 
-            if ($classlikes->isMissingClassLike($fq_classlike_name_lc)) {
+            if ($classlikes->isMissingClassLike(Interner::intern($fq_classlike_name_lc))) {
                 continue;
             }
 
             if (!isset($this->classlike_files[$fq_classlike_name_lc])) {
-                if ($classlikes->doesClassLikeExist($fq_classlike_name_lc)) {
+                if ($classlikes->doesClassLikeExist(Interner::intern($fq_classlike_name_lc))) {
                     if ($fq_classlike_name_lc === 'self') {
                         continue;
                     }
@@ -425,7 +432,7 @@ final class Scanner
                     $reflected_class = new ReflectionClass($fq_classlike_name);
                     $this->reflection->registerClass($reflected_class);
                     $this->reflected_classlikes_lc[$fq_classlike_name_lc] = true;
-                } elseif ($this->fileExistsForClassLike($classlikes, $fq_classlike_name)) {
+                } elseif ($this->fileExistsForClassLike($classlikes, Interner::intern($fq_classlike_name))) {
                     $fq_classlike_name_lc = strtolower($classlikes->getUnAliasedName(
                         $fq_classlike_name_lc,
                     ));
@@ -440,7 +447,7 @@ final class Scanner
                         }
                     }
                 } elseif ($this->store_scan_failure[$fq_classlike_name]) {
-                    $classlikes->registerMissingClassLike($fq_classlike_name_lc);
+                    $classlikes->registerMissingClassLike(Interner::intern($fq_classlike_name_lc));
                 }
             } elseif (isset($this->classes_to_deep_scan[$fq_classlike_name_lc])
                 && !isset($this->deep_scanned_classlike_files[$fq_classlike_name_lc])
@@ -510,19 +517,19 @@ final class Scanner
             }
 
             foreach ($file_storage->classlikes_in_file as $fq_classlike_name) {
-                $this->codebase->exhumeClassLikeStorage($fq_classlike_name, $file_path);
+                $this->codebase->exhumeClassLikeStorage(Interner::intern($fq_classlike_name), $file_path);
             }
 
             foreach ($file_storage->required_classes as $fq_classlike_name) {
-                $this->queueClassLikeForScanning($fq_classlike_name, $will_analyze, false);
+                $this->queueClassLikeForScanning(Interner::intern($fq_classlike_name), $will_analyze, false);
             }
 
             foreach ($file_storage->required_interfaces as $fq_classlike_name) {
-                $this->queueClassLikeForScanning($fq_classlike_name, false, false);
+                $this->queueClassLikeForScanning(Interner::intern($fq_classlike_name), false, false);
             }
 
             foreach ($file_storage->referenced_classlikes as $fq_classlike_name) {
-                $this->queueClassLikeForScanning($fq_classlike_name, false, false);
+                $this->queueClassLikeForScanning(Interner::intern($fq_classlike_name), false, false);
             }
 
             if ($this->codebase->register_autoload_files
@@ -530,10 +537,10 @@ final class Scanner
             ) {
                 foreach ($file_storage->functions as $function_storage) {
                     if ($function_storage->cased_name
-                        && !$this->codebase->functions->hasStubbedFunction($function_storage->cased_name)
+                        && !$this->codebase->functions->hasStubbedFunction(Interner::lookup($function_storage->cased_name))
                     ) {
                         $this->codebase->functions->addGlobalFunction(
-                            $function_storage->cased_name,
+                            Interner::lookup($function_storage->cased_name),
                             $function_storage,
                         );
                     }
@@ -543,12 +550,12 @@ final class Scanner
                 || $this->codebase->all_constants_global
             ) {
                 foreach ($file_storage->constants as $name => $type) {
-                    $this->codebase->addGlobalConstantType($name, $type);
+                    $this->codebase->addGlobalConstantType(Interner::lookup($name), $type);
                 }
             }
 
             foreach ($file_storage->classlike_aliases as $aliased_name => $unaliased_name) {
-                $this->codebase->classlikes->addClassAlias($unaliased_name, $aliased_name);
+                $this->codebase->classlikes->addClassAlias(Interner::intern($unaliased_name), $aliased_name);
             }
         }
     }
@@ -586,22 +593,22 @@ final class Scanner
      * Checks whether a class exists, and if it does then records what file it's in
      * for later checking
      */
-    private function fileExistsForClassLike(ClassLikes $classlikes, string $fq_class_name): bool
+    private function fileExistsForClassLike(ClassLikes $classlikes, int $fq_class_name): bool
     {
-        $fq_class_name_lc = strtolower($fq_class_name);
+        $fq_class_name_lc = $fq_class_name;
 
-        if (isset($this->classlike_files[$fq_class_name_lc])) {
+        if (isset($this->classlike_files[Interner::lookup($fq_class_name_lc)])) {
             return true;
         }
 
-        if ($fq_class_name === 'self') {
+        if ($fq_class_name === Sym::C_SELF) {
             return false;
         }
 
         $composer_file_path = $this->config->getComposerFilePathForClassLike($fq_class_name);
 
         if ($composer_file_path && file_exists($composer_file_path)) {
-            $this->progress->debug('Using composer to locate file for ' . $fq_class_name . "\n");
+            $this->progress->debug('Using composer to locate file for ' . Interner::lookup($fq_class_name) . "\n");
 
             $classlikes->addFullyQualifiedClassLikeName(
                 $fq_class_name_lc,
@@ -616,7 +623,7 @@ final class Scanner
             $file_path = $provider::getClassFilePath($fq_class_name);
 
             if ($file_path !== null && file_exists($file_path)) {
-                $this->progress->debug('Using custom file path provider to locate file for ' . $fq_class_name . "\n");
+                $this->progress->debug('Using custom file path provider to locate file for ' . Interner::lookup($fq_class_name) . "\n");
 
                 $classlikes->addFullyQualifiedClassLikeName(
                     $fq_class_name_lc,
@@ -633,10 +640,10 @@ final class Scanner
                 $this->progress->setErrorReporting();
 
                 try {
-                    $this->progress->debug('Using reflection to locate file for ' . $fq_class_name . "\n");
+                    $this->progress->debug('Using reflection to locate file for ' . Interner::lookup($fq_class_name) . "\n");
 
                     /** @psalm-suppress ArgumentTypeCoercion */
-                    return new ReflectionClass($fq_class_name);
+                    return new ReflectionClass(Interner::lookup($fq_class_name));
                 } catch (Throwable) {
                     // do not cache any results here (as case-sensitive filenames can screw things up)
 
@@ -659,10 +666,10 @@ final class Scanner
         }
 
         $new_fq_class_name = $reflected_class->getName();
-        $new_fq_class_name_lc = strtolower($new_fq_class_name);
+        $new_fq_class_name_lc = $new_fq_class_name;
 
         if ($new_fq_class_name_lc !== $fq_class_name_lc) {
-            $classlikes->addClassAlias($new_fq_class_name, $fq_class_name);
+            $classlikes->addClassAlias(Interner::intern($new_fq_class_name), Interner::lookup($fq_class_name));
             $fq_class_name_lc = $new_fq_class_name_lc;
         }
 
@@ -670,11 +677,11 @@ final class Scanner
         $classlikes->addFullyQualifiedClassLikeName($fq_class_name_lc);
 
         if ($reflected_class->isInterface()) {
-            $classlikes->addFullyQualifiedInterfaceName($fq_class_name, $file_path);
+            $classlikes->addFullyQualifiedInterfaceName(Interner::intern($fq_class_name), $file_path);
         } elseif ($reflected_class->isTrait()) {
-            $classlikes->addFullyQualifiedTraitName($fq_class_name, $file_path);
+            $classlikes->addFullyQualifiedTraitName(Interner::intern($fq_class_name), $file_path);
         } else {
-            $classlikes->addFullyQualifiedClassName($fq_class_name, $file_path);
+            $classlikes->addFullyQualifiedClassName(Interner::intern($fq_class_name), $file_path);
         }
 
         return true;

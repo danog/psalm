@@ -51,7 +51,7 @@ final class TIntRange extends TInt
     public function toNamespacedString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         bool $use_phpdoc_format,
     ): string {
         return $use_phpdoc_format ?

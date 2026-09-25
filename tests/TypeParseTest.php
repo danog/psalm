@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use Psalm\Codebase;
 use Psalm\Exception\TypeParseTreeException;
@@ -989,7 +991,7 @@ final class TypeParseTest extends TestCase
                 [
                     'T' => ['' => Type::getArray()],
                     'K' => ['' => new Union([
-                        new TTemplateKeyOf('T', 'fn-foo', Type::getMixed()),
+                        new TTemplateKeyOf('T', Interner::intern('fn-foo'), Type::getMixed()),
                     ])],
                 ],
             ),
@@ -1168,9 +1170,9 @@ final class TypeParseTest extends TestCase
 
         $resolved_type = new Union([
             new TLiteralString('baz'),
-            new TClassConstant('One2', 'TWO_THREE'),
-            new TClassConstant('Foo', 'BAR_BAR'),
-            new TClassConstant('Bat\\Bar', 'BAZ_BAM'),
+            new TClassConstant(Interner::intern('One2'), Interner::intern('TWO_THREE')),
+            new TClassConstant(Interner::intern('Foo'), Interner::intern('BAR_BAR')),
+            new TClassConstant(Interner::intern('Bat\\Bar'), Interner::intern('BAZ_BAM')),
         ]);
 
         $this->assertSame($resolved_type->getId(), $docblock_type->getId());

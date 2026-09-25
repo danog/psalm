@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Config;
 
+use Psalm\Internal\Interner;
+
 use FilesystemIterator;
 use Psalm\Exception\ConfigException;
 use RecursiveDirectoryIterator;
@@ -59,7 +61,7 @@ class FileFilter
     protected array $files = [];
 
     /**
-     * @var array<string>
+     * @var array<int>
      */
     protected array $fq_classlike_names = [];
 
@@ -580,17 +582,17 @@ class FileFilter
     /**
      * @psalm-mutation-free
      */
-    public function allowsClass(string $fq_classlike_name): bool
+    public function allowsClass(int $fq_classlike_name): bool
     {
         if ($this->fq_classlike_patterns) {
             foreach ($this->fq_classlike_patterns as $pattern) {
-                if (preg_match($pattern, $fq_classlike_name)) {
+                if (preg_match($pattern, Interner::lookup($fq_classlike_name))) {
                     return true;
                 }
             }
         }
 
-        return in_array(strtolower($fq_classlike_name), $this->fq_classlike_names, true);
+        return in_array($fq_classlike_name, $this->fq_classlike_names, true);
     }
 
     /**

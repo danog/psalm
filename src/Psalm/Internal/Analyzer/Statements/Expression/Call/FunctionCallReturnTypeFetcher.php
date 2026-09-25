@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\Call;
 
+use Psalm\Internal\Interner;
+
 use InvalidArgumentException;
 use PhpParser;
 use PhpParser\BuilderFactory;
@@ -224,7 +226,7 @@ final class FunctionCallReturnTypeFetcher
                                 $statements_analyzer,
                                 new CodeLocation($statements_analyzer->getSource(), $stmt),
                                 $statements_analyzer->getSuppressedIssues(),
-                                $context->phantom_classes,
+                                Interner::lookupKeys($context->phantom_classes),
                                 true,
                                 false,
                                 false,
@@ -359,8 +361,8 @@ final class FunctionCallReturnTypeFetcher
                     ]);
 
                 case 'get_parent_class':
-                    if ($context->self && $codebase->classExists($context->self, null, $context)) {
-                        $classlike_storage = $codebase->classlike_storage_provider->get($context->self);
+                    if ($context->self && $codebase->classExists(Interner::intern($context->self), null, $context)) {
+                        $classlike_storage = $codebase->classlike_storage_provider->get(Interner::intern($context->self));
 
                         if ($classlike_storage->parent_classes) {
                             return new Union([
@@ -780,7 +782,7 @@ final class FunctionCallReturnTypeFetcher
             return;
         }
 
-        $path = strtolower($arg_type->getSingleStringLiteral()->value);
+        $path = $arg_type->getSingleStringLiteral()->value;
 
         if ($path !== 'php://input' && $path !== 'php://stdin') {
             return;

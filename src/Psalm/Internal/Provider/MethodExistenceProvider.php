@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider;
 
+use Psalm\Internal\Interner;
+
 use Closure;
 use Psalm\CodeLocation;
 use Psalm\Plugin\EventHandler\Event\MethodExistenceProviderEvent;
@@ -41,7 +43,7 @@ final class MethodExistenceProvider
         $callable = $class::doesMethodExist(...);
 
         foreach ($class::getClassLikeNames() as $fq_classlike_name) {
-            $this->registerClosure($fq_classlike_name, $callable);
+            $this->registerClosure(Interner::intern($fq_classlike_name), $callable);
         }
     }
 
@@ -49,26 +51,26 @@ final class MethodExistenceProvider
      * @param Closure(MethodExistenceProviderEvent): ?bool $c
      * @psalm-external-mutation-free
      */
-    public function registerClosure(string $fq_classlike_name, Closure $c): void
+    public function registerClosure(int $fq_classlike_name, Closure $c): void
     {
-        self::$handlers[strtolower($fq_classlike_name)][] = $c;
+        self::$handlers[$fq_classlike_name][] = $c;
     }
 
     /**
      * @psalm-external-mutation-free
      */
-    public function has(string $fq_classlike_name): bool
+    public function has(int $fq_classlike_name): bool
     {
-        return isset(self::$handlers[strtolower($fq_classlike_name)]);
+        return isset(self::$handlers[$fq_classlike_name]);
     }
 
     public function doesMethodExist(
-        string $fq_classlike_name,
+        int $fq_classlike_name,
         string $method_name_lowercase,
         ?StatementsSource $source = null,
         ?CodeLocation $code_location = null,
     ): ?bool {
-        foreach (self::$handlers[strtolower($fq_classlike_name)] ?? [] as $method_handler) {
+        foreach (self::$handlers[$fq_classlike_name] ?? [] as $method_handler) {
             $event = new MethodExistenceProviderEvent(
                 $fq_classlike_name,
                 $method_name_lowercase,

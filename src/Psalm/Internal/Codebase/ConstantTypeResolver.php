@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Codebase;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use InvalidArgumentException;
 use Psalm\Exception\CircularReferenceException;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\ConstFetchAnalyzer;
@@ -100,7 +104,7 @@ final class ConstantTypeResolver
                         || $right instanceof TLiteralFloat
                         || $right instanceof TLiteralInt)
                 ) {
-                    return Type::getAtomicStringFromLiteral($left->value . $right->value);
+                    return Type::getAtomicStringFromLiteral(Interner::lookup($left->value) . Interner::lookup($right->value));
                 }
 
                 return new TString();
@@ -275,13 +279,13 @@ final class ConstantTypeResolver
         }
 
         if ($c instanceof ClassConstant) {
-            if ($c->name === 'class') {
-                return new TLiteralClassString($c->fqcln);
+            if ($c->name === Sym::C_CLASS) {
+                return new TLiteralClassString(Interner::lookup($c->fqcln));
             }
 
             $found_type = $classlikes->getClassConstantType(
                 $c->fqcln,
-                $c->name,
+                Interner::intern($c->name),
                 ReflectionProperty::IS_PRIVATE,
                 $statements_analyzer,
                 $visited_constant_ids + [$c_id => true],
@@ -323,7 +327,7 @@ final class ConstantTypeResolver
             if ($statements_analyzer) {
                 $found_type = ConstFetchAnalyzer::getConstType(
                     $statements_analyzer,
-                    $c->name,
+                    Interner::intern($c->name),
                     $c->is_fully_qualified,
                     null,
                 );
@@ -369,7 +373,7 @@ final class ConstantTypeResolver
     public static function getLiteralTypeFromScalarValue(array|string|int|float|bool|UnitEnum|null $value): Atomic
     {
         if ($value instanceof UnitEnum) {
-            return new TEnumCase($value::class, $value->name);
+            return new TEnumCase(Interner::intern($value::class), $value->name);
         }
         if (is_array($value)) {
             if (empty($value)) {

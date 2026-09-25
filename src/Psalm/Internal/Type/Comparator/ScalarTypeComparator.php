@@ -171,7 +171,7 @@ final class ScalarTypeComparator
             }
 
             if ($input_type_part instanceof TLiteralString) {
-                if (strtolower($input_type_part->value) === $input_type_part->value) {
+                if ($input_type_part->value === $input_type_part->value) {
                     return $input_type_part->value || $container_type_part instanceof TLowercaseString;
                 }
 
@@ -410,7 +410,7 @@ final class ScalarTypeComparator
         if (($input_type_part instanceof TLowercaseString
                 || $input_type_part instanceof TNonEmptyLowercaseString)
             && $container_type_part instanceof TLiteralString
-            && strtolower($container_type_part->value) === $container_type_part->value
+            && $container_type_part->value === $container_type_part->value
         ) {
             if ($atomic_comparison_result
                 && ($container_type_part->value)

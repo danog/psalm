@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
+use Psalm\Internal\Interner;
+
+use Psalm\Internal\Sym;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\CodeLocation\DocblockTypeLocation;
@@ -69,7 +73,7 @@ final class YieldAnalyzer
                 $comment_type = TypeExpander::expandUnion(
                     $codebase,
                     $var_comment->type,
-                    $context->self,
+                    Interner::internOrNull($context->self),
                     $context->self ? new TNamedObject($context->self) : null,
                     $statements_analyzer->getParentFQCLN(),
                 );
@@ -177,7 +181,7 @@ final class YieldAnalyzer
                     $codebase,
                     $yield_candidate_type,
                     $expression_atomic_type->value,
-                    $expression_atomic_type->value,
+                    Interner::lookup($expression_atomic_type->value),
                     null,
                     true,
                     false,
@@ -201,7 +205,7 @@ final class YieldAnalyzer
                         $type_params[] = array_values($type_map)[0];
                     }
 
-                    $expression_atomic_type = new TGenericObject($expression_atomic_type->value, $type_params);
+                    $expression_atomic_type = new TGenericObject(Interner::lookup($expression_atomic_type->value), $type_params);
                 }
 
                 $yield_candidate_type = AtomicPropertyFetchAnalyzer::localizePropertyType(
@@ -238,7 +242,7 @@ final class YieldAnalyzer
             if ($storage->return_type && !$yield_type) {
                 foreach ($storage->return_type->getAtomicTypes() as $atomic_return_type) {
                     if ($atomic_return_type instanceof TNamedObject
-                        && $atomic_return_type->value === 'Generator'
+                        && $atomic_return_type->value === Sym::C_GENERATOR
                     ) {
                         if ($atomic_return_type instanceof TGenericObject) {
                             if (!$atomic_return_type->type_params[2]->isVoid()) {

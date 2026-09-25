@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
+use Psalm\Internal\Interner;
+
 use Psalm\Config;
 use Psalm\Context;
 use Psalm\Exception\CodeException;

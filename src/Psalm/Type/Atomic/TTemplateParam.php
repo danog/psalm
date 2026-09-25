@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Type\TemplateResult;
@@ -31,7 +33,7 @@ final class TTemplateParam extends Atomic
     public function __construct(
         public string $param_name,
         public Union $as,
-        public string $defining_class,
+        public int $defining_class,
         array $extra_types = [],
         bool $from_docblock = false,
     ) {
@@ -56,10 +58,10 @@ final class TTemplateParam extends Atomic
     public function getKey(bool $include_extra = true): string
     {
         if ($include_extra && $this->extra_types) {
-            return $this->param_name . ':' . $this->defining_class . '&' . implode('&', $this->extra_types);
+            return $this->param_name . ':' . Interner::lookup($this->defining_class) . '&' . implode('&', $this->extra_types);
         }
 
-        return $this->param_name . ':' . $this->defining_class;
+        return $this->param_name . ':' . Interner::lookup($this->defining_class);
     }
 
     #[Override]
@@ -76,13 +78,13 @@ final class TTemplateParam extends Atomic
         }
 
         if ($this->extra_types) {
-            return '(' . $this->param_name . ':' . $this->defining_class . ' as ' . $this->as->getId($exact)
+            return '(' . $this->param_name . ':' . Interner::lookup($this->defining_class) . ' as ' . $this->as->getId($exact)
                 . ')&' . implode('&', array_map(static fn(Atomic $type): string
                     => $type->getId($exact, true), $this->extra_types));
         }
 
         return ($nested ? '(' : '') . $this->param_name
-            . ':' . $this->defining_class
+            . ':' . Interner::lookup($this->defining_class)
             . ' as ' . $this->as->getId($exact) . ($nested ? ')' : '');
     }
 
@@ -95,7 +97,7 @@ final class TTemplateParam extends Atomic
     public function toPhpString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         int $analysis_php_version_id,
     ): ?string {
         return null;
@@ -108,7 +110,7 @@ final class TTemplateParam extends Atomic
     public function toNamespacedString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         bool $use_phpdoc_format,
     ): string {
         if ($use_phpdoc_format) {

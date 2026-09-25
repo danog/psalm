@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
@@ -94,16 +96,16 @@ final class FileReferenceTest extends TestCase
         $codebase->reloadFiles($this->project_analyzer, [$file_path]);
         $codebase->analyzer->analyzeFiles($this->project_analyzer, 1, false);
 
-        self::assertNotSame([], $codebase->findReferencesToClassLike('A'));
+        self::assertNotSame([], $codebase->findReferencesToClassLike(Interner::intern('A')));
         $codebase->code_use_graph->removeReferencesFrom(CodeUseGraph::functionLikeNode('b::usea'));
-        self::assertSame([], $codebase->findReferencesToClassLike('A'));
+        self::assertSame([], $codebase->findReferencesToClassLike(Interner::intern('A')));
     }
 
     public function testRemovedSourceNodeCanBeReassignedToAnotherFile(): void
     {
         $graph = new CodeUseGraph();
         $source_node = CodeUseGraph::functionLikeNode('a::foo');
-        $target_node = CodeUseGraph::classNode('b');
+        $target_node = CodeUseGraph::classNode(Interner::intern('b'));
         $context = new Context();
         $context->calling_method_id = 'a::foo';
 

@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\Call;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Codebase;
@@ -119,17 +123,17 @@ final class NamedFunctionCallHandler
         if ($function_id === 'class_exists') {
             if ($first_arg) {
                 if ($first_arg->value instanceof PhpParser\Node\Scalar\String_) {
-                    if (!$codebase->classlikes->classExists($first_arg->value->value, null, $context)) {
-                        $context->phantom_classes[strtolower($first_arg->value->value)] = true;
+                    if (!$codebase->classlikes->classExists(Interner::intern($first_arg->value->value), null, $context)) {
+                        $context->phantom_classes[$first_arg->value->value] = true;
                     }
                 } elseif ($first_arg->value instanceof PhpParser\Node\Expr\ClassConstFetch
                     && $first_arg->value->class instanceof PhpParser\Node\Name
                     && $first_arg->value->name instanceof PhpParser\Node\Identifier
-                    && $first_arg->value->name->name === 'class'
+                    && $first_arg->value->name->name === Sym::C_CLASS
                 ) {
                     $resolved_name = (string) $first_arg->value->class->getAttribute('resolvedName');
 
-                    if (!$codebase->classlikes->classExists($resolved_name, null, $context)) {
+                    if (!$codebase->classlikes->classExists(Interner::intern($resolved_name), null, $context)) {
                         $context->phantom_classes[strtolower($resolved_name)] = true;
                     }
                 }
@@ -141,17 +145,17 @@ final class NamedFunctionCallHandler
         if ($function_id === 'interface_exists') {
             if ($first_arg) {
                 if ($first_arg->value instanceof PhpParser\Node\Scalar\String_) {
-                    if (!$codebase->classlikes->interfaceExists($first_arg->value->value, null, $context)) {
-                        $context->phantom_classes[strtolower($first_arg->value->value)] = true;
+                    if (!$codebase->classlikes->interfaceExists(Interner::intern($first_arg->value->value), null, $context)) {
+                        $context->phantom_classes[$first_arg->value->value] = true;
                     }
                 } elseif ($first_arg->value instanceof PhpParser\Node\Expr\ClassConstFetch
                     && $first_arg->value->class instanceof PhpParser\Node\Name
                     && $first_arg->value->name instanceof PhpParser\Node\Identifier
-                    && $first_arg->value->name->name === 'class'
+                    && $first_arg->value->name->name === Sym::C_CLASS
                 ) {
                     $resolved_name = (string) $first_arg->value->class->getAttribute('resolvedName');
 
-                    if (!$codebase->classlikes->interfaceExists($resolved_name, null, $context)) {
+                    if (!$codebase->classlikes->interfaceExists(Interner::intern($resolved_name), null, $context)) {
                         $context->phantom_classes[strtolower($resolved_name)] = true;
                     }
                 }
@@ -163,17 +167,17 @@ final class NamedFunctionCallHandler
         if ($function_id === 'enum_exists') {
             if ($first_arg) {
                 if ($first_arg->value instanceof PhpParser\Node\Scalar\String_) {
-                    if (!$codebase->classlikes->enumExists($first_arg->value->value, null, $context)) {
-                        $context->phantom_classes[strtolower($first_arg->value->value)] = true;
+                    if (!$codebase->classlikes->enumExists(Interner::intern($first_arg->value->value), null, $context)) {
+                        $context->phantom_classes[$first_arg->value->value] = true;
                     }
                 } elseif ($first_arg->value instanceof PhpParser\Node\Expr\ClassConstFetch
                     && $first_arg->value->class instanceof PhpParser\Node\Name
                     && $first_arg->value->name instanceof PhpParser\Node\Identifier
-                    && $first_arg->value->name->name === 'class'
+                    && $first_arg->value->name->name === Sym::C_CLASS
                 ) {
                     $resolved_name = (string) $first_arg->value->class->getAttribute('resolvedName');
 
-                    if (!$codebase->classlikes->enumExists($resolved_name, null, $context)) {
+                    if (!$codebase->classlikes->enumExists(Interner::intern($resolved_name), null, $context)) {
                         $context->phantom_classes[strtolower($resolved_name)] = true;
                     }
                 }
@@ -245,7 +249,7 @@ final class NamedFunctionCallHandler
                 if ($fq_const_name !== null) {
                     $const_type = ConstFetchAnalyzer::getConstType(
                         $statements_analyzer,
-                        $fq_const_name,
+                        Interner::intern($fq_const_name),
                         true,
                         $context,
                     );
@@ -253,7 +257,7 @@ final class NamedFunctionCallHandler
                     if (!$const_type) {
                         ConstFetchAnalyzer::setConstType(
                             $statements_analyzer,
-                            $fq_const_name,
+                            Interner::intern($fq_const_name),
                             Type::getMixed(),
                             $context,
                         );
@@ -441,7 +445,7 @@ final class NamedFunctionCallHandler
             );
         }
 
-        if (isset($codebase->config->forbidden_functions[$function_id])) {
+        if (isset($codebase->config->forbidden_functions[Interner::intern($function_id)])) {
             IssueBuffer::maybeAdd(
                 new ForbiddenCode(
                     'You have forbidden the use of ' . $function_id,
@@ -471,7 +475,7 @@ final class NamedFunctionCallHandler
 
                     ConstFetchAnalyzer::setConstType(
                         $statements_analyzer,
-                        $fq_const_name,
+                        Interner::intern($fq_const_name),
                         $statements_analyzer->node_data->getType($second_arg->value) ?? Type::getMixed(),
                         $context,
                     );
@@ -495,7 +499,7 @@ final class NamedFunctionCallHandler
                 if ($fq_const_name !== null) {
                     $const_type = ConstFetchAnalyzer::getConstType(
                         $statements_analyzer,
-                        $fq_const_name,
+                        Interner::intern($fq_const_name),
                         true,
                         $context,
                     );
@@ -519,7 +523,7 @@ final class NamedFunctionCallHandler
 
             $anded_assertions = $stmt_assertions ?? AssertionFinder::processFunctionCall(
                 $stmt,
-                $context->self,
+                Interner::internOrNull($context->self),
                 $statements_analyzer,
                 $codebase,
                 $context->inside_negation,
@@ -720,7 +724,7 @@ final class NamedFunctionCallHandler
 
                 foreach ($var_type->getAtomicTypes() as $class_type) {
                     if ($class_type instanceof TNamedObject) {
-                        $class_string_types[] = new TClassString($class_type->value, $class_type);
+                        $class_string_types[] = new TClassString(Interner::lookup($class_type->value), $class_type);
                     } elseif ($class_type instanceof TTemplateParam
                         && $class_type->as->isSingle()
                     ) {
@@ -736,7 +740,7 @@ final class NamedFunctionCallHandler
                         } elseif ($as_atomic_type instanceof TNamedObject) {
                             $class_string_types[] = new TTemplateParamClass(
                                 $class_type->param_name,
-                                $as_atomic_type->value,
+                                Interner::lookup($as_atomic_type->value),
                                 $as_atomic_type,
                                 $class_type->defining_class,
                             );
@@ -773,8 +777,8 @@ final class NamedFunctionCallHandler
                 $real_stmt,
                 new Union([
                     new TClassString(
-                        $get_class_name,
-                        new TNamedObject($get_class_name),
+                        Interner::lookup($get_class_name),
+                        new TNamedObject(Interner::lookup($get_class_name)),
                     ),
                 ]),
             );

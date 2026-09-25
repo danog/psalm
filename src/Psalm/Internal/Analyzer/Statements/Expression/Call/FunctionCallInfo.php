@@ -23,7 +23,7 @@ final class FunctionCallInfo
     public bool $in_call_map = false;
 
     /**
-     * @var array<string, Union>
+     * @var array<int, Union>
      */
     public array $defined_constants = [];
 

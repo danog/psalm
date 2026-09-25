@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\Fetch;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use InvalidArgumentException;
 use PhpParser;
 use PhpParser\Node\Expr\PropertyFetch;
@@ -92,7 +96,7 @@ final class AtomicPropertyFetchAnalyzer
         ?string $stmt_var_id,
         Union $stmt_var_type,
         Atomic $lhs_type_part,
-        string $prop_name,
+        int $prop_name,
         bool &$has_valid_fetch_type,
         array &$invalid_fetch_types,
         bool $is_static_access = false,
@@ -158,7 +162,7 @@ final class AtomicPropertyFetchAnalyzer
         // Hack has a similar issue: https://github.com/facebook/hhvm/issues/5164
         if ($lhs_type_part instanceof TObject
             || (
-                in_array(strtolower($lhs_type_part->value), Config::getInstance()->getUniversalObjectCrates(), true)
+                in_array($lhs_type_part->value, Config::getInstance()->getUniversalObjectCrates(), true)
                 && $intersection_types === []
             )
         ) {
@@ -197,7 +201,7 @@ final class AtomicPropertyFetchAnalyzer
                 $intersection_types,
                 $class_exists,
                 $interface_exists,
-                $fq_class_name,
+                Interner::lookup($fq_class_name),
                 $override_property_visibility,
             );
 
@@ -212,10 +216,10 @@ final class AtomicPropertyFetchAnalyzer
 
         $config = $statements_analyzer->getProjectAnalyzer()->getConfig();
 
-        $property_id = $fq_class_name . '::$' . $prop_name;
+        $property_id = Interner::lookup($fq_class_name) . '::$' . Interner::lookup($prop_name);
 
         if ($class_storage->is_enum || in_array('UnitEnum', $codebase->getParentInterfaces($fq_class_name))) {
-            if ($prop_name === 'value' && !$class_storage->is_enum) {
+            if ($prop_name === Sym::C_VALUE && !$class_storage->is_enum) {
                 $has_valid_fetch_type = true;
                 $statements_analyzer->node_data->setType(
                     $stmt,
@@ -224,10 +228,10 @@ final class AtomicPropertyFetchAnalyzer
                         new TInt(),
                     ]),
                 );
-            } elseif ($prop_name === 'value' && $class_storage->enum_type !== null && $class_storage->enum_cases) {
+            } elseif ($prop_name === Sym::C_VALUE && $class_storage->enum_type !== null && $class_storage->enum_cases) {
                 $has_valid_fetch_type = true;
                 self::handleEnumValue($statements_analyzer, $stmt, $stmt_var_type, $class_storage);
-            } elseif ($prop_name === 'name') {
+            } elseif ($prop_name === Sym::C_NAME) {
                 $has_valid_fetch_type = true;
                 self::handleEnumName($statements_analyzer, $stmt, $stmt_var_type, $class_storage);
             } else {
@@ -262,12 +266,12 @@ final class AtomicPropertyFetchAnalyzer
         );
 
         // add method before changing fq_class_name
-        $get_method_id = new MethodIdentifier($fq_class_name, '__get');
+        $get_method_id = new MethodIdentifier($fq_class_name, Sym::C___GET);
 
         if (!$naive_property_exists) {
             if ($class_storage->namedMixins) {
                 foreach ($class_storage->namedMixins as $mixin) {
-                    $new_property_id = $mixin->value . '::$' . $prop_name;
+                    $new_property_id = Interner::lookup($mixin->value) . '::$' . Interner::lookup($prop_name);
 
                     try {
                         $new_class_storage = $codebase->classlike_storage_provider->get($mixin->value);
@@ -285,13 +289,13 @@ final class AtomicPropertyFetchAnalyzer
                                     ? new CodeLocation($statements_analyzer->getSource(), $stmt)
                                     : null,
                         )
-                            || isset($new_class_storage->pseudo_property_get_types['$' . $prop_name]))
+                            || isset($new_class_storage->pseudo_property_get_types['$' . Interner::lookup($prop_name)]))
                     ) {
                         $fq_class_name = $mixin->value;
                         $lhs_type_part = $mixin;
                         $class_storage = $new_class_storage;
 
-                        if (!isset($new_class_storage->pseudo_property_get_types['$' . $prop_name])) {
+                        if (!isset($new_class_storage->pseudo_property_get_types['$' . Interner::lookup($prop_name)])) {
                             $naive_property_exists = true;
                         }
 
@@ -342,7 +346,7 @@ final class AtomicPropertyFetchAnalyzer
             $naive_property_exists,
             $override_property_visibility,
             $class_exists,
-            $declaring_property_class,
+            Interner::internOrNull($declaring_property_class),
             $class_storage,
             $get_method_id,
             $in_assignment,
@@ -364,9 +368,9 @@ final class AtomicPropertyFetchAnalyzer
         if (!$naive_property_exists
             && $fq_class_name !== $context->self
             && $context->self
-            && $codebase->classlikes->classExtends($fq_class_name, $context->self)
+            && $codebase->classlikes->classExtends($fq_class_name, Interner::intern($context->self))
             && $codebase->propertyExists(
-                $context->self . '::$' . $prop_name,
+                $context->self . '::$' . Interner::lookup($prop_name),
                 true,
                 $statements_analyzer,
                 $context,
@@ -375,7 +379,7 @@ final class AtomicPropertyFetchAnalyzer
                     : null,
             )
         ) {
-            $property_id = $context->self . '::$' . $prop_name;
+            $property_id = $context->self . '::$' . Interner::lookup($prop_name);
         } elseif (!$naive_property_exists
             || (!$is_static_access
                 // when property existence is asserted by a plugin it doesn't necessarily has storage
@@ -392,7 +396,7 @@ final class AtomicPropertyFetchAnalyzer
                 $class_storage,
                 $prop_name,
                 $lhs_type_part,
-                $declaring_property_class,
+                Interner::internOrNull($declaring_property_class),
                 $property_id,
                 $in_assignment,
                 $stmt_var_id,
@@ -430,7 +434,7 @@ final class AtomicPropertyFetchAnalyzer
         }
 
         if ($codebase->properties_to_rename) {
-            $declaring_property_id = strtolower($declaring_property_class) . '::$' . $prop_name;
+            $declaring_property_id = $declaring_property_class . '::$' . Interner::lookup($prop_name);
 
             foreach ($codebase->properties_to_rename as $original_property_id => $new_property_name) {
                 if ($declaring_property_id === $original_property_id) {
@@ -451,11 +455,11 @@ final class AtomicPropertyFetchAnalyzer
         }
 
         $declaring_class_storage = $codebase->classlike_storage_provider->get(
-            $declaring_property_class,
+            Interner::intern($declaring_property_class),
         );
 
         if (isset($declaring_class_storage->properties[$prop_name])) {
-            self::checkPropertyDeprecation($prop_name, $declaring_property_class, $stmt, $statements_analyzer);
+            self::checkPropertyDeprecation($prop_name, Interner::intern($declaring_property_class), $stmt, $statements_analyzer);
 
             $property_storage = $declaring_class_storage->properties[$prop_name];
 
@@ -558,12 +562,12 @@ final class AtomicPropertyFetchAnalyzer
      * @param PropertyFetch|StaticPropertyFetch $stmt
      */
     public static function checkPropertyDeprecation(
-        string $prop_name,
-        string $declaring_property_class,
+        int $prop_name,
+        int $declaring_property_class,
         PhpParser\Node\Expr $stmt,
         StatementsAnalyzer $statements_analyzer,
     ): void {
-        $property_id = $declaring_property_class . '::$' . $prop_name;
+        $property_id = Interner::lookup($declaring_property_class) . '::$' . Interner::lookup($prop_name);
         $codebase = $statements_analyzer->getCodebase();
         $declaring_class_storage = $codebase->classlike_storage_provider->get(
             $declaring_property_class,
@@ -590,8 +594,8 @@ final class AtomicPropertyFetchAnalyzer
         Codebase $codebase,
         PhpParser\Node\Expr\PropertyFetch $stmt,
         Context $context,
-        string $fq_class_name,
-        string $prop_name,
+        int $fq_class_name,
+        int $prop_name,
         TNamedObject $lhs_type_part,
         string &$property_id,
         bool &$has_magic_getter,
@@ -599,7 +603,7 @@ final class AtomicPropertyFetchAnalyzer
         bool $naive_property_exists,
         bool $override_property_visibility,
         bool $class_exists,
-        ?string $declaring_property_class,
+        ?int $declaring_property_class,
         ClassLikeStorage $class_storage,
         MethodIdentifier $get_method_id,
         bool $in_assignment,
@@ -631,18 +635,18 @@ final class AtomicPropertyFetchAnalyzer
         ) {
             $has_magic_getter = true;
 
-            if (isset($class_storage->pseudo_property_get_types['$' . $prop_name])) {
+            if (isset($class_storage->pseudo_property_get_types['$' . Interner::lookup($prop_name)])) {
                 $stmt_type = TypeExpander::expandUnion(
                     $codebase,
-                    $class_storage->pseudo_property_get_types['$' . $prop_name],
+                    $class_storage->pseudo_property_get_types['$' . Interner::lookup($prop_name)],
                     $class_storage->name,
-                    $class_storage->name,
+                    Interner::lookup($class_storage->name),
                     $class_storage->parent_class,
                 );
 
                 if (count($template_types = $class_storage->getClassTemplateTypes()) !== 0) {
                     if (!$lhs_type_part instanceof TGenericObject) {
-                        $lhs_type_part = new TGenericObject($lhs_type_part->value, $template_types);
+                        $lhs_type_part = new TGenericObject(Interner::lookup($lhs_type_part->value), $template_types);
                     }
 
                     $stmt_type = self::localizePropertyType(
@@ -689,7 +693,7 @@ final class AtomicPropertyFetchAnalyzer
                 [
                     new VirtualArg(
                         new VirtualString(
-                            $prop_name,
+                            Interner::lookup($prop_name),
                             $stmt->name->getAttributes(),
                         ),
                     ),
@@ -738,7 +742,7 @@ final class AtomicPropertyFetchAnalyzer
             }
 
             if (!$class_exists) {
-                $property_id = $lhs_type_part->value . '::$' . $prop_name;
+                $property_id = Interner::lookup($lhs_type_part->value) . '::$' . Interner::lookup($prop_name);
 
                 IssueBuffer::maybeAdd(
                     new UndefinedMagicPropertyFetch(
@@ -790,8 +794,8 @@ final class AtomicPropertyFetchAnalyzer
             }
 
             foreach ($template_types as $type_name => $_) {
-                if (isset($extended_types[$property_declaring_class_storage->name][$type_name])) {
-                    $mapped_type = $extended_types[$property_declaring_class_storage->name][$type_name];
+                if (isset($extended_types[Interner::lookup($property_declaring_class_storage->name)][$type_name])) {
+                    $mapped_type = $extended_types[Interner::lookup($property_declaring_class_storage->name)][$type_name];
 
                     foreach ($mapped_type->getAtomicTypes() as $mapped_type_atomic) {
                         if (!$mapped_type_atomic instanceof TTemplateParam) {
@@ -899,7 +903,7 @@ final class AtomicPropertyFetchAnalyzer
                     $var_node,
                     $property_node,
                     'property-fetch'
-                        . ($stmt->name instanceof PhpParser\Node\Identifier ? '-' . $stmt->name : ''),
+                        . ($stmt->name instanceof PhpParser\Node\Identifier ? '-' . Interner::lookup($stmt->name) : ''),
                     $added_taints,
                     $removed_taints,
                 );
@@ -1162,7 +1166,7 @@ final class AtomicPropertyFetchAnalyzer
                     return;
                 }
                 if ($intersection_type instanceof TNamedObject
-                    && (in_array($intersection_type->value, ['UnitEnum', 'BackedEnum'], true)
+                    && (in_array($intersection_type->value, [Sym::C_UNIT_ENUM, Sym::C_BACKED_ENUM], true)
                         || in_array('UnitEnum', $codebase->getParentInterfaces($intersection_type->value)))
                 ) {
                     $intersects_with_enum = true;
@@ -1170,13 +1174,13 @@ final class AtomicPropertyFetchAnalyzer
             }
 
             // In PHP Core enum interfaces have properties
-            $is_enum_interface = in_array($fq_class_name, ['UnitEnum', 'BackedEnum'], true)
-                || in_array('UnitEnum', $codebase->getParentInterfaces($fq_class_name))
+            $is_enum_interface = in_array($fq_class_name, [Sym::C_UNIT_ENUM, Sym::C_BACKED_ENUM], true)
+                || in_array('UnitEnum', $codebase->getParentInterfaces(Interner::intern($fq_class_name)))
                 || $intersects_with_enum;
 
             // Since PHP 8.4 interfaces can have hook properties
             $interface_property = $stmt->name instanceof PhpParser\Node\Identifier
-                ? $interface_storage->properties[$stmt->name->name] ?? null
+                ? $interface_storage->properties[Interner::intern($stmt->name->name)] ?? null
                 : null;
             $has_get_hook = $codebase->analysis_php_version_id >= 8_04_00 &&
                 $interface_property?->hook_get !== null;
@@ -1203,7 +1207,7 @@ final class AtomicPropertyFetchAnalyzer
             if ($lhs_type_part->from_docblock) {
                 IssueBuffer::maybeAdd(
                     new UndefinedDocblockClass(
-                        'Cannot get properties of undefined docblock class ' . $lhs_type_part->value,
+                        'Cannot get properties of undefined docblock class ' . Interner::lookup($lhs_type_part->value),
                         new CodeLocation($statements_analyzer->getSource(), $stmt),
                         $lhs_type_part->value,
                     ),
@@ -1212,7 +1216,7 @@ final class AtomicPropertyFetchAnalyzer
             } else {
                 IssueBuffer::maybeAdd(
                     new UndefinedClass(
-                        'Cannot get properties of undefined class ' . $lhs_type_part->value,
+                        'Cannot get properties of undefined class ' . Interner::lookup($lhs_type_part->value),
                         new CodeLocation($statements_analyzer->getSource(), $stmt),
                         $lhs_type_part->value,
                     ),
@@ -1229,9 +1233,9 @@ final class AtomicPropertyFetchAnalyzer
         Context $context,
         Config $config,
         ClassLikeStorage $class_storage,
-        string $prop_name,
+        int $prop_name,
         TNamedObject $lhs_type_part,
-        ?string $declaring_property_class,
+        ?int $declaring_property_class,
         string $property_id,
         bool $in_assignment,
         ?string $stmt_var_id,
@@ -1240,14 +1244,14 @@ final class AtomicPropertyFetchAnalyzer
         bool &$has_valid_fetch_type,
     ): void {
         if (($config->use_phpdoc_property_without_magic_or_parent
-            || $class_storage->hasAttributeIncludingParents('AllowDynamicProperties', $codebase))
-            && isset($class_storage->pseudo_property_get_types['$' . $prop_name])
+            || $class_storage->hasAttributeIncludingParents(Sym::C_ALLOW_DYNAMIC_PROPERTIES, $codebase))
+            && isset($class_storage->pseudo_property_get_types['$' . Interner::lookup($prop_name)])
         ) {
-            $stmt_type = $class_storage->pseudo_property_get_types['$' . $prop_name];
+            $stmt_type = $class_storage->pseudo_property_get_types['$' . Interner::lookup($prop_name)];
 
             if (count($template_types = $class_storage->getClassTemplateTypes()) !== 0) {
                 if (!$lhs_type_part instanceof TGenericObject) {
-                    $lhs_type_part = new TGenericObject($lhs_type_part->value, $template_types);
+                    $lhs_type_part = new TGenericObject(Interner::lookup($lhs_type_part->value), $template_types);
                 }
 
                 $stmt_type = self::localizePropertyType(
@@ -1304,8 +1308,8 @@ final class AtomicPropertyFetchAnalyzer
         ClassLikeStorage $class_storage,
         ClassLikeStorage $declaring_class_storage,
         string $property_id,
-        string $fq_class_name,
-        string $prop_name,
+        int $fq_class_name,
+        int $prop_name,
         TNamedObject $lhs_type_part,
     ): Union {
         $class_property_type = $codebase->properties->getPropertyType(
@@ -1323,7 +1327,7 @@ final class AtomicPropertyFetchAnalyzer
             ) {
                 IssueBuffer::maybeAdd(
                     new MissingPropertyType(
-                        'Property ' . $fq_class_name . '::$' . $prop_name
+                        'Property ' . Interner::lookup($fq_class_name) . '::$' . Interner::lookup($prop_name)
                         . ' does not have a declared type',
                         new CodeLocation($statements_analyzer->getSource(), $stmt),
                         $property_id,
@@ -1338,13 +1342,13 @@ final class AtomicPropertyFetchAnalyzer
                 $codebase,
                 $class_property_type,
                 $declaring_class_storage->name,
-                $declaring_class_storage->name,
+                Interner::lookup($declaring_class_storage->name),
                 $declaring_class_storage->parent_class,
             );
 
             if (count($template_types = $declaring_class_storage->getClassTemplateTypes()) !== 0) {
                 if (!$lhs_type_part instanceof TGenericObject) {
-                    $lhs_type_part = new TGenericObject($lhs_type_part->value, $template_types);
+                    $lhs_type_part = new TGenericObject(Interner::lookup($lhs_type_part->value), $template_types);
                 }
 
                 $class_property_type = self::localizePropertyType(

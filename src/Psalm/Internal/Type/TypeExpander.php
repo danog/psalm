@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Type;
 
+use Psalm\Internal\Interner;
+
+use Psalm\Internal\Sym;
+
 use Psalm\Codebase;
 use Psalm\Exception\CircularReferenceException;
 use Psalm\Exception\UnresolvableConstantException;
@@ -60,9 +64,9 @@ final class TypeExpander
     public static function expandUnion(
         Codebase $codebase,
         Union $return_type,
-        ?string $self_class,
+        ?int $self_class,
         string|TNamedObject|TTemplateParam|null $static_class_type,
-        ?string $parent_class,
+        ?int $parent_class,
         bool $evaluate_class_constants = true,
         bool $evaluate_conditional_types = false,
         bool $final = false,
@@ -120,9 +124,9 @@ final class TypeExpander
     public static function expandAtomic(
         Codebase $codebase,
         Atomic &$return_type,
-        ?string $self_class,
+        ?int $self_class,
         string|TNamedObject|TTemplateParam|null $static_class_type,
-        ?string $parent_class,
+        ?int $parent_class,
         bool $evaluate_class_constants = true,
         bool $evaluate_conditional_types = false,
         bool $final = false,
@@ -200,7 +204,7 @@ final class TypeExpander
 
             if ($new_as_type instanceof TNamedObject && $new_as_type !== $return_type->as_type) {
                 $return_type = $return_type->setAs(
-                    $new_as_type->value,
+                    Interner::lookup($new_as_type->value),
                     $new_as_type,
                 );
             }
@@ -230,7 +234,7 @@ final class TypeExpander
             if ($self_class) {
                 $return_type = $return_type->replaceClassLike(
                     'self',
-                    $self_class,
+                    Interner::lookup($self_class),
                 );
             }
             if (is_string($static_class_type) || $self_class) {
@@ -241,13 +245,13 @@ final class TypeExpander
             }
 
             if ($evaluate_class_constants && $codebase->classOrInterfaceOrEnumExists($return_type->fq_classlike_name)) {
-                if (strtolower($return_type->const_name) === 'class') {
+                if ($return_type->const_name === Sym::C_CLASS) {
                     return [new TLiteralClassString($return_type->fq_classlike_name)];
                 }
 
                 try {
                     $class_constant = $codebase->classlikes->getClassConstantType(
-                        $return_type->fq_classlike_name,
+                        Interner::intern($return_type->fq_classlike_name),
                         $return_type->const_name,
                         ReflectionProperty::IS_PRIVATE,
                     );
@@ -275,12 +279,12 @@ final class TypeExpander
         if ($return_type instanceof TTypeAlias) {
             $declaring_fq_classlike_name = $return_type->declaring_fq_classlike_name;
 
-            if ($declaring_fq_classlike_name === 'self' && $self_class) {
+            if ($declaring_fq_classlike_name === Sym::C_SELF && $self_class) {
                 $declaring_fq_classlike_name = $self_class;
             }
 
             if (!($evaluate_class_constants
-                && $codebase->classlikes->doesClassLikeExist(strtolower($declaring_fq_classlike_name))
+                && $codebase->classlikes->doesClassLikeExist($declaring_fq_classlike_name)
             )) {
                 return [$return_type];
             }
@@ -585,9 +589,9 @@ final class TypeExpander
     private static function expandNamedObject(
         Codebase $codebase,
         TNamedObject &$return_type,
-        ?string $self_class,
+        ?int $self_class,
         string|TNamedObject|TTemplateParam|null $static_class_type,
-        ?string $parent_class,
+        ?int $parent_class,
         bool $final = false,
         bool &$expand_generic = false,
     ): TNamedObject|TTemplateParam {
@@ -596,9 +600,9 @@ final class TypeExpander
             && !$return_type->extra_types
             && $codebase->classOrInterfaceExists($return_type->value)
         ) {
-            $value = $codebase->classlikes->getUnAliasedName($return_type->value);
+            $value = $codebase->classlikes->getUnAliasedName(Interner::lookup($return_type->value));
             $container_class_storage = $codebase->classlike_storage_provider->get(
-                $value,
+                Interner::intern($value),
             );
 
             if ($container_class_storage->template_types
@@ -608,7 +612,7 @@ final class TypeExpander
                 )
             ) {
                 $return_type = new TGenericObject(
-                    $return_type->value,
+                    Interner::lookup($return_type->value),
                     array_values(
                         array_map(
                             static fn($type_map) => reset($type_map),
@@ -622,9 +626,9 @@ final class TypeExpander
             }
         }
 
-        $return_type_lc = strtolower($return_type->value);
+        $return_type_lc = $return_type->value;
 
-        if ($static_class_type && ($return_type_lc === 'static' || $return_type_lc === '$this')) {
+        if ($static_class_type && ($return_type_lc === Sym::C_STATIC || $return_type_lc === '$this')) {
             $is_static = $return_type->is_static;
             $is_static_resolved = null;
             if (!$final) {
@@ -633,7 +637,7 @@ final class TypeExpander
             }
             if (is_string($static_class_type)) {
                 $return_type = $return_type->setValueIsStatic(
-                    $static_class_type,
+                    Interner::intern($static_class_type),
                     $is_static,
                     $is_static_resolved,
                 );
@@ -697,16 +701,16 @@ final class TypeExpander
             )
         ) {
             $return_type = $return_type->setValueIsStatic(
-                $static_class_type,
+                Interner::intern($static_class_type),
                 false,
             );
-        } elseif ($self_class && $return_type_lc === 'self') {
+        } elseif ($self_class && $return_type_lc === Sym::C_SELF) {
             $return_type = $return_type->setValue($self_class);
-        } elseif ($parent_class && $return_type_lc === 'parent') {
+        } elseif ($parent_class && $return_type_lc === Sym::C_PARENT) {
             $return_type = $return_type->setValue($parent_class);
         } else {
-            $new_value = $codebase->classlikes->getUnAliasedName($return_type->value);
-            $return_type = $return_type->setValue($new_value);
+            $new_value = $codebase->classlikes->getUnAliasedName(Interner::lookup($return_type->value));
+            $return_type = $return_type->setValue(Interner::intern($new_value));
         }
 
         return $return_type;
@@ -718,9 +722,9 @@ final class TypeExpander
     private static function expandConditional(
         Codebase $codebase,
         TConditional &$return_type,
-        ?string $self_class,
+        ?int $self_class,
         string|TNamedObject|TTemplateParam|null $static_class_type,
-        ?string $parent_class,
+        ?int $parent_class,
         bool $evaluate_class_constants = true,
         bool $evaluate_conditional_types = false,
         bool $final = false,
@@ -929,13 +933,13 @@ final class TypeExpander
     private static function expandPropertiesOf(
         Codebase $codebase,
         TPropertiesOf &$return_type,
-        ?string $self_class,
+        ?int $self_class,
         string|TNamedObject|TTemplateParam|null $static_class_type,
     ): array {
         if ($self_class) {
             $return_type = $return_type->replaceClassLike(
                 'self',
-                $self_class,
+                Interner::lookup($self_class),
             );
             $return_type = $return_type->replaceClassLike(
                 'static',
@@ -1012,9 +1016,9 @@ final class TypeExpander
     private static function expandKeyOfValueOf(
         Codebase $codebase,
         Atomic &$return_type,
-        ?string $self_class,
+        ?int $self_class,
         string|TNamedObject|TTemplateParam|null $static_class_type,
-        ?string $parent_class,
+        ?int $parent_class,
         bool $evaluate_class_constants = true,
         bool $evaluate_conditional_types = false,
         bool $final = false,
@@ -1044,7 +1048,7 @@ final class TypeExpander
             }
 
             if ($self_class) {
-                $type_param = $type_param->replaceClassLike('self', $self_class);
+                $type_param = $type_param->replaceClassLike('self', Interner::lookup($self_class));
             }
 
             if ($throw_on_unresolvable_constant
@@ -1078,7 +1082,7 @@ final class TypeExpander
                 )
             ) {
                 if ($throw_on_unresolvable_constant) {
-                    throw new UnresolvableConstantException($type_param->fq_classlike_name, $type_param->const_name);
+                    throw new UnresolvableConstantException(Interner::intern($type_param->fq_classlike_name), $type_param->const_name);
                 } else {
                     return [$return_type];
                 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\TypeVisitor;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use Psalm\Internal\Codebase\Methods;
 use Psalm\Type\Atomic\TNamedObject;
@@ -28,7 +30,7 @@ final class TypeLocalizer extends MutableTypeVisitor
      */
     public function __construct(
         private array $extends,
-        private readonly string $base_fq_class_name,
+        private readonly int $base_fq_class_name,
     ) {
     }
 
@@ -37,8 +39,8 @@ final class TypeLocalizer extends MutableTypeVisitor
     {
         if ($type instanceof TTemplateParamClass) {
             if ($type->defining_class === $this->base_fq_class_name) {
-                if (isset($this->extends[$this->base_fq_class_name][$type->param_name])) {
-                    $extended_param = $this->extends[$this->base_fq_class_name][$type->param_name];
+                if (isset($this->extends[Interner::lookup($this->base_fq_class_name)][$type->param_name])) {
+                    $extended_param = $this->extends[Interner::lookup($this->base_fq_class_name)][$type->param_name];
 
                     $types = array_values($extended_param->getAtomicTypes());
 
@@ -68,7 +70,7 @@ final class TypeLocalizer extends MutableTypeVisitor
         foreach ($union->getAtomicTypes() as $key => $atomic_type) {
             if ($atomic_type instanceof TTemplateParam
                 && ($atomic_type->defining_class === $this->base_fq_class_name
-                    || isset($this->extends[$atomic_type->defining_class]))
+                    || isset($this->extends[Interner::lookup($atomic_type->defining_class)]))
             ) {
                 $types_to_add = Methods::getExtendedTemplatedTypes(
                     $atomic_type,

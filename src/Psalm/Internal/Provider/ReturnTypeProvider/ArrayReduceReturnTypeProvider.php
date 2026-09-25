@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider\ReturnTypeProvider;
 
+use Psalm\Internal\Interner;
+
+use Psalm\Internal\Sym;
+
 use Override;
 use PhpParser;
 use Psalm\CodeLocation;
@@ -229,20 +233,20 @@ final class ArrayReduceReturnTypeProvider implements FunctionReturnTypeProviderI
 
                             [$callable_fq_class_name, $method_name] = explode('::', $mapping_function_id_part);
 
-                            if (in_array($callable_fq_class_name, ['self', 'static'], true)) {
+                            if (in_array($callable_fq_class_name, [Sym::C_SELF, Sym::C_STATIC], true)) {
                                 $callable_fq_class_name = $statements_source->getFQCLN();
                                 if ($callable_fq_class_name === null) {
                                     continue;
                                 }
                             }
 
-                            if ($callable_fq_class_name === 'parent') {
+                            if ($callable_fq_class_name === Sym::C_PARENT) {
                                 continue;
                             }
 
                             $method_id = new MethodIdentifier(
                                 $callable_fq_class_name,
-                                strtolower($method_name),
+                                Interner::intern($method_name),
                             );
 
                             if (!$codebase->methodExists(

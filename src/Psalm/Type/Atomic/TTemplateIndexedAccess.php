@@ -18,7 +18,7 @@ final class TTemplateIndexedAccess extends Atomic
     public function __construct(
         public string $array_param_name,
         public string $offset_param_name,
-        public string $defining_class,
+        public int $defining_class,
         bool $from_docblock = false,
     ) {
         parent::__construct($from_docblock);
@@ -38,7 +38,7 @@ final class TTemplateIndexedAccess extends Atomic
     public function toPhpString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         int $analysis_php_version_id,
     ): ?string {
         return null;

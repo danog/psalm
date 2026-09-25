@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use Override;
 use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type;
@@ -19,8 +23,8 @@ final class TClassConstant extends Atomic
 {
     use UnserializeMemoryUsageSuppressionTrait;
     public function __construct(
-        public string $fq_classlike_name,
-        public string $const_name,
+        public int $fq_classlike_name,
+        public int $const_name,
         bool $from_docblock = false,
     ) {
         parent::__construct($from_docblock);
@@ -29,19 +33,19 @@ final class TClassConstant extends Atomic
     #[Override]
     public function getKey(bool $include_extra = true): string
     {
-        return 'class-constant(' . $this->fq_classlike_name . '::' . $this->const_name . ')';
+        return 'class-constant(' . Interner::lookup($this->fq_classlike_name) . '::' . Interner::lookup($this->const_name) . ')';
     }
 
     #[Override]
     public function getId(bool $exact = true, bool $nested = false): string
     {
-        return $this->fq_classlike_name . '::' . $this->const_name;
+        return Interner::lookup($this->fq_classlike_name) . '::' . Interner::lookup($this->const_name);
     }
 
     #[Override]
     public function getAssertionString(): string
     {
-        return 'class-constant(' . $this->fq_classlike_name . '::' . $this->const_name . ')';
+        return 'class-constant(' . Interner::lookup($this->fq_classlike_name) . '::' . Interner::lookup($this->const_name) . ')';
     }
 
     /**
@@ -52,7 +56,7 @@ final class TClassConstant extends Atomic
     public function toPhpString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         int $analysis_php_version_id,
     ): ?string {
         return null;
@@ -74,15 +78,15 @@ final class TClassConstant extends Atomic
     public function toNamespacedString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         bool $use_phpdoc_format,
     ): string {
-        if ($this->fq_classlike_name === 'static') {
-            return 'static::' . $this->const_name;
+        if ($this->fq_classlike_name === Sym::C_STATIC) {
+            return 'static::' . Interner::lookup($this->const_name);
         }
 
-        return Type::getStringFromFQCLN($this->fq_classlike_name, $namespace, $aliased_classes, $this_class)
+        return Type::getStringFromFQCLN(Interner::lookup($this->fq_classlike_name), $namespace, $aliased_classes, $this_class)
             . '::'
-            . $this->const_name;
+            . Interner::lookup($this->const_name);
     }
 }

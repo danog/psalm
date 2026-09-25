@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Codebase;
 
+use Psalm\Internal\Interner;
+
 use PhpParser\Node;
 use PhpParser\Node\Expr\ArrowFunction;
 use PhpParser\Node\Expr\Closure;
@@ -130,7 +132,7 @@ final class MutationLevelResolver
             $level = $levels[$node_id];
 
             if ($info['class'] !== null) {
-                $codebase->analyzer->addMutableClass($info['class'], $level);
+                $codebase->analyzer->addMutableClass(Interner::intern($info['class']), $level);
             }
 
             if (!$info['fresh']) {

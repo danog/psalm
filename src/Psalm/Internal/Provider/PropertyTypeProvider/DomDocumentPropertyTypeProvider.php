@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider\PropertyTypeProvider;
 
+use Psalm\Internal\Sym;
+
 use Override;
 use Psalm\Plugin\EventHandler\Event\PropertyTypeProviderEvent;
 use Psalm\Plugin\EventHandler\PropertyTypeProviderInterface;
@@ -26,7 +28,7 @@ final class DomDocumentPropertyTypeProvider implements PropertyTypeProviderInter
     #[Override]
     public static function getPropertyType(PropertyTypeProviderEvent $event): ?Union
     {
-        if (strtolower($event->getPropertyName()) === 'documentelement') {
+        if ($event->getPropertyName() === Sym::C_DOCUMENTELEMENT) {
             self::$cache ??= new Union([new TNamedObject('DOMElement'), new TNull()], [
                 'ignore_nullable_issues' => true,
             ]);

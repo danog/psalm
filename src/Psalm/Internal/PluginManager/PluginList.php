@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\PluginManager;
 
+use Psalm\Internal\Interner;
+
 use InvalidArgumentException;
 use RuntimeException;
 
@@ -43,7 +45,7 @@ final class PluginList
             if ($this->config_file) {
                 foreach ($this->config_file->getConfig()->getPluginClasses() as $plugin_entry) {
                     $plugin_class = $plugin_entry['class'];
-                    $this->enabled_plugins[$plugin_class] = $this->findPluginPackage($plugin_class);
+                    $this->enabled_plugins[$plugin_class] = $this->findPluginPackage(Interner::intern($plugin_class));
                 }
             }
         }
@@ -89,20 +91,20 @@ final class PluginList
         return $class;
     }
 
-    public function findPluginPackage(string $class): ?string
+    public function findPluginPackage(int $class): ?string
     {
         // pluginClass => ?pluginPackage
         $plugin_classes = $this->getAll();
 
-        return $plugin_classes[$class] ?? null;
+        return $plugin_classes[Interner::lookup($class)] ?? null;
     }
 
-    public function isEnabled(string $class): bool
+    public function isEnabled(int $class): bool
     {
         return array_key_exists($class, $this->getEnabled());
     }
 
-    public function enable(string $class): void
+    public function enable(int $class): void
     {
         if (!$this->config_file) {
             throw new RuntimeException('Cannot find Psalm config');
@@ -111,7 +113,7 @@ final class PluginList
         $this->config_file->addPlugin($class);
     }
 
-    public function disable(string $class): void
+    public function disable(int $class): void
     {
         if (!$this->config_file) {
             throw new RuntimeException('Cannot find Psalm config');

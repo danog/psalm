@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\PhpVisitor\Reflector;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use AssertionError;
 use PhpParser;
 use Psalm\Aliases;
@@ -120,7 +124,7 @@ final class FunctionLikeDocblockScanner
         if (count($docblock_info->psalm_internal) !== 0) {
             $storage->internal = $docblock_info->psalm_internal;
         } elseif ($docblock_info->internal && $aliases->namespace) {
-            $storage->internal = [NamespaceAnalyzer::getNameSpaceRoot($aliases->namespace)];
+            $storage->internal = [NamespaceAnalyzer::getNameSpaceRoot(Interner::intern($aliases->namespace))];
         }
 
         if (($storage->internal || ($classlike_storage && $classlike_storage->internal))
@@ -196,15 +200,15 @@ final class FunctionLikeDocblockScanner
 
                 if ($throw_class !== 'self' && $throw_class !== 'static' && $throw_class !== 'parent') {
                     $exception_fqcln = Type::getFQCLNFromString(
-                        $throw_class,
+                        Interner::intern($throw_class),
                         $aliases,
                     );
                 } else {
                     $exception_fqcln = $throw_class;
                 }
 
-                $codebase->scanner->queueClassLikeForScanning($exception_fqcln);
-                $file_storage->referenced_classlikes[strtolower($exception_fqcln)] = $exception_fqcln;
+                $codebase->scanner->queueClassLikeForScanning(Interner::intern($exception_fqcln));
+                $file_storage->referenced_classlikes[$exception_fqcln] = $exception_fqcln;
                 $storage->throws[$exception_fqcln] = true;
                 $storage->throw_locations[$exception_fqcln] = $throw_location;
             }
@@ -490,7 +494,7 @@ final class FunctionLikeDocblockScanner
                                     new TTemplateParam(
                                         $template_name,
                                         $template_as_type,
-                                        $template_function_id,
+                                        Interner::intern($template_function_id),
                                     ),
                                 ]);
                             }
@@ -571,7 +575,7 @@ final class FunctionLikeDocblockScanner
         array $class_template_types,
         array $function_template_types,
         array $type_aliases,
-        ?string $self_fqcln,
+        ?int $self_fqcln,
     ): ?array {
         $is_negation = false;
         $is_loose_equality = false;
@@ -706,11 +710,11 @@ final class FunctionLikeDocblockScanner
         array $docblock_params,
         PhpParser\Node\FunctionLike $function,
         bool $fake_method,
-        ?string $fq_classlike_name,
+        ?int $fq_classlike_name,
     ): void {
-        $base = $classlike_storage ? $classlike_storage->name . '::' : '';
+        $base = $classlike_storage ? Interner::lookup($classlike_storage->name) . '::' : '';
 
-        $cased_method_id = $base . $storage->cased_name;
+        $cased_method_id = $base . Interner::lookup($storage->cased_name);
 
         $unused_docblock_params = [];
 

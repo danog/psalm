@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
@@ -475,7 +479,7 @@ final class BinaryOpAnalyzer
                         $storage = $codebase->methods->getStorage(
                             new MethodIdentifier(
                                 $atomic_type->value,
-                                '__tostring',
+                                Sym::C___TOSTRING,
                             ),
                         );
                     } catch (UnexpectedValueException) {
@@ -491,7 +495,7 @@ final class BinaryOpAnalyzer
                         $storage->allowed_mutations,
                         $context,
                         'possibly-mutating method '
-                                    . $atomic_type->value . '::__toString',
+                                    . Interner::lookup($atomic_type->value) . '::__toString',
                         ImpureMethodCall::class,
                         $stmt,
                         null,
@@ -507,7 +511,7 @@ final class BinaryOpAnalyzer
                         $storage = $codebase->methods->getStorage(
                             new MethodIdentifier(
                                 $atomic_type->value,
-                                '__tostring',
+                                Sym::C___TOSTRING,
                             ),
                         );
                     } catch (UnexpectedValueException) {
@@ -524,7 +528,7 @@ final class BinaryOpAnalyzer
                         $storage->allowed_mutations,
                         $context,
                         'possibly-mutating method '
-                                    . $atomic_type->value . '::__toString',
+                                    . Interner::lookup($atomic_type->value) . '::__toString',
                         ImpureMethodCall::class,
                         $stmt,
                         null,

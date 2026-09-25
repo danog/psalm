@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\PluginManager;
 
+use Psalm\Internal\Interner;
+
 use DOMDocument;
 use DOMElement;
 use Psalm\Config;
@@ -47,7 +49,7 @@ final class ConfigFile
         return Config::loadFromXMLFile($this->path, $this->current_dir);
     }
 
-    public function removePlugin(string $plugin_class): void
+    public function removePlugin(int $plugin_class): void
     {
         $config_xml = $this->readXml();
         /** @var DOMElement */
@@ -64,7 +66,7 @@ final class ConfigFile
         $plugin_elements = $plugins_element->getElementsByTagName('pluginClass');
 
         foreach ($plugin_elements as $plugin_element) {
-            if ($plugin_element->getAttribute('class') === $plugin_class) {
+            if ($plugin_element->getAttribute('class') === Interner::lookup($plugin_class)) {
                 $plugins_element->removeChild($plugin_element);
                 break;
             }
@@ -78,7 +80,7 @@ final class ConfigFile
         $this->saveXml($config_xml);
     }
 
-    public function addPlugin(string $plugin_class): void
+    public function addPlugin(int $plugin_class): void
     {
         $config_xml = $this->readXml();
         /** @var DOMElement */
@@ -97,7 +99,7 @@ final class ConfigFile
         $plugin_class_element = $config_xml->createElement('pluginClass');
         if ($plugin_class_element) {
             $plugin_class_element->setAttribute('xmlns', Config::CONFIG_NAMESPACE);
-            $plugin_class_element->setAttribute('class', $plugin_class);
+            $plugin_class_element->setAttribute('class', Interner::lookup($plugin_class));
             if ($plugins_element) {
                 $plugins_element->appendChild($plugin_class_element);
             }

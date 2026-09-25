@@ -153,7 +153,7 @@ final class Context
 
     public ?CodeLocation $include_location = null;
 
-    public ?string $parent = null;
+    public ?int $parent = null;
 
     public bool $check_classes = true;
 
@@ -168,7 +168,7 @@ final class Context
     /**
      * A list of classes checked with class_exists
      *
-     * @var array<lowercase-string,true>
+     * @var array<int,true>
      */
     public array $phantom_classes = [];
 
@@ -211,12 +211,12 @@ final class Context
     /**
      * Stored to prevent re-analysing methods when checking for initialised properties
      *
-     * @var array<string, bool>
+     * @var array<int, bool>
      */
     public array $initialized_methods = [];
 
     /**
-     * @var array<string, Union>
+     * @var array<int, Union>
      */
     public array $constants = [];
 
@@ -784,9 +784,9 @@ final class Context
     /**
      * @psalm-mutation-free
      */
-    public function isPhantomClass(string $class_name): bool
+    public function isPhantomClass(int $class_name): bool
     {
-        return isset($this->phantom_classes[strtolower($class_name)]);
+        return isset($this->phantom_classes[$class_name]);
     }
 
     /**

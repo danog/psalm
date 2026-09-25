@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\Internal\Codebase;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use Psalm\Internal\Codebase\ClassLikes;
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
@@ -26,21 +28,21 @@ final class ClassLikesTest extends TestCase
 
     public function testWillDetectClassImplementingAliasedInterface(): void
     {
-        $this->classlikes->addClassAlias('Foo', 'Bar');
+        $this->classlikes->addClassAlias(Interner::intern('Foo'), 'Bar');
 
-        $classStorage = new ClassLikeStorage('Baz');
+        $classStorage = new ClassLikeStorage(Interner::intern('Baz'));
         $classStorage->class_implements['bar'] = 'Bar';
 
         $this->storage_provider->addMore(['baz' => $classStorage]);
 
-        self::assertTrue($this->classlikes->classImplements('Baz', 'Foo'));
+        self::assertTrue($this->classlikes->classImplements(Interner::intern('Baz'), Interner::intern('Foo')));
     }
 
     public function testWillResolveAliasedAliases(): void
     {
-        $this->classlikes->addClassAlias('Foo', 'Bar');
-        $this->classlikes->addClassAlias('Bar', 'Baz');
-        $this->classlikes->addClassAlias('Baz', 'Qoo');
+        $this->classlikes->addClassAlias(Interner::intern('Foo'), 'Bar');
+        $this->classlikes->addClassAlias(Interner::intern('Bar'), 'Baz');
+        $this->classlikes->addClassAlias(Interner::intern('Baz'), 'Qoo');
 
         self::assertSame('Foo', $this->classlikes->getUnAliasedName('Qoo'));
     }

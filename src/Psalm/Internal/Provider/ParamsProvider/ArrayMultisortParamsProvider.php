@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider\ParamsProvider;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use PhpParser\Node\Expr\ConstFetch;
 use PhpParser\Node\Expr\FuncCall;
@@ -84,7 +86,7 @@ final class ArrayMultisortParamsProvider implements FunctionParamsProviderInterf
             if (!$param_type && $call_arg->value instanceof ConstFetch) {
                 $param_type = ConstFetchAnalyzer::getConstType(
                     $statements_source,
-                    $call_arg->value->name->toString(),
+                    Interner::intern($call_arg->value->name->toString()),
                     true,
                     $event->getContext(),
                 );
@@ -208,7 +210,7 @@ final class ArrayMultisortParamsProvider implements FunctionParamsProviderInterf
                         IssueBuffer::maybeAdd(
                             new InvalidArgument(
                                 'Argument ' . ( $key + 1 )
-                                . ' of array_multisort sort order/flag contains an invalid value of ' . $atomic->value,
+                                . ' of array_multisort sort order/flag contains an invalid value of ' . Interner::lookup($atomic->value),
                                 $code_location,
                                 'array_multisort',
                             ),

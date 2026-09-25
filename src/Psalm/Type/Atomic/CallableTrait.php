@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
@@ -118,7 +120,7 @@ trait CallableTrait
     public function toNamespacedString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         bool $use_phpdoc_format,
     ): string {
         if ($use_phpdoc_format) {
@@ -172,7 +174,7 @@ trait CallableTrait
     public function toPhpString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         int $analysis_php_version_id,
     ): string {
         if ($this instanceof TNamedObject) {
@@ -226,8 +228,8 @@ trait CallableTrait
         ?StatementsAnalyzer $statements_analyzer = null,
         ?Atomic $input_type = null,
         ?int $input_arg_offset = null,
-        ?string $calling_class = null,
-        ?string $calling_function = null,
+        ?int $calling_class = null,
+        ?int $calling_function = null,
         bool $replace = true,
         bool $add_lower_bound = false,
         int $depth = 0,

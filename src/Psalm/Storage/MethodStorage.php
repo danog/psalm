@@ -30,7 +30,7 @@ final class MethodStorage extends FunctionLikeStorage
 
     public ?bool $inherited_return_type = false;
 
-    public ?string $defining_fqcln = null;
+    public ?int $defining_fqcln = null;
 
     public bool $has_docblock_param_types = false;
 

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
+use Psalm\Internal\Interner;
+
 use Override;
 
 use function is_nan;
@@ -27,7 +29,7 @@ final class TLiteralFloat extends TFloat
         if (is_nan($this->value)) {
             return 'float(NAN)';
         }
-        return 'float(' . $this->value . ')';
+        return 'float(' . Interner::lookup($this->value) . ')';
     }
 
     #[Override]
@@ -40,7 +42,7 @@ final class TLiteralFloat extends TFloat
             return 'float(NAN)';
         }
 
-        return 'float(' . $this->value . ')';
+        return 'float(' . Interner::lookup($this->value) . ')';
     }
 
     /**
@@ -51,7 +53,7 @@ final class TLiteralFloat extends TFloat
     public function toNamespacedString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         bool $use_phpdoc_format,
     ): string {
         return 'float';

@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements;
 
+use Psalm\Internal\Interner;
+
+use Psalm\Internal\Sym;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\CodeLocation\DocblockTypeLocation;
@@ -104,7 +108,7 @@ final class ReturnAnalyzer
                 $comment_type = TypeExpander::expandUnion(
                     $codebase,
                     $var_comment->type,
-                    $context->self,
+                    Interner::internOrNull($context->self),
                     $context->self,
                     $statements_analyzer->getParentFQCLN(),
                 );
@@ -254,7 +258,7 @@ final class ReturnAnalyzer
                     $codebase,
                     $stmt_type,
                     $source->getFQCLN(),
-                    $source->getFQCLN(),
+                    Interner::lookupOrNull($source->getFQCLN()),
                     $source->getParentFQCLN(),
                 );
 
@@ -302,13 +306,13 @@ final class ReturnAnalyzer
                     if ($storage instanceof MethodStorage) {
                         [$fq_class_name, $method_name] = explode('::', $cased_method_id);
 
-                        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+                        $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
                         $found_generic_params = ClassTemplateParamCollector::collect(
                             $codebase,
                             $class_storage,
                             $class_storage,
-                            strtolower($method_name),
+                            Interner::intern($method_name),
                             null,
                             true,
                         );
@@ -498,7 +502,7 @@ final class ReturnAnalyzer
                                 ) {
                                     if (ClassLikeAnalyzer::checkFullyQualifiedClassLikeName(
                                         $statements_analyzer,
-                                        $stmt->expr->value,
+                                        Interner::intern($stmt->expr->value),
                                         new CodeLocation($source, $stmt->expr),
                                         $context,
                                         $statements_analyzer->getSuppressedIssues(),
@@ -518,7 +522,7 @@ final class ReturnAnalyzer
                                                 if ($item && $item->value instanceof PhpParser\Node\Scalar\String_) {
                                                     if (ClassLikeAnalyzer::checkFullyQualifiedClassLikeName(
                                                         $statements_analyzer,
-                                                        $item->value->value,
+                                                        Interner::intern($item->value->value),
                                                         new CodeLocation($source, $item->value),
                                                         $context,
                                                         $statements_analyzer->getSuppressedIssues(),

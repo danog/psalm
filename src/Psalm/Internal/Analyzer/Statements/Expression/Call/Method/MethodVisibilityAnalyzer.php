@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\Call\Method;
 
+use Psalm\Internal\Interner;
+
+use Psalm\Internal\Sym;
+
 use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
@@ -72,10 +76,10 @@ final class MethodVisibilityAnalyzer
         $declaring_method_id = $codebase_methods->getDeclaringMethodId($method_id, $with_pseudo);
 
         if (!$declaring_method_id) {
-            if ($method_name === '__construct'
-                || ($method_id->fq_class_name === 'Closure'
-                    && ($method_id->method_name === 'fromcallable'
-                        || $method_id->method_name === '__invoke'))
+            if ($method_name === Sym::C___CONSTRUCT
+                || ($method_id->fq_class_name === Sym::C_CLOSURE
+                    && ($method_id->method_name === Sym::C_FROMCALLABLE
+                        || $method_id->method_name === Sym::C___INVOKE))
             ) {
                 return null;
             }
@@ -98,7 +102,7 @@ final class MethodVisibilityAnalyzer
             $appearing_method_name = $appearing_method_id->method_name;
 
             // if the calling class is the same, we know the method exists, so it must be visible
-            if ($appearing_method_class === $context->self) {
+            if (Interner::lookup($appearing_method_class) === $context->self) {
                 return null;
             }
 
@@ -108,7 +112,7 @@ final class MethodVisibilityAnalyzer
         $declaring_method_class = $declaring_method_id->fq_class_name;
 
         if ($source->getSource() instanceof TraitAnalyzer
-            && strtolower($declaring_method_class) === strtolower((string) $source->getFQCLN())
+            && $declaring_method_class === strtolower((string) $source->getFQCLN())
         ) {
             return null;
         }
@@ -117,9 +121,9 @@ final class MethodVisibilityAnalyzer
         $visibility = $storage->visibility;
 
         if ($appearing_method_name
-            && isset($appearing_class_storage->trait_visibility_map[$appearing_method_name])
+            && isset($appearing_class_storage->trait_visibility_map[Interner::lookup($appearing_method_name)])
         ) {
-            $visibility = $appearing_class_storage->trait_visibility_map[$appearing_method_name];
+            $visibility = $appearing_class_storage->trait_visibility_map[Interner::lookup($appearing_method_name)];
         }
 
         // Get oldest ancestor declaring $method_id
@@ -179,14 +183,14 @@ final class MethodVisibilityAnalyzer
                 }
 
                 if ($oldest_ancestor_declaring_method_class !== null
-                    && $codebase_classlikes->classExtends($oldest_ancestor_declaring_method_class, $context->self)
+                    && $codebase_classlikes->classExtends($oldest_ancestor_declaring_method_class, Interner::intern($context->self))
                 ) {
                     return null;
                 }
 
                 if ($oldest_ancestor_declaring_method_class !== null
-                    && !$codebase_classlikes->classExtends($context->self, $oldest_ancestor_declaring_method_class)
-                    && !$codebase_classlikes->classExtends($declaring_method_class, $context->self)
+                    && !$codebase_classlikes->classExtends(Interner::intern($context->self), $oldest_ancestor_declaring_method_class)
+                    && !$codebase_classlikes->classExtends($declaring_method_class, Interner::intern($context->self))
                 ) {
                     if (IssueBuffer::accepts(
                         new InaccessibleMethod(

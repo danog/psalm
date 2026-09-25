@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider;
 
+use Psalm\Internal\Interner;
+
 use Psalm\Config;
 use Psalm\Internal\Cache;
 use Psalm\Storage\ClassLikeStorage;
@@ -61,21 +63,21 @@ final class ClassLikeStorageCacheProvider
 
     public function writeToCache(ClassLikeStorage $storage, string $file_path, string $file_contents): void
     {
-        $fq_classlike_name_lc = strtolower($storage->name);
+        $fq_classlike_name_lc = $storage->name;
 
-        $this->cache->saveItem($file_path."\0".$fq_classlike_name_lc, $storage, hash('xxh128', $file_contents));
+        $this->cache->saveItem($file_path."\0".Interner::lookup($fq_classlike_name_lc), $storage, hash('xxh128', $file_contents));
     }
 
     /**
-     * @param lowercase-string $fq_classlike_name_lc
+     * @param int $fq_classlike_name_lc
      */
     public function getLatestFromCache(
-        string $fq_classlike_name_lc,
+        int $fq_classlike_name_lc,
         ?string $file_path,
         string $file_contents,
     ): ClassLikeStorage {
         return $this->cache->getItem(
-            $file_path."\0".$fq_classlike_name_lc,
+            $file_path."\0".Interner::lookup($fq_classlike_name_lc),
             hash('xxh128', $file_contents),
         );
     }

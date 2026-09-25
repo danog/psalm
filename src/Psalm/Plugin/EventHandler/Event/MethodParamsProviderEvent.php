@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Plugin\EventHandler\Event;
 
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
@@ -21,7 +23,7 @@ final class MethodParamsProviderEvent
      * @psalm-mutation-free
      */
     public function __construct(
-        private readonly string $fq_classlike_name,
+        private readonly int $fq_classlike_name,
         private readonly string $method_name_lowercase,
         private readonly ?array $call_args = null,
         private readonly ?StatementsSource $statements_source = null,
@@ -32,7 +34,7 @@ final class MethodParamsProviderEvent
 
     public function getFqClasslikeName(): string
     {
-        return $this->fq_classlike_name;
+        return Interner::lookup($this->fq_classlike_name);
     }
 
     public function getMethodNameLowercase(): string

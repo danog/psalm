@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
+use Psalm\Internal\Sym;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Codebase;
@@ -185,7 +187,7 @@ final class ArrayAnalyzer
                     && !$atomic_key_type instanceof TTemplateParam
                     && !(
                         $atomic_key_type instanceof TObjectWithProperties
-                        && isset($atomic_key_type->methods['__tostring'])
+                        && isset($atomic_key_type->methods[Sym::C___TOSTRING])
                     )
                 ) {
                     IssueBuffer::maybeAdd(

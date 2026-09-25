@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\Fetch;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Codebase;
@@ -214,7 +218,7 @@ final class InstancePropertyFetchAnalyzer
                 foreach ($stmt_var_type->getAtomicTypes() as $type) {
                     if ($type instanceof TNamedObject) {
                         $codebase->analyzer->addMixedMemberName(
-                            strtolower($type->value) . '::$',
+                            $type->value . '::$',
                             $context->calling_method_id ?: $statements_analyzer->getFileName(),
                         );
                     }
@@ -257,7 +261,7 @@ final class InstancePropertyFetchAnalyzer
                 $stmt_var_id,
                 $stmt_var_type,
                 $lhs_type_part,
-                $prop_name,
+                Interner::intern($prop_name),
                 $has_valid_fetch_type,
                 $invalid_fetch_types,
                 $is_static_access,
@@ -369,13 +373,13 @@ final class InstancePropertyFetchAnalyzer
                         continue;
                     }
 
-                    $property_id = $lhs_type_part->value . '::$' . $stmt->name->name;
+                    $property_id = Interner::lookup($lhs_type_part->value) . '::$' . $stmt->name->name;
                 }
             }
 
             if ($property_id
                 && $source instanceof FunctionLikeAnalyzer
-                && $source->getMethodName() === '__construct'
+                && $source->getMethodName() === Sym::C___CONSTRUCT
                 && !$context->inside_unset
             ) {
                 if ($context->inside_isset
@@ -417,7 +421,7 @@ final class InstancePropertyFetchAnalyzer
                         continue;
                     }
 
-                    $property_id = $lhs_type_part->value . '::$' . $stmt->name->name;
+                    $property_id = Interner::lookup($lhs_type_part->value) . '::$' . $stmt->name->name;
 
 
                     $class_storage = $codebase->classlike_storage_provider->get($lhs_type_part->value);
@@ -442,8 +446,8 @@ final class InstancePropertyFetchAnalyzer
 
                     if ($declaring_property_class) {
                         AtomicPropertyFetchAnalyzer::checkPropertyDeprecation(
-                            $stmt->name->name,
-                            $declaring_property_class,
+                            Interner::intern($stmt->name->name),
+                            Interner::intern($declaring_property_class),
                             $stmt,
                             $statements_analyzer,
                         );

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider\ParamsProvider;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use PhpParser\Node\Expr\ConstFetch;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\ArgumentsAnalyzer;
@@ -150,7 +152,7 @@ final class ArrayFilterParamsProvider implements FunctionParamsProviderInterface
             if (!$mode_type && $call_args[2]->value instanceof ConstFetch) {
                 $mode_type = ConstFetchAnalyzer::getConstType(
                     $statements_source,
-                    $call_args[2]->value->name->toString(),
+                    Interner::intern($call_args[2]->value->name->toString()),
                     true,
                     $event->getContext(),
                 );

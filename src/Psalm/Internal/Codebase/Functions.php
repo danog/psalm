@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Codebase;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use Exception;
 use PhpParser\Node\Arg;
 use PhpParser\Node\Expr\Closure as ClosureNode;
@@ -44,7 +48,7 @@ use function substr;
 final class Functions
 {
     /**
-     * @var array<lowercase-string, FunctionStorage>
+     * @var array<int, FunctionStorage>
      */
     private static array $stubbed_functions;
 
@@ -82,8 +86,8 @@ final class Functions
             $function_id = substr($function_id, 1);
         }
 
-        if (isset(self::$stubbed_functions[$function_id])) {
-            return self::$stubbed_functions[$function_id];
+        if (isset(self::$stubbed_functions[Interner::intern($function_id)])) {
+            return self::$stubbed_functions[Interner::intern($function_id)];
         }
 
         $file_storage = null;
@@ -99,14 +103,14 @@ final class Functions
             if (isset($function_analyzers[$function_id])) {
                 $function_id = $function_analyzers[$function_id]->getFunctionId();
 
-                if (isset($file_storage->functions[$function_id])) {
-                    return $file_storage->functions[$function_id];
+                if (isset($file_storage->functions[Interner::intern($function_id)])) {
+                    return $file_storage->functions[Interner::intern($function_id)];
                 }
             }
 
             // closures can be returned here
-            if (isset($file_storage->functions[$function_id])) {
-                return $file_storage->functions[$function_id];
+            if (isset($file_storage->functions[Interner::intern($function_id)])) {
+                return $file_storage->functions[Interner::intern($function_id)];
             }
         }
 
@@ -128,8 +132,8 @@ final class Functions
             if ($checked_file_path !== $root_file_path) {
                 $file_storage = $this->file_storage_provider->get($checked_file_path);
 
-                if (isset($file_storage->functions[$function_id])) {
-                    return $file_storage->functions[$function_id];
+                if (isset($file_storage->functions[Interner::intern($function_id)])) {
+                    return $file_storage->functions[Interner::intern($function_id)];
                 }
             }
 
@@ -142,13 +146,13 @@ final class Functions
 
         $declaring_file_storage = $this->file_storage_provider->get($declaring_file_path);
 
-        if (!isset($declaring_file_storage->functions[$function_id])) {
+        if (!isset($declaring_file_storage->functions[Interner::intern($function_id)])) {
             throw new UnexpectedValueException(
                 'Not expecting ' . $function_id . ' to not have storage in ' . $declaring_file_path,
             );
         }
 
-        return $declaring_file_storage->functions[$function_id];
+        return $declaring_file_storage->functions[Interner::intern($function_id)];
     }
 
     /**
@@ -160,7 +164,7 @@ final class Functions
     }
 
     /**
-     * @param array<lowercase-string, FunctionStorage> $stubs
+     * @param array<int, FunctionStorage> $stubs
      * @psalm-external-mutation-free
      */
     public function addGlobalFunctions(array $stubs): void
@@ -173,11 +177,11 @@ final class Functions
      */
     public function hasStubbedFunction(string $function_id): bool
     {
-        return isset(self::$stubbed_functions[strtolower($function_id)]);
+        return isset(self::$stubbed_functions[Interner::intern(strtolower($function_id))]);
     }
 
     /**
-     * @return array<lowercase-string, FunctionStorage>
+     * @return array<int, FunctionStorage>
      * @psalm-external-mutation-free
      */
     public function getAllStubbedFunctions(): array
@@ -210,7 +214,7 @@ final class Functions
             return true;
         }
 
-        if (isset(self::$stubbed_functions[$function_id])) {
+        if (isset(self::$stubbed_functions[Interner::intern($function_id)])) {
             return true;
         }
 
@@ -233,13 +237,13 @@ final class Functions
     }
 
     /**
-     * @param  non-empty-string         $function_name
+     * @param  int         $function_name
      * @return non-empty-string
      */
-    public function getFullyQualifiedFunctionNameFromString(string $function_name, StatementsSource $source): string
+    public function getFullyQualifiedFunctionNameFromString(int $function_name, StatementsSource $source): string
     {
-        if ($function_name[0] === '\\') {
-            $function_name = substr($function_name, 1);
+        if (Interner::lookup($function_name)[0] === '\\') {
+            $function_name = substr(Interner::lookup($function_name), 1);
 
             if ($function_name === '') {
                 throw new UnexpectedValueException('Malformed function name');
@@ -248,24 +252,24 @@ final class Functions
             return $function_name;
         }
 
-        $function_name_lcase = strtolower($function_name);
+        $function_name_lcase = $function_name;
 
         $aliases = $source->getAliases();
 
         $imported_function_namespaces = $aliases->functions;
         $imported_namespaces = $aliases->uses;
 
-        if (str_contains($function_name, '\\')) {
-            $function_name_parts = explode('\\', $function_name);
+        if (str_contains(Interner::lookup($function_name), '\\')) {
+            $function_name_parts = explode('\\', Interner::lookup($function_name));
             $first_namespace = array_shift($function_name_parts);
             $first_namespace_lcase = strtolower($first_namespace);
 
-            if (isset($imported_namespaces[$first_namespace_lcase])) {
-                return $imported_namespaces[$first_namespace_lcase] . '\\' . implode('\\', $function_name_parts);
+            if (isset($imported_namespaces[Interner::intern($first_namespace_lcase)])) {
+                return $imported_namespaces[Interner::intern($first_namespace_lcase)] . '\\' . implode('\\', $function_name_parts);
             }
 
-            if (isset($imported_function_namespaces[$first_namespace_lcase])) {
-                return $imported_function_namespaces[$first_namespace_lcase] . '\\' .
+            if (isset($imported_function_namespaces[Interner::intern($first_namespace_lcase)])) {
+                return $imported_function_namespaces[Interner::intern($first_namespace_lcase)] . '\\' .
                     implode('\\', $function_name_parts);
             }
         } elseif (isset($imported_function_namespaces[$function_name_lcase])) {
@@ -274,11 +278,11 @@ final class Functions
 
         $namespace = $source->getNamespace();
 
-        return ($namespace ? $namespace . '\\' : '') . $function_name;
+        return ($namespace ? $namespace . '\\' : '') . Interner::lookup($function_name);
     }
 
     /**
-     * @return array<lowercase-string,FunctionStorage>
+     * @return array<int,FunctionStorage>
      */
     public function getMatchingFunctionNames(
         string $stub,
@@ -328,7 +332,7 @@ final class Functions
 
         if ($current_namespace_aliases) {
             foreach ($current_namespace_aliases->functions as $alias_name => $function_name) {
-                if (str_starts_with($alias_name, $stub)) {
+                if (str_starts_with(Interner::lookup($alias_name), $stub)) {
                     try {
                         $match_function_patterns[] = $function_name;
                     } catch (Exception) {
@@ -360,7 +364,7 @@ final class Functions
                     continue;
                 }
                 if (is_bool($function)) {
-                    /** @var callable-string $function_name */
+                    /** @var callable-int $function_name */
                     if ($this->reflection->registerFunction($function_name) === false) {
                         continue;
                     }
@@ -368,7 +372,7 @@ final class Functions
                 }
 
                 if ($function->cased_name) {
-                    $cased_name_parts = explode('\\', $function->cased_name);
+                    $cased_name_parts = explode('\\', Interner::lookup($function->cased_name));
                     $pattern_parts = explode('\\', $pattern);
 
                     if (end($cased_name_parts)[0] !== end($pattern_parts)[0]) {
@@ -376,7 +380,7 @@ final class Functions
                     }
                 }
 
-                /** @var lowercase-string $function_name */
+                /** @var int $function_name */
                 $matching_functions[$function_name] = $function;
             }
         }
@@ -401,7 +405,7 @@ final class Functions
             ? $file_storage
             : $codebase->file_storage_provider->get($declaring_file_path);
 
-        return isset($file_storage->functions[$function_id]) && $file_storage->functions[$function_id]->variadic;
+        return isset($file_storage->functions[Interner::intern($function_id)]) && $file_storage->functions[Interner::intern($function_id)]->variadic;
     }
 
     /**
@@ -467,7 +471,7 @@ final class Functions
                     if ($atomic_count_type instanceof TNamedObject) {
                         $count_method_id = new MethodIdentifier(
                             $atomic_count_type->value,
-                            'count',
+                            Sym::C_COUNT,
                         );
 
                         try {

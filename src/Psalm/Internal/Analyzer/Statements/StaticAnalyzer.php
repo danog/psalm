@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements;
 
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;

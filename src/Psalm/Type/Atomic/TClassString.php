@@ -97,7 +97,7 @@ class TClassString extends TString
     public function toPhpString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         int $analysis_php_version_id,
     ): ?string {
         return 'string';
@@ -110,7 +110,7 @@ class TClassString extends TString
     public function toNamespacedString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         bool $use_phpdoc_format,
     ): string {
         if ($this->as === 'object') {
@@ -161,8 +161,8 @@ class TClassString extends TString
         ?StatementsAnalyzer $statements_analyzer = null,
         ?Atomic $input_type = null,
         ?int $input_arg_offset = null,
-        ?string $calling_class = null,
-        ?string $calling_function = null,
+        ?int $calling_class = null,
+        ?int $calling_function = null,
         bool $replace = true,
         bool $add_lower_bound = false,
         int $depth = 0,

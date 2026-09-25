@@ -2,6 +2,8 @@
 
 namespace Psalm\Example\Plugin;
 
+use Psalm\Internal\Interner;
+
 use Psalm\DocComment;
 use Psalm\FileManipulation;
 use Psalm\Internal\Scanner\ParsedDocblock;
@@ -20,12 +22,12 @@ final class InternalChecker implements AfterClassLikeAnalysisInterface
     {
         $storage = $event->getClasslikeStorage();
         if (!$storage->internal
-            && str_starts_with($storage->name, 'Psalm\\Internal')
+            && str_starts_with(Interner::lookup($storage->name), 'Psalm\\Internal')
             && $storage->location
         ) {
             IssueBuffer::maybeAdd(
                 new InternalClass(
-                    "Class $storage->name must be marked @internal",
+                    "Class " . $storage->name . " must be marked @internal",
                     $storage->location,
                     $storage->name,
                 ),

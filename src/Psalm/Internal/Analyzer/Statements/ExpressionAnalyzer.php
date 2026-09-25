@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements;
 
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Config;
@@ -123,7 +125,7 @@ final class ExpressionAnalyzer
 
                 AssertionFinder::scrapeAssertions(
                     $stmt,
-                    $context->self,
+                    Interner::internOrNull($context->self),
                     $statements_analyzer,
                     $codebase,
                     $negate,
@@ -485,9 +487,9 @@ final class ExpressionAnalyzer
     /**
      * @psalm-external-mutation-free
      */
-    public static function isMock(string $fq_class_name): bool
+    public static function isMock(int $fq_class_name): bool
     {
-        return in_array(strtolower($fq_class_name), Config::getInstance()->getMockClasses(), true);
+        return in_array($fq_class_name, Config::getInstance()->getMockClasses(), true);
     }
 
     /**

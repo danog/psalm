@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\Call;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use AssertionError;
 use PhpParser;
 use Psalm\CodeLocation;
@@ -100,7 +104,7 @@ final class MethodCallAnalyzer extends CallAnalyzer
             }
 
             if ($stmt->name instanceof PhpParser\Node\Identifier
-                && strtolower($stmt->name->name) === '__construct'
+                && $stmt->name->name === '__construct'
             ) {
                 IssueBuffer::maybeAdd(
                     new DirectConstructorCall(
@@ -145,7 +149,7 @@ final class MethodCallAnalyzer extends CallAnalyzer
             && $stmt->name instanceof PhpParser\Node\Identifier
             && $class_type->isNullable()
             && !$class_type->ignore_nullable_issues
-            && !($stmt->name->name === 'offsetGet' && $context->inside_isset)
+            && !($stmt->name->name === Sym::C_OFFSET_GET && $context->inside_isset)
             && !self::hasNullsafe($stmt->var)
         ) {
             IssueBuffer::maybeAdd(
@@ -225,7 +229,7 @@ final class MethodCallAnalyzer extends CallAnalyzer
             && $lhs_var_id && $stmt->name instanceof PhpParser\Node\Identifier
         ) {
             if ($codebase->config->memoize_method_calls || $result->can_memoize) {
-                $method_var_id = $lhs_var_id . '->' . strtolower($stmt->name->name) . '()';
+                $method_var_id = $lhs_var_id . '->' . $stmt->name->name . '()';
 
                 if (isset($context->vars_in_scope[$method_var_id])) {
                     $result->return_type = $context->vars_in_scope[$method_var_id];

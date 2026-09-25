@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Fork;
 
+use Psalm\Internal\Interner;
+
 use Amp\Cancellation;
 use Amp\Parallel\Worker\Task;
 use Amp\Sync\Channel;
@@ -36,6 +38,7 @@ final class ShutdownAnalyzerTask implements Task
 
         // @codingStandardsIgnoreStart
         return [
+            'interner' => Interner::delta(),
             'issues'                                     => IssueBuffer::getIssuesData(),
             'fixable_issue_counts'                       => IssueBuffer::getFixableIssues(),
             'method_dependencies'                        => $file_reference_provider->getAllMethodDependencies(),

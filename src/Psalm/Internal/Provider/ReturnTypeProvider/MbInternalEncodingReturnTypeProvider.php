@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider\ReturnTypeProvider;
 
+use Psalm\Internal\Sym;
+
 use Override;
 use Psalm\Plugin\EventHandler\Event\FunctionReturnTypeProviderEvent;
 use Psalm\Plugin\EventHandler\FunctionReturnTypeProviderInterface;
@@ -63,14 +65,14 @@ final class MbInternalEncodingReturnTypeProvider implements FunctionReturnTypePr
 
         foreach ($first_arg_type->getAtomicTypes() as $atomic_type) {
             if ($atomic_type instanceof Type\Atomic\TNamedObject
-                && $codebase->classlikes->classImplements($atomic_type->value, 'Stringable')
+                && $codebase->classlikes->classImplements($atomic_type->value, Sym::C_STRINGABLE)
             ) {
                 $has_stringable = true;
                 continue;
             }
 
             if ($atomic_type instanceof Type\Atomic\TObjectWithProperties
-                && isset($atomic_type->methods['__tostring'])
+                && isset($atomic_type->methods[Sym::C___TOSTRING])
             ) {
                 $has_tostring = true;
                 continue;

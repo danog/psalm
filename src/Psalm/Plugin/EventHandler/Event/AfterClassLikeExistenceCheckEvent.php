@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Plugin\EventHandler\Event;
 
+use Psalm\Internal\Interner;
+
 use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\FileManipulation;
@@ -21,7 +23,7 @@ final class AfterClassLikeExistenceCheckEvent
      * @psalm-mutation-free
      */
     public function __construct(
-        private readonly string $fq_class_name,
+        private readonly int $fq_class_name,
         private readonly CodeLocation $code_location,
         private readonly StatementsSource $statements_source,
         private readonly Codebase $codebase,
@@ -34,7 +36,7 @@ final class AfterClassLikeExistenceCheckEvent
      */
     public function getFqClassName(): string
     {
-        return $this->fq_class_name;
+        return Interner::lookup($this->fq_class_name);
     }
 
     /**

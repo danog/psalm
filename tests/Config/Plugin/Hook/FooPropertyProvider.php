@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Test\Config\Plugin\Hook;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use Psalm\Plugin\EventHandler\Event\PropertyExistenceProviderEvent;
 use Psalm\Plugin\EventHandler\Event\PropertyTypeProviderEvent;
@@ -39,7 +41,7 @@ final class FooPropertyProvider implements
     public static function doesPropertyExist(PropertyExistenceProviderEvent $event): ?bool
     {
         $property_name = $event->getPropertyName();
-        return $property_name === 'magic_property';
+        return $property_name === Interner::intern('magic_property');
     }
 
     /**

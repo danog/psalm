@@ -41,8 +41,8 @@ final class PropertyMap
     /**
      * @psalm-external-mutation-free
      */
-    public static function inPropertyMap(string $class_name): bool
+    public static function inPropertyMap(int $class_name): bool
     {
-        return isset(self::getPropertyMap()[strtolower($class_name)]);
+        return isset(self::getPropertyMap()[$class_name]);
     }
 }

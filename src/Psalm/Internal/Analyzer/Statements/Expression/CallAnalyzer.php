@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
@@ -80,10 +82,10 @@ abstract class CallAnalyzer
 {
     public static function collectSpecialInformation(
         FunctionLikeAnalyzer $source,
-        string $method_name,
+        int $method_name,
         Context $context,
     ): void {
-        $method_name_lc = strtolower($method_name);
+        $method_name_lc = $method_name;
         $fq_class_name = (string)$source->getFQCLN();
 
         $project_analyzer = $source->getFileAnalyzer()->project_analyzer;
@@ -94,19 +96,19 @@ abstract class CallAnalyzer
             (
                 $context->self === $fq_class_name ||
                 $codebase->classExtends(
-                    $context->self,
-                    $fq_class_name,
+                    Interner::intern($context->self),
+                    Interner::intern($fq_class_name),
                 )
             )
         ) {
             $method_id = new MethodIdentifier(
-                $fq_class_name,
+                Interner::intern($fq_class_name),
                 $method_name_lc,
             );
 
             if ((string) $method_id !== $source->getId()) {
                 if ($context->collect_initializations) {
-                    if (isset($context->initialized_methods[(string) $method_id])) {
+                    if (isset($context->initialized_methods[Interner::intern((string) $method_id)])) {
                         return;
                     }
 
@@ -125,13 +127,13 @@ abstract class CallAnalyzer
             (
                 $context->self === $fq_class_name
                 || $codebase->classlikes->classExtends(
-                    $context->self,
-                    $fq_class_name,
+                    Interner::intern($context->self),
+                    Interner::intern($fq_class_name),
                 )
             ) &&
             $source->getMethodName() !== $method_name
         ) {
-            $method_id = new MethodIdentifier($fq_class_name, $method_name_lc);
+            $method_id = new MethodIdentifier(Interner::intern($fq_class_name), $method_name_lc);
 
             $declaring_method_id = $codebase->methods->getDeclaringMethodId($method_id);
 
@@ -185,7 +187,7 @@ abstract class CallAnalyzer
                 return;
             }
 
-            if (isset($context->initialized_methods[(string) $declaring_method_id])) {
+            if (isset($context->initialized_methods[Interner::intern((string) $declaring_method_id)])) {
                 return;
             }
 
@@ -241,7 +243,7 @@ abstract class CallAnalyzer
                     $declaring_fq_class_name = $declaring_method_id->fq_class_name;
 
                     $old_self = $context->self;
-                    $context->self = $declaring_fq_class_name;
+                    $context->self = Interner::lookup($declaring_fq_class_name);
                     $project_analyzer->getMethodMutations(
                         $declaring_method_id,
                         $context,
@@ -294,9 +296,9 @@ abstract class CallAnalyzer
         $fq_class_name = $method_id->fq_class_name;
         $method_name = $method_id->method_name;
 
-        $fq_class_name = strtolower($codebase->classlikes->getUnAliasedName($fq_class_name));
+        $fq_class_name = strtolower($codebase->classlikes->getUnAliasedName(Interner::lookup($fq_class_name)));
 
-        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
         $method_storage = null;
 
@@ -380,7 +382,7 @@ abstract class CallAnalyzer
     public static function getTemplateTypesForCall(
         Codebase $codebase,
         ?ClassLikeStorage $declaring_class_storage,
-        ?string $appearing_class_name,
+        ?int $appearing_class_name,
         ?ClassLikeStorage $calling_class_storage,
         array $existing_template_types = [],
         array $class_template_params = [],
@@ -435,7 +437,7 @@ abstract class CallAnalyzer
                     $codebase,
                     $type,
                     $appearing_class_name,
-                    $calling_class_storage->name ?? null,
+                    Interner::lookupOrNull($calling_class_storage->name ?? null),
                     null,
                     true,
                     false,
@@ -453,13 +455,13 @@ abstract class CallAnalyzer
      * @psalm-mutation-free
      */
     public static function getGenericParamForOffset(
-        string $fq_class_name,
+        int $fq_class_name,
         string $template_name,
         array $template_extended_params,
         array $found_generic_params,
     ): Union {
-        if (isset($found_generic_params[$template_name][$fq_class_name])) {
-            return $found_generic_params[$template_name][$fq_class_name];
+        if (isset($found_generic_params[$template_name][Interner::lookup($fq_class_name)])) {
+            return $found_generic_params[$template_name][Interner::lookup($fq_class_name)];
         }
 
         foreach ($template_extended_params as $extended_class_name => $type_map) {
@@ -470,7 +472,7 @@ abstract class CallAnalyzer
                         && $extended_atomic_type->defining_class === $fq_class_name
                     ) {
                         return self::getGenericParamForOffset(
-                            $extended_class_name,
+                            Interner::intern($extended_class_name),
                             $extended_template_name,
                             $template_extended_params,
                             $found_generic_params,
@@ -495,7 +497,7 @@ abstract class CallAnalyzer
             if ($callable_arg->left instanceof PhpParser\Node\Expr\ClassConstFetch
                 && $callable_arg->left->class instanceof Name
                 && $callable_arg->left->name instanceof Identifier
-                && strtolower($callable_arg->left->name->name) === 'class'
+                && $callable_arg->left->name->name === 'class'
                 && !in_array(strtolower($callable_arg->left->class->getFirst()), ['self', 'static', 'parent'])
                 && $callable_arg->right instanceof PhpParser\Node\Scalar\String_
                 && preg_match('/^::[A-Za-z0-9]+$/', $callable_arg->right->value)
@@ -545,7 +547,7 @@ abstract class CallAnalyzer
 
         if ($class_arg instanceof PhpParser\Node\Expr\ClassConstFetch
             && $class_arg->name instanceof Identifier
-            && strtolower($class_arg->name->name) === 'class'
+            && $class_arg->name->name === 'class'
             && $class_arg->class instanceof Name
         ) {
             $fq_class_name = ClassLikeAnalyzer::getFQCLNFromNameObject(
@@ -566,7 +568,7 @@ abstract class CallAnalyzer
 
         foreach ($class_arg_type->getAtomicTypes() as $type_part) {
             if ($type_part instanceof TNamedObject) {
-                $method_id = $type_part->value . '::' . $method_name_arg->value;
+                $method_id = Interner::lookup($type_part->value) . '::' . $method_name_arg->value;
 
                 foreach ($type_part->extra_types as $extra_type) {
                     if ($extra_type instanceof TTemplateParam
@@ -576,7 +578,7 @@ abstract class CallAnalyzer
                         throw new UnexpectedValueException('Shouldn’t get a generic param here');
                     }
 
-                    $method_id .= '&' . $extra_type->value . '::' . $method_name_arg->value;
+                    $method_id .= '&' . Interner::lookup($extra_type->value) . '::' . $method_name_arg->value;
                 }
 
                 $method_ids[] = '$' . $method_id;
@@ -718,7 +720,7 @@ abstract class CallAnalyzer
 
                 if (count($exploded) === 2) {
                     $failedMessage = AssertionFinder::isPropertyImmutableOnArgument(
-                        $property,
+                        Interner::intern($property),
                         $statements_analyzer->getNodeTypeProvider(),
                         $statements_analyzer->getCodebase()->classlike_storage_provider,
                         $arg_value,
@@ -830,7 +832,7 @@ abstract class CallAnalyzer
                         spl_object_id($arg_value),
                         spl_object_id($arg_value),
                         $arg_value,
-                        $context->self,
+                        Interner::internOrNull($context->self),
                         $statements_analyzer,
                         $statements_analyzer->getCodebase(),
                     );
@@ -840,7 +842,7 @@ abstract class CallAnalyzer
                             spl_object_id($arg_value),
                             spl_object_id($arg_value),
                             $arg_value,
-                            $context->self,
+                            Interner::internOrNull($context->self),
                             $statements_analyzer,
                             $codebase,
                         ),
@@ -857,7 +859,7 @@ abstract class CallAnalyzer
                         mt_rand(0, 1_000_000),
                         mt_rand(0, 1_000_000),
                         $conditional,
-                        $context->self,
+                        Interner::internOrNull($context->self),
                         $statements_analyzer,
                         $codebase,
                     );

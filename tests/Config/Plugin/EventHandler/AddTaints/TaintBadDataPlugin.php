@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Example\Plugin;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use PhpParser\Node\Expr\Variable;
 use Psalm\Plugin\EventHandler\AddTaintsInterface;
@@ -33,15 +35,15 @@ final class TaintBadDataPlugin implements AddTaintsInterface
         }
 
         switch ($expr->name) {
-            case 'bad_data':
+            case Interner::intern('bad_data'):
                 return TaintKind::ALL_INPUT;
-            case 'bad_sql':
+            case Interner::intern('bad_sql'):
                 return TaintKind::INPUT_SQL;
-            case 'bad_html':
+            case Interner::intern('bad_html'):
                 return TaintKind::INPUT_HTML;
-            case 'bad_eval':
+            case Interner::intern('bad_eval'):
                 return TaintKind::INPUT_EVAL;
-            case 'bad_file':
+            case Interner::intern('bad_file'):
                 return TaintKind::INPUT_FILE;
         }
 

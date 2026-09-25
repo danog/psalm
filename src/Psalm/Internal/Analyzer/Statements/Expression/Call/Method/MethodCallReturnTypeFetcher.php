@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\Call\Method;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use Exception;
 use PDOException;
 use PhpParser;
@@ -96,13 +100,13 @@ final class MethodCallReturnTypeFetcher
             }
         }
 
-        if ($premixin_method_id->method_name === 'getcode'
-            && $premixin_method_id->fq_class_name !== Exception::class
-            && $premixin_method_id->fq_class_name !== RuntimeException::class
-            && $premixin_method_id->fq_class_name !== PDOException::class
+        if ($premixin_method_id->method_name === Sym::C_GETCODE
+            && $premixin_method_id->fq_class_name !== Interner::intern(Exception::class)
+            && $premixin_method_id->fq_class_name !== Interner::intern(RuntimeException::class)
+            && $premixin_method_id->fq_class_name !== Interner::intern(PDOException::class)
             && (
-                $codebase->classImplements($premixin_method_id->fq_class_name, Throwable::class)
-                || $codebase->interfaceExtends($premixin_method_id->fq_class_name, Throwable::class)
+                $codebase->classImplements($premixin_method_id->fq_class_name, Sym::C_THROWABLE_2)
+                || $codebase->interfaceExtends($premixin_method_id->fq_class_name, Sym::C_THROWABLE_2)
             )
         ) {
             return Type::getInt();
@@ -178,7 +182,7 @@ final class MethodCallReturnTypeFetcher
             $return_type_candidate = $codebase->methods->getMethodReturnType(
                 $codebase,
                 $method_id,
-                $self_fq_class_name,
+                Interner::lookup($self_fq_class_name),
                 $statements_analyzer,
                 $args,
                 $template_result,
@@ -239,7 +243,7 @@ final class MethodCallReturnTypeFetcher
                         $statements_analyzer,
                         new CodeLocation($statements_analyzer, $stmt),
                         $statements_analyzer->getSuppressedIssues(),
-                        $context->phantom_classes,
+                        Interner::lookupKeys($context->phantom_classes),
                         true,
                         false,
                         false,
@@ -254,7 +258,7 @@ final class MethodCallReturnTypeFetcher
         }
 
         if (!$return_type_candidate) {
-            $return_type_candidate = $method_name === '__tostring' ? Type::getString() : Type::getMixed();
+            $return_type_candidate = $method_name === Sym::C___TOSTRING ? Type::getString() : Type::getMixed();
         }
 
         $return_type_candidate = TypeVariableTracker::resolveTypeVariables($return_type_candidate, $codebase);
@@ -416,7 +420,7 @@ final class MethodCallReturnTypeFetcher
                     $taint_flow_graph->addPath(
                         $method_call_node,
                         $var_node,
-                        'method-call-' . $method_id->method_name,
+                        'method-call-' . Interner::lookup($method_id->method_name),
                         $added_taints,
                         $removed_taints,
                     );
@@ -554,12 +558,12 @@ final class MethodCallReturnTypeFetcher
                     && !isset(
                         $template_result->lower_bounds
                             [$template_type->param_name]
-                            [$template_type->defining_class],
+                            [Interner::lookup($template_type->defining_class)],
                     )
                 ) {
                     if ($template_type->param_name === 'TFunctionArgCount') {
                         $template_result->lower_bounds[$template_type->param_name] = [
-                            'fn-' . $method_id->method_name => [
+                            'fn-' . Interner::lookup($method_id->method_name) => [
                                 new TemplateBound(
                                     Type::getInt(false, $arg_count),
                                 ),
@@ -567,7 +571,7 @@ final class MethodCallReturnTypeFetcher
                         ];
                     } elseif ($template_type->param_name === 'TPhpMajorVersion') {
                         $template_result->lower_bounds[$template_type->param_name] = [
-                            'fn-' . $method_id->method_name => [
+                            'fn-' . Interner::lookup($method_id->method_name) => [
                                 new TemplateBound(
                                     Type::getInt(false, $codebase->getMajorAnalysisPhpVersion()),
                                 ),
@@ -575,7 +579,7 @@ final class MethodCallReturnTypeFetcher
                         ];
                     } elseif ($template_type->param_name === 'TPhpVersionId') {
                         $template_result->lower_bounds[$template_type->param_name] = [
-                            'fn-' . $method_id->method_name => [
+                            'fn-' . Interner::lookup($method_id->method_name) => [
                                 new TemplateBound(
                                     Type::getInt(
                                         false,

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
@@ -51,7 +53,7 @@ final class MagicConstAnalyzer
                         $codebase,
                         $statements_analyzer,
                         $stmt,
-                        $context->self,
+                        Interner::intern($context->self),
                         $context,
                     );
                 }
@@ -77,7 +79,7 @@ final class MagicConstAnalyzer
             $source = $statements_analyzer->getSource();
             if ($source instanceof MethodAnalyzer) {
                 if ($stmt instanceof PhpParser\Node\Scalar\MagicConst\Function_) {
-                    $statements_analyzer->node_data->setType($stmt, Type::getString($source->getMethodName()));
+                    $statements_analyzer->node_data->setType($stmt, Type::getString(Interner::lookupOrNull($source->getMethodName())));
                 } else {
                     $statements_analyzer->node_data->setType(
                         $stmt,

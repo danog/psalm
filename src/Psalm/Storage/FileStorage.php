@@ -23,22 +23,22 @@ final class FileStorage
     public array $classlikes_in_file = [];
 
     /**
-     * @var array<lowercase-string, string>
+     * @var array<int, string>
      */
     public array $referenced_classlikes = [];
 
     /**
-     * @var array<lowercase-string, string>
+     * @var array<int, string>
      */
     public array $required_classes = [];
 
     /**
-     * @var array<lowercase-string, string>
+     * @var array<int, string>
      */
     public array $required_interfaces = [];
 
     /**
-     * @var array<string, FunctionStorage>
+     * @var array<int, FunctionStorage>
      */
     public array $functions = [];
 
@@ -46,11 +46,11 @@ final class FileStorage
     public array $declaring_function_ids = [];
 
     /**
-     * @var array<string, Union>
+     * @var array<int, Union>
      */
     public array $constants = [];
 
-    /** @var array<string, string> */
+    /** @var array<int, string> */
     public array $declaring_constants = [];
 
     /** @var array<lowercase-string, string> */

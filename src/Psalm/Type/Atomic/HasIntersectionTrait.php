@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
+use Psalm\Internal\Interner;
+
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Type\TemplateResult;
@@ -31,7 +33,7 @@ trait HasIntersectionTrait
     private function getNamespacedIntersectionTypes(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         bool $use_phpdoc_format,
     ): string {
         if (!$this->extra_types) {
@@ -104,10 +106,10 @@ trait HasIntersectionTrait
 
         foreach ($this->extra_types as $extra_type) {
             if ($extra_type instanceof TTemplateParam
-                && isset($template_result->lower_bounds[$extra_type->param_name][$extra_type->defining_class])
+                && isset($template_result->lower_bounds[$extra_type->param_name][Interner::lookup($extra_type->defining_class)])
             ) {
                 $template_type = TemplateStandinTypeReplacer::getMostSpecificTypeFromBounds(
-                    $template_result->lower_bounds[$extra_type->param_name][$extra_type->defining_class],
+                    $template_result->lower_bounds[$extra_type->param_name][Interner::lookup($extra_type->defining_class)],
                     $codebase,
                 );
 
@@ -136,8 +138,8 @@ trait HasIntersectionTrait
         ?StatementsAnalyzer $statements_analyzer = null,
         ?Atomic $input_type = null,
         ?int $input_arg_offset = null,
-        ?string $calling_class = null,
-        ?string $calling_function = null,
+        ?int $calling_class = null,
+        ?int $calling_function = null,
         bool $replace = true,
         bool $add_lower_bound = false,
         int $depth = 0,

@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use Attribute;
 use InvalidArgumentException;
 use LogicException;
@@ -36,7 +40,7 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
     public function __construct(
         PhpParser\Node\Stmt\Interface_ $interface,
         SourceAnalyzer $source,
-        string $fq_interface_name,
+        int $fq_interface_name,
     ) {
         parent::__construct($interface, $source, $fq_interface_name);
     }
@@ -61,7 +65,7 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
 
         $class_storage = $codebase->classlike_storage_provider->get($fq_interface_name);
 
-        $class_context = new Context($fq_interface_name);
+        $class_context = new Context(Interner::lookup($fq_interface_name));
 
         if ($this->class->extends) {
             foreach ($this->class->extends as $extended_interface) {
@@ -73,7 +77,7 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
                 $parent_reference_location = new CodeLocation($this, $extended_interface);
 
                 if (!$codebase->classOrInterfaceExists(
-                    $extended_interface_name,
+                    Interner::intern($extended_interface_name),
                     $parent_reference_location,
                     $class_context,
                 )) {
@@ -82,7 +86,7 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
                 }
 
                 try {
-                    $extended_interface_storage = $codebase->classlike_storage_provider->get($extended_interface_name);
+                    $extended_interface_storage = $codebase->classlike_storage_provider->get(Interner::intern($extended_interface_name));
                 } catch (InvalidArgumentException) {
                     continue;
                 }
@@ -97,7 +101,7 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
                         new UndefinedInterface(
                             $extended_interface_name . ' is not an interface',
                             $code_location,
-                            $extended_interface_name,
+                            Interner::intern($extended_interface_name),
                         ),
                         $this->getSuppressedIssues(),
                     );
@@ -124,14 +128,14 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
             }
         }
 
-        $class_union = new Union([new TNamedObject($fq_interface_name)]);
+        $class_union = new Union([new TNamedObject(Interner::lookup($fq_interface_name))]);
         foreach ($class_storage->direct_interface_parents as $parent_interface) {
-            $parent_storage = $codebase->classlikes->getStorageFor($parent_interface);
+            $parent_storage = $codebase->classlikes->getStorageFor(Interner::intern($parent_interface));
             if ($parent_storage && $parent_storage->inheritors) {
                 if (!UnionTypeComparator::isContainedBy($codebase, $class_union, $parent_storage->inheritors)) {
                     IssueBuffer::maybeAdd(
                         new InheritorViolation(
-                            'Interface ' . $fq_interface_name . '
+                            'Interface ' . Interner::lookup($fq_interface_name) . '
                              is not an allowed inheritor of parent interface ' . $parent_interface,
                             new CodeLocation($this, $this->class),
                         ),
@@ -148,7 +152,7 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
         }
 
         $class_storage = $codebase->classlike_storage_provider->get($fq_interface_name);
-        $interface_context = new Context($this->getFQCLN());
+        $interface_context = new Context(Interner::lookup($this->getFQCLN()));
 
         AttributesAnalyzer::analyze(
             $this,
@@ -166,8 +170,8 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
         $member_stmts = [];
         foreach ($this->class->stmts as $stmt) {
             if ($stmt instanceof PhpParser\Node\Stmt\ClassMethod) {
-                $method_name_lc = strtolower($stmt->name->name);
-                if (!isset($class_storage->methods[$method_name_lc])) {
+                $method_name_lc = $stmt->name->name;
+                if (!isset($class_storage->methods[Interner::intern($method_name_lc)])) {
                     // Storage was overwritten by a different class-like with the same FQCN
                     // (e.g., project declares interface X while vendor has class X).
                     // Skip analysis — DuplicateClass was already emitted during scanning.
@@ -182,8 +186,8 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
 
                 $actual_method_id = $method_analyzer->getMethodId();
 
-                if ($stmt->name->name !== '__construct'
-                    && $stmt->name->name !== '__destruct'
+                if ($stmt->name->name !== Sym::C___CONSTRUCT
+                    && $stmt->name->name !== Sym::C___DESTRUCT
                     && $config->reportIssueInFile('InvalidReturnType', $this->getFilePath())
                 ) {
                     ClassAnalyzer::analyzeClassMethodReturnType(
@@ -217,7 +221,7 @@ final class InterfaceAnalyzer extends ClassLikeAnalyzer
                 $member_stmts[] = $stmt;
 
                 foreach ($stmt->consts as $const) {
-                    $const_id = strtolower($this->fq_class_name) . '::' . $const->name;
+                    $const_id = $this->fq_class_name . '::' . Interner::lookup($const->name);
 
                     foreach ($codebase->class_constants_to_rename as $original_const_id => $new_const_name) {
                         if ($const_id === $original_const_id) {

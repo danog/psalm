@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Fork;
 
+use Psalm\Internal\Interner;
+
 use Amp\Cancellation;
 use Amp\Parallel\Worker\Task;
 use Amp\Sync\Channel;
@@ -20,6 +22,8 @@ final class InitAnalyzerTask implements Task
     #[Override]
     public function run(Channel $channel, Cancellation $cancellation): mixed
     {
+        Interner::mark();
+
         $project_analyzer = ProjectAnalyzer::getInstance();
         $codebase = $project_analyzer->getCodebase();
 

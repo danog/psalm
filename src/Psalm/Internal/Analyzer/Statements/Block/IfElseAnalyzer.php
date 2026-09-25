@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Block;
 
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
@@ -132,7 +134,7 @@ final class IfElseAnalyzer
             $cond_object_id,
             $cond_object_id,
             $stmt->cond,
-            $context->self,
+            Interner::internOrNull($context->self),
             $statements_analyzer,
             $codebase,
         );
@@ -207,7 +209,7 @@ final class IfElseAnalyzer
                     $cond_object_id,
                     $cond_object_id,
                     new VirtualBooleanNot($stmt->cond),
-                    $context->self,
+                    Interner::internOrNull($context->self),
                     $statements_analyzer,
                     $codebase,
                     false,

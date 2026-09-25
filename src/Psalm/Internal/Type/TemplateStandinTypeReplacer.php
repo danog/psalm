@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Type;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use InvalidArgumentException;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
@@ -70,11 +74,11 @@ final class TemplateStandinTypeReplacer
         ?StatementsAnalyzer $statements_analyzer,
         ?Union $input_type,
         ?int $input_arg_offset = null,
-        ?string $calling_class = null,
-        ?string $calling_function = null,
+        ?int $calling_class = null,
+        ?int $calling_function = null,
         bool $replace = true,
         bool $add_lower_bound = false,
-        ?string $bound_equality_classlike = null,
+        ?int $bound_equality_classlike = null,
         int $depth = 1,
     ): void {
         self::replace(
@@ -107,11 +111,11 @@ final class TemplateStandinTypeReplacer
         ?StatementsAnalyzer $statements_analyzer,
         ?Union $input_type,
         ?int $input_arg_offset = null,
-        ?string $calling_class = null,
-        ?string $calling_function = null,
+        ?int $calling_class = null,
+        ?int $calling_function = null,
         bool $replace = true,
         bool $add_lower_bound = false,
-        ?string $bound_equality_classlike = null,
+        ?int $bound_equality_classlike = null,
         int $depth = 1,
     ): Union {
         $atomic_types = [];
@@ -202,11 +206,11 @@ final class TemplateStandinTypeReplacer
         ?StatementsAnalyzer $statements_analyzer,
         ?Union $input_type,
         ?int $input_arg_offset,
-        ?string $calling_class,
-        ?string $calling_function,
+        ?int $calling_class,
+        ?int $calling_function,
         bool $replace,
         bool $add_lower_bound,
-        ?string $bound_equality_classlike,
+        ?int $bound_equality_classlike,
         int $depth,
         bool $was_single,
         bool &$had_template,
@@ -216,7 +220,7 @@ final class TemplateStandinTypeReplacer
         }
 
         if ($atomic_type instanceof TTemplateParam
-            && isset($template_result->template_types[$atomic_type->param_name][$atomic_type->defining_class])
+            && isset($template_result->template_types[$atomic_type->param_name][Interner::lookup($atomic_type->defining_class)])
         ) {
             return self::handleTemplateParamStandin(
                 $atomic_type,
@@ -237,10 +241,10 @@ final class TemplateStandinTypeReplacer
         }
 
         if ($atomic_type instanceof TTemplateParam
-            && isset($template_result->lower_bounds[$atomic_type->param_name][$atomic_type->defining_class])
+            && isset($template_result->lower_bounds[$atomic_type->param_name][Interner::lookup($atomic_type->defining_class)])
         ) {
             $most_specific_type = self::getMostSpecificTypeFromBounds(
-                $template_result->lower_bounds[$atomic_type->param_name][$atomic_type->defining_class],
+                $template_result->lower_bounds[$atomic_type->param_name][Interner::lookup($atomic_type->defining_class)],
                 $codebase,
             );
 
@@ -248,7 +252,7 @@ final class TemplateStandinTypeReplacer
         }
 
         if ($atomic_type instanceof TTemplateParamClass
-            && isset($template_result->template_types[$atomic_type->param_name][$atomic_type->defining_class])
+            && isset($template_result->template_types[$atomic_type->param_name][Interner::lookup($atomic_type->defining_class)])
         ) {
             if ($replace) {
                 return self::handleTemplateParamClassStandin(
@@ -275,12 +279,12 @@ final class TemplateStandinTypeReplacer
 
                 $include_first = true;
 
-                if (isset($template_result->lower_bounds[$atomic_type->array_param_name][$atomic_type->defining_class])
+                if (isset($template_result->lower_bounds[$atomic_type->array_param_name][Interner::lookup($atomic_type->defining_class)])
                     && !empty($template_result->lower_bounds[$atomic_type->offset_param_name])
                 ) {
                     $array_template_type
                         = self::getMostSpecificTypeFromBounds(
-                            $template_result->lower_bounds[$atomic_type->array_param_name][$atomic_type->defining_class],
+                            $template_result->lower_bounds[$atomic_type->array_param_name][Interner::lookup($atomic_type->defining_class)],
                             $codebase,
                         );
                     $offset_template_type
@@ -336,13 +340,13 @@ final class TemplateStandinTypeReplacer
             $include_first = true;
             $template_type = null;
 
-            if (isset($template_result->lower_bounds[$atomic_type->param_name][$atomic_type->defining_class])) {
+            if (isset($template_result->lower_bounds[$atomic_type->param_name][Interner::lookup($atomic_type->defining_class)])) {
                 $template_type = self::getMostSpecificTypeFromBounds(
-                    $template_result->lower_bounds[$atomic_type->param_name][$atomic_type->defining_class],
+                    $template_result->lower_bounds[$atomic_type->param_name][Interner::lookup($atomic_type->defining_class)],
                     $codebase,
                 );
-            } elseif (isset($template_result->template_types[$atomic_type->param_name][$atomic_type->defining_class])) {
-                $template_type = $template_result->template_types[$atomic_type->param_name][$atomic_type->defining_class];
+            } elseif (isset($template_result->template_types[$atomic_type->param_name][Interner::lookup($atomic_type->defining_class)])) {
+                $template_type = $template_result->template_types[$atomic_type->param_name][Interner::lookup($atomic_type->defining_class)];
             }
 
             if ($template_type) {
@@ -384,12 +388,12 @@ final class TemplateStandinTypeReplacer
 
         if ($atomic_type instanceof TTemplatePropertiesOf) {
             if (!$replace
-                || !isset($template_result->template_types[$atomic_type->param_name][$atomic_type->defining_class])
+                || !isset($template_result->template_types[$atomic_type->param_name][Interner::lookup($atomic_type->defining_class)])
             ) {
                 return [$atomic_type];
             }
 
-            $template_type = $template_result->template_types[$atomic_type->param_name][$atomic_type->defining_class];
+            $template_type = $template_result->template_types[$atomic_type->param_name][Interner::lookup($atomic_type->defining_class)];
 
             $classlike_type = $template_type->getSingleAtomic();
             if (!$classlike_type instanceof TNamedObject) {
@@ -519,14 +523,14 @@ final class TemplateStandinTypeReplacer
             ) {
                 try {
                     $classlike_storage =
-                        $codebase->classlike_storage_provider->get($atomic_input_type->value);
+                        $codebase->classlike_storage_provider->get(Interner::intern($atomic_input_type->value));
 
-                    if (!empty($classlike_storage->template_extended_params[$base_type->as_type->value])) {
+                    if (!empty($classlike_storage->template_extended_params[Interner::lookup($base_type->as_type->value)])) {
                         $atomic_input_type = new TClassString(
-                            $base_type->as_type->value,
+                            Interner::lookup($base_type->as_type->value),
                             new TGenericObject(
-                                $base_type->as_type->value,
-                                array_values($classlike_storage->template_extended_params[$base_type->as_type->value]),
+                                Interner::lookup($base_type->as_type->value),
+                                array_values($classlike_storage->template_extended_params[Interner::lookup($base_type->as_type->value)]),
                             ),
                         );
 
@@ -557,7 +561,7 @@ final class TemplateStandinTypeReplacer
                     || $base_type instanceof TIterable)
             ) {
                 if ($base_type instanceof TIterable) {
-                    if ($atomic_input_type->value === 'Traversable') {
+                    if ($atomic_input_type->value === Sym::C_TRAVERSABLE) {
                         $matching_atomic_types[$atomic_input_type->getId()] = $atomic_input_type;
                         continue;
                     }
@@ -573,16 +577,16 @@ final class TemplateStandinTypeReplacer
                         $codebase->classlike_storage_provider->get($atomic_input_type->value);
 
                     if ($atomic_input_type instanceof TGenericObject
-                        && isset($classlike_storage->template_extended_params[$base_type->value])
+                        && isset($classlike_storage->template_extended_params[Interner::lookup($base_type->value)])
                     ) {
                         $matching_atomic_types[$atomic_input_type->getId()] = $atomic_input_type;
                         continue;
                     }
 
-                    if (!empty($classlike_storage->template_extended_params[$base_type->value])) {
+                    if (!empty($classlike_storage->template_extended_params[Interner::lookup($base_type->value)])) {
                         $atomic_input_type = new TGenericObject(
-                            $base_type->value,
-                            array_values($classlike_storage->template_extended_params[$base_type->value]),
+                            Interner::lookup($base_type->value),
+                            array_values($classlike_storage->template_extended_params[Interner::lookup($base_type->value)]),
                         );
 
                         $matching_atomic_types[$atomic_input_type->getId()] = $atomic_input_type;
@@ -590,7 +594,7 @@ final class TemplateStandinTypeReplacer
                     }
 
                     if (in_array('Traversable', $classlike_storage->class_implements)
-                        && $base_type->value === 'Iterator'
+                        && $base_type->value === Sym::C_ITERATOR
                     ) {
                         $matching_atomic_types[$atomic_input_type->getId()] = $atomic_input_type;
                         continue;
@@ -642,14 +646,14 @@ final class TemplateStandinTypeReplacer
         string $key,
         ?Union $input_type,
         ?int $input_arg_offset,
-        ?string $calling_class,
-        ?string $calling_function,
+        ?int $calling_class,
+        ?int $calling_function,
         TemplateResult $template_result,
         Codebase $codebase,
         ?StatementsAnalyzer $statements_analyzer,
         bool $replace,
         bool $add_lower_bound,
-        ?string $bound_equality_classlike,
+        ?int $bound_equality_classlike,
         int $depth,
         bool &$had_template,
     ): array {
@@ -659,7 +663,7 @@ final class TemplateStandinTypeReplacer
 
         $template_type = $template_result->template_types
             [$atomic_type->param_name]
-            [$atomic_type->defining_class];
+            [Interner::lookup($atomic_type->defining_class)];
 
         if ($template_type->getId() === $key) {
             return array_values($template_type->getAtomicTypes());
@@ -720,7 +724,7 @@ final class TemplateStandinTypeReplacer
                     $codebase,
                     $replacement_type,
                     $calling_class,
-                    $calling_class,
+                    Interner::lookupOrNull($calling_class),
                     null,
                 );
 
@@ -746,11 +750,11 @@ final class TemplateStandinTypeReplacer
 
                     // @codingStandardsIgnoreStart
                     if ($replacement_atomic_type instanceof TTemplateKeyOf
-                        && isset($template_result->template_types[$replacement_atomic_type->param_name][$replacement_atomic_type->defining_class])
-                        && count($template_result->lower_bounds[$atomic_type->param_name][$atomic_type->defining_class])
+                        && isset($template_result->template_types[$replacement_atomic_type->param_name][Interner::lookup($replacement_atomic_type->defining_class)])
+                        && count($template_result->lower_bounds[$atomic_type->param_name][Interner::lookup($atomic_type->defining_class)])
                             === 1
                     ) {
-                        $keyed_template = $template_result->template_types[$replacement_atomic_type->param_name][$replacement_atomic_type->defining_class];
+                        $keyed_template = $template_result->template_types[$replacement_atomic_type->param_name][Interner::lookup($replacement_atomic_type->defining_class)];
 
                         if ($keyed_template->isSingle()) {
                             $keyed_template = $keyed_template->getSingleAtomic();
@@ -771,7 +775,7 @@ final class TemplateStandinTypeReplacer
                                 $atomic_types[] = $key_type_atomic;
                             }
 
-                            $existing_lower_bound = reset($template_result->lower_bounds[$atomic_type->param_name][$atomic_type->defining_class]);
+                            $existing_lower_bound = reset($template_result->lower_bounds[$atomic_type->param_name][Interner::lookup($atomic_type->defining_class)]);
 
                             $existing_lower_bound->type = $key_type;
                         }
@@ -779,7 +783,7 @@ final class TemplateStandinTypeReplacer
 
                     if ($replacement_atomic_type instanceof TTemplateParam
                         && $replacement_atomic_type->defining_class !== $calling_class
-                        && $replacement_atomic_type->defining_class !== 'fn-' . $calling_function
+                        && $replacement_atomic_type->defining_class !== 'fn-' . Interner::lookup($calling_function)
                     ) {
                         foreach ($replacement_atomic_type->as->getAtomicTypes() as $nested_type_atomic) {
                             $replacements_found = true;
@@ -802,7 +806,7 @@ final class TemplateStandinTypeReplacer
                 $codebase,
                 $atomic_type->as,
                 $calling_class,
-                $calling_class,
+                Interner::lookupOrNull($calling_class),
                 null,
             );
 
@@ -863,11 +867,11 @@ final class TemplateStandinTypeReplacer
                 $generic_param = $generic_param->setFromDocblock()->freeze();
 
                 if (isset(
-                    $template_result->lower_bounds[$param_name_key][$atomic_type->defining_class],
+                    $template_result->lower_bounds[$param_name_key][Interner::lookup($atomic_type->defining_class)],
                 )) {
                     $existing_lower_bounds = $template_result->lower_bounds
                         [$param_name_key]
-                        [$atomic_type->defining_class];
+                        [Interner::lookup($atomic_type->defining_class)];
 
                     $has_matching_lower_bound = false;
 
@@ -973,7 +977,7 @@ final class TemplateStandinTypeReplacer
 
                 $upper_bound = $template_result->upper_bounds
                     [$param_name_key]
-                    [$atomic_type->defining_class] ?? null;
+                    [Interner::lookup($atomic_type->defining_class)] ?? null;
 
                 if ($upper_bound) {
                     if (!UnionTypeComparator::isContainedBy(
@@ -1020,14 +1024,14 @@ final class TemplateStandinTypeReplacer
         TTemplateParamClass $atomic_type,
         ?Union $input_type,
         ?int $input_arg_offset,
-        ?string $calling_class,
-        ?string $calling_function,
+        ?int $calling_class,
+        ?int $calling_function,
         TemplateResult $template_result,
         Codebase $codebase,
         ?StatementsAnalyzer $statements_analyzer,
         bool $replace,
         bool $add_lower_bound,
-        ?string $bound_equality_classlike,
+        ?int $bound_equality_classlike,
         int $depth,
         bool $was_single,
     ): array {
@@ -1117,13 +1121,13 @@ final class TemplateStandinTypeReplacer
             }
 
             if ($generic_param) {
-                if (isset($template_result->lower_bounds[$atomic_type->param_name][$atomic_type->defining_class])) {
+                if (isset($template_result->lower_bounds[$atomic_type->param_name][Interner::lookup($atomic_type->defining_class)])) {
                     $template_result->lower_bounds[$atomic_type->param_name][$atomic_type->defining_class] = [
                         new TemplateBound(
                             Type::combineUnionTypes(
                                 $generic_param,
                                 self::getMostSpecificTypeFromBounds(
-                                    $template_result->lower_bounds[$atomic_type->param_name][$atomic_type->defining_class],
+                                    $template_result->lower_bounds[$atomic_type->param_name][Interner::lookup($atomic_type->defining_class)],
                                     $codebase,
                                 ),
                             ),
@@ -1143,12 +1147,12 @@ final class TemplateStandinTypeReplacer
         } else {
             $template_type = $template_result->template_types
                 [$atomic_type->param_name]
-                [$atomic_type->defining_class];
+                [Interner::lookup($atomic_type->defining_class)];
 
             foreach ($template_type->getAtomicTypes() as $template_atomic_type) {
                 if ($template_atomic_type instanceof TNamedObject) {
                     $atomic_types[] = new TClassString(
-                        $template_atomic_type->value,
+                        Interner::lookup($template_atomic_type->value),
                         $template_atomic_type,
                     );
                 } elseif ($template_atomic_type instanceof TObject) {
@@ -1173,7 +1177,7 @@ final class TemplateStandinTypeReplacer
     public static function getRootTemplateType(
         array $template_types,
         string $param_name,
-        string $defining_class,
+        int $defining_class,
         array $visited_classes,
         ?Codebase $codebase,
     ): ?Union {
@@ -1181,9 +1185,9 @@ final class TemplateStandinTypeReplacer
             return null;
         }
 
-        if (isset($template_types[$param_name][$defining_class])) {
+        if (isset($template_types[$param_name][Interner::lookup($defining_class)])) {
             $mapped_type = self::getMostSpecificTypeFromBounds(
-                $template_types[$param_name][$defining_class],
+                $template_types[$param_name][Interner::lookup($defining_class)],
                 $codebase,
             );
 
@@ -1284,7 +1288,7 @@ final class TemplateStandinTypeReplacer
 
             $container_class = $container_type_part->value;
 
-            if (strtolower($input_type_part->value) === strtolower($container_type_part->value)) {
+            if ($input_type_part->value === $container_type_part->value) {
                 $input_type_params = $class_storage->getClassTemplateTypes();
             } elseif (!empty($class_storage->template_extended_params[$container_class])) {
                 $input_type_params = array_values($class_storage->template_extended_params[$container_class]);
@@ -1327,7 +1331,7 @@ final class TemplateStandinTypeReplacer
 
             $template_extends = $input_class_storage->template_extended_params;
 
-            $container_type_part_value = $container_type_part->value === 'iterable'
+            $container_type_part_value = $container_type_part->value === Sym::C_ITERABLE
                 ? 'Traversable'
                 : $container_type_part->value;
 
@@ -1356,7 +1360,7 @@ final class TemplateStandinTypeReplacer
                                 if (!isset(
                                     $input_class_storage->template_types
                                         [$template->param_name]
-                                        [$template->defining_class],
+                                        [Interner::lookup($template->defining_class)],
                                 )) {
                                     continue;
                                 }

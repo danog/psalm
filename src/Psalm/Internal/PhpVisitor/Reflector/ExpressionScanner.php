@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\PhpVisitor\Reflector;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\Aliases;
 use Psalm\Codebase;
@@ -62,7 +66,7 @@ final class ExpressionScanner
                 $functionlike_storage->has_yield = true;
             }
         } elseif ($node instanceof PhpParser\Node\Expr\Cast\Object_) {
-            $codebase->scanner->queueClassLikeForScanning('stdClass', false, false);
+            $codebase->scanner->queueClassLikeForScanning(Sym::C_STD_CLASS, false, false);
             $file_storage->referenced_classlikes['stdclass'] = 'stdClass';
         } elseif (($node instanceof PhpParser\Node\Expr\New_
                 || $node instanceof PhpParser\Node\Expr\Instanceof_
@@ -73,15 +77,15 @@ final class ExpressionScanner
         ) {
             $fq_classlike_name = ClassLikeAnalyzer::getFQCLNFromNameObject($node->class, $aliases);
 
-            if (!in_array(strtolower($fq_classlike_name), ['self', 'static', 'parent'], true)) {
+            if (!in_array($fq_classlike_name, ['self', 'static', 'parent'], true)) {
                 $codebase->scanner->queueClassLikeForScanning(
-                    $fq_classlike_name,
+                    Interner::intern($fq_classlike_name),
                     false,
                     !($node instanceof PhpParser\Node\Expr\ClassConstFetch)
                         || !($node->name instanceof PhpParser\Node\Identifier)
-                        || strtolower($node->name->name) !== 'class',
+                        || $node->name->name !== 'class',
                 );
-                $file_storage->referenced_classlikes[strtolower($fq_classlike_name)] = $fq_classlike_name;
+                $file_storage->referenced_classlikes[$fq_classlike_name] = $fq_classlike_name;
             }
         } elseif ($node instanceof PhpParser\Node\Expr\FuncCall && $node->name instanceof PhpParser\Node\Name) {
             $function_id = $node->name->toString();
@@ -229,9 +233,9 @@ final class ExpressionScanner
 
                 [$callable_fqcln] = explode('::', $potential_method_id);
 
-                if (!in_array(strtolower($callable_fqcln), ['self', 'parent', 'static'], true)) {
+                if (!in_array($callable_fqcln, ['self', 'parent', 'static'], true)) {
                     $codebase->scanner->queueClassLikeForScanning(
-                        $callable_fqcln,
+                        Interner::intern($callable_fqcln),
                     );
                 }
             }
@@ -251,7 +255,7 @@ final class ExpressionScanner
 
             if ($second_arg instanceof PhpParser\Node\Scalar\String_) {
                 $codebase->scanner->queueClassLikeForScanning(
-                    $second_arg->value,
+                    Interner::intern($second_arg->value),
                 );
             }
         }
@@ -265,7 +269,7 @@ final class ExpressionScanner
             } elseif ($first_arg instanceof PhpParser\Node\Expr\ClassConstFetch
                 && $first_arg->class instanceof PhpParser\Node\Name
                 && $first_arg->name instanceof PhpParser\Node\Identifier
-                && strtolower($first_arg->name->name) === 'class'
+                && $first_arg->name->name === 'class'
             ) {
                 /** @var string */
                 $first_arg_value = $first_arg->class->getAttribute('resolvedName');
@@ -278,7 +282,7 @@ final class ExpressionScanner
             } elseif ($second_arg instanceof PhpParser\Node\Expr\ClassConstFetch
                 && $second_arg->class instanceof PhpParser\Node\Name
                 && $second_arg->name instanceof PhpParser\Node\Identifier
-                && strtolower($second_arg->name->name) === 'class'
+                && $second_arg->name->name === 'class'
             ) {
                 /** @var string */
                 $second_arg_value = $second_arg->class->getAttribute('resolvedName');
@@ -296,7 +300,7 @@ final class ExpressionScanner
                 }
 
                 $codebase->classlikes->addClassAlias(
-                    $first_arg_value,
+                    Interner::intern($first_arg_value),
                     $second_arg_value,
                 );
 

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Fork;
 
+use Psalm\Internal\Interner;
+
 use Amp\Cancellation;
 use Amp\Parallel\Worker\Task;
 use Amp\Sync\Channel;
@@ -23,6 +25,8 @@ final class InitScannerTask implements Task
     #[Override]
     final public function run(Channel $channel, Cancellation $cancellation): mixed
     {
+        Interner::mark();
+
         $analyzer = ProjectAnalyzer::getInstance();
         $analyzer->progress->debug('Initialising forked process for scanning' . PHP_EOL);
 

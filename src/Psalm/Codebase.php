@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use Amp\Sync\Channel;
 use AssertionError;
 use Exception;
@@ -120,7 +124,7 @@ final class Codebase
      * Separated from the CodeUseGraph because a use import does not
      * automatically mean a class is actually used.
      *
-     * @var array<lowercase-string, array<int, CodeLocation>>
+     * @var array<int, array<int, CodeLocation>>
      */
     public array $use_referencing_locations = [];
 
@@ -146,7 +150,7 @@ final class Codebase
     public readonly Progress $progress;
 
     /**
-     * @var array<string, Union>
+     * @var array<int, Union>
      */
     private static array $stubbed_constants = [];
 
@@ -203,12 +207,12 @@ final class Codebase
     public bool $language_server = false;
 
     /**
-     * @var array<lowercase-string, string>
+     * @var array<int, string>
      */
     public array $methods_to_move = [];
 
     /**
-     * @var array<lowercase-string, string>
+     * @var array<int, string>
      */
     public array $methods_to_rename = [];
 
@@ -233,12 +237,12 @@ final class Codebase
     public array $class_constants_to_rename = [];
 
     /**
-     * @var array<lowercase-string, string>
+     * @var array<int, string>
      */
     public array $classes_to_move = [];
 
     /**
-     * @var array<lowercase-string, string>
+     * @var array<int, string>
      */
     public array $call_transforms = [];
 
@@ -253,7 +257,7 @@ final class Codebase
     public array $class_constant_transforms = [];
 
     /**
-     * @var array<lowercase-string, string>
+     * @var array<int, string>
      */
     public array $class_transforms = [];
 
@@ -299,6 +303,11 @@ final class Codebase
     ) {
         if ($progress === null) {
             $progress = new VoidProgress();
+        }
+        Interner::merge(Sym::PRELOADED);
+        $cache_directory = $config->getCacheDirectory();
+        if ($cache_directory !== null) {
+            Interner::persistTo($cache_directory);
         }
         $this->file_storage_provider = $providers->file_storage_provider;
         $this->classlike_storage_provider = $providers->classlike_storage_provider;
@@ -359,11 +368,11 @@ final class Codebase
      * Records a reference to a class from the code described by $context
      * (or the top-level code of the file of $location).
      *
-     * @param lowercase-string $fq_class_name_lc
+     * @param int $fq_class_name_lc
      * @psalm-external-mutation-free
      */
     public function addReferenceToClass(
-        string $fq_class_name_lc,
+        int $fq_class_name_lc,
         ?CodeLocation $location = null,
         ?Context $context = null,
         ?string $file_path = null,
@@ -381,13 +390,13 @@ final class Codebase
      * Records a reference to a property. Only reads make the property used,
      * but writes are still recorded for reference lookups and cache invalidation.
      *
-     * @param lowercase-string $fq_class_name_lc
-     * @param string $property_name without the leading `$`
+     * @param int $fq_class_name_lc
+     * @param int $property_name without the leading `$`
      * @psalm-external-mutation-free
      */
     public function addReferenceToProperty(
-        string $fq_class_name_lc,
-        string $property_name,
+        int $fq_class_name_lc,
+        int $property_name,
         bool $reading,
         ?CodeLocation $location = null,
         ?Context $context = null,
@@ -475,13 +484,13 @@ final class Codebase
      * Records a reference to a property that does not exist (yet), so that the
      * referencing code is re-analysed if the property gets added.
      *
-     * @param lowercase-string $fq_class_name_lc
-     * @param string $property_name without the leading `$`
+     * @param int $fq_class_name_lc
+     * @param int $property_name without the leading `$`
      * @psalm-external-mutation-free
      */
     public function addReferenceToMissingProperty(
-        string $fq_class_name_lc,
-        string $property_name,
+        int $fq_class_name_lc,
+        int $property_name,
         ?CodeLocation $location = null,
         ?Context $context = null,
         ?string $file_path = null,
@@ -496,13 +505,13 @@ final class Codebase
     }
 
     /**
-     * @param lowercase-string $fq_class_name_lc
-     * @param string $const_name case-sensitive constant name
+     * @param int $fq_class_name_lc
+     * @param int $const_name case-sensitive constant name
      * @psalm-external-mutation-free
      */
     public function addReferenceToClassConstant(
-        string $fq_class_name_lc,
-        string $const_name,
+        int $fq_class_name_lc,
+        int $const_name,
         ?CodeLocation $location = null,
         ?Context $context = null,
         ?string $file_path = null,
@@ -779,8 +788,8 @@ final class Codebase
             $file_storage = $this->file_storage_provider->get($referenced_file_path);
 
             foreach ($file_storage->classlikes_in_file as $fq_classlike_name) {
-                $this->classlike_storage_provider->remove($fq_classlike_name);
-                $this->classlikes->removeClassLike($fq_classlike_name);
+                $this->classlike_storage_provider->remove(Interner::intern($fq_classlike_name));
+                $this->classlikes->removeClassLike(Interner::intern($fq_classlike_name));
             }
 
             $this->file_storage_provider->remove($referenced_file_path);
@@ -883,7 +892,7 @@ final class Codebase
     /**
      * @psalm-external-mutation-free
      */
-    public function createClassLikeStorage(string $fq_classlike_name): ClassLikeStorage
+    public function createClassLikeStorage(int $fq_classlike_name): ClassLikeStorage
     {
         return $this->classlike_storage_provider->create($fq_classlike_name);
     }
@@ -898,7 +907,7 @@ final class Codebase
         $this->classlike_storage_provider->cache->writeToCache($classlike_storage, $file_path, $file_contents);
     }
 
-    public function exhumeClassLikeStorage(string $fq_classlike_name, string $file_path): void
+    public function exhumeClassLikeStorage(int $fq_classlike_name, string $file_path): void
     {
         $file_contents = $this->file_provider->getContents($file_path);
         $storage = $this->classlike_storage_provider->exhume(
@@ -950,7 +959,7 @@ final class Codebase
                 + $this->findReferencesToClassConstant($symbol);
         }
 
-        return $this->findReferencesToClassLike($symbol);
+        return $this->findReferencesToClassLike(Interner::intern($symbol));
     }
 
     /**
@@ -974,7 +983,7 @@ final class Codebase
         [$fq_class_name, $property_name] = explode('::', $property_id);
 
         return $this->code_use_graph->getReferenceLocations(
-            CodeUseGraph::propertyNode(strtolower($fq_class_name), ltrim($property_name, '$')),
+            CodeUseGraph::propertyNode(Interner::intern($fq_class_name), Interner::intern(ltrim($property_name, '$'))),
         );
     }
 
@@ -983,9 +992,9 @@ final class Codebase
      * @psalm-return array<string, CodeLocation>
      * @psalm-mutation-free
      */
-    public function findReferencesToClassLike(string $fq_class_name): array
+    public function findReferencesToClassLike(int $fq_class_name): array
     {
-        $fq_class_name_lc = strtolower($fq_class_name);
+        $fq_class_name_lc = $fq_class_name;
         $refs = $this->code_use_graph->getReferenceLocations(
             CodeUseGraph::classNode($fq_class_name_lc),
         );
@@ -1007,7 +1016,7 @@ final class Codebase
         [$fq_class_name, $const_name] = explode('::', $const_id);
 
         return $this->code_use_graph->getReferenceLocations(
-            CodeUseGraph::classConstantNode(strtolower($fq_class_name), $const_name),
+            CodeUseGraph::classConstantNode(Interner::intern($fq_class_name), Interner::intern($const_name)),
         );
     }
 
@@ -1019,8 +1028,8 @@ final class Codebase
         $file_storage = $this->file_storage_provider->get($file_path);
 
         // closures can be returned here
-        if (isset($file_storage->functions[$closure_id])) {
-            return $file_storage->functions[$closure_id];
+        if (isset($file_storage->functions[Interner::intern($closure_id)])) {
+            return $file_storage->functions[Interner::intern($closure_id)];
         }
 
         throw new UnexpectedValueException(
@@ -1041,7 +1050,7 @@ final class Codebase
      */
     public function getStubbedConstantType(string $const_id): ?Union
     {
-        return self::$stubbed_constants[$const_id] ?? null;
+        return self::$stubbed_constants[Interner::intern($const_id)] ?? null;
     }
 
     /**
@@ -1059,7 +1068,7 @@ final class Codebase
      */
     public function getAllStubbedConstants(): array
     {
-        return self::$stubbed_constants;
+        return Interner::lookupKeys(self::$stubbed_constants);
     }
 
     public function fileExists(string $file_path): bool
@@ -1073,7 +1082,7 @@ final class Codebase
      * @psalm-external-mutation-free
      */
     public function classOrInterfaceExists(
-        string $fq_class_name,
+        int $fq_class_name,
         ?CodeLocation $code_location = null,
         ?Context $context = null,
     ): bool {
@@ -1091,7 +1100,7 @@ final class Codebase
      * @psalm-external-mutation-free
      */
     public function classOrInterfaceOrEnumExists(
-        string $fq_class_name,
+        int $fq_class_name,
         ?CodeLocation $code_location = null,
         ?Context $context = null,
     ): bool {
@@ -1103,7 +1112,7 @@ final class Codebase
     }
 
     /** @psalm-mutation-free */
-    public function classExtendsOrImplements(string $fq_class_name, string $possible_parent): bool
+    public function classExtendsOrImplements(int $fq_class_name, int $possible_parent): bool
     {
         return $this->classlikes->classExtends($fq_class_name, $possible_parent)
             || $this->classlikes->classImplements($fq_class_name, $possible_parent);
@@ -1115,7 +1124,7 @@ final class Codebase
      * @psalm-external-mutation-free
      */
     public function classExists(
-        string $fq_class_name,
+        int $fq_class_name,
         ?CodeLocation $code_location = null,
         ?Context $context = null,
     ): bool {
@@ -1133,7 +1142,7 @@ final class Codebase
      * @throws InvalidArgumentException when class does not exist
      * @psalm-mutation-free
      */
-    public function classExtends(string $fq_class_name, string $possible_parent): bool
+    public function classExtends(int $fq_class_name, int $possible_parent): bool
     {
         return $this->classlikes->classExtends($fq_class_name, $possible_parent, true);
     }
@@ -1143,7 +1152,7 @@ final class Codebase
      *
      * @psalm-mutation-free
      */
-    public function classImplements(string $fq_class_name, string $interface): bool
+    public function classImplements(int $fq_class_name, int $interface): bool
     {
         return $this->classlikes->classImplements($fq_class_name, $interface);
     }
@@ -1152,7 +1161,7 @@ final class Codebase
      * @psalm-external-mutation-free
      */
     public function interfaceExists(
-        string $fq_interface_name,
+        int $fq_interface_name,
         ?CodeLocation $code_location = null,
         ?Context $context = null,
     ): bool {
@@ -1166,7 +1175,7 @@ final class Codebase
     /**
      * @psalm-mutation-free
      */
-    public function interfaceExtends(string $interface_name, string $possible_parent): bool
+    public function interfaceExtends(int $interface_name, int $possible_parent): bool
     {
         return $this->classlikes->interfaceExtends($interface_name, $possible_parent);
     }
@@ -1175,11 +1184,11 @@ final class Codebase
      * @return array<string, string> all interfaces extended by $interface_name
      * @psalm-mutation-free
      */
-    public function getParentInterfaces(string $fq_interface_name): array
+    public function getParentInterfaces(int $fq_interface_name): array
     {
-        return $this->classlikes->getParentInterfaces(
-            $this->classlikes->getUnAliasedName($fq_interface_name),
-        );
+        return Interner::lookupKeys($this->classlikes->getParentInterfaces(
+            Interner::intern($this->classlikes->getUnAliasedName(Interner::lookup($fq_interface_name))),
+        ));
     }
 
     /**
@@ -1187,7 +1196,7 @@ final class Codebase
      *
      * @psalm-mutation-free
      */
-    public function classHasCorrectCasing(string $fq_class_name): bool
+    public function classHasCorrectCasing(int $fq_class_name): bool
     {
         return $this->classlikes->classHasCorrectCasing($fq_class_name);
     }
@@ -1195,7 +1204,7 @@ final class Codebase
     /**
      * @psalm-mutation-free
      */
-    public function interfaceHasCorrectCasing(string $fq_interface_name): bool
+    public function interfaceHasCorrectCasing(int $fq_interface_name): bool
     {
         return $this->classlikes->interfaceHasCorrectCasing($fq_interface_name);
     }
@@ -1203,7 +1212,7 @@ final class Codebase
     /**
      * @psalm-mutation-free
      */
-    public function traitHasCorrectCasing(string $fq_trait_name): bool
+    public function traitHasCorrectCasing(int $fq_trait_name): bool
     {
         return $this->classlikes->traitHasCorrectCasing($fq_trait_name);
     }
@@ -1393,8 +1402,8 @@ final class Codebase
         }
 
         foreach ($file_storage->classlikes_in_file as $fq_classlike_name) {
-            $this->classlike_storage_provider->remove($fq_classlike_name);
-            $this->classlikes->removeClassLike($fq_classlike_name);
+            $this->classlike_storage_provider->remove(Interner::intern($fq_classlike_name));
+            $this->classlikes->removeClassLike(Interner::intern($fq_classlike_name));
         }
 
         $this->file_storage_provider->remove($file_path);
@@ -1408,7 +1417,7 @@ final class Codebase
         if (strpos($symbol, '::')) {
             $symbol = substr($symbol, 0, -2);
             /** @psalm-suppress ArgumentTypeCoercion */
-            $method_id = new MethodIdentifier(...explode('::', $symbol));
+            $method_id = new MethodIdentifier(...Interner::internList(explode('::', $symbol)));
 
             $declaring_method_id = $this->methods->getDeclaringMethodId($method_id);
 
@@ -1422,8 +1431,8 @@ final class Codebase
         $function_id = strtolower(substr($symbol, 0, -2));
         $file_storage = $this->file_storage_provider->get($file_path);
 
-        if (isset($file_storage->functions[$function_id])) {
-            return $file_storage->functions[$function_id];
+        if (isset($file_storage->functions[Interner::intern($function_id)])) {
+            return $file_storage->functions[Interner::intern($function_id)];
         }
 
         if (!$function_id) {
@@ -1457,7 +1466,7 @@ final class Codebase
                 $symbol = substr($reference->symbol, 0, -2);
 
                 /** @psalm-suppress ArgumentTypeCoercion */
-                $method_id = new MethodIdentifier(...explode('::', $symbol));
+                $method_id = new MethodIdentifier(...Interner::internList(explode('::', $symbol)));
 
                 $declaring_method_id = $this->methods->getDeclaringMethodId(
                     $method_id,
@@ -1471,7 +1480,7 @@ final class Codebase
 
                 return new PHPMarkdownContent(
                     $storage->getHoverMarkdown(),
-                    "{$storage->defining_fqcln}::{$storage->cased_name}",
+                    "" . Interner::lookup($storage->defining_fqcln) . "::" . Interner::lookup($storage->cased_name) . "",
                     $storage->description,
                 );
             }
@@ -1484,15 +1493,15 @@ final class Codebase
                 $property_id = (string) preg_replace('/^\\\\/', '', $reference->symbol);
                 /** @psalm-suppress PossiblyUndefinedIntArrayOffset */
                 [$fq_class_name, $property_name] = explode('::$', $property_id);
-                $class_storage = $this->classlikes->getStorageFor($fq_class_name);
+                $class_storage = $this->classlikes->getStorageFor(Interner::intern($fq_class_name));
 
                 //Get Real Properties
                 if (isset($class_storage->declaring_property_ids[$property_name])) {
                     $declaring_property_class = $class_storage->declaring_property_ids[$property_name];
-                    $declaring_class_storage = $this->classlike_storage_provider->get($declaring_property_class);
+                    $declaring_class_storage = $this->classlike_storage_provider->get(Interner::intern($declaring_property_class));
 
-                    if (isset($declaring_class_storage->properties[$property_name])) {
-                        $storage = $declaring_class_storage->properties[$property_name];
+                    if (isset($declaring_class_storage->properties[Interner::intern($property_name)])) {
+                        $storage = $declaring_class_storage->properties[Interner::intern($property_name)];
                         return new PHPMarkdownContent(
                             "{$storage->getInfo()} {$symbol_name}",
                             $reference->symbol,
@@ -1529,7 +1538,7 @@ final class Codebase
             );
 
             $class_constants = $this->classlikes->getConstantsForClass(
-                $fq_classlike_name,
+                Interner::intern($fq_classlike_name),
                 ReflectionProperty::IS_PRIVATE,
             );
 
@@ -1539,7 +1548,7 @@ final class Codebase
 
             //Class Constant
             return new PHPMarkdownContent(
-                $class_constants[$const_name]->getHoverMarkdown($const_name),
+                $class_constants[$const_name]->getHoverMarkdown(Interner::intern($const_name)),
                 $fq_classlike_name . '::' . $const_name,
                 $class_constants[$const_name]->description,
             );
@@ -1552,8 +1561,8 @@ final class Codebase
                 $reference->file_path,
             );
 
-            if (isset($file_storage->functions[$function_id])) {
-                $function_storage = $file_storage->functions[$function_id];
+            if (isset($file_storage->functions[Interner::intern($function_id)])) {
+                $function_storage = $file_storage->functions[Interner::intern($function_id)];
 
                 return new PHPMarkdownContent(
                     $function_storage->getHoverMarkdown(),
@@ -1588,13 +1597,13 @@ final class Codebase
 
         try {
             $storage = $this->classlike_storage_provider->get(
-                $reference->symbol,
+                Interner::intern($reference->symbol),
             );
             return new PHPMarkdownContent(
                 ($storage->abstract ? 'abstract ' : '') .
                     'class ' .
-                    $storage->name,
-                $storage->name,
+                    Interner::lookup($storage->name),
+                Interner::lookup($storage->name),
                 $storage->description,
             );
         } catch (InvalidArgumentException) {
@@ -1623,19 +1632,19 @@ final class Codebase
                 $reference->file_path,
             );
             // ?
-            if (isset($file_storage->constants[$reference->symbol])) {
+            if (isset($file_storage->constants[Interner::intern($reference->symbol)])) {
                 return new PHPMarkdownContent(
                     'const ' .
                         $reference->symbol .
                         ' ' .
-                        $file_storage->constants[$reference->symbol],
+                        $file_storage->constants[Interner::intern($reference->symbol)],
                     $reference->symbol,
                 );
             }
             $type = ConstFetchAnalyzer::getGlobalConstType(
                 $this,
-                $reference->symbol,
-                $reference->symbol,
+                Interner::intern($reference->symbol),
+                Interner::intern($reference->symbol),
             );
 
             //Global Constant
@@ -1678,7 +1687,7 @@ final class Codebase
 
                     /** @psalm-suppress ArgumentTypeCoercion */
                     $method_id = new MethodIdentifier(
-                        ...explode('::', $symbol),
+                        ...Interner::internList(explode('::', $symbol)),
                     );
 
                     $declaring_method_id = $this->methods->getDeclaringMethodId(
@@ -1709,7 +1718,7 @@ final class Codebase
                 );
 
                 $class_constants = $this->classlikes->getConstantsForClass(
-                    $fq_classlike_name,
+                    Interner::intern($fq_classlike_name),
                     ReflectionProperty::IS_PRIVATE,
                 );
 
@@ -1727,8 +1736,8 @@ final class Codebase
 
                 $function_id = strtolower(substr($reference->symbol, 0, -2));
 
-                if (isset($file_storage->functions[$function_id])) {
-                    return $file_storage->functions[$function_id]->location;
+                if (isset($file_storage->functions[Interner::intern($function_id)])) {
+                    return $file_storage->functions[Interner::intern($function_id)]->location;
                 }
 
                 if (!$function_id) {
@@ -1740,7 +1749,7 @@ final class Codebase
             }
 
             return $this->classlike_storage_provider->get(
-                $reference->symbol,
+                Interner::intern($reference->symbol),
             )->location;
         } catch (UnexpectedValueException $e) {
             error_log($e->getMessage());
@@ -1884,7 +1893,7 @@ final class Codebase
         $signature_documentation = null;
         if (str_contains($function_symbol, '::')) {
             /** @psalm-suppress ArgumentTypeCoercion */
-            $method_id = new MethodIdentifier(...explode('::', $function_symbol));
+            $method_id = new MethodIdentifier(...Interner::internList(explode('::', $function_symbol)));
 
             $declaring_method_id = $this->methods->getDeclaringMethodId($method_id);
 
@@ -2096,7 +2105,7 @@ final class Codebase
 
     /**
      * @param list<int> $allow_visibilities
-     * @param list<string> $ignore_fq_class_names
+     * @param list<int> $ignore_fq_class_names
      * @return list<CompletionItem>
      */
     public function getCompletionItemsForClassishThing(
@@ -2152,13 +2161,13 @@ final class Codebase
                         }
                         if ($method_storage->is_static || $gap === '->') {
                             $completion_item = new CompletionItem(
-                                $method_storage->cased_name,
+                                Interner::lookupOrNull($method_storage->cased_name),
                                 CompletionItemKind::METHOD,
                                 $method_storage->getCompletionSignature(),
                                 $method_storage->description,
                                 (string)$method_storage->visibility,
-                                $method_storage->cased_name,
-                                $method_storage->cased_name,
+                                Interner::lookupOrNull($method_storage->cased_name),
+                                Interner::lookupOrNull($method_storage->cased_name),
                                 null,
                                 null,
                                 new Command('Trigger parameter hints', 'editor.action.triggerParameterHints'),
@@ -2235,13 +2244,13 @@ final class Codebase
 
                     foreach ($class_storage->constants as $const_name => $const) {
                         $completion_items[] = new CompletionItem(
-                            $const_name,
+                            Interner::lookup($const_name),
                             CompletionItemKind::VARIABLE,
-                            'const ' . $const_name,
+                            'const ' . Interner::lookup($const_name),
                             $const->description,
                             null,
-                            $const_name,
-                            $const_name,
+                            Interner::lookup($const_name),
+                            Interner::lookup($const_name),
                         );
                     }
 
@@ -2251,7 +2260,7 @@ final class Codebase
                                 continue;
                             }
                             $mixin_completion_items = $this->getCompletionItemsForClassishThing(
-                                $mixin->value,
+                                Interner::lookup($mixin->value),
                                 $gap,
                                 $snippets_supported,
                                 [ClassLikeAnalyzer::VISIBILITY_PUBLIC],
@@ -2317,7 +2326,7 @@ final class Codebase
 
         foreach ($file_storage->classlikes_in_file as $fq_class_name => $_) {
             try {
-                $class_storage = $this->classlike_storage_provider->get($fq_class_name);
+                $class_storage = $this->classlike_storage_provider->get(Interner::intern($fq_class_name));
             } catch (Exception) {
                 continue;
             }
@@ -2353,7 +2362,7 @@ final class Codebase
             $insertion_text = Type::getStringFromFQCLN(
                 $fq_class_name,
                 $aliases && $aliases->namespace ? $aliases->namespace : null,
-                $aliases->uses_flipped ?? [],
+                Interner::lookupKeys($aliases->uses_flipped ?? []),
                 null,
             );
 
@@ -2391,7 +2400,7 @@ final class Codebase
             }
 
             try {
-                $class_storage = $this->classlike_storage_provider->get($fq_class_name);
+                $class_storage = $this->classlike_storage_provider->get(Interner::intern($fq_class_name));
                 $description = $class_storage->description;
             } catch (Exception) {
                 $description = null;
@@ -2433,7 +2442,7 @@ final class Codebase
             }
             $in_namespace_map = false;
             foreach ($namespace_map as $namespace_name => $namespace_alias) {
-                if (str_starts_with($function_lowercase, $namespace_name . '\\')) {
+                if (str_starts_with(Interner::lookup($function_lowercase), $namespace_name . '\\')) {
                     $function_name = $namespace_alias . '\\' . substr($function_name, strlen($namespace_name) + 1);
                     $in_namespace_map = true;
                 }
@@ -2450,7 +2459,7 @@ final class Codebase
                 $function->description,
                 null,
                 $function_name,
-                $function_name . (count($function->params) !== 0 ? '($0)' : '()'),
+                Interner::lookup($function_name) . (count($function->params) !== 0 ? '($0)' : '()'),
                 null,
                 null,
                 new Command('Trigger parameter hints', 'editor.action.triggerParameterHints'),
@@ -2490,7 +2499,7 @@ final class Codebase
                     null,
                     null,
                     null,
-                    "'$atomic_type->value'",
+                    "'" . $atomic_type->value . "'",
                 );
             } elseif ($atomic_type instanceof TLiteralInt) {
                 $completion_items[] = new CompletionItem(
@@ -2503,7 +2512,7 @@ final class Codebase
                     (string) $atomic_type->value,
                 );
             } elseif ($atomic_type instanceof TClassConstant) {
-                $const = $atomic_type->fq_classlike_name . '::' . $atomic_type->const_name;
+                $const = Interner::lookup($atomic_type->fq_classlike_name) . '::' . Interner::lookup($atomic_type->const_name);
                 $completion_items[] = new CompletionItem(
                     $const,
                     CompletionItemKind::VALUE,
@@ -2536,7 +2545,7 @@ final class Codebase
                         null,
                         null,
                         null,
-                        "'$property_name'",
+                        "'" . Interner::lookup($property_name) . "'",
                     );
                 }
             }
@@ -2662,7 +2671,7 @@ final class Codebase
      * @param array<string, mixed> $phantom_classes
      */
     public function queueClassLikeForScanning(
-        string $fq_classlike_name,
+        int $fq_classlike_name,
         bool $analyze_too = false,
         bool $store_failure = true,
         array $phantom_classes = [],

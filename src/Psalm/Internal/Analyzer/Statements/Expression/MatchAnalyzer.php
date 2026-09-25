@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
@@ -256,7 +258,7 @@ final class MatchAnalyzer
                 spl_object_id($all_match_condition),
                 spl_object_id($all_match_condition),
                 $all_match_condition,
-                $context->self,
+                Interner::internOrNull($context->self),
                 $statements_analyzer,
                 $codebase,
                 false,

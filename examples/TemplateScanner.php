@@ -2,6 +2,8 @@
 
 namespace Psalm\Examples\Template;
 
+use Psalm\Internal\Interner;
+
 use InvalidArgumentException;
 use PhpParser;
 use Psalm;
@@ -50,13 +52,13 @@ final class TemplateScanner extends Psalm\Internal\Scanner\FileScanner
                 [$fq_class_name] = explode('::', $matches[1]);
 
                 $codebase->scanner->queueClassLikeForScanning(
-                    $fq_class_name,
+                    Interner::intern($fq_class_name),
                     true,
                 );
             }
         }
 
-        $codebase->scanner->queueClassLikeForScanning(self::VIEW_CLASS);
+        $codebase->scanner->queueClassLikeForScanning(Interner::intern(self::VIEW_CLASS));
 
         parent::scan($codebase, $file_storage, $storage_from_cache, $progress);
     }

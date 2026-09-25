@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\Assignment;
 
+use Psalm\Internal\Interner;
+
 use InvalidArgumentException;
 use PhpParser;
 use PhpParser\Node\Expr\Variable;
@@ -230,7 +232,7 @@ final class ArrayAssignmentAnalyzer
                 InstancePropertyAssignmentAnalyzer::analyze(
                     $statements_analyzer,
                     $root_array_expr,
-                    $root_array_expr->name->name,
+                    Interner::intern($root_array_expr->name->name),
                     null,
                     $root_type,
                     $context,
@@ -423,7 +425,7 @@ final class ArrayAssignmentAnalyzer
                             $graph->addPath(
                                 $child_parent_node,
                                 $parent_node,
-                                'arrayvalue-assignment-\'' . $key_value->value . '\'',
+                                'arrayvalue-assignment-\'' . Interner::lookup($key_value->value) . '\'',
                             );
                         }
                     } else {
@@ -517,7 +519,7 @@ final class ArrayAssignmentAnalyzer
 
                     $template_result = new TemplateResult(
                         [],
-                        [
+                        Interner::lookupAt([
                             $offset_type_part->param_name => [
                                 $offset_type_part->defining_class => new Union([
                                     new TTemplateParam(
@@ -525,11 +527,11 @@ final class ArrayAssignmentAnalyzer
                                         $offset_type_part->as_type
                                             ? new Union([$offset_type_part->as_type])
                                             : Type::getObject(),
-                                        'class-string-map',
+                                        Interner::intern('class-string-map'),
                                     ),
                                 ]),
                             ],
-                        ],
+                        ], '#v#k'),
                     );
 
                     $value_type = TemplateInferredTypeReplacer::replace(
@@ -1081,7 +1083,7 @@ final class ArrayAssignmentAnalyzer
                 $offset_type = $child_stmt_dim_type->getSingleIntLiteral();
             }
 
-            $var_id_addition = '[' . $offset_type->value . ']';
+            $var_id_addition = '[' . Interner::lookup($offset_type->value) . ']';
 
             return [$offset_type, $var_id_addition, true];
         }

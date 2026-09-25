@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\PhpVisitor;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use LogicException;
 use Override;
 use PhpParser;
@@ -165,9 +169,9 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
                 foreach ($catch->types as $catch_type) {
                     $catch_fqcln = ClassLikeAnalyzer::getFQCLNFromNameObject($catch_type, $this->aliases);
 
-                    if (!in_array(strtolower($catch_fqcln), ['self', 'static', 'parent'], true)) {
-                        $this->codebase->scanner->queueClassLikeForScanning($catch_fqcln);
-                        $this->file_storage->referenced_classlikes[strtolower($catch_fqcln)] = $catch_fqcln;
+                    if (!in_array($catch_fqcln, ['self', 'static', 'parent'], true)) {
+                        $this->codebase->scanner->queueClassLikeForScanning(Interner::intern($catch_fqcln));
+                        $this->file_storage->referenced_classlikes[$catch_fqcln] = $catch_fqcln;
                     }
                 }
             }
@@ -255,7 +259,7 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
             if ($classlike_storage
                 && $this->codebase->analysis_php_version_id >= 8_00_00
                 && $node instanceof PhpParser\Node\Stmt\ClassMethod
-                && strtolower($node->name->name) === '__tostring'
+                && $node->name->name === '__tostring'
             ) {
                 if ($classlike_storage->is_interface) {
                     $classlike_storage->parent_interfaces['stringable'] = 'Stringable';
@@ -263,7 +267,7 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
                     $classlike_storage->class_implements['stringable'] = 'Stringable';
                 }
 
-                $this->codebase->scanner->queueClassLikeForScanning('Stringable');
+                $this->codebase->scanner->queueClassLikeForScanning(Sym::C_STRINGABLE);
             }
 
             if (!$this->scan_deep) {
@@ -310,7 +314,7 @@ final class ReflectorVisitor extends PhpParser\NodeVisitorAbstract implements Fi
                     $this->aliases,
                 ) ?? Type::getMixed();
 
-                $fq_const_name = Type::getFQCLNFromString($const->name->name, $this->aliases);
+                $fq_const_name = Type::getFQCLNFromString(Interner::intern($const->name->name), $this->aliases);
 
                 if (($this->codebase->register_stub_files
                     || $this->codebase->register_autoload_files

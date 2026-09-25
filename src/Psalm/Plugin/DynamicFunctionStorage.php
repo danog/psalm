@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Plugin;
 
+use Psalm\Internal\Interner;
+
 use Psalm\Storage\FunctionLikeParameter;
 use Psalm\Storage\FunctionStorage;
 use Psalm\Storage\Mutations;
@@ -56,7 +58,7 @@ final class DynamicFunctionStorage
     /**
      * @internal
      */
-    public function toFunctionStorage(string $function_cased_name): FunctionStorage
+    public function toFunctionStorage(int $function_cased_name): FunctionStorage
     {
         $storage = new FunctionStorage();
         $storage->cased_name = $function_cased_name;
@@ -70,7 +72,7 @@ final class DynamicFunctionStorage
             $storage->template_types = [];
 
             foreach ($this->templates as $template) {
-                $storage->template_types[$template->param_name] = [
+                Interner::lookupAt($storage->template_types, '#v#k')[$template->param_name] = [
                     $template->defining_class => $template->as,
                 ];
             }

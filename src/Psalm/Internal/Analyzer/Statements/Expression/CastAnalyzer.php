@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
@@ -439,10 +443,10 @@ final class CastAnalyzer
                     }
 
                     foreach (self::PSEUDO_CASTABLE_CLASSES as $pseudo_castable_class) {
-                        if (strtolower($intersection_type->value) === strtolower($pseudo_castable_class)
+                        if ($intersection_type->value === $pseudo_castable_class
                             || $codebase->classExtends(
                                 $intersection_type->value,
-                                $pseudo_castable_class,
+                                Interner::intern($pseudo_castable_class),
                             )
                         ) {
                             $castable_types[] = new TInt();
@@ -638,10 +642,10 @@ final class CastAnalyzer
                     }
 
                     foreach (self::PSEUDO_CASTABLE_CLASSES as $pseudo_castable_class) {
-                        if (strtolower($intersection_type->value) === strtolower($pseudo_castable_class)
+                        if ($intersection_type->value === $pseudo_castable_class
                             || $codebase->classExtends(
                                 $intersection_type->value,
-                                $pseudo_castable_class,
+                                Interner::intern($pseudo_castable_class),
                             )
                         ) {
                             $castable_types[] = new TFloat();
@@ -828,7 +832,7 @@ final class CastAnalyzer
                     if ($intersection_type instanceof TNamedObject) {
                         $intersection_method_id = new MethodIdentifier(
                             $intersection_type->value,
-                            '__tostring',
+                            Sym::C___TOSTRING,
                         );
 
                         if ($codebase->methodExists(
@@ -851,7 +855,7 @@ final class CastAnalyzer
                                 [],
                                 $intersection_method_id,
                                 $declaring_method_id,
-                                $intersection_type->value . '::__toString',
+                                Interner::lookup($intersection_type->value) . '::__toString',
                                 $context,
                             );
 
@@ -866,7 +870,7 @@ final class CastAnalyzer
                     }
 
                     if ($intersection_type instanceof TObjectWithProperties
-                        && isset($intersection_type->methods['__tostring'])
+                        && isset($intersection_type->methods[Sym::C___TOSTRING])
                     ) {
                         $castable_types[] = new TString();
 

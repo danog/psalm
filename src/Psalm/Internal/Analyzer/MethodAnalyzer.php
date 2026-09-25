@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use LogicException;
 use PhpParser;
 use Psalm\CodeLocation;
@@ -66,15 +70,15 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
 
         $source_fqcln = (string) $source->getFQCLN();
 
-        $source_fqcln_lc = strtolower($source_fqcln);
+        $source_fqcln_lc = $source_fqcln;
 
-        $method_id = new MethodIdentifier($source_fqcln, $method_name_lc);
+        $method_id = new MethodIdentifier(Interner::intern($source_fqcln), Interner::intern($method_name_lc));
 
         if (!$storage) {
             try {
                 $storage = $codebase->methods->getStorage($method_id);
             } catch (UnexpectedValueException $e) {
-                $class_storage = $codebase->classlike_storage_provider->get($source_fqcln_lc);
+                $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($source_fqcln_lc));
 
                 if (!$class_storage->parent_classes) {
                     throw $e;
@@ -110,8 +114,8 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
     ): void {
         $codebase_methods = $codebase->methods;
 
-        if ($method_id->fq_class_name === 'Closure'
-            && $method_id->method_name === 'fromcallable'
+        if ($method_id->fq_class_name === Sym::C_CLOSURE
+            && $method_id->method_name === Sym::C_FROMCALLABLE
         ) {
             return;
         }
@@ -251,7 +255,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
             $appearing_method_class = $appearing_method_id->fq_class_name;
 
             // if the calling class is the same, we know the method exists, so it must be visible
-            if ($appearing_method_class === $context->self) {
+            if (Interner::lookup($appearing_method_class) === $context->self) {
                 return true;
             }
         }
@@ -259,7 +263,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
         $declaring_method_class = $declaring_method_id->fq_class_name;
 
         if ($source->getSource() instanceof TraitAnalyzer
-            && strtolower($declaring_method_class) === strtolower((string) $source->getFQCLN())
+            && $declaring_method_class === strtolower((string) $source->getFQCLN())
         ) {
             return true;
         }
@@ -279,13 +283,13 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
                 }
 
                 if ($appearing_method_class
-                    && $codebase->classExtends($appearing_method_class, $context->self)
+                    && $codebase->classExtends($appearing_method_class, Interner::intern($context->self))
                 ) {
                     return true;
                 }
 
                 if ($appearing_method_class
-                    && !$codebase->classExtends($context->self, $appearing_method_class)
+                    && !$codebase->classExtends(Interner::intern($context->self), $appearing_method_class)
                 ) {
                     return false;
                 }
@@ -310,13 +314,13 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
             return;
         }
 
-        $method_name_lc = strtolower($method_storage->cased_name);
+        $method_name_lc = $method_storage->cased_name;
         $methodsOfInterest = ['__clone', '__construct', '__destruct'];
 
         if (in_array($method_name_lc, $methodsOfInterest, true)) {
             IssueBuffer::maybeAdd(
                 new MethodSignatureMustOmitReturnType(
-                    'Method ' . $method_storage->cased_name . ' must not declare a return type',
+                    'Method ' . Interner::lookup($method_storage->cased_name) . ' must not declare a return type',
                     $code_location,
                 ),
             );
@@ -331,8 +335,8 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
         $function_name = (string)$this->function->name;
 
         return new MethodIdentifier(
-            $context_self ?: (string) $this->source->getFQCLN(),
-            strtolower($function_name),
+            Interner::intern($context_self ?: (string) $this->source->getFQCLN()),
+            Interner::intern($function_name),
         );
     }
 
@@ -342,28 +346,28 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
             return;
         }
 
-        $method_name_lc = strtolower($method_storage->cased_name);
+        $method_name_lc = $method_storage->cased_name;
         if (in_array($method_name_lc, self::FORBIDDEN_ENUM_METHODS, true)) {
             IssueBuffer::maybeAdd(new InvalidEnumMethod(
-                'Enums cannot define ' . $method_storage->cased_name,
+                'Enums cannot define ' . Interner::lookup($method_storage->cased_name),
                 $method_storage->location,
-                $method_storage->defining_fqcln . '::' . $method_storage->cased_name,
+                Interner::lookup($method_storage->defining_fqcln) . '::' . Interner::lookup($method_storage->cased_name),
             ));
         }
 
-        if ($method_name_lc === 'cases') {
+        if ($method_name_lc === Sym::C_CASES) {
             IssueBuffer::maybeAdd(new InvalidEnumMethod(
-                'Enums cannot define ' . $method_storage->cased_name,
+                'Enums cannot define ' . Interner::lookup($method_storage->cased_name),
                 $method_storage->location,
-                $method_storage->defining_fqcln . '::' . $method_storage->cased_name,
+                Interner::lookup($method_storage->defining_fqcln) . '::' . Interner::lookup($method_storage->cased_name),
             ));
         }
 
-        if ($enum_storage->enum_type && ($method_name_lc === 'from' || $method_name_lc === 'tryfrom')) {
+        if ($enum_storage->enum_type && ($method_name_lc === Sym::C_FROM || $method_name_lc === Sym::C_TRYFROM)) {
             IssueBuffer::maybeAdd(new InvalidEnumMethod(
-                'Enums cannot define ' . $method_storage->cased_name,
+                'Enums cannot define ' . Interner::lookup($method_storage->cased_name),
                 $method_storage->location,
-                $method_storage->defining_fqcln . '::' . $method_storage->cased_name,
+                Interner::lookup($method_storage->defining_fqcln) . '::' . Interner::lookup($method_storage->cased_name),
             ));
         }
     }

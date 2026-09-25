@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use InvalidArgumentException;
 use Override;
 use PhpParser;
@@ -88,7 +92,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
     /**
      * The parent class
      */
-    protected ?string $parent_fq_class_name = null;
+    protected ?int $parent_fq_class_name = null;
 
     protected ClassLikeStorage $storage;
 
@@ -98,7 +102,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
     public function __construct(
         protected PhpParser\Node\Stmt\ClassLike $class,
         SourceAnalyzer $source,
-        protected string $fq_class_name,
+        protected int $fq_class_name,
     ) {
         $this->source = $source;
         $this->file_analyzer = $source->getFileAnalyzer();
@@ -154,7 +158,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
     }
 
     public function getMethodMutations(
-        string $method_name,
+        int $method_name,
         Context $context,
     ): void {
         $project_analyzer = $this->getFileAnalyzer()->project_analyzer;
@@ -162,7 +166,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
 
         foreach ($this->class->stmts as $stmt) {
             if ($stmt instanceof PhpParser\Node\Stmt\ClassMethod &&
-                strtolower($stmt->name->name) === strtolower($method_name)
+                $stmt->name->name === Interner::lookup($method_name)
             ) {
                 $method_analyzer = new MethodAnalyzer($stmt, $this);
 
@@ -176,9 +180,9 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                         $this->source->getAliases(),
                     );
 
-                    $trait_file_analyzer = $project_analyzer->getFileAnalyzerForClassLike($fq_trait_name);
-                    $trait_node = $codebase->classlikes->getTraitNode($fq_trait_name);
-                    $trait_storage = $codebase->classlike_storage_provider->get($fq_trait_name);
+                    $trait_file_analyzer = $project_analyzer->getFileAnalyzerForClassLike(Interner::intern($fq_trait_name));
+                    $trait_node = $codebase->classlikes->getTraitNode(Interner::intern($fq_trait_name));
+                    $trait_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_trait_name));
                     $trait_aliases = $trait_storage->aliases;
 
                     if ($trait_aliases === null) {
@@ -188,13 +192,13 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                     $trait_analyzer = new TraitAnalyzer(
                         $trait_node,
                         $trait_file_analyzer,
-                        $fq_trait_name,
+                        Interner::intern($fq_trait_name),
                         $trait_aliases,
                     );
 
                     foreach ($trait_node->stmts as $trait_stmt) {
                         if ($trait_stmt instanceof PhpParser\Node\Stmt\ClassMethod &&
-                            strtolower($trait_stmt->name->name) === strtolower($method_name)
+                            $trait_stmt->name->name === Interner::lookup($method_name)
                         ) {
                             $method_analyzer = new MethodAnalyzer($trait_stmt, $trait_analyzer);
 
@@ -227,11 +231,11 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
     /**
      * @psalm-mutation-free
      */
-    public function getFunctionLikeAnalyzer(string $method_name): ?MethodAnalyzer
+    public function getFunctionLikeAnalyzer(int $method_name): ?MethodAnalyzer
     {
         foreach ($this->class->stmts as $stmt) {
             if ($stmt instanceof PhpParser\Node\Stmt\ClassMethod &&
-                strtolower($stmt->name->name) === strtolower($method_name)
+                $stmt->name->name === Interner::lookup($method_name)
             ) {
                 return new MethodAnalyzer($stmt, $this);
             }
@@ -245,7 +249,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
      */
     public static function checkFullyQualifiedClassLikeName(
         StatementsSource $statements_source,
-        string $fq_class_name,
+        int $fq_class_name,
         CodeLocation $code_location,
         ?Context $context,
         array $suppressed_issues,
@@ -262,7 +266,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                 new UndefinedClass(
                     'Class or interface <empty string> does not exist',
                     $code_location,
-                    'empty string',
+                    Interner::intern('empty string'),
                 ),
                 $suppressed_issues,
             )) {
@@ -274,14 +278,14 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
 
         $fq_class_name = (string) preg_replace('/^\\\/', '', $fq_class_name, 1);
 
-        if (in_array($fq_class_name, ['callable', 'iterable', 'self', 'static', 'parent'], true)) {
+        if (in_array($fq_class_name, [Sym::C_CALLABLE, Sym::C_ITERABLE, Sym::C_SELF, Sym::C_STATIC, Sym::C_PARENT], true)) {
             return true;
         }
 
         if (preg_match(
             '/(^|\\\)(int|float|bool|string|void|null|false|true|object|mixed)$/i',
             $fq_class_name,
-        ) || strtolower($fq_class_name) === 'resource'
+        ) || $fq_class_name === 'resource'
         ) {
             $class_name_parts = explode('\\', $fq_class_name);
             $class_name = array_pop($class_name_parts);
@@ -290,7 +294,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                 new ReservedWord(
                     $class_name . ' is a reserved word',
                     $code_location,
-                    $class_name,
+                    Interner::intern($class_name),
                 ),
                 $suppressed_issues,
             );
@@ -299,19 +303,19 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         }
 
         $class_exists = $codebase->classlikes->classExists(
-            $fq_class_name,
+            Interner::intern($fq_class_name),
             !$options->inferred ? $code_location : null,
             $context,
         );
 
         $interface_exists = $codebase->classlikes->interfaceExists(
-            $fq_class_name,
+            Interner::intern($fq_class_name),
             !$options->inferred ? $code_location : null,
             $context,
         );
 
         $enum_exists = $codebase->classlikes->enumExists(
-            $fq_class_name,
+            Interner::intern($fq_class_name),
             !$options->inferred ? $code_location : null,
             $context,
         );
@@ -325,7 +329,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
             }
             if (!$options->allow_trait
                 || !$codebase->classlikes->traitExists(
-                    $fq_class_name,
+                    Interner::intern($fq_class_name),
                     !$options->inferred ? $code_location : null,
                     $context,
                 )
@@ -335,7 +339,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                         new UndefinedDocblockClass(
                             'Docblock-defined class, interface or enum named ' . $fq_class_name . ' does not exist',
                             $code_location,
-                            $fq_class_name,
+                            Interner::intern($fq_class_name),
                         ),
                         $suppressed_issues,
                     )) {
@@ -346,7 +350,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                         new UndefinedAttributeClass(
                             'Attribute class ' . $fq_class_name . ' does not exist',
                             $code_location,
-                            $fq_class_name,
+                            Interner::intern($fq_class_name),
                         ),
                         $suppressed_issues,
                     )) {
@@ -357,7 +361,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                         new UndefinedClass(
                             'Class, interface or enum named ' . $fq_class_name . ' does not exist',
                             $code_location,
-                            $fq_class_name,
+                            Interner::intern($fq_class_name),
                         ),
                         $suppressed_issues,
                     )) {
@@ -374,7 +378,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         );
 
         try {
-            $class_storage = $codebase->classlike_storage_provider->get($aliased_name);
+            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($aliased_name));
         } catch (InvalidArgumentException $e) {
             if (!$options->inferred) {
                 throw $e;
@@ -386,7 +390,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         foreach ($class_storage->invalid_dependencies as $dependency_class_name => $_) {
             // if the implemented/extended class is stubbed, it may not yet have
             // been hydrated
-            if ($codebase->classlike_storage_provider->has($dependency_class_name)) {
+            if ($codebase->classlike_storage_provider->has(Interner::intern($dependency_class_name))) {
                 continue;
             }
 
@@ -395,7 +399,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                     $fq_class_name . ' depends on class or interface '
                         . $dependency_class_name . ' that does not exist',
                     $code_location,
-                    $fq_class_name,
+                    Interner::intern($fq_class_name),
                 ),
                 $suppressed_issues,
             )) {
@@ -404,15 +408,15 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         }
 
         if (!$options->inferred) {
-            if (($class_exists && !$codebase->classHasCorrectCasing($fq_class_name))
-                || ($interface_exists && !$codebase->interfaceHasCorrectCasing($fq_class_name))
-                || ($enum_exists && !$codebase->classlikes->enumHasCorrectCasing($fq_class_name))
+            if (($class_exists && !$codebase->classHasCorrectCasing(Interner::intern($fq_class_name)))
+                || ($interface_exists && !$codebase->interfaceHasCorrectCasing(Interner::intern($fq_class_name)))
+                || ($enum_exists && !$codebase->classlikes->enumHasCorrectCasing(Interner::intern($fq_class_name)))
             ) {
                 IssueBuffer::maybeAdd(
                     new InvalidClass(
                         'Class, interface or enum ' . $fq_class_name . ' has wrong casing',
                         $code_location,
-                        $fq_class_name,
+                        Interner::intern($fq_class_name),
                     ),
                     $suppressed_issues,
                 );
@@ -421,7 +425,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
 
         if (!$options->inferred) {
             $event = new AfterClassLikeExistenceCheckEvent(
-                $fq_class_name,
+                Interner::intern($fq_class_name),
                 $code_location,
                 $statements_source,
                 $codebase,
@@ -462,14 +466,14 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         }
 
         return Type::getFQCLNFromString(
-            $class_name->toString(),
+            Interner::intern($class_name->toString()),
             $aliases,
         );
     }
 
     /**
      * @psalm-mutation-free
-     * @return array<lowercase-string, string>
+     * @return array<int, string>
      */
     #[Override]
     public function getAliasedClassesFlipped(): array
@@ -497,16 +501,16 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
 
     /** @psalm-mutation-free */
     #[Override]
-    public function getFQCLN(): string
+    public function getFQCLN(): int
     {
         return $this->fq_class_name;
     }
 
     /** @psalm-mutation-free */
     #[Override]
-    public function getClassName(): ?string
+    public function getClassName(): ?int
     {
-        return $this->class->name->name ?? null;
+        return Interner::internOrNull($this->class->name->name ?? null);
     }
 
     /**
@@ -521,7 +525,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
 
     /** @psalm-mutation-free */
     #[Override]
-    public function getParentFQCLN(): ?string
+    public function getParentFQCLN(): ?int
     {
         return $this->parent_fq_class_name;
     }
@@ -583,11 +587,11 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
 
         $codebase = $source->getCodebase();
 
-        if ($codebase->properties->property_visibility_provider->has($fq_class_name)) {
+        if ($codebase->properties->property_visibility_provider->has(Interner::intern($fq_class_name))) {
             $property_visible = $codebase->properties->property_visibility_provider->isPropertyVisible(
                 $source,
-                $fq_class_name,
-                $property_name,
+                Interner::intern($fq_class_name),
+                Interner::intern($property_name),
                 true,
                 $context,
                 $code_location,
@@ -619,18 +623,18 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         }
 
         if ($source->getSource() instanceof TraitAnalyzer
-            && strtolower($declaring_property_class) === strtolower((string) $source->getFQCLN())
+            && $declaring_property_class === strtolower((string) $source->getFQCLN())
         ) {
             return $emit_issues ? null : true;
         }
 
-        $class_storage = $codebase->classlike_storage_provider->get($declaring_property_class);
+        $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($declaring_property_class));
 
-        if (!isset($class_storage->properties[$property_name])) {
+        if (!isset($class_storage->properties[Interner::intern($property_name)])) {
             throw new UnexpectedValueException('$storage should not be null for ' . $property_id);
         }
 
-        $storage = $class_storage->properties[$property_name];
+        $storage = $class_storage->properties[Interner::intern($property_name)];
 
         switch ($storage->visibility) {
             case self::VISIBILITY_PUBLIC:
@@ -663,11 +667,11 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                     return null;
                 }
 
-                if ($codebase->classExtends($appearing_property_class, $context->self)) {
+                if ($codebase->classExtends(Interner::intern($appearing_property_class), Interner::intern($context->self))) {
                     return $emit_issues ? null : true;
                 }
 
-                if (!$codebase->classExtends($context->self, $appearing_property_class)) {
+                if (!$codebase->classExtends(Interner::intern($context->self), Interner::intern($appearing_property_class))) {
                     if ($emit_issues) {
                         IssueBuffer::maybeAdd(
                             new InaccessibleProperty(
@@ -699,7 +703,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         if ($expected_param_count > $given_param_count) {
             IssueBuffer::maybeAdd(
                 new MissingTemplateParam(
-                    $storage->name . ' has missing template params when extending ' . $parent_storage->name
+                    Interner::lookup($storage->name) . ' has missing template params when extending ' . Interner::lookup($parent_storage->name)
                         . ', expecting ' . $expected_param_count,
                     $code_location,
                 ),
@@ -708,7 +712,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
         } elseif ($expected_param_count < $given_param_count) {
             IssueBuffer::maybeAdd(
                 new TooManyTemplateParams(
-                    $storage->name . ' has too many template params when extending ' . $parent_storage->name
+                    Interner::lookup($storage->name) . ' has too many template params when extending ' . Interner::lookup($parent_storage->name)
                         . ', expecting ' . $expected_param_count,
                     $code_location,
                 ),
@@ -724,7 +728,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
             if ($expected_param_count > $storage_param_count) {
                 IssueBuffer::maybeAdd(
                     new MissingTemplateParam(
-                        $storage->name . ' requires the same number of template params as ' . $parent_storage->name
+                        Interner::lookup($storage->name) . ' requires the same number of template params as ' . Interner::lookup($parent_storage->name)
                             . ' but saw ' . $storage_param_count,
                         $code_location,
                     ),
@@ -733,7 +737,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
             } else {
                 IssueBuffer::maybeAdd(
                     new TooManyTemplateParams(
-                        $storage->name . ' requires the same number of template params as ' . $parent_storage->name
+                        Interner::lookup($storage->name) . ' requires the same number of template params as ' . Interner::lookup($parent_storage->name)
                             . ' but saw ' . $storage_param_count,
                         $code_location,
                     ),
@@ -752,8 +756,8 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                 foreach ($type_map as $declaring_class => $template_type) {
                 }
 
-                if (isset($storage->template_extended_params[$parent_storage->name][$template_name])) {
-                    $extended_type = $storage->template_extended_params[$parent_storage->name][$template_name];
+                if (isset($storage->template_extended_params[Interner::lookup($parent_storage->name)][$template_name])) {
+                    $extended_type = $storage->template_extended_params[Interner::lookup($parent_storage->name)][$template_name];
 
                     if (isset($parent_storage->template_covariants[$i])
                         && !$parent_storage->template_covariants[$i]
@@ -793,7 +797,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                                     ),
                                     $storage->suppressed_issues + $this->getSuppressedIssues(),
                                 );
-                            } elseif ($storage->template_types[$t->param_name][$storage->name]->getId()
+                            } elseif ($storage->template_types[$t->param_name][Interner::lookup($storage->name)]->getId()
                                 !== $template_type->getId()
                             ) {
                                 IssueBuffer::maybeAdd(
@@ -803,7 +807,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
                                             . ' with constraint ' . $template_type->getId()
                                             . ' with a child template param ' . $t->param_name
                                             . ' with different constraint '
-                                            . $storage->template_types[$t->param_name][$storage->name]->getId(),
+                                            . $storage->template_types[$t->param_name][Interner::lookup($storage->name)]->getId(),
                                         $code_location,
                                     ),
                                     $storage->suppressed_issues + $this->getSuppressedIssues(),

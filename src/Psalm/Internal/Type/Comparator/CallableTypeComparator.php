@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Type\Comparator;
 
+use Psalm\Internal\Interner;
+
+use Psalm\Internal\Sym;
+
 use Exception;
 use PhpParser\Node\Arg;
 use PhpParser\Node\Expr\Variable;
@@ -313,7 +317,7 @@ final class CallableTypeComparator
             try {
                 $function_storage = $codebase->functions->getStorage(
                     $statements_analyzer,
-                    strtolower($input_type_part->value),
+                    $input_type_part->value,
                 );
 
                 if ($expand_callable) {
@@ -423,7 +427,7 @@ final class CallableTypeComparator
                             $codebase,
                             $method_storage->return_type,
                             $method_fqcln,
-                            $method_fqcln,
+                            Interner::lookup($method_fqcln),
                             null,
                         );
                     }
@@ -438,7 +442,7 @@ final class CallableTypeComparator
                 }
             }
         } elseif ($input_type_part instanceof TNamedObject
-            && $input_type_part->value === 'Closure'
+            && $input_type_part->value === Sym::C_CLOSURE
         ) {
             return new TCallable();
         } elseif ($input_type_part instanceof TNamedObject
@@ -446,7 +450,7 @@ final class CallableTypeComparator
         ) {
             $invoke_id = new MethodIdentifier(
                 $input_type_part->value,
-                '__invoke',
+                Sym::C___INVOKE,
             );
 
             if ($codebase->methodExists($invoke_id)) {
@@ -468,7 +472,7 @@ final class CallableTypeComparator
                     }
 
                     if (!empty($type_params)) {
-                        $input_with_templates = new Atomic\TGenericObject($input_type_part->value, $type_params);
+                        $input_with_templates = new Atomic\TGenericObject(Interner::lookup($input_type_part->value), $type_params);
                         $template_result = new TemplateResult($invokable_storage->template_types ?? [], []);
 
                         TemplateStandinTypeReplacer::fillTemplateResult(
@@ -490,7 +494,7 @@ final class CallableTypeComparator
                             $codebase,
                             $method_storage->return_type,
                             $method_fqcln,
-                            $method_fqcln,
+                            Interner::lookup($method_fqcln),
                             null,
                         );
                     }
@@ -547,7 +551,7 @@ final class CallableTypeComparator
                 foreach ($lhs->getAtomicTypes() as $lhs_atomic_type) {
                     if ($lhs_atomic_type instanceof TNamedObject) {
                         $codebase->analyzer->addMixedMemberName(
-                            strtolower($lhs_atomic_type->value) . '::',
+                            $lhs_atomic_type->value . '::',
                             $calling_method_id ?: $file_name,
                         );
                     } elseif ($lhs_atomic_type instanceof TTemplateParam) {
@@ -583,7 +587,7 @@ final class CallableTypeComparator
         if ($lhs->isSingleStringLiteral()) {
             $class_name = $lhs->getSingleStringLiteral()->value;
             if ($class_name[0] === '\\') {
-                $class_name = substr($class_name, 1);
+                $class_name = Interner::intern(substr($class_name, 1));
             }
         } elseif ($lhs->isSingle()) {
             foreach ($lhs->getAtomicTypes() as $lhs_atomic_type) {
@@ -607,9 +611,9 @@ final class CallableTypeComparator
             }
         }
 
-        if ($class_name === 'self'
-            || $class_name === 'static'
-            || $class_name === 'parent'
+        if ($class_name === Sym::C_SELF
+            || $class_name === Sym::C_STATIC
+            || $class_name === Sym::C_PARENT
         ) {
             return null;
         }
@@ -617,7 +621,7 @@ final class CallableTypeComparator
         if (!$class_name) {
             if ($codebase && ($calling_method_id || $file_name)) {
                 $codebase->analyzer->addMixedMemberName(
-                    strtolower($method_name),
+                    $method_name,
                     $calling_method_id ?: $file_name,
                 );
             }
@@ -627,7 +631,7 @@ final class CallableTypeComparator
 
         return new MethodIdentifier(
             $class_name,
-            strtolower($method_name),
+            Interner::intern($method_name),
         );
     }
 }

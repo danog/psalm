@@ -2,6 +2,8 @@
 
 namespace Psalm\Internal\Stubs\Generator;
 
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\Codebase;
 use Psalm\Internal\Codebase\ConstantTypeResolver;
@@ -36,7 +38,7 @@ final class ClassLikeStubGenerator
     public static function getClassLikeNode(
         Codebase $codebase,
         ClassLikeStorage $storage,
-        string $classlike_name
+        int $classlike_name
     ) : PhpParser\Node\Stmt\ClassLike {
         $subnodes = [
             'stmts' => [...self::getConstantNodes($codebase, $storage), ...self::getPropertyNodes($storage), ...self::getMethodNodes($storage)]
@@ -81,7 +83,7 @@ final class ClassLikeStubGenerator
             }
 
             return new VirtualInterface(
-                $classlike_name,
+                Interner::lookup($classlike_name),
                 $subnodes,
                 $attrs
             );
@@ -89,14 +91,14 @@ final class ClassLikeStubGenerator
 
         if ($storage->is_trait) {
             return new VirtualTrait(
-                $classlike_name,
+                Interner::lookup($classlike_name),
                 $subnodes,
                 $attrs
             );
         }
 
         if ($storage->parent_class) {
-            $subnodes['extends'] = new VirtualFullyQualified($storage->parent_class);
+            $subnodes['extends'] = new VirtualFullyQualified(Interner::lookup($storage->parent_class));
         } else
 
         if ($storage->direct_class_interfaces) {
@@ -107,7 +109,7 @@ final class ClassLikeStubGenerator
         }
 
         return new VirtualClass(
-            $classlike_name,
+            Interner::lookup($classlike_name),
             $subnodes,
             $attrs
         );
@@ -137,7 +139,7 @@ final class ClassLikeStubGenerator
             $constant_nodes[] = new VirtualClassConst(
                 [
                     new VirtualConst(
-                        $constant_name,
+                        Interner::lookup($constant_name),
                         StubsGenerator::getExpressionFromType($type)
                     )
                 ],
@@ -157,7 +159,7 @@ final class ClassLikeStubGenerator
      */
     private static function getPropertyNodes(ClassLikeStorage $storage): array
     {
-        $namespace_name = implode('\\', array_slice(explode('\\', $storage->name), 0, -1));
+        $namespace_name = implode('\\', array_slice(explode('\\', Interner::lookup($storage->name)), 0, -1));
 
         $property_nodes = [];
 
@@ -185,7 +187,7 @@ final class ClassLikeStubGenerator
                 $flag | ($property_storage->is_static ? PhpParser\Modifiers::STATIC : 0),
                 [
                     new VirtualPropertyItem(
-                        $property_name,
+                        Interner::lookup($property_name),
                         $property_storage->suggested_type
                             ? StubsGenerator::getExpressionFromType($property_storage->suggested_type)
                             : null
@@ -213,7 +215,7 @@ final class ClassLikeStubGenerator
      * @return list<PhpParser\Node\Stmt\ClassMethod>
      */
     private static function getMethodNodes(ClassLikeStorage $storage): array {
-        $namespace_name = implode('\\', array_slice(explode('\\', $storage->name), 0, -1));
+        $namespace_name = implode('\\', array_slice(explode('\\', Interner::lookup($storage->name)), 0, -1));
         $method_nodes = [];
 
         foreach ($storage->methods as $method_storage) {
@@ -273,7 +275,7 @@ final class ClassLikeStubGenerator
             }
 
             $method_nodes[] = new VirtualClassMethod(
-                $method_storage->cased_name,
+                Interner::lookup($method_storage->cased_name),
                 [
                     'flags' => $flag
                         | ($method_storage->is_static ? PhpParser\Modifiers::STATIC : 0)

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\Internal\Codebase;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use Psalm\Internal\Codebase\ClassConstantByWildcardResolver;
 use Psalm\Tests\TestCase;
@@ -39,11 +41,11 @@ final class ClassConstantByWildcardResolverTest extends TestCase
         );
         $codebase = $this->project_analyzer->getCodebase();
         $codebase->scanFiles();
-        $resolved = $this->resolver->resolve('ReconciliationTest\\Foo', '*');
+        $resolved = $this->resolver->resolve(Interner::intern('ReconciliationTest\\Foo'), '*');
         self::assertNotEmpty($resolved);
         foreach ($resolved as $type) {
             self::assertInstanceOf(TLiteralString::class, $type);
-            self::assertTrue($type->value === 'bar' || $type->value === 'baz');
+            self::assertTrue(Interner::lookup($type->value) === Interner::intern('bar') || Interner::lookup($type->value) === Interner::intern('baz'));
         }
     }
 
@@ -64,18 +66,18 @@ final class ClassConstantByWildcardResolverTest extends TestCase
         );
         $codebase = $this->project_analyzer->getCodebase();
         $codebase->scanFiles();
-        $resolved = $this->resolver->resolve('ReconciliationTest\\Foo', 'BA*');
+        $resolved = $this->resolver->resolve(Interner::intern('ReconciliationTest\\Foo'), 'BA*');
         self::assertNotEmpty($resolved);
         foreach ($resolved as $type) {
             self::assertInstanceOf(TLiteralString::class, $type);
-            self::assertTrue($type->value === 'bar' || $type->value === 'baz');
+            self::assertTrue(Interner::lookup($type->value) === Interner::intern('bar') || Interner::lookup($type->value) === Interner::intern('baz'));
         }
 
-        $resolved = $this->resolver->resolve('ReconciliationTest\\Foo', 'QOO');
+        $resolved = $this->resolver->resolve(Interner::intern('ReconciliationTest\\Foo'), 'QOO');
         self::assertNotNull($resolved);
         self::assertCount(1, $resolved);
         $type = reset($resolved);
         self::assertInstanceOf(TLiteralString::class, $type);
-        self::assertTrue($type->value === 'qoo');
+        self::assertTrue(Interner::lookup($type->value) === Interner::intern('qoo'));
     }
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use PhpParser;
 use Psalm\CodeLocation;
@@ -120,8 +122,8 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
             if ($context->collect_mutations &&
                 $context->self &&
                 $codebase->classExtends(
-                    $context->self,
-                    (string)$statements_analyzer->getFQCLN(),
+                    Interner::intern($context->self),
+                    Interner::intern((string)$statements_analyzer->getFQCLN()),
                 )
             ) {
                 /** @psalm-suppress PossiblyUndefinedStringArrayOffset */
@@ -140,13 +142,13 @@ final class ClosureAnalyzer extends FunctionLikeAnalyzer
         }
 
         if ($context->self) {
-            $self_class_storage = $codebase->classlike_storage_provider->get($context->self);
+            $self_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($context->self));
 
             ClassAnalyzer::addContextProperties(
                 $statements_analyzer,
                 $self_class_storage,
                 $use_context,
-                $context->self,
+                Interner::intern($context->self),
                 $statements_analyzer->getParentFQCLN(),
             );
         }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\FunctionLike;
 
+use Psalm\Internal\Sym;
+
 use PhpParser;
 use PhpParser\NodeTraverser;
 use Psalm\Codebase;

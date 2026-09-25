@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements;
 
+use Psalm\Internal\Sym;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
@@ -98,7 +100,7 @@ final class EchoAnalyzer
             }
         }
 
-        if (isset($codebase->config->forbidden_functions['echo'])) {
+        if (isset($codebase->config->forbidden_functions[Sym::C_ECHO])) {
             IssueBuffer::maybeAdd(
                 new ForbiddenCode(
                     'Use of echo',

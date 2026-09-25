@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\Fetch;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\Aliases;
 use Psalm\CodeLocation;
@@ -43,7 +47,7 @@ final class ConstFetchAnalyzer
     ): void {
         $const_name = $stmt->name->toString();
 
-        switch (strtolower($const_name)) {
+        switch ($const_name) {
             case 'null':
                 $statements_analyzer->node_data->setType($stmt, Type::getNull());
                 break;
@@ -65,7 +69,7 @@ final class ConstFetchAnalyzer
                 break;
 
             default:
-                if (isset($statements_analyzer->getCodebase()->config->forbidden_constants[$const_name])) {
+                if (isset($statements_analyzer->getCodebase()->config->forbidden_constants[Interner::intern($const_name)])) {
                     IssueBuffer::maybeAdd(
                         new ForbiddenCode(
                             'You have forbidden the use of ' . $const_name,
@@ -79,7 +83,7 @@ final class ConstFetchAnalyzer
     
                 $const_type = self::getConstType(
                     $statements_analyzer,
-                    $const_name,
+                    Interner::intern($const_name),
                     $stmt->name instanceof PhpParser\Node\Name\FullyQualified,
                     $context,
                 );
@@ -92,7 +96,7 @@ final class ConstFetchAnalyzer
                 } elseif ($stmt->name instanceof PhpParser\Node\Name\FullyQualified) {
                     $fq_const_name = $const_name;
                 } else {
-                    $fq_const_name = Type::getFQCLNFromString($const_name, $statements_analyzer->getAliases());
+                    $fq_const_name = Type::getFQCLNFromString(Interner::intern($const_name), $statements_analyzer->getAliases());
                 }
 
                 $codebase->analyzer->addNodeReference(
@@ -157,19 +161,19 @@ final class ConstFetchAnalyzer
 
     public static function getGlobalConstType(
         Codebase $codebase,
-        string $fq_const_name,
-        string $const_name,
+        int $fq_const_name,
+        int $const_name,
     ): ?Union {
-        if ($const_name === 'STDERR'
-            || $const_name === 'STDOUT'
-            || $const_name === 'STDIN'
+        if ($const_name === Sym::C_STDERR
+            || $const_name === Sym::C_STDOUT
+            || $const_name === Sym::C_STDIN
         ) {
             return Type::getResource();
         }
 
         if ($fq_const_name) {
             $stubbed_const_type = $codebase->getStubbedConstantType(
-                $fq_const_name,
+                Interner::lookup($fq_const_name),
             );
 
             if ($stubbed_const_type) {
@@ -178,7 +182,7 @@ final class ConstFetchAnalyzer
         }
 
         $stubbed_const_type = $codebase->getStubbedConstantType(
-            $const_name,
+            Interner::lookup($const_name),
         );
 
         if ($stubbed_const_type) {
@@ -191,51 +195,51 @@ final class ConstFetchAnalyzer
             || array_key_exists($const_name, $predefined_constants)
         ) {
             switch ($const_name) {
-                case 'DIRECTORY_SEPARATOR':
-                case 'PATH_SEPARATOR':
-                case 'PHP_EOL':
+                case Sym::C_DIRECTORY_SEPARATOR:
+                case Sym::C_PATH_SEPARATOR:
+                case Sym::C_PHP_EOL:
                     return Type::getSingleLetter();
 
-                case 'PHP_VERSION':
+                case Sym::C_PHP_VERSION:
                     return Type::getNonEmptyString();
 
-                case 'PEAR_EXTENSION_DIR':
-                case 'PEAR_INSTALL_DIR':
-                case 'PHP_BINARY':
-                case 'PHP_BINDIR':
-                case 'PHP_CONFIG_FILE_PATH':
-                case 'PHP_CONFIG_FILE_SCAN_DIR':
-                case 'PHP_DATADIR':
-                case 'PHP_EXTENSION_DIR':
-                case 'PHP_EXTRA_VERSION':
-                case 'PHP_LIBDIR':
-                case 'PHP_LOCALSTATEDIR':
-                case 'PHP_MANDIR':
-                case 'PHP_OS':
-                case 'PHP_OS_FAMILY':
-                case 'PHP_PREFIX':
-                case 'PHP_SAPI':
-                case 'PHP_SYSCONFDIR':
+                case Sym::C_PEAR_EXTENSION_DIR:
+                case Sym::C_PEAR_INSTALL_DIR:
+                case Sym::C_PHP_BINARY:
+                case Sym::C_PHP_BINDIR:
+                case Sym::C_PHP_CONFIG_FILE_PATH:
+                case Sym::C_PHP_CONFIG_FILE_SCAN_DIR:
+                case Sym::C_PHP_DATADIR:
+                case Sym::C_PHP_EXTENSION_DIR:
+                case Sym::C_PHP_EXTRA_VERSION:
+                case Sym::C_PHP_LIBDIR:
+                case Sym::C_PHP_LOCALSTATEDIR:
+                case Sym::C_PHP_MANDIR:
+                case Sym::C_PHP_OS:
+                case Sym::C_PHP_OS_FAMILY:
+                case Sym::C_PHP_PREFIX:
+                case Sym::C_PHP_SAPI:
+                case Sym::C_PHP_SYSCONFDIR:
                     return Type::getString();
 
-                case 'PHP_MAJOR_VERSION':
-                case 'PHP_MINOR_VERSION':
-                case 'PHP_RELEASE_VERSION':
-                case 'PHP_DEBUG':
-                case 'PHP_FLOAT_DIG':
-                case 'PHP_INT_MIN':
-                case 'PHP_ZTS':
+                case Sym::C_PHP_MAJOR_VERSION:
+                case Sym::C_PHP_MINOR_VERSION:
+                case Sym::C_PHP_RELEASE_VERSION:
+                case Sym::C_PHP_DEBUG:
+                case Sym::C_PHP_FLOAT_DIG:
+                case Sym::C_PHP_INT_MIN:
+                case Sym::C_PHP_ZTS:
                     return Type::getInt();
 
-                case 'PHP_INT_MAX':
-                case 'PHP_INT_SIZE':
-                case 'PHP_MAXPATHLEN':
-                case 'PHP_VERSION_ID':
+                case Sym::C_PHP_INT_MAX:
+                case Sym::C_PHP_INT_SIZE:
+                case Sym::C_PHP_MAXPATHLEN:
+                case Sym::C_PHP_VERSION_ID:
                     return Type::getIntRange(1, null);
 
-                case 'PHP_FLOAT_EPSILON':
-                case 'PHP_FLOAT_MAX':
-                case 'PHP_FLOAT_MIN':
+                case Sym::C_PHP_FLOAT_EPSILON:
+                case Sym::C_PHP_FLOAT_MAX:
+                case Sym::C_PHP_FLOAT_MIN:
                     return Type::getFloat();
             }
 
@@ -243,7 +247,7 @@ final class ConstFetchAnalyzer
                 return ClassLikeAnalyzer::getTypeFromValue($predefined_constants[$fq_const_name]);
             }
 
-            return ClassLikeAnalyzer::getTypeFromValue($predefined_constants[$const_name]);
+            return ClassLikeAnalyzer::getTypeFromValue($predefined_constants[Interner::lookup($const_name)]);
         }
 
         return null;
@@ -251,14 +255,14 @@ final class ConstFetchAnalyzer
 
     public static function getConstType(
         StatementsAnalyzer $statements_analyzer,
-        string $const_name,
+        int $const_name,
         bool $is_fully_qualified,
         ?Context $context,
     ): ?Union {
         $aliased_constants = $statements_analyzer->getAliases()->constants;
 
-        if (isset($aliased_constants[$const_name])) {
-            $fq_const_name = $aliased_constants[$const_name];
+        if (isset($aliased_constants[Interner::lookup($const_name)])) {
+            $fq_const_name = $aliased_constants[Interner::lookup($const_name)];
         } elseif ($is_fully_qualified) {
             $fq_const_name = $const_name;
         } else {
@@ -308,7 +312,7 @@ final class ConstFetchAnalyzer
 
     public static function setConstType(
         StatementsAnalyzer $statements_analyzer,
-        string $const_name,
+        int $const_name,
         Union $const_type,
         Context $context,
     ): void {
@@ -357,7 +361,7 @@ final class ConstFetchAnalyzer
 
             self::setConstType(
                 $statements_analyzer,
-                $const->name->name,
+                Interner::intern($const->name->name),
                 $statements_analyzer->node_data->getType($const->value) ?? Type::getMixed(),
                 $context,
             );

@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\BinaryOp;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use AssertionError;
 use PhpParser;
 use Psalm\CodeLocation;
@@ -171,7 +175,7 @@ final class ConcatAnalyzer
 
                     foreach ($left_type->getAtomicTypes() as $left_type_part) {
                         foreach ($right_type->getAtomicTypes() as $right_type_part) {
-                            $literal = $left_type_part->value . $right_type_part->value;
+                            $literal = Interner::lookup($left_type_part->value) . Interner::lookup($right_type_part->value);
                             if (strlen($literal) >= $config->max_string_length) {
                                 // Literal too long, use non-literal type instead
                                 $literal_concat = false;
@@ -437,7 +441,7 @@ final class ConcatAnalyzer
                 if ($atomic_type instanceof TNamedObject) {
                     $to_string_method_id = new MethodIdentifier(
                         $atomic_type->value,
-                        '__tostring',
+                        Sym::C___TOSTRING,
                     );
 
                     if ($codebase->methodExists(
@@ -467,7 +471,7 @@ final class ConcatAnalyzer
                             $storage->allowed_mutations,
                             $context,
                             'possibly-mutating method '
-                                        . $atomic_type->value . '::__toString',
+                                        . Interner::lookup($atomic_type->value) . '::__toString',
                             ImpureMethodCall::class,
                             $operand,
                             null,

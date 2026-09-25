@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
+use Psalm\Internal\Interner;
+
 use Psalm\Internal\PluginManager\ComposerLock;
 use RuntimeException;
 
@@ -72,7 +74,7 @@ final class ComposerLockTest extends TestCase
     {
         $lock = new ComposerLock([$this->jsonFile((object)[
             'packages' => [
-                (object)$this->pluginEntry('vendor/package', 'Vendor\Package\PluginClass'),
+                (object)$this->pluginEntry('vendor/package', Interner::intern('Vendor\Package\PluginClass')),
             ],
             'packages-dev' => [],
         ])]);
@@ -90,7 +92,7 @@ final class ComposerLockTest extends TestCase
         $lock = new ComposerLock([$this->jsonFile((object)[
             'packages' => [],
             'packages-dev' => [
-                (object) $this->pluginEntry('vendor/package', 'Vendor\Package\PluginClass'),
+                (object) $this->pluginEntry('vendor/package', Interner::intern('Vendor\Package\PluginClass')),
             ],
         ])]);
 
@@ -170,18 +172,18 @@ final class ComposerLockTest extends TestCase
         $lock = new ComposerLock([
             $this->jsonFile([
                 'packages' => [
-                    (object) $this->pluginEntry('vendor/packageA', 'Vendor\PackageA\PluginClass'),
+                    (object) $this->pluginEntry('vendor/packageA', Interner::intern('Vendor\PackageA\PluginClass')),
                 ],
                 'packages-dev' => [
-                    (object) $this->pluginEntry('vendor/packageB', 'Vendor\PackageB\PluginClass'),
+                    (object) $this->pluginEntry('vendor/packageB', Interner::intern('Vendor\PackageB\PluginClass')),
                 ],
             ]),
             $this->jsonFile([
                 'packages' => [
-                    (object) $this->pluginEntry('vendor/packageC', 'Vendor\PackageC\PluginClass'),
+                    (object) $this->pluginEntry('vendor/packageC', Interner::intern('Vendor\PackageC\PluginClass')),
                 ],
                 'packages-dev' => [
-                    (object) $this->pluginEntry('vendor/packageD', 'Vendor\PackageD\PluginClass'),
+                    (object) $this->pluginEntry('vendor/packageD', Interner::intern('Vendor\PackageD\PluginClass')),
                 ],
             ]),
         ]);
@@ -200,7 +202,7 @@ final class ComposerLockTest extends TestCase
     /**
      * @psalm-pure
      */
-    private function pluginEntry(string $package_name, string $package_class): array
+    private function pluginEntry(string $package_name, int $package_class): array
     {
         return [
             'name' => $package_name,

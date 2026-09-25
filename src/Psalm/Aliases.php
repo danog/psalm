@@ -20,11 +20,11 @@ final class Aliases
     public ?int $uses_end = null;
 
     /**
-     * @param array<lowercase-string, string> $uses
-     * @param array<lowercase-string, non-empty-string> $functions
+     * @param array<int, string> $uses
+     * @param array<int, non-empty-string> $functions
      * @param array<string, string> $constants
-     * @param array<lowercase-string, string> $uses_flipped
-     * @param array<lowercase-string, string> $functions_flipped
+     * @param array<int, string> $uses_flipped
+     * @param array<int, string> $functions_flipped
      * @param array<string, string> $constants_flipped
      * @internal
      * @psalm-mutation-free

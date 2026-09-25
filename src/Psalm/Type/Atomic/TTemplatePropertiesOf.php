@@ -26,7 +26,7 @@ final class TTemplatePropertiesOf extends Atomic
      */
     public function __construct(
         public string $param_name,
-        public string $defining_class,
+        public int $defining_class,
         public TTemplateParam $as,
         public ?int $visibility_filter,
         bool $from_docblock = false,
@@ -57,7 +57,7 @@ final class TTemplatePropertiesOf extends Atomic
     public function toPhpString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         int $analysis_php_version_id,
     ): string {
         return $this->getKey();

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Codebase;
 
+use Psalm\Internal\Interner;
+
 use Psalm\Storage\ClassConstantStorage;
 use Psalm\Storage\ClassLikeStorage;
 use Psalm\Storage\EnumCaseStorage;
@@ -33,27 +35,27 @@ final class StorageByPatternResolver
         $constants = $class_like_storage->constants;
 
         if (!str_contains($pattern, '*')) {
-            if (isset($constants[$pattern])) {
-                return [$pattern => $constants[$pattern]];
+            if (isset($constants[Interner::intern($pattern)])) {
+                return [$pattern => $constants[Interner::intern($pattern)]];
             }
 
             return [];
         } elseif ($pattern === '*') {
-            return $constants;
+            return Interner::lookupKeys($constants);
         }
 
         $regex_pattern = sprintf('#^%s$#', str_replace('*', '.*?', $pattern));
         $matched_constants = [];
 
         foreach ($constants as $constant => $class_constant_storage) {
-            if (preg_match($regex_pattern, $constant) === 0) {
+            if (preg_match($regex_pattern, Interner::lookup($constant)) === 0) {
                 continue;
             }
 
             $matched_constants[$constant] = $class_constant_storage;
         }
 
-        return $matched_constants;
+        return Interner::lookupKeys($matched_constants);
     }
 
     /**

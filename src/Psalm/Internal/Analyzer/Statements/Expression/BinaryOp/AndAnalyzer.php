@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\BinaryOp;
 
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
@@ -80,7 +82,7 @@ final class AndAnalyzer
             $left_cond_id,
             $left_cond_id,
             $stmt->left,
-            $context->self,
+            Interner::internOrNull($context->self),
             $statements_analyzer,
             $codebase,
         );

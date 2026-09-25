@@ -15,7 +15,7 @@ final class ClassConstant extends UnresolvedConstantComponent
     /**
      * @psalm-mutation-free
      */
-    public function __construct(public readonly string $fqcln, public readonly string $name)
+    public function __construct(public readonly int $fqcln, public readonly string $name)
     {
     }
 }

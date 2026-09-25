@@ -10,7 +10,7 @@ namespace Psalm\Plugin\EventHandler;
 interface ClassFilePathProviderInterface
 {
     /**
-     * @param class-string $class
+     * @param int $class
      */
-    public static function getClassFilePath(string $class): ?string;
+    public static function getClassFilePath(int $class): ?string;
 }

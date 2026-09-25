@@ -17,7 +17,7 @@ abstract class ClassIssue extends CodeIssue
     public function __construct(
         string $message,
         CodeLocation $code_location,
-        public string $fq_classlike_name,
+        public int $fq_classlike_name,
     ) {
         parent::__construct($message, $code_location);
     }

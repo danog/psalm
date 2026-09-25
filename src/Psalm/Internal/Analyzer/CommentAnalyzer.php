@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer;
 
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\Aliases;
 use Psalm\CodeLocation;
@@ -504,7 +506,7 @@ final class CommentAnalyzer
                 $var_comment_type = TypeExpander::expandUnion(
                     $codebase,
                     $var_comment->type,
-                    $context->self,
+                    Interner::internOrNull($context->self),
                     $context->self,
                     $statements_analyzer->getParentFQCLN(),
                 );

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider;
 
+use Psalm\Internal\Interner;
+
 use Closure;
 use PhpParser\Node\Arg;
 use Psalm\CodeLocation;
@@ -47,7 +49,7 @@ final class MethodParamsProvider
             $callable = $class::getMethodParams(...);
 
             foreach ($class::getClassLikeNames() as $fq_classlike_name) {
-                $this->registerClosure($fq_classlike_name, $callable);
+                $this->registerClosure(Interner::intern($fq_classlike_name), $callable);
             }
         }
     }
@@ -56,17 +58,17 @@ final class MethodParamsProvider
      * @param Closure(MethodParamsProviderEvent): ?array<int, FunctionLikeParameter> $c
      * @psalm-external-mutation-free
      */
-    public function registerClosure(string $fq_classlike_name, Closure $c): void
+    public function registerClosure(int $fq_classlike_name, Closure $c): void
     {
-        self::$handlers[strtolower($fq_classlike_name)][] = $c;
+        self::$handlers[$fq_classlike_name][] = $c;
     }
 
     /**
      * @psalm-external-mutation-free
      */
-    public function has(string $fq_classlike_name): bool
+    public function has(int $fq_classlike_name): bool
     {
-        return isset(self::$handlers[strtolower($fq_classlike_name)]);
+        return isset(self::$handlers[$fq_classlike_name]);
     }
 
     /**
@@ -74,14 +76,14 @@ final class MethodParamsProvider
      * @return  ?list<FunctionLikeParameter>
      */
     public function getMethodParams(
-        string $fq_classlike_name,
+        int $fq_classlike_name,
         string $method_name_lowercase,
         ?array $call_args = null,
         ?StatementsSource $statements_source = null,
         ?Context $context = null,
         ?CodeLocation $code_location = null,
     ): ?array {
-        foreach (self::$handlers[strtolower($fq_classlike_name)] ?? [] as $class_handler) {
+        foreach (self::$handlers[$fq_classlike_name] ?? [] as $class_handler) {
             $event = new MethodParamsProviderEvent(
                 $fq_classlike_name,
                 $method_name_lowercase,

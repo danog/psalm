@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Type;
 
+use Psalm\Internal\Interner;
+
 use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\VariableFetchAnalyzer;
@@ -888,7 +890,7 @@ final class AssertionReconciler extends Reconciler
         ) {
             // this is a hack - it's not actually rigorous, as the params may be different
             return new TGenericObject(
-                $type_2_atomic->value,
+                Interner::lookup($type_2_atomic->value),
                 $type_1_atomic->type_params,
             );
         } elseif ($type_2_atomic instanceof TNamedObject
@@ -935,7 +937,7 @@ final class AssertionReconciler extends Reconciler
                     $statements_analyzer->getCodebase(),
                     $existing_var_atomic_type,
                     $existing_var_atomic_type->fq_classlike_name,
-                    $existing_var_atomic_type->fq_classlike_name,
+                    Interner::lookup($existing_var_atomic_type->fq_classlike_name),
                     null,
                     true,
                     true,
@@ -1587,7 +1589,7 @@ final class AssertionReconciler extends Reconciler
 
             if ($allow_string_comparison) {
                 $types[] = new TClassString(
-                    $assertion_type->value,
+                    Interner::lookup($assertion_type->value),
                     $assertion_type,
                 );
             }
@@ -1641,7 +1643,7 @@ final class AssertionReconciler extends Reconciler
                     }
                 }
 
-                $new_type = Type::getClassString($assertion_type->value);
+                $new_type = Type::getClassString(Interner::lookup($assertion_type->value));
 
                 if ((
                         $new_type_has_interface_string

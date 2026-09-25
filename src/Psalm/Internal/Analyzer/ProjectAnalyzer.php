@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer;
 
+use Psalm\Internal\Interner;
+
 use InvalidArgumentException;
 use Psalm\Codebase;
 use Psalm\Config;
@@ -563,9 +565,9 @@ final class ProjectAnalyzer
                 && $destination_pos === (strlen($destination) - 1)
             ) {
                 foreach ($this->codebase->classlike_storage_provider->getAll() as $class_storage) {
-                    if (str_starts_with($source, substr($class_storage->name, 0, $source_pos))) {
+                    if (str_starts_with($source, substr(Interner::lookup($class_storage->name), 0, $source_pos))) {
                         $this->to_refactor[$class_storage->name]
-                            = substr($destination, 0, -1) . substr($class_storage->name, $source_pos);
+                            = substr($destination, 0, -1) . substr(Interner::lookup($class_storage->name), $source_pos);
                     }
                 }
 
@@ -577,29 +579,29 @@ final class ProjectAnalyzer
             $source_parts = explode('::', $source);
             $destination_parts = explode('::', $destination);
 
-            if (!$this->codebase->classlikes->hasFullyQualifiedClassName($source_parts[0])) {
+            if (!$this->codebase->classlikes->hasFullyQualifiedClassName(Interner::intern($source_parts[0]))) {
                 throw new RefactorException(
                     'Source class ' . $source_parts[0] . ' doesn’t exist',
                 );
             }
 
             if (count($source_parts) === 1 && count($destination_parts) === 1) {
-                if ($this->codebase->classlikes->hasFullyQualifiedClassName($destination_parts[0])) {
+                if ($this->codebase->classlikes->hasFullyQualifiedClassName(Interner::intern($destination_parts[0]))) {
                     throw new RefactorException(
                         'Destination class ' . $destination_parts[0] . ' already exists',
                     );
                 }
 
-                $source_class_storage = $this->codebase->classlike_storage_provider->get($source_parts[0]);
+                $source_class_storage = $this->codebase->classlike_storage_provider->get(Interner::intern($source_parts[0]));
 
                 $destination_parts = explode('\\', $destination, -1);
                 $destination_ns = implode('\\', $destination_parts);
 
                 $this->codebase->classes_to_move[strtolower($source)] = $destination;
 
-                $destination_class_storage = $this->codebase->classlike_storage_provider->create($destination);
+                $destination_class_storage = $this->codebase->classlike_storage_provider->create(Interner::intern($destination));
 
-                $destination_class_storage->name = $destination;
+                $destination_class_storage->name = Interner::intern($destination);
 
                 if ($source_class_storage->aliases) {
                     $destination_class_storage->aliases = clone $source_class_storage->aliases;
@@ -616,15 +618,15 @@ final class ProjectAnalyzer
             }
 
             $source_method_id = new MethodIdentifier(
-                $source_parts[0],
-                strtolower($source_parts[1]),
+                Interner::intern($source_parts[0]),
+                Interner::intern(strtolower($source_parts[1])),
             );
 
             if ($this->codebase->methodExists($source_method_id)) {
                 if ($this->codebase->methodExists(
                     new MethodIdentifier(
-                        $destination_parts[0],
-                        strtolower($destination_parts[1]),
+                        Interner::intern($destination_parts[0]),
+                        Interner::intern(strtolower($destination_parts[1])),
                     ),
                 )) {
                     throw new RefactorException(
@@ -632,7 +634,7 @@ final class ProjectAnalyzer
                     );
                 }
 
-                if (!$this->codebase->classlikes->classExists($destination_parts[0])) {
+                if (!$this->codebase->classlikes->classExists(Interner::intern($destination_parts[0]))) {
                     throw new RefactorException(
                         'Destination class ' . $destination_parts[0] . ' doesn’t exist',
                     );
@@ -642,11 +644,11 @@ final class ProjectAnalyzer
                 if (strtolower($source_parts[0]) !== strtolower($destination_parts[0])) {
                     $source_method_storage = $this->codebase->methods->getStorage($source_method_id);
                     $destination_class_storage
-                        = $this->codebase->classlike_storage_provider->get($destination_parts[0]);
+                        = $this->codebase->classlike_storage_provider->get(Interner::intern($destination_parts[0]));
 
                     if (!$source_method_storage->is_static
                         && !isset(
-                            $destination_class_storage->parent_classes[strtolower($source_method_id->fq_class_name)],
+                            $destination_class_storage->parent_classes[$source_method_id->fq_class_name],
                         )
                     ) {
                         throw new RefactorException(
@@ -683,7 +685,7 @@ final class ProjectAnalyzer
                     );
                 }
 
-                if (!$this->codebase->classlikes->classExists($destination_parts[0])) {
+                if (!$this->codebase->classlikes->classExists(Interner::intern($destination_parts[0]))) {
                     throw new RefactorException(
                         'Destination class ' . $destination_parts[0] . ' doesn’t exist',
                     );
@@ -710,19 +712,19 @@ final class ProjectAnalyzer
             }
 
             $source_class_constants = $this->codebase->classlikes->getConstantsForClass(
-                $source_parts[0],
+                Interner::intern($source_parts[0]),
                 ReflectionProperty::IS_PRIVATE,
             );
 
             if (isset($source_class_constants[$source_parts[1]])) {
-                if (!$this->codebase->classlikes->hasFullyQualifiedClassName($destination_parts[0])) {
+                if (!$this->codebase->classlikes->hasFullyQualifiedClassName(Interner::intern($destination_parts[0]))) {
                     throw new RefactorException(
                         'Destination class ' . $destination_parts[0] . ' doesn’t exist',
                     );
                 }
 
                 $destination_class_constants = $this->codebase->classlikes->getConstantsForClass(
-                    $destination_parts[0],
+                    Interner::intern($destination_parts[0]),
                     ReflectionProperty::IS_PRIVATE,
                 );
 
@@ -816,7 +818,7 @@ final class ProjectAnalyzer
                     continue;
                 }
 
-                $potential_file_path = $this->config->getPotentialComposerFilePathForClassLike($destination);
+                $potential_file_path = $this->config->getPotentialComposerFilePathForClassLike(Interner::intern($destination));
 
                 if ($potential_file_path && !file_exists($potential_file_path)) {
                     $containing_dir = dirname($potential_file_path);
@@ -1242,9 +1244,9 @@ final class ProjectAnalyzer
         return $this->codebase;
     }
 
-    public function getFileAnalyzerForClassLike(string $fq_class_name): FileAnalyzer
+    public function getFileAnalyzerForClassLike(int $fq_class_name): FileAnalyzer
     {
-        $fq_class_name_lc = strtolower($fq_class_name);
+        $fq_class_name_lc = $fq_class_name;
 
         $file_path = $this->codebase->scanner->getClassLikeFilePath($fq_class_name_lc);
 
@@ -1293,8 +1295,8 @@ final class ProjectAnalyzer
         $file_analyzer->populateCheckers($stmts);
 
         if (!$this_context->self) {
-            $this_context->self = $fq_class_name;
-            $this_context->vars_in_scope['$this'] = Type::parseString($fq_class_name);
+            $this_context->self = Interner::lookup($fq_class_name);
+            $this_context->vars_in_scope['$this'] = Type::parseString(Interner::lookup($fq_class_name));
         }
 
         $file_analyzer->getMethodMutations($appearing_method_id, $this_context, true);
@@ -1335,9 +1337,9 @@ final class ProjectAnalyzer
     public static function getSupportedIssuesToFix(): array
     {
         return array_map(
-            /** @param class-string $issue_class */
-            static function (string $issue_class): string {
-                $parts = explode('\\', $issue_class);
+            /** @param int $issue_class */
+            static function (int $issue_class): string {
+                $parts = explode('\\', Interner::lookup($issue_class));
                 return end($parts);
             },
             self::SUPPORTED_ISSUES_TO_FIX,

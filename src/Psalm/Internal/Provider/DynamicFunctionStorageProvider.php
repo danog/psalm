@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider;
 
+use Psalm\Internal\Interner;
+
 use Closure;
 use PhpParser;
 use Psalm\CodeLocation;
@@ -26,7 +28,7 @@ use function strtolower;
  */
 final class DynamicFunctionStorageProvider
 {
-    /** @var array<lowercase-string, array<Closure(DynamicFunctionStorageProviderEvent): ?DynamicFunctionStorage>> */
+    /** @var array<int, array<Closure(DynamicFunctionStorageProviderEvent): ?DynamicFunctionStorage>> */
     private static array $handlers = [];
 
     /** @var array<lowercase-string, ?FunctionStorage> */
@@ -40,7 +42,7 @@ final class DynamicFunctionStorageProvider
         $callable = $class::getFunctionStorage(...);
 
         foreach ($class::getFunctionIds() as $function_id) {
-            $this->registerClosure($function_id, $callable);
+            $this->registerClosure(Interner::intern($function_id), $callable);
         }
     }
 
@@ -48,17 +50,17 @@ final class DynamicFunctionStorageProvider
      * @param Closure(DynamicFunctionStorageProviderEvent): ?DynamicFunctionStorage $c
      * @psalm-external-mutation-free
      */
-    public function registerClosure(string $fq_function_name, Closure $c): void
+    public function registerClosure(int $fq_function_name, Closure $c): void
     {
-        self::$handlers[strtolower($fq_function_name)][] = $c;
+        self::$handlers[$fq_function_name][] = $c;
     }
 
     /**
      * @psalm-external-mutation-free
      */
-    public function has(string $fq_function_name): bool
+    public function has(int $fq_function_name): bool
     {
-        return isset(self::$handlers[strtolower($fq_function_name)]);
+        return isset(self::$handlers[$fq_function_name]);
     }
 
     public function getFunctionStorage(
@@ -82,10 +84,10 @@ final class DynamicFunctionStorageProvider
             return self::$dynamic_storages[$dynamic_storage_id];
         }
 
-        foreach (self::$handlers[strtolower($function_id)] ?? [] as $class_handler) {
+        foreach (self::$handlers[Interner::intern(strtolower($function_id))] ?? [] as $class_handler) {
             $event = new DynamicFunctionStorageProviderEvent(
                 new ArgTypeInferer($context, $statements_analyzer),
-                new DynamicTemplateProvider('fn-' . strtolower($function_id)),
+                new DynamicTemplateProvider(Interner::intern('fn-' . strtolower($function_id))),
                 $statements_analyzer,
                 $function_id,
                 $stmt,
@@ -96,7 +98,7 @@ final class DynamicFunctionStorageProvider
             $result = $class_handler($event);
 
             return self::$dynamic_storages[$dynamic_storage_id] = $result
-                ? $result->toFunctionStorage($function_id)
+                ? $result->toFunctionStorage(Interner::intern($function_id))
                 : null;
         }
 

@@ -19,7 +19,7 @@ final class LinkableTypeAlias implements TypeAlias
      * @psalm-mutation-free
      */
     public function __construct(
-        public readonly string $declaring_fq_classlike_name,
+        public readonly int $declaring_fq_classlike_name,
         public readonly string $alias_name,
         public readonly int $line_number,
         public readonly int $start_offset,

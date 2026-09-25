@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\Fetch;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Config;
@@ -77,7 +81,7 @@ final class VariableFetchAnalyzer
         $project_analyzer = $statements_analyzer->getFileAnalyzer()->project_analyzer;
         $codebase = $statements_analyzer->getCodebase();
 
-        if ($stmt->name === 'this') {
+        if ($stmt->name === Sym::C_THIS) {
             if ($statements_analyzer->isStatic()) {
                 return !IssueBuffer::accepts(
                     new InvalidScope(

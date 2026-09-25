@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Codebase;
 
+use Psalm\Internal\Interner;
+
 use Amp\Future;
 use InvalidArgumentException;
 use PhpParser;
@@ -69,6 +71,7 @@ use const PHP_INT_MAX;
  * }
  *
  * @psalm-type  WorkerData = array{
+ *     interner: list<string>,
  *      issues: array<string, list<IssueData>>,
  *      fixable_issue_counts: array<string, int>,
  *      mixed_counts: array<string, array{0: int, 1: int}>,
@@ -143,7 +146,7 @@ final class Analyzer
     private ?array $files_to_update = null;
 
     /**
-     * @var array<string, array<string, int>>
+     * @var array<int, array<string, int>>
      */
     private array $analyzed_methods = [];
 
@@ -173,7 +176,7 @@ final class Analyzer
     public array $possible_method_param_types = [];
 
     /**
-     * @var array<string, Mutations::LEVEL_*>
+     * @var array<int, Mutations::LEVEL_*>
      */
     public array $mutable_classes = [];
 
@@ -273,7 +276,7 @@ final class Analyzer
             IssueBuffer::processUnusedSuppressions($codebase->file_provider);
         }
 
-        $codebase->file_reference_provider->setAnalyzedMethods($this->analyzed_methods);
+        $codebase->file_reference_provider->setAnalyzedMethods(Interner::lookupKeys($this->analyzed_methods));
         $codebase->file_reference_provider->setFileMaps($this->getFileMaps());
         $codebase->file_reference_provider->setTypeCoverage($this->mixed_counts);
         $codebase->file_reference_provider->updateReferenceCache($codebase, $scanned_files);
@@ -329,6 +332,8 @@ final class Analyzer
 
             foreach (Future::iterate($forked_pool_data) as $pool_data) {
                 $pool_data = $pool_data->await();
+
+                Interner::merge($pool_data['interner']);
 
                 IssueBuffer::addIssues($pool_data['issues']);
                 IssueBuffer::addFixableIssues($pool_data['fixable_issue_counts']);
@@ -427,7 +432,7 @@ final class Analyzer
 
         // Load cached data from disk
         if ($codebase->diff_methods) {
-            $this->analyzed_methods = $file_reference_provider->getAnalyzedMethods();
+            $this->analyzed_methods = Interner::internKeys($file_reference_provider->getAnalyzedMethods());
             $this->existing_issues = $file_reference_provider->getExistingIssues();
             $file_maps = $file_reference_provider->getFileMaps();
 
@@ -497,7 +502,7 @@ final class Analyzer
                             } else {
                                 try {
                                     $referencing_storage = $codebase->classlike_storage_provider->get(
-                                        $referencing_base_classlike,
+                                        Interner::intern($referencing_base_classlike),
                                     );
                                 } catch (InvalidArgumentException) {
                                     // Workaround for #3671
@@ -505,8 +510,8 @@ final class Analyzer
                                     $referencing_storage = null;
                                 }
 
-                                if (isset($referencing_storage->used_traits[$unchanged_signature_classlike])
-                                    || isset($referencing_storage->parent_classes[$unchanged_signature_classlike])
+                                if (isset($referencing_storage->used_traits[Interner::intern($unchanged_signature_classlike)])
+                                    || isset($referencing_storage->parent_classes[Interner::intern($unchanged_signature_classlike)])
                                 ) {
                                     $newly_invalidated_methods[$referencing_method_id] = true;
                                 }
@@ -548,7 +553,7 @@ final class Analyzer
         // This could be optimized by storing method references to files
         foreach ($file_reference_provider->getDeletedReferencedFiles() as $deleted_file) {
             foreach ($file_reference_provider->getFilesReferencingFile($deleted_file) as $file_referencing_deleted) {
-                $methods_referencing_deleted = $this->analyzed_methods[$file_referencing_deleted] ?? [];
+                $methods_referencing_deleted = $this->analyzed_methods[Interner::intern($file_referencing_deleted)] ?? [];
                 foreach ($methods_referencing_deleted as $method_referencing_deleted => $_) {
                     $newly_invalidated_methods[$method_referencing_deleted] = true;
                 }
@@ -576,7 +581,7 @@ final class Analyzer
         }
 
         foreach ($statements_provider->getErrors() as $file_path => $_) {
-            unset($this->analyzed_methods[$file_path]);
+            unset($this->analyzed_methods[Interner::intern($file_path)]);
             unset($this->existing_issues[$file_path]);
         }
 
@@ -661,7 +666,7 @@ final class Analyzer
 
         $keep_nodes = [];
 
-        foreach ($this->analyzed_methods[$file_path] ?? [] as $trait_safe_method_id => $_) {
+        foreach ($this->analyzed_methods[Interner::intern($file_path)] ?? [] as $trait_safe_method_id => $_) {
             $keep_nodes[CodeUseGraph::functionLikeNode(strtolower(explode('&', $trait_safe_method_id)[0]))] = true;
         }
 
@@ -674,16 +679,16 @@ final class Analyzer
         }
 
         foreach ($file_storage->classlikes_in_file as $fq_class_name_lc => $_) {
-            $code_use_graph->removeReferencesFrom(CodeUseGraph::classNode($fq_class_name_lc));
+            $code_use_graph->removeReferencesFrom(CodeUseGraph::classNode(Interner::intern($fq_class_name_lc)));
 
             try {
-                $classlike_storage = $codebase->classlike_storage_provider->get($fq_class_name_lc);
+                $classlike_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name_lc));
             } catch (InvalidArgumentException) {
                 continue;
             }
 
             foreach ($classlike_storage->appearing_method_ids as $appearing_method_id) {
-                if (strtolower($appearing_method_id->fq_class_name) !== $fq_class_name_lc) {
+                if ($appearing_method_id->fq_class_name !== $fq_class_name_lc) {
                     continue;
                 }
 
@@ -696,7 +701,7 @@ final class Analyzer
         }
 
         foreach ($file_storage->functions as $function_id => $_) {
-            $code_use_graph->removeReferencesFrom(CodeUseGraph::functionLikeNode(strtolower($function_id)));
+            $code_use_graph->removeReferencesFrom(CodeUseGraph::functionLikeNode(strtolower(Interner::lookup($function_id))));
         }
     }
 
@@ -706,7 +711,7 @@ final class Analyzer
         $deletion_ranges = $statements_provider->getDeletionRanges();
 
         foreach ($this->existing_issues as $file_path => $file_issues) {
-            if (!isset($this->analyzed_methods[$file_path])) {
+            if (!isset($this->analyzed_methods[Interner::intern($file_path)])) {
                 continue;
             }
 
@@ -746,7 +751,7 @@ final class Analyzer
         }
 
         foreach ($this->reference_map as $file_path => $reference_map) {
-            if (!isset($this->analyzed_methods[$file_path])) {
+            if (!isset($this->analyzed_methods[Interner::intern($file_path)])) {
                 unset($this->reference_map[$file_path]);
                 continue;
             }
@@ -782,7 +787,7 @@ final class Analyzer
         }
 
         foreach ($this->type_map as $file_path => $type_map) {
-            if (!isset($this->analyzed_methods[$file_path])) {
+            if (!isset($this->analyzed_methods[Interner::intern($file_path)])) {
                 unset($this->type_map[$file_path]);
                 continue;
             }
@@ -818,7 +823,7 @@ final class Analyzer
         }
 
         foreach ($this->argument_map as $file_path => $argument_map) {
-            if (!isset($this->analyzed_methods[$file_path])) {
+            if (!isset($this->analyzed_methods[Interner::intern($file_path)])) {
                 unset($this->argument_map[$file_path]);
                 continue;
             }
@@ -1318,7 +1323,7 @@ final class Analyzer
      */
     public function getAnalyzedMethods(): array
     {
-        return $this->analyzed_methods;
+        return Interner::lookupKeys($this->analyzed_methods);
     }
 
     /**
@@ -1377,9 +1382,9 @@ final class Analyzer
      * @param Mutations::LEVEL_* $allowed_mutations
      * @psalm-external-mutation-free
      */
-    public function addMutableClass(string $fqcln, int $allowed_mutations): void
+    public function addMutableClass(int $fqcln, int $allowed_mutations): void
     {
-        $fqcln = strtolower($fqcln);
+        $fqcln = $fqcln;
         if (array_key_exists($fqcln, $this->mutable_classes)) {
             $this->mutable_classes[$fqcln] = max(
                 $this->mutable_classes[$fqcln],
@@ -1404,11 +1409,11 @@ final class Analyzer
     public function isMethodAlreadyAnalyzed(string $file_path, string $method_id, bool $is_constructor = false): bool
     {
         if ($is_constructor) {
-            return isset($this->analyzed_methods[$file_path][$method_id])
-                && $this->analyzed_methods[$file_path][$method_id] === 2;
+            return isset($this->analyzed_methods[Interner::intern($file_path)][$method_id])
+                && $this->analyzed_methods[Interner::intern($file_path)][$method_id] === 2;
         }
 
-        return isset($this->analyzed_methods[$file_path][$method_id]);
+        return isset($this->analyzed_methods[Interner::intern($file_path)][$method_id]);
     }
 
     /**

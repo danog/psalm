@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
+use Psalm\Internal\Interner;
+
 use InvalidArgumentException;
 use PhpParser;
 use Psalm\Aliases;
@@ -58,7 +60,7 @@ final class SimpleTypeInferer
         Aliases $aliases,
         ?FileSource $file_source = null,
         ?array $existing_class_constants = null,
-        ?string $fq_classlike_name = null,
+        ?int $fq_classlike_name = null,
     ): ?Union {
         if ($stmt instanceof PhpParser\Node\Expr\BinaryOp) {
             if ($stmt instanceof PhpParser\Node\Expr\BinaryOp\Concat) {
@@ -149,7 +151,7 @@ final class SimpleTypeInferer
                 && $stmt->left instanceof PhpParser\Node\Expr\ConstFetch) {
                 $stmt_left_type = ConstFetchAnalyzer::getConstType(
                     $file_source,
-                    $stmt->left->name->toString(),
+                    Interner::intern($stmt->left->name->toString()),
                     true,
                     null,
                 );
@@ -170,7 +172,7 @@ final class SimpleTypeInferer
                 && $stmt->right instanceof PhpParser\Node\Expr\ConstFetch) {
                 $stmt_right_type = ConstFetchAnalyzer::getConstType(
                     $file_source,
-                    $stmt->right->name->toString(),
+                    Interner::intern($stmt->right->name->toString()),
                     true,
                     null,
                 );
@@ -301,7 +303,7 @@ final class SimpleTypeInferer
                 return Type::getString($aliases->namespace);
             }
 
-            if ($type = ConstFetchAnalyzer::getGlobalConstType($codebase, $name, $name)) {
+            if ($type = ConstFetchAnalyzer::getGlobalConstType($codebase, Interner::intern($name), Interner::intern($name))) {
                 return $type;
             }
 
@@ -354,14 +356,14 @@ final class SimpleTypeInferer
                     );
                 }
 
-                if (strtolower($const_fq_class_name) === strtolower($fq_classlike_name)
+                if ($const_fq_class_name === $fq_classlike_name
                     && isset($existing_class_constants[$stmt->name->name])
                     && $existing_class_constants[$stmt->name->name]->type
                 ) {
                     return $existing_class_constants[$stmt->name->name]->type;
                 }
 
-                if (strtolower($stmt->name->name) === 'class') {
+                if ($stmt->name->name === 'class') {
                     return Type::getLiteralClassString($const_fq_class_name, true);
                 }
 
@@ -372,7 +374,7 @@ final class SimpleTypeInferer
                     try {
                         $foreign_class_constant = $codebase->classlikes->getClassConstantType(
                             $const_fq_class_name,
-                            $stmt->name->name,
+                            Interner::intern($stmt->name->name),
                             ReflectionProperty::IS_PRIVATE,
                             $file_source instanceof StatementsAnalyzer ? $file_source : null,
                         );
@@ -388,7 +390,7 @@ final class SimpleTypeInferer
                 }
             }
 
-            if ($stmt->name instanceof PhpParser\Node\Identifier && strtolower($stmt->name->name) === 'class') {
+            if ($stmt->name instanceof PhpParser\Node\Identifier && $stmt->name->name === 'class') {
                 return Type::getClassString();
             }
 
@@ -542,7 +544,7 @@ final class SimpleTypeInferer
         Aliases $aliases,
         ?FileSource $file_source = null,
         ?array $existing_class_constants = null,
-        ?string $fq_classlike_name = null,
+        ?int $fq_classlike_name = null,
     ): ?Union {
         if (count($stmt->items) === 0) {
             return Type::getEmptyArray();
@@ -626,7 +628,7 @@ final class SimpleTypeInferer
         Aliases $aliases,
         ?FileSource $file_source = null,
         ?array $existing_class_constants = null,
-        ?string $fq_classlike_name = null,
+        ?int $fq_classlike_name = null,
     ): bool {
         if ($item->unpack) {
             $unpacked_array_type = self::infer(

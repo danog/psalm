@@ -88,7 +88,7 @@ final class IssueHandler
         return $this->error_level;
     }
 
-    public function getReportingLevelForClass(string $fq_classlike_name): ?string
+    public function getReportingLevelForClass(int $fq_classlike_name): ?string
     {
         foreach ($this->custom_levels as $custom_level) {
             if ($custom_level->allowsClass($fq_classlike_name)) {

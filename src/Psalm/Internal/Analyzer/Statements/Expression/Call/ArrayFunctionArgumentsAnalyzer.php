@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\Call;
 
+use Psalm\Internal\Interner;
+
+use Psalm\Internal\Sym;
+
 use AssertionError;
 use PhpParser;
 use Psalm\CodeLocation;
@@ -775,9 +779,9 @@ final class ArrayFunctionArgumentsAnalyzer
                         [$callable_fq_class_name, $method_name] = explode('::', $function_id_part);
 
                         switch ($callable_fq_class_name) {
-                            case 'self':
-                            case 'static':
-                            case 'parent':
+                            case Sym::C_SELF:
+                            case Sym::C_STATIC:
+                            case Sym::C_PARENT:
                                 $container_class = $statements_analyzer->getFQCLN();
 
                                 if ($callable_fq_class_name === 'parent') {
@@ -797,7 +801,7 @@ final class ArrayFunctionArgumentsAnalyzer
 
                         $function_id_part = new MethodIdentifier(
                             $callable_fq_class_name,
-                            strtolower($method_name),
+                            Interner::intern($method_name),
                         );
 
                         try {
@@ -998,8 +1002,8 @@ final class ArrayFunctionArgumentsAnalyzer
                     $statements_analyzer,
                     $input_type,
                     $i,
-                    $context->self,
-                    $context->calling_method_id ?: $context->calling_function_id,
+                    Interner::internOrNull($context->self),
+                    Interner::internOrNull($context->calling_method_id ?: $context->calling_function_id),
                 );
 
                 $closure_type = $closure_type->replaceTemplateTypesWithArgTypes(
@@ -1011,7 +1015,7 @@ final class ArrayFunctionArgumentsAnalyzer
             $closure_param_type = TypeExpander::expandUnion(
                 $codebase,
                 $closure_param_type,
-                $context->self,
+                Interner::internOrNull($context->self),
                 null,
                 $statements_analyzer->getParentFQCLN(),
             );

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider\ReturnTypeProvider;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use PhpParser;
 use Psalm\CodeLocation;
@@ -293,7 +295,7 @@ final class ArrayFilterReturnTypeProvider implements FunctionReturnTypeProviderI
                                 $cond_object_id,
                                 $cond_object_id,
                                 $stmt->expr,
-                                $context->self,
+                                Interner::internOrNull($context->self),
                                 $statements_source,
                                 $codebase,
                             );

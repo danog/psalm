@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
+use Psalm\Internal\Sym;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
@@ -76,7 +78,7 @@ final class PrintAnalyzer
             }
         }
 
-        if (isset($codebase->config->forbidden_functions['print'])) {
+        if (isset($codebase->config->forbidden_functions[Sym::C_PRINT])) {
             IssueBuffer::maybeAdd(
                 new ForbiddenCode(
                     'You have forbidden the use of print',

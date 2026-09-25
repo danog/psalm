@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer;
 
+use Psalm\Internal\Sym;
+
 use Override;
 use PhpParser\Node;
 use Psalm\Aliases;
@@ -46,7 +48,7 @@ abstract class SourceAnalyzer implements StatementsSource
 
     /**
      * @psalm-mutation-free
-     * @return array<lowercase-string, string>
+     * @return array<int, string>
      */
     #[Override]
     public function getAliasedClassesFlipped(): array
@@ -66,21 +68,21 @@ abstract class SourceAnalyzer implements StatementsSource
 
     /** @psalm-mutation-free */
     #[Override]
-    public function getFQCLN(): ?string
+    public function getFQCLN(): ?int
     {
         return $this->source->getFQCLN();
     }
 
     /** @psalm-mutation-free */
     #[Override]
-    public function getClassName(): ?string
+    public function getClassName(): ?int
     {
         return $this->source->getClassName();
     }
 
     /** @psalm-mutation-free */
     #[Override]
-    public function getParentFQCLN(): ?string
+    public function getParentFQCLN(): ?int
     {
         return $this->source->getParentFQCLN();
     }
@@ -259,7 +261,7 @@ abstract class SourceAnalyzer implements StatementsSource
                 && $src->storage instanceof MethodStorage
                 && (
                     // Allow constructors to mutate (override immutability)
-                    $src->storage->cased_name === '__construct'
+                    $src->storage->cased_name === Sym::C___CONSTRUCT
                     
                     // ???
                     || $src->storage->mutation_free_assumed

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use PhpParser;
 use Psalm\Aliases;
@@ -20,32 +22,32 @@ use function strtolower;
 trait CanAlias
 {
     /**
-     * @var array<lowercase-string, string>
+     * @var array<int, string>
      */
     private array $aliased_classes = [];
 
     /**
-     * @var array<lowercase-string, CodeLocation>
+     * @var array<int, CodeLocation>
      */
     private array $aliased_class_locations = [];
 
     /**
-     * @var array<lowercase-string, string>
+     * @var array<int, string>
      */
     private array $aliased_classes_flipped = [];
 
     /**
-     * @var array<lowercase-string, string>
+     * @var array<int, string>
      */
     private array $aliased_classes_flipped_replaceable = [];
 
     /**
-     * @var array<lowercase-string, non-empty-string>
+     * @var array<int, non-empty-string>
      */
     private array $aliased_functions = [];
 
     /**
-     * @var array<string, string>
+     * @var array<int, string>
      */
     private array $aliased_constants = [];
 
@@ -82,8 +84,8 @@ trait CanAlias
                     }
 
                     if ($codebase->alter_code) {
-                        if (isset($codebase->class_transforms[$use_path_lc])) {
-                            $new_fq_class_name = $codebase->class_transforms[$use_path_lc];
+                        if (isset($codebase->class_transforms[Interner::intern($use_path_lc)])) {
+                            $new_fq_class_name = $codebase->class_transforms[Interner::intern($use_path_lc)];
 
                             $file_manipulations = [];
 
@@ -142,7 +144,7 @@ trait CanAlias
 
     /**
      * @psalm-mutation-free
-     * @return array<lowercase-string, string>
+     * @return array<int, string>
      */
     #[Override]
     public function getAliasedClassesFlipped(): array
@@ -168,7 +170,7 @@ trait CanAlias
             $this->getNamespace(),
             $this->aliased_classes,
             $this->aliased_functions,
-            $this->aliased_constants,
+            Interner::lookupKeys($this->aliased_constants),
         );
     }
 }

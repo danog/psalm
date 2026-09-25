@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\LanguageServer;
 
+use Psalm\Internal\Interner;
+
 use LanguageServerProtocol\LogMessage;
 use LanguageServerProtocol\LogTrace;
 use Psalm\Internal\LanguageServer\Client\Progress\LegacyProgress;
@@ -99,7 +101,7 @@ final class LanguageClient
         }
 
         $this->handler->notify(
-            '$/logTrace',
+            Interner::intern('$/logTrace'),
             $logTrace,
         );
     }
@@ -110,7 +112,7 @@ final class LanguageClient
     public function logMessage(LogMessage $logMessage): void
     {
         $this->handler->notify(
-            'window/logMessage',
+            Interner::intern('window/logMessage'),
             $logMessage,
         );
     }
@@ -129,7 +131,7 @@ final class LanguageClient
     public function event(LogMessage $logMessage): void
     {
         $this->handler->notify(
-            'telemetry/event',
+            Interner::intern('telemetry/event'),
             $logMessage,
         );
     }
