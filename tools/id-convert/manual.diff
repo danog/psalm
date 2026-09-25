@@ -2977,8 +2977,21 @@ index 6264240..60953e1 100644
              'file_maps'                                  => $analyzer->getFileMaps(),
              'possible_method_param_types'                => $analyzer->getPossibleMethodParamTypes(),
              'code_use_data'                              => $codebase->code_use_graph,
+diff --git a/src/Psalm/Internal/PhpVisitor/Reflector/AttributeResolver.php b/src/Psalm/Internal/PhpVisitor/Reflector/AttributeResolver.php
+index 4dc6f69..4dda7be 100644
+--- a/src/Psalm/Internal/PhpVisitor/Reflector/AttributeResolver.php
++++ b/src/Psalm/Internal/PhpVisitor/Reflector/AttributeResolver.php
+@@ -41,7 +41,7 @@ final class AttributeResolver
+         }
+ 
+         $codebase->scanner->queueClassLikeForScanning($fq_type_string);
+-        $file_storage->referenced_classlikes[Interner::intern(strtolower($fq_type_string))] = Interner::intern($fq_type_string);
++        $file_storage->referenced_classlikes[Interner::intern($fq_type_string)] = Interner::intern($fq_type_string);
+ 
+         $args = [];
+ 
 diff --git a/src/Psalm/Internal/PhpVisitor/Reflector/ClassLikeNodeScanner.php b/src/Psalm/Internal/PhpVisitor/Reflector/ClassLikeNodeScanner.php
-index 9330848..be01af9 100644
+index 9330848..43671ff 100644
 --- a/src/Psalm/Internal/PhpVisitor/Reflector/ClassLikeNodeScanner.php
 +++ b/src/Psalm/Internal/PhpVisitor/Reflector/ClassLikeNodeScanner.php
 @@ -849,7 +849,7 @@ final class ClassLikeNodeScanner
@@ -3004,7 +3017,60 @@ index 9330848..be01af9 100644
  
                      if ($new_name !== $old_name) {
                          $storage->trait_alias_map[$new_name] = $old_name;
-@@ -1248,7 +1248,7 @@ final class ClassLikeNodeScanner
+@@ -1042,10 +1042,8 @@ final class ClassLikeNodeScanner
+                 return;
+             }
+ 
+-            $generic_class_lc = strtolower(Interner::lookup($atomic_type->value));
+-
+-            if (!isset($storage->parent_classes[Interner::intern($generic_class_lc)])
+-                && !isset($storage->parent_interfaces[Interner::intern($generic_class_lc)])
++            if (!isset($storage->parent_classes[$atomic_type->value])
++                && !isset($storage->parent_interfaces[$atomic_type->value])
+             ) {
+                 $storage->docblock_issues[] = new InvalidDocblock(
+                     '@template-extends must include the name of an extended class,'
+@@ -1128,9 +1126,7 @@ final class ClassLikeNodeScanner
+                 return;
+             }
+ 
+-            $generic_class_lc = strtolower(Interner::lookup($atomic_type->value));
+-
+-            if (!isset($storage->class_implements[Interner::intern($generic_class_lc)])) {
++            if (!isset($storage->class_implements[$atomic_type->value])) {
+                 $storage->docblock_issues[] = new InvalidDocblock(
+                     '@template-implements must include the name of an implemented class,'
+                         . ' got ' . $atomic_type->getId(),
+@@ -1142,7 +1138,7 @@ final class ClassLikeNodeScanner
+ 
+             $implemented_type_parameters = [];
+ 
+-            $storage->template_type_implements_count[$generic_class_lc] = count($atomic_type->type_params);
++            $storage->template_type_implements_count[Interner::lookup($atomic_type->value)] = count($atomic_type->type_params);
+ 
+             foreach ($atomic_type->type_params as $type_param) {
+                 $implemented_type_parameters[] = $type_param;
+@@ -1214,9 +1210,7 @@ final class ClassLikeNodeScanner
+                 return;
+             }
+ 
+-            $generic_class_lc = strtolower(Interner::lookup($atomic_type->value));
+-
+-            if (!isset($storage->used_traits[Interner::intern($generic_class_lc)])) {
++            if (!isset($storage->used_traits[$atomic_type->value])) {
+                 $storage->docblock_issues[] = new InvalidDocblock(
+                     '@template-use must include the name of an used class,'
+                         . ' got ' . $atomic_type->getId(),
+@@ -1228,7 +1222,7 @@ final class ClassLikeNodeScanner
+ 
+             $used_type_parameters = [];
+ 
+-            $storage->template_type_uses_count[$generic_class_lc] = count($atomic_type->type_params);
++            $storage->template_type_uses_count[Interner::lookup($atomic_type->value)] = count($atomic_type->type_params);
+ 
+             foreach ($atomic_type->type_params as $type_param) {
+                 $used_type_parameters[] = $type_param->replaceClassLike('self', Interner::lookup($storage->name));
+@@ -1248,7 +1242,7 @@ final class ClassLikeNodeScanner
  
          $storage = $class_storage->methods[Sym::C___CONSTRUCT] = new MethodStorage();
  
@@ -3013,7 +3079,7 @@ index 9330848..be01af9 100644
          $storage->defining_fqcln = $class_storage->name;
  
          $storage->allowed_mutations = Mutations::LEVEL_NONE;
-@@ -1259,7 +1259,7 @@ final class ClassLikeNodeScanner
+@@ -1259,7 +1253,7 @@ final class ClassLikeNodeScanner
              Sym::C___CONSTRUCT,
          );
  
@@ -3022,7 +3088,7 @@ index 9330848..be01af9 100644
              = $class_storage->declaring_method_ids[Sym::C___CONSTRUCT];
          $class_storage->appearing_method_ids[Sym::C___CONSTRUCT]
              = $class_storage->declaring_method_ids[Sym::C___CONSTRUCT];
-@@ -1451,7 +1451,7 @@ final class ClassLikeNodeScanner
+@@ -1451,7 +1445,7 @@ final class ClassLikeNodeScanner
              }
  
              if ($exists) {
@@ -3082,6 +3148,28 @@ index 7d4c2d0..dd67205 100644
 +                if (isset($this->config->getPredefinedFunctions()[Interner::intern($function_id)])) {
                      /** @psalm-suppress ArgumentTypeCoercion */
                      $reflection_function = new ReflectionFunction($function_id);
+ 
+diff --git a/src/Psalm/Internal/PhpVisitor/Reflector/TypeHintResolver.php b/src/Psalm/Internal/PhpVisitor/Reflector/TypeHintResolver.php
+index 17516fc..48537fd 100644
+--- a/src/Psalm/Internal/PhpVisitor/Reflector/TypeHintResolver.php
++++ b/src/Psalm/Internal/PhpVisitor/Reflector/TypeHintResolver.php
+@@ -138,7 +138,7 @@ final class TypeHintResolver
+             $fq_type_string = (string)$hint;
+ 
+             $codebase->scanner->queueClassLikeForScanning($fq_type_string);
+-            $file_storage->referenced_classlikes[Interner::intern(strtolower($fq_type_string))] = Interner::intern($fq_type_string);
++            $file_storage->referenced_classlikes[Interner::intern($fq_type_string)] = Interner::intern($fq_type_string);
+         } else {
+             $lower_hint = strtolower($hint->getFirst());
+ 
+@@ -156,7 +156,7 @@ final class TypeHintResolver
+                 $fq_type_string = ClassLikeAnalyzer::getFQCLNFromNameObject($hint, $aliases);
+ 
+                 $codebase->scanner->queueClassLikeForScanning($fq_type_string);
+-                $file_storage->referenced_classlikes[Interner::intern(strtolower($fq_type_string))] = Interner::intern($fq_type_string);
++                $file_storage->referenced_classlikes[Interner::intern($fq_type_string)] = Interner::intern($fq_type_string);
+             }
+         }
  
 diff --git a/src/Psalm/Internal/PluginManager/Command/DisableCommand.php b/src/Psalm/Internal/PluginManager/Command/DisableCommand.php
 index 81a5110..3812250 100644
@@ -4286,10 +4374,44 @@ index 888c089..6a36948 100644
              }
  
 diff --git a/src/Psalm/Internal/TypeVisitor/TypeChecker.php b/src/Psalm/Internal/TypeVisitor/TypeChecker.php
-index 3bf430a..c22eb40 100644
+index 3bf430a..9bb5bea 100644
 --- a/src/Psalm/Internal/TypeVisitor/TypeChecker.php
 +++ b/src/Psalm/Internal/TypeVisitor/TypeChecker.php
-@@ -198,7 +198,7 @@ final class TypeChecker extends TypeVisitor
+@@ -131,7 +131,7 @@ final class TypeChecker extends TypeVisitor
+             && $atomic->text !== null
+         ) {
+             $codebase->addReferenceToClass(
+-                Interner::intern(strtolower(Interner::lookup($atomic->value))),
++                $atomic->value,
+                 $this->code_location,
+                 $this->context,
+             );
+@@ -143,7 +143,7 @@ final class TypeChecker extends TypeVisitor
+             );
+         }
+ 
+-        if (!isset($this->phantom_classes[Interner::intern(strtolower(Interner::lookup($atomic->value)))])) {
++        if (!isset($this->phantom_classes[$atomic->value])) {
+             if (ClassLikeAnalyzer::checkFullyQualifiedClassLikeName(
+                 $this->source,
+                 $atomic->value,
+@@ -157,13 +157,11 @@ final class TypeChecker extends TypeVisitor
+             }
+         }
+ 
+-        $fq_class_name_lc = strtolower(Interner::lookup($atomic->value));
+-
+         if (!$this->inherited
+-            && $codebase->classlike_storage_provider->has(Interner::intern($fq_class_name_lc))
++            && $codebase->classlike_storage_provider->has($atomic->value)
+             && $this->source->getFQCLN() !== $atomic->value
+         ) {
+-            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name_lc));
++            $class_storage = $codebase->classlike_storage_provider->get($atomic->value);
+ 
+             if ($class_storage->deprecated) {
+                 if ($class_storage->is_interface) {
+@@ -198,7 +196,7 @@ final class TypeChecker extends TypeVisitor
          $codebase = $this->source->getCodebase();
  
          try {
@@ -4298,7 +4420,7 @@ index 3bf430a..c22eb40 100644
          } catch (InvalidArgumentException) {
              return;
          }
-@@ -311,7 +311,7 @@ final class TypeChecker extends TypeVisitor
+@@ -311,7 +309,7 @@ final class TypeChecker extends TypeVisitor
                  $this->source->getCodebase(),
                  $atomic,
                  $fq_classlike_name,
@@ -4307,6 +4429,42 @@ index 3bf430a..c22eb40 100644
                  null,
                  true,
                  true,
+diff --git a/src/Psalm/Internal/TypeVisitor/TypeScanner.php b/src/Psalm/Internal/TypeVisitor/TypeScanner.php
+index 792f8bb..1c91bbf 100644
+--- a/src/Psalm/Internal/TypeVisitor/TypeScanner.php
++++ b/src/Psalm/Internal/TypeVisitor/TypeScanner.php
+@@ -37,10 +37,8 @@ final class TypeScanner extends TypeVisitor
+     protected function enterNode(TypeNode $type): ?int
+     {
+         if ($type instanceof TNamedObject) {
+-            $fq_classlike_name_lc = strtolower(Interner::lookup($type->value));
+-
+             if (!isset($this->phantom_classes[$type->value])
+-                && !isset($this->phantom_classes[Interner::intern($fq_classlike_name_lc)])
++                && !isset($this->phantom_classes[Interner::intern(strtolower(Interner::lookup($type->value)))])
+             ) {
+                 $this->scanner->queueClassLikeForScanning(
+                     Interner::lookup($type->value),
+@@ -50,7 +48,7 @@ final class TypeScanner extends TypeVisitor
+                 );
+ 
+                 if ($this->file_storage) {
+-                    $this->file_storage->referenced_classlikes[Interner::intern($fq_classlike_name_lc)] = $type->value;
++                    $this->file_storage->referenced_classlikes[$type->value] = $type->value;
+                 }
+             }
+         }
+@@ -79,9 +77,7 @@ final class TypeScanner extends TypeVisitor
+             );
+ 
+             if ($this->file_storage) {
+-                $fq_classlike_name_lc = strtolower(Interner::lookup($type->value));
+-
+-                $this->file_storage->referenced_classlikes[Interner::intern($fq_classlike_name_lc)] = $type->value;
++                $this->file_storage->referenced_classlikes[$type->value] = $type->value;
+             }
+         }
+ 
 diff --git a/src/Psalm/Plugin/DynamicFunctionStorage.php b/src/Psalm/Plugin/DynamicFunctionStorage.php
 index bd43369..3306ee6 100644
 --- a/src/Psalm/Plugin/DynamicFunctionStorage.php
