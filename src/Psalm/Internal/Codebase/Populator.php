@@ -73,6 +73,10 @@ final class Populator
             $this->populateClassLikeStorage($class_storage);
         }
 
+        foreach ($this->classlike_storage_provider->getNew() as $class_storage) {
+            $this->fillMemberMaps($class_storage);
+        }
+
         $this->progress->debug('ClassLikeStorage is populated' . "\n");
 
         $this->progress->debug('FileStorage is populating' . "\n");
@@ -99,6 +103,34 @@ final class Populator
 
         ClassLikeStorageProvider::populated();
         FileStorageProvider::populated();
+    }
+
+    /** The flattened member maps: the declaring storages' objects, shared (pzoom's flattened members). */
+    private function fillMemberMaps(ClassLikeStorage $storage): void
+    {
+        $all_methods = [];
+        foreach ($storage->declaring_method_ids as $method_name_lc => $declaring_method_id) {
+            $declaring_storage = $this->classlike_storage_provider->has($declaring_method_id->fq_class_name)
+                ? $this->classlike_storage_provider->get($declaring_method_id->fq_class_name)
+                : null;
+            $method_storage = $declaring_storage?->methods[$declaring_method_id->method_name] ?? null;
+            if ($method_storage !== null) {
+                $all_methods[$method_name_lc] = $method_storage;
+            }
+        }
+        $storage->all_methods = $all_methods;
+
+        $all_properties = [];
+        foreach ($storage->declaring_property_ids as $property_name => $declaring_class) {
+            $declaring_storage = $this->classlike_storage_provider->has($declaring_class)
+                ? $this->classlike_storage_provider->get($declaring_class)
+                : null;
+            $property_storage = $declaring_storage?->properties[$property_name] ?? null;
+            if ($property_storage !== null) {
+                $all_properties[$property_name] = $property_storage;
+            }
+        }
+        $storage->all_properties = $all_properties;
     }
 
     /** @param array<string, bool> $dependent_classlikes */

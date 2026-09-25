@@ -6,7 +6,6 @@ namespace Psalm\Internal\Provider;
 
 use InvalidArgumentException;
 use LogicException;
-use Psalm\Internal\Interner;
 use Psalm\Issue\DuplicateClass;
 use Psalm\IssueBuffer;
 use Psalm\Storage\ClassLikeStorage;
@@ -106,7 +105,6 @@ final class ClassLikeStorageProvider
         $cached_value = $this->cache->getLatestFromCache($fq_classlike_name_lc, $file_path, $file_contents);
 
         self::$storage[$fq_classlike_name_lc] = $cached_value;
-        Interner::intern($cached_value->name);
         self::$by_spelling = [];
         self::$new_storage[$fq_classlike_name_lc] = $cached_value;
 

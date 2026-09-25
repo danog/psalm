@@ -148,7 +148,7 @@ final class Methods
             // the nodes a call to this method references, built once per (class, method): the declaring
             // class and method (or its potential declarers), every interface's copy and every override
             // (pzoom records one symbol reference; Psalm's unused-code and cache invalidation need these)
-            $nodes = $this->reference_nodes[$class_storage->id][$method_name]
+            $nodes = $this->reference_nodes[strtolower($class_storage->name)][$method_name]
                 ??= $this->referenceNodesFor($class_storage, $method_name, $declaring_method_id);
 
             if ($calling_method_id === $nodes[0]) {
@@ -918,8 +918,8 @@ final class Methods
     }
 
     /**
-     * @var array<int, array<lowercase-string, array{lowercase-string, lowercase-string, list<lowercase-string>}>>
-     *      by class-like id and method name: the declaring method id, the declaring class, and the
+     * @var array<lowercase-string, array<lowercase-string, array{lowercase-string, lowercase-string, list<lowercase-string>}>>
+     *      by lowercased class-like name and method name: the declaring method id, the declaring class, and the
      *      function-like ids a call references (see methodExists)
      */
     private array $reference_nodes = [];
@@ -939,7 +939,7 @@ final class Methods
 
         $function_ids = [];
 
-        if ($declaring_method_id->class_id !== $class_storage->id
+        if (strtolower($declaring_method_id->fq_class_name) !== strtolower($class_storage->name)
             && $class_storage->user_defined
             && isset($class_storage->potential_declaring_method_ids[$method_name])
         ) {
@@ -954,7 +954,7 @@ final class Methods
             $function_ids[] = strtolower($fq_interface_name . '::' . $method_name);
         }
 
-        $declaring_class_storage = $this->classlike_storage_provider->getById($declaring_method_id->class_id);
+        $declaring_class_storage = $this->classlike_storage_provider->get($declaring_method_id->fq_class_name);
         $declaring_method_name = $declaring_method_id->method_name;
 
         if (isset($declaring_class_storage->overridden_method_ids[$declaring_method_name])) {

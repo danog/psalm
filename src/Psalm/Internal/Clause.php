@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Psalm\Internal;
 
 use Override;
-use Psalm\Internal\Interner;
 use Psalm\Storage\Assertion;
 use Psalm\Storage\ImmutableNonCloneableTrait;
 use Psalm\Type\Atomic\TClassConstant;
@@ -152,7 +151,12 @@ final class Clause implements Stringable
     {
         // a stable 31-bit hash of the variable (xxh3, native in the compiled program): no table, no lookup, the
         // same value on every thread. 31 bits keep the mixing products below 2^63.
-        return Interner::hash($key) & 0x7FFFFFFF;
+        if (\defined('PSALM_COMPILED')) {
+            return \__rt_str_id($key) & 0x7FFFFFFF;
+        }
+        /** @var array{1: int} $unpacked */
+        $unpacked = unpack('q', hash('xxh3', $key, true));
+        return $unpacked[1] & 0x7FFFFFFF;
     }
 
     /**

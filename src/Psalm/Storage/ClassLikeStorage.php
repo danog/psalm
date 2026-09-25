@@ -10,7 +10,6 @@ use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Config;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
-use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\TypeAlias\ClassTypeAlias;
 use Psalm\Issue\CodeIssue;
@@ -122,6 +121,23 @@ final class ClassLikeStorage implements HasAttributesInterface
     public array $parent_classes = [];
 
     public ?CodeLocation $location = null;
+
+    /**
+     * Every method callable on the class-like, own and inherited, by lowercased name: the declaring class's
+     * MethodStorage objects, shared (pzoom flattens ancestor methods into every descendant, Arc-shared).
+     * Filled at populate from declaring_method_ids.
+     *
+     * @var array<lowercase-string, MethodStorage>
+     */
+    public array $all_methods = [];
+
+    /**
+     * Every property of the class-like, own and inherited, by name: the declaring class's PropertyStorage
+     * objects, shared. Filled at populate from declaring_property_ids.
+     *
+     * @var array<string, PropertyStorage>
+     */
+    public array $all_properties = [];
 
     public ?CodeLocation $stmt_location = null;
 

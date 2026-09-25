@@ -20,12 +20,10 @@ use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\FileManipulation\ClassDocblockManipulator;
 use Psalm\Internal\FileManipulation\CodeMigration;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
-use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\PhpVisitor\TraitFinder;
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
 use Psalm\Internal\Provider\FileReferenceProvider;
-use Psalm\Internal\Sym;
 use Psalm\Internal\Type\TypeExpander;
 use Psalm\Issue\ClassMustBeFinal;
 use Psalm\Issue\MissingImmutableAnnotation;
@@ -487,7 +485,7 @@ final class ClassLikes
         ?Context $context = null,
     ): void {
         $this->file_reference_provider->code_use_graph->addReference(
-            CodeUseGraph::classNodeFor($storage),
+            CodeUseGraph::classNode(strtolower($storage->name)),
             $context,
             $location,
         );
@@ -612,13 +610,6 @@ final class ClassLikes
             return true;
         }
 
-        // another spelling of an implemented interface: its storage's id is in the id set (pzoom's single
-        // lookup; Psalm walked every implemented interface unaliasing each)
-        /** @psalm-suppress ImpureMethodCall the interner only grows */
-        $interface_storage = $this->classlike_storage_provider->findById(Interner::intern($interface));
-        if ($interface_storage !== null && isset($class_storage->class_implements_ids[$interface_storage->id])) {
-            return true;
-        }
 
         // an implemented name that is a class_alias of the interface: only when aliases exist at all
         if ($this->classlike_aliases_map === []) {

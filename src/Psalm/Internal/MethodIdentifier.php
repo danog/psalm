@@ -7,8 +7,8 @@ namespace Psalm\Internal;
 use InvalidArgumentException;
 use Override;
 use Psalm\Storage\ImmutableNonCloneableTrait;
-use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Stringable;
+use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 
 use function explode;
 use function is_string;
@@ -26,16 +26,6 @@ final class MethodIdentifier implements Stringable
     use UnserializeMemoryUsageSuppressionTrait;
 
     /**
-     * @param lowercase-string $method_name
-     * @psalm-mutation-free
-     */
-    public function __construct(public readonly string $fq_class_name, public readonly string $method_name)
-    {
-    }
-
-    /**
-     * Takes any valid reference to a method id and converts
-     * it into a MethodIdentifier
      * Memo of __toString (the identifier is stringified as a map key on most hot paths); public so the
      * cache serializer sees it like every other property.
      *
@@ -46,6 +36,16 @@ final class MethodIdentifier implements Stringable
 
     /**
      * @param lowercase-string $method_name
+     * @psalm-mutation-free
+     */
+    public function __construct(public readonly string $fq_class_name, public readonly string $method_name)
+    {
+    }
+
+    /**
+     * Takes any valid reference to a method id and converts
+     * it into a MethodIdentifier
+     *
      * @psalm-pure
      */
     public static function wrap(string|MethodIdentifier $method_id): self

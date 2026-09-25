@@ -12,7 +12,6 @@ use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Context;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
-use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
 use Psalm\Internal\Type\TemplateResult;
@@ -300,7 +299,7 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
 
         // one storage lookup answers the three kinds (pzoom's single get_class); the string checks remain
         // for a name without storage (registered but not scanned, special types, aliases)
-        $found_storage = $codebase->classlike_storage_provider->findById(Interner::intern($fq_class_name));
+        $found_storage = $codebase->classlikes->getStorageFor($fq_class_name);
         if ($found_storage !== null) {
             $class_exists = !$found_storage->is_interface && !$found_storage->is_trait && !$found_storage->is_enum;
             $interface_exists = $found_storage->is_interface;
