@@ -483,6 +483,22 @@ foreach ($issues as $i) {
     }
 }
 
+// an id-keyed map through array_merge (IdStringPlugin): array_replace keeps the keys
+foreach ($issues as $i) {
+    if ($i['type'] !== 'IdKeysRenumbered' || !str_ends_with($i['message'], 'renumbered by array_merge')) {
+        continue;
+    }
+    $src = $sources[$i['file_path']];
+    $at = strrpos(substr($src, max(0, $i['from'] - 2000), min(2000, $i['from'])), 'array_merge(');
+    if ($at === false) {
+        continue;
+    }
+    $at += max(0, $i['from'] - 2000);
+    if (matchParen($src, $at + strlen('array_merge')) >= $i['to']) {
+        $edits[$i['file_path']][] = [$at, $at + strlen('array_merge'), 'replace', 'array_replace'];
+    }
+}
+
 // `new $x` / `$x::m()` with an id: the class expression is looked up
 foreach ($issues as $i) {
     if ($i['type'] !== 'UndefinedClass' || !str_contains($i['message'], 'Type int cannot be called as a class')) {

@@ -22,6 +22,64 @@ use Psalm\Type\Atomic\TInt;
 
 final class IdStringPlugin implements AfterExpressionAnalysisInterface
 {
+    /**
+     * An int-keyed map (an id-keyed map, after the conversion) through a function that renumbers int keys, or spread
+     * into an array literal: its keys are lost.
+     */
+    private static function renumbered(AfterExpressionAnalysisEvent $event): void
+    {
+        $expr = $event->getExpr();
+        $arrays = [];
+        if ($expr instanceof Expr\FuncCall && $expr->name instanceof \PhpParser\Node\Name) {
+            $fn = strtolower($expr->name->toString());
+            $args = $expr->getArgs();
+            if (in_array($fn, ['array_merge', 'array_merge_recursive', 'array_splice', 'array_shift', 'array_unshift'], true)
+                || ($fn === 'array_slice' && !isset($args[3]))
+            ) {
+                $arrays = array_map(static fn($a) => $a->value, $fn === 'array_merge' || $fn === 'array_merge_recursive' ? $args : array_slice($args, 0, 1));
+            }
+        } elseif ($expr instanceof Expr\Array_) {
+            foreach ($expr->items as $item) {
+                if ($item !== null && $item->unpack) {
+                    $arrays[] = $item->value;
+                }
+            }
+        }
+        $source = $event->getStatementsSource();
+        foreach ($arrays as $array) {
+            $type = $source->getNodeTypeProvider()->getType($array);
+            if ($type === null) {
+                continue;
+            }
+            foreach ($type->getAtomicTypes() as $atomic) {
+                $key = null;
+                if ($atomic instanceof \Psalm\Type\Atomic\TArray) {
+                    $key = $atomic->type_params[0];
+                } elseif ($atomic instanceof \Psalm\Type\Atomic\TKeyedArray && !$atomic->is_list && $atomic->fallback_params !== null) {
+                    $key = $atomic->fallback_params[0];
+                }
+                if ($key === null) {
+                    continue;
+                }
+                foreach ($key->getAtomicTypes() as $k) {
+                    if ($k::class === TInt::class) {
+                        $contents = $event->getCodebase()->getFileContents($source->getFilePath());
+                        $start = (int) $array->getAttribute('startFilePos');
+                        $text = substr($contents, $start, (int) $array->getAttribute('endFilePos') + 1 - $start);
+                        IssueBuffer::maybeAdd(
+                            new IdKeysRenumbered(
+                                'int keys of ' . $text . ' renumbered by ' . ($expr instanceof Expr\Array_ ? 'a spread' : $fn),
+                                new CodeLocation($source, $array),
+                            ),
+                            $source->getSuppressedIssues(),
+                        );
+                        continue 3;
+                    }
+                }
+            }
+        }
+    }
+
     /** @return list<Expr> */
     private static function leaves(Expr $e): array
     {
@@ -43,6 +101,7 @@ final class IdStringPlugin implements AfterExpressionAnalysisInterface
         $how = !$expr instanceof InterpolatedString ? 'built into'
             : ($expr->getAttribute('kind') === \PhpParser\Node\Scalar\String_::KIND_DOUBLE_QUOTED ? 'interpolated into' : 'heredoc-interpolated into');
         $source = $event->getStatementsSource();
+        self::renumbered($event);
         foreach ($operands as $operand) {
             $type = $source->getNodeTypeProvider()->getType($operand);
             if ($type === null) {
@@ -72,5 +131,9 @@ final class IdStringPlugin implements AfterExpressionAnalysisInterface
 }
 
 final class IdString extends PluginIssue
+{
+}
+
+final class IdKeysRenumbered extends PluginIssue
 {
 }

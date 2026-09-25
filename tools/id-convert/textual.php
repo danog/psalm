@@ -63,6 +63,10 @@ function isNameGetter(string $fn): bool
 
 final class Rewriter
 {
+    /** @var array<string, true> variables assigned a stripped `strtolower(<name>)` (the declared spelling now) */
+    private array $lowered = [];
+    /** literal() canonicalizes the spelling instead of making an id */
+    private bool $canon = false;
     /** @var array<string, string> literal => Sym constant */
     public static array $sym = [];
     /** @var array<string, true> properties whose keys became ids */
@@ -163,6 +167,16 @@ final class Rewriter
             }
         }
         return false;
+    }
+
+    /** Whether the expression ending at token $i is a call returning a declared class-like name. */
+    private function classNameCallAt(int $i): bool
+    {
+        if ($this->text($i) !== ')') {
+            return false;
+        }
+        $f = $this->next($this->matchBack($i), -1);
+        return $f >= 0 && in_array($this->text($f), ['getUnAliasedName', 'getFQCLNFromNameObject'], true);
     }
 
     /** The start token of the variable / fetch chain ending at $i. */
@@ -273,10 +287,18 @@ final class Rewriter
                 $r = $this->next($i);
                 if ($l >= 0 && $this->nameExprAt($l)) {
                     $this->literal($r);
+                } elseif ($l >= 0 && isset($this->lowered[$this->text($l)])) {
+                    $this->canon = true;
+                    $this->literal($r);
+                    $this->canon = false;
                 } elseif ($r >= 0) {
                     $end = $this->exprEnd($r);
                     if ($end !== null && $this->nameExprAt($end)) {
                         $this->literal($l);
+                    } elseif ($end !== null && isset($this->lowered[$this->text($end)])) {
+                        $this->canon = true;
+                        $this->literal($l);
+                        $this->canon = false;
                     }
                 }
                 continue;
@@ -286,8 +308,10 @@ final class Rewriter
                 $first = $this->next($i);
                 $end = $first >= 0 ? $this->exprEnd($first) : null;
                 $last_word = strtolower((string) preg_replace('/.*_/', '', $this->text($end ?? $i)));
+                // a getter or a property (a bare local's type is not known textually: a key, an XML node...)
                 if ($end !== null && $this->nameExprAt($end)
-                    && ($this->text($end) === ')' || preg_match('/(?:name|fqcln|class|self)$/i', $this->text($end)))
+                    && ($this->text($end) === ')' || (preg_match('/(?:name|fqcln|class|self)$/i', $this->text($end))
+                        && $this->text($this->next($end, -1)) === '->'))
                 ) {
                     // the parentheses go into the expression's own tokens (a bare `(` / `)` token would unbalance
                     // the bracket matching of the rest of the file)
@@ -308,10 +332,12 @@ final class Rewriter
             }
             if ($id === T_SWITCH || $id === T_MATCH) {
                 $this->switchOrMatch($i, $id === T_MATCH);
+                $this->canon = false;
                 continue;
             }
             if ($id === T_STRING && strtolower($t) === 'in_array') {
                 $this->inArray($i);
+                $this->canon = false;
             }
         }
         $out = '';
@@ -477,7 +503,9 @@ final class Rewriter
             $last = $this->next($last, -1);
         }
         $first = $this->next($open);
-        if ($last < 0 || $first < 0 || $this->exprEnd($first) !== $last || !$this->nameExprAt($last)) {
+        if ($last < 0 || $first < 0 || $this->exprEnd($first) !== $last
+            || !($this->nameExprAt($last) || $this->classNameCallAt($last))
+        ) {
             return;
         }
         // only class-like names are case-sensitive ids (member and function maps stay keyed by lowercase names)
@@ -525,6 +553,17 @@ final class Rewriter
         if ($compared !== null) {
             $this->literal($compared);
         }
+        // `$x_lower = strtolower(<name>)`: $x_lower now holds the declared spelling
+        $eq = $this->next($i, -1);
+        if ($eq >= 0 && $this->text($eq) === '\\') {
+            $eq = $this->next($eq, -1);
+        }
+        if ($eq >= 0 && $this->text($eq) === '=') {
+            $v = $this->next($eq, -1);
+            if ($v >= 0 && $this->id($v) === T_VARIABLE && !isName($this->text($v))) {
+                $this->lowered[$this->text($v)] = true;
+            }
+        }
         // `\strtolower`
         $p = $i - 1;
         if ($p >= 0 && $this->text($p) === '\\') {
@@ -535,6 +574,16 @@ final class Rewriter
     private function literal(int $i): void
     {
         if ($i < 0) {
+            return;
+        }
+        if ($this->canon) {
+            // compared with a string that used to be lowercased: the literal's declared spelling
+            if ($this->id($i) === T_CONSTANT_ENCAPSED_STRING) {
+                $v = stripcslashes(substr($this->text($i), 1, -1));
+                if (CanonicalNames::isClass($v)) {
+                    $this->set($i, var_export(CanonicalNames::of($v), true));
+                }
+            }
             return;
         }
         if ($this->id($i) === T_CONSTANT_ENCAPSED_STRING) {
@@ -588,8 +637,14 @@ final class Rewriter
         }
         $close = $this->matchForward($open);
         $last = $this->next($close, -1);
-        if ($last < 0 || !$this->nameExprAt($last)) {
+        if ($last < 0) {
             return;
+        }
+        if (!$this->nameExprAt($last)) {
+            if (!isset($this->lowered[$this->text($last)])) {
+                return;
+            }
+            $this->canon = true;
         }
         $body = $this->next($close);
         if ($body < 0 || $this->text($body) !== '{') {
@@ -659,8 +714,14 @@ final class Rewriter
         }
         $first = $this->next($open);
         $end = $first >= 0 ? $this->exprEnd($first) : null;
-        if ($end === null || !$this->nameExprAt($end)) {
+        if ($end === null) {
             return;
+        }
+        if (!$this->nameExprAt($end)) {
+            if (!isset($this->lowered[$this->text($end)])) {
+                return;
+            }
+            $this->canon = true;
         }
         $comma = $this->next($end);
         $arr = $comma >= 0 && $this->text($comma) === ',' ? $this->next($comma) : -1;
