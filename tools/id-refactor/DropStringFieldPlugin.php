@@ -92,10 +92,10 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
             $h->in_trait = preg_match('/^\s*(?:final\s+|abstract\s+)?trait\s/m', $h->src) === 1;
             require_once __DIR__ . '/SymNames.php';
             $storage = $event->getFunctionlikeStorage();
-            if ($storage instanceof \Psalm\Storage\MethodStorage && $storage->defining_fqcln !== null) {
-                $cs = $h->codebase->classlike_storage_provider->find(Interner::intern($storage->defining_fqcln));
+            if ($storage instanceof \Psalm\Storage\MethodStorage && $storage->declaring_class !== null) {
+                $cs = $h->codebase->classlike_storage_provider->find($storage->declaring_class);
                 $h->parentClass = $cs?->parent_class;
-                $h->selfClass = $storage->defining_fqcln;
+                $h->selfClass = Interner::lookupOrNull($storage->declaring_class);
             }
             $h->parent = new SplObjectStorage();
             $h->spread_done = new SplObjectStorage();
@@ -282,7 +282,7 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
         } catch (Throwable) {
             return;
         }
-        $declaring = $ms->defining_fqcln ?? \Psalm\Internal\Interner::lookup($mid->class_id);
+        $declaring = (Interner::lookupOrNull($ms->declaring_class) ?? \Psalm\Internal\Interner::lookup($mid->class_id));
         foreach (self::fields() as [$fclass, $prop, $id]) {
             if (strcasecmp($declaring, $fclass) !== 0) {
                 continue;

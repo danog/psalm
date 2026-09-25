@@ -353,7 +353,6 @@
       <code><![CDATA[$implementer_called_class_storage->template_extended_params]]></code>
       <code><![CDATA[$implementer_classlike_storage->template_extended_params]]></code>
       <code><![CDATA[$implementer_classlike_storage->template_extended_params]]></code>
-      <code><![CDATA[$implementer_method_storage->defining_fqcln]]></code>
     </RiskyTruthyFalsyComparison>
   </file>
   <file src="src/Psalm/Internal/Analyzer/NamespaceAnalyzer.php">

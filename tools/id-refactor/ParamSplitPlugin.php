@@ -91,8 +91,8 @@ final class ParamSplitPlugin implements PluginEntryPointInterface, AfterFunction
             $h->parent = new SplObjectStorage();
             $stmt = $event->getStmt();
             $storage = $event->getFunctionlikeStorage();
-            if ($storage instanceof MethodStorage && $storage->defining_fqcln !== null) {
-                $h->self_class = $storage->defining_fqcln;
+            if ($storage instanceof MethodStorage && $storage->declaring_class !== null) {
+                $h->self_class = Interner::lookupOrNull($storage->declaring_class);
                 if ($stmt instanceof Stmt\ClassMethod) {
                     foreach (self::cfg() as $c) {
                         if (strcasecmp($c[1], $stmt->name->name) === 0 && self::isClass($h->codebase, $h->self_class, $c[0])) {

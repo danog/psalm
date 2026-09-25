@@ -995,7 +995,7 @@ final class FunctionLikeNodeScanner
             $cased_function_id = '@method ' . $stmt->name->name;
 
             $storage = $this->storage = new MethodStorage();
-            $storage->defining_fqcln = '';
+            $storage->declaring_class = Interner::intern('');
             $storage->is_static = $stmt->isStatic();
             $storage->final = $this->classlike_storage && $this->classlike_storage->final;
             $storage->final_from_docblock = $this->classlike_storage && $this->classlike_storage->final_from_docblock;
@@ -1152,7 +1152,7 @@ final class FunctionLikeNodeScanner
             }
 
             $storage->stubbed = $this->codebase->register_stub_files;
-            $storage->defining_fqcln = $fq_classlike_name;
+            $storage->declaring_class = Interner::intern($fq_classlike_name);
 
             $class_name_parts = explode('\\', $fq_classlike_name);
             $class_name = array_pop($class_name_parts);

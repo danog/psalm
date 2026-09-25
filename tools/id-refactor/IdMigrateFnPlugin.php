@@ -68,7 +68,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
         $file = $event->getStatementsSource()->getFilePath();
         $storage = $event->getFunctionlikeStorage();
         if (!IdMigratePlugin::inSrc($file) || !$stmt instanceof Stmt\ClassMethod || !$storage instanceof MethodStorage
-            || $storage->defining_fqcln === null
+            || $storage->declaring_class === null
         ) {
             return null;
         }
@@ -78,8 +78,8 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
             $h->types = $event->getNodeTypeProvider();
             $h->file = $file;
             $h->src = (string) file_get_contents($file);
-            $h->method = strtolower($storage->defining_fqcln . '::' . $stmt->name->name);
-            $h->self = $storage->defining_fqcln;
+            $h->method = strtolower(Interner::lookupOrNull($storage->declaring_class) . '::' . $stmt->name->name);
+            $h->self = Interner::lookupOrNull($storage->declaring_class);
             $h->run($stmt, $storage);
         } catch (Throwable $e) {
             IdMigratePlugin::out(['kind' => 'error', 'msg' => 'fn: ' . $e->getMessage() . ' @' . $file . ':' . $e->getLine()]);
@@ -89,7 +89,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
 
     private function run(Stmt\ClassMethod $stmt, MethodStorage $storage): void
     {
-        $cls = $this->codebase->classlike_storage_provider->find(Interner::intern($storage->defining_fqcln));
+        $cls = $this->codebase->classlike_storage_provider->find($storage->declaring_class);
         $lc = strtolower($stmt->name->name);
         // may the signature change? not when an ancestor or interface declares the method (pzoom has no plugin API,
         // so public methods of final/leaf classes may change)
@@ -110,10 +110,10 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
             }
             if ($fixed_why === null && !$stmt->isPrivate() && !$stmt->isFinal() && !$cls->final) {
                 // only an actual override shares the signature (breaking the plugin API is fine, as in pzoom)
-                $self_lc = strtolower($storage->defining_fqcln);
+                $self_lc = strtolower(Interner::lookupOrNull($storage->declaring_class));
                 foreach ($this->codebase->classlike_storage_provider->getAll() as $sub) {
-                    if (isset($sub->parent_classes[Interner::intern($storage->defining_fqcln)]) && isset($sub->methods[Interner::intern($lc)])
-                        && strcasecmp(\Psalm\Internal\Interner::lookup($sub->id), $storage->defining_fqcln) !== 0
+                    if (isset($sub->parent_classes[$storage->declaring_class]) && isset($sub->methods[Interner::intern($lc)])
+                        && strcasecmp(\Psalm\Internal\Interner::lookup($sub->id), Interner::lookupOrNull($storage->declaring_class)) !== 0
                     ) {
                         $fixed_why = 'overridden';
                         break;
@@ -136,7 +136,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
                 && ($p->default === null || $nullable_default) && !$p->byRef && !$p->variadic
             ) {
                 // a promoted parameter is its property: one slot (the declaration is the parameter's)
-                IdMigratePlugin::out(['kind' => 'decl', 'slot' => 'F:' . strtolower($storage->defining_fqcln) . '|' . $p->var->name,
+                IdMigratePlugin::out(['kind' => 'decl', 'slot' => 'F:' . strtolower(Interner::lookupOrNull($storage->declaring_class)) . '|' . $p->var->name,
                     'file' => $this->file, 'type' => [$p->type->getStartFilePos(), $p->type->getEndFilePos() + 1],
                     'nullable' => IdMigratePlugin::isNullable($p->type),
                     // the parameter's own `@var` docblock, else the constructor's `@param`
@@ -402,9 +402,9 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
             return [null, 0];
         }
         if (($ms->params[$idx] ?? null)?->promoted_property) {
-            return ['F:' . strtolower($ms->defining_fqcln ?? \Psalm\Internal\Interner::lookup($decl->class_id)) . '|' . $pname, $idx];
+            return ['F:' . strtolower((Interner::lookupOrNull($ms->declaring_class) ?? \Psalm\Internal\Interner::lookup($decl->class_id))) . '|' . $pname, $idx];
         }
-        $defining = $ms->defining_fqcln ?? \Psalm\Internal\Interner::lookup($decl->class_id);
+        $defining = (Interner::lookupOrNull($ms->declaring_class) ?? \Psalm\Internal\Interner::lookup($decl->class_id));
         return ['P:' . strtolower($defining . '::' . \Psalm\Internal\Interner::lookupLc($decl->name_id)) . '|' . $pname, $idx];
     }
 
@@ -501,7 +501,7 @@ final class IdMigrateFnPlugin implements PluginEntryPointInterface, AfterFunctio
         if (!in_array($ms->signature_return_type?->getId(), ['string', 'null|string', 'string|null'], true)) {
             return null;
         }
-        return strtolower(($ms->defining_fqcln ?? \Psalm\Internal\Interner::lookup($decl->class_id)) . '::' . \Psalm\Internal\Interner::lookupLc($decl->name_id));
+        return strtolower(((Interner::lookupOrNull($ms->declaring_class) ?? \Psalm\Internal\Interner::lookup($decl->class_id))) . '::' . \Psalm\Internal\Interner::lookupLc($decl->name_id));
     }
 
     private function propSlot(string $cls, string $prop): ?string

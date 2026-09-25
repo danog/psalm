@@ -88,7 +88,7 @@ final class VersionStubTest extends TestCase
             . ' interface=' . var_export($storage->is_interface, true)
             . ' file=' . ($storage->location?->file_path ?? 'none')
             . ' methods=' . implode(',', array_map(Interner::lookupLc(...), array_keys($storage->methods)))
-            . ' defining=' . ($method?->defining_fqcln ?? 'none')
+            . ' defining=' . ((Interner::lookupOrNull($method?->declaring_class) ?? 'none'))
             . ' method_file=' . ($method?->location?->file_path ?? 'none')
             . ' signature=' . ($method?->signature_return_type === null ? 'null' : (string) $method->signature_return_type)
             . ' return=' . ($method?->return_type === null ? 'null' : (string) $method->return_type),
@@ -145,7 +145,7 @@ final class VersionStubTest extends TestCase
             'Stringable::__toString in the version stub has no native return type;'
             . ' storage file=' . ($stringable_storage->location?->file_path ?? 'none')
             . ' methods=' . implode(',', array_map(Interner::lookupLc(...), array_keys($stringable_storage->methods)))
-            . ' defining=' . ($stringable->defining_fqcln ?? 'none')
+            . ' defining=' . ((Interner::lookupOrNull($stringable->declaring_class) ?? 'none'))
             . ' method_file=' . ($stringable->location?->file_path ?? 'none')
             . ' signature=' . (string) $stringable->signature_return_type,
         );

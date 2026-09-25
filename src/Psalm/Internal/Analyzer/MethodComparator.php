@@ -315,7 +315,7 @@ final class MethodComparator
             if ($trait_mismatches_are_fatal
                 || $guide_classlike_storage->is_trait === $implementer_classlike_storage->is_trait
                 || !isset($implementer_classlike_storage->used_traits[$guide_classlike_storage->id])
-                || $implementer_method_storage->defining_fqcln !== Interner::lookup($implementer_classlike_storage->id)
+                || $implementer_method_storage->declaring_class !== $implementer_classlike_storage->id
                 || (!$implementer_method_storage->abstract
                     && !$guide_method_storage->abstract)
             ) {
@@ -720,7 +720,7 @@ final class MethodComparator
             if ($codebase->analysis_php_version_id >= 8_00_00
                 || $guide_classlike_storage->is_trait === $implementer_classlike_storage->is_trait
                 || !isset($implementer_classlike_storage->used_traits[$guide_classlike_storage->id])
-                || $implementer_method_storage->defining_fqcln !== Interner::lookup($implementer_classlike_storage->id)
+                || $implementer_method_storage->declaring_class !== $implementer_classlike_storage->id
                 || (!$implementer_method_storage->abstract
                     && !$guide_method_storage->abstract)
             ) {
@@ -1029,7 +1029,7 @@ final class MethodComparator
             } elseif ($codebase->analysis_php_version_id >= 8_00_00
                       || $guide_classlike_storage->is_trait === $implementer_classlike_storage->is_trait
                       || !isset($implementer_classlike_storage->used_traits[$guide_classlike_storage->id])
-                      || $implementer_method_storage->defining_fqcln !== Interner::lookup($implementer_classlike_storage->id)
+                      || $implementer_method_storage->declaring_class !== $implementer_classlike_storage->id
                       || (!$implementer_method_storage->abstract
                           && !$guide_method_storage->abstract)
             ) {
@@ -1108,10 +1108,10 @@ final class MethodComparator
                 $codebase,
             );
 
-            if ($implementer_method_storage->defining_fqcln) {
+            if (($implementer_method_storage->declaring_class !== null && (bool) Interner::lookup($implementer_method_storage->declaring_class))) {
                 self::transformTemplates(
                     $implementer_classlike_storage->template_extended_params,
-                    $implementer_method_storage->defining_fqcln,
+                    Interner::lookupOrNull($implementer_method_storage->declaring_class),
                     $implementer_method_storage_return_type,
                     $codebase,
                 );

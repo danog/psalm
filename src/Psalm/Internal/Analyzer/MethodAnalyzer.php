@@ -393,7 +393,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
             IssueBuffer::maybeAdd(new InvalidEnumMethod(
                 'Enums cannot define ' . $method_storage->cased_name,
                 $method_storage->location,
-                $method_storage->defining_fqcln . '::' . $method_storage->cased_name,
+                Interner::lookupOrNull($method_storage->declaring_class) . '::' . $method_storage->cased_name,
             ));
         }
 
@@ -401,7 +401,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
             IssueBuffer::maybeAdd(new InvalidEnumMethod(
                 'Enums cannot define ' . $method_storage->cased_name,
                 $method_storage->location,
-                $method_storage->defining_fqcln . '::' . $method_storage->cased_name,
+                Interner::lookupOrNull($method_storage->declaring_class) . '::' . $method_storage->cased_name,
             ));
         }
 
@@ -409,7 +409,7 @@ final class MethodAnalyzer extends FunctionLikeAnalyzer
             IssueBuffer::maybeAdd(new InvalidEnumMethod(
                 'Enums cannot define ' . $method_storage->cased_name,
                 $method_storage->location,
-                $method_storage->defining_fqcln . '::' . $method_storage->cased_name,
+                Interner::lookupOrNull($method_storage->declaring_class) . '::' . $method_storage->cased_name,
             ));
         }
     }

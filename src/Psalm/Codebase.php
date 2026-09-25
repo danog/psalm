@@ -1421,7 +1421,7 @@ final class Codebase
 
                 return new PHPMarkdownContent(
                     $storage->getHoverMarkdown(),
-                    "{$storage->defining_fqcln}::{$storage->cased_name}",
+                    "" . Interner::lookupOrNull($storage->declaring_class) . "::{$storage->cased_name}",
                     $storage->description,
                 );
             }

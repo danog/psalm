@@ -58,7 +58,7 @@ final class ClassNameScanPlugin implements PluginEntryPointInterface, AfterCodeb
                 }
             }
             foreach ($storage->methods as $ms) {
-                if ($ms->defining_fqcln !== null && strcasecmp($ms->defining_fqcln, \Psalm\Internal\Interner::lookup($storage->id)) !== 0) {
+                if ($ms->declaring_class !== null && strcasecmp(Interner::lookupOrNull($ms->declaring_class), \Psalm\Internal\Interner::lookup($storage->id)) !== 0) {
                     continue;
                 }
                 $mid = \Psalm\Internal\Interner::lookup($storage->id) . '::' . ($ms->cased_name ?? '?');

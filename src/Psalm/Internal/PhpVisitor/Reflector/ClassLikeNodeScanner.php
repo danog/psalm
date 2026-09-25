@@ -1277,7 +1277,7 @@ final class ClassLikeNodeScanner
         $storage = $class_storage->methods[Sym::CONSTRUCT] = new MethodStorage();
 
         $storage->cased_name = '__construct';
-        $storage->defining_fqcln = Interner::lookup($class_storage->id);
+        $storage->declaring_class = Interner::intern(Interner::lookup($class_storage->id));
 
         $storage->allowed_mutations = Mutations::LEVEL_NONE;
         $storage->mutation_free_assumed = true;

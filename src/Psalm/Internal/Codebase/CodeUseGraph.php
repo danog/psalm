@@ -298,11 +298,11 @@ final class CodeUseGraph
     public static function functionLikeNodeForStorage(FunctionLikeStorage $storage): ?int
     {
         if ($storage instanceof MethodStorage) {
-            if ($storage->defining_fqcln === null || $storage->cased_name === null) {
+            if ($storage->declaring_class === null || $storage->cased_name === null) {
                 return null;
             }
 
-            return self::functionLikeNode(strtolower($storage->defining_fqcln . '::' . $storage->cased_name));
+            return self::functionLikeNode(strtolower(Interner::lookupOrNull($storage->declaring_class) . '::' . $storage->cased_name));
         }
 
         if ($storage->cased_name === null) {

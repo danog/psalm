@@ -257,7 +257,7 @@ final class Reflection
         $storage = $class_storage->methods[$method_name_lc_id] = new MethodStorage();
 
         $storage->cased_name = $method->name;
-        $storage->defining_fqcln = $method->class;
+        $storage->declaring_class = Interner::intern($method->class);
 
         if ($method_name_lc === $fq_class_name_lc) {
             $this->codebase->methods->setDeclaringMethodId(

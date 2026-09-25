@@ -623,7 +623,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                     $storage->location,
                     $storage->cased_name ?? '{closure}',
                     $storage->suppressed_issues,
-                    $storage instanceof MethodStorage ? $storage->defining_fqcln : null,
+                    $storage instanceof MethodStorage ? Interner::lookupOrNull($storage->declaring_class) : null,
                     $this->function->getStartFilePos(),
                     true,
                     // inline callbacks are not worth annotating, closures assigned to a variable are
@@ -2102,8 +2102,8 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             if (!$has_override_attribute
                 && $codebase->config->ensure_override_attribute
                 && $overridden_method_ids
-                && ($storage->defining_fqcln === null
-                    || !$codebase->classlike_storage_provider->get(Interner::intern($storage->defining_fqcln))->is_trait
+                && ($storage->declaring_class === null
+                    || !$codebase->classlike_storage_provider->get($storage->declaring_class)->is_trait
                 ) && $storage->cased_name !== '__construct'
                 && ($storage->cased_name !== '__toString'
                     || isset($appearing_class_storage->direct_class_interfaces[Sym::STRINGABLE]))
