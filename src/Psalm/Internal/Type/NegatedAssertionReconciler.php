@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Type;
 
+use Psalm\Internal\Sym;
+
 use Psalm\CodeLocation;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
@@ -149,12 +151,12 @@ final class NegatedAssertionReconciler extends Reconciler
 
         if (!$is_equality
             && $assertion_type instanceof TNamedObject
-            && ($assertion_type->value === 'DateTime' || $assertion_type->value === 'DateTimeImmutable')
+            && ($assertion_type->value === Sym::C_DATE_TIME || $assertion_type->value === Sym::C_DATE_TIME_IMMUTABLE)
             && isset($existing_var_atomic_types['DateTimeInterface'])
         ) {
             $existing_var_type->removeType('DateTimeInterface');
 
-            if ($assertion_type->value === 'DateTime') {
+            if ($assertion_type->value === Sym::C_DATE_TIME) {
                 $existing_var_type->addType(new TNamedObject('DateTimeImmutable'));
             } else {
                 $existing_var_type->addType(new TNamedObject('DateTime'));
@@ -174,7 +176,7 @@ final class NegatedAssertionReconciler extends Reconciler
         $codebase = $statements_analyzer->getCodebase();
 
         if ($assertion_type instanceof TNamedObject
-            && strtolower($assertion_type->value) === 'traversable'
+            && $assertion_type->value === Sym::C_TRAVERSABLE_2
             && isset($existing_var_atomic_types['iterable'])
         ) {
             /** @var TIterable */

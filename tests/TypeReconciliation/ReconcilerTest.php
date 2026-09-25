@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\TypeReconciliation;
 
+use Psalm\Internal\Interner;
+
 use Countable;
 use Override;
 use Psalm\Context;
@@ -67,7 +69,7 @@ final class ReconcilerTest extends TestCase
             class B {}
             interface SomeInterface {}
         ');
-        $this->project_analyzer->getCodebase()->queueClassLikeForScanning(Countable::class);
+        $this->project_analyzer->getCodebase()->queueClassLikeForScanning(Interner::intern(Countable::class));
         $this->project_analyzer->getCodebase()->scanFiles();
     }
 
@@ -270,23 +272,23 @@ final class ReconcilerTest extends TestCase
     {
         return [
             'constant-with-prefix' => [
-                new IsType(new TClassConstant('ReconciliationTest\\Foo', 'PREFIX_*')),
+                new IsType(new TClassConstant(Interner::intern('ReconciliationTest\\Foo'), Interner::intern('PREFIX_*'))),
                 "'bar'|'baz'",
             ],
             'single-class-constant' => [
-                new IsType(new TClassConstant('ReconciliationTest\\Foo', 'PREFIX_BAR')),
+                new IsType(new TClassConstant(Interner::intern('ReconciliationTest\\Foo'), Interner::intern('PREFIX_BAR'))),
                 "'bar'",
             ],
             'referencing-another-class-constant' => [
-                new IsType(new TClassConstant('ReconciliationTest\\Foo', 'PREFIX_QOO')),
+                new IsType(new TClassConstant(Interner::intern('ReconciliationTest\\Foo'), Interner::intern('PREFIX_QOO'))),
                 "'bar'",
             ],
             'referencing-all-class-constants' => [
-                new IsType(new TClassConstant('ReconciliationTest\\Foo', '*')),
+                new IsType(new TClassConstant(Interner::intern('ReconciliationTest\\Foo'), Interner::intern('*'))),
                 "'bar'|'baz'",
             ],
             'referencing-some-class-constants-with-wildcard' => [
-                new IsType(new TClassConstant('ReconciliationTest\\Foo', 'PREFIX_B*')),
+                new IsType(new TClassConstant(Interner::intern('ReconciliationTest\\Foo'), Interner::intern('PREFIX_B*'))),
                 "'bar'|'baz'",
             ],
         ];

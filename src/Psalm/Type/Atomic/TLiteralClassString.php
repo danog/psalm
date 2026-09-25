@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use Override;
 
 use function preg_quote;
@@ -44,7 +48,7 @@ final class TLiteralClassString extends TLiteralString
     public function toPhpString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         int $analysis_php_version_id,
     ): string {
         return 'string';
@@ -82,14 +86,14 @@ final class TLiteralClassString extends TLiteralString
     public function toNamespacedString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         bool $use_phpdoc_format,
     ): string {
         if ($use_phpdoc_format) {
             return 'string';
         }
 
-        if ($this->value === 'static') {
+        if ($this->value === Sym::C_STATIC) {
             return 'static::class';
         }
 
@@ -109,8 +113,8 @@ final class TLiteralClassString extends TLiteralString
             return $this->value . '::class';
         }
 
-        if (isset($aliased_classes[strtolower($this->value)])) {
-            return $aliased_classes[strtolower($this->value)] . '::class';
+        if (isset($aliased_classes[$this->value])) {
+            return $aliased_classes[$this->value] . '::class';
         }
 
         return '\\' . $this->value . '::class';

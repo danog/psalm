@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Storage;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use Psalm\Aliases;
 use Psalm\CodeLocation;
@@ -30,7 +32,7 @@ final class ClassLikeStorage implements HasAttributesInterface
     use UnserializeMemoryUsageSuppressionTrait;
 
     /**
-     * @var array<string, ClassConstantStorage>
+     * @var array<int, ClassConstantStorage>
      */
     public array $constants = [];
 
@@ -60,7 +62,7 @@ final class ClassLikeStorage implements HasAttributesInterface
      */
     public array $namedMixins = [];
 
-    public ?string $mixin_declaring_fqcln = null;
+    public ?int $mixin_declaring_fqcln = null;
 
     public ?bool $sealed_properties = null;
 
@@ -83,40 +85,40 @@ final class ClassLikeStorage implements HasAttributesInterface
     /**
      * Interfaces this class implements directly
      *
-     * @var array<lowercase-string, string>
+     * @var array<int, string>
      */
     public array $direct_class_interfaces = [];
 
     /**
      * Interfaces this class implements explicitly and implicitly
      *
-     * @var array<lowercase-string, string>
+     * @var array<int, string>
      */
     public array $class_implements = [];
 
     /**
      * Parent interfaces listed explicitly
      *
-     * @var array<lowercase-string, string>
+     * @var array<int, string>
      */
     public array $direct_interface_parents = [];
 
     /**
      * Parent interfaces
      *
-     * @var  array<lowercase-string, string>
+     * @var  array<int, string>
      */
     public array $parent_interfaces = [];
 
     /**
      * There can only be one direct parent class
      */
-    public ?string $parent_class = null;
+    public ?int $parent_class = null;
 
     /**
      * Parent classes
      *
-     * @var array<lowercase-string, string>
+     * @var array<int, string>
      */
     public array $parent_classes = [];
 
@@ -135,7 +137,7 @@ final class ClassLikeStorage implements HasAttributesInterface
     public bool $trait_used = false;
 
     /**
-     * @var array<lowercase-string, string>
+     * @var array<int, string>
      */
     public array $used_traits = [];
 
@@ -173,17 +175,17 @@ final class ClassLikeStorage implements HasAttributesInterface
     public bool $specialize_instance = false;
 
     /**
-     * @var array<lowercase-string, MethodStorage>
+     * @var array<int, MethodStorage>
      */
     public array $methods = [];
 
     /**
-     * @var array<lowercase-string, MethodStorage>
+     * @var array<int, MethodStorage>
      */
     public array $pseudo_methods = [];
 
     /**
-     * @var array<lowercase-string, MethodStorage>
+     * @var array<int, MethodStorage>
      */
     public array $pseudo_static_methods = [];
 
@@ -234,7 +236,7 @@ final class ClassLikeStorage implements HasAttributesInterface
     public array $potential_declaring_method_ids = [];
 
     /**
-     * @var array<string, PropertyStorage>
+     * @var array<int, PropertyStorage>
      */
     public array $properties = [];
 
@@ -327,7 +329,7 @@ final class ClassLikeStorage implements HasAttributesInterface
 
     public ?Union $yield = null;
 
-    public ?string $declaring_yield_fqcn = null;
+    public ?int $declaring_yield_fqcn = null;
 
     /**
      * @var array<string, int>|null
@@ -335,7 +337,7 @@ final class ClassLikeStorage implements HasAttributesInterface
     public ?array $template_type_uses_count = null;
 
     /**
-     * @var array<string, bool>
+     * @var array<int, bool>
      */
     public array $initialized_properties = [];
 
@@ -345,7 +347,7 @@ final class ClassLikeStorage implements HasAttributesInterface
     public array $invalid_dependencies = [];
 
     /**
-     * @var array<lowercase-string, bool>
+     * @var array<int, bool>
      */
     public array $dependent_classlikes = [];
 
@@ -396,7 +398,7 @@ final class ClassLikeStorage implements HasAttributesInterface
     /**
      * @psalm-mutation-free
      */
-    public function __construct(public string $name)
+    public function __construct(public int $name)
     {
     }
 
@@ -437,7 +439,7 @@ final class ClassLikeStorage implements HasAttributesInterface
      * @psalm-mutation-free
      */
     public function hasAttributeIncludingParents(
-        string $fq_class_name,
+        int $fq_class_name,
         Codebase $codebase,
     ): bool {
         if ($this->hasAttribute($fq_class_name)) {
@@ -446,10 +448,10 @@ final class ClassLikeStorage implements HasAttributesInterface
 
         foreach ($this->parent_classes as $parent_class) {
             // skip missing dependencies
-            if (!$codebase->classlike_storage_provider->has($parent_class)) {
+            if (!$codebase->classlike_storage_provider->has(Interner::intern($parent_class))) {
                 continue;
             }
-            $parent_class_storage = $codebase->classlike_storage_provider->get($parent_class);
+            $parent_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($parent_class));
             if ($parent_class_storage->hasAttribute($fq_class_name)) {
                 return true;
             }
@@ -494,7 +496,7 @@ final class ClassLikeStorage implements HasAttributesInterface
     /**
      * @psalm-mutation-free
      */
-    private function hasAttribute(string $fq_class_name): bool
+    private function hasAttribute(int $fq_class_name): bool
     {
         foreach ($this->attributes as $attribute) {
             if ($fq_class_name === $attribute->fq_class_name) {

@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\Fetch;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use PhpParser\Node\Expr;
 use Psalm\CodeLocation;
@@ -881,7 +885,7 @@ final class ArrayFetchAnalyzer
                             && !$atomic_key_type instanceof TTemplateParam
                             && !(
                                 $atomic_key_type instanceof TObjectWithProperties
-                                && isset($atomic_key_type->methods['__tostring'])
+                                && isset($atomic_key_type->methods[Sym::C___TOSTRING])
                             )
                         ) {
                             $bad_types[] = $atomic_key_type;
@@ -953,11 +957,11 @@ final class ArrayFetchAnalyzer
                 && $offset_type_part instanceof TLiteralInt
                 && isset(
                     $context->vars_in_scope[
-                        $extended_var_id . '[' . $offset_type_part->value . ']'
+                        $extended_var_id . '[' . Interner::lookup($offset_type_part->value) . ']'
                     ],
                 )
                 && !$context->vars_in_scope[
-                        $extended_var_id . '[' . $offset_type_part->value . ']'
+                        $extended_var_id . '[' . Interner::lookup($offset_type_part->value) . ']'
                     ]->possibly_undefined
             ) {
                 return;
@@ -1488,7 +1492,7 @@ final class ArrayFetchAnalyzer
 
                     $template_result_set = new TemplateResult(
                         [],
-                        [
+                        Interner::lookupAt([
                             $offset_type_part->param_name => [
                                 $offset_type_part->defining_class => new Union([
                                     new TTemplateParam(
@@ -1496,11 +1500,11 @@ final class ArrayFetchAnalyzer
                                         $type->as_type
                                             ? new Union([$type->as_type])
                                             : Type::getObject(),
-                                        'class-string-map',
+                                        Interner::intern('class-string-map'),
                                     ),
                                 ]),
                             ],
-                        ],
+                        ], '#v#k'),
                     );
                 } else {
                     $template_result_get = new TemplateResult(
@@ -1833,12 +1837,12 @@ final class ArrayFetchAnalyzer
         bool &$has_array_access,
     ): void {
         $codebase = $statements_analyzer->getCodebase();
-        if (strtolower($type->value) === 'simplexmlelement'
+        if ($type->value === Sym::C_SIMPLEXMLELEMENT
             || ($codebase->classExists($type->value, null, $context)
-                && $codebase->classExtendsOrImplements($type->value, 'SimpleXMLElement'))
+                && $codebase->classExtendsOrImplements($type->value, Sym::C_SIMPLE_XML_ELEMENT))
         ) {
             $call_array_access_type = new Union([new TNull(), new TNamedObject('SimpleXMLElement')]);
-        } elseif (strtolower($type->value) === 'domnodelist' && $stmt->dim) {
+        } elseif ($type->value === Sym::C_DOMNODELIST && $stmt->dim) {
             $old_data_provider = $statements_analyzer->node_data;
 
             $statements_analyzer->node_data = clone $statements_analyzer->node_data;
@@ -2075,7 +2079,7 @@ final class ArrayFetchAnalyzer
                     $codebase,
                     $atomic_offset_type,
                     $atomic_offset_type->fq_classlike_name,
-                    $atomic_offset_type->fq_classlike_name,
+                    Interner::lookup($atomic_offset_type->fq_classlike_name),
                     null,
                     true,
                     true,

@@ -2,6 +2,8 @@
 
 namespace Psalm\Example\Plugin;
 
+use Psalm\Internal\Interner;
+
 use Psalm\FileManipulation;
 use Psalm\Internal\Type\TypeTokenizer;
 use Psalm\Plugin\EventHandler\AfterClassLikeExistenceCheckInterface;
@@ -35,9 +37,9 @@ final class ClassUnqualifier implements AfterClassLikeExistenceCheckInterface
 
             foreach ($type_tokens as &$type_token) {
                 if ($type_token[0] === ('\\' . $fq_class_name)
-                    && isset($aliases[strtolower($fq_class_name)])
+                    && isset($aliases[Interner::intern($fq_class_name)])
                 ) {
-                    $type_token[0] = $aliases[strtolower($fq_class_name)];
+                    $type_token[0] = $aliases[Interner::intern($fq_class_name)];
                 }
             }
             unset($type_token);

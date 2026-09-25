@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\BinaryOp;
 
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
@@ -152,7 +154,7 @@ final class OrAnalyzer
             $left_cond_id,
             $left_cond_id,
             $stmt->left,
-            $context->self,
+            Interner::internOrNull($context->self),
             $statements_analyzer,
             $codebase,
         );
@@ -165,7 +167,7 @@ final class OrAnalyzer
                     $left_cond_id,
                     $left_cond_id,
                     new VirtualBooleanNot($stmt->left),
-                    $context->self,
+                    Interner::internOrNull($context->self),
                     $statements_analyzer,
                     $codebase,
                     false,
@@ -286,7 +288,7 @@ final class OrAnalyzer
             $right_cond_id,
             $right_cond_id,
             $stmt->right,
-            $context->self,
+            Interner::internOrNull($context->self),
             $statements_analyzer,
             $codebase,
         );
@@ -338,7 +340,7 @@ final class OrAnalyzer
                 }
             }
         } elseif ($stmt->left instanceof PhpParser\Node\Expr\Assign) {
-            $var_id = ExpressionIdentifier::getVarId($stmt->left->var, $context->self);
+            $var_id = ExpressionIdentifier::getVarId($stmt->left->var, Interner::internOrNull($context->self));
 
             if ($var_id && isset($left_context->vars_in_scope[$var_id])) {
                 $left_inferred_reconciled = AssertionReconciler::reconcile(

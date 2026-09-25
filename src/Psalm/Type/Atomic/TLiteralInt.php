@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
+use Psalm\Internal\Interner;
+
 use Override;
 
 /**
@@ -22,7 +24,7 @@ final class TLiteralInt extends TInt
     #[Override]
     public function getKey(bool $include_extra = true): string
     {
-        return 'int(' . $this->value . ')';
+        return 'int(' . Interner::lookup($this->value) . ')';
     }
 
     #[Override]
@@ -38,7 +40,7 @@ final class TLiteralInt extends TInt
     #[Override]
     public function getAssertionString(): string
     {
-        return 'int(' . $this->value . ')';
+        return 'int(' . Interner::lookup($this->value) . ')';
     }
 
     /**
@@ -48,7 +50,7 @@ final class TLiteralInt extends TInt
     public function toNamespacedString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         bool $use_phpdoc_format,
     ): string {
         return $use_phpdoc_format ? 'int' : (string) $this->value;

@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
@@ -93,7 +97,7 @@ final class GlobalAnalyzer
                 $context->vars_possibly_in_scope[$var_id] = true;
                 $context->byref_constraints[$var_id] = new ReferenceConstraint($comment_type);
             } else {
-                if ($var->name === 'argv' || $var->name === 'argc') {
+                if ($var->name === Sym::C_ARGV || $var->name === Sym::C_ARGC) {
                     $context->vars_in_scope[$var_id] =
                         VariableFetchAnalyzer::getGlobalType($var_id, $codebase->analysis_php_version_id);
                 } elseif (isset($function_storage->global_types[$var_id])) {

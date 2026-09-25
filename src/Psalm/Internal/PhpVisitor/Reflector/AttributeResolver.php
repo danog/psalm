@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\PhpVisitor\Reflector;
 
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\Aliases;
 use Psalm\CodeLocation;
@@ -30,7 +32,7 @@ final class AttributeResolver
         FileStorage $file_storage,
         Aliases $aliases,
         PhpParser\Node\Attribute $stmt,
-        ?string $fq_classlike_name,
+        ?int $fq_classlike_name,
     ): AttributeStorage {
         if ($stmt->name instanceof PhpParser\Node\Name\FullyQualified) {
             $fq_type_string = (string)$stmt->name;
@@ -38,7 +40,7 @@ final class AttributeResolver
             $fq_type_string = ClassLikeAnalyzer::getFQCLNFromNameObject($stmt->name, $aliases);
         }
 
-        $codebase->scanner->queueClassLikeForScanning($fq_type_string);
+        $codebase->scanner->queueClassLikeForScanning(Interner::intern($fq_type_string));
         $file_storage->referenced_classlikes[strtolower($fq_type_string)] = $fq_type_string;
 
         $args = [];
@@ -76,7 +78,7 @@ final class AttributeResolver
         }
 
         return new AttributeStorage(
-            $fq_type_string,
+            Interner::intern($fq_type_string),
             $args,
             new CodeLocation($file_scanner, $stmt),
             new CodeLocation($file_scanner, $stmt->name),

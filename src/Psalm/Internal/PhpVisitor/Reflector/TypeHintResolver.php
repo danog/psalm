@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\PhpVisitor\Reflector;
 
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\IntersectionType;
@@ -135,7 +137,7 @@ final class TypeHintResolver
         } elseif ($hint instanceof PhpParser\Node\Name\FullyQualified) {
             $fq_type_string = (string)$hint;
 
-            $codebase->scanner->queueClassLikeForScanning($fq_type_string);
+            $codebase->scanner->queueClassLikeForScanning(Interner::intern($fq_type_string));
             $file_storage->referenced_classlikes[strtolower($fq_type_string)] = $fq_type_string;
         } else {
             $lower_hint = strtolower($hint->getFirst());
@@ -153,7 +155,7 @@ final class TypeHintResolver
                 $type_string = $hint->toString();
                 $fq_type_string = ClassLikeAnalyzer::getFQCLNFromNameObject($hint, $aliases);
 
-                $codebase->scanner->queueClassLikeForScanning($fq_type_string);
+                $codebase->scanner->queueClassLikeForScanning(Interner::intern($fq_type_string));
                 $file_storage->referenced_classlikes[strtolower($fq_type_string)] = $fq_type_string;
             }
         }

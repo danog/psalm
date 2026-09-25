@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use PhpParser\Node\Expr\Exit_;
 use Psalm\CodeLocation;
 use Psalm\Context;
@@ -38,11 +42,11 @@ final class ExitAnalyzer
 
         $forbidden = null;
 
-        if (isset($config->forbidden_functions['exit'])
+        if (isset($config->forbidden_functions[Sym::C_EXIT])
             && $stmt->getAttribute('kind') === Exit_::KIND_EXIT
         ) {
             $forbidden = 'exit';
-        } elseif (isset($config->forbidden_functions['die'])
+        } elseif (isset($config->forbidden_functions[Sym::C_DIE])
             && $stmt->getAttribute('kind') === Exit_::KIND_DIE
         ) {
             $forbidden = 'die';

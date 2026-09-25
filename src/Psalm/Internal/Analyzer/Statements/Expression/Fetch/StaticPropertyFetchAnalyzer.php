@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\Fetch;
 
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
@@ -92,14 +94,14 @@ final class StaticPropertyFetchAnalyzer
                 );
             }
 
-            if ($context->isPhantomClass($fq_class_name)) {
+            if ($context->isPhantomClass(Interner::intern($fq_class_name))) {
                 return true;
             }
 
             if ($context->check_classes) {
                 if (ClassLikeAnalyzer::checkFullyQualifiedClassLikeName(
                     $statements_analyzer,
-                    $fq_class_name,
+                    Interner::intern($fq_class_name),
                     new CodeLocation($statements_analyzer->getSource(), $stmt->class),
                     $context,
                     $statements_analyzer->getSuppressedIssues(),
@@ -112,13 +114,13 @@ final class StaticPropertyFetchAnalyzer
         if ($fq_class_name
             && $codebase->methods_to_move
             && $context->calling_method_id
-            && isset($codebase->methods_to_move[$context->calling_method_id])
+            && isset($codebase->methods_to_move[Interner::intern($context->calling_method_id)])
         ) {
-            $destination_method_id = $codebase->methods_to_move[$context->calling_method_id];
+            $destination_method_id = $codebase->methods_to_move[Interner::intern($context->calling_method_id)];
 
             $codebase->classlikes->airliftClassLikeReference(
                 $fq_class_name,
-                explode('::', $destination_method_id)[0],
+                Interner::intern(explode('::', $destination_method_id)[0]),
                 $statements_analyzer->getFilePath(),
                 (int) $stmt->class->getAttribute('startFilePos'),
                 (int) $stmt->class->getAttribute('endFilePos') + 1,
@@ -159,7 +161,7 @@ final class StaticPropertyFetchAnalyzer
         if (!$prop_name) {
             if ($fq_class_name) {
                 $codebase->analyzer->addMixedMemberName(
-                    strtolower($fq_class_name) . '::$',
+                    $fq_class_name . '::$',
                     $context->calling_method_id ?: $statements_analyzer->getFileName(),
                 );
             }
@@ -180,7 +182,7 @@ final class StaticPropertyFetchAnalyzer
             $statements_analyzer,
         );
 
-        $property_id = $fq_class_name . '::$' . $prop_name;
+        $property_id = Interner::lookup($fq_class_name) . '::$' . $prop_name;
 
         if ($codebase->store_node_types
             && !$context->collect_initializations
@@ -271,7 +273,7 @@ final class StaticPropertyFetchAnalyzer
         }
 
         $declaring_property_class = $codebase->properties->getDeclaringClassForProperty(
-            $fq_class_name . '::$' . $prop_name,
+            Interner::lookup($fq_class_name) . '::$' . $prop_name,
             true,
             $statements_analyzer,
         );
@@ -281,14 +283,14 @@ final class StaticPropertyFetchAnalyzer
         }
 
         AtomicPropertyFetchAnalyzer::checkPropertyDeprecation(
-            $prop_name,
-            $declaring_property_class,
+            Interner::intern($prop_name),
+            Interner::intern($declaring_property_class),
             $stmt,
             $statements_analyzer,
         );
 
-        $class_storage = $codebase->classlike_storage_provider->get($declaring_property_class);
-        $property = $class_storage->properties[$prop_name];
+        $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($declaring_property_class));
+        $property = $class_storage->properties[Interner::intern($prop_name)];
 
         if (!$property->is_static) {
             if ($context->inside_isset) {
@@ -328,7 +330,7 @@ final class StaticPropertyFetchAnalyzer
             return false;
         }
 
-        $declaring_property_id = strtolower($declaring_property_class) . '::$' . $prop_name;
+        $declaring_property_id = $declaring_property_class . '::$' . $prop_name;
 
         if ($codebase->alter_code) {
             $moved_class = $codebase->classlikes->handleClassLikeReferenceInMigration(
@@ -347,14 +349,14 @@ final class StaticPropertyFetchAnalyzer
 
                         $file_manipulations = [];
 
-                        if (strtolower($new_fq_class_name) !== $old_declaring_fq_class_name) {
+                        if ($new_fq_class_name !== $old_declaring_fq_class_name) {
                             $file_manipulations[] = new FileManipulation(
                                 (int) $stmt->class->getAttribute('startFilePos'),
                                 (int) $stmt->class->getAttribute('endFilePos') + 1,
                                 Type::getStringFromFQCLN(
                                     $new_fq_class_name,
                                     $statements_analyzer->getNamespace(),
-                                    $statements_analyzer->getAliasedClassesFlipped(),
+                                    Interner::lookupKeys($statements_analyzer->getAliasedClassesFlipped()),
                                     null,
                                 ),
                             );
@@ -380,7 +382,7 @@ final class StaticPropertyFetchAnalyzer
                     $codebase,
                     $property->type,
                     $class_storage->name,
-                    $class_storage->name,
+                    Interner::lookup($class_storage->name),
                     $class_storage->parent_class,
                 );
             } else {

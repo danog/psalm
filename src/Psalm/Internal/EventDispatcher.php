@@ -202,88 +202,88 @@ final class EventDispatcher
     public array $remove_taints_checks = [];
 
     /**
-     * @param class-string $class
+     * @param int $class
      * @psalm-external-mutation-free
      */
-    public function registerClass(string $class): void
+    public function registerClass(int $class): void
     {
-        if (is_subclass_of($class, AfterMethodCallAnalysisInterface::class)) {
+        if (is_subclass_of(Interner::lookup($class), AfterMethodCallAnalysisInterface::class)) {
             $this->after_method_checks[] = $class;
         }
 
-        if (is_subclass_of($class, AfterFunctionCallAnalysisInterface::class)) {
+        if (is_subclass_of(Interner::lookup($class), AfterFunctionCallAnalysisInterface::class)) {
             $this->after_function_checks[] = $class;
         }
 
-        if (is_subclass_of($class, AfterEveryFunctionCallAnalysisInterface::class)) {
+        if (is_subclass_of(Interner::lookup($class), AfterEveryFunctionCallAnalysisInterface::class)) {
             $this->after_every_function_checks[] = $class;
         }
 
-        if (is_subclass_of($class, BeforeExpressionAnalysisInterface::class)) {
+        if (is_subclass_of(Interner::lookup($class), BeforeExpressionAnalysisInterface::class)) {
             $this->before_expression_checks[] = $class;
         }
 
-        if (is_subclass_of($class, AfterExpressionAnalysisInterface::class)) {
+        if (is_subclass_of(Interner::lookup($class), AfterExpressionAnalysisInterface::class)) {
             $this->after_expression_checks[] = $class;
         }
 
-        if (is_subclass_of($class, BeforeStatementAnalysisInterface::class)) {
+        if (is_subclass_of(Interner::lookup($class), BeforeStatementAnalysisInterface::class)) {
             $this->before_statement_checks[] = $class;
         }
 
-        if (is_subclass_of($class, AfterStatementAnalysisInterface::class)) {
+        if (is_subclass_of(Interner::lookup($class), AfterStatementAnalysisInterface::class)) {
             $this->after_statement_checks[] = $class;
         }
 
-        if (is_subclass_of($class, StringInterpreterInterface::class)) {
+        if (is_subclass_of(Interner::lookup($class), StringInterpreterInterface::class)) {
             $this->string_interpreters[] = $class;
         }
 
-        if (is_subclass_of($class, AfterClassLikeExistenceCheckInterface::class)) {
+        if (is_subclass_of(Interner::lookup($class), AfterClassLikeExistenceCheckInterface::class)) {
             $this->after_classlike_exists_checks[] = $class;
         }
 
-        if (is_subclass_of($class, AfterClassLikeAnalysisInterface::class)) {
+        if (is_subclass_of(Interner::lookup($class), AfterClassLikeAnalysisInterface::class)) {
             $this->after_classlike_checks[] = $class;
         }
 
-        if (is_subclass_of($class, AfterClassLikeVisitInterface::class)) {
+        if (is_subclass_of(Interner::lookup($class), AfterClassLikeVisitInterface::class)) {
             $this->after_visit_classlikes[] = $class;
         }
 
-        if (is_subclass_of($class, AfterCodebasePopulatedInterface::class)) {
+        if (is_subclass_of(Interner::lookup($class), AfterCodebasePopulatedInterface::class)) {
             $this->after_codebase_populated[] = $class;
         }
 
-        if (is_subclass_of($class, BeforeAddIssueInterface::class)) {
+        if (is_subclass_of(Interner::lookup($class), BeforeAddIssueInterface::class)) {
             $this->before_add_issue[] = $class;
         }
 
-        if (is_subclass_of($class, AfterAnalysisInterface::class)) {
+        if (is_subclass_of(Interner::lookup($class), AfterAnalysisInterface::class)) {
             $this->after_analysis[] = $class;
         }
 
-        if (is_subclass_of($class, AfterFileAnalysisInterface::class)) {
+        if (is_subclass_of(Interner::lookup($class), AfterFileAnalysisInterface::class)) {
             $this->after_file_checks[] = $class;
         }
 
-        if (is_subclass_of($class, BeforeFileAnalysisInterface::class)) {
+        if (is_subclass_of(Interner::lookup($class), BeforeFileAnalysisInterface::class)) {
             $this->before_file_checks[] = $class;
         }
 
-        if (is_subclass_of($class, AfterFunctionLikeAnalysisInterface::class)) {
+        if (is_subclass_of(Interner::lookup($class), AfterFunctionLikeAnalysisInterface::class)) {
             $this->after_functionlike_checks[] = $class;
         }
 
-        if (is_subclass_of($class, AddTaintsInterface::class)) {
+        if (is_subclass_of(Interner::lookup($class), AddTaintsInterface::class)) {
             $this->add_taints_checks[] = $class;
         }
 
-        if (is_subclass_of($class, RemoveTaintsInterface::class)) {
+        if (is_subclass_of(Interner::lookup($class), RemoveTaintsInterface::class)) {
             $this->remove_taints_checks[] = $class;
         }
 
-        if (is_subclass_of($class, ClassFilePathProviderInterface::class)) {
+        if (is_subclass_of(Interner::lookup($class), ClassFilePathProviderInterface::class)) {
             $this->file_path_provider_interface[] = $class;
         }
     }

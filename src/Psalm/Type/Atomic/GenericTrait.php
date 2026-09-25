@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
@@ -78,7 +80,7 @@ trait GenericTrait
     public function toNamespacedString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         bool $use_phpdoc_format,
     ): string {
         $base_value = $this instanceof TNamedObject
@@ -170,8 +172,8 @@ trait GenericTrait
         ?StatementsAnalyzer $statements_analyzer = null,
         ?Atomic $input_type = null,
         ?int $input_arg_offset = null,
-        ?string $calling_class = null,
-        ?string $calling_function = null,
+        ?int $calling_class = null,
+        ?int $calling_function = null,
         bool $replace = true,
         bool $add_lower_bound = false,
         int $depth = 0,
@@ -227,10 +229,10 @@ trait GenericTrait
                 $calling_function,
                 $replace,
                 $add_lower_bound,
-                !($container_type_params_covariant[$offset] ?? true)
+                Interner::internOrNull(!($container_type_params_covariant[$offset] ?? true)
                     && $this instanceof TGenericObject
                     ? $this->value
-                    : null,
+                    : null),
                 $depth + 1,
             );
         }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Storage;
 
+use Psalm\Internal\Interner;
+
 use Psalm\CodeLocation;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Scanner\UnresolvedConstantComponent;
@@ -56,7 +58,7 @@ final class ClassConstantStorage
      *
      * @psalm-mutation-free
      */
-    public function getHoverMarkdown(string $const): string
+    public function getHoverMarkdown(int $const): string
     {
         $visibility_text = match ($this->visibility) {
             ClassLikeAnalyzer::VISIBILITY_PRIVATE => 'private',
@@ -70,11 +72,11 @@ final class ClassConstantStorage
             $type = array_values($types)[0];
             if (property_exists($type, 'value')) {
                 /** @psalm-suppress UndefinedPropertyFetch */
-                $value = " = {$type->value};";
+                $value = " = " . Interner::lookup($type->value) . ";";
             }
         }
 
 
-        return "$visibility_text const $const$value";
+        return "$visibility_text const " . Interner::lookup($const) . "$value";
     }
 }

@@ -18,7 +18,7 @@ interface StatementsSource extends FileSource
     public function getNamespace(): ?string;
 
     /**
-     * @return array<lowercase-string, string>
+     * @return array<int, string>
      */
     public function getAliasedClassesFlipped(): array;
 
@@ -27,11 +27,11 @@ interface StatementsSource extends FileSource
      */
     public function getAliasedClassesFlippedReplaceable(): array;
 
-    public function getFQCLN(): ?string;
+    public function getFQCLN(): ?int;
 
-    public function getClassName(): ?string;
+    public function getClassName(): ?int;
 
-    public function getParentFQCLN(): ?string;
+    public function getParentFQCLN(): ?int;
 
     /**
      * @return array<string, array<string, Union>>|null

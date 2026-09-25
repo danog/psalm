@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Storage\Assertion;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use Psalm\Storage\Assertion;
 use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
@@ -36,7 +38,7 @@ final class IsGreaterThanOrEqualTo extends Assertion
 
     public function __toString(): string
     {
-        return '!<' . $this->value;
+        return '!<' . Interner::lookup($this->value);
     }
 
     #[Override]

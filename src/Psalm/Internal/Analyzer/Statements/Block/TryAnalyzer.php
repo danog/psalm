@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Block;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
@@ -192,7 +196,7 @@ final class TryAnalyzer
                         $codebase,
                         $statements_analyzer,
                         $catch_type,
-                        $fq_catch_class,
+                        Interner::intern($fq_catch_class),
                         $context,
                     );
                 }
@@ -200,7 +204,7 @@ final class TryAnalyzer
                 if ($original_context->check_classes) {
                     ClassLikeAnalyzer::checkFullyQualifiedClassLikeName(
                         $statements_analyzer,
-                        $fq_catch_class,
+                        Interner::intern($fq_catch_class),
                         new CodeLocation($statements_analyzer->getSource(), $catch_type, $context->include_location),
                         $context,
                         $statements_analyzer->getSuppressedIssues(),
@@ -208,19 +212,19 @@ final class TryAnalyzer
                     );
                 }
 
-                if (($codebase->classExists($fq_catch_class, null, $context)
-                        && strtolower($fq_catch_class) !== 'exception'
-                        && !($codebase->classExtends($fq_catch_class, 'Exception')
-                            || $codebase->classImplements($fq_catch_class, 'Throwable')))
-                    || ($codebase->interfaceExists($fq_catch_class, null, $context)
-                        && strtolower($fq_catch_class) !== 'throwable'
-                        && !$codebase->interfaceExtends($fq_catch_class, 'Throwable'))
+                if (($codebase->classExists(Interner::intern($fq_catch_class), null, $context)
+                        && $fq_catch_class !== 'exception'
+                        && !($codebase->classExtends(Interner::intern($fq_catch_class), Sym::C_EXCEPTION_2)
+                            || $codebase->classImplements(Interner::intern($fq_catch_class), Sym::C_THROWABLE_2)))
+                    || ($codebase->interfaceExists(Interner::intern($fq_catch_class), null, $context)
+                        && $fq_catch_class !== 'throwable'
+                        && !$codebase->interfaceExtends(Interner::intern($fq_catch_class), Sym::C_THROWABLE_2))
                 ) {
                     IssueBuffer::maybeAdd(
                         new InvalidCatch(
                             'Class/interface ' . $fq_catch_class . ' cannot be caught',
                             new CodeLocation($statements_analyzer->getSource(), $stmt),
-                            $fq_catch_class,
+                            Interner::intern($fq_catch_class),
                         ),
                         $statements_analyzer->getSuppressedIssues(),
                     );
@@ -231,16 +235,16 @@ final class TryAnalyzer
 
             if ($catch_context->collect_exceptions) {
                 foreach ($fq_catch_classes as $fq_catch_class) {
-                    $fq_catch_class_lower = strtolower($fq_catch_class);
+                    $fq_catch_class_lower = $fq_catch_class;
 
                     foreach ($catch_context->possibly_thrown_exceptions as $exception_fqcln => $_) {
-                        $exception_fqcln_lower = strtolower($exception_fqcln);
+                        $exception_fqcln_lower = $exception_fqcln;
 
                         if ($exception_fqcln_lower === $fq_catch_class_lower
-                            || ($codebase->classExists($exception_fqcln, null, $context)
-                                && $codebase->classExtendsOrImplements($exception_fqcln, $fq_catch_class))
-                            || ($codebase->interfaceExists($exception_fqcln, null, $context)
-                                && $codebase->interfaceExtends($exception_fqcln, $fq_catch_class))
+                            || ($codebase->classExists(Interner::intern($exception_fqcln), null, $context)
+                                && $codebase->classExtendsOrImplements(Interner::intern($exception_fqcln), Interner::intern($fq_catch_class)))
+                            || ($codebase->interfaceExists(Interner::intern($exception_fqcln), null, $context)
+                                && $codebase->interfaceExtends(Interner::intern($exception_fqcln), Interner::intern($fq_catch_class)))
                         ) {
                             unset($original_context->possibly_thrown_exceptions[$exception_fqcln]);
                             unset($context->possibly_thrown_exceptions[$exception_fqcln]);
@@ -260,13 +264,13 @@ final class TryAnalyzer
 
                 $catch_context->vars_in_scope[$catch_var_id] = new Union(
                     array_map(
-                        static fn(string $fq_catch_class): TNamedObject => new TNamedObject(
-                            $fq_catch_class,
+                        static fn(int $fq_catch_class): TNamedObject => new TNamedObject(
+                            Interner::lookup($fq_catch_class),
                             false,
                             false,
-                            strtolower($fq_catch_class) !== 'throwable'
+                            $fq_catch_class !== 'throwable'
                                 && $codebase->interfaceExists($fq_catch_class, null, $context)
-                                && !$codebase->interfaceExtends($fq_catch_class, 'Throwable')
+                                && !$codebase->interfaceExtends($fq_catch_class, Sym::C_THROWABLE_2)
                                     ? ['Throwable' => new TNamedObject('Throwable')]
                                     : [],
                         ),

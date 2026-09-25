@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer;
 
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\Config;
 use Psalm\Context;
@@ -33,15 +35,15 @@ final class FunctionAnalyzer extends FunctionLikeAnalyzer
 
         $namespace = $source->getNamespace();
 
-        $function_id = ($namespace ? strtolower($namespace) . '\\' : '') . strtolower($function->name->name);
+        $function_id = ($namespace ? strtolower($namespace) . '\\' : '') . $function->name->name;
 
-        if (!isset($file_storage->functions[$function_id])) {
+        if (!isset($file_storage->functions[Interner::intern($function_id)])) {
             throw new UnexpectedValueException(
                 'Function ' . $function_id . ' should be defined in ' . $source->getFilePath(),
             );
         }
 
-        $storage = $file_storage->functions[$function_id];
+        $storage = $file_storage->functions[Interner::intern($function_id)];
 
         parent::__construct($function, $source, $storage);
     }
@@ -56,7 +58,7 @@ final class FunctionAnalyzer extends FunctionLikeAnalyzer
         $namespace = $this->source->getNamespace();
 
         /** @var non-empty-lowercase-string */
-        return ($namespace ? strtolower($namespace) . '\\' : '') . strtolower($this->function->name->name);
+        return ($namespace ? strtolower($namespace) . '\\' : '') . $this->function->name->name;
     }
 
     public static function analyzeStatement(
@@ -86,7 +88,7 @@ final class FunctionAnalyzer extends FunctionLikeAnalyzer
         if (!$codebase->register_stub_files
             && !$codebase->register_autoload_files
         ) {
-            $function_name = strtolower($stmt->name->name);
+            $function_name = $stmt->name->name;
 
             if ($ns = $statements_analyzer->getNamespace()) {
                 $fq_function_name = strtolower($ns) . '\\' . $function_name;

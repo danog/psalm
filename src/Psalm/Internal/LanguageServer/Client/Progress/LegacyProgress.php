@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\LanguageServer\Client\Progress;
 
+use Psalm\Internal\Interner;
+
 use LanguageServerProtocol\LogMessage;
 use LanguageServerProtocol\MessageType;
 use LogicException;
@@ -80,7 +82,7 @@ final class LegacyProgress implements ProgressInterface
     private function notify(?string $message): void
     {
         $this->handler->notify(
-            'telemetry/event',
+            Interner::intern('telemetry/event'),
             new LogMessage(
                 MessageType::INFO,
                 $this->title . (empty($message) ? '' : (': ' . $message)),

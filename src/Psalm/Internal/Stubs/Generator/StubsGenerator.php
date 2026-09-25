@@ -2,6 +2,8 @@
 
 namespace Psalm\Internal\Stubs\Generator;
 
+use Psalm\Internal\Interner;
+
 use Psalm\Codebase;
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
 use Psalm\Internal\Provider\FileStorageProvider;
@@ -63,7 +65,7 @@ final class StubsGenerator
         $psalm_base = dirname(__DIR__, 5);
 
         foreach ($class_provider->getAll() as $storage) {
-            if (str_starts_with($storage->name, 'Psalm\\')) {
+            if (str_starts_with(Interner::lookup($storage->name), 'Psalm\\')) {
                 continue;
             }
 
@@ -77,7 +79,7 @@ final class StubsGenerator
                 continue;
             }
 
-            $name_parts = explode('\\', $storage->name);
+            $name_parts = explode('\\', Interner::lookup($storage->name));
 
             $classlike_name = array_pop($name_parts);
             $namespace_name = implode('\\', $name_parts);
@@ -89,7 +91,7 @@ final class StubsGenerator
             $namespaced_nodes[$namespace_name][$classlike_name] = ClassLikeStubGenerator::getClassLikeNode(
                 $codebase,
                 $storage,
-                $classlike_name
+                Interner::intern($classlike_name)
             );
         }
 
@@ -110,14 +112,14 @@ final class StubsGenerator
 
             $all_function_names[$fq_name] = true;
 
-            $name_parts = explode('\\', $fq_name);
+            $name_parts = explode('\\', Interner::lookup($fq_name));
             $function_name = array_pop($name_parts);
 
             $namespace_name = implode('\\', $name_parts);
 
             $namespaced_nodes[$namespace_name][$fq_name] = self::getFunctionNode(
                 $function_storage,
-                $function_name,
+                Interner::intern($function_name),
                 $namespace_name
             );
         }
@@ -160,14 +162,14 @@ final class StubsGenerator
 
                 $all_function_names[$fq_name] = true;
 
-                $name_parts = explode('\\', $fq_name);
+                $name_parts = explode('\\', Interner::lookup($fq_name));
                 $function_name = array_pop($name_parts);
 
                 $namespace_name = implode('\\', $name_parts);
 
                 $namespaced_nodes[$namespace_name][$fq_name] = self::getFunctionNode(
                     $function_storage,
-                    $function_name,
+                    Interner::intern($function_name),
                     $namespace_name
                 );
             }
@@ -177,7 +179,7 @@ final class StubsGenerator
                     continue;
                 }
 
-                $name_parts = explode('\\', $fq_name);
+                $name_parts = explode('\\', Interner::lookup($fq_name));
                 $constant_name = array_pop($name_parts);
 
                 $namespace_name = implode('\\', $name_parts);
@@ -213,7 +215,7 @@ final class StubsGenerator
 
     private static function getFunctionNode(
         FunctionLikeStorage $function_storage,
-        string $function_name,
+        int $function_name,
         string $namespace_name
     ) : PhpParser\Node\Stmt\Function_ {
         $docblock = new ParsedDocblock('', []);
@@ -262,7 +264,7 @@ final class StubsGenerator
         }
 
         return new VirtualFunction(
-            $function_name,
+            Interner::lookup($function_name),
             [
                 'params' => self::getFunctionParamNodes($function_storage),
                 'returnType' => $function_storage->signature_return_type
@@ -340,7 +342,7 @@ final class StubsGenerator
             }
 
             if ($atomic_type instanceof TNamedObject) {
-                $name_node = new VirtualFullyQualified($atomic_type->value);
+                $name_node = new VirtualFullyQualified(Interner::lookup($atomic_type->value));
 
                 if ($nullable) {
                     return new VirtualNullableType($name_node);
@@ -410,7 +412,7 @@ final class StubsGenerator
             }
 
             if ($atomic_type instanceof TEnumCase) {
-                return new VirtualClassConstFetch(new VirtualName('\\' . $atomic_type->value), new VirtualIdentifier($atomic_type->case_name));
+                return new VirtualClassConstFetch(new VirtualName('\\' . Interner::lookup($atomic_type->value)), new VirtualIdentifier($atomic_type->case_name));
             }
         }
 

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer;
 
+use Psalm\Internal\Interner;
+
 use Attribute;
 use Override;
 use PhpParser\Node\Stmt\Trait_;
@@ -24,7 +26,7 @@ final class TraitAnalyzer extends ClassLikeAnalyzer
     public function __construct(
         Trait_ $class,
         SourceAnalyzer $source,
-        string $fq_class_name,
+        int $fq_class_name,
         private readonly Aliases $aliases,
     ) {
         $this->source = $source;
@@ -50,7 +52,7 @@ final class TraitAnalyzer extends ClassLikeAnalyzer
     }
 
     /**
-     * @return array<lowercase-string, string>
+     * @return array<int, string>
      * @psalm-pure
      */
     #[Override]
@@ -74,11 +76,11 @@ final class TraitAnalyzer extends ClassLikeAnalyzer
         assert($stmt->name !== null);
         $codebase = $statements_analyzer->getCodebase();
 
-        if (!$codebase->classlike_storage_provider->has($stmt->name->name)) {
+        if (!$codebase->classlike_storage_provider->has(Interner::intern($stmt->name->name))) {
             return;
         }
 
-        $storage = $codebase->classlike_storage_provider->get($stmt->name->name);
+        $storage = $codebase->classlike_storage_provider->get(Interner::intern($stmt->name->name));
 
         ClassLikeAnalyzer::registerDocblockSuppressions($storage, $statements_analyzer->getFilePath(), $codebase);
 

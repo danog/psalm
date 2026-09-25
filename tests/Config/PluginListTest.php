@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\Config;
 
+use Psalm\Internal\Interner;
+
 use InvalidArgumentException;
 use Mockery;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
@@ -151,7 +153,7 @@ final class PluginListTest extends TestCase
 
         $plugin_list = new PluginList($this->config_file, $this->composer_lock);
 
-        $this->assertTrue($plugin_list->isEnabled('a\b\c'));
+        $this->assertTrue($plugin_list->isEnabled(Interner::intern('a\b\c')));
     }
 
     /**
@@ -174,7 +176,7 @@ final class PluginListTest extends TestCase
 
         $this->config_file->shouldReceive('addPlugin')->once()->with('a\b\c');
 
-        $plugin_list->enable('a\b\c');
+        $plugin_list->enable(Interner::intern('a\b\c'));
     }
 
     /**
@@ -186,6 +188,6 @@ final class PluginListTest extends TestCase
 
         $this->config_file->shouldReceive('removePlugin')->once()->with('a\b\c');
 
-        $plugin_list->disable('a\b\c');
+        $plugin_list->disable(Interner::intern('a\b\c'));
     }
 }

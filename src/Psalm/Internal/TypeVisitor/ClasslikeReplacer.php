@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\TypeVisitor;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use Psalm\Type\Atomic\TClassConstant;
 use Psalm\Type\Atomic\TClassString;
@@ -35,9 +37,9 @@ final class ClasslikeReplacer extends MutableTypeVisitor
     protected function enterNode(TypeNode &$type): ?int
     {
         if ($type instanceof TClassConstant) {
-            if (strtolower($type->fq_classlike_name) === $this->old) {
+            if (Interner::lookup($type->fq_classlike_name) === $this->old) {
                 $type = new TClassConstant(
-                    $this->new,
+                    Interner::intern($this->new),
                     $type->const_name,
                     $type->from_docblock,
                 );
@@ -54,8 +56,8 @@ final class ClasslikeReplacer extends MutableTypeVisitor
                 );
             }
         } elseif ($type instanceof TNamedObject || $type instanceof TLiteralClassString) {
-            if (strtolower($type->value) === $this->old) {
-                $type = $type->setValue($this->new);
+            if ($type->value === $this->old) {
+                $type = $type->setValue(Interner::intern($this->new));
             }
         }
         return null;

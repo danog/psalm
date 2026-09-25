@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Type;
 
+use Psalm\Internal\Interner;
+
+use Psalm\Internal\Sym;
+
 use InvalidArgumentException;
 use Psalm\Codebase;
 use Psalm\Type;
@@ -300,7 +304,7 @@ final class TypeCombiner
 
                 foreach ($object_type->getAtomicTypes() as $object_atomic_type) {
                     if ($object_atomic_type instanceof TNamedObject) {
-                        $class_type = new TClassString($object_atomic_type->value, $object_atomic_type);
+                        $class_type = new TClassString(Interner::lookup($object_atomic_type->value), $object_atomic_type);
                     } elseif ($object_atomic_type instanceof TObject) {
                         $class_type = new TClassString();
                     } else {
@@ -340,7 +344,7 @@ final class TypeCombiner
 
         if ($combination->named_object_types !== null) {
             foreach ($combination->value_types as $key => $atomic_type) {
-                if ($atomic_type instanceof TEnumCase && isset($combination->named_object_types[$atomic_type->value])) {
+                if ($atomic_type instanceof TEnumCase && isset($combination->named_object_types[Interner::lookup($atomic_type->value)])) {
                     unset($combination->value_types[$key]);
                 }
             }
@@ -457,7 +461,7 @@ final class TypeCombiner
             $type_key = 'iterable';
             $combination->builtin_type_params['iterable'] = [Type::getMixed(), Type::getMixed()];
         } elseif ($type instanceof TNamedObject
-            && $type->value === 'Traversable'
+            && $type->value === Sym::C_TRAVERSABLE
             && (isset($combination->builtin_type_params['iterable']) || isset($combination->value_types['iterable']))
         ) {
             $type_key = 'iterable';
@@ -467,9 +471,9 @@ final class TypeCombiner
             }
 
             if (!$type instanceof TGenericObject) {
-                $type = new TGenericObject($type->value, [Type::getMixed(), Type::getMixed()]);
+                $type = new TGenericObject(Interner::lookup($type->value), [Type::getMixed(), Type::getMixed()]);
             }
-        } elseif ($type instanceof TNamedObject && ($type->value === 'Traversable' || $type->value === 'Generator')) {
+        } elseif ($type instanceof TNamedObject && ($type->value === Sym::C_TRAVERSABLE || $type->value === Sym::C_GENERATOR)) {
             $type_key = $type->value;
         } else {
             $type_key = $type->getKey();
@@ -537,7 +541,7 @@ final class TypeCombiner
 
         if ($type instanceof TNamedObject) {
             if (array_key_exists($type->value, $combination->object_static)) {
-                if ($combination->object_static[$type->value] && !$type->is_static) {
+                if ($combination->object_static[Interner::lookup($type->value)] && !$type->is_static) {
                     $combination->object_static[$type->value] = false;
                 }
             } else {
@@ -621,7 +625,7 @@ final class TypeCombiner
             return null;
         }
 
-        if (($type instanceof TGenericObject && ($type->value === 'Traversable' || $type->value === 'Generator'))
+        if (($type instanceof TGenericObject && ($type->value === Sym::C_TRAVERSABLE || $type->value === Sym::C_GENERATOR))
             || ($type instanceof TIterable && $type->has_docblock_params)
             || ($type instanceof TArray && $type_key === 'iterable')
         ) {
@@ -854,29 +858,29 @@ final class TypeCombiner
             $is_class = $codebase->classExists($type_key);
 
             foreach ($combination->named_object_types as $key => $_) {
-                if ($codebase->classExists($key)) {
-                    if ($codebase->classExtendsOrImplements($key, $type_key)) {
+                if ($codebase->classExists(Interner::intern($key))) {
+                    if ($codebase->classExtendsOrImplements(Interner::intern($key), $type_key)) {
                         unset($combination->named_object_types[$key]);
                         continue;
                     }
 
                     if ($is_class) {
-                        if ($codebase->classExtends($type_key, $key)) {
+                        if ($codebase->classExtends($type_key, Interner::intern($key))) {
                             return null;
                         }
                     }
                 } else {
-                    if ($codebase->interfaceExtends($key, $type_key)) {
+                    if ($codebase->interfaceExtends(Interner::intern($key), $type_key)) {
                         unset($combination->named_object_types[$key]);
                         continue;
                     }
 
                     if ($is_class) {
-                        if ($codebase->classImplements($type_key, $key)) {
+                        if ($codebase->classImplements($type_key, Interner::intern($key))) {
                             return null;
                         }
                     } else {
-                        if ($codebase->interfaceExtends($type_key, $key)) {
+                        if ($codebase->interfaceExtends($type_key, Interner::intern($key))) {
                             return null;
                         }
                     }
@@ -1036,7 +1040,7 @@ final class TypeCombiner
                     // do nothing
                 } elseif ($type instanceof TLiteralClassString) {
                     $type_classlikes = $codebase
-                        ? self::getClassLikes($codebase, $type->value)
+                        ? self::getClassLikes($codebase, Interner::intern($type->value))
                         : [];
 
                     $mutual = array_intersect_key($type_classlikes, $shared_classlikes);
@@ -1054,7 +1058,7 @@ final class TypeCombiner
                     // do nothing
                 } elseif (isset($combination->value_types['string'])
                     && $combination->value_types['string'] instanceof TLowercaseString
-                    && strtolower($type->value) === $type->value
+                    && $type->value === $type->value
                 ) {
                     // do nothing
                 } elseif (isset($combination->value_types['string'])
@@ -1112,7 +1116,7 @@ final class TypeCombiner
                         $has_non_lowercase_string = false;
 
                         foreach ($combination->strings as $string_type) {
-                            if (strtolower($string_type->value) !== $string_type->value) {
+                            if ($string_type->value !== $string_type->value) {
                                 $has_non_lowercase_string = true;
                                 break;
                             }
@@ -1159,7 +1163,7 @@ final class TypeCombiner
                         $has_non_lowercase_string = false;
                         if ($type instanceof TNonEmptyLowercaseString) {
                             foreach ($combination->strings as $string_type) {
-                                if (strtolower($string_type->value) !== $string_type->value) {
+                                if ($string_type->value !== $string_type->value) {
                                     $has_non_lowercase_string = true;
                                     break;
                                 }
@@ -1361,7 +1365,7 @@ final class TypeCombiner
 
         if ($combination->strings) {
             foreach ($combination->strings as $string_type) {
-                $classlikes = self::getClassLikes($codebase, $string_type->value);
+                $classlikes = self::getClassLikes($codebase, Interner::intern($string_type->value));
 
                 if ($shared_classlikes === null) {
                     $shared_classlikes = $classlikes;
@@ -1392,7 +1396,7 @@ final class TypeCombiner
      * @return array<string, true>
      * @psalm-mutation-free
      */
-    private static function getClassLikes(Codebase $codebase, string $fq_classlike_name): array
+    private static function getClassLikes(Codebase $codebase, int $fq_classlike_name): array
     {
         try {
             $class_storage = $codebase->classlike_storage_provider->get($fq_classlike_name);

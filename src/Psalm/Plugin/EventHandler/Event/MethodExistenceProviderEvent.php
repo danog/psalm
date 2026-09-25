@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Plugin\EventHandler\Event;
 
+use Psalm\Internal\Interner;
+
 use Psalm\CodeLocation;
 use Psalm\StatementsSource;
 
@@ -22,7 +24,7 @@ final class MethodExistenceProviderEvent
      * @psalm-mutation-free
      */
     public function __construct(
-        private readonly string $fq_classlike_name,
+        private readonly int $fq_classlike_name,
         private readonly string $method_name_lowercase,
         private readonly ?StatementsSource $source = null,
         private readonly ?CodeLocation $code_location = null,
@@ -31,7 +33,7 @@ final class MethodExistenceProviderEvent
 
     public function getFqClasslikeName(): string
     {
-        return $this->fq_classlike_name;
+        return Interner::lookup($this->fq_classlike_name);
     }
 
     public function getMethodNameLowercase(): string

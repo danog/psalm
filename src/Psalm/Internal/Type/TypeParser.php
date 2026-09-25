@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Type;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use InvalidArgumentException;
 use LogicException;
 use Psalm\Codebase;
@@ -328,7 +332,7 @@ final class TypeParser
             $result = new TTemplateParam(
                 $parse_tree->param_name,
                 new Union([new TNamedObject($parse_tree->as)]),
-                'class-string-map',
+                Interner::intern('class-string-map'),
                 [],
                 $from_docblock,
             );
@@ -389,7 +393,7 @@ final class TypeParser
 
             return new TConditional(
                 $template_param_name,
-                $first_class,
+                Interner::intern($first_class),
                 $template_type_map[$template_param_name][$first_class],
                 $conditional_type,
                 $if_type,
@@ -415,7 +419,7 @@ final class TypeParser
                 return self::getGenericParamClass(
                     $fq_classlike_name,
                     $template_type_map[$fq_classlike_name][$first_class],
-                    $first_class,
+                    Interner::intern($first_class),
                     $from_docblock,
                 );
             }
@@ -424,7 +428,7 @@ final class TypeParser
                 return new TLiteralClassString($fq_classlike_name, false, $from_docblock);
             }
 
-            return new TClassConstant($fq_classlike_name, $const_name, $from_docblock);
+            return new TClassConstant(Interner::intern($fq_classlike_name), Interner::intern($const_name), $from_docblock);
         }
 
         if (preg_match('/^\-?(0|[1-9][0-9]*)(\.[0-9]{1,})$/', $parse_tree->value)) {
@@ -456,7 +460,7 @@ final class TypeParser
     private static function getGenericParamClass(
         string $param_name,
         Union &$as,
-        string $defining_class,
+        int $defining_class,
         bool $from_docblock = false,
     ): TTemplateParamClass {
         if ($as->hasMixed()) {
@@ -494,7 +498,7 @@ final class TypeParser
 
                 return new TTemplateParamClass(
                     $param_name,
-                    $traversable->value,
+                    Interner::lookup($traversable->value),
                     $traversable,
                     $defining_class,
                     $from_docblock,
@@ -525,7 +529,7 @@ final class TypeParser
 
             return new TTemplateParamClass(
                 $param_name,
-                $t->value,
+                Interner::lookup($t->value),
                 $t,
                 $defining_class,
                 $from_docblock,
@@ -765,7 +769,7 @@ final class TypeParser
                 return self::getGenericParamClass(
                     $class_name,
                     $template_type_map[$class_name][$first_class],
-                    $first_class,
+                    Interner::intern($first_class),
                     $from_docblock,
                 );
             }
@@ -773,7 +777,7 @@ final class TypeParser
             $types = [];
             foreach ($generic_params[0]->getAtomicTypes() as $type) {
                 if ($type instanceof TNamedObject) {
-                    $types[] = new TClassString($type->value, $type, false, false, false, $from_docblock);
+                    $types[] = new TClassString(Interner::lookup($type->value), $type, false, false, false, $from_docblock);
                     continue;
                 }
 
@@ -858,7 +862,7 @@ final class TypeParser
 
                 return new TTemplatePropertiesOf(
                     $param_name,
-                    $defining_class,
+                    Interner::intern($defining_class),
                     $template_param,
                     TPropertiesOf::filterForTokenName($generic_type_value),
                     $from_docblock,
@@ -890,7 +894,7 @@ final class TypeParser
             ) {
                 return new TTemplateKeyOf(
                     $param_name,
-                    $defining_class,
+                    Interner::intern($defining_class),
                     $generic_params[0],
                     $from_docblock,
                 );
@@ -913,7 +917,7 @@ final class TypeParser
             ) {
                 return new TTemplateValueOf(
                     $param_name,
-                    $defining_class,
+                    Interner::intern($defining_class),
                     $generic_params[0],
                     $from_docblock,
                 );
@@ -943,9 +947,9 @@ final class TypeParser
                 $atomic_type = reset($generic_param_atomics);
 
                 if ($atomic_type instanceof TNamedObject) {
-                    if (defined($atomic_type->value)) {
+                    if (defined(Interner::lookup($atomic_type->value))) {
                         /** @var mixed */
-                        $constant_value = constant($atomic_type->value);
+                        $constant_value = constant(Interner::lookup($atomic_type->value));
 
                         if (!is_int($constant_value)) {
                             throw new TypeParseTreeException(
@@ -963,7 +967,7 @@ final class TypeParser
 
                 if (!$atomic_type instanceof TLiteralInt
                     && !($atomic_type instanceof TClassConstant
-                        && !str_contains($atomic_type->const_name, '*'))
+                        && !str_contains(Interner::lookup($atomic_type->const_name), '*'))
                 ) {
                     throw new TypeParseTreeException(
                         'int-mask types must all be integer values or scalar class constants',
@@ -1003,7 +1007,7 @@ final class TypeParser
                     'Invalid reference passed to int-mask-of',
                 );
             } elseif ($param_type instanceof TClassConstant
-                && !str_contains($param_type->const_name, '*')
+                && !str_contains(Interner::lookup($param_type->const_name), '*')
             ) {
                 throw new TypeParseTreeException(
                     'Class constant passed to int-mask-of must be a wildcard type',
@@ -1399,7 +1403,7 @@ final class TypeParser
         return new TTemplateIndexedAccess(
             $array_param_name,
             $offset_param_name,
-            $array_defining_class,
+            Interner::intern($array_defining_class),
             $from_docblock,
         );
     }
@@ -1787,7 +1791,7 @@ final class TypeParser
 
                 if ($new_type === null) {
                     throw new TypeParseTreeException(
-                        'Incompatible intersection types for "' . $property . '", '
+                        'Incompatible intersection types for "' . Interner::lookup($property) . '", '
                         . $properties[$property] . ' and ' . $property_type
                         . ' provided',
                     );

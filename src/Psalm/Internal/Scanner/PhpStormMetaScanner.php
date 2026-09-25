@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Scanner;
 
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
@@ -57,7 +59,7 @@ final class PhpStormMetaScanner
                     if ($array_item->value instanceof PhpParser\Node\Expr\ClassConstFetch
                         && $array_item->value->class instanceof PhpParser\Node\Name\FullyQualified
                         && $array_item->value->name instanceof PhpParser\Node\Identifier
-                        && strtolower($array_item->value->name->name)
+                        && $array_item->value->name->name
                     ) {
                         $map[$array_item->key->value] = new Union([
                             new TNamedObject($array_item->value->class->toString()),
@@ -77,8 +79,8 @@ final class PhpStormMetaScanner
                     }
 
                     $constant_type = $codebase->classlikes->getClassConstantType(
-                        $resolved_name,
-                        $array_item->key->name->name,
+                        Interner::intern($resolved_name),
+                        Interner::intern($array_item->key->name->name),
                         ReflectionProperty::IS_PRIVATE,
                     );
 
@@ -91,7 +93,7 @@ final class PhpStormMetaScanner
                     if ($array_item->value instanceof PhpParser\Node\Expr\ClassConstFetch
                         && $array_item->value->class instanceof PhpParser\Node\Name\FullyQualified
                         && $array_item->value->name instanceof PhpParser\Node\Identifier
-                        && strtolower($array_item->value->name->name)
+                        && $array_item->value->name->name
                     ) {
                         $map[$meta_key] = new Union([
                             new TNamedObject($array_item->value->class->toString()),
@@ -131,7 +133,7 @@ final class PhpStormMetaScanner
         ) {
             $meta_fq_classlike_name = $identifier->class->toString();
 
-            $meta_method_name = strtolower($identifier->name->name);
+            $meta_method_name = $identifier->name->name;
 
             if ($map) {
                 $offset = 0;
@@ -142,7 +144,7 @@ final class PhpStormMetaScanner
                 }
 
                 $codebase->methods->return_type_provider->registerClosure(
-                    $meta_fq_classlike_name,
+                    Interner::intern($meta_fq_classlike_name),
                     static function (
                         MethodReturnTypeProviderEvent $event,
                     ) use (
@@ -195,7 +197,7 @@ final class PhpStormMetaScanner
                 );
             } elseif ($type_offset !== null) {
                 $codebase->methods->return_type_provider->registerClosure(
-                    $meta_fq_classlike_name,
+                    Interner::intern($meta_fq_classlike_name),
                     static function (
                         MethodReturnTypeProviderEvent $event,
                     ) use (
@@ -229,7 +231,7 @@ final class PhpStormMetaScanner
                 );
             } elseif ($element_type_offset !== null) {
                 $codebase->methods->return_type_provider->registerClosure(
-                    $meta_fq_classlike_name,
+                    Interner::intern($meta_fq_classlike_name),
                     static function (
                         MethodReturnTypeProviderEvent $event,
                     ) use (

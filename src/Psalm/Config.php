@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use Amp\Serialization\NativeSerializer;
 use Amp\Serialization\Serializer;
 use Composer\Autoload\ClassLoader;
@@ -388,11 +392,11 @@ final class Config
     public bool $ensure_override_attribute = true;
 
     /**
-     * @var array<lowercase-string, bool>
+     * @var array<int, bool>
      */
     public array $forbidden_functions = [];
     /**
-     * @var array<string, bool>
+     * @var array<int, bool>
      */
     public array $forbidden_constants = [];
 
@@ -438,7 +442,7 @@ final class Config
     public array $plugin_paths = [];
 
     /**
-     * @var array<array{class:string,config:?SimpleXMLElement}>
+     * @var array<array{class:int,config:?SimpleXMLElement}>
      */
     private array $plugin_classes = [];
 
@@ -446,10 +450,10 @@ final class Config
 
     public bool $allow_named_arg_calls = true;
 
-    /** @var array<string, mixed> */
+    /** @var array<int, mixed> */
     private array $predefined_constants = [];
 
-    /** @var array<callable-string, bool> */
+    /** @var array<callable-int, bool> */
     private array $predefined_functions = [];
 
     /** @var list<ClassLoader> $autoloaders */
@@ -1337,7 +1341,7 @@ final class Config
             /** @var SimpleXMLElement $universal_object_crate */
             foreach ($config_xml->universalObjectCrates->class as $universal_object_crate) {
                 $classString = (string) $universal_object_crate['name'];
-                $config->addUniversalObjectCrate($classString);
+                $config->addUniversalObjectCrate(Interner::intern($classString));
             }
         }
 
@@ -1432,7 +1436,7 @@ final class Config
                         $plugin_config = $plugin->children();
                     }
 
-                    $config->addPluginClass((string) $plugin_class_name, $plugin_config);
+                    $config->addPluginClass(Interner::intern((string) $plugin_class_name), $plugin_config);
                 }
             }
         }
@@ -1588,7 +1592,7 @@ final class Config
     /**
      * @psalm-external-mutation-free
      */
-    public function addPluginClass(string $class_name, ?SimpleXMLElement $plugin_config = null): void
+    public function addPluginClass(int $class_name, ?SimpleXMLElement $plugin_config = null): void
     {
         $this->plugin_classes[] = ['class' => $class_name, 'config' => $plugin_config];
     }
@@ -1606,7 +1610,7 @@ final class Config
         foreach ($this->plugin_classes as $pluginClassEntry) {
             $pluginClassName = $pluginClassEntry['class'];
             $pluginConfig = $pluginClassEntry['config'];
-            $plugin = $this->loadPlugin($projectAnalyzer, $pluginClassName);
+            $plugin = $this->loadPlugin($projectAnalyzer, Interner::lookup($pluginClassName));
             if (!$plugin instanceof PluginFileExtensionsInterface) {
                 continue;
             }
@@ -1614,12 +1618,12 @@ final class Config
                 $plugin->processFileExtensions($socket, $pluginConfig);
             } catch (Throwable $t) {
                 throw new ConfigException(
-                    'Failed to process plugin file extensions ' . $pluginClassName,
+                    'Failed to process plugin file extensions ' . Interner::lookup($pluginClassName),
                     1_635_800_581,
                     $t,
                 );
             }
-            $projectAnalyzer->progress->debug('Initialized plugin ' . $pluginClassName . ' successfully' . PHP_EOL);
+            $projectAnalyzer->progress->debug('Initialized plugin ' . Interner::lookup($pluginClassName) . ' successfully' . PHP_EOL);
         }
         // populate additional aspects after plugins have been initialized
         foreach ($socket->getAdditionalFileExtensions() as $fileExtension) {
@@ -1648,7 +1652,7 @@ final class Config
             $plugin_class_name = $plugin_class_entry['class'];
             $plugin_config = $plugin_class_entry['config'];
 
-            $plugin = $this->loadPlugin($project_analyzer, $plugin_class_name);
+            $plugin = $this->loadPlugin($project_analyzer, Interner::lookup($plugin_class_name));
             if (!$plugin instanceof PluginEntryPointInterface) {
                 continue;
             }
@@ -1657,13 +1661,13 @@ final class Config
                 $plugin($socket, $plugin_config);
             } catch (Throwable $t) {
                 throw new ConfigException(
-                    'Failed to invoke plugin ' . $plugin_class_name,
+                    'Failed to invoke plugin ' . Interner::lookup($plugin_class_name),
                     1_635_800_582,
                     $t,
                 );
             }
 
-            $project_analyzer->progress->debug('Initialized plugin ' . $plugin_class_name . ' successfully' . PHP_EOL);
+            $project_analyzer->progress->debug('Initialized plugin ' . Interner::lookup($plugin_class_name) . ' successfully' . PHP_EOL);
         }
 
         foreach ($this->filetype_scanner_paths as $extension => $path) {
@@ -1715,7 +1719,7 @@ final class Config
             // plugins from Psalm directory or phar file. If that fails as well, it
             // will fall back to project autoloader. It may seem that the last step
             // will always fail, but it's only true if project uses Composer autoloader
-            if (false !== $pluginclas_class_path = $this->getComposerFilePathForClassLike($pluginClassName)) {
+            if (false !== $pluginclas_class_path = $this->getComposerFilePathForClassLike(Interner::intern($pluginClassName))) {
                 $projectAnalyzer->progress->debug(
                     'Loading plugin ' . $pluginClassName . ' via require' . PHP_EOL,
                 );
@@ -1772,8 +1776,8 @@ final class Config
         $fq_class_name = reset($declared_classes);
 
         if (!$codebase->classlikes->classExtends(
-            $fq_class_name,
-            $must_extend,
+            Interner::intern($fq_class_name),
+            Interner::intern($must_extend),
         )
         ) {
             throw new InvalidArgumentException(
@@ -2146,7 +2150,7 @@ final class Config
         return self::REPORT_ERROR;
     }
 
-    public function getReportingLevelForClass(string $issue_type, string $fq_classlike_name): ?string
+    public function getReportingLevelForClass(string $issue_type, int $fq_classlike_name): ?string
     {
         if (isset($this->issue_handlers[$issue_type])) {
             return $this->issue_handlers[$issue_type]->getReportingLevelForClass($fq_classlike_name);
@@ -2544,12 +2548,12 @@ final class Config
      */
     public function getPredefinedConstants(): array
     {
-        return $this->predefined_constants;
+        return Interner::lookupKeys($this->predefined_constants);
     }
 
     public function collectPredefinedConstants(): void
     {
-        $this->predefined_constants = get_defined_constants();
+        $this->predefined_constants = Interner::internKeys(get_defined_constants());
     }
 
     /**
@@ -2639,10 +2643,10 @@ final class Config
     }
 
     /** @return string|false */
-    public function getComposerFilePathForClassLike(string $fq_classlike_name): string|bool
+    public function getComposerFilePathForClassLike(int $fq_classlike_name): string|bool
     {
         foreach ($this->autoloaders as $autoloader) {
-            $f = $autoloader->findFile($fq_classlike_name);
+            $f = $autoloader->findFile(Interner::lookup($fq_classlike_name));
             if ($f !== false) {
                 return $f;
             }
@@ -2650,7 +2654,7 @@ final class Config
         return false;
     }
 
-    public function getPotentialComposerFilePathForClassLike(string $class): ?string
+    public function getPotentialComposerFilePathForClassLike(int $class): ?string
     {
         if (!$this->autoloaders) {
             return null;
@@ -2877,12 +2881,12 @@ final class Config
         return null;
     }
 
-    public function addUniversalObjectCrate(string $class): void
+    public function addUniversalObjectCrate(int $class): void
     {
-        if (!class_exists($class)) {
-            throw new UnexpectedValueException($class . ' is not a known class');
+        if (!class_exists(Interner::lookup($class))) {
+            throw new UnexpectedValueException(Interner::lookup($class) . ' is not a known class');
         }
-        $this->universal_object_crates[] = strtolower($class);
+        $this->universal_object_crates[] = $class;
     }
 
     /**

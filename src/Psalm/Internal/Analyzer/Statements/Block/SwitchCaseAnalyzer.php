@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Block;
 
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Codebase;
@@ -352,7 +354,7 @@ final class SwitchCaseAnalyzer
                 $case_equality_expr_id,
                 $case_equality_expr_id,
                 $case_equality_expr,
-                $context->self,
+                Interner::internOrNull($context->self),
                 $statements_analyzer,
                 $codebase,
                 false,
@@ -451,7 +453,7 @@ final class SwitchCaseAnalyzer
                         $case_equality_expr_id,
                         $case_equality_expr_id,
                         new VirtualBooleanNot($case_equality_expr),
-                        $context->self,
+                        Interner::internOrNull($context->self),
                         $statements_analyzer,
                         $codebase,
                         false,

@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use Attribute as GlobalAttribute;
 use Generator;
 use PhpParser\Node\Arg;
@@ -73,8 +77,8 @@ final class AttributesAnalyzer
             $attribute_name = (string) $attribute->name;
             $attribute_name_location = new CodeLocation($source, $attribute->name);
 
-            $attribute_class_storage = $codebase->classlikes->classExists($fq_attribute_name, null, $context)
-                ? $codebase->classlike_storage_provider->get($fq_attribute_name)
+            $attribute_class_storage = $codebase->classlikes->classExists(Interner::intern($fq_attribute_name), null, $context)
+                ? $codebase->classlike_storage_provider->get(Interner::intern($fq_attribute_name))
                 : null;
 
             $attribute_class_flags = self::getAttributeClassFlags(
@@ -156,7 +160,7 @@ final class AttributesAnalyzer
 
         if (ClassLikeAnalyzer::checkFullyQualifiedClassLikeName(
             $source,
-            $fq_attribute_name,
+            Interner::intern($fq_attribute_name),
             $attribute_name_location,
             $context,
             $suppressed_issues,
@@ -197,7 +201,7 @@ final class AttributesAnalyzer
                     ),
                     $suppressed_issues,
                 );
-            } elseif (isset($classlike_storage->methods['__construct'])
+            } elseif (isset($classlike_storage->methods[Sym::C___CONSTRUCT])
                 && $classlike_storage->methods['__construct']->visibility !== ClassLikeAnalyzer::VISIBILITY_PUBLIC
             ) {
                 IssueBuffer::maybeAdd(
@@ -245,7 +249,7 @@ final class AttributesAnalyzer
         $issues = IssueBuffer::clearRecordingLevel();
         IssueBuffer::stopRecording();
         foreach ($issues as $issue) {
-            if ($issue instanceof UndefinedClass && $issue->fq_classlike_name === $fq_attribute_name) {
+            if ($issue instanceof UndefinedClass && Interner::lookup($issue->fq_classlike_name) === $fq_attribute_name) {
                 // Remove UndefinedClass for the attribute, since we already added UndefinedAttribute
                 continue;
             }
@@ -275,7 +279,7 @@ final class AttributesAnalyzer
         }
 
         foreach ($attribute_class_storage->attributes as $attribute_attribute) {
-            if ($attribute_attribute->fq_class_name === 'Attribute') {
+            if ($attribute_attribute->fq_class_name === Sym::C_ATTRIBUTE) {
                 if (!$attribute_attribute->args) {
                     return GlobalAttribute::TARGET_ALL; // Defaults to TARGET_ALL
                 }
@@ -385,11 +389,11 @@ final class AttributesAnalyzer
 
         $codebase = $statements_analyzer->getCodebase();
 
-        if (!$codebase->classExists($class_string->value)) {
+        if (!$codebase->classExists(Interner::intern($class_string->value))) {
             return;
         }
 
-        $class_storage = $codebase->classlike_storage_provider->get($class_string->value);
+        $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($class_string->value));
         $arg_location = new CodeLocation($statements_analyzer, $arg);
         $class_attribute_target = self::getAttributeClassFlags(
             $statements_analyzer,
@@ -403,7 +407,7 @@ final class AttributesAnalyzer
         if (($class_attribute_target & $target) === 0) {
             IssueBuffer::maybeAdd(
                 new InvalidAttribute(
-                    "Attribute {$class_string->value} cannot be used on a "
+                    "Attribute " . $class_string->value . " cannot be used on a "
                         . self::TARGET_DESCRIPTIONS[$target],
                     $arg_location,
                 ),

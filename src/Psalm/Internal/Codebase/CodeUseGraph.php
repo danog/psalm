@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Codebase;
 
+use Psalm\Internal\Interner;
+
 use Closure;
 use LogicException;
 use Psalm\CodeLocation;
@@ -192,12 +194,12 @@ final class CodeUseGraph
     // Node ids
 
     /**
-     * @param lowercase-string $fq_class_name_lc
+     * @param int $fq_class_name_lc
      * @psalm-pure
      */
-    public static function classNode(string $fq_class_name_lc): string
+    public static function classNode(int $fq_class_name_lc): string
     {
-        return self::KIND_CLASS . ' ' . $fq_class_name_lc;
+        return self::KIND_CLASS . ' ' . Interner::lookup($fq_class_name_lc);
     }
 
     /**
@@ -219,22 +221,22 @@ final class CodeUseGraph
     }
 
     /**
-     * @param lowercase-string $fq_class_name_lc
-     * @param string $property_name the property name, without the leading `$`
+     * @param int $fq_class_name_lc
+     * @param int $property_name the property name, without the leading `$`
      * @psalm-pure
      */
-    public static function propertyNode(string $fq_class_name_lc, string $property_name): string
+    public static function propertyNode(int $fq_class_name_lc, int $property_name): string
     {
-        return self::KIND_PROPERTY . ' ' . $fq_class_name_lc . '::$' . $property_name;
+        return self::KIND_PROPERTY . ' ' . Interner::lookup($fq_class_name_lc) . '::$' . Interner::lookup($property_name);
     }
 
     /**
-     * @param lowercase-string $fq_class_name_lc
+     * @param int $fq_class_name_lc
      * @psalm-pure
      */
-    public static function classConstantNode(string $fq_class_name_lc, string $const_name): string
+    public static function classConstantNode(int $fq_class_name_lc, int $const_name): string
     {
-        return self::KIND_CONSTANT . ' ' . $fq_class_name_lc . '::' . $const_name;
+        return self::KIND_CONSTANT . ' ' . Interner::lookup($fq_class_name_lc) . '::' . Interner::lookup($const_name);
     }
 
     /**
@@ -247,13 +249,13 @@ final class CodeUseGraph
     }
 
     /**
-     * @param lowercase-string $fq_class_name_lc
-     * @param string $property_name the property name, without the leading `$`
+     * @param int $fq_class_name_lc
+     * @param int $property_name the property name, without the leading `$`
      * @psalm-pure
      */
-    public static function missingPropertyNode(string $fq_class_name_lc, string $property_name): string
+    public static function missingPropertyNode(int $fq_class_name_lc, int $property_name): string
     {
-        return self::KIND_MISSING_PROPERTY . ' ' . $fq_class_name_lc . '::$' . $property_name;
+        return self::KIND_MISSING_PROPERTY . ' ' . Interner::lookup($fq_class_name_lc) . '::$' . Interner::lookup($property_name);
     }
 
     /**
@@ -269,14 +271,14 @@ final class CodeUseGraph
                 return null;
             }
 
-            return self::functionLikeNode(strtolower($storage->defining_fqcln . '::' . $storage->cased_name));
+            return self::functionLikeNode(strtolower(Interner::lookup($storage->defining_fqcln) . '::' . Interner::lookup($storage->cased_name)));
         }
 
         if ($storage->cased_name === null) {
             return null;
         }
 
-        return self::functionLikeNode(strtolower($storage->cased_name));
+        return self::functionLikeNode(Interner::lookup($storage->cased_name));
     }
 
     /**
@@ -336,7 +338,7 @@ final class CodeUseGraph
      * Returns the lowercase name of the class a node belongs to, or null for
      * nodes that don't belong to a class (files, free functions, roots).
      *
-     * @return lowercase-string|null
+     * @return int|null
      * @psalm-pure
      */
     public static function getOwnerClass(string $node_id): ?string
@@ -450,7 +452,7 @@ final class CodeUseGraph
         } elseif ($calling_function_id !== null) {
             $source_node = self::functionLikeNode($calling_function_id);
         } elseif ($self !== null) {
-            $source_node = self::classNode(strtolower($self));
+            $source_node = self::classNode(Interner::intern(strtolower($self)));
         } elseif ($file_path !== null) {
             $source_node = self::fileNode($file_path);
         } else {
@@ -789,11 +791,11 @@ final class CodeUseGraph
      * The file of a node is given by getNodeFile(); when unknown, it is the
      * file of the node's owner class, if any (see getOwnerClass()).
      *
-     * @param lowercase-string $fq_class_name_lc
+     * @param int $fq_class_name_lc
      * @return array<string, true>
      * @psalm-external-mutation-free
      */
-    public function getNodesReferencingClass(string $fq_class_name_lc): array
+    public function getNodesReferencingClass(int $fq_class_name_lc): array
     {
         if ($this->class_referencing_nodes === null) {
             $this->class_referencing_nodes = [];
@@ -806,7 +808,7 @@ final class CodeUseGraph
                 }
 
                 foreach ($sources as $source_node => $_) {
-                    $this->class_referencing_nodes[$owner][$source_node] = true;
+                    Interner::lookupKeys($this->class_referencing_nodes)[$owner][$source_node] = true;
                 }
             }
         }

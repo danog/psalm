@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Diff;
 
+use Psalm\Internal\Interner;
+
 use PhpParser;
 
 use function assert;
@@ -95,7 +97,7 @@ final class NamespaceStatementsDiffer extends AstDiffer
                         && $diff_elem->new instanceof PhpParser\Node\Stmt\Trait_)
                 ) {
                     $class_keep = ClassStatementsDiffer::diff(
-                        ($name ? $name . '\\' : '') . $diff_elem->old->name,
+                        ($name ? $name . '\\' : '') . Interner::lookup($diff_elem->old->name),
                         $diff_elem->old->stmts,
                         $diff_elem->new->stmts,
                         $a_code,

@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\Assignment;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\PropertyFetch;
@@ -99,7 +103,7 @@ final class InstancePropertyAssignmentAnalyzer
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,
         PhpParser\NodeAbstract $stmt,
-        string $prop_name,
+        int $prop_name,
         ?PhpParser\Node\Expr $assignment_value,
         Union $assignment_value_type,
         Context $context,
@@ -112,7 +116,7 @@ final class InstancePropertyAssignmentAnalyzer
                 return;
             }
 
-            $property_id = $context->self . '::$' . $prop_name;
+            $property_id = $context->self . '::$' . Interner::lookup($prop_name);
 
             $class_property_type = null;
 
@@ -128,17 +132,17 @@ final class InstancePropertyAssignmentAnalyzer
             }
 
             if ($class_property_type) {
-                $class_storage = $codebase->classlike_storage_provider->get($context->self);
+                $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($context->self));
 
                 $class_property_type = self::getExpandedPropertyType(
                     $codebase,
-                    $context->self,
+                    Interner::intern($context->self),
                     $prop_name,
                     $class_storage,
                 );
             }
 
-            $var_id = '$this->' . $prop_name;
+            $var_id = '$this->' . Interner::lookup($prop_name);
 
             $assigned_properties = [
                 new AssignedProperty(
@@ -401,7 +405,7 @@ final class InstancePropertyAssignmentAnalyzer
             $can_set_readonly_property = $context->self
                 && $context->calling_method_id
                 && ($appearing_property_class === $context->self
-                    || $codebase->classExtends($context->self, $appearing_property_class))
+                    || $codebase->classExtends(Interner::intern($context->self), Interner::intern($appearing_property_class)))
                 && (str_ends_with($context->calling_method_id, '::__construct')
                     || str_ends_with($context->calling_method_id, '::unserialize')
                     || str_ends_with($context->calling_method_id, '::__unserialize')
@@ -479,7 +483,7 @@ final class InstancePropertyAssignmentAnalyzer
                     self::analyze(
                         $statements_analyzer,
                         $prop,
-                        $prop->name->name,
+                        Interner::intern($prop->name->name),
                         $prop->default,
                         $prop_default_type,
                         $context,
@@ -558,7 +562,7 @@ final class InstancePropertyAssignmentAnalyzer
                     $property_node,
                     $var_node,
                     'property-assignment'
-                        . ($stmt->name instanceof PhpParser\Node\Identifier ? '-' . $stmt->name : ''),
+                        . ($stmt->name instanceof PhpParser\Node\Identifier ? '-' . Interner::lookup($stmt->name) : ''),
                     $added_taints,
                     $removed_taints,
                 );
@@ -681,7 +685,7 @@ final class InstancePropertyAssignmentAnalyzer
             && $stmt->name instanceof PhpParser\Node\Identifier
         ) {
             $declaring_property_node = DataFlowNode::getForPropertyFetch(
-                $declaring_property_class . '::$' . $stmt->name,
+                $declaring_property_class . '::$' . Interner::lookup($stmt->name),
                 null,
             );
 
@@ -708,7 +712,7 @@ final class InstancePropertyAssignmentAnalyzer
         bool $direct_assignment,
         Codebase $codebase,
         Union $assignment_value_type,
-        string $prop_name,
+        int $prop_name,
         ?string &$var_id,
     ): array {
         $was_inside_general_use = $context->inside_general_use;
@@ -920,7 +924,7 @@ final class InstancePropertyAssignmentAnalyzer
         Codebase $codebase,
         PropertyFetch $stmt,
         ?PhpParser\Node\Expr $assignment_value,
-        string $prop_name,
+        int $prop_name,
         Context $context,
         Union $lhs_type,
         Atomic $lhs_type_part,
@@ -956,7 +960,7 @@ final class InstancePropertyAssignmentAnalyzer
         if ($lhs_type_part instanceof TObject ||
             (
             in_array(
-                strtolower($lhs_type_part->value),
+                $lhs_type_part->value,
                 Config::getInstance()->getUniversalObjectCrates() + [
                     'dateinterval',
                     'domdocument',
@@ -968,7 +972,7 @@ final class InstancePropertyAssignmentAnalyzer
         ) {
             if ($var_id) {
                 if ($lhs_type_part instanceof TNamedObject &&
-                    strtolower($lhs_type_part->value) === 'stdclass'
+                    $lhs_type_part->value === Sym::C_STDCLASS
                 ) {
                     $context->vars_in_scope[$var_id] = $assignment_value_type;
                 } else {
@@ -1000,7 +1004,7 @@ final class InstancePropertyAssignmentAnalyzer
             if ($codebase->interfaceExists($lhs_type_part->value, null, $context)) {
                 $interface_exists = true;
                 $interface_storage = $codebase->classlike_storage_provider->get(
-                    strtolower($lhs_type_part->value),
+                    $lhs_type_part->value,
                 );
 
                 $override_property_visibility = $interface_storage->override_property_visibility;
@@ -1017,7 +1021,7 @@ final class InstancePropertyAssignmentAnalyzer
 
                 // Test if the property has a 'set' hook
                 $interface_property = $stmt->name instanceof PhpParser\Node\Identifier
-                    ? $interface_storage->properties[$stmt->name->name] ?? null
+                    ? $interface_storage->properties[Interner::intern($stmt->name->name)] ?? null
                     : null;
                 $has_set_hook = $codebase->analysis_php_version_id >= 8_04_00
                     && $interface_property?->hook_set !== null;
@@ -1037,7 +1041,7 @@ final class InstancePropertyAssignmentAnalyzer
                     if (!$codebase->methodExists(
                         new MethodIdentifier(
                             $fq_class_name,
-                            '__set',
+                            Sym::C___SET,
                         ),
                     )) {
                         return null;
@@ -1048,7 +1052,7 @@ final class InstancePropertyAssignmentAnalyzer
             if (!$class_exists && !$interface_exists) {
                 IssueBuffer::maybeAdd(
                     new UndefinedClass(
-                        'Cannot set properties of undefined class ' . $lhs_type_part->value,
+                        'Cannot set properties of undefined class ' . Interner::lookup($lhs_type_part->value),
                         new CodeLocation($statements_analyzer->getSource(), $stmt),
                         $lhs_type_part->value,
                     ),
@@ -1061,11 +1065,11 @@ final class InstancePropertyAssignmentAnalyzer
             $class_exists = true;
         }
 
-        $property_id = $fq_class_name . '::$' . $prop_name;
+        $property_id = Interner::lookup($fq_class_name) . '::$' . Interner::lookup($prop_name);
 
         $has_magic_setter = false;
 
-        $set_method_id = new MethodIdentifier($fq_class_name, '__set');
+        $set_method_id = new MethodIdentifier($fq_class_name, Sym::C___SET);
 
         if ((!$codebase->propertyExists($property_id, false, $statements_analyzer, $context)
                 || ($lhs_var_id !== '$this'
@@ -1096,12 +1100,12 @@ final class InstancePropertyAssignmentAnalyzer
             $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
 
             if ($var_id) {
-                if (isset($class_storage->pseudo_property_set_types['$' . $prop_name])) {
+                if (isset($class_storage->pseudo_property_set_types['$' . Interner::lookup($prop_name)])) {
                     $class_property_type = TypeExpander::expandUnion(
                         $codebase,
-                        $class_storage->pseudo_property_set_types['$' . $prop_name],
+                        $class_storage->pseudo_property_set_types['$' . Interner::lookup($prop_name)],
                         $fq_class_name,
-                        $fq_class_name,
+                        Interner::lookup($fq_class_name),
                         $class_storage->parent_class,
                     );
 
@@ -1178,7 +1182,7 @@ final class InstancePropertyAssignmentAnalyzer
             && $stmt->var->name === 'this'
             && $context->self
         ) {
-            $self_property_id = $context->self . '::$' . $prop_name;
+            $self_property_id = $context->self . '::$' . Interner::lookup($prop_name);
 
             if ($self_property_id !== $property_id
                 && $codebase->propertyExists(
@@ -1302,13 +1306,13 @@ final class InstancePropertyAssignmentAnalyzer
 
         self::handlePropertyRenames(
             $codebase,
-            $declaring_property_class,
+            Interner::intern($declaring_property_class),
             $prop_name,
             $stmt,
             $statements_analyzer->getFilePath(),
         );
 
-        $declaring_class_storage = $codebase->classlike_storage_provider->get($declaring_property_class);
+        $declaring_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($declaring_property_class));
 
         if (isset($declaring_class_storage->properties[$prop_name])) {
             $property_storage = $declaring_class_storage->properties[$prop_name];
@@ -1347,7 +1351,7 @@ final class InstancePropertyAssignmentAnalyzer
             );
 
             if ($property_storage->getter_method) {
-                $getter_id = $lhs_var_id . '->' . $property_storage->getter_method . '()';
+                $getter_id = $lhs_var_id . '->' . Interner::lookup($property_storage->getter_method) . '()';
 
                 unset($context->vars_in_scope[$getter_id]);
             }
@@ -1375,7 +1379,7 @@ final class InstancePropertyAssignmentAnalyzer
             ) {
                 $source_analyzer->inferred_property_types[$prop_name] = Type::combineUnionTypes(
                     $assignment_value_type,
-                    $source_analyzer->inferred_property_types[$prop_name] ?? null,
+                    $source_analyzer->inferred_property_types[Interner::lookup($prop_name)] ?? null,
                 );
             }
         }
@@ -1398,7 +1402,7 @@ final class InstancePropertyAssignmentAnalyzer
                 $codebase,
                 $class_property_type,
                 $fq_class_name,
-                $declaring_property_class,
+                Interner::intern($declaring_property_class),
             );
 
             if ($lhs_type_part instanceof TGenericObject) {
@@ -1415,7 +1419,7 @@ final class InstancePropertyAssignmentAnalyzer
                 $codebase,
                 $assignment_value_type,
                 $fq_class_name,
-                $declaring_property_class,
+                Interner::intern($declaring_property_class),
             );
 
             if (!$class_property_type->hasMixed() && $assignment_value_type->hasMixed()) {
@@ -1460,8 +1464,8 @@ final class InstancePropertyAssignmentAnalyzer
 
     private static function handlePropertyRenames(
         Codebase $codebase,
-        string $declaring_property_class,
-        string $prop_name,
+        int $declaring_property_class,
+        int $prop_name,
         PropertyFetch $stmt,
         string $file_path,
     ): void {
@@ -1469,7 +1473,7 @@ final class InstancePropertyAssignmentAnalyzer
             return;
         }
 
-        $declaring_property_id = strtolower($declaring_property_class) . '::$' . $prop_name;
+        $declaring_property_id = $declaring_property_class . '::$' . Interner::lookup($prop_name);
 
         foreach ($codebase->properties_to_rename as $original_property_id => $new_property_name) {
             if ($declaring_property_id === $original_property_id) {
@@ -1491,12 +1495,12 @@ final class InstancePropertyAssignmentAnalyzer
 
     public static function getExpandedPropertyType(
         Codebase $codebase,
-        string $fq_class_name,
-        string $property_name,
+        int $fq_class_name,
+        int $property_name,
         ClassLikeStorage $storage,
     ): ?Union {
         $property_class_name = $codebase->properties->getDeclaringClassForProperty(
-            $fq_class_name . '::$' . $property_name,
+            Interner::lookup($fq_class_name) . '::$' . Interner::lookup($property_name),
             true,
         );
 
@@ -1504,7 +1508,7 @@ final class InstancePropertyAssignmentAnalyzer
             return null;
         }
 
-        $property_class_storage = $codebase->classlike_storage_provider->get($property_class_name);
+        $property_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($property_class_name));
 
         $property_storage = $property_class_storage->properties[$property_name];
 
@@ -1519,7 +1523,7 @@ final class InstancePropertyAssignmentAnalyzer
                 $codebase,
                 $property_type,
                 $fq_class_name,
-                $fq_class_name,
+                Interner::lookup($fq_class_name),
                 $storage->parent_class,
                 true,
                 false,
@@ -1532,7 +1536,7 @@ final class InstancePropertyAssignmentAnalyzer
             $property_class_storage,
             $storage,
             null,
-            new TNamedObject($fq_class_name),
+            new TNamedObject(Interner::lookup($fq_class_name)),
             true,
         );
 
@@ -1560,7 +1564,7 @@ final class InstancePropertyAssignmentAnalyzer
         Context $context,
         StatementsAnalyzer $statements_analyzer,
         PropertyFetch $stmt,
-        string $prop_name,
+        int $prop_name,
         Expr $assignment_value,
     ): void {
         if ($var_id) {
@@ -1583,7 +1587,7 @@ final class InstancePropertyAssignmentAnalyzer
             [
                 new VirtualArg(
                     new VirtualString(
-                        $prop_name,
+                        Interner::lookup($prop_name),
                         $stmt->name->getAttributes(),
                     ),
                 ),

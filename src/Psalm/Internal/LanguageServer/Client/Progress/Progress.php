@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\LanguageServer\Client\Progress;
 
+use Psalm\Internal\Interner;
+
 use LogicException;
 use Override;
 use Psalm\Internal\LanguageServer\ClientHandler;
@@ -58,7 +60,7 @@ final class Progress implements ProgressInterface
             $this->withPercentage = true;
         }
 
-        $this->handler->notify('$/progress', $notification);
+        $this->handler->notify(Interner::intern('$/progress'), $notification);
 
         $this->status = self::STATUS_ACTIVE;
     }
@@ -85,7 +87,7 @@ final class Progress implements ProgressInterface
             $notification['value']['message'] = $message;
         }
 
-        $this->handler->notify('$/progress', $notification);
+        $this->handler->notify(Interner::intern('$/progress'), $notification);
 
         $this->status = self::STATUS_FINISHED;
     }
@@ -122,6 +124,6 @@ final class Progress implements ProgressInterface
             $notification['value']['percentage'] = $percentage;
         }
 
-        $this->handler->notify('$/progress', $notification);
+        $this->handler->notify(Interner::intern('$/progress'), $notification);
     }
 }

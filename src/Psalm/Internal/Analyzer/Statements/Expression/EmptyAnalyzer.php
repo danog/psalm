@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
+use Psalm\Internal\Sym;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
@@ -32,7 +34,7 @@ final class EmptyAnalyzer
 
         $codebase = $statements_analyzer->getCodebase();
 
-        if (isset($codebase->config->forbidden_functions['empty'])) {
+        if (isset($codebase->config->forbidden_functions[Sym::C_EMPTY])) {
             IssueBuffer::maybeAdd(
                 new ForbiddenCode(
                     'You have forbidden the use of empty',

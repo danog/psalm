@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use Attribute;
 use Override;
 use PhpParser;
@@ -204,7 +208,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
         if ($global_context) {
             foreach ($global_context->constants as $const_name => $var_type) {
-                if (!$context->hasVariable($const_name)) {
+                if (!$context->hasVariable(Interner::lookup($const_name))) {
                     $context->vars_in_scope[$const_name] = $var_type;
                 }
             }
@@ -316,16 +320,16 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
         if ($storage->template_types) {
             foreach ($storage->template_types as $param_name => $_) {
                 $fq_classlike_name = Type::getFQCLNFromString(
-                    $param_name,
+                    Interner::intern($param_name),
                     $this->getAliases(),
                 );
 
-                if ($codebase->classOrInterfaceExists($fq_classlike_name, null, $context)) {
+                if ($codebase->classOrInterfaceExists(Interner::intern($fq_classlike_name), null, $context)) {
                     IssueBuffer::maybeAdd(
                         new ReservedWord(
                             'Cannot use ' . $param_name . ' as template name since the class already exists',
                             new CodeLocation($this, $this->function),
-                            'resource',
+                            Sym::C_RESOURCE,
                         ),
                         $this->getSuppressedIssues(),
                     );
@@ -544,7 +548,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             ) {
                 IssueBuffer::maybeAdd(
                     new ImpureFunctionCall(
-                        $storage->cased_name . ' is marked @'.Mutations::TO_ATTRIBUTE_FUNCTIONLIKE[
+                        Interner::lookup($storage->cased_name) . ' is marked @'.Mutations::TO_ATTRIBUTE_FUNCTIONLIKE[
                             $storage->allowed_mutations
                         ].' but its containing class is marked with a lower level of allowed mutations'
                         .', @'.Mutations::TO_ATTRIBUTE_CLASSLIKE[
@@ -602,7 +606,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 if (!$storage->has_mutations_annotation && $storage->location) {
                     IssueBuffer::maybeAdd(
                         new MissingAbstractPureAnnotation(
-                            $storage->cased_name . ' must be marked with one of @'
+                            Interner::lookup($storage->cased_name) . ' must be marked with one of @'
                             .implode(', @', Mutations::TO_ATTRIBUTE_FUNCTIONLIKE)
                             .' to aid security analysis',
                             $storage->location,
@@ -785,7 +789,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             if (isset($storage->throw_locations[$expected_exception])) {
                 if (ClassLikeAnalyzer::checkFullyQualifiedClassLikeName(
                     $statements_analyzer,
-                    $expected_exception,
+                    Interner::intern($expected_exception),
                     $storage->throw_locations[$expected_exception],
                     $context,
                     $statements_analyzer->getSuppressedIssues(),
@@ -806,7 +810,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                                 'Class supplied for @throws ' . $expected_exception
                                     . ' does not implement Throwable',
                                 $storage->throw_locations[$expected_exception],
-                                $expected_exception,
+                                Interner::intern($expected_exception),
                             ),
                             $statements_analyzer->getSuppressedIssues(),
                         );
@@ -832,10 +836,10 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             foreach ($storage->throws as $expected_exception => $_) {
                 if ($expected_exception === $possibly_thrown_exception
                     || (
-                        $codebase->classOrInterfaceExists($possibly_thrown_exception, null, $context)
+                        $codebase->classOrInterfaceExists(Interner::intern($possibly_thrown_exception), null, $context)
                         && (
-                            $codebase->interfaceExtends($possibly_thrown_exception, $expected_exception)
-                            || $codebase->classExtendsOrImplements($possibly_thrown_exception, $expected_exception)
+                            $codebase->interfaceExtends(Interner::intern($possibly_thrown_exception), Interner::intern($expected_exception))
+                            || $codebase->classExtendsOrImplements(Interner::intern($possibly_thrown_exception), Interner::intern($expected_exception))
                         )
                     )
                 ) {
@@ -848,7 +852,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 $missing_docblock_exception = new TNamedObject($possibly_thrown_exception);
                 $missingThrowsDocblockErrors[] = $missing_docblock_exception->toNamespacedString(
                     $this->source->getNamespace(),
-                    $this->source->getAliasedClassesFlipped(),
+                    Interner::lookupKeys($this->source->getAliasedClassesFlipped()),
                     $this->source->getFQCLN(),
                     true,
                 );
@@ -860,7 +864,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                             $possibly_thrown_exception . ' is thrown but not caught - please either catch'
                                 . ' or add a @throws annotation',
                             $codelocation,
-                            $possibly_thrown_exception,
+                            Interner::intern($possibly_thrown_exception),
                         ),
                     );
                 }
@@ -1071,7 +1075,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                         $method_id_lc,
                     );
 
-                    $method_name_lc = strtolower($storage->cased_name);
+                    $method_name_lc = $storage->cased_name;
 
                     if (!isset($class_storage->overridden_method_ids[$method_name_lc])) {
                         continue;
@@ -1131,7 +1135,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 $signature_type = TypeExpander::expandUnion(
                     $codebase,
                     $signature_type,
-                    $context->self,
+                    Interner::internOrNull($context->self),
                     $context->self,
                     $this->getParentFQCLN(),
                 );
@@ -1180,7 +1184,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                     $param_type = TypeExpander::expandUnion(
                         $codebase,
                         $param_type,
-                        $context->self,
+                        Interner::internOrNull($context->self),
                         $context->self,
                         $this->getParentFQCLN(),
                         true,
@@ -1194,7 +1198,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                     if ($function_param->type_location !== null) {
                         IssueBuffer::maybeAdd(
                             new UnresolvableConstant(
-                                "Could not resolve constant {$e->class_name}::{$e->const_name}",
+                                "Could not resolve constant " . Interner::lookup($e->class_name) . "::" . Interner::lookup($e->const_name) . "",
                                 $function_param->type_location,
                             ),
                             $storage->suppressed_issues,
@@ -1212,7 +1216,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                         false,
                         false,
                         $this->function instanceof ClassMethod
-                            && strtolower($this->function->name->name) !== '__construct',
+                            && $this->function->name->name !== '__construct',
                         $context,
                     ) === false) {
                         $check_stmts = false;
@@ -1527,7 +1531,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             $replace_type = TypeExpander::expandUnion(
                 $codebase,
                 $storage->return_type,
-                $context->self,
+                Interner::internOrNull($context->self),
                 'static',
                 $this->getParentFQCLN(),
                 false,
@@ -1551,7 +1555,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 $replace_type = TypeExpander::expandUnion(
                     $codebase,
                     $function_param->type,
-                    $context->self,
+                    Interner::internOrNull($context->self),
                     'static',
                     $this->getParentFQCLN(),
                     false,
@@ -1575,7 +1579,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
         array $function_stmts,
         StatementsAnalyzer $statements_analyzer,
         ?Union $return_type = null,
-        ?string $fq_class_name = null,
+        ?int $fq_class_name = null,
         ?CodeLocation $return_type_location = null,
         bool $did_explicitly_return = false,
         bool $closure_inside_call = false,
@@ -1630,19 +1634,19 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             $allow_native_type
                 ? $inferred_return_type->toPhpString(
                     $this->source->getNamespace(),
-                    $this->source->getAliasedClassesFlipped(),
+                    Interner::lookupKeys($this->source->getAliasedClassesFlipped()),
                     $this->source->getFQCLN(),
                     $project_analyzer->getCodebase()->analysis_php_version_id,
                 ) : null,
             $inferred_return_type->toNamespacedString(
                 $this->source->getNamespace(),
-                $this->source->getAliasedClassesFlipped(),
+                Interner::lookupKeys($this->source->getAliasedClassesFlipped()),
                 $this->source->getFQCLN(),
                 false,
             ),
             $inferred_return_type->toNamespacedString(
                 $this->source->getNamespace(),
-                $this->source->getAliasedClassesFlipped(),
+                Interner::lookupKeys($this->source->getAliasedClassesFlipped()),
                 $this->source->getFQCLN(),
                 true,
             ),
@@ -1719,10 +1723,10 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
     /**
      * @psalm-mutation-free
      */
-    public function getMethodName(): ?string
+    public function getMethodName(): ?int
     {
         if ($this->function instanceof ClassMethod) {
-            return (string)$this->function->name;
+            return Interner::intern((string)$this->function->name);
         }
 
         return null;
@@ -1739,7 +1743,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
         if ($this->function instanceof Function_) {
             $namespace = $this->source->getNamespace();
 
-            return ($namespace ? $namespace . '\\' : '') . $this->function->name;
+            return ($namespace ? $namespace . '\\' : '') . Interner::lookup($this->function->name);
         }
 
         if (!$this instanceof ClosureAnalyzer) {
@@ -1802,7 +1806,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
     /**
      * @psalm-mutation-free
-     * @return array<lowercase-string, string>
+     * @return array<int, string>
      */
     #[Override]
     public function getAliasedClassesFlipped(): array
@@ -1928,7 +1932,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             $this->codebase,
             $storage_return_type,
             $this->getFQCLN(),
-            $this->getFQCLN(),
+            Interner::lookupOrNull($this->getFQCLN()),
             $this->getParentFQCLN(),
             true,
             true,
@@ -1974,7 +1978,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
             $method_id = $this->getMethodId($context->self);
 
             $fq_class_name = (string)$context->self;
-            $appearing_class_storage = $classlike_storage_provider->get($fq_class_name);
+            $appearing_class_storage = $classlike_storage_provider->get(Interner::intern($fq_class_name));
 
             if ($add_mutations) {
                 if (!$context->collect_initializations) {
@@ -1996,7 +2000,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                             new TTemplateParam(
                                 $param_name,
                                 reset($template_map),
-                                $key,
+                                Interner::intern($key),
                             ),
                         ]);
                     }
@@ -2064,7 +2068,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 return null;
             }
 
-            $cased_method_id = $fq_class_name . '::' . $storage->cased_name;
+            $cased_method_id = $fq_class_name . '::' . Interner::lookup($storage->cased_name);
 
             $overridden_method_ids = $codebase->methods->getOverriddenMethodIds($method_id);
 
@@ -2077,18 +2081,18 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
             $has_override_attribute = false;
             foreach ($storage->attributes as $s) {
-                if ($s->fq_class_name === 'Override') {
+                if ($s->fq_class_name === Sym::C_OVERRIDE) {
                     $has_override_attribute = true;
                     break;
                 }
             }
 
             if ($has_override_attribute
-                && (!$overridden_method_ids || $storage->cased_name === '__construct')
+                && (!$overridden_method_ids || $storage->cased_name === Sym::C___CONSTRUCT)
             ) {
                 IssueBuffer::maybeAdd(
                     new InvalidOverride(
-                        'Method ' . $storage->cased_name . ' does not match any parent method',
+                        'Method ' . Interner::lookup($storage->cased_name) . ' does not match any parent method',
                         $codeLocation,
                     ),
                     $this->getSuppressedIssues(),
@@ -2100,9 +2104,9 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 && $overridden_method_ids
                 && ($storage->defining_fqcln === null
                     || !$codebase->classlike_storage_provider->get($storage->defining_fqcln)->is_trait
-                ) && $storage->cased_name !== '__construct'
-                && ($storage->cased_name !== '__toString'
-                    || isset($appearing_class_storage->direct_class_interfaces['stringable']))
+                ) && $storage->cased_name !== Sym::C___CONSTRUCT
+                && ($storage->cased_name !== Sym::C___TO_STRING
+                    || isset($appearing_class_storage->direct_class_interfaces[Sym::C_STRINGABLE_2]))
             ) {
                 IssueBuffer::maybeAdd(
                     new MissingOverrideAttribute(
@@ -2164,14 +2168,14 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                             $declaring_fq_class_name,
                         );
 
-                        if (isset($appearing_class_storage->trait_visibility_map[$appearing_method_name])) {
+                        if (isset($appearing_class_storage->trait_visibility_map[Interner::lookup($appearing_method_name)])) {
                             $implementer_visibility
-                                = $appearing_class_storage->trait_visibility_map[$appearing_method_name];
+                                = $appearing_class_storage->trait_visibility_map[Interner::lookup($appearing_method_name)];
                         }
                     }
 
                     // we've already checked this in the class checker
-                    if (!isset($appearing_class_storage->class_implements[strtolower($overridden_fq_class_name)])) {
+                    if (!isset($appearing_class_storage->class_implements[$overridden_fq_class_name])) {
                         MethodComparator::compare(
                             $codebase,
                             count($overridden_method_ids) === 1 ? $this->function : null,
@@ -2179,7 +2183,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                             $parent_storage,
                             $storage,
                             $parent_method_storage,
-                            $fq_class_name,
+                            Interner::intern($fq_class_name),
                             $implementer_visibility,
                             $codeLocation,
                             $storage->suppressed_issues,
@@ -2207,7 +2211,7 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
                 $closure_return_type = TypeExpander::expandUnion(
                     $codebase,
                     $storage->return_type,
-                    $context->self,
+                    Interner::internOrNull($context->self),
                     $context->self,
                     $this->getParentFQCLN(),
                 );
@@ -2302,9 +2306,9 @@ abstract class FunctionLikeAnalyzer extends SourceAnalyzer
 
             $fq_class_name = (string)$context->self;
 
-            $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
-            $method_name_lc = strtolower($storage->cased_name);
+            $method_name_lc = $storage->cased_name;
 
             if ($storage->abstract) {
                 continue;

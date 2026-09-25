@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
@@ -58,7 +60,7 @@ final class InstanceofAnalyzer
                     $codebase->analyzer->addNodeReference(
                         $statements_analyzer->getFilePath(),
                         $stmt->class,
-                        $codebase->classlikes->classOrInterfaceOrEnumExists($fq_class_name, null, $context)
+                        $codebase->classlikes->classOrInterfaceOrEnumExists(Interner::intern($fq_class_name), null, $context)
                             ? $fq_class_name
                             : '*'
                                 . ($stmt->class instanceof PhpParser\Node\Name\FullyQualified
@@ -68,10 +70,10 @@ final class InstanceofAnalyzer
                     );
                 }
 
-                if (!isset($context->phantom_classes[strtolower($fq_class_name)])) {
+                if (!isset($context->phantom_classes[Interner::intern($fq_class_name)])) {
                     if (ClassLikeAnalyzer::checkFullyQualifiedClassLikeName(
                         $statements_analyzer,
-                        $fq_class_name,
+                        Interner::intern($fq_class_name),
                         new CodeLocation($statements_analyzer->getSource(), $stmt->class),
                         $context,
                         $statements_analyzer->getSuppressedIssues(),
@@ -85,7 +87,7 @@ final class InstanceofAnalyzer
                         $codebase,
                         $statements_analyzer,
                         $stmt->class,
-                        $fq_class_name,
+                        Interner::intern($fq_class_name),
                         $context,
                     );
                 }

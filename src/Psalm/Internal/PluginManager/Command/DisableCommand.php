@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\PluginManager\Command;
 
+use Psalm\Internal\Interner;
+
 use InvalidArgumentException;
 use Override;
 use Psalm\Internal\PluginManager\PluginListFactory;
@@ -72,13 +74,13 @@ final class DisableCommand extends Command
             return 2;
         }
 
-        if (!$plugin_list->isEnabled($plugin_class)) {
+        if (!$plugin_list->isEnabled(Interner::intern($plugin_class))) {
             $io->note('Plugin already disabled');
 
             return 3;
         }
 
-        $plugin_list->disable($plugin_class);
+        $plugin_list->disable(Interner::intern($plugin_class));
         $io->success('Plugin disabled');
 
         return 0;

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Block\IfElse;
 
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Codebase;
@@ -90,7 +92,7 @@ final class ElseIfAnalyzer
             $elseif_cond_id,
             $elseif_cond_id,
             $elseif->cond,
-            $else_context->self,
+            Interner::internOrNull($else_context->self),
             $statements_analyzer,
             $codebase,
         );

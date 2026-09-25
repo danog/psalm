@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\Call;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use InvalidArgumentException;
 use PhpParser;
 use Psalm\CodeLocation;
@@ -300,8 +304,8 @@ final class ArgumentsAnalyzer
                     $statements_analyzer,
                     $inferred_arg_type,
                     $argument_offset,
-                    $context->self,
-                    $context->calling_method_id ?: $context->calling_function_id,
+                    Interner::internOrNull($context->self),
+                    Interner::internOrNull($context->calling_method_id ?: $context->calling_function_id),
                 );
             }
 
@@ -350,7 +354,7 @@ final class ArgumentsAnalyzer
                         new TTemplateParam(
                             'ArrayValue' . $argument_offset,
                             Type::getMixed(),
-                            $method_id,
+                            Interner::intern($method_id),
                         ),
                     ]),
                 ]),
@@ -360,8 +364,8 @@ final class ArgumentsAnalyzer
             $statements_analyzer,
             $existing_type,
             $argument_offset,
-            $context->self,
-            $context->calling_method_id ?: $context->calling_function_id,
+            Interner::internOrNull($context->self),
+            Interner::internOrNull($context->calling_method_id ?: $context->calling_function_id),
         );
 
         if ($replace_template_result->lower_bounds) {
@@ -402,7 +406,7 @@ final class ArgumentsAnalyzer
                     new TTemplateParam(
                         $template_name,
                         Type::getMixed(),
-                        $method_id,
+                        Interner::intern($method_id),
                     ),
                 ]);
                 $function_like_params[] = new FunctionLikeParameter(
@@ -446,7 +450,7 @@ final class ArgumentsAnalyzer
             null,
             null,
             null,
-            $context->calling_method_id ?: $context->calling_function_id,
+            Interner::internOrNull($context->calling_method_id ?: $context->calling_function_id),
         );
 
         $replaced_type = TemplateInferredTypeReplacer::replace(
@@ -1146,8 +1150,8 @@ final class ArgumentsAnalyzer
                         $statements_analyzer,
                         $statements_analyzer->node_data->getType($arg->value),
                         $argument_offset,
-                        $context->self,
-                        $context->calling_method_id ?: $context->calling_function_id,
+                        Interner::internOrNull($context->self),
+                        Interner::internOrNull($context->calling_method_id ?: $context->calling_function_id),
                     );
 
                     if ($template_result->lower_bounds) {
@@ -1171,8 +1175,8 @@ final class ArgumentsAnalyzer
                         $statements_analyzer,
                         $statements_analyzer->node_data->getType($arg->value),
                         $argument_offset,
-                        $context->self,
-                        $context->calling_method_id ?: $context->calling_function_id,
+                        Interner::internOrNull($context->self),
+                        Interner::internOrNull($context->calling_method_id ?: $context->calling_function_id),
                     );
 
                     if ($template_result->lower_bounds) {
@@ -1325,11 +1329,11 @@ final class ArgumentsAnalyzer
         StatementsAnalyzer $statements_analyzer,
         Context $context,
         PhpParser\Node\Expr\PropertyFetch $stmt,
-        string $fq_class_name,
-        string $prop_name,
+        int $fq_class_name,
+        int $prop_name,
         ?string $lhs_var_id,
     ): void {
-        $property_id = $fq_class_name . '::$' . $prop_name;
+        $property_id = Interner::lookup($fq_class_name) . '::$' . Interner::lookup($prop_name);
 
         $codebase = $statements_analyzer->getCodebase();
         $declaring_property_class = (string) $codebase->properties->getDeclaringClassForProperty(
@@ -1339,7 +1343,7 @@ final class ArgumentsAnalyzer
         );
 
         try {
-            $declaring_class_storage = $codebase->classlike_storage_provider->get($declaring_property_class);
+            $declaring_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($declaring_property_class));
         } catch (InvalidArgumentException) {
             return;
         }
@@ -1400,7 +1404,7 @@ final class ArgumentsAnalyzer
                     $context,
                     $arg->value,
                     $fq_class_name,
-                    $prop_name,
+                    Interner::intern($prop_name),
                     $var_id,
                 );
             } elseif ($var_id && isset($context->vars_in_scope[$var_id])) {
@@ -1413,7 +1417,7 @@ final class ArgumentsAnalyzer
                             $context,
                             $arg->value,
                             $fq_class_name,
-                            $prop_name,
+                            Interner::intern($prop_name),
                             $var_id,
                         );
                     }
@@ -1540,7 +1544,7 @@ final class ArgumentsAnalyzer
         Codebase $codebase,
         Context $context,
         ?ClassLikeStorage $class_storage,
-        ?string $self_fq_class_name,
+        ?int $self_fq_class_name,
         ?ClassLikeStorage $calling_class_storage,
         FunctionLikeStorage $function_storage,
         array $class_generic_params,
@@ -1602,7 +1606,7 @@ final class ArgumentsAnalyzer
                 $codebase,
                 $function_param->type,
                 $class_storage->name ?? null,
-                $calling_class_storage->name ?? null,
+                Interner::lookupOrNull($calling_class_storage->name ?? null),
                 null,
                 true,
                 false,
@@ -1616,8 +1620,8 @@ final class ArgumentsAnalyzer
                 $statements_analyzer,
                 $arg_value_type,
                 $argument_offset,
-                $context->self,
-                $context->calling_method_id ?: $context->calling_function_id,
+                Interner::internOrNull($context->self),
+                Interner::internOrNull($context->calling_method_id ?: $context->calling_function_id),
                 false,
             );
         }
@@ -1650,7 +1654,7 @@ final class ArgumentsAnalyzer
                 || !$function_storage instanceof MethodStorage
                 || $function_storage->is_static
                 || ($method_id instanceof MethodIdentifier
-                    && $method_id->method_name === '__construct'))
+                    && $method_id->method_name === Sym::C___CONSTRUCT))
         ) {
             IssueBuffer::maybeAdd(
                 new TooManyArguments(
@@ -1786,8 +1790,8 @@ final class ArgumentsAnalyzer
                         $statements_analyzer,
                         $default_type,
                         $i,
-                        $context->self,
-                        $context->calling_method_id ?: $context->calling_function_id,
+                        Interner::internOrNull($context->self),
+                        Interner::internOrNull($context->calling_method_id ?: $context->calling_function_id),
                         true,
                     );
                 }

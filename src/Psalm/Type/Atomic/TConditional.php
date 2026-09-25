@@ -23,7 +23,7 @@ final class TConditional extends Atomic
     use UnserializeMemoryUsageSuppressionTrait;
     public function __construct(
         public string $param_name,
-        public string $defining_class,
+        public int $defining_class,
         public Union $as_type,
         public Union $conditional_type,
         public Union $if_type,
@@ -94,7 +94,7 @@ final class TConditional extends Atomic
     public function toPhpString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         int $analysis_php_version_id,
     ): ?string {
         return null;
@@ -108,7 +108,7 @@ final class TConditional extends Atomic
     public function toNamespacedString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         bool $use_phpdoc_format,
     ): string {
         return '';

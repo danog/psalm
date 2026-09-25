@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Type;
 
+use Psalm\Internal\Interner;
+
 use Psalm\Aliases;
 use Psalm\Exception\TypeParseTreeException;
 use Psalm\Internal\Type\TypeAlias\InlineTypeAlias;
@@ -370,8 +372,8 @@ final class TypeTokenizer
         Aliases $aliases,
         ?array $template_type_map = null,
         ?array $type_aliases = null,
-        ?string $self_fqcln = null,
-        ?string $parent_fqcln = null,
+        ?int $self_fqcln = null,
+        ?int $parent_fqcln = null,
         bool $allow_assertions = false,
     ): array {
         $type_tokens = self::tokenize($string_type);
@@ -390,20 +392,20 @@ final class TypeTokenizer
                 continue;
             }
 
-            if ($string_type_token[0][0] === '\\'
+            if (Interner::lookup($string_type_token[0])[0] === '\\'
                 && strlen($string_type_token[0]) === 1
             ) {
                 throw new TypeParseTreeException("Backslash \"\\\" has to be part of class name.");
             }
 
-            if ($string_type_token[0][0] === '"'
-                || $string_type_token[0][0] === '\''
-                || preg_match('/[0-9]/', $string_type_token[0][0])
+            if (Interner::lookup($string_type_token[0])[0] === '"'
+                || Interner::lookup($string_type_token[0])[0] === '\''
+                || preg_match('/[0-9]/', Interner::lookup($string_type_token[0])[0])
             ) {
                 continue;
             }
 
-            if ($string_type_token[0][0] === '-' && is_numeric($string_type_token[0])) {
+            if (Interner::lookup($string_type_token[0])[0] === '-' && is_numeric($string_type_token[0])) {
                 continue;
             }
 
@@ -471,7 +473,7 @@ final class TypeTokenizer
                 }
             }
 
-            if ($string_type_token[0][0] === '$' || $string_type_token[0][0] === ' ') {
+            if (Interner::lookup($string_type_token[0])[0] === '$' || Interner::lookup($string_type_token[0])[0] === ' ') {
                 continue;
             }
 

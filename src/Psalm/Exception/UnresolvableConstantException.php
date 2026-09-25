@@ -14,7 +14,7 @@ final class UnresolvableConstantException extends Exception
     /**
      * @psalm-mutation-free
      */
-    public function __construct(public string $class_name, public string $const_name)
+    public function __construct(public int $class_name, public int $const_name)
     {
     }
 }

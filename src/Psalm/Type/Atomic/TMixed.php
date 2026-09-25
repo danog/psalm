@@ -39,7 +39,7 @@ class TMixed extends Atomic
     public function toPhpString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         int $analysis_php_version_id,
     ): ?string {
         return $analysis_php_version_id >= 8_00_00 ? 'mixed' : null;

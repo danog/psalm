@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Storage\Assertion;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use Psalm\Storage\Assertion;
 use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
@@ -15,7 +17,7 @@ use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 final class HasMethod extends Assertion
 {
     use UnserializeMemoryUsageSuppressionTrait;
-    public function __construct(public readonly string $method)
+    public function __construct(public readonly int $method)
     {
     }
 
@@ -27,7 +29,7 @@ final class HasMethod extends Assertion
 
     public function __toString(): string
     {
-        return 'method-exists-' . $this->method;
+        return 'method-exists-' . Interner::lookup($this->method);
     }
 
     #[Override]

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Cli;
 
+use Psalm\Internal\Interner;
+
 use AssertionError;
 use Composer\XdebugHandler\XdebugHandler;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;

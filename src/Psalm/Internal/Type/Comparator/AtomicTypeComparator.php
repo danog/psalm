@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Type\Comparator;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use Psalm\Codebase;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Type\Atomic;
@@ -230,7 +234,7 @@ final class AtomicTypeComparator
         }
 
         if ($input_type_part instanceof TNamedObject &&
-            $input_type_part->value === 'Closure' &&
+            $input_type_part->value === Sym::C_CLOSURE &&
             $container_type_part instanceof TCallable
         ) {
             return true;
@@ -254,7 +258,7 @@ final class AtomicTypeComparator
             if (($input_type_part instanceof TObjectWithProperties
                     && $input_type_part->is_stringable_object_only)
                 || ($input_type_part instanceof TNamedObject
-                    && $codebase->methodExists(new MethodIdentifier($input_type_part->value, '__tostring')))
+                    && $codebase->methodExists(new MethodIdentifier($input_type_part->value, Sym::C___TOSTRING)))
             ) {
                 return true;
             }
@@ -262,7 +266,7 @@ final class AtomicTypeComparator
         }
 
         if ($container_type_part instanceof TNamedObject
-            && $container_type_part->value === 'Stringable'
+            && $container_type_part->value === Sym::C_STRINGABLE
             && $codebase->analysis_php_version_id >= 8_00_00
             && $input_type_part instanceof TObjectWithProperties
             && $input_type_part->is_stringable_object_only
@@ -563,9 +567,9 @@ final class AtomicTypeComparator
         }
 
         if ($input_type_part instanceof TNamedObject
-            && $input_type_part->value === 'static'
+            && $input_type_part->value === Sym::C_STATIC
             && $container_type_part instanceof TNamedObject
-            && strtolower($container_type_part->value) === 'self'
+            && $container_type_part->value === Sym::C_SELF
         ) {
             return true;
         }
@@ -633,10 +637,10 @@ final class AtomicTypeComparator
                 // check whether the object has a __toString method
                 if ($codebase->classOrInterfaceExists($input_type_part->value)) {
                     if ($codebase->analysis_php_version_id >= 8_00_00
-                        && ($input_type_part->value === 'Stringable'
+                        && ($input_type_part->value === Sym::C_STRINGABLE
                             || ($codebase->classlikes->classExists($input_type_part->value)
-                                && $codebase->classlikes->classImplements($input_type_part->value, 'Stringable'))
-                            || $codebase->classlikes->interfaceExtends($input_type_part->value, 'Stringable'))
+                                && $codebase->classlikes->classImplements($input_type_part->value, Sym::C_STRINGABLE))
+                            || $codebase->classlikes->interfaceExtends($input_type_part->value, Sym::C_STRINGABLE))
                     ) {
                         if ($atomic_comparison_result) {
                             $atomic_comparison_result->to_string_cast = true;
@@ -648,7 +652,7 @@ final class AtomicTypeComparator
                     if ($codebase->methodExists(
                         new MethodIdentifier(
                             $input_type_part->value,
-                            '__tostring',
+                            Sym::C___TOSTRING,
                         ),
                     )) {
                         if ($atomic_comparison_result) {
@@ -660,7 +664,7 @@ final class AtomicTypeComparator
                 }
 
                 // PHP 5.6 doesn't support this natively, so this introduces a bug *just* when checking PHP 5.6 code
-                if ($input_type_part->value === 'ReflectionType') {
+                if ($input_type_part->value === Sym::C_REFLECTION_TYPE) {
                     if ($atomic_comparison_result) {
                         $atomic_comparison_result->to_string_cast = true;
                     }
@@ -668,7 +672,7 @@ final class AtomicTypeComparator
                     return true;
                 }
             } elseif ($input_type_part instanceof TObjectWithProperties
-                && isset($input_type_part->methods['__tostring'])
+                && isset($input_type_part->methods[Sym::C___TOSTRING])
             ) {
                 if ($atomic_comparison_result) {
                     $atomic_comparison_result->to_string_cast = true;
@@ -687,7 +691,7 @@ final class AtomicTypeComparator
                 || (
                     $input_type_part instanceof TNamedObject &&
                     $codebase->classOrInterfaceExists($input_type_part->value) &&
-                    $codebase->methodExists($input_type_part->value . '::__invoke')
+                    $codebase->methodExists(Interner::lookup($input_type_part->value) . '::__invoke')
                 )
             )
         ) {
@@ -703,7 +707,7 @@ final class AtomicTypeComparator
             && $input_type_part instanceof TNamedObject
         ) {
             if ($container_type_part instanceof TObjectWithProperties
-                && $input_type_part->value !== 'stdClass'
+                && $input_type_part->value !== Sym::C_STD_CLASS
             ) {
                 return KeyedArrayComparator::isContainedByObjectWithProperties(
                     $codebase,
@@ -745,7 +749,7 @@ final class AtomicTypeComparator
                     $codebase->classExists($container_type_part->value)
                     && $codebase->classExtendsOrImplements(
                         $container_type_part->value,
-                        $input_type_part->value,
+                        Interner::intern($input_type_part->value),
                     )
                 )
                 ||
@@ -753,7 +757,7 @@ final class AtomicTypeComparator
                     $codebase->interfaceExists($container_type_part->value)
                     && $codebase->interfaceExtends(
                         $container_type_part->value,
-                        $input_type_part->value,
+                        Interner::intern($input_type_part->value),
                     )
                 )
             )

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider;
 
+use Psalm\Internal\Interner;
+
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
 use Psalm\Internal\Analyzer\IssueData;
@@ -63,7 +65,7 @@ final class FileReferenceProvider
     private static array $classlike_files = [];
 
     /**
-     * @var array<string, array<string, int>>
+     * @var array<int, array<string, int>>
      */
     private static array $analyzed_methods = [];
 
@@ -129,7 +131,7 @@ final class FileReferenceProvider
     /**
      * @psalm-external-mutation-free
      */
-    public function addFileInheritanceToClass(string $source_file, string $fq_class_name_lc): void
+    public function addFileInheritanceToClass(string $source_file, int $fq_class_name_lc): void
     {
         self::$files_inheriting_classes[$fq_class_name_lc][$source_file] = true;
     }
@@ -157,7 +159,7 @@ final class FileReferenceProvider
         $referenced_files = [];
 
         foreach ($file_classes as $fq_class_name_lc => $_) {
-            foreach ($this->code_use_graph->getNodesReferencingClass(strtolower($fq_class_name_lc)) as $node_id => $_) {
+            foreach ($this->code_use_graph->getNodesReferencingClass(Interner::intern($fq_class_name_lc)) as $node_id => $_) {
                 $node_file = $this->code_use_graph->getNodeFile($node_id);
 
                 if ($node_file === null) {
@@ -170,7 +172,7 @@ final class FileReferenceProvider
                     try {
                         $node_file = $codebase->scanner->getClassLikeFilePath($owner_class);
                     } catch (UnexpectedValueException) {
-                        $node_file = self::$classlike_files[$owner_class] ?? null;
+                        $node_file = self::$classlike_files[Interner::lookup($owner_class)] ?? null;
                     }
 
                     if ($node_file === null) {
@@ -307,7 +309,7 @@ final class FileReferenceProvider
                 return false;
             }
 
-            self::$analyzed_methods = $analyzed_methods;
+            self::$analyzed_methods = Interner::internKeys($analyzed_methods);
 
             $issues = $this->cache->getCachedIssues();
 
@@ -393,7 +395,7 @@ final class FileReferenceProvider
             $this->cache->setCachedCodeUseGraph($this->code_use_graph->getCacheData());
             $this->cache->setFileMapCache(self::$file_maps);
             $this->cache->setTypeCoverage(self::$mixed_counts);
-            $this->cache->setAnalyzedMethodCache(self::$analyzed_methods);
+            $this->cache->setAnalyzedMethodCache(Interner::lookupKeys(self::$analyzed_methods));
         }
     }
 
@@ -536,7 +538,7 @@ final class FileReferenceProvider
      */
     public function setAnalyzedMethods(array $analyzed_methods): void
     {
-        self::$analyzed_methods = $analyzed_methods;
+        self::$analyzed_methods = Interner::internKeys($analyzed_methods);
     }
 
     /**
@@ -572,7 +574,7 @@ final class FileReferenceProvider
      */
     public function getAnalyzedMethods(): array
     {
-        return self::$analyzed_methods;
+        return Interner::lookupKeys(self::$analyzed_methods);
     }
 
     /**

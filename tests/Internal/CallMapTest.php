@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\Internal;
 
+use Psalm\Internal\Interner;
+
 use FilesystemIterator;
 use Psalm\Tests\TestCase;
 use RegexIterator;
@@ -67,8 +69,8 @@ final class CallMapTest extends TestCase
     {
         foreach ($callMaps as $callMap) {
             foreach ($callMap as $function => $signature) {
-                self::assertArrayKeysAreZeroOrString($signature, "Function " . $function . " in main CallMap has invalid keys");
-                self::assertArrayValuesAreStrings($signature, "Function " . $function . " in main CallMap has non-string values");
+                self::assertArrayKeysAreZeroOrString($signature, "Function " . Interner::lookup($function) . " in main CallMap has invalid keys");
+                self::assertArrayValuesAreStrings($signature, "Function " . Interner::lookup($function) . " in main CallMap has non-string values");
             }
         }
     }
@@ -82,7 +84,7 @@ final class CallMapTest extends TestCase
         foreach ($callMaps as $callMap) {
             foreach ($callMap as $function => $signature) {
                 foreach ($signature as $type) {
-                    self::assertStringIsParsableType($type, "Function " . $function . " in main CallMap contains invalid type declaration " . $type);
+                    self::assertStringIsParsableType($type, "Function " . Interner::lookup($function) . " in main CallMap contains invalid type declaration " . $type);
                 }
             }
         }

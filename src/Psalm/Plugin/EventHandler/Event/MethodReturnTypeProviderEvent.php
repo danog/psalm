@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Plugin\EventHandler\Event;
 
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
@@ -22,21 +24,21 @@ final class MethodReturnTypeProviderEvent
      * something should be returned, but can't be more specific.
      *
      * @param non-empty-list<Union>|null $template_type_parameters
-     * @param lowercase-string $method_name_lowercase
-     * @param lowercase-string $called_method_name_lowercase
+     * @param int $method_name_lowercase
+     * @param int $called_method_name_lowercase
      * @internal
      * @psalm-mutation-free
      */
     public function __construct(
         private readonly StatementsSource $source,
-        private readonly string $fq_classlike_name,
-        private readonly string $method_name_lowercase,
+        private readonly int $fq_classlike_name,
+        private readonly int $method_name_lowercase,
         private readonly PhpParser\Node\Expr\MethodCall|PhpParser\Node\Expr\StaticCall $stmt,
         private readonly Context $context,
         private readonly CodeLocation $code_location,
         private readonly ?array $template_type_parameters = null,
-        private readonly ?string $called_fq_classlike_name = null,
-        private readonly ?string $called_method_name_lowercase = null,
+        private readonly ?int $called_fq_classlike_name = null,
+        private readonly ?int $called_method_name_lowercase = null,
     ) {
     }
 
@@ -47,11 +49,11 @@ final class MethodReturnTypeProviderEvent
 
     public function getFqClasslikeName(): string
     {
-        return $this->fq_classlike_name;
+        return Interner::lookup($this->fq_classlike_name);
     }
 
     /**
-     * @return lowercase-string
+     * @return int
      */
     public function getMethodNameLowercase(): string
     {
@@ -87,11 +89,11 @@ final class MethodReturnTypeProviderEvent
 
     public function getCalledFqClasslikeName(): ?string
     {
-        return $this->called_fq_classlike_name;
+        return Interner::lookupOrNull($this->called_fq_classlike_name);
     }
 
     /**
-     * @return lowercase-string|null
+     * @return int|null
      */
     public function getCalledMethodNameLowercase(): ?string
     {

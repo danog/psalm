@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
+use Psalm\Internal\Interner;
+
 use Override;
 
 /**
@@ -18,7 +20,7 @@ final class TTemplateParamClass extends TClassString
         public string $param_name,
         string $as,
         ?TNamedObject $as_type,
-        public string $defining_class,
+        public int $defining_class,
         bool $from_docblock = false,
     ) {
         parent::__construct(
@@ -40,7 +42,7 @@ final class TTemplateParamClass extends TClassString
     #[Override]
     public function getId(bool $exact = true, bool $nested = false): string
     {
-        return 'class-string<' . $this->param_name . ':' . $this->defining_class
+        return 'class-string<' . $this->param_name . ':' . Interner::lookup($this->defining_class)
             . ' as ' . ($this->as_type ? $this->as_type->getId($exact) : $this->as) . '>';
     }
 
@@ -57,7 +59,7 @@ final class TTemplateParamClass extends TClassString
     public function toNamespacedString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         bool $use_phpdoc_format,
     ): string {
         return $this->param_name . '::class';

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Type;
 
+use Psalm\Internal\Sym;
+
 use Override;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\Type\TypeCombiner;
@@ -75,7 +77,7 @@ final class MutableUnion implements TypeNode
     /**
      * Which class the type was initialised in
      */
-    public ?string $initialized_class = null;
+    public ?int $initialized_class = null;
 
     /**
      * Whether or not the type has been checked yet
@@ -374,7 +376,7 @@ final class MutableUnion implements TypeNode
                     $this->types['false'] = new TFalse;
                 } elseif (isset($this->types['iterable'])) {
                     if ($old_type_part instanceof TNamedObject
-                        && $old_type_part->value === 'Traversable'
+                        && $old_type_part->value === Sym::C_TRAVERSABLE
                         && !isset($this->types['array'])
                     ) {
                         $this->removeType('iterable');

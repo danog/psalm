@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\PhpVisitor\Reflector;
 
+use Psalm\Internal\Interner;
+
 use Exception;
 use PhpParser\Comment\Doc;
 use PhpParser\Node;
@@ -443,7 +445,7 @@ final class ClassLikeDocblockParser
                         $docblock_lines[] = '@return ' . TypeParser::getTypeFromTree(
                             $method_tree->children[1],
                             $codebase,
-                        )->toNamespacedString($aliases->namespace, $aliases->uses, null, false);
+                        )->toNamespacedString($aliases->namespace, Interner::lookupKeys($aliases->uses), null, false);
                     }
 
                     $method_tree = $method_tree->children[0];

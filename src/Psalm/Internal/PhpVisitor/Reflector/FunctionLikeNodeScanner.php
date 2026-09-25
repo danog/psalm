@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\PhpVisitor\Reflector;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use LogicException;
 use PhpParser;
 use PhpParser\Modifiers;
@@ -112,7 +116,7 @@ final class FunctionLikeNodeScanner
         if ($stmt instanceof PhpParser\Node\Expr\Closure
             || $stmt instanceof PhpParser\Node\Expr\ArrowFunction
         ) {
-            $this->codebase->scanner->queueClassLikeForScanning('Closure');
+            $this->codebase->scanner->queueClassLikeForScanning(Sym::C_CLOSURE);
         }
 
         $functionlike_info = $this->createStorageForFunctionLike($stmt, $fake_method);
@@ -138,10 +142,10 @@ final class FunctionLikeNodeScanner
         }
 
         if ($stmt instanceof PhpParser\Node\Stmt\ClassMethod) {
-            $storage->cased_name = $stmt->name->name;
+            $storage->cased_name = Interner::intern($stmt->name->name);
         } elseif ($stmt instanceof PhpParser\Node\Stmt\Function_) {
             $storage->cased_name =
-                ($this->aliases->namespace ? $this->aliases->namespace . '\\' : '') . $stmt->name->name;
+                Interner::intern(($this->aliases->namespace ? $this->aliases->namespace . '\\' : '') . $stmt->name->name);
         }
 
         if ($stmt instanceof PhpParser\Node\Stmt\ClassMethod || $stmt instanceof PhpParser\Node\Stmt\Function_) {
@@ -171,7 +175,7 @@ final class FunctionLikeNodeScanner
                 continue;
             }
 
-            $param_storage = $this->getTranslatedFunctionParam($param, $stmt, $fake_method, $fq_classlike_name);
+            $param_storage = $this->getTranslatedFunctionParam($param, $stmt, $fake_method, Interner::internOrNull($fq_classlike_name));
 
             foreach ($param->attrGroups as $attr_group) {
                 foreach ($attr_group->attrs as $attr) {
@@ -186,7 +190,7 @@ final class FunctionLikeNodeScanner
                 }
             }
 
-            if ($param_storage->name === 'haystack'
+            if ($param_storage->name === Sym::C_HAYSTACK
                 && in_array($this->file_path, $this->codebase->config->internal_stubs)
             ) {
                 $param_storage->expect_variable = true;
@@ -244,9 +248,9 @@ final class FunctionLikeNodeScanner
             ) {
                 $property_name = $stmt->stmts[0]->expr->name->name;
 
-                if (isset($classlike_storage->properties[$property_name])
-                    && $classlike_storage->properties[$property_name]->type
-                    && !$classlike_storage->properties[$property_name]->hook_get
+                if (isset($classlike_storage->properties[Interner::intern($property_name)])
+                    && $classlike_storage->properties[Interner::intern($property_name)]->type
+                    && !$classlike_storage->properties[Interner::intern($property_name)]->hook_get
                 ) {
                     $storage->allowed_mutations = min(
                         Mutations::LEVEL_INTERNAL_READ,
@@ -254,7 +258,7 @@ final class FunctionLikeNodeScanner
                     );
                     $storage->mutation_free_assumed = !$stmt->isFinal() && !$classlike_storage->final;
 
-                    $classlike_storage->properties[$property_name]->getter_method = strtolower($stmt->name->name);
+                    $classlike_storage->properties[Interner::intern($property_name)]->getter_method = Interner::intern($stmt->name->name);
                 }
             } elseif (str_starts_with($stmt->name->name, 'assert')
                 && $stmt->stmts
@@ -580,7 +584,7 @@ final class FunctionLikeNodeScanner
                     continue;
                 }
 
-                if (isset($classlike_storage->properties[$param_storage->name]) && $param_storage->location) {
+                if (isset($classlike_storage->properties[Interner::intern($param_storage->name)]) && $param_storage->location) {
                     IssueBuffer::maybeAdd(
                         new ParseError(
                             'Promoted property ' . $param_storage->name . ' clashes with an existing property',
@@ -653,7 +657,7 @@ final class FunctionLikeNodeScanner
                 $param_storage->promoted_property = true;
                 $property_storage->is_promoted = true;
 
-                $property_id = $fq_classlike_name . '::$' . $param_storage->name;
+                $property_id = Interner::lookup($fq_classlike_name) . '::$' . $param_storage->name;
 
                 switch ($param->flags & Modifiers::VISIBILITY_MASK) {
                     case Modifiers::PUBLIC:
@@ -673,7 +677,7 @@ final class FunctionLikeNodeScanner
 
                 $fq_classlike_name = $classlike_storage->name;
 
-                $property_id = $fq_classlike_name . '::$' . $param_storage->name;
+                $property_id = Interner::lookup($fq_classlike_name) . '::$' . $param_storage->name;
 
                 $classlike_storage->declaring_property_ids[$param_storage->name] = $fq_classlike_name;
                 $classlike_storage->appearing_property_ids[$param_storage->name] = $property_id;
@@ -700,30 +704,30 @@ final class FunctionLikeNodeScanner
                     $this->classlike_storage->name ?? null,
                 );
 
-                if ($attribute->fq_class_name === 'Psalm\\Pure'
-                    || $attribute->fq_class_name === 'JetBrains\\PhpStorm\\Pure'
+                if ($attribute->fq_class_name === Sym::C_PSALM__PURE
+                    || $attribute->fq_class_name === Sym::C_JET_BRAINS__PHP_STORM__PURE
                 ) {
                     $storage->specialize_call = true;
                     $storage->allowed_mutations = Mutations::LEVEL_NONE;
                     $storage->has_mutations_annotation = true;
                 }
 
-                if ($attribute->fq_class_name === 'NoDiscard') {
+                if ($attribute->fq_class_name === Sym::C_NO_DISCARD) {
                     $storage->no_discard = true;
                 }
 
-                if ($attribute->fq_class_name === 'Psalm\\Deprecated'
-                    || $attribute->fq_class_name === 'Deprecated'
-                    || $attribute->fq_class_name === 'JetBrains\\PhpStorm\\Deprecated'
+                if ($attribute->fq_class_name === Sym::C_PSALM__DEPRECATED
+                    || $attribute->fq_class_name === Sym::C_DEPRECATED
+                    || $attribute->fq_class_name === Sym::C_JET_BRAINS__PHP_STORM__DEPRECATED
                 ) {
                     $storage->deprecated = true;
                 }
 
-                if ($attribute->fq_class_name === 'Psalm\\Internal' && !$storage->internal && $fq_classlike_name) {
+                if ($attribute->fq_class_name === Sym::C_PSALM__INTERNAL && !$storage->internal && $fq_classlike_name) {
                     $storage->internal = [NamespaceAnalyzer::getNameSpaceRoot($fq_classlike_name)];
                 }
 
-                if ($attribute->fq_class_name === 'Psalm\\ExternalMutationFree'
+                if ($attribute->fq_class_name === Sym::C_PSALM__EXTERNAL_MUTATION_FREE
                     && $storage instanceof MethodStorage
                 ) {
                     $storage->allowed_mutations = min(
@@ -733,7 +737,7 @@ final class FunctionLikeNodeScanner
                     $storage->has_mutations_annotation = true;
                 }
 
-                if ($attribute->fq_class_name === 'JetBrains\\PhpStorm\\NoReturn') {
+                if ($attribute->fq_class_name === Sym::C_JET_BRAINS__PHP_STORM__NO_RETURN) {
                     $storage->return_type = Type::getNever();
                 }
 
@@ -813,13 +817,13 @@ final class FunctionLikeNodeScanner
                 && $function_stmt->expr->var->var->name === 'this'
                 && $function_stmt->expr->var->name instanceof PhpParser\Node\Identifier
                 && ($property_name = $function_stmt->expr->var->name->name)
-                && isset($classlike_storage->properties[$property_name])
+                && isset($classlike_storage->properties[Interner::intern($property_name)])
                 && $function_stmt->expr->expr instanceof PhpParser\Node\Expr\Variable
                 && is_string($function_stmt->expr->expr->name)
                 && ($param_name = $function_stmt->expr->expr->name)
                 && isset($storage->param_lookup[$param_name])
             ) {
-                if ($classlike_storage->properties[$property_name]->type
+                if ($classlike_storage->properties[Interner::intern($property_name)]->type
                     || !$storage->param_lookup[$param_name]
                 ) {
                     continue;
@@ -860,7 +864,7 @@ final class FunctionLikeNodeScanner
         $storage->mutation_free_assumed = true;
 
         foreach ($assigned_properties as $property_name => $property_type) {
-            $classlike_storage->properties[$property_name]->type = $property_type;
+            $classlike_storage->properties[Interner::intern($property_name)]->type = $property_type;
         }
     }
 
@@ -868,7 +872,7 @@ final class FunctionLikeNodeScanner
         PhpParser\Node\Param $param,
         PhpParser\Node\FunctionLike $stmt,
         bool $fake_method,
-        ?string $fq_classlike_name,
+        ?int $fq_classlike_name,
     ): FunctionLikeParameter {
         $param_type = null;
 
@@ -1007,27 +1011,27 @@ final class FunctionLikeNodeScanner
                 || $this->codebase->register_autoload_files
                 || $this->codebase->all_functions_global
             ) {
-                if (isset($this->file_storage->functions[$function_id])
+                if (isset($this->file_storage->functions[Interner::intern($function_id)])
                     && ($this->codebase->register_stub_files
                         || !$this->codebase->functions->hasStubbedFunction($function_id))
                 ) {
                     $this->codebase->functions->addGlobalFunction(
                         $function_id,
-                        $this->file_storage->functions[$function_id],
+                        $this->file_storage->functions[Interner::intern($function_id)],
                     );
 
-                    $storage = $this->storage = $this->file_storage->functions[$function_id];
+                    $storage = $this->storage = $this->file_storage->functions[Interner::intern($function_id)];
 
                     return [$function_id, $storage, null, null, null, null, false, null, true];
                 }
             } else {
-                if (isset($this->file_storage->functions[$function_id])) {
-                    $duplicate_function_storage = $this->file_storage->functions[$function_id];
+                if (isset($this->file_storage->functions[Interner::intern($function_id)])) {
+                    $duplicate_function_storage = $this->file_storage->functions[Interner::intern($function_id)];
 
                     if ($duplicate_function_storage->location
                         && $duplicate_function_storage->location->getLineNumber() === $stmt->getLine()
                     ) {
-                        $storage = $this->storage = $this->file_storage->functions[$function_id];
+                        $storage = $this->storage = $this->file_storage->functions[Interner::intern($function_id)];
 
                         return [$function_id, $storage, null, null, null, null, false, null, true];
                     }
@@ -1046,7 +1050,7 @@ final class FunctionLikeNodeScanner
 
                     $duplicate_function_storage->has_visitor_issues = true;
 
-                    $storage = $this->storage = $this->file_storage->functions[$function_id];
+                    $storage = $this->storage = $this->file_storage->functions[Interner::intern($function_id)];
 
                     return [$function_id, $storage, null, null, null, null, false, null, true];
                 }
@@ -1072,18 +1076,18 @@ final class FunctionLikeNodeScanner
 
             $fq_classlike_name = $this->classlike_storage->name;
 
-            $method_name_lc = strtolower($stmt->name->name);
+            $method_name_lc = $stmt->name->name;
 
-            $function_id = $fq_classlike_name . '::' . $method_name_lc;
-            $cased_function_id = $fq_classlike_name . '::' . $stmt->name->name;
+            $function_id = Interner::lookup($fq_classlike_name) . '::' . $method_name_lc;
+            $cased_function_id = Interner::lookup($fq_classlike_name) . '::' . $stmt->name->name;
 
             $classlike_storage = $this->classlike_storage;
 
             $storage = null;
 
-            if (isset($classlike_storage->methods[$method_name_lc])) {
+            if (isset($classlike_storage->methods[Interner::intern($method_name_lc)])) {
                 if (!$this->codebase->register_stub_files) {
-                    $duplicate_method_storage = $classlike_storage->methods[$method_name_lc];
+                    $duplicate_method_storage = $classlike_storage->methods[Interner::intern($method_name_lc)];
 
                     IssueBuffer::maybeAdd(
                         new DuplicateMethod(
@@ -1135,7 +1139,7 @@ final class FunctionLikeNodeScanner
                 }
 
                 $is_functionlike_override = true;
-                $storage = $this->storage = $classlike_storage->methods[$method_name_lc];
+                $storage = $this->storage = $classlike_storage->methods[Interner::intern($method_name_lc)];
             }
 
             if (!$storage) {
@@ -1145,32 +1149,32 @@ final class FunctionLikeNodeScanner
             $storage->stubbed = $this->codebase->register_stub_files;
             $storage->defining_fqcln = $fq_classlike_name;
 
-            $class_name_parts = explode('\\', $fq_classlike_name);
+            $class_name_parts = explode('\\', Interner::lookup($fq_classlike_name));
             $class_name = array_pop($class_name_parts);
 
-            if ($method_name_lc === strtolower($class_name)
-                && !isset($classlike_storage->methods['__construct'])
-                && !str_contains($fq_classlike_name, '\\')
+            if ($method_name_lc === $class_name
+                && !isset($classlike_storage->methods[Sym::C___CONSTRUCT])
+                && !str_contains(Interner::lookup($fq_classlike_name), '\\')
                 && $this->codebase->analysis_php_version_id <= 7_04_00
             ) {
                 $this->codebase->methods->setDeclaringMethodId(
                     $fq_classlike_name,
-                    '__construct',
+                    Sym::C___CONSTRUCT,
                     $fq_classlike_name,
-                    $method_name_lc,
+                    Interner::intern($method_name_lc),
                 );
 
                 $this->codebase->methods->setAppearingMethodId(
                     $fq_classlike_name,
-                    '__construct',
+                    Sym::C___CONSTRUCT,
                     $fq_classlike_name,
-                    $method_name_lc,
+                    Interner::intern($method_name_lc),
                 );
             }
 
             $method_id = new MethodIdentifier(
                 $fq_classlike_name,
-                $method_name_lc,
+                Interner::intern($method_name_lc),
             );
 
             $storage->is_static = $stmt->isStatic();

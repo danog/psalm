@@ -26,10 +26,10 @@ final class MethodIdentifier implements Stringable
     use UnserializeMemoryUsageSuppressionTrait;
 
     /**
-     * @param lowercase-string $method_name
+     * @param int $method_name
      * @psalm-mutation-free
      */
-    public function __construct(public readonly string $fq_class_name, public readonly string $method_name)
+    public function __construct(public readonly int $fq_class_name, public readonly int $method_name)
     {
     }
 
@@ -63,13 +63,13 @@ final class MethodIdentifier implements Stringable
         // remove leading backslash if it exists
         $method_id = ltrim($method_id, '\\');
         $method_id_parts = explode('::', $method_id);
-        return new self($method_id_parts[0], strtolower($method_id_parts[1]));
+        return new self(Interner::intern($method_id_parts[0]), Interner::intern(strtolower($method_id_parts[1])));
     }
 
     /** @return non-empty-string */
     #[Override]
     public function __toString(): string
     {
-        return $this->fq_class_name . '::' . $this->method_name;
+        return Interner::lookup($this->fq_class_name) . '::' . Interner::lookup($this->method_name);
     }
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\LanguageServer\Client;
 
+use Psalm\Internal\Interner;
+
 use LanguageServerProtocol\Diagnostic;
 use Psalm\Internal\LanguageServer\ClientHandler;
 use Psalm\Internal\LanguageServer\LanguageServer;
@@ -37,7 +39,7 @@ final class TextDocument
 
         $this->server->logDebug("textDocument/publishDiagnostics");
 
-        $this->handler->notify('textDocument/publishDiagnostics', [
+        $this->handler->notify(Interner::intern('textDocument/publishDiagnostics'), [
             'uri' => $uri,
             'diagnostics' => $diagnostics,
             'version' => $version,

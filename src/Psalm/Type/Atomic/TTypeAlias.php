@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use Psalm\Storage\UnserializeMemoryUsageSuppressionTrait;
 use Psalm\Type\Atomic;
@@ -16,7 +18,7 @@ final class TTypeAlias extends Atomic
 {
     use UnserializeMemoryUsageSuppressionTrait;
     public function __construct(
-        public string $declaring_fq_classlike_name,
+        public int $declaring_fq_classlike_name,
         public string $alias_name,
     ) {
         parent::__construct(true);
@@ -25,7 +27,7 @@ final class TTypeAlias extends Atomic
     #[Override]
     public function getKey(bool $include_extra = true): string
     {
-        return 'type-alias(' . $this->declaring_fq_classlike_name . '::' . $this->alias_name . ')';
+        return 'type-alias(' . Interner::lookup($this->declaring_fq_classlike_name) . '::' . $this->alias_name . ')';
     }
 
     #[Override]
@@ -42,7 +44,7 @@ final class TTypeAlias extends Atomic
     public function toPhpString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         int $analysis_php_version_id,
     ): ?string {
         return null;

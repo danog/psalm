@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\Internal\Codebase;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use Psalm\Codebase;
 use Psalm\Context;
@@ -65,13 +67,13 @@ final class MethodGetCompletionItemsForClassishThingTest extends TestCase
     /**
      * @return list<string>
      */
-    protected function getCompletionLabels(string $content, string $class_name, string $gap): array
+    protected function getCompletionLabels(string $content, int $class_name, string $gap): array
     {
         $this->addFile('somefile.php', $content);
 
         $this->analyzeFile('somefile.php', new Context());
 
-        $items = $this->codebase->getCompletionItemsForClassishThing($class_name, $gap, true);
+        $items = $this->codebase->getCompletionItemsForClassishThing(Interner::lookup($class_name), $gap, true);
 
         return array_map(fn($item) => $item->label, $items);
     }
@@ -122,7 +124,7 @@ final class MethodGetCompletionItemsForClassishThingTest extends TestCase
             }
         EOF;
 
-        $actual_labels = $this->getCompletionLabels($content, 'B\A', $gap);
+        $actual_labels = $this->getCompletionLabels($content, Interner::intern('B\A'), $gap);
 
         $expected_labels = [
             '->' => [
@@ -196,7 +198,7 @@ final class MethodGetCompletionItemsForClassishThingTest extends TestCase
             }
         EOF;
 
-        $actual_labels = $this->getCompletionLabels($content, 'B\A', $gap);
+        $actual_labels = $this->getCompletionLabels($content, Interner::intern('B\A'), $gap);
 
         $expected_labels = [
             '->' => [
@@ -277,7 +279,7 @@ final class MethodGetCompletionItemsForClassishThingTest extends TestCase
             }
         EOF;
 
-        $actual_labels = $this->getCompletionLabels($content, 'B\A', $gap);
+        $actual_labels = $this->getCompletionLabels($content, Interner::intern('B\A'), $gap);
 
         $expected_labels = [
             '->' => [
@@ -358,7 +360,7 @@ final class MethodGetCompletionItemsForClassishThingTest extends TestCase
             }
         EOF;
 
-        $actual_labels = $this->getCompletionLabels($content, 'B\A', $gap);
+        $actual_labels = $this->getCompletionLabels($content, Interner::intern('B\A'), $gap);
 
         $expected_labels = [
             '->' => [
@@ -436,7 +438,7 @@ final class MethodGetCompletionItemsForClassishThingTest extends TestCase
             }
         EOF;
 
-        $actual_labels = $this->getCompletionLabels($content, 'B\A', $gap);
+        $actual_labels = $this->getCompletionLabels($content, Interner::intern('B\A'), $gap);
 
         $expected_labels = [
             '->' => [
@@ -488,7 +490,7 @@ final class MethodGetCompletionItemsForClassishThingTest extends TestCase
             }
         EOF;
 
-        $actual_labels = $this->getCompletionLabels($content, 'B\A', $gap);
+        $actual_labels = $this->getCompletionLabels($content, Interner::intern('B\A'), $gap);
 
         $expected_labels = [
             '->' => [
@@ -542,7 +544,7 @@ final class MethodGetCompletionItemsForClassishThingTest extends TestCase
             }
         EOF;
 
-        $actual_labels = $this->getCompletionLabels($content, 'B\A', $gap);
+        $actual_labels = $this->getCompletionLabels($content, Interner::intern('B\A'), $gap);
 
         $expected_labels = [
             '->' => [
@@ -577,7 +579,7 @@ final class MethodGetCompletionItemsForClassishThingTest extends TestCase
             class A {}
         EOF;
 
-        $actual_labels = $this->getCompletionLabels($content, 'B\A', '->');
+        $actual_labels = $this->getCompletionLabels($content, Interner::intern('B\A'), '->');
 
         $expected_labels = [
             'myObjProp',

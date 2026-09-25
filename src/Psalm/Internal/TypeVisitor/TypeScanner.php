@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\TypeVisitor;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use Psalm\Internal\Codebase\Scanner;
 use Psalm\Storage\FileStorage;
@@ -35,10 +37,10 @@ final class TypeScanner extends TypeVisitor
     protected function enterNode(TypeNode $type): ?int
     {
         if ($type instanceof TNamedObject) {
-            $fq_classlike_name_lc = strtolower($type->value);
+            $fq_classlike_name_lc = $type->value;
 
-            if (!isset($this->phantom_classes[$type->value])
-                && !isset($this->phantom_classes[$fq_classlike_name_lc])
+            if (!isset($this->phantom_classes[Interner::lookup($type->value)])
+                && !isset($this->phantom_classes[Interner::lookup($fq_classlike_name_lc)])
             ) {
                 $this->scanner->queueClassLikeForScanning(
                     $type->value,
@@ -62,7 +64,7 @@ final class TypeScanner extends TypeVisitor
             );
 
             if ($this->file_storage) {
-                $fq_classlike_name_lc = strtolower($type->fq_classlike_name);
+                $fq_classlike_name_lc = $type->fq_classlike_name;
 
                 $this->file_storage->referenced_classlikes[$fq_classlike_name_lc] = $type->fq_classlike_name;
             }
@@ -70,14 +72,14 @@ final class TypeScanner extends TypeVisitor
 
         if ($type instanceof TLiteralClassString) {
             $this->scanner->queueClassLikeForScanning(
-                $type->value,
+                Interner::intern($type->value),
                 false,
                 !$type->from_docblock,
                 $this->phantom_classes,
             );
 
             if ($this->file_storage) {
-                $fq_classlike_name_lc = strtolower($type->value);
+                $fq_classlike_name_lc = $type->value;
 
                 $this->file_storage->referenced_classlikes[$fq_classlike_name_lc] = $type->value;
             }

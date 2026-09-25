@@ -87,7 +87,7 @@ final class Union implements TypeNode
     /**
      * Which class the type was initialised in
      */
-    public ?string $initialized_class = null;
+    public ?int $initialized_class = null;
 
     /**
      * Whether or not the type has been checked yet

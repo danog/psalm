@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\Internal\Codebase;
 
+use Psalm\Internal\Interner;
+
 use InvalidArgumentException;
 use Override;
 use PHPUnit\Framework\AssertionFailedError;
@@ -76,7 +78,7 @@ final class InternalCallMapHandlerTest extends TestCase
      * Specify a function name as value, or a function name as key and
      * an array containing the PHP versions in which to ignore this function as values.
      *
-     * @var array<int|string, string|list<string>>
+     * @var array<int|int, string|list<string>>
      */
     private static array $ignoredFunctions = [
         'datefmt_create' => ['8.0'],
@@ -188,7 +190,7 @@ final class InternalCallMapHandlerTest extends TestCase
      * These could be truly inaccessible, or they could be functions removed in newer PHP versions.
      * Removed functions should be removed from CallMap and added to the appropriate delta.
      *
-     * @var array<int|string, string|list<string>>
+     * @var array<int|int, string|list<string>>
      */
     private static array $ignoredUnreflectableFunctions = [
         'closure::__invoke',
@@ -243,7 +245,7 @@ final class InternalCallMapHandlerTest extends TestCase
             $function = is_int($key) ? $value : $key;
 
             $diff = strcmp($function, $previousFunction);
-            $this->assertGreaterThan(0, $diff, "'{$function}' should come before '{$previousFunction}' in InternalCallMapHandlerTest::\$ignoredFunctions");
+            $this->assertGreaterThan(0, $diff, "'" . $function . "' should come before '" . $previousFunction . "' in InternalCallMapHandlerTest::\$ignoredFunctions");
 
             $previousFunction = $function;
         }
@@ -310,7 +312,7 @@ final class InternalCallMapHandlerTest extends TestCase
             }
 
             // Skip functions with alternate signatures
-            if (isset($callMap["$function'1"])) {
+            if (isset($callMap["" . $function . "'1"])) {
                 continue;
             }
 
@@ -324,14 +326,14 @@ final class InternalCallMapHandlerTest extends TestCase
                 continue;
             }
 
-            yield "$function: " . (string) json_encode($entry) => [$function, $entry];
+            yield "" . $function . ": " . (string) json_encode($entry) => [$function, $entry];
         }
     }
 
     /**
      * @psalm-external-mutation-free
      */
-    private function isIgnored(string $functionName): bool
+    private function isIgnored(int $functionName): bool
     {
         if (in_array($functionName, self::$ignoredFunctions)) {
             return true;
@@ -349,7 +351,7 @@ final class InternalCallMapHandlerTest extends TestCase
     /**
      * @psalm-external-mutation-free
      */
-    private function isReturnTypeOnlyIgnored(string $functionName): bool
+    private function isReturnTypeOnlyIgnored(int $functionName): bool
     {
         if (in_array($functionName, static::$ignoredReturnTypeOnlyFunctions, true)) {
             return true;
@@ -367,7 +369,7 @@ final class InternalCallMapHandlerTest extends TestCase
     /**
      * @psalm-external-mutation-free
      */
-    private function isUnreflectableIgnored(string $functionName): bool
+    private function isUnreflectableIgnored(int $functionName): bool
     {
         if (in_array($functionName, static::$ignoredUnreflectableFunctions, true)) {
             return true;
@@ -387,10 +389,10 @@ final class InternalCallMapHandlerTest extends TestCase
      * @depends testGetcallmapReturnsAValidCallmap
      * @dataProvider callMapEntryProvider
      * @coversNothing
-     * @psalm-param string $functionName
+     * @psalm-param int $functionName
      * @param array<int|string, string> $callMapEntry
      */
-    public function testIgnoredFunctionsStillFail(string $functionName, array $callMapEntry): void
+    public function testIgnoredFunctionsStillFail(int $functionName, array $callMapEntry): void
     {
         $functionIgnored = $this->isIgnored($functionName);
         $unreflectableIgnored = $this->isUnreflectableIgnored($functionName);
@@ -402,7 +404,7 @@ final class InternalCallMapHandlerTest extends TestCase
 
         $function = $this->getReflectionFunction($functionName);
         if ($unreflectableIgnored && $function !== null) {
-            $this->fail("Remove '{$functionName}' from InternalCallMapHandlerTest::\$ignoredUnreflectableFunctions");
+            $this->fail("Remove '" . Interner::lookup($functionName) . "' from InternalCallMapHandlerTest::\$ignoredUnreflectableFunctions");
         } elseif ($function === null) {
             $this->assertTrue(true);
             return;
@@ -423,7 +425,7 @@ final class InternalCallMapHandlerTest extends TestCase
                 $this->assertTrue(true);
                 return;
             }
-            $this->fail("Remove '{$functionName}' from InternalCallMapHandlerTest::\$ignoredFunctions");
+            $this->fail("Remove '" . Interner::lookup($functionName) . "' from InternalCallMapHandlerTest::\$ignoredFunctions");
         }
 
         try {
@@ -435,7 +437,7 @@ final class InternalCallMapHandlerTest extends TestCase
             $this->assertTrue(true);
             return;
         }
-        $this->fail("Remove '{$functionName}' from InternalCallMapHandlerTest::\$ignoredReturnTypeOnlyFunctions");
+        $this->fail("Remove '" . Interner::lookup($functionName) . "' from InternalCallMapHandlerTest::\$ignoredReturnTypeOnlyFunctions");
     }
 
     /**
@@ -445,13 +447,13 @@ final class InternalCallMapHandlerTest extends TestCase
      * @depends testGetcallmapReturnsAValidCallmap
      * @depends testIgnoresAreSortedAndUnique
      * @dataProvider callMapEntryProvider
-     * @psalm-param string $functionName
+     * @psalm-param int $functionName
      * @param array<int|string, string> $callMapEntry
      */
-    public function testCallMapCompliesWithReflection(string $functionName, array $callMapEntry): void
+    public function testCallMapCompliesWithReflection(int $functionName, array $callMapEntry): void
     {
         if ($this->isIgnored($functionName)) {
-            $this->markTestSkipped("Function $functionName is ignored in config");
+            $this->markTestSkipped("Function " . Interner::lookup($functionName) . " is ignored in config");
         }
 
         $function = $this->getReflectionFunction($functionName);
@@ -476,19 +478,19 @@ final class InternalCallMapHandlerTest extends TestCase
     /**
      * Returns the correct reflection type for function or method name.
      */
-    private function getReflectionFunction(string $functionName): ?ReflectionFunctionAbstract
+    private function getReflectionFunction(int $functionName): ?ReflectionFunctionAbstract
     {
         try {
-            if (strpos($functionName, '::') !== false) {
+            if (strpos(Interner::lookup($functionName), '::') !== false) {
                 if (PHP_VERSION_ID < 8_03_00) {
-                    return new ReflectionMethod($functionName);
+                    return new ReflectionMethod(Interner::lookup($functionName));
                 }
 
-                return ReflectionMethod::createFromMethodName($functionName);
+                return ReflectionMethod::createFromMethodName(Interner::lookup($functionName));
             }
 
-            /** @var callable-string $functionName */
-            return new ReflectionFunction($functionName);
+            /** @var callable-int $functionName */
+            return new ReflectionFunction(Interner::lookup($functionName));
         } catch (ReflectionException $e) {
             return null;
         }

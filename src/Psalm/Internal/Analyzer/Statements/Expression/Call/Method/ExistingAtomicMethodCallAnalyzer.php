@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\Call\Method;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Codebase;
@@ -81,13 +85,13 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
 
         $fq_class_name = $lhs_type_part->value;
 
-        if ($fq_class_name === 'static') {
+        if ($fq_class_name === Sym::C_STATIC) {
             $fq_class_name = (string) $context->self;
         }
 
         $method_name_lc = $method_id->method_name;
 
-        $cased_method_id = $fq_class_name . '::' . $stmt_name->name;
+        $cased_method_id = Interner::lookup($fq_class_name) . '::' . $stmt_name->name;
 
 
         $result->existent_method_ids[$method_id->__toString()] = true;
@@ -116,7 +120,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
             );
         }
 
-        if ($fq_class_name === 'Closure' && $method_name_lc === '__invoke') {
+        if ($fq_class_name === Sym::C_CLOSURE && $method_name_lc === Sym::C___INVOKE) {
             $statements_analyzer->node_data = clone $statements_analyzer->node_data;
 
             $fake_function_call = new VirtualFuncCall(
@@ -163,12 +167,12 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
             && $stmt->var->name === 'this'
             && $source instanceof FunctionLikeAnalyzer
         ) {
-            self::collectSpecialInformation($source, $stmt_name->name, $context);
+            self::collectSpecialInformation($source, Interner::intern($stmt_name->name), $context);
         }
 
         $fq_class_name = $codebase->classlikes->getUnAliasedName($fq_class_name);
 
-        $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+        $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
         $parent_source = $statements_analyzer->getSource();
 
@@ -187,7 +191,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
             if ($grandparent_source instanceof TraitAnalyzer) {
                 $fq_trait_name = $grandparent_source->getFQCLN();
 
-                $fq_trait_name_lc = strtolower($fq_trait_name);
+                $fq_trait_name_lc = $fq_trait_name;
 
                 $trait_storage = $codebase->classlike_storage_provider->get($fq_trait_name_lc);
 
@@ -305,7 +309,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                 $stmt,
                 $stmt_name,
                 $context,
-                $fq_class_name,
+                Interner::intern($fq_class_name),
             );
 
             if ($getter_return_type) {
@@ -341,7 +345,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                     $self_out_candidate = TypeExpander::expandUnion(
                         $codebase,
                         $self_out_candidate,
-                        $fq_class_name,
+                        Interner::intern($fq_class_name),
                         null,
                         $class_storage->parent_class,
                         true,
@@ -363,7 +367,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                 $self_out_candidate = TypeExpander::expandUnion(
                     $codebase,
                     $self_out_candidate,
-                    $fq_class_name,
+                    Interner::intern($fq_class_name),
                     $static_type,
                     $class_storage->parent_class,
                     true,
@@ -549,10 +553,10 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
         PhpParser\Node\Expr\MethodCall $stmt,
         PhpParser\Node\Identifier $stmt_name,
         Context $context,
-        string $fq_class_name,
+        int $fq_class_name,
     ): ?Union {
-        $method_name = strtolower($stmt_name->name);
-        if (!in_array($method_name, ['__get', '__set'], true)) {
+        $method_name = $stmt_name->name;
+        if (!in_array($method_name, [Sym::C___GET, Sym::C___SET], true)) {
             return null;
         }
 
@@ -565,20 +569,20 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
         }
 
         $prop_name = $first_arg_value->value;
-        $property_id = $fq_class_name . '::$' . $prop_name;
+        $property_id = Interner::lookup($fq_class_name) . '::$' . $prop_name;
 
         $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
 
         $codebase->propertyExists(
             $property_id,
-            $method_name === '__get',
+            $method_name === Sym::C___GET,
             $statements_analyzer,
             $context,
             new CodeLocation($statements_analyzer->getSource(), $stmt),
         );
 
         switch ($method_name) {
-            case '__set':
+            case Sym::C___SET:
                 // If `@psalm-seal-properties` is set, the property must be defined with
                 // a `@property` annotation
                 if (($class_storage->hasSealedProperties($codebase->config))
@@ -605,7 +609,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                         $codebase,
                         $class_storage->pseudo_property_set_types['$' . $prop_name],
                         $fq_class_name,
-                        new TNamedObject($fq_class_name),
+                        new TNamedObject(Interner::lookup($fq_class_name)),
                         $class_storage->parent_class,
                     );
 
@@ -676,7 +680,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
                 }
                 break;
 
-            case '__get':
+            case Sym::C___GET:
                 // If `@psalm-seal-properties` is set, the property must be defined with
                 // a `@property` annotation
                 if (($class_storage->hasSealedProperties($codebase->config))

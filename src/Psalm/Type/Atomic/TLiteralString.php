@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
+use Psalm\Internal\Interner;
+
 use InvalidArgumentException;
 use Override;
 use Psalm\Config;
@@ -108,7 +110,7 @@ class TLiteralString extends TString
     public function toNamespacedString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         bool $use_phpdoc_format,
     ): string {
         return $use_phpdoc_format ? 'string' : "'" . $this->value . "'";

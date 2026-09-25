@@ -34,7 +34,7 @@ final class TIntMaskOf extends TInt
     public function toNamespacedString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         bool $use_phpdoc_format,
     ): string {
         if ($use_phpdoc_format) {

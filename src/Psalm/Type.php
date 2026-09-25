@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm;
 
+use Psalm\Internal\Interner;
+
 use InvalidArgumentException;
 use LogicException;
 use Psalm\Internal\Analyzer\ProjectAnalyzer;
@@ -99,33 +101,33 @@ abstract class Type
      * @psalm-mutation-free
      */
     public static function getFQCLNFromString(
-        string $class,
+        int $class,
         Aliases $aliases,
     ): string {
         if ($class === '') {
             throw new InvalidArgumentException('$class cannot be empty');
         }
 
-        if ($class[0] === '\\') {
-            return substr($class, 1);
+        if (Interner::lookup($class)[0] === '\\') {
+            return substr(Interner::lookup($class), 1);
         }
 
         $imported_namespaces = $aliases->uses;
 
-        if (str_contains($class, '\\')) {
-            $class_parts = explode('\\', $class);
+        if (str_contains(Interner::lookup($class), '\\')) {
+            $class_parts = explode('\\', Interner::lookup($class));
             $first_namespace = array_shift($class_parts);
 
-            if (isset($imported_namespaces[strtolower($first_namespace)])) {
-                return $imported_namespaces[strtolower($first_namespace)] . '\\' . implode('\\', $class_parts);
+            if (isset($imported_namespaces[Interner::intern(strtolower($first_namespace))])) {
+                return $imported_namespaces[Interner::intern(strtolower($first_namespace))] . '\\' . implode('\\', $class_parts);
             }
-        } elseif (isset($imported_namespaces[strtolower($class)])) {
-            return $imported_namespaces[strtolower($class)];
+        } elseif (isset($imported_namespaces[$class])) {
+            return $imported_namespaces[$class];
         }
 
         $namespace = $aliases->namespace;
 
-        return ($namespace ? $namespace . '\\' : '') . $class;
+        return ($namespace ? $namespace . '\\' : '') . Interner::lookup($class);
     }
 
     /**
@@ -136,7 +138,7 @@ abstract class Type
         string $value,
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         bool $allow_self = false,
         bool $is_static = false,
     ): string {

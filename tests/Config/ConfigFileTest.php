@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\Config;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use Psalm\Config;
 use Psalm\Exception\ConfigException;
@@ -82,7 +84,7 @@ final class ConfigFileTest extends TestCase
         );
 
         $config_file = new ConfigFile((string)getcwd(), $this->file_path);
-        $config_file->addPlugin('a\b\c');
+        $config_file->addPlugin(Interner::intern('a\b\c'));
         $file_contents = file_get_contents($this->file_path);
         assert($file_contents !== false);
 
@@ -109,7 +111,7 @@ final class ConfigFileTest extends TestCase
         );
 
         $config_file = new ConfigFile((string)getcwd(), $this->file_path);
-        $config_file->addPlugin('a\b\c');
+        $config_file->addPlugin(Interner::intern('a\b\c'));
         $file_contents = file_get_contents($this->file_path);
         assert($file_contents !== false);
 
@@ -131,7 +133,7 @@ final class ConfigFileTest extends TestCase
         file_put_contents($this->file_path, $noPlugins);
 
         $config_file = new ConfigFile((string)getcwd(), $this->file_path);
-        $config_file->removePlugin('a\b\c');
+        $config_file->removePlugin(Interner::intern('a\b\c'));
         $file_contents = file_get_contents($this->file_path);
         assert($file_contents !== false);
 
@@ -157,7 +159,7 @@ final class ConfigFileTest extends TestCase
         file_put_contents($this->file_path, $emptyPlugins);
 
         $config_file = new ConfigFile((string)getcwd(), $this->file_path);
-        $config_file->removePlugin('a\b\c');
+        $config_file->removePlugin(Interner::intern('a\b\c'));
         $file_contents = file_get_contents($this->file_path);
         assert($file_contents !== false);
 
@@ -185,7 +187,7 @@ final class ConfigFileTest extends TestCase
         file_put_contents($this->file_path, $abcEnabled);
 
         $config_file = new ConfigFile((string)getcwd(), $this->file_path);
-        $config_file->removePlugin('a\b\c');
+        $config_file->removePlugin(Interner::intern('a\b\c'));
         $file_contents = file_get_contents($this->file_path);
         assert($file_contents !== false);
 
@@ -222,7 +224,7 @@ final class ConfigFileTest extends TestCase
         file_put_contents($this->file_path, $abcEnabled);
 
         $config_file = new ConfigFile((string)getcwd(), $this->file_path);
-        $config_file->removePlugin('a\b\c');
+        $config_file->removePlugin(Interner::intern('a\b\c'));
         $file_contents = file_get_contents($this->file_path);
         assert($file_contents !== false);
 

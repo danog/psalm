@@ -31,7 +31,7 @@ class TArrayKey extends Scalar
     public function toPhpString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         int $analysis_php_version_id,
     ): ?string {
         return null;
@@ -54,7 +54,7 @@ class TArrayKey extends Scalar
     public function toNamespacedString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         bool $use_phpdoc_format,
     ): string {
         return $use_phpdoc_format ? '(int|string)' : 'array-key';

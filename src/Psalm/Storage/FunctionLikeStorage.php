@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Storage;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use Psalm\CodeLocation;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
@@ -49,7 +51,7 @@ abstract class FunctionLikeStorage implements HasAttributesInterface, Stringable
 
     public ?CodeLocation $signature_return_type_location = null;
 
-    public ?string $cased_name = null;
+    public ?int $cased_name = null;
 
     /**
      * @var array<int, string>
@@ -70,7 +72,7 @@ abstract class FunctionLikeStorage implements HasAttributesInterface, Stringable
     public ?int $required_param_count = null;
 
     /**
-     * @var array<string, Union>
+     * @var array<int, Union>
      */
     public array $defined_constants = [];
 
@@ -231,13 +233,13 @@ abstract class FunctionLikeStorage implements HasAttributesInterface, Stringable
             array_map(
                 static function (FunctionLikeParameter $param): string {
                     $realType = $param->type ?: 'mixed';
-                    return "    {$realType} \${$param->name}";
+                    return "    {$realType} \$" . $param->name . "";
                 },
                 $this->params,
             ),
         ) . "\n" : '';
         $return_type = $this->return_type ?: 'mixed';
-        $symbol_text = "function {$this->cased_name}({$params}): {$return_type}";
+        $symbol_text = "function " . Interner::lookup($this->cased_name) . "({$params}): {$return_type}";
 
         if (!$this instanceof MethodStorage) {
             return $symbol_text;
@@ -257,7 +259,7 @@ abstract class FunctionLikeStorage implements HasAttributesInterface, Stringable
      */
     public function getCompletionSignature(): string
     {
-        $symbol_text = 'function ' . $this->cased_name . '('   . implode(
+        $symbol_text = 'function ' . Interner::lookup($this->cased_name) . '('   . implode(
             ',',
             array_map(
                 static fn(FunctionLikeParameter $param): string => ($param->type ?: 'mixed') . ' $' . $param->name,

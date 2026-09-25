@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\PhpVisitor;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use PhpParser;
 

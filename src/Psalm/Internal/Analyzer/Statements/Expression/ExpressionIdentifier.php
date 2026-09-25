@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\Config;
 use Psalm\FileSource;
@@ -23,7 +27,7 @@ final class ExpressionIdentifier
 {
     public static function getVarId(
         PhpParser\Node\Expr $stmt,
-        ?string $this_class_name,
+        ?int $this_class_name,
         ?FileSource $source = null,
         ?int &$nesting = null,
     ): ?string {
@@ -52,7 +56,7 @@ final class ExpressionIdentifier
                     : implode('\\', $stmt->class->getParts());
             }
 
-            return $fq_class_name . '::$' . $stmt->name->name;
+            return Interner::lookup($fq_class_name) . '::$' . $stmt->name->name;
         }
 
         if ($stmt instanceof PhpParser\Node\Expr\PropertyFetch && $stmt->name instanceof PhpParser\Node\Identifier) {
@@ -76,7 +80,7 @@ final class ExpressionIdentifier
 
     public static function getRootVarId(
         PhpParser\Node\Expr $stmt,
-        ?string $this_class_name,
+        ?int $this_class_name,
         ?FileSource $source = null,
     ): ?string {
         if ($stmt instanceof PhpParser\Node\Expr\Variable
@@ -102,7 +106,7 @@ final class ExpressionIdentifier
 
     public static function getExtendedVarId(
         PhpParser\Node\Expr $stmt,
-        ?string $this_class_name,
+        ?int $this_class_name,
         ?FileSource $source = null,
     ): ?string {
         if ($stmt instanceof PhpParser\Node\Expr\Assign) {
@@ -120,7 +124,7 @@ final class ExpressionIdentifier
                 ) {
                     $string_to_int = ArrayAnalyzer::getLiteralArrayKeyInt($stmt->dim->value);
                     $offset = $string_to_int === false
-                        ? '\'' . $stmt->dim->value . '\''
+                        ? '\'' . Interner::lookup($stmt->dim->value) . '\''
                         : (int) $stmt->dim->value;
                 } elseif ($stmt->dim instanceof PhpParser\Node\Expr\Variable
                     && is_string($stmt->dim->name)
@@ -132,14 +136,14 @@ final class ExpressionIdentifier
                     $object_id = self::getExtendedVarId($stmt->dim->var, $this_class_name, $source);
 
                     if ($object_id && $stmt->dim->name instanceof PhpParser\Node\Identifier) {
-                        $offset = $object_id . '->' . $stmt->dim->name;
+                        $offset = $object_id . '->' . Interner::lookup($stmt->dim->name);
                     }
                 } elseif ($stmt->dim instanceof PhpParser\Node\Expr\ClassConstFetch
                     && $stmt->dim->name instanceof PhpParser\Node\Identifier
                     && $stmt->dim->class instanceof PhpParser\Node\Name
                     && $stmt->dim->class->getFirst() === 'static'
                 ) {
-                    $offset = 'static::' . $stmt->dim->name;
+                    $offset = 'static::' . Interner::lookup($stmt->dim->name);
                 } elseif ($stmt->dim
                     && $source instanceof StatementsAnalyzer
                     && ($stmt_dim_type = $source->node_data->getType($stmt->dim))
@@ -166,7 +170,7 @@ final class ExpressionIdentifier
                     $resolved_name = $stmt->dim->class->getAttribute('resolvedName');
 
                     if ($resolved_name) {
-                        $offset = $resolved_name . '::' . $stmt->dim->name;
+                        $offset = $resolved_name . '::' . Interner::lookup($stmt->dim->name);
                     }
                 }
 
@@ -182,7 +186,7 @@ final class ExpressionIdentifier
             }
 
             if ($stmt->name instanceof PhpParser\Node\Identifier) {
-                return $object_id . '->' . $stmt->name;
+                return $object_id . '->' . Interner::lookup($stmt->name);
             }
 
             if ($source instanceof StatementsAnalyzer
@@ -205,7 +209,7 @@ final class ExpressionIdentifier
                     $resolved_name = $this_class_name;
                 }
 
-                return $resolved_name . '::' . $stmt->name;
+                return $resolved_name . '::' . Interner::lookup($stmt->name);
             }
         }
 
@@ -227,7 +231,7 @@ final class ExpressionIdentifier
                     return null;
                 }
 
-                return $lhs_var_name . '->' . strtolower($stmt->name->name) . '()';
+                return $lhs_var_name . '->' . $stmt->name->name . '()';
             }
         }
 

@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Codebase;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use InvalidArgumentException;
 use PhpParser;
 use PhpParser\Node\Stmt\ClassLike;
@@ -81,42 +85,42 @@ use const PHP_EOL;
 final class ClassLikes
 {
     /**
-     * @var array<lowercase-string, bool>
+     * @var array<int, bool>
      */
     private array $existing_classlikes_lc = [];
 
     /**
-     * @var array<lowercase-string, bool>
+     * @var array<int, bool>
      */
     private array $existing_classes_lc = [];
 
     /**
-     * @var array<string, bool>
+     * @var array<int, bool>
      */
     private array $existing_classes = [];
 
     /**
-     * @var array<lowercase-string, bool>
+     * @var array<int, bool>
      */
     private array $existing_interfaces_lc = [];
 
     /**
-     * @var array<string, bool>
+     * @var array<int, bool>
      */
     private array $existing_interfaces = [];
 
     /**
-     * @var array<lowercase-string, bool>
+     * @var array<int, bool>
      */
     private array $existing_traits_lc = [];
 
     /**
-     * @var array<string, bool>
+     * @var array<int, bool>
      */
     private array $existing_traits = [];
 
     /**
-     * @var array<lowercase-string, bool>
+     * @var array<int, bool>
      */
     private array $existing_enums_lc = [];
 
@@ -160,7 +164,7 @@ final class ClassLikes
             $reflection_class = new ReflectionClass($predefined_class);
 
             if (!$reflection_class->isUserDefined() && $reflection_class->name === $predefined_class) {
-                $predefined_class_lc = strtolower($predefined_class);
+                $predefined_class_lc = $predefined_class;
                 $this->existing_classlikes_lc[$predefined_class_lc] = true;
                 $this->existing_classes_lc[$predefined_class_lc] = true;
                 $this->existing_classes[$predefined_class] = true;
@@ -176,7 +180,7 @@ final class ClassLikes
             $reflection_class = new ReflectionClass($predefined_interface);
 
             if (!$reflection_class->isUserDefined() && $reflection_class->name === $predefined_interface) {
-                $predefined_interface_lc = strtolower($predefined_interface);
+                $predefined_interface_lc = $predefined_interface;
                 $this->existing_classlikes_lc[$predefined_interface_lc] = true;
                 $this->existing_interfaces_lc[$predefined_interface_lc] = true;
                 $this->existing_interfaces[$predefined_interface] = true;
@@ -187,9 +191,9 @@ final class ClassLikes
     /**
      * @psalm-external-mutation-free
      */
-    public function addFullyQualifiedClassName(string $fq_class_name, ?string $file_path = null): void
+    public function addFullyQualifiedClassName(int $fq_class_name, ?string $file_path = null): void
     {
-        $fq_class_name_lc = strtolower($fq_class_name);
+        $fq_class_name_lc = $fq_class_name;
         $this->existing_classlikes_lc[$fq_class_name_lc] = true;
         $this->existing_classes_lc[$fq_class_name_lc] = true;
         $this->existing_classes[$fq_class_name] = true;
@@ -206,9 +210,9 @@ final class ClassLikes
     /**
      * @psalm-external-mutation-free
      */
-    public function addFullyQualifiedInterfaceName(string $fq_class_name, ?string $file_path = null): void
+    public function addFullyQualifiedInterfaceName(int $fq_class_name, ?string $file_path = null): void
     {
-        $fq_class_name_lc = strtolower($fq_class_name);
+        $fq_class_name_lc = $fq_class_name;
         $this->existing_classlikes_lc[$fq_class_name_lc] = true;
         $this->existing_interfaces_lc[$fq_class_name_lc] = true;
         $this->existing_interfaces[$fq_class_name] = true;
@@ -225,9 +229,9 @@ final class ClassLikes
     /**
      * @psalm-external-mutation-free
      */
-    public function addFullyQualifiedTraitName(string $fq_class_name, ?string $file_path = null): void
+    public function addFullyQualifiedTraitName(int $fq_class_name, ?string $file_path = null): void
     {
-        $fq_class_name_lc = strtolower($fq_class_name);
+        $fq_class_name_lc = $fq_class_name;
         $this->existing_classlikes_lc[$fq_class_name_lc] = true;
         $this->existing_traits_lc[$fq_class_name_lc] = true;
         $this->existing_traits[$fq_class_name] = true;
@@ -244,9 +248,9 @@ final class ClassLikes
     /**
      * @psalm-external-mutation-free
      */
-    public function addFullyQualifiedEnumName(string $fq_class_name, ?string $file_path = null): void
+    public function addFullyQualifiedEnumName(int $fq_class_name, ?string $file_path = null): void
     {
-        $fq_class_name_lc = strtolower($fq_class_name);
+        $fq_class_name_lc = $fq_class_name;
         $this->existing_classlikes_lc[$fq_class_name_lc] = true;
         $this->existing_enums_lc[$fq_class_name_lc] = true;
         $this->existing_enums[$fq_class_name] = true;
@@ -263,7 +267,7 @@ final class ClassLikes
     /**
      * @psalm-external-mutation-free
      */
-    public function addFullyQualifiedClassLikeName(string $fq_class_name_lc, ?string $file_path = null): void
+    public function addFullyQualifiedClassLikeName(int $fq_class_name_lc, ?string $file_path = null): void
     {
         if ($file_path) {
             $this->scanner->setClassLikeFilePath($fq_class_name_lc, $file_path);
@@ -305,7 +309,7 @@ final class ClassLikes
                 continue;
             }
 
-            if (preg_match('@' . $stub . '.*@i', $fq_classlike_name)) {
+            if (preg_match('@' . $stub . '.*@i', Interner::lookup($fq_classlike_name))) {
                 $matching_classes[] = $fq_classlike_name;
             }
         }
@@ -315,49 +319,49 @@ final class ClassLikes
                 continue;
             }
 
-            if (preg_match('@' . $stub . '.*@i', $fq_classlike_name)) {
+            if (preg_match('@' . $stub . '.*@i', Interner::lookup($fq_classlike_name))) {
                 $matching_classes[] = $fq_classlike_name;
             }
         }
 
-        return $matching_classes;
+        return Interner::lookupList($matching_classes);
     }
 
     /**
      * @psalm-external-mutation-free
      */
     public function hasFullyQualifiedClassName(
-        string $fq_class_name,
+        int $fq_class_name,
         ?CodeLocation $location = null,
         ?Context $context = null,
     ): bool {
-        $fq_class_name_lc = strtolower($this->getUnAliasedName($fq_class_name));
+        $fq_class_name_lc = strtolower($this->getUnAliasedName(Interner::lookup($fq_class_name)));
 
         // fixme: this looks like a crazy caching hack
-        if (!isset($this->existing_classes_lc[$fq_class_name_lc])
-            || !$this->existing_classes_lc[$fq_class_name_lc]
-            || !$this->classlike_storage_provider->has($fq_class_name_lc)
+        if (!isset($this->existing_classes_lc[Interner::intern($fq_class_name_lc)])
+            || !$this->existing_classes_lc[Interner::intern($fq_class_name_lc)]
+            || !$this->classlike_storage_provider->has(Interner::intern($fq_class_name_lc))
         ) {
             if ((
-                !isset($this->existing_classes_lc[$fq_class_name_lc])
-                    || $this->existing_classes_lc[$fq_class_name_lc]
+                !isset($this->existing_classes_lc[Interner::intern($fq_class_name_lc)])
+                    || $this->existing_classes_lc[Interner::intern($fq_class_name_lc)]
                 )
-                && !$this->classlike_storage_provider->has($fq_class_name_lc)
+                && !$this->classlike_storage_provider->has(Interner::intern($fq_class_name_lc))
             ) {
-                if (!isset($this->existing_classes_lc[$fq_class_name_lc])) {
+                if (!isset($this->existing_classes_lc[Interner::intern($fq_class_name_lc)])) {
                     $this->existing_classes_lc[$fq_class_name_lc] = false;
 
                     return false;
                 }
 
-                return $this->existing_classes_lc[$fq_class_name_lc];
+                return $this->existing_classes_lc[Interner::intern($fq_class_name_lc)];
             }
 
             return false;
         }
 
         $this->file_reference_provider->code_use_graph->addReference(
-            CodeUseGraph::classNode($fq_class_name_lc),
+            CodeUseGraph::classNode(Interner::intern($fq_class_name_lc)),
             $context,
             $location,
         );
@@ -369,37 +373,37 @@ final class ClassLikes
      * @psalm-external-mutation-free
      */
     public function hasFullyQualifiedInterfaceName(
-        string $fq_class_name,
+        int $fq_class_name,
         ?CodeLocation $location = null,
         ?Context $context = null,
     ): bool {
-        $fq_class_name_lc = strtolower($this->getUnAliasedName($fq_class_name));
+        $fq_class_name_lc = strtolower($this->getUnAliasedName(Interner::lookup($fq_class_name)));
 
         // fixme: this looks like a crazy caching hack
-        if (!isset($this->existing_interfaces_lc[$fq_class_name_lc])
-            || !$this->existing_interfaces_lc[$fq_class_name_lc]
-            || !$this->classlike_storage_provider->has($fq_class_name_lc)
+        if (!isset($this->existing_interfaces_lc[Interner::intern($fq_class_name_lc)])
+            || !$this->existing_interfaces_lc[Interner::intern($fq_class_name_lc)]
+            || !$this->classlike_storage_provider->has(Interner::intern($fq_class_name_lc))
         ) {
             if ((
-                !isset($this->existing_interfaces_lc[$fq_class_name_lc])
-                    || $this->existing_interfaces_lc[$fq_class_name_lc]
+                !isset($this->existing_interfaces_lc[Interner::intern($fq_class_name_lc)])
+                    || $this->existing_interfaces_lc[Interner::intern($fq_class_name_lc)]
                 )
-                && !$this->classlike_storage_provider->has($fq_class_name_lc)
+                && !$this->classlike_storage_provider->has(Interner::intern($fq_class_name_lc))
             ) {
-                if (!isset($this->existing_interfaces_lc[$fq_class_name_lc])) {
+                if (!isset($this->existing_interfaces_lc[Interner::intern($fq_class_name_lc)])) {
                     $this->existing_interfaces_lc[$fq_class_name_lc] = false;
 
                     return false;
                 }
 
-                return $this->existing_interfaces_lc[$fq_class_name_lc];
+                return $this->existing_interfaces_lc[Interner::intern($fq_class_name_lc)];
             }
 
             return false;
         }
 
         $this->file_reference_provider->code_use_graph->addReference(
-            CodeUseGraph::classNode($fq_class_name_lc),
+            CodeUseGraph::classNode(Interner::intern($fq_class_name_lc)),
             $context,
             $location,
         );
@@ -411,37 +415,37 @@ final class ClassLikes
      * @psalm-external-mutation-free
      */
     public function hasFullyQualifiedEnumName(
-        string $fq_class_name,
+        int $fq_class_name,
         ?CodeLocation $location = null,
         ?Context $context = null,
     ): bool {
-        $fq_class_name_lc = strtolower($this->getUnAliasedName($fq_class_name));
+        $fq_class_name_lc = strtolower($this->getUnAliasedName(Interner::lookup($fq_class_name)));
 
         // fixme: this looks like a crazy caching hack
-        if (!isset($this->existing_enums_lc[$fq_class_name_lc])
-            || !$this->existing_enums_lc[$fq_class_name_lc]
-            || !$this->classlike_storage_provider->has($fq_class_name_lc)
+        if (!isset($this->existing_enums_lc[Interner::intern($fq_class_name_lc)])
+            || !$this->existing_enums_lc[Interner::intern($fq_class_name_lc)]
+            || !$this->classlike_storage_provider->has(Interner::intern($fq_class_name_lc))
         ) {
             if ((
-                !isset($this->existing_enums_lc[$fq_class_name_lc])
-                    || $this->existing_enums_lc[$fq_class_name_lc]
+                !isset($this->existing_enums_lc[Interner::intern($fq_class_name_lc)])
+                    || $this->existing_enums_lc[Interner::intern($fq_class_name_lc)]
                 )
-                && !$this->classlike_storage_provider->has($fq_class_name_lc)
+                && !$this->classlike_storage_provider->has(Interner::intern($fq_class_name_lc))
             ) {
-                if (!isset($this->existing_enums_lc[$fq_class_name_lc])) {
+                if (!isset($this->existing_enums_lc[Interner::intern($fq_class_name_lc)])) {
                     $this->existing_enums_lc[$fq_class_name_lc] = false;
 
                     return false;
                 }
 
-                return $this->existing_enums_lc[$fq_class_name_lc];
+                return $this->existing_enums_lc[Interner::intern($fq_class_name_lc)];
             }
 
             return false;
         }
 
         $this->file_reference_provider->code_use_graph->addReference(
-            CodeUseGraph::classNode($fq_class_name_lc),
+            CodeUseGraph::classNode(Interner::intern($fq_class_name_lc)),
             $context,
             $location,
         );
@@ -453,20 +457,20 @@ final class ClassLikes
      * @psalm-external-mutation-free
      */
     public function hasFullyQualifiedTraitName(
-        string $fq_class_name,
+        int $fq_class_name,
         ?CodeLocation $location = null,
         ?Context $context = null,
     ): bool {
-        $fq_class_name_lc = strtolower($this->getUnAliasedName($fq_class_name));
+        $fq_class_name_lc = strtolower($this->getUnAliasedName(Interner::lookup($fq_class_name)));
 
-        if (!isset($this->existing_traits_lc[$fq_class_name_lc]) ||
-            !$this->existing_traits_lc[$fq_class_name_lc]
+        if (!isset($this->existing_traits_lc[Interner::intern($fq_class_name_lc)]) ||
+            !$this->existing_traits_lc[Interner::intern($fq_class_name_lc)]
         ) {
             return false;
         }
 
         $this->file_reference_provider->code_use_graph->addReference(
-            CodeUseGraph::classNode($fq_class_name_lc),
+            CodeUseGraph::classNode(Interner::intern($fq_class_name_lc)),
             $context,
             $location,
         );
@@ -480,7 +484,7 @@ final class ClassLikes
      * @psalm-external-mutation-free
      */
     public function classOrInterfaceExists(
-        string $fq_class_name,
+        int $fq_class_name,
         ?CodeLocation $location = null,
         ?Context $context = null,
     ): bool {
@@ -494,7 +498,7 @@ final class ClassLikes
      * @psalm-external-mutation-free
      */
     public function classOrInterfaceOrEnumExists(
-        string $fq_class_name,
+        int $fq_class_name,
         ?CodeLocation $location = null,
         ?Context $context = null,
     ): bool {
@@ -509,7 +513,7 @@ final class ClassLikes
      * @psalm-external-mutation-free
      */
     public function classExists(
-        string $fq_class_name,
+        int $fq_class_name,
         ?CodeLocation $location = null,
         ?Context $context = null,
     ): bool {
@@ -517,7 +521,7 @@ final class ClassLikes
             return false;
         }
 
-        if ($fq_class_name === 'Generator') {
+        if ($fq_class_name === Sym::C_GENERATOR) {
             return true;
         }
 
@@ -535,22 +539,22 @@ final class ClassLikes
      * @throws UnpopulatedClasslikeException when called on unpopulated class
      * @throws InvalidArgumentException when class does not exist
      */
-    public function classExtends(string $fq_class_name, string $possible_parent, bool $from_api = false): bool
+    public function classExtends(int $fq_class_name, int $possible_parent, bool $from_api = false): bool
     {
-        $unaliased_fq_class_name = $this->getUnAliasedName($fq_class_name);
-        $unaliased_fq_class_name_lc = strtolower($unaliased_fq_class_name);
+        $unaliased_fq_class_name = $this->getUnAliasedName(Interner::lookup($fq_class_name));
+        $unaliased_fq_class_name_lc = $unaliased_fq_class_name;
 
         if ($unaliased_fq_class_name_lc === 'generator') {
             return false;
         }
 
-        $class_storage = $this->classlike_storage_provider->get($unaliased_fq_class_name);
+        $class_storage = $this->classlike_storage_provider->get(Interner::intern($unaliased_fq_class_name));
 
         if ($from_api && !$class_storage->populated) {
             throw new UnpopulatedClasslikeException($fq_class_name);
         }
 
-        return isset($class_storage->parent_classes[strtolower($possible_parent)]);
+        return isset($class_storage->parent_classes[$possible_parent]);
     }
 
     /**
@@ -558,21 +562,21 @@ final class ClassLikes
      *
      * @psalm-mutation-free
      */
-    public function classImplements(string $fq_class_name, string $interface): bool
+    public function classImplements(int $fq_class_name, int $interface): bool
     {
-        $interface_id = strtolower($interface);
+        $interface_id = $interface;
 
-        $fq_class_name = strtolower($fq_class_name);
+        $fq_class_name = $fq_class_name;
 
-        if ($interface_id === 'callable' && $fq_class_name === 'closure') {
+        if ($interface_id === Sym::C_CALLABLE && $fq_class_name === Sym::C_CLOSURE_2) {
             return true;
         }
 
-        if ($interface_id === 'traversable' && $fq_class_name === 'generator') {
+        if ($interface_id === Sym::C_TRAVERSABLE_2 && $fq_class_name === Sym::C_GENERATOR_2) {
             return true;
         }
 
-        if ($interface_id === 'traversable' && $fq_class_name === 'iterator') {
+        if ($interface_id === Sym::C_TRAVERSABLE_2 && $fq_class_name === Sym::C_ITERATOR_2) {
             return true;
         }
 
@@ -582,12 +586,12 @@ final class ClassLikes
             return false;
         }
 
-        $fq_class_name = $this->getUnAliasedName($fq_class_name);
+        $fq_class_name = $this->getUnAliasedName(Interner::lookup($fq_class_name));
 
-        if (!$this->classlike_storage_provider->has($fq_class_name)) {
+        if (!$this->classlike_storage_provider->has(Interner::intern($fq_class_name))) {
             return false;
         }
-        $class_storage = $this->classlike_storage_provider->get($fq_class_name);
+        $class_storage = $this->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
         if (isset($class_storage->class_implements[$interface_id])) {
             return true;
@@ -595,7 +599,7 @@ final class ClassLikes
 
         foreach ($class_storage->class_implements as $implementing_interface_lc => $_) {
             $aliased_interface_lc = strtolower(
-                $this->getUnAliasedName($implementing_interface_lc),
+                $this->getUnAliasedName(Interner::lookup($implementing_interface_lc)),
             );
 
             if ($aliased_interface_lc === $interface_id) {
@@ -610,11 +614,11 @@ final class ClassLikes
      * @psalm-external-mutation-free
      */
     public function interfaceExists(
-        string $fq_interface_name,
+        int $fq_interface_name,
         ?CodeLocation $location = null,
         ?Context $context = null,
     ): bool {
-        if (isset(ClassLikeAnalyzer::SPECIAL_TYPES[strtolower($fq_interface_name)])) {
+        if (isset(ClassLikeAnalyzer::SPECIAL_TYPES[$fq_interface_name])) {
             return false;
         }
 
@@ -629,11 +633,11 @@ final class ClassLikes
      * @psalm-external-mutation-free
      */
     public function enumExists(
-        string $fq_enum_name,
+        int $fq_enum_name,
         ?CodeLocation $location = null,
         ?Context $context = null,
     ): bool {
-        if (isset(ClassLikeAnalyzer::SPECIAL_TYPES[strtolower($fq_enum_name)])) {
+        if (isset(ClassLikeAnalyzer::SPECIAL_TYPES[$fq_enum_name])) {
             return false;
         }
 
@@ -647,18 +651,18 @@ final class ClassLikes
     /**
      * @psalm-mutation-free
      */
-    public function interfaceExtends(string $interface_name, string $possible_parent): bool
+    public function interfaceExtends(int $interface_name, int $possible_parent): bool
     {
-        return isset($this->getParentInterfaces($interface_name)[strtolower($possible_parent)]);
+        return isset($this->getParentInterfaces($interface_name)[$possible_parent]);
     }
 
     /**
-     * @return array<lowercase-string, string>   all interfaces extended by $interface_name
+     * @return array<int, string>   all interfaces extended by $interface_name
      * @psalm-mutation-free
      */
-    public function getParentInterfaces(string $fq_interface_name): array
+    public function getParentInterfaces(int $fq_interface_name): array
     {
-        $fq_interface_name = strtolower($fq_interface_name);
+        $fq_interface_name = $fq_interface_name;
 
         return $this->classlike_storage_provider->get($fq_interface_name)->parent_interfaces;
     }
@@ -666,7 +670,7 @@ final class ClassLikes
     /**
      * @psalm-external-mutation-free
      */
-    public function traitExists(string $fq_trait_name, ?CodeLocation $location = null, ?Context $context = null): bool
+    public function traitExists(int $fq_trait_name, ?CodeLocation $location = null, ?Context $context = null): bool
     {
         return $this->hasFullyQualifiedTraitName($fq_trait_name, $location, $context);
     }
@@ -676,13 +680,13 @@ final class ClassLikes
      *
      * @psalm-mutation-free
      */
-    public function classHasCorrectCasing(string $fq_class_name): bool
+    public function classHasCorrectCasing(int $fq_class_name): bool
     {
-        if ($fq_class_name === 'Generator') {
+        if ($fq_class_name === Sym::C_GENERATOR) {
             return true;
         }
 
-        if (isset($this->existing_classlike_aliases[$fq_class_name])) {
+        if (isset($this->existing_classlike_aliases[Interner::lookup($fq_class_name)])) {
             return true;
         }
 
@@ -692,9 +696,9 @@ final class ClassLikes
     /**
      * @psalm-mutation-free
      */
-    public function interfaceHasCorrectCasing(string $fq_interface_name): bool
+    public function interfaceHasCorrectCasing(int $fq_interface_name): bool
     {
-        if (isset($this->existing_classlike_aliases[$fq_interface_name])) {
+        if (isset($this->existing_classlike_aliases[Interner::lookup($fq_interface_name)])) {
             return true;
         }
 
@@ -704,39 +708,39 @@ final class ClassLikes
     /**
      * @psalm-mutation-free
      */
-    public function enumHasCorrectCasing(string $fq_enum_name): bool
+    public function enumHasCorrectCasing(int $fq_enum_name): bool
     {
-        if (isset($this->existing_classlike_aliases[$fq_enum_name])) {
+        if (isset($this->existing_classlike_aliases[Interner::lookup($fq_enum_name)])) {
             return true;
         }
 
-        return isset($this->existing_enums[$fq_enum_name]);
+        return isset($this->existing_enums[Interner::lookup($fq_enum_name)]);
     }
 
     /**
      * @psalm-mutation-free
      */
-    public function traitHasCorrectCasing(string $fq_trait_name): bool
+    public function traitHasCorrectCasing(int $fq_trait_name): bool
     {
-        if (isset($this->existing_classlike_aliases[$fq_trait_name])) {
+        if (isset($this->existing_classlike_aliases[Interner::lookup($fq_trait_name)])) {
             return true;
         }
 
         return isset($this->existing_traits[$fq_trait_name]);
     }
 
-    public function getTraitNode(string $fq_trait_name): PhpParser\Node\Stmt\Trait_
+    public function getTraitNode(int $fq_trait_name): PhpParser\Node\Stmt\Trait_
     {
-        $fq_trait_name_lc = strtolower($fq_trait_name);
+        $fq_trait_name_lc = $fq_trait_name;
 
-        if (isset($this->trait_nodes[$fq_trait_name_lc])) {
-            return $this->trait_nodes[$fq_trait_name_lc];
+        if (isset($this->trait_nodes[Interner::lookup($fq_trait_name_lc)])) {
+            return $this->trait_nodes[Interner::lookup($fq_trait_name_lc)];
         }
 
         $storage = $this->classlike_storage_provider->get($fq_trait_name);
 
         if (!$storage->location) {
-            throw new UnexpectedValueException('Storage should exist for ' . $fq_trait_name);
+            throw new UnexpectedValueException('Storage should exist for ' . Interner::lookup($fq_trait_name));
         }
 
         $codebase = ProjectAnalyzer::getInstance()->getCodebase();
@@ -761,13 +765,13 @@ final class ClassLikes
             return $trait_node;
         }
 
-        throw new UnexpectedValueException("Could not locate trait statement for $fq_trait_name");
+        throw new UnexpectedValueException("Could not locate trait statement for " . Interner::lookup($fq_trait_name) . "");
     }
 
     /**
      * @psalm-external-mutation-free
      */
-    public function addClassAlias(string $fq_class_name, string $alias_name): void
+    public function addClassAlias(int $fq_class_name, string $alias_name): void
     {
         $this->classlike_aliases_map[strtolower($alias_name)] = $fq_class_name;
         $this->existing_classlike_aliases[$alias_name] = true;
@@ -777,7 +781,7 @@ final class ClassLikes
     public function getUnAliasedName(string $alias_name): string
     {
         $alias_name_lc = strtolower($alias_name);
-        if ($this->existing_classlikes_lc[$alias_name_lc] ?? false) {
+        if ($this->existing_classlikes_lc[Interner::intern($alias_name_lc)] ?? false) {
             return $alias_name;
         }
 
@@ -825,7 +829,7 @@ final class ClassLikes
             }
 
             foreach ($classlike_storage->methods as $method_name => $method_storage) {
-                $method_node = CodeUseGraph::functionLikeNode($fq_class_name_lc . '::' . $method_name);
+                $method_node = CodeUseGraph::functionLikeNode(Interner::lookup($fq_class_name_lc) . '::' . Interner::lookup($method_name));
 
                 // a used method means its class is used
                 $code_use_graph->addEdge($method_node, $class_node, CodeUseGraph::EDGE_METHOD);
@@ -867,12 +871,12 @@ final class ClassLikes
                 $appearing_method_id = $classlike_storage->appearing_method_ids[$method_name] ?? null;
 
                 if ($appearing_method_id !== null
-                    && strtolower($appearing_method_id->fq_class_name) === $fq_class_name_lc
-                    && strtolower($declaring_method_id->fq_class_name) !== $fq_class_name_lc
+                    && $appearing_method_id->fq_class_name === $fq_class_name_lc
+                    && $declaring_method_id->fq_class_name !== $fq_class_name_lc
                 ) {
                     // a trait method is analysed (and records its references) once per using class,
                     // as `UsingClass::method`, while calls resolve to the declaring `Trait::method`
-                    $appearing_method_id_lc = $fq_class_name_lc . '::' . $method_name;
+                    $appearing_method_id_lc = Interner::lookup($fq_class_name_lc) . '::' . $method_name;
                     $appearing_method_node = CodeUseGraph::functionLikeNode($appearing_method_id_lc);
                     $appearing_return_node = CodeUseGraph::functionLikeReturnNode($appearing_method_id_lc);
 
@@ -892,10 +896,10 @@ final class ClassLikes
                             continue;
                         }
 
-                        if (isset($interface_storage->methods[$method_name])) {
+                        if (isset($interface_storage->methods[Interner::intern($method_name)])) {
                             $parent_method_ids[$fq_interface_name_lc] = new MethodIdentifier(
                                 $interface_storage->name,
-                                $method_name,
+                                Interner::intern($method_name),
                             );
                         }
                     }
@@ -959,7 +963,7 @@ final class ClassLikes
                         } else {
                             IssueBuffer::maybeAdd(
                                 new UnusedClass(
-                                    'Class ' . $classlike_storage->name . ' is never used',
+                                    'Class ' . Interner::lookup($classlike_storage->name) . ' is never used',
                                     $classlike_storage->location,
                                     $classlike_storage->name,
                                 ),
@@ -977,7 +981,7 @@ final class ClassLikes
                     ) {
                         IssueBuffer::maybeAdd(
                             new ClassMustBeFinal(
-                                'Class ' . $classlike_storage->name
+                                'Class ' . Interner::lookup($classlike_storage->name)
                                     . ' is never extended and is not part of the public API'
                                     .', and thus must be made final.',
                                 $classlike_storage->location,
@@ -1025,7 +1029,7 @@ final class ClassLikes
                         if ($stmt instanceof PhpParser\Node\Stmt\Namespace_) {
                             foreach ($stmt->stmts as $namespace_stmt) {
                                 if ($namespace_stmt instanceof PhpParser\Node\Stmt\ClassLike
-                                    && strtolower((string) $stmt->name . '\\' . (string) $namespace_stmt->name)
+                                    && strtolower((string) Interner::lookup($stmt->name) . '\\' . (string) $namespace_stmt->name)
                                         === $fq_class_name_lc
                                 ) {
                                     self::makeImmutable(
@@ -1074,7 +1078,7 @@ final class ClassLikes
             }
             IssueBuffer::maybeAdd(
                 new MissingInterfaceImmutableAnnotation(
-                    $storage->name
+                    Interner::lookup($storage->name)
                     . ' must be marked with either @psalm-pure, @psalm-immutable, @psalm-mutation-free,'
                     . ' @psalm-external-mutation-free or @psalm-mutable to aid security analysis',
                     $storage->location,
@@ -1097,7 +1101,7 @@ final class ClassLikes
 
         IssueBuffer::maybeAdd(
             new MissingImmutableAnnotation(
-                $msg ?? ($storage->name . ' must be marked '.Mutations::TO_ATTRIBUTE_CLASSLIKE[
+                $msg ?? (Interner::lookup($storage->name) . ' must be marked '.Mutations::TO_ATTRIBUTE_CLASSLIKE[
                     $allowed_mutations
                 ].' to aid security analysis,'
                     .' run with --alter --issues=MissingImmutableAnnotation to fix this'),
@@ -1125,11 +1129,11 @@ final class ClassLikes
         $code_migrations = [];
 
         foreach ($codebase->methods_to_move as $source => $destination) {
-            $source_parts = explode('::', $source);
+            $source_parts = explode('::', Interner::lookup($source));
 
             try {
                 $source_method_storage = $methods->getStorage(
-                    new MethodIdentifier(...$source_parts),
+                    new MethodIdentifier(...Interner::internList($source_parts)),
                 );
             } catch (InvalidArgumentException) {
                 continue;
@@ -1138,7 +1142,7 @@ final class ClassLikes
             [$destination_fq_class_name, $destination_name] = explode('::', $destination);
 
             try {
-                $classlike_storage = $this->classlike_storage_provider->get($destination_fq_class_name);
+                $classlike_storage = $this->classlike_storage_provider->get(Interner::intern($destination_fq_class_name));
             } catch (InvalidArgumentException) {
                 continue;
             }
@@ -1215,8 +1219,8 @@ final class ClassLikes
             [$source_fq_class_name] = explode('::$', $source);
             [$destination_fq_class_name, $destination_name] = explode('::$', $destination);
 
-            $source_classlike_storage = $this->classlike_storage_provider->get($source_fq_class_name);
-            $destination_classlike_storage = $this->classlike_storage_provider->get($destination_fq_class_name);
+            $source_classlike_storage = $this->classlike_storage_provider->get(Interner::intern($source_fq_class_name));
+            $destination_classlike_storage = $this->classlike_storage_provider->get(Interner::intern($destination_fq_class_name));
 
             if ($destination_classlike_storage->stmt_location
                 && $this->config->isInProjectDirs($destination_classlike_storage->stmt_location->file_path)
@@ -1234,13 +1238,13 @@ final class ClassLikes
                         $codebase,
                         $source_property_storage->type,
                         $source_classlike_storage->name,
-                        $source_classlike_storage->name,
+                        Interner::lookup($source_classlike_storage->name),
                         $source_classlike_storage->parent_class,
                     );
 
                     $this->airliftClassDefinedDocblockType(
                         $replace_type,
-                        $destination_fq_class_name,
+                        Interner::intern($destination_fq_class_name),
                         $source_property_storage->stmt_location->file_path,
                         $bounds[0],
                         $bounds[1],
@@ -1307,10 +1311,10 @@ final class ClassLikes
             [$source_fq_class_name, $source_const_name] = explode('::', $source);
             [$destination_fq_class_name, $destination_name] = explode('::', $destination);
 
-            $source_classlike_storage = $this->classlike_storage_provider->get($source_fq_class_name);
-            $destination_classlike_storage = $this->classlike_storage_provider->get($destination_fq_class_name);
+            $source_classlike_storage = $this->classlike_storage_provider->get(Interner::intern($source_fq_class_name));
+            $destination_classlike_storage = $this->classlike_storage_provider->get(Interner::intern($destination_fq_class_name));
 
-            $constant_storage = $source_classlike_storage->constants[$source_const_name];
+            $constant_storage = $source_classlike_storage->constants[Interner::intern($source_const_name)];
 
             $source_const_stmt_location = $constant_storage->stmt_location;
             $source_const_location = $constant_storage->location;
@@ -1366,7 +1370,7 @@ final class ClassLikes
         Codebase $codebase,
         StatementsSource $source,
         PhpParser\Node $class_name_node,
-        string $fq_class_name,
+        int $fq_class_name,
         ?Context $context,
         bool $force_change = false,
         bool $was_self = false,
@@ -1381,18 +1385,18 @@ final class ClassLikes
         if ($codebase->methods_to_move
             && $calling_fq_class_name
             && $calling_method_id
-            && isset($codebase->methods_to_move[$calling_method_id])
+            && isset($codebase->methods_to_move[Interner::intern($calling_method_id)])
         ) {
-            $destination_class = explode('::', $codebase->methods_to_move[$calling_method_id])[0];
+            $destination_class = explode('::', $codebase->methods_to_move[Interner::intern($calling_method_id)])[0];
 
-            $intended_fq_class_name = strtolower($calling_fq_class_name) === strtolower($fq_class_name)
-                && isset($codebase->classes_to_move[strtolower($calling_fq_class_name)])
+            $intended_fq_class_name = $calling_fq_class_name === $fq_class_name
+                && isset($codebase->classes_to_move[$calling_fq_class_name])
                 ? $destination_class
                 : $fq_class_name;
 
             $this->airliftClassLikeReference(
                 $intended_fq_class_name,
-                $destination_class,
+                Interner::intern($destination_class),
                 $source->getFilePath(),
                 (int) $class_name_node->getAttribute('startFilePos'),
                 (int) $class_name_node->getAttribute('endFilePos') + 1,
@@ -1404,8 +1408,8 @@ final class ClassLikes
         }
 
         // if we're outside a moved class, but we're changing all references to a class
-        if (isset($codebase->class_transforms[strtolower($fq_class_name)])) {
-            $new_fq_class_name = $codebase->class_transforms[strtolower($fq_class_name)];
+        if (isset($codebase->class_transforms[$fq_class_name])) {
+            $new_fq_class_name = $codebase->class_transforms[$fq_class_name];
             $file_manipulations = [];
 
             if ($class_name_node instanceof PhpParser\Node\Identifier) {
@@ -1427,14 +1431,14 @@ final class ClassLikes
             $uses_flipped = $source->getAliasedClassesFlipped();
             $uses_flipped_replaceable = $source->getAliasedClassesFlippedReplaceable();
 
-            $old_fq_class_name = strtolower($fq_class_name);
+            $old_fq_class_name = $fq_class_name;
 
             $migrated_source_fqcln = $calling_fq_class_name;
 
             if ($calling_fq_class_name
-                && isset($codebase->class_transforms[strtolower($calling_fq_class_name)])
+                && isset($codebase->class_transforms[$calling_fq_class_name])
             ) {
-                $migrated_source_fqcln = $codebase->class_transforms[strtolower($calling_fq_class_name)];
+                $migrated_source_fqcln = $codebase->class_transforms[$calling_fq_class_name];
             }
 
             $source_namespace = $source->getNamespace();
@@ -1444,17 +1448,17 @@ final class ClassLikes
                 $source_namespace = implode('\\', $new_source_parts);
             }
 
-            if (isset($uses_flipped_replaceable[$old_fq_class_name])) {
-                $alias = $uses_flipped_replaceable[$old_fq_class_name];
+            if (isset($uses_flipped_replaceable[Interner::lookup($old_fq_class_name)])) {
+                $alias = $uses_flipped_replaceable[Interner::lookup($old_fq_class_name)];
                 unset($uses_flipped[$old_fq_class_name]);
-                $old_class_name_parts = explode('\\', $old_fq_class_name);
+                $old_class_name_parts = explode('\\', Interner::lookup($old_fq_class_name));
                 $old_class_name = end($old_class_name_parts);
                 if ($old_class_name === strtolower($alias)) {
                     $new_class_name_parts = explode('\\', $new_fq_class_name);
                     $new_class_name = end($new_class_name_parts);
-                    $uses_flipped[strtolower($new_fq_class_name)] = $new_class_name;
+                    $uses_flipped[$new_fq_class_name] = $new_class_name;
                 } else {
-                    $uses_flipped[strtolower($new_fq_class_name)] = $alias;
+                    $uses_flipped[$new_fq_class_name] = $alias;
                 }
             }
 
@@ -1479,9 +1483,9 @@ final class ClassLikes
         // if we're inside a moved class (could be a method, could be a property/class const default)
         if ($codebase->classes_to_move
             && $calling_fq_class_name
-            && isset($codebase->classes_to_move[strtolower($calling_fq_class_name)])
+            && isset($codebase->classes_to_move[$calling_fq_class_name])
         ) {
-            $destination_class = $codebase->classes_to_move[strtolower($calling_fq_class_name)];
+            $destination_class = $codebase->classes_to_move[$calling_fq_class_name];
 
             if ($class_name_node instanceof PhpParser\Node\Identifier) {
                 $destination_parts = explode('\\', $destination_class);
@@ -1498,10 +1502,10 @@ final class ClassLikes
                 FileManipulationBuffer::add($source->getFilePath(), $file_manipulations);
             } else {
                 $this->airliftClassLikeReference(
-                    strtolower($calling_fq_class_name) === strtolower($fq_class_name)
+                    $calling_fq_class_name === $fq_class_name
                         ? $destination_class
                         : $fq_class_name,
-                    $destination_class,
+                    Interner::intern($destination_class),
                     $source->getFilePath(),
                     (int) $class_name_node->getAttribute('startFilePos'),
                     (int) $class_name_node->getAttribute('endFilePos') + 1,
@@ -1528,9 +1532,9 @@ final class ClassLikes
                     (int) $class_name_node->getAttribute('startFilePos'),
                     (int) $class_name_node->getAttribute('endFilePos') + 1,
                     Type::getStringFromFQCLN(
-                        $fq_class_name,
+                        Interner::lookup($fq_class_name),
                         $source->getNamespace(),
-                        $source->getAliasedClassesFlipped(),
+                        Interner::lookupKeys($source->getAliasedClassesFlipped()),
                         null,
                     ),
                 );
@@ -1563,15 +1567,15 @@ final class ClassLikes
         if ($codebase->methods_to_move
             && $calling_fq_class_name
             && $calling_method_id
-            && isset($codebase->methods_to_move[$calling_method_id])
+            && isset($codebase->methods_to_move[Interner::intern($calling_method_id)])
         ) {
             $bounds = $type_location->getSelectionBounds();
 
-            $destination_class = explode('::', $codebase->methods_to_move[$calling_method_id])[0];
+            $destination_class = explode('::', $codebase->methods_to_move[Interner::intern($calling_method_id)])[0];
 
             $this->airliftClassDefinedDocblockType(
                 $type,
-                $destination_class,
+                Interner::intern($destination_class),
                 $source->getFilePath(),
                 $bounds[0],
                 $bounds[1],
@@ -1588,9 +1592,9 @@ final class ClassLikes
             $migrated_source_fqcln = $calling_fq_class_name;
 
             if ($calling_fq_class_name
-                && isset($codebase->class_transforms[$fq_class_name_lc])
+                && isset($codebase->class_transforms[Interner::intern($fq_class_name_lc)])
             ) {
-                $migrated_source_fqcln = $codebase->class_transforms[$fq_class_name_lc];
+                $migrated_source_fqcln = $codebase->class_transforms[Interner::intern($fq_class_name_lc)];
             }
 
             $source_namespace = $source->getNamespace();
@@ -1601,17 +1605,17 @@ final class ClassLikes
             }
 
             foreach ($codebase->class_transforms as $old_fq_class_name => $new_fq_class_name) {
-                if (isset($uses_flipped_replaceable[$old_fq_class_name])) {
-                    $alias = $uses_flipped_replaceable[$old_fq_class_name];
+                if (isset($uses_flipped_replaceable[Interner::lookup($old_fq_class_name)])) {
+                    $alias = $uses_flipped_replaceable[Interner::lookup($old_fq_class_name)];
                     unset($uses_flipped[$old_fq_class_name]);
-                    $old_class_name_parts = explode('\\', $old_fq_class_name);
+                    $old_class_name_parts = explode('\\', Interner::lookup($old_fq_class_name));
                     $old_class_name = end($old_class_name_parts);
                     if ($old_class_name === strtolower($alias)) {
                         $new_class_name_parts = explode('\\', $new_fq_class_name);
                         $new_class_name = end($new_class_name_parts);
-                        $uses_flipped[strtolower($new_fq_class_name)] = $new_class_name;
+                        $uses_flipped[$new_fq_class_name] = $new_class_name;
                     } else {
-                        $uses_flipped[strtolower($new_fq_class_name)] = $alias;
+                        $uses_flipped[$new_fq_class_name] = $alias;
                     }
                 }
             }
@@ -1619,7 +1623,7 @@ final class ClassLikes
             foreach ($codebase->class_transforms as $old_fq_class_name => $new_fq_class_name) {
                 if ($type->containsClassLike($old_fq_class_name)) {
                     $type = $type->replaceClassLike(
-                        $old_fq_class_name,
+                        Interner::lookup($old_fq_class_name),
                         $new_fq_class_name,
                     );
 
@@ -1652,13 +1656,13 @@ final class ClassLikes
         if (!$moved_type
             && $codebase->classes_to_move
             && $calling_fq_class_name
-            && isset($codebase->classes_to_move[$fq_class_name_lc])
+            && isset($codebase->classes_to_move[Interner::intern($fq_class_name_lc)])
         ) {
             $bounds = $type_location->getSelectionBounds();
 
-            $destination_class = $codebase->classes_to_move[$fq_class_name_lc];
+            $destination_class = $codebase->classes_to_move[Interner::intern($fq_class_name_lc)];
 
-            if ($type->containsClassLike($fq_class_name_lc)) {
+            if ($type->containsClassLike(Interner::intern($fq_class_name_lc))) {
                 $type = $type->replaceClassLike(
                     $fq_class_name_lc,
                     $destination_class,
@@ -1667,7 +1671,7 @@ final class ClassLikes
 
             $this->airliftClassDefinedDocblockType(
                 $type,
-                $destination_class,
+                Interner::intern($destination_class),
                 $source->getFilePath(),
                 $bounds[0],
                 $bounds[1],
@@ -1679,8 +1683,8 @@ final class ClassLikes
      * @psalm-external-mutation-free
      */
     public function airliftClassLikeReference(
-        string $fq_class_name,
-        string $destination_fq_class_name,
+        int $fq_class_name,
+        int $destination_fq_class_name,
         string $source_file_path,
         int $source_start,
         int $source_end,
@@ -1702,9 +1706,9 @@ final class ClassLikes
             $source_start,
             $source_end,
             Type::getStringFromFQCLN(
-                $fq_class_name,
+                Interner::lookup($fq_class_name),
                 $destination_class_storage->aliases->namespace,
-                $destination_class_storage->aliases->uses_flipped,
+                Interner::lookupKeys($destination_class_storage->aliases->uses_flipped),
                 $destination_class_storage->name,
                 $allow_self,
             ) . ($add_class_constant ? '::class' : ''),
@@ -1721,7 +1725,7 @@ final class ClassLikes
      */
     public function airliftClassDefinedDocblockType(
         Union $type,
-        string $destination_fq_class_name,
+        int $destination_fq_class_name,
         string $source_file_path,
         int $source_start,
         int $source_end,
@@ -1742,7 +1746,7 @@ final class ClassLikes
             $source_end,
             $type->toNamespacedString(
                 $destination_class_storage->aliases->namespace,
-                $destination_class_storage->aliases->uses_flipped,
+                Interner::lookupKeys($destination_class_storage->aliases->uses_flipped),
                 $destination_class_storage->name,
                 false,
             ),
@@ -1760,48 +1764,48 @@ final class ClassLikes
      * @return array<string, ClassConstantStorage>
      * @psalm-mutation-free
      */
-    public function getConstantsForClass(string $class_name, int $visibility): array
+    public function getConstantsForClass(int $class_name, int $visibility): array
     {
-        $class_name = strtolower($class_name);
+        $class_name = $class_name;
 
         $storage = $this->classlike_storage_provider->get($class_name);
 
         if ($visibility === ReflectionProperty::IS_PUBLIC) {
-            return array_filter(
+            return Interner::lookupKeys(array_filter(
                 $storage->constants,
                 static fn(ClassConstantStorage $constant): bool => $constant->type
                     && $constant->visibility === ClassLikeAnalyzer::VISIBILITY_PUBLIC,
-            );
+            ));
         }
 
         if ($visibility === ReflectionProperty::IS_PROTECTED) {
-            return array_filter(
+            return Interner::lookupKeys(array_filter(
                 $storage->constants,
                 static fn(ClassConstantStorage $constant): bool => $constant->type
                     && ($constant->visibility === ClassLikeAnalyzer::VISIBILITY_PUBLIC
                         || $constant->visibility === ClassLikeAnalyzer::VISIBILITY_PROTECTED),
-            );
+            ));
         }
 
-        return array_filter(
+        return Interner::lookupKeys(array_filter(
             $storage->constants,
             static fn(ClassConstantStorage $constant): bool => $constant->type !== null,
-        );
+        ));
     }
 
     /**
      * @param ReflectionProperty::IS_PUBLIC|ReflectionProperty::IS_PROTECTED|ReflectionProperty::IS_PRIVATE $visibility
      */
     public function getClassConstantType(
-        string $class_name,
-        string $constant_name,
+        int $class_name,
+        int $constant_name,
         int $visibility,
         ?StatementsAnalyzer $statements_analyzer = null,
         array $visited_constant_ids = [],
         bool $late_static_binding = false,
         bool $in_value_of_context = false,
     ): ?Union {
-        $class_name = strtolower($class_name);
+        $class_name = $class_name;
 
         if (!$this->classlike_storage_provider->has($class_name)) {
             return null;
@@ -1863,8 +1867,8 @@ final class ClassLikes
 
             $declaring_classlike_storage = $classlike_storage;
 
-            if (isset($classlike_storage->methods[$method_name])) {
-                $method_storage = $classlike_storage->methods[$method_name];
+            if (isset($classlike_storage->methods[Interner::intern($method_name)])) {
+                $method_storage = $classlike_storage->methods[Interner::intern($method_name)];
             } else {
                 $declaring_method_id = $classlike_storage->declaring_method_ids[$method_name];
 
@@ -1924,25 +1928,25 @@ final class ClassLikes
                 ) {
                     $method_location = $method_storage->location;
 
-                    $method_id = $classlike_storage->name . '::' . $method_storage->cased_name;
+                    $method_id = Interner::lookup($classlike_storage->name) . '::' . Interner::lookup($method_storage->cased_name);
 
                     if ($method_storage->visibility !== ClassLikeAnalyzer::VISIBILITY_PRIVATE) {
                         $has_parent_references = false;
 
-                        if ($codebase->classImplements($classlike_storage->name, 'Serializable')
+                        if ($codebase->classImplements($classlike_storage->name, Sym::C_SERIALIZABLE)
                             && ($method_name === 'serialize' || $method_name === 'unserialize')
                         ) {
                             continue;
                         }
 
-                        if ($codebase->classImplements($classlike_storage->name, 'JsonSerializable')
+                        if ($codebase->classImplements($classlike_storage->name, Sym::C_JSON_SERIALIZABLE)
                             && ($method_name === 'jsonserialize')
                         ) {
                             continue;
                         }
 
                         $has_variable_calls = $codebase->analyzer->hasMixedMemberName($method_name)
-                            || $codebase->analyzer->hasMixedMemberName(strtolower($classlike_storage->name . '::'));
+                            || $codebase->analyzer->hasMixedMemberName(strtolower(Interner::lookup($classlike_storage->name) . '::'));
 
                         if (isset($classlike_storage->overridden_method_ids[$method_name])) {
                             foreach ($classlike_storage->overridden_method_ids[$method_name] as $parent_method_id) {
@@ -1969,7 +1973,7 @@ final class ClassLikes
 
                         foreach ($classlike_storage->parent_classes as $parent_method_fqcln) {
                             if ($codebase->analyzer->hasMixedMemberName(
-                                strtolower($parent_method_fqcln) . '::',
+                                $parent_method_fqcln . '::',
                             )) {
                                 $has_variable_calls = true;
                                 break;
@@ -1984,14 +1988,14 @@ final class ClassLikes
                             }
 
                             if ($codebase->analyzer->hasMixedMemberName(
-                                $fq_interface_name_lc . '::',
+                                Interner::lookup($fq_interface_name_lc) . '::',
                             )) {
                                 $has_variable_calls = true;
                             }
 
-                            if (isset($interface_storage->methods[$method_name])) {
+                            if (isset($interface_storage->methods[Interner::intern($method_name)])) {
                                 $interface_method_referenced = $codebase->code_use_graph->isUsed(
-                                    CodeUseGraph::functionLikeNode($fq_interface_name_lc . '::' . $method_name),
+                                    CodeUseGraph::functionLikeNode(Interner::lookup($fq_interface_name_lc) . '::' . $method_name),
                                 );
 
                                 if ($interface_method_referenced) {
@@ -2034,7 +2038,7 @@ final class ClassLikes
                         }
                     } elseif (!isset($classlike_storage->declaring_method_ids['__call'])) {
                         $has_variable_calls = $codebase->analyzer->hasMixedMemberName(
-                            strtolower($classlike_storage->name . '::'),
+                            strtolower(Interner::lookup($classlike_storage->name) . '::'),
                         ) || $codebase->analyzer->hasMixedMemberName($method_name);
 
                         if ($method_name === '__construct') {
@@ -2093,7 +2097,7 @@ final class ClassLikes
                     && $method_storage->return_type_location
                     && !$method_storage->return_type->isVoid()
                     && !$method_storage->return_type->isNever()
-                    && $method_id->method_name !== '__tostring'
+                    && $method_id->method_name !== Sym::C___TOSTRING
                     && ($method_storage->is_static || !$method_storage->probably_fluent)
                 ) {
                     $method_return_referenced = $codebase->code_use_graph->isUsed(
@@ -2136,8 +2140,8 @@ final class ClassLikes
 
             $method_id = $appearing_method_id;
 
-            if (isset($classlike_storage->methods[$method_name])) {
-                $method_storage = $classlike_storage->methods[$method_name];
+            if (isset($classlike_storage->methods[Interner::intern($method_name)])) {
+                $method_storage = $classlike_storage->methods[Interner::intern($method_name)];
             } else {
                 $declaring_method_id = $classlike_storage->declaring_method_ids[$method_name];
 
@@ -2205,8 +2209,8 @@ final class ClassLikes
 
             $declaring_classlike_storage = $classlike_storage;
 
-            if (isset($classlike_storage->methods[$method_name])) {
-                $method_storage = $classlike_storage->methods[$method_name];
+            if (isset($classlike_storage->methods[Interner::intern($method_name)])) {
+                $method_storage = $classlike_storage->methods[Interner::intern($method_name)];
             } else {
                 $declaring_method_id = $classlike_storage->declaring_method_ids[$method_name];
 
@@ -2284,7 +2288,7 @@ final class ClassLikes
                                     $method_name,
                                 )
                                     || $codebase->analyzer->hasMixedMemberName(
-                                        strtolower($classlike_storage->name . '::'),
+                                        strtolower(Interner::lookup($classlike_storage->name) . '::'),
                                     );
 
                                 if ($has_variable_calls) {
@@ -2326,7 +2330,7 @@ final class ClassLikes
                 continue;
             }
 
-            $property_node = CodeUseGraph::propertyNode(strtolower($classlike_storage->name), $property_name);
+            $property_node = CodeUseGraph::propertyNode($classlike_storage->name, $property_name);
             $property_referenced = $codebase->code_use_graph->isUsed($property_node);
 
             $property_constructor_referenced = false;
@@ -2338,7 +2342,7 @@ final class ClassLikes
 
                 if (count($property_references) === 1) {
                     $constructor_node = CodeUseGraph::functionLikeNode(
-                        strtolower($classlike_storage->name) . '::__construct',
+                        $classlike_storage->name . '::__construct',
                     );
 
                     $property_constructor_referenced = isset($property_references[$constructor_node])
@@ -2349,19 +2353,19 @@ final class ClassLikes
             if ((!$property_referenced || $property_constructor_referenced)
                 && $property_storage->location
             ) {
-                $property_id = $classlike_storage->name . '::$' . $property_name;
+                $property_id = Interner::lookup($classlike_storage->name) . '::$' . Interner::lookup($property_name);
 
                 if ($property_storage->visibility === ClassLikeAnalyzer::VISIBILITY_PUBLIC
                     || $property_storage->visibility === ClassLikeAnalyzer::VISIBILITY_PROTECTED
                 ) {
-                    $has_parent_references = isset($classlike_storage->overridden_property_ids[$property_name]);
+                    $has_parent_references = isset($classlike_storage->overridden_property_ids[Interner::lookup($property_name)]);
 
-                    $has_variable_calls = $codebase->analyzer->hasMixedMemberName('$' . $property_name)
-                        || $codebase->analyzer->hasMixedMemberName(strtolower($classlike_storage->name) . '::$');
+                    $has_variable_calls = $codebase->analyzer->hasMixedMemberName('$' . Interner::lookup($property_name))
+                        || $codebase->analyzer->hasMixedMemberName($classlike_storage->name . '::$');
 
                     foreach ($classlike_storage->parent_classes as $parent_method_fqcln) {
                         if ($codebase->analyzer->hasMixedMemberName(
-                            strtolower($parent_method_fqcln) . '::$',
+                            $parent_method_fqcln . '::$',
                         )) {
                             $has_variable_calls = true;
                             break;
@@ -2370,7 +2374,7 @@ final class ClassLikes
 
                     foreach ($classlike_storage->class_implements as $fq_interface_name) {
                         if ($codebase->analyzer->hasMixedMemberName(
-                            strtolower($fq_interface_name) . '::$',
+                            $fq_interface_name . '::$',
                         )) {
                             $has_variable_calls = true;
                             break;
@@ -2409,7 +2413,7 @@ final class ClassLikes
                         }
                     }
                 } elseif (!isset($classlike_storage->declaring_method_ids['__get'])) {
-                    $has_variable_calls = $codebase->analyzer->hasMixedMemberName('$' . $property_name);
+                    $has_variable_calls = $codebase->analyzer->hasMixedMemberName('$' . Interner::lookup($property_name));
 
                     $issue = new UnusedProperty(
                         'Cannot find ' . ($has_variable_calls ? 'explicit' : 'any')
@@ -2444,29 +2448,29 @@ final class ClassLikes
     }
 
     /**
-     * @param lowercase-string $fq_classlike_name_lc
+     * @param int $fq_classlike_name_lc
      * @psalm-external-mutation-free
      */
-    public function registerMissingClassLike(string $fq_classlike_name_lc): void
+    public function registerMissingClassLike(int $fq_classlike_name_lc): void
     {
         $this->existing_classlikes_lc[$fq_classlike_name_lc] = false;
     }
 
     /**
-     * @param lowercase-string $fq_classlike_name_lc
+     * @param int $fq_classlike_name_lc
      * @psalm-mutation-free
      */
-    public function isMissingClassLike(string $fq_classlike_name_lc): bool
+    public function isMissingClassLike(int $fq_classlike_name_lc): bool
     {
         return isset($this->existing_classlikes_lc[$fq_classlike_name_lc])
             && $this->existing_classlikes_lc[$fq_classlike_name_lc] === false;
     }
 
     /**
-     * @param lowercase-string $fq_classlike_name_lc
+     * @param int $fq_classlike_name_lc
      * @psalm-mutation-free
      */
-    public function doesClassLikeExist(string $fq_classlike_name_lc): bool
+    public function doesClassLikeExist(int $fq_classlike_name_lc): bool
     {
         return isset($this->existing_classlikes_lc[$fq_classlike_name_lc])
             && $this->existing_classlikes_lc[$fq_classlike_name_lc];
@@ -2483,21 +2487,21 @@ final class ClassLikes
     /**
      * @psalm-external-mutation-free
      */
-    public function removeClassLike(string $fq_class_name): void
+    public function removeClassLike(int $fq_class_name): void
     {
-        $fq_class_name_lc = strtolower($fq_class_name);
+        $fq_class_name_lc = $fq_class_name;
 
         unset(
             $this->existing_classlikes_lc[$fq_class_name_lc],
             $this->existing_traits_lc[$fq_class_name_lc],
             $this->existing_traits[$fq_class_name],
             $this->existing_enums_lc[$fq_class_name_lc],
-            $this->existing_enums[$fq_class_name],
+            $this->existing_enums[Interner::lookup($fq_class_name)],
             $this->existing_interfaces_lc[$fq_class_name_lc],
             $this->existing_interfaces[$fq_class_name],
             $this->existing_classes_lc[$fq_class_name_lc],
             $this->existing_classes[$fq_class_name],
-            $this->trait_nodes[$fq_class_name_lc],
+            $this->trait_nodes[Interner::lookup($fq_class_name_lc)],
         );
 
         $this->scanner->removeClassLike($fq_class_name_lc);
@@ -2560,15 +2564,15 @@ final class ClassLikes
             $existing_classes,
         ] = $thread_data;
 
-        $this->existing_classlikes_lc = self::mergeThreadData($existing_classlikes_lc, $this->existing_classlikes_lc);
-        $this->existing_classes_lc = self::mergeThreadData($existing_classes_lc, $this->existing_classes_lc);
-        $this->existing_traits_lc = self::mergeThreadData($existing_traits_lc, $this->existing_traits_lc);
-        $this->existing_traits = self::mergeThreadData($existing_traits, $this->existing_traits);
-        $this->existing_enums_lc = self::mergeThreadData($existing_enums_lc, $this->existing_enums_lc);
+        $this->existing_classlikes_lc = Interner::internKeys(self::mergeThreadData($existing_classlikes_lc, Interner::lookupKeys($this->existing_classlikes_lc)));
+        $this->existing_classes_lc = Interner::internKeys(self::mergeThreadData($existing_classes_lc, Interner::lookupKeys($this->existing_classes_lc)));
+        $this->existing_traits_lc = Interner::internKeys(self::mergeThreadData($existing_traits_lc, Interner::lookupKeys($this->existing_traits_lc)));
+        $this->existing_traits = Interner::internKeys(self::mergeThreadData($existing_traits, Interner::lookupKeys($this->existing_traits)));
+        $this->existing_enums_lc = Interner::internKeys(self::mergeThreadData($existing_enums_lc, Interner::lookupKeys($this->existing_enums_lc)));
         $this->existing_enums = self::mergeThreadData($existing_enums, $this->existing_enums);
-        $this->existing_interfaces_lc = self::mergeThreadData($existing_interfaces_lc, $this->existing_interfaces_lc);
-        $this->existing_interfaces = self::mergeThreadData($existing_interfaces, $this->existing_interfaces);
-        $this->existing_classes = self::mergeThreadData($existing_classes, $this->existing_classes);
+        $this->existing_interfaces_lc = Interner::internKeys(self::mergeThreadData($existing_interfaces_lc, Interner::lookupKeys($this->existing_interfaces_lc)));
+        $this->existing_interfaces = Interner::internKeys(self::mergeThreadData($existing_interfaces, Interner::lookupKeys($this->existing_interfaces)));
+        $this->existing_classes = Interner::internKeys(self::mergeThreadData($existing_classes, Interner::lookupKeys($this->existing_classes)));
     }
 
     /**
@@ -2591,12 +2595,12 @@ final class ClassLikes
     /**
      * @psalm-mutation-free
      */
-    public function getStorageFor(string $fq_class_name): ?ClassLikeStorage
+    public function getStorageFor(int $fq_class_name): ?ClassLikeStorage
     {
-        $fq_class_name = $this->getUnAliasedName($fq_class_name);
+        $fq_class_name = $this->getUnAliasedName(Interner::lookup($fq_class_name));
 
         try {
-            return $this->classlike_storage_provider->get($fq_class_name);
+            return $this->classlike_storage_provider->get(Interner::intern($fq_class_name));
         } catch (InvalidArgumentException) {
             return null;
         }
@@ -2604,7 +2608,7 @@ final class ClassLikes
 
     private function getConstantType(
         ClassLikeStorage $class_like_storage,
-        string $constant_name,
+        int $constant_name,
         int $visibility,
         ?StatementsAnalyzer $statements_analyzer,
         array $visited_constant_ids,
@@ -2613,7 +2617,7 @@ final class ClassLikes
         $constant_resolver = new StorageByPatternResolver();
         $resolved_constants = $constant_resolver->resolveConstants(
             $class_like_storage,
-            $constant_name,
+            Interner::lookup($constant_name),
         );
 
         $filtered_constants_by_visibility = array_filter(
@@ -2631,7 +2635,7 @@ final class ClassLikes
         $new_atomic_types = [];
 
         foreach ($filtered_constants_by_visibility as $filtered_constant_name => $constant_storage) {
-            if (!isset($class_like_storage->constants[$filtered_constant_name])) {
+            if (!isset($class_like_storage->constants[Interner::intern($filtered_constant_name)])) {
                 continue;
             }
 
@@ -2673,12 +2677,12 @@ final class ClassLikes
      */
     private function getEnumType(
         ClassLikeStorage $class_like_storage,
-        string $constant_name,
+        int $constant_name,
     ): ?Union {
         $constant_resolver = new StorageByPatternResolver();
         $resolved_enums = $constant_resolver->resolveEnums(
             $class_like_storage,
-            $constant_name,
+            Interner::lookup($constant_name),
         );
 
         if ($resolved_enums === []) {

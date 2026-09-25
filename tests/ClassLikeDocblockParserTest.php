@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Tests;
 
+use Psalm\Internal\Interner;
+
 use PhpParser\Comment\Doc;
 use PhpParser\Node\Stmt\Class_;
 use Psalm\Aliases;
@@ -263,7 +265,7 @@ final class ClassLikeDocblockParserTest extends TestCase
         $codebase = $this->project_analyzer->getCodebase();
         $codebase->scanFiles();
 
-        $class_storage = $codebase->classlike_storage_provider->get('MyClass');
+        $class_storage = $codebase->classlike_storage_provider->get(Interner::intern('MyClass'));
         $methods = $expected['is_static']
             ? $class_storage->pseudo_static_methods
             : $class_storage->pseudo_methods;

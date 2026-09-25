@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\Call\Method;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Codebase;
@@ -122,7 +126,7 @@ final class MissingMethodCallHandler
                 $class_storage,
                 $method_name_lc,
                 $lhs_type_part,
-                !$statements_analyzer->isStatic() && $method_id->fq_class_name === $context->self,
+                !$statements_analyzer->isStatic() && Interner::lookup($method_id->fq_class_name) === $context->self,
             );
 
             ArgumentsAnalyzer::analyze(
@@ -215,10 +219,10 @@ final class MissingMethodCallHandler
         $statements_analyzer->node_data = clone $statements_analyzer->node_data;
 
         return new AtomicCallContext(
-            new MethodIdentifier($fq_class_name, '__call'),
+            new MethodIdentifier($fq_class_name, Sym::C___CALL),
             [
                 new VirtualArg(
-                    new VirtualString($method_name_lc),
+                    new VirtualString(Interner::lookup($method_name_lc)),
                     false,
                     false,
                     $stmt->getAttributes(),
@@ -284,7 +288,7 @@ final class MissingMethodCallHandler
                 $class_storage,
                 $method_name_lc,
                 $lhs_type_part,
-                !$statements_analyzer->isStatic() && $method_id->fq_class_name === $context->self,
+                !$statements_analyzer->isStatic() && Interner::lookup($method_id->fq_class_name) === $context->self,
             );
 
             if (ArgumentsAnalyzer::analyze(
@@ -415,14 +419,14 @@ final class MissingMethodCallHandler
      * If the method is not declared, null is returned.
      *
      * @param ClassLikeStorage $static_class_storage The called class
-     * @param lowercase-string $method_name_lc
+     * @param int $method_name_lc
      * @return array{MethodStorage, ClassLikeStorage}
      * @psalm-mutation-free
      */
     private static function findPseudoMethodAndClassStorages(
         Codebase $codebase,
         ClassLikeStorage $static_class_storage,
-        string $method_name_lc,
+        int $method_name_lc,
     ): ?array {
         if (isset($static_class_storage->declaring_pseudo_method_ids[$method_name_lc])) {
             $method_id = $static_class_storage->declaring_pseudo_method_ids[$method_name_lc];

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Type\Atomic;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
@@ -40,7 +42,7 @@ final class TGenericObject extends TNamedObject
      * @param array<string, TNamedObject|TTemplateParam|TIterable|TObjectWithProperties|TCallableObject> $extra_types
      */
     public function __construct(
-        string $value,
+        int $value,
         array $type_params,
         /** @var bool if the parameters have been remapped to another class */
         public bool $remapped_params = false,
@@ -77,7 +79,7 @@ final class TGenericObject extends TNamedObject
             $extra_types = '&' . implode('&', $this->extra_types);
         }
 
-        return $this->value . '<' . substr($s, 0, -2) . '>' . $extra_types;
+        return Interner::lookup($this->value) . '<' . substr($s, 0, -2) . '>' . $extra_types;
     }
 
     /**
@@ -96,7 +98,7 @@ final class TGenericObject extends TNamedObject
     public function toPhpString(
         ?string $namespace,
         array $aliased_classes,
-        ?string $this_class,
+        ?int $this_class,
         int $analysis_php_version_id,
     ): ?string {
         $result = $this->toNamespacedString($namespace, $aliased_classes, $this_class, true);
@@ -130,7 +132,7 @@ final class TGenericObject extends TNamedObject
     #[Override]
     public function getAssertionString(): string
     {
-        return $this->value;
+        return Interner::lookup($this->value);
     }
 
     /**
@@ -152,8 +154,8 @@ final class TGenericObject extends TNamedObject
         ?StatementsAnalyzer $statements_analyzer = null,
         ?Atomic $input_type = null,
         ?int $input_arg_offset = null,
-        ?string $calling_class = null,
-        ?string $calling_function = null,
+        ?int $calling_class = null,
+        ?int $calling_function = null,
         bool $replace = true,
         bool $add_lower_bound = false,
         int $depth = 0,
@@ -186,7 +188,7 @@ final class TGenericObject extends TNamedObject
             return $this;
         }
         return new static(
-            $this->value,
+            Interner::lookup($this->value),
             $types ?? $this->type_params,
             $this->remapped_params,
             $this->is_static,
@@ -212,7 +214,7 @@ final class TGenericObject extends TNamedObject
             return $this;
         }
         return new static(
-            $this->value,
+            Interner::lookup($this->value),
             $type_params ?? $this->type_params,
             true,
             $this->is_static,

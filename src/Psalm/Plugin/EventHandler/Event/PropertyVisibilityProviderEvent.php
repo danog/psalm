@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Plugin\EventHandler\Event;
 
+use Psalm\Internal\Interner;
+
 use Psalm\CodeLocation;
 use Psalm\Context;
 use Psalm\StatementsSource;
@@ -20,8 +22,8 @@ final class PropertyVisibilityProviderEvent
      */
     public function __construct(
         private readonly StatementsSource $source,
-        private readonly string $fq_classlike_name,
-        private readonly string $property_name,
+        private readonly int $fq_classlike_name,
+        private readonly int $property_name,
         private readonly bool $read_mode,
         private readonly Context $context,
         private readonly CodeLocation $code_location,
@@ -35,10 +37,10 @@ final class PropertyVisibilityProviderEvent
 
     public function getFqClasslikeName(): string
     {
-        return $this->fq_classlike_name;
+        return Interner::lookup($this->fq_classlike_name);
     }
 
-    public function getPropertyName(): string
+    public function getPropertyName(): int
     {
         return $this->property_name;
     }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Fork;
 
+use Psalm\Internal\Interner;
+
 use Amp\Cancellation;
 use Amp\Parallel\Worker\Task;
 use Amp\Sync\Channel;
@@ -35,6 +37,7 @@ final class ShutdownScannerTask implements Task
         $statements_provider = $codebase->statements_provider;
 
         return [
+            'interner' => Interner::delta(),
             'classlikes_data' => $codebase->classlikes->getThreadData(),
             'scanner_data' => $codebase->scanner->getThreadData(),
             'issues' => IssueBuffer::getIssuesData(),

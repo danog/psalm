@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Type\Comparator;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use Psalm\Codebase;
 use Psalm\Internal\Type\TemplateBound;
 use Psalm\Internal\Type\TypeExpander;
@@ -301,7 +305,7 @@ final class UnionTypeComparator
                 }
 
                 if ($input_type_part instanceof Atomic\TIterable
-                    && ($container_type->hasArray() || $container_type->containsClassLike('traversable'))
+                    && ($container_type->hasArray() || $container_type->containsClassLike(Sym::C_TRAVERSABLE_2))
                 ) {
                     $scalar_type_match_found = false;
                     $is_atomic_contained_by = true;
@@ -700,7 +704,7 @@ final class UnionTypeComparator
                 $codebase,
                 $atomic_type,
                 $fq_classlike_name,
-                $fq_classlike_name,
+                Interner::lookup($fq_classlike_name),
                 null,
                 true,
                 true,

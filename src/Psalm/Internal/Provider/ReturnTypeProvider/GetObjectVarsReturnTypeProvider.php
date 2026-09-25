@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Provider\ReturnTypeProvider;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use Override;
 use Psalm\CodeLocation;
 use Psalm\Context;
@@ -83,7 +87,7 @@ final class GetObjectVarsReturnTypeProvider implements FunctionReturnTypeProvide
             }
 
             if ($object_type instanceof TNamedObject) {
-                if (strtolower($object_type->value) === strtolower(stdClass::class)) {
+                if ($object_type->value === strtolower(stdClass::class)) {
                     return self::$fallback;
                 }
                 $codebase = $statements_source->getCodebase();
@@ -147,8 +151,8 @@ final class GetObjectVarsReturnTypeProvider implements FunctionReturnTypeProvide
                     $properties,
                     null,
                     $class_storage->final
-                        || $class_storage->name === UnitEnum::class
-                        || $codebase->interfaceExtends($class_storage->name, UnitEnum::class)
+                        || $class_storage->name === Interner::intern(UnitEnum::class)
+                        || $codebase->interfaceExtends($class_storage->name, Sym::C_UNIT_ENUM)
                             ? null
                             : [Type::getString(), Type::getMixed()],
                 );

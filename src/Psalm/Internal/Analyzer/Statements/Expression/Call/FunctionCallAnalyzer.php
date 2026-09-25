@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\Call;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Codebase;
@@ -213,7 +217,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
                     $statements_analyzer->node_data,
                 );
 
-                if (!$codebase->functions->params_provider->has($function_call_info->function_id)) {
+                if (!$codebase->functions->params_provider->has(Interner::intern($function_call_info->function_id))) {
                     $function_call_info->function_params = $function_callable->params;
                 }
             }
@@ -462,7 +466,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
 
         if (!$function_name instanceof PhpParser\Node\Name\FullyQualified) {
             $function_call_info->function_id = $codebase_functions->getFullyQualifiedFunctionNameFromString(
-                $original_function_id,
+                Interner::intern($original_function_id),
                 $statements_analyzer,
             );
         } else {
@@ -550,7 +554,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
         $args = $stmt->isFirstClassCallable() ? [] : $stmt->getArgs();
         $dynamic_function_storage = null;
 
-        if ($codebase->functions->dynamic_storage_provider->has($function_call_info->function_id)) {
+        if ($codebase->functions->dynamic_storage_provider->has(Interner::intern($function_call_info->function_id))) {
             $dynamic_function_storage = $codebase->functions->dynamic_storage_provider->getFunctionStorage(
                 $stmt,
                 $statements_analyzer,
@@ -600,7 +604,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
                 $function_call_info->function_params = $function_callable->params;
             }
 
-            if ($codebase->functions->params_provider->has($function_call_info->function_id)) {
+            if ($codebase->functions->params_provider->has(Interner::intern($function_call_info->function_id))) {
                 $function_call_info->function_params = $codebase->functions->params_provider->getFunctionParams(
                     $statements_analyzer,
                     $function_call_info->function_id,
@@ -772,8 +776,8 @@ final class FunctionCallAnalyzer extends CallAnalyzer
                         $var_type_part,
                     );
                 } elseif ($var_type_part instanceof TCallableString
-                    || ($var_type_part instanceof TNamedObject && $var_type_part->value === 'Closure')
-                    || ($var_type_part instanceof TObjectWithProperties && isset($var_type_part->methods['__invoke']))
+                    || ($var_type_part instanceof TNamedObject && $var_type_part->value === Sym::C_CLOSURE)
+                    || ($var_type_part instanceof TObjectWithProperties && isset($var_type_part->methods[Sym::C___INVOKE]))
                 ) {
                     // this is fine
                     $has_valid_function_call_type = true;
@@ -802,10 +806,10 @@ final class FunctionCallAnalyzer extends CallAnalyzer
                         }
 
                         if (strpos($var_type_part->value, '::')) {
-                            $parts = explode('::', strtolower($var_type_part->value));
+                            $parts = explode('::', $var_type_part->value);
                             $fq_class_name = $parts[0];
                             $fq_class_name = (string) preg_replace('/^\\\/', '', $fq_class_name, 1);
-                            $potential_method_id = new MethodIdentifier($fq_class_name, $parts[1]);
+                            $potential_method_id = new MethodIdentifier(Interner::intern($fq_class_name), Interner::intern($parts[1]));
                         } else {
                             $function_call_info->new_function_name = new VirtualFullyQualified(
                                 $var_type_part->value,
@@ -833,7 +837,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
                     || !$codebase->methodExists(
                         new MethodIdentifier(
                             $var_type_part->value,
-                            '__invoke',
+                            Sym::C___INVOKE,
                         ),
                     )
                 ) {
@@ -991,7 +995,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
             $first_arg_value_id,
             $first_arg_value_id,
             $first_arg->value,
-            $context->self,
+            Interner::internOrNull($context->self),
             $statements_analyzer,
             $codebase,
         );

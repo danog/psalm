@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use PhpParser\Comment\Doc;
 use PhpParser\Node\Expr;
@@ -726,7 +730,7 @@ final class AssignmentAnalyzer
             $var_comment_type = TypeExpander::expandUnion(
                 $codebase,
                 $var_comment->type,
-                $context->self,
+                Interner::internOrNull($context->self),
                 $context->self,
                 $statements_analyzer->getParentFQCLN(),
             );
@@ -1062,7 +1066,7 @@ final class AssignmentAnalyzer
             InstancePropertyAssignmentAnalyzer::analyze(
                 $statements_analyzer,
                 $stmt,
-                $prop_name,
+                Interner::intern($prop_name),
                 null,
                 $by_ref_out_type,
                 $context,
@@ -1530,7 +1534,7 @@ final class AssignmentAnalyzer
                             $var_comment_type = TypeExpander::expandUnion(
                                 $codebase,
                                 $var_comment->type,
-                                $context->self,
+                                Interner::internOrNull($context->self),
                                 $context->self,
                                 $statements_analyzer->getParentFQCLN(),
                             );
@@ -1648,7 +1652,7 @@ final class AssignmentAnalyzer
             InstancePropertyAssignmentAnalyzer::analyze(
                 $statements_analyzer,
                 $assign_var,
-                $prop_name,
+                Interner::intern($prop_name),
                 $assign_value,
                 $assign_value_type,
                 $context,
@@ -1667,7 +1671,7 @@ final class AssignmentAnalyzer
                     foreach ($stmt_var_type->getAtomicTypes() as $type) {
                         if ($type instanceof TNamedObject) {
                             $codebase->analyzer->addMixedMemberName(
-                                strtolower($type->value) . '::$',
+                                $type->value . '::$',
                                 $context->calling_method_id ?: $statements_analyzer->getFileName(),
                             );
                         }
@@ -1802,7 +1806,7 @@ final class AssignmentAnalyzer
                         $cond_object_id,
                         $cond_object_id,
                         $assign_value,
-                        $context->self,
+                        Interner::internOrNull($context->self),
                         $statements_analyzer,
                         $codebase,
                     );

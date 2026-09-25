@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Codebase;
 
+use Psalm\Internal\Interner;
+
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
 
 /**
@@ -41,8 +43,8 @@ final class ReferenceMapGenerator
                     continue;
                 }
 
-                if (isset($expected_references[$fq_classlike_name . '::' . $method_name . '()'])) {
-                    $reference_dictionary[$fq_classlike_name . '::' . $method_name . '()']
+                if (isset($expected_references[Interner::lookup($fq_classlike_name) . '::' . Interner::lookup($method_name) . '()'])) {
+                    $reference_dictionary[Interner::lookup($fq_classlike_name) . '::' . Interner::lookup($method_name) . '()']
                         = $method_storage->location->file_name
                             . ':' . $method_storage->location->getLineNumber()
                             . ':' . $method_storage->location->getColumn();
@@ -54,8 +56,8 @@ final class ReferenceMapGenerator
                     continue;
                 }
 
-                if (isset($expected_references[$fq_classlike_name . '::$' . $property_name])) {
-                    $reference_dictionary[$fq_classlike_name . '::$' . $property_name]
+                if (isset($expected_references[Interner::lookup($fq_classlike_name) . '::$' . Interner::lookup($property_name)])) {
+                    $reference_dictionary[Interner::lookup($fq_classlike_name) . '::$' . Interner::lookup($property_name)]
                         = $property_storage->location->file_name
                             . ':' . $property_storage->location->getLineNumber()
                             . ':' . $property_storage->location->getColumn();

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer;
 
+use Psalm\Internal\Interner;
+
 use InvalidArgumentException;
 use Override;
 use PhpParser;
@@ -34,7 +36,7 @@ final class NamespaceAnalyzer extends SourceAnalyzer
     /**
      * A lookup table for public namespace constants
      *
-     * @var array<string, array<string, Union>>
+     * @var array<int, array<string, Union>>
      */
     private static array $public_namespace_constants = [];
 
@@ -55,7 +57,7 @@ final class NamespaceAnalyzer extends SourceAnalyzer
     {
         $leftover_stmts = [];
 
-        if (!isset(self::$public_namespace_constants[$this->namespace_name])) {
+        if (!isset(self::$public_namespace_constants[Interner::intern($this->namespace_name)])) {
             self::$public_namespace_constants[$this->namespace_name] = [];
         }
 
@@ -101,17 +103,17 @@ final class NamespaceAnalyzer extends SourceAnalyzer
             throw new UnexpectedValueException('Did not expect anonymous class here');
         }
 
-        $fq_class_name = Type::getFQCLNFromString($stmt->name->name, $this->getAliases());
+        $fq_class_name = Type::getFQCLNFromString(Interner::intern($stmt->name->name), $this->getAliases());
 
         if ($stmt instanceof PhpParser\Node\Stmt\Class_ || $stmt instanceof PhpParser\Node\Stmt\Enum_) {
             $this->source->addNamespacedClassAnalyzer(
-                $fq_class_name,
-                new ClassAnalyzer($stmt, $this, $fq_class_name),
+                Interner::intern($fq_class_name),
+                new ClassAnalyzer($stmt, $this, Interner::intern($fq_class_name)),
             );
         } elseif ($stmt instanceof PhpParser\Node\Stmt\Interface_) {
             $this->source->addNamespacedInterfaceAnalyzer(
-                $fq_class_name,
-                new InterfaceAnalyzer($stmt, $this, $fq_class_name),
+                Interner::intern($fq_class_name),
+                new InterfaceAnalyzer($stmt, $this, Interner::intern($fq_class_name)),
             );
         }
     }
@@ -125,7 +127,7 @@ final class NamespaceAnalyzer extends SourceAnalyzer
     /**
      * @psalm-external-mutation-free
      */
-    public function setConstType(string $const_name, Union $const_type): void
+    public function setConstType(int $const_name, Union $const_type): void
     {
         self::$public_namespace_constants[$this->namespace_name][$const_name] = $const_type;
     }
@@ -137,7 +139,7 @@ final class NamespaceAnalyzer extends SourceAnalyzer
     public static function getConstantsForNamespace(string $namespace_name, int $visibility): array
     {
         // @todo this does not allow for loading in namespace constants not already defined in the current sweep
-        if (!isset(self::$public_namespace_constants[$namespace_name])) {
+        if (!isset(self::$public_namespace_constants[Interner::intern($namespace_name)])) {
             self::$public_namespace_constants[$namespace_name] = [];
         }
 
@@ -211,15 +213,15 @@ final class NamespaceAnalyzer extends SourceAnalyzer
     }
 
     /**
-     * @param non-empty-string $fullyQualifiedClassName e.g. '\Psalm\Internal\Analyzer\NamespaceAnalyzer'
+     * @param int $fullyQualifiedClassName e.g. '\Psalm\Internal\Analyzer\NamespaceAnalyzer'
      * @return non-empty-string , e.g. 'Psalm'
      * @psalm-pure
      */
-    public static function getNameSpaceRoot(string $fullyQualifiedClassName): string
+    public static function getNameSpaceRoot(int $fullyQualifiedClassName): string
     {
         $root_namespace = (string) preg_replace('/^([^\\\]+).*/', '$1', $fullyQualifiedClassName, 1);
         if ($root_namespace === "") {
-            throw new InvalidArgumentException("Invalid classname \"$fullyQualifiedClassName\"");
+            throw new InvalidArgumentException("Invalid classname \"" . Interner::lookup($fullyQualifiedClassName) . "\"");
         }
         return $root_namespace;
     }

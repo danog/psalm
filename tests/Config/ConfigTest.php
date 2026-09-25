@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Tests\Config;
 
+use Psalm\Internal\Interner;
+
 use Composer\Autoload\ClassLoader;
 use ErrorException;
 use Override;
@@ -649,7 +651,7 @@ final class ConfigTest extends TestCase
             'suppress',
             $config->getReportingLevelForClass(
                 'UndefinedClass',
-                'Psalm\Badger',
+                Interner::intern('Psalm\Badger'),
             ),
         );
 
@@ -657,7 +659,7 @@ final class ConfigTest extends TestCase
             'suppress',
             $config->getReportingLevelForClass(
                 'UndefinedClass',
-                'Psalm\BadActor',
+                Interner::intern('Psalm\BadActor'),
             ),
         );
 
@@ -665,7 +667,7 @@ final class ConfigTest extends TestCase
             'suppress',
             $config->getReportingLevelForClass(
                 'UndefinedClass',
-                'Psalm\GoodActor',
+                Interner::intern('Psalm\GoodActor'),
             ),
         );
 
@@ -673,14 +675,14 @@ final class ConfigTest extends TestCase
             'suppress',
             $config->getReportingLevelForClass(
                 'UndefinedClass',
-                'Psalm\MagicFactory',
+                Interner::intern('Psalm\MagicFactory'),
             ),
         );
 
         $this->assertNull(
             $config->getReportingLevelForClass(
                 'UndefinedClass',
-                'Psalm\Bodger',
+                Interner::intern('Psalm\Bodger'),
             ),
         );
 
@@ -882,7 +884,7 @@ final class ConfigTest extends TestCase
             'suppress',
             $config->getReportingLevelForClass(
                 'UndefinedClass',
-                'Psalm\Badger',
+                Interner::intern('Psalm\Badger'),
             ),
         );
 
@@ -890,7 +892,7 @@ final class ConfigTest extends TestCase
             'suppress',
             $config->getReportingLevelForClass(
                 'UndefinedClass',
-                'Psalm\BadActor',
+                Interner::intern('Psalm\BadActor'),
             ),
         );
 
@@ -898,7 +900,7 @@ final class ConfigTest extends TestCase
             'suppress',
             $config->getReportingLevelForClass(
                 'UndefinedClass',
-                'Psalm\GoodActor',
+                Interner::intern('Psalm\GoodActor'),
             ),
         );
 
@@ -906,14 +908,14 @@ final class ConfigTest extends TestCase
             'suppress',
             $config->getReportingLevelForClass(
                 'UndefinedClass',
-                'Psalm\MagicFactory',
+                Interner::intern('Psalm\MagicFactory'),
             ),
         );
 
         $this->assertNull(
             $config->getReportingLevelForClass(
                 'UndefinedClass',
-                'Psalm\Bodger',
+                Interner::intern('Psalm\Bodger'),
             ),
         );
 
@@ -1606,12 +1608,12 @@ final class ConfigTest extends TestCase
 
         $this->assertSame(
             dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'Psalm' . DIRECTORY_SEPARATOR . 'Foo.php',
-            $config->getPotentialComposerFilePathForClassLike('Psalm\\Foo'),
+            $config->getPotentialComposerFilePathForClassLike(Interner::intern('Psalm\\Foo')),
         );
 
         $this->assertSame(
             dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'tests' . DIRECTORY_SEPARATOR . 'Foo.php',
-            $config->getPotentialComposerFilePathForClassLike('Psalm\\Tests\\Foo'),
+            $config->getPotentialComposerFilePathForClassLike(Interner::intern('Psalm\\Tests\\Foo')),
         );
     }
 

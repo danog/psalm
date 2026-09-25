@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Block;
 
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
@@ -61,7 +63,7 @@ final class LoopAnalyzer
         $loop_context = $loop_scope->loop_context;
         $loop_parent_context = $loop_scope->loop_parent_context;
 
-        $assignment_mapper = new AssignmentMapVisitor($loop_context->self);
+        $assignment_mapper = new AssignmentMapVisitor(Interner::internOrNull($loop_context->self));
         $traverser->addVisitor($assignment_mapper);
 
         $traverser->traverse(array_merge($pre_conditions, $stmts, $post_expressions));
@@ -88,7 +90,7 @@ final class LoopAnalyzer
                     $pre_condition_id,
                     $pre_condition_id,
                     $pre_condition,
-                    $loop_context->self,
+                    Interner::internOrNull($loop_context->self),
                     $statements_analyzer,
                     $codebase,
                 );

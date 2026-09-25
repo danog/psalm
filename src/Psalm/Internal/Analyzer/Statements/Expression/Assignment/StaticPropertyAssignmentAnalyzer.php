@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\Assignment;
 
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
@@ -49,7 +51,7 @@ final class StaticPropertyAssignmentAnalyzer
     ): ?bool {
         $var_id = ExpressionIdentifier::getExtendedVarId(
             $stmt,
-            $context->self,
+            Interner::internOrNull($context->self),
             $statements_analyzer,
         );
 
@@ -93,7 +95,7 @@ final class StaticPropertyAssignmentAnalyzer
 
                 if (!$context->ignore_variable_property) {
                     $codebase->analyzer->addMixedMemberName(
-                        strtolower($fq_class_name) . '::$',
+                        $fq_class_name . '::$',
                         $context->calling_method_id ?: $statements_analyzer->getFileName(),
                     );
                 }
@@ -101,7 +103,7 @@ final class StaticPropertyAssignmentAnalyzer
                 return null;
             }
 
-            $property_id = $fq_class_name . '::$' . $prop_name;
+            $property_id = Interner::lookup($fq_class_name) . '::$' . Interner::lookup($prop_name);
 
             if ($codebase->store_node_types
                 && !$context->collect_initializations
@@ -110,7 +112,7 @@ final class StaticPropertyAssignmentAnalyzer
                 $codebase->analyzer->addNodeReference(
                     $statements_analyzer->getFilePath(),
                     $stmt->class,
-                    $fq_class_name,
+                    Interner::lookup($fq_class_name),
                 );
 
                 $codebase->analyzer->addNodeReference(
@@ -144,11 +146,11 @@ final class StaticPropertyAssignmentAnalyzer
             }
 
             $declaring_property_class = (string) $codebase->properties->getDeclaringClassForProperty(
-                $fq_class_name . '::$' . $prop_name->name,
+                Interner::lookup($fq_class_name) . '::$' . $prop_name->name,
                 false,
             );
 
-            $declaring_property_id = strtolower($declaring_property_class) . '::$' . $prop_name;
+            $declaring_property_id = $declaring_property_class . '::$' . Interner::lookup($prop_name);
 
             if ($codebase->alter_code && $stmt->class instanceof PhpParser\Node\Name) {
                 $moved_class = $codebase->classlikes->handleClassLikeReferenceInMigration(
@@ -167,14 +169,14 @@ final class StaticPropertyAssignmentAnalyzer
 
                             $file_manipulations = [];
 
-                            if (strtolower($new_fq_class_name) !== $old_declaring_fq_class_name) {
+                            if ($new_fq_class_name !== $old_declaring_fq_class_name) {
                                 $file_manipulations[] = new FileManipulation(
                                     (int) $stmt->class->getAttribute('startFilePos'),
                                     (int) $stmt->class->getAttribute('endFilePos') + 1,
                                     Type::getStringFromFQCLN(
                                         $new_fq_class_name,
                                         $statements_analyzer->getNamespace(),
-                                        $statements_analyzer->getAliasedClassesFlipped(),
+                                        Interner::lookupKeys($statements_analyzer->getAliasedClassesFlipped()),
                                         null,
                                     ),
                                 );
@@ -192,7 +194,7 @@ final class StaticPropertyAssignmentAnalyzer
                 }
             }
 
-            $class_storage = $codebase->classlike_storage_provider->get($declaring_property_class);
+            $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($declaring_property_class));
 
             if ($var_id) {
                 $context->vars_in_scope[$var_id] = $assignment_value_type;
@@ -247,7 +249,7 @@ final class StaticPropertyAssignmentAnalyzer
                 $codebase,
                 $class_property_type,
                 $fq_class_name,
-                $fq_class_name,
+                Interner::lookup($fq_class_name),
                 $class_storage->parent_class,
             );
 

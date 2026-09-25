@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\LanguageServer\Client;
 
+use Psalm\Internal\Interner;
+
 use Psalm\Internal\LanguageServer\ClientHandler;
 use Psalm\Internal\LanguageServer\LanguageServer;
 
@@ -38,7 +40,7 @@ final class Workspace
         $this->server->logDebug("workspace/configuration");
 
         /** @var array */
-        return $this->handler->request('workspace/configuration', [
+        return $this->handler->request(Interner::intern('workspace/configuration'), [
             'items' => [
                 [
                     'section' => $section,

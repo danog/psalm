@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression;
 
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
@@ -67,7 +69,7 @@ final class ThrowAnalyzer
                             'Cannot throw ' . $throw_type_part
                                 . ' as it does not extend Exception or implement Throwable',
                             new CodeLocation($file_analyzer, $stmt),
-                            (string) $throw_type_part,
+                            Interner::intern((string) $throw_type_part),
                         ),
                         $statements_analyzer->getSuppressedIssues(),
                     )) {

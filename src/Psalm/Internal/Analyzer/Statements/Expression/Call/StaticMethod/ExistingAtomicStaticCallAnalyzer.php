@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\Call\StaticMethod;
 
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use PhpParser\Node\Expr\StaticCall;
 use Psalm\CodeLocation;
@@ -99,11 +101,11 @@ final class ExistingAtomicStaticCallAnalyzer
 
             $appearing_method_class_name = $appearing_method_id->fq_class_name;
 
-            if ($codebase->classExtends($context->self, $appearing_method_class_name)) {
+            if ($codebase->classExtends(Interner::intern($context->self), $appearing_method_class_name)) {
                 $old_context_include_location = $context->include_location;
                 $old_self = $context->self;
                 $context->include_location = new CodeLocation($statements_analyzer->getSource(), $stmt);
-                $context->self = $appearing_method_class_name;
+                $context->self = Interner::lookup($appearing_method_class_name);
 
                 $file_analyzer = $statements_analyzer->getFileAnalyzer();
 
@@ -126,7 +128,7 @@ final class ExistingAtomicStaticCallAnalyzer
                         }
                     }
 
-                    if (!isset($context->initialized_methods[(string) $appearing_method_id])) {
+                    if (!isset($context->initialized_methods[Interner::intern((string) $appearing_method_id)])) {
                         $context->initialized_methods[(string) $appearing_method_id] = true;
 
                         $file_analyzer->getMethodMutations($appearing_method_id, $context);
@@ -152,14 +154,14 @@ final class ExistingAtomicStaticCallAnalyzer
             $class_storage,
             $method_name_lc,
             $lhs_type_part,
-            !$statements_analyzer->isStatic() && $method_id->fq_class_name === $context->self,
+            !$statements_analyzer->isStatic() && Interner::lookup($method_id->fq_class_name) === $context->self,
         );
 
         if ($found_generic_params
             && $stmt->class instanceof PhpParser\Node\Name
             && $stmt->class->getParts() === ['parent']
             && $context->self
-            && ($self_class_storage = $codebase->classlike_storage_provider->get($context->self))
+            && ($self_class_storage = $codebase->classlike_storage_provider->get(Interner::intern($context->self)))
             && $self_class_storage->template_extended_params
         ) {
             foreach ($self_class_storage->template_extended_params as $template_fq_class_name => $extended_types) {
@@ -171,10 +173,10 @@ final class ExistingAtomicStaticCallAnalyzer
 
                     foreach ($extended_type->getAtomicTypes() as $t) {
                         if ($t instanceof TTemplateParam
-                            && isset($found_generic_params[$t->param_name][$t->defining_class])
+                            && isset($found_generic_params[$t->param_name][Interner::lookup($t->defining_class)])
                         ) {
                             $found_generic_params[$type_key][$template_fq_class_name]
-                                = $found_generic_params[$t->param_name][$t->defining_class];
+                                = $found_generic_params[$t->param_name][Interner::lookup($t->defining_class)];
                         } else {
                             $found_generic_params[$type_key][$template_fq_class_name]
                                 = $extended_type;
@@ -214,7 +216,7 @@ final class ExistingAtomicStaticCallAnalyzer
             $return_type_candidate = $codebase->methods->return_type_provider->getReturnType(
                 $statements_analyzer,
                 $fq_class_name,
-                $stmt_name->name,
+                Interner::intern($stmt_name->name),
                 $stmt,
                 $context,
                 new CodeLocation($statements_analyzer->getSource(), $stmt_name),
@@ -240,7 +242,7 @@ final class ExistingAtomicStaticCallAnalyzer
                     new CodeLocation($statements_analyzer->getSource(), $stmt_name),
                     null,
                     $fq_class_name,
-                    $stmt_name->name,
+                    Interner::intern($stmt_name->name),
                 );
             }
         }
@@ -275,7 +277,7 @@ final class ExistingAtomicStaticCallAnalyzer
                                 new TNamedObject($context->self),
                             ]),
                         new Union([
-                            new TNamedObject($method_id->fq_class_name),
+                            new TNamedObject(Interner::lookup($method_id->fq_class_name)),
                         ]),
                     ))
             ) {
@@ -375,9 +377,9 @@ final class ExistingAtomicStaticCallAnalyzer
                             $codebase,
                             $statements_analyzer,
                             $stmt->class,
-                            $new_fq_class_name,
+                            Interner::intern($new_fq_class_name),
                             $context,
-                            strtolower($old_declaring_fq_class_name) !== strtolower($new_fq_class_name),
+                            $old_declaring_fq_class_name !== $new_fq_class_name,
                             $stmt->class->getFirst() === 'self',
                         )) {
                             $moved_call = true;
@@ -480,7 +482,7 @@ final class ExistingAtomicStaticCallAnalyzer
         ?string &$self_fq_class_name,
         Atomic $lhs_type_part,
         Context $context,
-        string $fq_class_name,
+        int $fq_class_name,
         ClassLikeStorage $class_storage,
         Config $config,
     ): ?Union {
@@ -500,7 +502,7 @@ final class ExistingAtomicStaticCallAnalyzer
                     if (!isset(
                         $template_result->lower_bounds
                         [$template_type->param_name]
-                        [$template_type->defining_class],
+                        [Interner::lookup($template_type->defining_class)],
                     )) {
                         $template_result->lower_bounds[$template_type->param_name]
                             = self::resolveTemplateResultLowerBound(
@@ -533,7 +535,7 @@ final class ExistingAtomicStaticCallAnalyzer
                 && $context->self
             ) {
                 $static_type = $context->self;
-                $context_final = $codebase->classlike_storage_provider->get($context->self)->final;
+                $context_final = $codebase->classlike_storage_provider->get(Interner::intern($context->self))->final;
             } elseif ($context->calling_method_id !== null) {
                 // differentiate between these cases:
                 //   1. "static" comes from the CALLED static method - use $fq_class_name.
@@ -565,7 +567,7 @@ final class ExistingAtomicStaticCallAnalyzer
             $return_type_candidate = TypeExpander::expandUnion(
                 $codebase,
                 $return_type_candidate,
-                $self_fq_class_name,
+                Interner::internOrNull($self_fq_class_name),
                 $static_type,
                 $class_storage->parent_class,
                 true,
@@ -594,7 +596,7 @@ final class ExistingAtomicStaticCallAnalyzer
                     $statements_analyzer,
                     new CodeLocation($statements_analyzer, $stmt),
                     $statements_analyzer->getSuppressedIssues(),
-                    $context->phantom_classes,
+                    Interner::lookupKeys($context->phantom_classes),
                     true,
                     false,
                     false,
@@ -631,7 +633,7 @@ final class ExistingAtomicStaticCallAnalyzer
     ): array {
         if ($template_type->param_name === 'TFunctionArgCount') {
             return [
-                'fn-' . $method_id->method_name => [
+                'fn-' . Interner::lookup($method_id->method_name) => [
                     new TemplateBound(
                         Type::getInt(false, count($stmt->getArgs())),
                     ),
@@ -641,7 +643,7 @@ final class ExistingAtomicStaticCallAnalyzer
 
         if ($template_type->param_name === 'TPhpMajorVersion') {
             return [
-                'fn-' . $method_id->method_name => [
+                'fn-' . Interner::lookup($method_id->method_name) => [
                     new TemplateBound(
                         Type::getInt(false, $codebase->getMajorAnalysisPhpVersion()),
                     ),
@@ -651,7 +653,7 @@ final class ExistingAtomicStaticCallAnalyzer
 
         if ($template_type->param_name === 'TPhpVersionId') {
             return [
-                'fn-' . $method_id->method_name => [
+                'fn-' . Interner::lookup($method_id->method_name) => [
                     new TemplateBound(
                         Type::getInt(
                             false,
@@ -663,23 +665,23 @@ final class ExistingAtomicStaticCallAnalyzer
         }
 
         if (isset(
-            $class_storage->template_extended_params[$template_type->defining_class][$template_type->param_name],
+            $class_storage->template_extended_params[Interner::lookup($template_type->defining_class)][$template_type->param_name],
         )) {
-            $extended_param_type = $class_storage->template_extended_params[
+            $extended_param_type = $class_storage->template_extended_params[Interner::lookup(
                 $template_type->defining_class
-            ][$template_type->param_name];
+            )][$template_type->param_name];
 
-            return [
+            return Interner::lookupKeys([
                 ($template_type->defining_class) => [
                     new TemplateBound($extended_param_type),
                 ],
-            ];
+            ]);
         }
 
-        return [
+        return Interner::lookupKeys([
             ($template_type->defining_class) => [
                 new TemplateBound(Type::getNever()),
             ],
-        ];
+        ]);
     }
 }

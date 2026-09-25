@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Example\Plugin;
 
+use Psalm\Internal\Interner;
+
 use Override;
 use PhpParser\Node\ArrayItem;
 use PhpParser\Node\Expr;
@@ -85,7 +87,7 @@ final class TaintActiveRecords implements AddTaintsInterface
             return false;
         }
 
-        return strpos($type->value, 'app\models\\') === 0;
+        return strpos(Interner::lookup($type->value), 'app\models\\') === 0;
     }
 
 

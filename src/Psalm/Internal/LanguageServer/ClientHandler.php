@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\LanguageServer;
 
+use Psalm\Internal\Interner;
+
 use AdvancedJsonRpc\Notification;
 use AdvancedJsonRpc\Request;
 use AdvancedJsonRpc\Response;
@@ -28,17 +30,17 @@ final class ClientHandler
     /**
      * Sends a request to the client and returns a promise that is resolved with the result or rejected with the error
      *
-     * @param string $method The method to call
+     * @param int $method The method to call
      * @param array|object $params The method parameters
      * @return mixed Resolved with the result of the request or rejected with an error
      */
-    public function request(string $method, array|object $params): mixed
+    public function request(int $method, array|object $params): mixed
     {
         $id = $this->idGenerator->generate();
 
                 $this->protocolWriter->write(
                     new Message(
-                        new Request($id, $method, (object) $params),
+                        new Request($id, Interner::lookup($method), (object) $params),
                     ),
                 );
 
@@ -71,14 +73,14 @@ final class ClientHandler
     /**
      * Sends a notification to the client
      *
-     * @param string $method The method to call
+     * @param int $method The method to call
      * @param array|object $params The method parameters
      */
-    public function notify(string $method, array|object $params): void
+    public function notify(int $method, array|object $params): void
     {
         $this->protocolWriter->write(
             new Message(
-                new Notification($method, (object)$params),
+                new Notification(Interner::lookup($method), (object)$params),
             ),
         );
     }

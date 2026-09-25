@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Block;
 
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
@@ -63,7 +65,7 @@ final class DoAnalyzer
             $cond_id,
             $cond_id,
             $stmt->cond,
-            $context->self,
+            Interner::internOrNull($context->self),
             $statements_analyzer,
             $codebase,
         );

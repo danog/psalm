@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Diff;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use UnexpectedValueException;
 
@@ -208,11 +212,11 @@ final class ClassStatementsDiffer extends AstDiffer
                     $keep[] = $name_lc . '::' . strtolower((string) $diff_elem->old->name);
                 } elseif ($diff_elem->old instanceof PhpParser\Node\Stmt\Property) {
                     foreach ($diff_elem->old->props as $prop) {
-                        $keep[] = $name_lc . '::$' . $prop->name;
+                        $keep[] = $name_lc . '::$' . Interner::lookup($prop->name);
                     }
                 } elseif ($diff_elem->old instanceof PhpParser\Node\Stmt\ClassConst) {
                     foreach ($diff_elem->old->consts as $const) {
-                        $keep[] = $name_lc . '::' . $const->name;
+                        $keep[] = $name_lc . '::' . Interner::lookup($const->name);
                     }
                 } elseif ($diff_elem->old instanceof PhpParser\Node\Stmt\TraitUse) {
                     foreach ($diff_elem->old->traits as $trait) {
@@ -224,7 +228,7 @@ final class ClassStatementsDiffer extends AstDiffer
                     $keep_signature[] = $name_lc . '::' . strtolower((string) $diff_elem->old->name);
                 } elseif ($diff_elem->old instanceof PhpParser\Node\Stmt\Property) {
                     foreach ($diff_elem->old->props as $prop) {
-                        $keep_signature[] = $name_lc . '::$' . $prop->name;
+                        $keep_signature[] = $name_lc . '::$' . Interner::lookup($prop->name);
                     }
                 }
             } elseif ($diff_elem->type === DiffElem::TYPE_REMOVE || $diff_elem->type === DiffElem::TYPE_ADD) {
@@ -246,11 +250,11 @@ final class ClassStatementsDiffer extends AstDiffer
                     }
                 } elseif ($affected_elem instanceof PhpParser\Node\Stmt\Property) {
                     foreach ($affected_elem->props as $prop) {
-                        $add_or_delete[] = $name_lc . '::$' . $prop->name;
+                        $add_or_delete[] = $name_lc . '::$' . Interner::lookup($prop->name);
                     }
                 } elseif ($affected_elem instanceof PhpParser\Node\Stmt\ClassConst) {
                     foreach ($affected_elem->consts as $const) {
-                        $add_or_delete[] = $name_lc . '::' . $const->name;
+                        $add_or_delete[] = $name_lc . '::' . Interner::lookup($const->name);
                     }
                 } elseif ($affected_elem instanceof PhpParser\Node\Stmt\TraitUse) {
                     foreach ($affected_elem->traits as $trait) {

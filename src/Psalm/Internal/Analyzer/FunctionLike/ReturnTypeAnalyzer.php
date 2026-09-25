@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\FunctionLike;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use PhpParser\Node\Expr\ArrowFunction;
 use PhpParser\Node\Expr\Closure;
@@ -80,8 +84,8 @@ final class ReturnTypeAnalyzer
         NodeDataProvider $type_provider,
         FunctionLikeAnalyzer $function_like_analyzer,
         ?Union $return_type = null,
-        ?string $fq_class_name = null,
-        ?string $static_fq_class_name = null,
+        ?int $fq_class_name = null,
+        ?int $static_fq_class_name = null,
         ?CodeLocation $return_type_location = null,
         array $compatible_method_ids = [],
         bool $did_explicitly_return = false,
@@ -122,7 +126,7 @@ final class ReturnTypeAnalyzer
             return null;
         }
 
-        $is_to_string = $function instanceof ClassMethod && strtolower($function->name->name) === '__tostring';
+        $is_to_string = $function instanceof ClassMethod && $function->name->name === '__tostring';
 
         if ($function instanceof ClassMethod
             && str_starts_with($function->name->name, '__')
@@ -303,7 +307,7 @@ final class ReturnTypeAnalyzer
             $codebase,
             $inferred_return_type,
             $source->getFQCLN(),
-            $source->getFQCLN(),
+            Interner::lookupOrNull($source->getFQCLN()),
             $source->getParentFQCLN(),
         );
 
@@ -435,7 +439,7 @@ final class ReturnTypeAnalyzer
             $codebase,
             $return_type,
             $self_fq_class_name,
-            $static_fq_class_name,
+            Interner::lookupOrNull($static_fq_class_name),
             $parent_class,
             true,
             true,
@@ -824,14 +828,14 @@ final class ReturnTypeAnalyzer
         $classlike_storage = null;
 
         if ($context->self) {
-            $classlike_storage = $codebase->classlike_storage_provider->get($context->self);
+            $classlike_storage = $codebase->classlike_storage_provider->get(Interner::intern($context->self));
             $parent_class = $classlike_storage->parent_class;
         }
 
         if (!$storage->signature_return_type || $storage->signature_return_type === $storage->return_type) {
             foreach ($storage->return_type->getAtomicTypes() as $type) {
                 if ($type instanceof TNamedObject
-                    && 'parent' === $type->value
+                    && Sym::C_PARENT === $type->value
                     && null === $parent_class
                 ) {
                     if (IssueBuffer::accepts(
@@ -851,7 +855,7 @@ final class ReturnTypeAnalyzer
                 $codebase,
                 $storage->return_type,
                 $classlike_storage->name ?? null,
-                $classlike_storage->name ?? null,
+                Interner::lookupOrNull($classlike_storage->name ?? null),
                 $parent_class,
             );
 
@@ -874,7 +878,7 @@ final class ReturnTypeAnalyzer
             $codebase,
             $storage->signature_return_type,
             $classlike_storage->name ?? null,
-            $classlike_storage->name ?? null,
+            Interner::lookupOrNull($classlike_storage->name ?? null),
             $parent_class,
         );
 
@@ -897,7 +901,7 @@ final class ReturnTypeAnalyzer
                 $codebase,
                 $storage->return_type,
                 $classlike_storage->name ?? null,
-                $classlike_storage->name ?? null,
+                Interner::lookupOrNull($classlike_storage->name ?? null),
                 $parent_class,
                 true,
                 true,
@@ -909,7 +913,7 @@ final class ReturnTypeAnalyzer
         } catch (UnresolvableConstantException $e) {
             IssueBuffer::maybeAdd(
                 new UnresolvableConstant(
-                    "Could not resolve constant {$e->class_name}::{$e->const_name}",
+                    "Could not resolve constant " . Interner::lookup($e->class_name) . "::" . Interner::lookup($e->const_name) . "",
                     $storage->return_type_location,
                 ),
                 $storage->suppressed_issues,
@@ -933,8 +937,8 @@ final class ReturnTypeAnalyzer
             $class_template_params = ClassTemplateParamCollector::collect(
                 $codebase,
                 $classlike_storage,
-                $codebase->classlike_storage_provider->get($context->self),
-                strtolower($function->name->name),
+                $codebase->classlike_storage_provider->get(Interner::intern($context->self)),
+                Interner::intern($function->name->name),
                 new TNamedObject($context->self),
                 true,
             );
@@ -1036,19 +1040,19 @@ final class ReturnTypeAnalyzer
             $allow_native_type
                 ? (string) $inferred_return_type->toPhpString(
                     $source->getNamespace(),
-                    $source->getAliasedClassesFlipped(),
+                    Interner::lookupKeys($source->getAliasedClassesFlipped()),
                     $source->getFQCLN(),
                     $codebase->analysis_php_version_id,
                 ) : null,
             $inferred_return_type->toNamespacedString(
                 $source->getNamespace(),
-                $source->getAliasedClassesFlipped(),
+                Interner::lookupKeys($source->getAliasedClassesFlipped()),
                 $source->getFQCLN(),
                 false,
             ),
             $inferred_return_type->toNamespacedString(
                 $source->getNamespace(),
-                $source->getAliasedClassesFlipped(),
+                Interner::lookupKeys($source->getAliasedClassesFlipped()),
                 $source->getFQCLN(),
                 true,
             ),

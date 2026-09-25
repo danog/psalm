@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Psalm\Internal\Analyzer\Statements\Expression\Call;
 
+use Psalm\Internal\Sym;
+
+use Psalm\Internal\Interner;
+
 use PhpParser;
 use Psalm\CodeLocation;
 use Psalm\Context;
@@ -60,7 +64,7 @@ final class StaticCallAnalyzer extends CallAnalyzer
                     $child_fq_class_name = $context->self;
 
                     $class_storage = $child_fq_class_name
-                        ? $codebase->classlike_storage_provider->get($child_fq_class_name)
+                        ? $codebase->classlike_storage_provider->get(Interner::intern($child_fq_class_name))
                         : null;
 
                     if (!$class_storage || !$class_storage->parent_class) {
@@ -75,15 +79,15 @@ final class StaticCallAnalyzer extends CallAnalyzer
 
                     $fq_class_name = $class_storage->parent_class;
 
-                    $fq_class_name = $codebase->classlikes->getUnAliasedName($fq_class_name);
+                    $fq_class_name = $codebase->classlikes->getUnAliasedName(Interner::lookup($fq_class_name));
 
-                    $class_storage = $codebase->classlike_storage_provider->get($fq_class_name);
+                    $class_storage = $codebase->classlike_storage_provider->get(Interner::intern($fq_class_name));
 
                     $fq_class_name = $class_storage->name;
 
                     if ($context->collect_initializations
                         && isset($stmt->name->name)
-                        && $stmt->name->name === '__construct'
+                        && $stmt->name->name === Sym::C___CONSTRUCT
                         && isset($class_storage->declaring_method_ids['__construct'])) {
                         $construct_fq_class_name = $class_storage->declaring_method_ids['__construct']->fq_class_name;
                         $construct_class_storage = $codebase->classlike_storage_provider->get($construct_fq_class_name);
@@ -91,9 +95,9 @@ final class StaticCallAnalyzer extends CallAnalyzer
 
                         foreach ($construct_class_storage->properties as $property_name => $property_storage) {
                             if ($property_storage->is_promoted
-                                && isset($context->vars_in_scope['$this->' . $property_name])) {
-                                $context_type = $context->vars_in_scope['$this->' . $property_name];
-                                $context->vars_in_scope['$this->' . $property_name] = $context_type->setProperties(
+                                && isset($context->vars_in_scope['$this->' . Interner::lookup($property_name)])) {
+                                $context_type = $context->vars_in_scope['$this->' . Interner::lookup($property_name)];
+                                $context->vars_in_scope['$this->' . Interner::lookup($property_name)] = $context_type->setProperties(
                                     [
                                         'initialized_class' => $construct_fq_class_name,
                                         'initialized' => true,
@@ -140,27 +144,27 @@ final class StaticCallAnalyzer extends CallAnalyzer
                     );
                 }
 
-                if ($context->isPhantomClass($fq_class_name)) {
+                if ($context->isPhantomClass(Interner::intern($fq_class_name))) {
                     return true;
                 }
 
                 $does_class_exist = false;
 
                 if ($context->self) {
-                    $self_storage = $codebase->classlike_storage_provider->get($context->self);
+                    $self_storage = $codebase->classlike_storage_provider->get(Interner::intern($context->self));
 
-                    if (isset($self_storage->used_traits[strtolower($fq_class_name)])) {
+                    if (isset($self_storage->used_traits[Interner::intern($fq_class_name)])) {
                         $fq_class_name = $context->self;
                         $does_class_exist = true;
                     }
                 }
 
-                if (!isset($context->phantom_classes[strtolower($fq_class_name)])
+                if (!isset($context->phantom_classes[Interner::intern($fq_class_name)])
                     && !$does_class_exist
                 ) {
                     $does_class_exist = ClassLikeAnalyzer::checkFullyQualifiedClassLikeName(
                         $statements_analyzer,
-                        $fq_class_name,
+                        Interner::intern($fq_class_name),
                         new CodeLocation($source, $stmt->class),
                         !$context->collect_initializations
                             && !$context->collect_mutations

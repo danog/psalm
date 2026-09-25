@@ -20,7 +20,7 @@ final class FileDiffTest extends TestCase
 {
     /**
      * @dataProvider getChanges
-     * @param string[] $same_methods
+     * @param int[] $same_methods
      */
     public function testCode(
         string $a,
@@ -75,9 +75,9 @@ final class FileDiffTest extends TestCase
 
     /**
      * @dataProvider getChanges
-     * @param string[] $same_methods
+     * @param int[] $same_methods
      * @param string[] $same_signatures
-     * @param string[] $changed_methods
+     * @param int[] $changed_methods
      * @param array<array-key,array{int,int}> $diff_map_offsets
      */
     public function testPartialAstDiff(
