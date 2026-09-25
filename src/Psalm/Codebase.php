@@ -2165,7 +2165,7 @@ final class Codebase
                         $property_name = Interner::lookup($property_name_id);
                         try {
                             $property_storage = $this->properties->getStorage(
-                                Interner::intern(Interner::lookup($declaring_class)), Interner::intern($property_name),
+                                $declaring_class, Interner::intern($property_name),
                             );
                         } catch (UnexpectedValueException $e) {
                             error_log($e->getMessage());

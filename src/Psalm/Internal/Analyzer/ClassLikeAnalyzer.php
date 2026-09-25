@@ -620,10 +620,10 @@ abstract class ClassLikeAnalyzer extends SourceAnalyzer
             $fq_class_name, $property_name,
             true,
         );
-        $appearing_property_class = Interner::internOrNull($codebase->properties->getAppearingClassForProperty(
+        $appearing_property_class = $codebase->properties->getAppearingClassForProperty(
             $fq_class_name, $property_name,
             true,
-        ));
+        );
 
         if (!($declaring_property_class !== null) || !($appearing_property_class !== null)) {
             throw new UnexpectedValueException(

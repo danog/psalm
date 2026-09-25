@@ -684,7 +684,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         foreach ($storage->appearing_property_ids as $property_name_id => $appearing_property_id) {
             $property_name = Interner::lookup($property_name_id);
             $property_class_name = $codebase->properties->getDeclaringClassForProperty(
-                Interner::intern(Interner::lookup($appearing_property_id)), Interner::intern(Interner::lookup($property_name_id)),
+                $appearing_property_id, $property_name_id,
                 true,
             );
 
@@ -1082,7 +1082,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
         foreach ($storage->appearing_property_ids as $property_name_id => $appearing_property_id) {
             $property_name = Interner::lookup($property_name_id);
             $property_class_name = $codebase->properties->getDeclaringClassForProperty(
-                Interner::intern(Interner::lookup($appearing_property_id)), Interner::intern(Interner::lookup($property_name_id)),
+                $appearing_property_id, $property_name_id,
                 true,
             );
 

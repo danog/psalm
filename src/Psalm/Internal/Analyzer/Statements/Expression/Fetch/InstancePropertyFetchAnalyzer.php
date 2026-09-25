@@ -436,7 +436,7 @@ final class InstancePropertyFetchAnalyzer
                     $statements_analyzer->node_data->setType($stmt, $stmt_type);
 
                     $declaring_property_class = $codebase->properties->getDeclaringClassForProperty(
-                        Interner::intern(Interner::lookup($lhs_type_part->name)), Interner::intern($stmt->name->name),
+                        $lhs_type_part->name, Interner::intern($stmt->name->name),
                         true,
                         $statements_analyzer,
                     );
@@ -451,7 +451,7 @@ final class InstancePropertyFetchAnalyzer
                     }
 
                     $codebase->propertyExists(
-                        Interner::intern(Interner::lookup($lhs_type_part->name)), Interner::intern($stmt->name->name),
+                        $lhs_type_part->name, Interner::intern($stmt->name->name),
                         true,
                         $statements_analyzer,
                         $context,

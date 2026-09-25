@@ -213,7 +213,7 @@ final class MethodCallPurityAnalyzer
                     $new_type = AssignmentAnalyzer::getExpandedPropertyType(
                         $codebase,
                         Interner::lookup($class_storage->id),
-                        $name,
+                        Interner::intern($name),
                         $class_storage,
                     ) ?? Type::getMixed();
 

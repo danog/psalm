@@ -874,7 +874,7 @@ final class ClassLikeNodeScanner
 
         $classlike_storage = $this->storage;
 
-        $fq_classlike_name = Interner::intern(Interner::lookup($classlike_storage->id));
+        $fq_classlike_name = $classlike_storage->id;
 
         if (PropertyMap::inPropertyMap(Interner::lookup($fq_classlike_name))) {
             $mapped_properties = PropertyMap::getPropertyMap()[strtolower(Interner::lookup($fq_classlike_name))];

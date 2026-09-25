@@ -369,7 +369,7 @@ final class AtomicPropertyFetchAnalyzer
             && ($context->self !== null)
             && $codebase->classlikes->classExtends(Interner::intern($fq_class_name), $context->self)
             && $codebase->propertyExists(
-                Interner::intern(Interner::lookup($context->self)), Interner::intern($prop_name),
+                $context->self, Interner::intern($prop_name),
                 true,
                 $statements_analyzer,
                 $context,

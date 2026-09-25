@@ -120,7 +120,7 @@ final class InstancePropertyAssignmentAnalyzer
 
             try {
                 $class_property_type = $codebase->properties->getPropertyType(
-                    Interner::intern(Interner::lookup($context->self)), Interner::intern($prop_name),
+                    $context->self, Interner::intern($prop_name),
                     true,
                     $statements_analyzer,
                     $context,
@@ -135,7 +135,7 @@ final class InstancePropertyAssignmentAnalyzer
                 $class_property_type = self::getExpandedPropertyType(
                     $codebase,
                     Interner::lookup($context->self),
-                    $prop_name,
+                    Interner::intern($prop_name),
                     $class_storage,
                 );
             }
@@ -158,7 +158,7 @@ final class InstancePropertyAssignmentAnalyzer
                 $direct_assignment,
                 $codebase,
                 $assignment_value_type,
-                $prop_name,
+                Interner::intern($prop_name),
                 $var_id,
             );
         }
@@ -399,11 +399,11 @@ final class InstancePropertyAssignmentAnalyzer
         );
 
         $can_set_readonly_property = true;
-        if ($appearing_property_class) {
+        if (($appearing_property_class !== null)) {
             $can_set_readonly_property = ($context->self !== null)
                 && $context->calling_method_id
-                && ($appearing_property_class === Interner::lookup($context->self)
-                    || $codebase->classExtends($context->self, Interner::intern($appearing_property_class)))
+                && (Interner::lookup($appearing_property_class) === Interner::lookup($context->self)
+                    || $codebase->classExtends($context->self, $appearing_property_class))
                 && (str_ends_with($context->calling_method_id, '::__construct')
                     || str_ends_with($context->calling_method_id, '::unserialize')
                     || str_ends_with($context->calling_method_id, '::__unserialize')
@@ -710,7 +710,7 @@ final class InstancePropertyAssignmentAnalyzer
         bool $direct_assignment,
         Codebase $codebase,
         Union $assignment_value_type,
-        string $prop_name,
+        int $prop_name,
         ?string &$var_id,
     ): array {
         $was_inside_general_use = $context->inside_general_use;
@@ -842,7 +842,7 @@ final class InstancePropertyAssignmentAnalyzer
                 $codebase,
                 $stmt,
                 $assignment_value,
-                Interner::intern($prop_name),
+                $prop_name,
                 $context,
                 $lhs_type,
                 $lhs_type_part,
@@ -1064,7 +1064,7 @@ final class InstancePropertyAssignmentAnalyzer
             $class_exists = true;
         }
 
-        $property_id_class = Interner::intern(Interner::lookup($fq_class_name)); $property_id_name = $prop_name;
+        $property_id_class = $fq_class_name; $property_id_name = $prop_name;
 
         $has_magic_setter = false;
 
@@ -1181,7 +1181,7 @@ final class InstancePropertyAssignmentAnalyzer
             && $stmt->var->name === 'this'
             && ($context->self !== null)
         ) {
-            $self_property_id_class = Interner::intern(Interner::lookup($context->self)); $self_property_id_name = $prop_name;
+            $self_property_id_class = $context->self; $self_property_id_name = $prop_name;
 
             if ((Interner::lookup($self_property_id_class) . '::$' . Interner::lookup($self_property_id_name)) !== (Interner::lookup($property_id_class) . '::$' . Interner::lookup($property_id_name))
                 && $codebase->propertyExists(
@@ -1495,12 +1495,12 @@ final class InstancePropertyAssignmentAnalyzer
     public static function getExpandedPropertyType(
         Codebase $codebase,
         string $fq_class_name,
-        string $property_name,
+        int $property_name,
         ClassLikeStorage $storage,
     ): ?Union {
-        $property_name_id = Interner::intern($property_name);
+        $property_name_id = $property_name;
         $property_class_name = $codebase->properties->getDeclaringClassForProperty(
-            Interner::intern($fq_class_name), Interner::intern($property_name),
+            Interner::intern($fq_class_name), $property_name,
             true,
         );
 

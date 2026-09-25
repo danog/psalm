@@ -920,7 +920,7 @@ class Reconciler
                                 } else {
                                     $class_property_type = self::getPropertyType(
                                         $codebase,
-                                        Interner::intern(Interner::lookup($existing_key_type_part->name)),
+                                        $existing_key_type_part->name,
                                         $property_name,
                                     );
 

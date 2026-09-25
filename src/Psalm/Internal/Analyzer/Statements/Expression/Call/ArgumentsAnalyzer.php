@@ -1323,15 +1323,15 @@ final class ArgumentsAnalyzer
         Context $context,
         PhpParser\Node\Expr\PropertyFetch $stmt,
         string $fq_class_name,
-        string $prop_name,
+        int $prop_name,
         ?string $lhs_var_id,
     ): void {
-        $prop_name_id = Interner::intern($prop_name);
+        $prop_name_id = $prop_name;
         $property_id_class = $fq_class_name; $property_id_name = $prop_name;
 
         $codebase = $statements_analyzer->getCodebase();
         $declaring_property_class = Interner::intern((string) Interner::lookupOrNull($codebase->properties->getDeclaringClassForProperty(
-            Interner::intern($property_id_class), Interner::intern($property_id_name),
+            Interner::intern($property_id_class), $property_id_name,
             true,
             $statements_analyzer,
         )));
@@ -1348,7 +1348,7 @@ final class ArgumentsAnalyzer
             InstancePropertyAssignmentAnalyzer::trackPropertyImpurity(
                 $statements_analyzer,
                 $stmt,
-                ($property_id_class . '::$' . $property_id_name),
+                ($property_id_class . '::$' . Interner::lookup($property_id_name)),
                 $property_storage,
                 $declaring_class_storage,
                 $context,
@@ -1380,7 +1380,7 @@ final class ArgumentsAnalyzer
 
         if ($arg->value instanceof PhpParser\Node\Expr\PropertyFetch
             && $arg->value->name instanceof PhpParser\Node\Identifier) {
-            $prop_name = $arg->value->name->name;
+            $prop_name = Interner::intern($arg->value->name->name);
 
             // @todo atm only works for simple fetch, $a->foo, not $a->foo->bar
             // I guess there's a function to do this, but I couldn't locate it

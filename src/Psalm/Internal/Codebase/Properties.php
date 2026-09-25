@@ -135,7 +135,7 @@ final class Properties
         $class_storage = $this->classlikes->getStorageFor($fq_class_name);
 
         if ($class_storage && isset($class_storage->declaring_property_ids[$property_name])) {
-            return Interner::intern(Interner::lookup($class_storage->declaring_property_ids[$property_name]));
+            return $class_storage->declaring_property_ids[$property_name];
         }
 
         return null;
@@ -149,7 +149,7 @@ final class Properties
         int $property_name,
         bool $read_mode,
         ?StatementsSource $source = null,
-    ): ?string {
+    ): ?int {
 
         if ($this->property_existence_provider->has($fq_class_name)) {
             if ($this->property_existence_provider->doesPropertyExist(
@@ -159,7 +159,7 @@ final class Properties
                 $source,
                 null,
             )) {
-                return Interner::lookup($fq_class_name);
+                return Interner::intern(Interner::lookup($fq_class_name));
             }
         }
 
@@ -168,7 +168,7 @@ final class Properties
         if ($class_storage && isset($class_storage->appearing_property_ids[$property_name])) {
             $appearing_property_id = (Interner::lookup($class_storage->appearing_property_ids[$property_name]) . '::$' . Interner::lookup($property_name));
 
-            return explode('::$', $appearing_property_id)[0];
+            return Interner::intern(explode('::$', $appearing_property_id)[0]);
         }
 
         return null;
@@ -272,7 +272,7 @@ final class Properties
         }
 
         foreach ($class_storage->overridden_property_ids[$property_name] as $overridden_property_id) {
-            $overridden_storage = $this->getStorage(Interner::intern(Interner::lookup($overridden_property_id)), Interner::intern(Interner::lookup($property_name)));
+            $overridden_storage = $this->getStorage($overridden_property_id, $property_name);
 
             if ($overridden_storage->type) {
                 return $overridden_storage->type;
