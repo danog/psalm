@@ -85,7 +85,7 @@ final class AtomicStaticCallAnalyzer
         $intersection_types = [];
 
         if ($lhs_type_part instanceof TNamedObject) {
-            $fq_class_name = $lhs_type_part->value;
+            $fq_class_name = Interner::lookup($lhs_type_part->name);
 
             if (!ClassLikeAnalyzer::checkFullyQualifiedClassLikeName(
                 $statements_analyzer,
@@ -109,7 +109,7 @@ final class AtomicStaticCallAnalyzer
         } elseif ($lhs_type_part instanceof TClassString
             && $lhs_type_part->as_type
         ) {
-            $fq_class_name = $lhs_type_part->as_type->value;
+            $fq_class_name = Interner::lookup($lhs_type_part->as_type->name);
 
             if (!ClassLikeAnalyzer::checkFullyQualifiedClassLikeName(
                 $statements_analyzer,
@@ -132,7 +132,7 @@ final class AtomicStaticCallAnalyzer
             ) {
                 foreach ($lhs_type_part->as_type->getAtomicTypes() as $typeof_type_atomic) {
                     if ($typeof_type_atomic instanceof TNamedObject) {
-                        $fq_class_name = $typeof_type_atomic->value;
+                        $fq_class_name = Interner::lookup($typeof_type_atomic->name);
                     }
                 }
             }
@@ -163,7 +163,7 @@ final class AtomicStaticCallAnalyzer
                     return;
                 }
 
-                $fq_class_name = $generic_param_type->value;
+                $fq_class_name = Interner::lookup($generic_param_type->name);
                 break;
             }
 
@@ -340,14 +340,14 @@ final class AtomicStaticCallAnalyzer
                 }
 
                 $intersection_method_id = new MethodIdentifier(
-                    $intersection_type->value,
+                    Interner::lookup($intersection_type->name),
                     $method_name_lc,
                 );
 
                 if ($codebase->methodExists($intersection_method_id)) {
                     $method_id = $intersection_method_id;
-                    $cased_method_id = $intersection_type->value . '::' . $stmt_name->name;
-                    $fq_class_name = $intersection_type->value;
+                    $cased_method_id = Interner::lookup($intersection_type->name) . '::' . $stmt_name->name;
+                    $fq_class_name = Interner::lookup($intersection_type->name);
                     break;
                 }
             }
@@ -400,7 +400,7 @@ final class AtomicStaticCallAnalyzer
         ) {
             foreach ($class_storage->namedMixins as $mixin) {
                 $new_method_id = new MethodIdentifier(
-                    $mixin->value,
+                    Interner::lookup($mixin->name),
                     $method_name_lc,
                 );
 
@@ -745,7 +745,7 @@ final class AtomicStaticCallAnalyzer
 
                     foreach ($method_call_type->getAtomicTypes() as $type) {
                         $name = $type->getKey();
-                        if ($type instanceof TNamedObject && $type->is_static && $type->value === $fq_class_name) {
+                        if ($type instanceof TNamedObject && $type->is_static && Interner::lookup($type->name) === $fq_class_name) {
                             // Replace parent&static type to actual static type
                             $method_call_type->removeType($name);
                             $method_call_type->addType($context->vars_in_scope['$this']->getSingleAtomic());

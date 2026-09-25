@@ -109,6 +109,10 @@ final class Sym
     public const CALLABLE = 1977547412625762836;
     /** `object` */
     public const OBJECT = 823527073289988991;
+    /** `non-empty-array` */
+    public const C_NON_EMPTY_ARRAY = 8512398112518824018;
+    /** `array` */
+    public const C_ARRAY = 3603170802494522190;
     /** `__construct` */
     public const CONSTRUCT = 3382564448877090733;
     /** `__destruct` */
@@ -234,6 +238,8 @@ final class Sym
         'iterable',
         'callable',
         'object',
+        'non-empty-array',
+        'array',
         '__construct',
         '__destruct',
         '__call',

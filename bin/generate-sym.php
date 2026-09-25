@@ -61,6 +61,9 @@ $names = [
     'ITERABLE' => 'iterable',
     'CALLABLE' => 'callable',
     'OBJECT' => 'object',
+    // added by tools/id-refactor
+    'C_NON_EMPTY_ARRAY' => 'non-empty-array',
+    'C_ARRAY' => 'array',
 ];
 
 // Member (method, property, constant) names: the storages key their member maps by the id of the canonical

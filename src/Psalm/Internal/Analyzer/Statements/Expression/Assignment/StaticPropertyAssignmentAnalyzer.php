@@ -77,7 +77,7 @@ final class StaticPropertyAssignmentAnalyzer
                 continue;
             }
 
-            $fq_class_name = $lhs_atomic_type->value;
+            $fq_class_name = Interner::lookup($lhs_atomic_type->name);
 
             if (!$prop_name instanceof PhpParser\Node\Identifier) {
                 $was_inside_general_use = $context->inside_general_use;

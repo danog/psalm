@@ -451,7 +451,7 @@ final class StaticPropertyFetchAnalyzer
 
             $string_type = ($class_atomic_type instanceof TClassString
                     && $class_atomic_type->as_type !== null)
-                ? $class_atomic_type->as_type->value
+                ? Interner::lookup($class_atomic_type->as_type->name)
                 : ($class_atomic_type instanceof TLiteralString
                     ? $class_atomic_type->value
                     : null);

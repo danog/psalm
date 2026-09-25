@@ -177,8 +177,8 @@ final class YieldAnalyzer
                 ? TypeExpander::expandUnion(
                     $codebase,
                     $yield_candidate_type,
-                    $expression_atomic_type->value,
-                    $expression_atomic_type->value,
+                    Interner::lookup($expression_atomic_type->name),
+                    Interner::lookup($expression_atomic_type->name),
                     null,
                     true,
                     false,
@@ -202,7 +202,7 @@ final class YieldAnalyzer
                         $type_params[] = array_values($type_map)[0];
                     }
 
-                    $expression_atomic_type = new TGenericObject($expression_atomic_type->value, $type_params);
+                    $expression_atomic_type = new TGenericObject(Interner::lookup($expression_atomic_type->name), $type_params);
                 }
 
                 $yield_candidate_type = AtomicPropertyFetchAnalyzer::localizePropertyType(
@@ -239,7 +239,7 @@ final class YieldAnalyzer
             if ($storage->return_type && !$yield_type) {
                 foreach ($storage->return_type->getAtomicTypes() as $atomic_return_type) {
                     if ($atomic_return_type instanceof TNamedObject
-                        && $atomic_return_type->value === 'Generator'
+                        && Interner::lookup($atomic_return_type->name) === 'Generator'
                     ) {
                         if ($atomic_return_type instanceof TGenericObject) {
                             if (!$atomic_return_type->type_params[2]->isVoid()) {

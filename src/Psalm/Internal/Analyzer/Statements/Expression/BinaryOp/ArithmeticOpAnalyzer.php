@@ -13,6 +13,7 @@ use Psalm\Internal\Analyzer\FunctionLikeAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Assignment\ArrayAssignmentAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\Type\TemplateBound;
 use Psalm\Internal\Type\TypeCombiner;
@@ -666,18 +667,18 @@ final class ArithmeticOpAnalyzer
          * // Todo remove this hint reset after fixing #10267
          */
 
-        if (($left_type_part instanceof TNamedObject && strtolower($left_type_part->value) === 'gmp')
-            || ($right_type_part instanceof TNamedObject && strtolower($right_type_part->value) === 'gmp')
+        if (($left_type_part instanceof TNamedObject && strtolower(Interner::lookup($left_type_part->name)) === 'gmp')
+            || ($right_type_part instanceof TNamedObject && strtolower(Interner::lookup($right_type_part->name)) === 'gmp')
         ) {
             if ((($left_type_part instanceof TNamedObject
-                        && strtolower($left_type_part->value) === 'gmp')
+                        && strtolower(Interner::lookup($left_type_part->name)) === 'gmp')
                     && (($right_type_part instanceof TNamedObject
-                            && strtolower($right_type_part->value) === 'gmp')
+                            && strtolower(Interner::lookup($right_type_part->name)) === 'gmp')
                         || ($right_type_part->isNumericType() || $right_type_part instanceof TMixed)))
                 || (($right_type_part instanceof TNamedObject
-                        && strtolower($right_type_part->value) === 'gmp')
+                        && strtolower(Interner::lookup($right_type_part->name)) === 'gmp')
                     && (($left_type_part instanceof TNamedObject
-                            && strtolower($left_type_part->value) === 'gmp')
+                            && strtolower(Interner::lookup($left_type_part->name)) === 'gmp')
                         || ($left_type_part->isNumericType() || $left_type_part instanceof TMixed)))
             ) {
                 $result_type = Type::combineUnionTypes(
@@ -711,7 +712,7 @@ final class ArithmeticOpAnalyzer
                 if ($non_decimal_type instanceof TInt
                     || $non_decimal_type instanceof TNumericString
                     || $non_decimal_type instanceof TNamedObject
-                        && strtolower($non_decimal_type->value) === "decimal\\decimal"
+                        && strtolower(Interner::lookup($non_decimal_type->name)) === "decimal\\decimal"
                 ) {
                     $result_type = Type::combineUnionTypes(
                         new Union([new TNamedObject("Decimal\\Decimal")]),
@@ -1482,13 +1483,13 @@ final class ArithmeticOpAnalyzer
     private static function otherOperandOfDecimal(Atomic $left_type_part, Atomic $right_type_part): ?Atomic
     {
         if ($left_type_part instanceof TNamedObject
-            && strtolower($left_type_part->value) === "decimal\\decimal"
+            && strtolower(Interner::lookup($left_type_part->name)) === "decimal\\decimal"
         ) {
             return $right_type_part;
         }
 
         if ($right_type_part instanceof TNamedObject
-            && strtolower($right_type_part->value) === "decimal\\decimal"
+            && strtolower(Interner::lookup($right_type_part->name)) === "decimal\\decimal"
         ) {
             return $left_type_part;
         }

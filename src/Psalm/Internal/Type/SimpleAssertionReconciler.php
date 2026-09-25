@@ -11,6 +11,7 @@ use Psalm\Internal\Codebase\ClassConstantByWildcardResolver;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\Comparator\CallableTypeComparator;
 use Psalm\Storage\Assertion;
 use Psalm\Storage\Assertion\Any;
@@ -387,7 +388,7 @@ final class SimpleAssertionReconciler extends Reconciler
         }
 
         if ($assertion_type instanceof TNamedObject
-            && $assertion_type->value === 'Traversable'
+            && Interner::lookup($assertion_type->name) === 'Traversable'
         ) {
             return self::reconcileTraversable(
                 $assertion,
@@ -891,14 +892,14 @@ final class SimpleAssertionReconciler extends Reconciler
             if ($type instanceof TNamedObject
                 && $codebase->classOrInterfaceExists($type->name)
             ) {
-                if (!$codebase->methodExists(new MethodIdentifier($type->value, strtolower($method_name)))) {
+                if (!$codebase->methodExists(new MethodIdentifier(Interner::lookup($type->name), strtolower($method_name)))) {
                     $match_found = false;
 
                     $extra_types = $type->extra_types;
                     foreach ($type->extra_types as $k => $extra_type) {
                         if ($extra_type instanceof TNamedObject
                             && $codebase->classOrInterfaceExists($extra_type->name)
-                            && $codebase->methodExists(new MethodIdentifier($extra_type->value, strtolower($method_name)))
+                            && $codebase->methodExists(new MethodIdentifier(Interner::lookup($extra_type->name), strtolower($method_name)))
                         ) {
                             $match_found = true;
                         } elseif ($extra_type instanceof TObjectWithProperties) {
@@ -918,7 +919,7 @@ final class SimpleAssertionReconciler extends Reconciler
                     if (!$match_found) {
                         $extra_type = new TObjectWithProperties(
                             [],
-                            [strtolower($method_name) => $type->value . '::' . $method_name],
+                            [strtolower($method_name) => Interner::lookup($type->name) . '::' . $method_name],
                         );
                         $extra_types[$extra_type->getKey()] = $extra_type;
                         $redundant = false;
@@ -2269,7 +2270,7 @@ final class SimpleAssertionReconciler extends Reconciler
                         $type->type_params,
                         $atomic_assertion_type->count,
                         $atomic_assertion_type->min_count,
-                        'non-empty-array',
+                        Sym::C_NON_EMPTY_ARRAY,
                         $type->from_docblock,
                     );
                 } else {
@@ -2610,7 +2611,7 @@ final class SimpleAssertionReconciler extends Reconciler
                 $redundant = false;
             } elseif ($type instanceof TNamedObject
                 && $codebase->classExists($type->name)
-                && $codebase->methodExists(new MethodIdentifier($type->value, '__invoke'))
+                && $codebase->methodExists(new MethodIdentifier(Interner::lookup($type->name), '__invoke'))
             ) {
                 $callable_types[] = $type;
             } elseif ($type::class === TString::class
@@ -2922,7 +2923,7 @@ final class SimpleAssertionReconciler extends Reconciler
                 $class_name = $atomic_type->fq_classlike_name;
                 $enum_case_to_assert = $atomic_type->const_name;
             } elseif ($atomic_type instanceof TNamedObject) {
-                $class_name = $atomic_type->value;
+                $class_name = Interner::lookup($atomic_type->name);
             } else {
                 return null;
             }

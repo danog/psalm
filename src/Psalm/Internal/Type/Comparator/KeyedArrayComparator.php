@@ -354,7 +354,7 @@ final class KeyedArrayComparator
         TNamedObject $input_type_part,
         TObjectWithProperties $container_type_part,
     ): ?TObjectWithProperties {
-        $storage = $codebase->classlikes->getStorageFor($input_type_part->value);
+        $storage = $codebase->classlikes->getStorageFor(Interner::lookup($input_type_part->name));
 
         if (!$storage) {
             return null;

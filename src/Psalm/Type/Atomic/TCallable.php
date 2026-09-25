@@ -7,6 +7,7 @@ namespace Psalm\Type\Atomic;
 use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Storage\FunctionLikeParameter;
 use Psalm\Storage\Mutations;
@@ -30,7 +31,7 @@ final class TCallable extends Atomic
     use UnserializeMemoryUsageSuppressionTrait;
     use CallableTrait;
 
-    public string $value = 'callable';
+    public int $name = Sym::CALLABLE;
 
     /**
      * Constructs a new instance of a generic type

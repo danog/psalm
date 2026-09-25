@@ -26,25 +26,48 @@ final class DropStringFieldDeclPlugin implements PluginEntryPointInterface, Afte
         $storage = $event->getClasslikeStorage();
         $file = $event->getStatementsSource()->getFilePath();
         try {
-            foreach (json_decode((string) getenv('DROP_FIELDS'), true) ?: [] as [$class, $prop]) {
+            require_once __DIR__ . '/SymNames.php';
+            $codebase = $event->getCodebase();
+            $src = (string) file_get_contents($file);
+            $emit = static function (array $row): void {
+                file_put_contents(getenv('ID_REFACTOR_OUT') ?: sys_get_temp_dir() . '/drop-field.jsonl',
+                    json_encode($row, JSON_UNESCAPED_SLASHES) . "\n", FILE_APPEND | LOCK_EX);
+            };
+            foreach (json_decode((string) getenv('DROP_FIELDS'), true) ?: [] as [$class, $prop, $id]) {
                 if (strcasecmp($storage->name, $class) !== 0) {
                     continue;
                 }
+                // does the class already have the id property (declared here or inherited)?
+                $has_id = isset($storage->declaring_property_ids[\Psalm\Internal\Interner::intern($id)]);
                 foreach ($stmt->getProperties() as $p) {
-                    if (count($p->props) === 1 && $p->props[0]->name->name === $prop) {
+                    if (count($p->props) !== 1 || $p->props[0]->name->name !== $prop) {
+                        continue;
+                    }
+                    if ($has_id) {
                         $doc = $p->getDocComment();
                         $start = $doc !== null ? $doc->getStartFilePos() : $p->getStartFilePos();
-                        $src = (string) file_get_contents($file);
-                        // the whole lines, and one blank line after
                         $ls = strrpos(substr($src, 0, $start), "\n") + 1;
                         $le = strpos($src, "\n", $p->getEndFilePos()) + 1;
                         if (substr($src, $le, 1) === "\n") {
                             $le++;
                         }
-                        file_put_contents(getenv('ID_REFACTOR_OUT') ?: sys_get_temp_dir() . '/drop-field.jsonl',
-                            json_encode(['kind' => 'edit', 'file' => $file, 'site' => $file . ':decl:' . $prop,
-                                'edits' => [[$ls, $le, '']]], JSON_UNESCAPED_SLASHES) . "\n", FILE_APPEND | LOCK_EX);
+                        $emit(['kind' => 'edit', 'file' => $file, 'site' => $file . ':decl:' . $prop, 'edits' => [[$ls, $le, '']]]);
+                        continue;
                     }
+                    $edits = self::retype($p->type, $p->props[0]->name, $p->props[0]->default, $id, $file, $emit);
+                    $emit(['kind' => 'edit', 'file' => $file, 'site' => $file . ':decl:' . $prop, 'edits' => $edits]);
+                }
+                $ctor = $stmt->getMethod('__construct');
+                foreach ($ctor?->params ?? [] as $param) {
+                    if ($param->flags === 0 || !$param->var instanceof \PhpParser\Node\Expr\Variable || $param->var->name !== $prop) {
+                        continue;
+                    }
+                    if ($has_id && !isset($storage->properties[\Psalm\Internal\Interner::intern($prop)])) {
+                        $emit(['kind' => 'manual', 'site' => $file . ':' . $param->getStartLine(), 'why' => 'promoted ' . $prop . ' next to ' . $id]);
+                        continue;
+                    }
+                    $edits = self::retype($param->type, $param->var, $param->default, $id, $file, $emit);
+                    $emit(['kind' => 'edit', 'file' => $file, 'site' => $file . ':promoted:' . $prop, 'edits' => $edits]);
                 }
             }
         } catch (Throwable $e) {
@@ -52,5 +75,25 @@ final class DropStringFieldDeclPlugin implements PluginEntryPointInterface, Afte
                 json_encode(['kind' => 'error', 'msg' => 'decl: ' . $e->getMessage()]) . "\n", FILE_APPEND | LOCK_EX);
         }
         return null;
+    }
+
+    /** @return list<array{int, int, string}> type -> int, name -> $id, a literal default -> its Sym constant */
+    private static function retype(?\PhpParser\Node $type, \PhpParser\Node $name, ?\PhpParser\Node $default, string $id, string $file, callable $emit): array
+    {
+        $edits = [];
+        if ($type !== null) {
+            $edits[] = [$type->getStartFilePos(), $type->getEndFilePos() + 1, 'int'];
+        }
+        $edits[] = [$name->getStartFilePos(), $name->getEndFilePos() + 1, '$' . $id];
+        if ($default instanceof \PhpParser\Node\Scalar\String_) {
+            [$text, $new] = SymNames::forLiteral($default->value);
+            if ($new !== null) {
+                $emit(['kind' => 'sym', 'name' => $new[0], 'value' => $new[1], 'literal' => $new[2]]);
+            }
+            $edits[] = [$default->getStartFilePos(), $default->getEndFilePos() + 1, $text];
+        } elseif ($default !== null) {
+            $emit(['kind' => 'manual', 'site' => $file . ':' . $default->getStartLine(), 'why' => 'non-literal default']);
+        }
+        return $edits;
     }
 }

@@ -2206,11 +2206,11 @@ final class Codebase
 
                     if ($gap === '->') {
                         foreach ($class_storage->namedMixins as $mixin) {
-                            if (in_array($mixin->value, $ignore_fq_class_names)) {
+                            if (in_array(Interner::lookup($mixin->name), $ignore_fq_class_names)) {
                                 continue;
                             }
                             $mixin_completion_items = $this->getCompletionItemsForClassishThing(
-                                $mixin->value,
+                                Interner::lookup($mixin->name),
                                 $gap,
                                 $snippets_supported,
                                 [ClassLikeAnalyzer::VISIBILITY_PUBLIC],

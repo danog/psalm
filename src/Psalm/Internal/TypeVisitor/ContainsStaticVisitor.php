@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Internal\TypeVisitor;
 
 use Override;
+use Psalm\Internal\Interner;
 use Psalm\Type\Atomic\TNamedObject;
 use Psalm\Type\TypeNode;
 use Psalm\Type\TypeVisitor;
@@ -22,7 +23,7 @@ final class ContainsStaticVisitor extends TypeVisitor
     #[Override]
     protected function enterNode(TypeNode $type): ?int
     {
-        if ($type instanceof TNamedObject && ($type->value === 'static' || $type->is_static)) {
+        if ($type instanceof TNamedObject && (Interner::lookup($type->name) === 'static' || $type->is_static)) {
             $this->contains_static = true;
             return self::STOP_TRAVERSAL;
         }

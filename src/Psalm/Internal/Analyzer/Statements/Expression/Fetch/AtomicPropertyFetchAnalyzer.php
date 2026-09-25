@@ -160,7 +160,7 @@ final class AtomicPropertyFetchAnalyzer
         // Hack has a similar issue: https://github.com/facebook/hhvm/issues/5164
         if ($lhs_type_part instanceof TObject
             || (
-                in_array(strtolower($lhs_type_part->value), Config::getInstance()->getUniversalObjectCrates(), true)
+                in_array(strtolower(Interner::lookup($lhs_type_part->name)), Config::getInstance()->getUniversalObjectCrates(), true)
                 && $intersection_types === []
             )
         ) {
@@ -171,12 +171,12 @@ final class AtomicPropertyFetchAnalyzer
             return;
         }
 
-        if (ExpressionAnalyzer::isMock($lhs_type_part->value)) {
+        if (ExpressionAnalyzer::isMock(Interner::lookup($lhs_type_part->name))) {
             $statements_analyzer->node_data->setType($stmt, Type::getMixed());
             return;
         }
 
-        $fq_class_name = $lhs_type_part->value;
+        $fq_class_name = Interner::lookup($lhs_type_part->name);
 
         $override_property_visibility = false;
 
@@ -269,7 +269,7 @@ final class AtomicPropertyFetchAnalyzer
         if (!$naive_property_exists) {
             if ($class_storage->namedMixins) {
                 foreach ($class_storage->namedMixins as $mixin) {
-                    $new_property_id = $mixin->value . '::$' . $prop_name;
+                    $new_property_id = Interner::lookup($mixin->name) . '::$' . $prop_name;
 
                     try {
                         $new_class_storage = $codebase->classlike_storage_provider->get($mixin->name);
@@ -289,7 +289,7 @@ final class AtomicPropertyFetchAnalyzer
                         )
                             || isset($new_class_storage->pseudo_property_get_types[Interner::intern('$' . $prop_name)]))
                     ) {
-                        $fq_class_name = $mixin->value;
+                        $fq_class_name = Interner::lookup($mixin->name);
                         $lhs_type_part = $mixin;
                         $class_storage = $new_class_storage;
 
@@ -645,7 +645,7 @@ final class AtomicPropertyFetchAnalyzer
 
                 if (count($template_types = $class_storage->getClassTemplateTypes()) !== 0) {
                     if (!$lhs_type_part instanceof TGenericObject) {
-                        $lhs_type_part = new TGenericObject($lhs_type_part->value, $template_types);
+                        $lhs_type_part = new TGenericObject(Interner::lookup($lhs_type_part->name), $template_types);
                     }
 
                     $stmt_type = self::localizePropertyType(
@@ -741,7 +741,7 @@ final class AtomicPropertyFetchAnalyzer
             }
 
             if (!$class_exists) {
-                $property_id = $lhs_type_part->value . '::$' . $prop_name;
+                $property_id = Interner::lookup($lhs_type_part->name) . '::$' . $prop_name;
 
                 IssueBuffer::maybeAdd(
                     new UndefinedMagicPropertyFetch(
@@ -1160,13 +1160,13 @@ final class AtomicPropertyFetchAnalyzer
                 if ($intersection_type instanceof TNamedObject
                     && $codebase->classExists($intersection_type->name)
                 ) {
-                    $fq_class_name = $intersection_type->value;
+                    $fq_class_name = Interner::lookup($intersection_type->name);
                     $class_exists = true;
                     return;
                 }
                 if ($intersection_type instanceof TNamedObject
-                    && (in_array($intersection_type->value, ['UnitEnum', 'BackedEnum'], true)
-                        || in_array('UnitEnum', $codebase->getParentInterfaces($intersection_type->value)))
+                    && (in_array(Interner::lookup($intersection_type->name), ['UnitEnum', 'BackedEnum'], true)
+                        || in_array('UnitEnum', $codebase->getParentInterfaces(Interner::lookup($intersection_type->name))))
                 ) {
                     $intersects_with_enum = true;
                 }
@@ -1189,7 +1189,7 @@ final class AtomicPropertyFetchAnalyzer
                     new NoInterfaceProperties(
                         'Interfaces cannot have properties',
                         new CodeLocation($statements_analyzer->getSource(), $stmt),
-                        $lhs_type_part->value,
+                        Interner::lookup($lhs_type_part->name),
                     ),
                     $statements_analyzer->getSuppressedIssues(),
                 )) {
@@ -1206,18 +1206,18 @@ final class AtomicPropertyFetchAnalyzer
             if ($lhs_type_part->from_docblock) {
                 IssueBuffer::maybeAdd(
                     new UndefinedDocblockClass(
-                        'Cannot get properties of undefined docblock class ' . $lhs_type_part->value,
+                        'Cannot get properties of undefined docblock class ' . Interner::lookup($lhs_type_part->name),
                         new CodeLocation($statements_analyzer->getSource(), $stmt),
-                        $lhs_type_part->value,
+                        Interner::lookup($lhs_type_part->name),
                     ),
                     $statements_analyzer->getSuppressedIssues(),
                 );
             } else {
                 IssueBuffer::maybeAdd(
                     new UndefinedClass(
-                        'Cannot get properties of undefined class ' . $lhs_type_part->value,
+                        'Cannot get properties of undefined class ' . Interner::lookup($lhs_type_part->name),
                         new CodeLocation($statements_analyzer->getSource(), $stmt),
-                        $lhs_type_part->value,
+                        Interner::lookup($lhs_type_part->name),
                     ),
                     $statements_analyzer->getSuppressedIssues(),
                 );
@@ -1250,7 +1250,7 @@ final class AtomicPropertyFetchAnalyzer
 
             if (count($template_types = $class_storage->getClassTemplateTypes()) !== 0) {
                 if (!$lhs_type_part instanceof TGenericObject) {
-                    $lhs_type_part = new TGenericObject($lhs_type_part->value, $template_types);
+                    $lhs_type_part = new TGenericObject(Interner::lookup($lhs_type_part->name), $template_types);
                 }
 
                 $stmt_type = self::localizePropertyType(
@@ -1347,7 +1347,7 @@ final class AtomicPropertyFetchAnalyzer
 
             if (count($template_types = $declaring_class_storage->getClassTemplateTypes()) !== 0) {
                 if (!$lhs_type_part instanceof TGenericObject) {
-                    $lhs_type_part = new TGenericObject($lhs_type_part->value, $template_types);
+                    $lhs_type_part = new TGenericObject(Interner::lookup($lhs_type_part->name), $template_types);
                 }
 
                 $class_property_type = self::localizePropertyType(

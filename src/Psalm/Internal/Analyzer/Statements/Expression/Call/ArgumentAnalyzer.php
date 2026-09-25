@@ -1445,7 +1445,7 @@ final class ArgumentAnalyzer
                     && ($lhs->isStaticObject()
                         || ($lhs_atomic instanceof TNamedObject
                             && !$lhs_atomic->definite_class
-                            && $lhs_atomic->value === $context->self))) {
+                            && Interner::lookup($lhs_atomic->name) === $context->self))) {
                     if ($potential_method_id->fq_class_name !== $context->self
                         || ($cased_method_id !== null
                             && !$method_id
@@ -1713,7 +1713,7 @@ final class ArgumentAnalyzer
                 if ($param_atomic_type instanceof TGenericObject) {
                     foreach ($types as &$input_atomic_type) {
                         if ($input_atomic_type instanceof TGenericObject
-                            && $input_atomic_type->value === $param_atomic_type->value
+                            && $input_atomic_type->name === $param_atomic_type->name
                         ) {
                             $new_type_params = [];
                             foreach ($input_atomic_type->type_params as $i => $type_param) {
@@ -1725,7 +1725,7 @@ final class ArgumentAnalyzer
                             }
                             if ($new_type_params) {
                                 $input_atomic_type = new TGenericObject(
-                                    $input_atomic_type->value,
+                                    Interner::lookup($input_atomic_type->name),
                                     [...$input_atomic_type->type_params, ...$new_type_params],
                                     $input_atomic_type->remapped_params,
                                     false,

@@ -304,7 +304,7 @@ final class TypeCombiner
 
                 foreach ($object_type->getAtomicTypes() as $object_atomic_type) {
                     if ($object_atomic_type instanceof TNamedObject) {
-                        $class_type = new TClassString($object_atomic_type->value, $object_atomic_type);
+                        $class_type = new TClassString(Interner::lookup($object_atomic_type->name), $object_atomic_type);
                     } elseif ($object_atomic_type instanceof TObject) {
                         $class_type = new TClassString();
                     } else {
@@ -344,7 +344,7 @@ final class TypeCombiner
 
         if ($combination->named_object_types !== null) {
             foreach ($combination->value_types as $key => $atomic_type) {
-                if ($atomic_type instanceof TEnumCase && isset($combination->named_object_types[$atomic_type->value])) {
+                if ($atomic_type instanceof TEnumCase && isset($combination->named_object_types[Interner::lookup($atomic_type->name)])) {
                     unset($combination->value_types[$key]);
                 }
             }
@@ -464,7 +464,7 @@ final class TypeCombiner
             $type_key = 'iterable';
             $combination->builtin_type_params['iterable'] = [Type::getMixed(), Type::getMixed()];
         } elseif ($type instanceof TNamedObject
-            && $type->value === 'Traversable'
+            && Interner::lookup($type->name) === 'Traversable'
             && (isset($combination->builtin_type_params['iterable']) || isset($combination->value_types['iterable']))
         ) {
             $type_key = 'iterable';
@@ -474,10 +474,10 @@ final class TypeCombiner
             }
 
             if (!$type instanceof TGenericObject) {
-                $type = new TGenericObject($type->value, [Type::getMixed(), Type::getMixed()]);
+                $type = new TGenericObject(Interner::lookup($type->name), [Type::getMixed(), Type::getMixed()]);
             }
-        } elseif ($type instanceof TNamedObject && ($type->value === 'Traversable' || $type->value === 'Generator')) {
-            $type_key = $type->value;
+        } elseif ($type instanceof TNamedObject && (Interner::lookup($type->name) === 'Traversable' || Interner::lookup($type->name) === 'Generator')) {
+            $type_key = Interner::lookup($type->name);
         } else {
             $type_key = $type->getKey();
         }
@@ -543,12 +543,12 @@ final class TypeCombiner
         }
 
         if ($type instanceof TNamedObject) {
-            if (array_key_exists($type->value, $combination->object_static)) {
-                if ($combination->object_static[$type->value] && !$type->is_static) {
-                    $combination->object_static[$type->value] = false;
+            if (array_key_exists(Interner::lookup($type->name), $combination->object_static)) {
+                if ($combination->object_static[Interner::lookup($type->name)] && !$type->is_static) {
+                    $combination->object_static[Interner::lookup($type->name)] = false;
                 }
             } else {
-                $combination->object_static[$type->value] = $type->is_static;
+                $combination->object_static[Interner::lookup($type->name)] = $type->is_static;
             }
         }
 
@@ -628,7 +628,7 @@ final class TypeCombiner
             return null;
         }
 
-        if (($type instanceof TGenericObject && ($type->value === 'Traversable' || $type->value === 'Generator'))
+        if (($type instanceof TGenericObject && (Interner::lookup($type->name) === 'Traversable' || Interner::lookup($type->name) === 'Generator'))
             || ($type instanceof TIterable && $type->has_docblock_params)
             || ($type instanceof TArray && $type_key === 'iterable')
         ) {
@@ -1375,7 +1375,7 @@ final class TypeCombiner
         if ($combination->class_string_types) {
             foreach ($combination->class_string_types as $value_type) {
                 if ($value_type instanceof TNamedObject) {
-                    $classlikes = self::getClassLikes($codebase, $value_type->value);
+                    $classlikes = self::getClassLikes($codebase, Interner::lookup($value_type->name));
 
                     $shared_classlikes = $shared_classlikes === null
                         ? $classlikes

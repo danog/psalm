@@ -250,7 +250,8 @@ final class CodeUseGraph
     /**
      * @param lowercase-string $fq_class_name_lc
      * @param string $property_name the property name, without the leading `$`
-     * @psalm-mutation-free
+     *
+     * @psalm-pure
      */
     public static function propertyNode(string $fq_class_name_lc, string $property_name): int
     {
@@ -259,7 +260,8 @@ final class CodeUseGraph
 
     /**
      * @param lowercase-string $fq_class_name_lc
-     * @psalm-mutation-free
+     *
+     * @psalm-pure
      */
     public static function classConstantNode(string $fq_class_name_lc, string $const_name): int
     {
@@ -268,7 +270,8 @@ final class CodeUseGraph
 
     /**
      * @param lowercase-string $method_id_lc
-     * @psalm-mutation-free
+     *
+     * @psalm-pure
      */
     public static function missingMethodNode(string $method_id_lc): int
     {
@@ -278,7 +281,8 @@ final class CodeUseGraph
     /**
      * @param lowercase-string $fq_class_name_lc
      * @param string $property_name the property name, without the leading `$`
-     * @psalm-mutation-free
+     *
+     * @psalm-pure
      */
     public static function missingPropertyNode(string $fq_class_name_lc, string $property_name): int
     {
@@ -312,7 +316,7 @@ final class CodeUseGraph
      * A node representing a `use` import alias in a given file: methods
      * referencing the alias get invalidated when the import changes.
      *
-     * @psalm-mutation-free
+     * @psalm-pure
      */
     public static function useAliasNode(string $alias, string $file_path): int
     {
@@ -323,7 +327,7 @@ final class CodeUseGraph
     /**
      * A node representing the top-level code of a file.
      *
-     * @psalm-mutation-free
+     * @psalm-pure
      */
     public static function fileNode(string $file_path): int
     {
@@ -331,7 +335,7 @@ final class CodeUseGraph
     }
 
     /**
-     * @psalm-mutation-free
+     * @psalm-pure
      */
     private static function getKind(int $node): string
     {
@@ -345,7 +349,7 @@ final class CodeUseGraph
      * Returns the class member id (`class::member`) for nodes representing class
      * members, in the same format used by the statement differ, or null.
      *
-     * @psalm-mutation-free
+     * @psalm-pure
      */
     public static function getMemberId(int $node): ?string
     {
@@ -368,7 +372,8 @@ final class CodeUseGraph
      * nodes that don't belong to a class (files, free functions, roots).
      *
      * @return lowercase-string|null
-     * @psalm-mutation-free
+     *
+     * @psalm-pure
      */
     public static function getOwnerClass(int $node): ?string
     {
@@ -429,7 +434,7 @@ final class CodeUseGraph
     /**
      * The node every public-API node hangs off (interned once).
      *
-     * @psalm-mutation-free
+     * @psalm-pure
      */
     private static function publicApiNode(): int
     {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Internal\TypeVisitor;
 
 use Override;
+use Psalm\Internal\Interner;
 use Psalm\Type\Atomic\TClassConstant;
 use Psalm\Type\Atomic\TLiteralClassString;
 use Psalm\Type\Atomic\TNamedObject;
@@ -36,7 +37,7 @@ final class ContainsClassLikeVisitor extends TypeVisitor
     protected function enterNode(TypeNode $type): ?int
     {
         if ($type instanceof TNamedObject) {
-            if (strtolower($type->value) === $this->fq_classlike_name) {
+            if (strtolower(Interner::lookup($type->name)) === $this->fq_classlike_name) {
                 $this->contains_classlike = true;
                 return self::STOP_TRAVERSAL;
             }

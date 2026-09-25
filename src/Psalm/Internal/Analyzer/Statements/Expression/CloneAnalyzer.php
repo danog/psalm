@@ -11,6 +11,7 @@ use Psalm\Internal\Analyzer\MethodAnalyzer;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\Method\MethodCallProhibitionAnalyzer;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Issue\InvalidClone;
 use Psalm\Issue\MixedClone;
@@ -67,7 +68,7 @@ final class CloneAnalyzer
                         $invalid_clones[] = $clone_type_part->getId();
                     } else {
                         $clone_method_id = new MethodIdentifier(
-                            $clone_type_part->value,
+                            Interner::lookup($clone_type_part->name),
                             '__clone',
                         );
 

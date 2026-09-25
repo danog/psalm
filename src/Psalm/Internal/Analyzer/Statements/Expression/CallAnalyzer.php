@@ -141,10 +141,10 @@ abstract class CallAnalyzer
             if (isset($context->vars_in_scope['$this'])) {
                 foreach ($context->vars_in_scope['$this']->getAtomicTypes() as $atomic_type) {
                     if ($atomic_type instanceof TNamedObject) {
-                        if ($fq_class_name === $atomic_type->value) {
+                        if ($fq_class_name === Interner::lookup($atomic_type->name)) {
                             $alt_declaring_method_id = $declaring_method_id;
                         } else {
-                            $fq_class_name = $atomic_type->value;
+                            $fq_class_name = Interner::lookup($atomic_type->name);
 
                             $method_id = new MethodIdentifier(
                                 $fq_class_name,
@@ -165,7 +165,7 @@ abstract class CallAnalyzer
 
                         foreach ($atomic_type->extra_types as $intersection_type) {
                             if ($intersection_type instanceof TNamedObject) {
-                                $fq_class_name = $intersection_type->value;
+                                $fq_class_name = Interner::lookup($intersection_type->name);
                                 $method_id = new MethodIdentifier(
                                     $fq_class_name,
                                     $method_name_lc,
@@ -569,7 +569,7 @@ abstract class CallAnalyzer
 
         foreach ($class_arg_type->getAtomicTypes() as $type_part) {
             if ($type_part instanceof TNamedObject) {
-                $method_id = $type_part->value . '::' . $method_name_arg->value;
+                $method_id = Interner::lookup($type_part->name) . '::' . $method_name_arg->value;
 
                 foreach ($type_part->extra_types as $extra_type) {
                     if ($extra_type instanceof TTemplateParam
@@ -579,7 +579,7 @@ abstract class CallAnalyzer
                         throw new UnexpectedValueException('Shouldn’t get a generic param here');
                     }
 
-                    $method_id .= '&' . $extra_type->value . '::' . $method_name_arg->value;
+                    $method_id .= '&' . Interner::lookup($extra_type->name) . '::' . $method_name_arg->value;
                 }
 
                 $method_ids[] = '$' . $method_id;

@@ -95,8 +95,12 @@ final class StorageByPatternResolver
      * The id-keyed member map keyed by member name (the resolved maps are keyed by name).
      *
      * @template T
+     *
      * @param array<int, T> $members
+     *
      * @return array<string, T>
+     *
+     * @psalm-pure
      */
     private static function byName(array $members): array
     {

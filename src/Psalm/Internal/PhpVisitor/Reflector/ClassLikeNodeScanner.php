@@ -1069,7 +1069,7 @@ final class ClassLikeNodeScanner
                 return;
             }
 
-            $generic_class_lc = strtolower($atomic_type->value);
+            $generic_class_lc = strtolower(Interner::lookup($atomic_type->name));
 
             if (!isset($storage->parent_classes[$generic_class_lc])
                 && !isset($storage->parent_interfaces[$generic_class_lc])
@@ -1083,13 +1083,13 @@ final class ClassLikeNodeScanner
 
             $extended_type_parameters = [];
 
-            $storage->template_type_extends_count[$atomic_type->value] = count($atomic_type->type_params);
+            $storage->template_type_extends_count[Interner::lookup($atomic_type->name)] = count($atomic_type->type_params);
 
             foreach ($atomic_type->type_params as $type_param) {
                 $extended_type_parameters[] = $type_param;
             }
 
-            $storage->template_extended_offsets[$atomic_type->value] = $extended_type_parameters;
+            $storage->template_extended_offsets[Interner::lookup($atomic_type->name)] = $extended_type_parameters;
         }
     }
 
@@ -1155,7 +1155,7 @@ final class ClassLikeNodeScanner
                 return;
             }
 
-            $generic_class_lc = strtolower($atomic_type->value);
+            $generic_class_lc = strtolower(Interner::lookup($atomic_type->name));
 
             if (!isset($storage->class_implements[$generic_class_lc])) {
                 $storage->docblock_issues[] = new InvalidDocblock(
@@ -1175,7 +1175,7 @@ final class ClassLikeNodeScanner
                 $implemented_type_parameters[] = $type_param;
             }
 
-            $storage->template_extended_offsets[$atomic_type->value] = $implemented_type_parameters;
+            $storage->template_extended_offsets[Interner::lookup($atomic_type->name)] = $implemented_type_parameters;
         }
     }
 
@@ -1241,7 +1241,7 @@ final class ClassLikeNodeScanner
                 return;
             }
 
-            $generic_class_lc = strtolower($atomic_type->value);
+            $generic_class_lc = strtolower(Interner::lookup($atomic_type->name));
 
             if (!isset($storage->used_traits[$generic_class_lc])) {
                 $storage->docblock_issues[] = new InvalidDocblock(
@@ -1261,7 +1261,7 @@ final class ClassLikeNodeScanner
                 $used_type_parameters[] = $type_param->replaceClassLike('self', $storage->name);
             }
 
-            $storage->template_extended_offsets[$atomic_type->value] = $used_type_parameters;
+            $storage->template_extended_offsets[Interner::lookup($atomic_type->name)] = $used_type_parameters;
         }
     }
 

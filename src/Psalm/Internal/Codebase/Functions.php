@@ -489,7 +489,7 @@ final class Functions
                 foreach ($count_type->getAtomicTypes() as $atomic_count_type) {
                     if ($atomic_count_type instanceof TNamedObject) {
                         $count_method_id = new MethodIdentifier(
-                            $atomic_count_type->value,
+                            Interner::lookup($atomic_count_type->name),
                             'count',
                         );
 

@@ -11,6 +11,7 @@ use Psalm\Codebase;
 use Psalm\Context;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Provider\NodeDataProvider;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
@@ -442,14 +443,14 @@ final class CallableTypeComparator
                 }
             }
         } elseif ($input_type_part instanceof TNamedObject
-            && $input_type_part->value === 'Closure'
+            && Interner::lookup($input_type_part->name) === 'Closure'
         ) {
             return new TCallable();
         } elseif ($input_type_part instanceof TNamedObject
             && $codebase->classExists($input_type_part->name, null, $context)
         ) {
             $invoke_id = new MethodIdentifier(
-                $input_type_part->value,
+                Interner::lookup($input_type_part->name),
                 '__invoke',
             );
 
@@ -466,13 +467,13 @@ final class CallableTypeComparator
                     foreach ($invokable_storage->template_types ?? [] as $template => $for_class) {
                         foreach ($for_class as $type) {
                             $type_params[] = new Type\Union([
-                                new TTemplateParam($template, $type, $input_type_part->value),
+                                new TTemplateParam($template, $type, Interner::lookup($input_type_part->name)),
                             ]);
                         }
                     }
 
                     if (!empty($type_params)) {
-                        $input_with_templates = new Atomic\TGenericObject($input_type_part->value, $type_params);
+                        $input_with_templates = new Atomic\TGenericObject(Interner::lookup($input_type_part->name), $type_params);
                         $template_result = new TemplateResult($invokable_storage->template_types ?? [], []);
 
                         TemplateStandinTypeReplacer::fillTemplateResult(
@@ -551,7 +552,7 @@ final class CallableTypeComparator
                 foreach ($lhs->getAtomicTypes() as $lhs_atomic_type) {
                     if ($lhs_atomic_type instanceof TNamedObject) {
                         $codebase->analyzer->addMixedMemberName(
-                            strtolower($lhs_atomic_type->value) . '::',
+                            strtolower(Interner::lookup($lhs_atomic_type->name)) . '::',
                             $calling_method_id ?: $file_name,
                         );
                     } elseif ($lhs_atomic_type instanceof TTemplateParam) {
@@ -560,7 +561,7 @@ final class CallableTypeComparator
                             $lhs_template_atomic_type = $lhs_template_type->getSingleAtomic();
                             $member_id = null;
                             if ($lhs_template_atomic_type instanceof TNamedObject) {
-                                $member_id = $lhs_template_atomic_type->value;
+                                $member_id = Interner::lookup($lhs_template_atomic_type->name);
                             } elseif ($lhs_template_atomic_type instanceof TClassString) {
                                 $member_id = $lhs_template_atomic_type->as;
                             }
@@ -591,13 +592,13 @@ final class CallableTypeComparator
         } elseif ($lhs->isSingle()) {
             foreach ($lhs->getAtomicTypes() as $lhs_atomic_type) {
                 if ($lhs_atomic_type instanceof TNamedObject) {
-                    $class_name = $lhs_atomic_type->value;
+                    $class_name = Interner::lookup($lhs_atomic_type->name);
                 } elseif ($lhs_atomic_type instanceof TTemplateParam) {
                     $lhs_template_type = $lhs_atomic_type->as;
                     if ($lhs_template_type->isSingle()) {
                         $lhs_template_atomic_type = $lhs_template_type->getSingleAtomic();
                         if ($lhs_template_atomic_type instanceof TNamedObject) {
-                            $class_name = $lhs_template_atomic_type->value;
+                            $class_name = Interner::lookup($lhs_template_atomic_type->name);
                         } elseif ($lhs_template_atomic_type instanceof TClassString) {
                             $class_name = $lhs_template_atomic_type->as;
                         }

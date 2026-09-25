@@ -19,6 +19,7 @@ use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
 use Psalm\Internal\Codebase\InternalCallMapHandler;
 use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Internal\Type\Comparator\CallableTypeComparator;
 use Psalm\Internal\Type\TemplateResult;
@@ -774,7 +775,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
                         $var_type_part,
                     );
                 } elseif ($var_type_part instanceof TCallableString
-                    || ($var_type_part instanceof TNamedObject && $var_type_part->value === 'Closure')
+                    || ($var_type_part instanceof TNamedObject && Interner::lookup($var_type_part->name) === 'Closure')
                     || ($var_type_part instanceof TObjectWithProperties && isset($var_type_part->methods['__invoke']))
                 ) {
                     // this is fine
@@ -834,7 +835,7 @@ final class FunctionCallAnalyzer extends CallAnalyzer
                     || !$codebase->classlikes->classOrInterfaceExists($var_type_part->name, null, $context)
                     || !$codebase->methodExists(
                         new MethodIdentifier(
-                            $var_type_part->value,
+                            Interner::lookup($var_type_part->name),
                             '__invoke',
                         ),
                     )

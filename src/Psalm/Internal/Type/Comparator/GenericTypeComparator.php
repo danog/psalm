@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Internal\Type\Comparator;
 
 use Psalm\Codebase;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
 use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\TGenericObject;
@@ -98,7 +99,7 @@ final class GenericTypeComparator
                 $param_comparison_result,
                 $allow_interface_equality,
             )) {
-                if ($input_type_part->value === 'Generator'
+                if (Interner::lookup($input_type_part->name) === 'Generator'
                     && $i === 2
                     && $param_comparison_result->type_coerced_from_mixed
                 ) {

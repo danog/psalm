@@ -86,11 +86,11 @@ final class GetObjectVarsReturnTypeProvider implements FunctionReturnTypeProvide
             }
 
             if ($object_type instanceof TNamedObject) {
-                if (strtolower($object_type->value) === strtolower(stdClass::class)) {
+                if (strtolower(Interner::lookup($object_type->name)) === strtolower(stdClass::class)) {
                     return self::$fallback;
                 }
                 $codebase = $statements_source->getCodebase();
-                $class_storage = $codebase->classlikes->getStorageFor($object_type->value);
+                $class_storage = $codebase->classlikes->getStorageFor(Interner::lookup($object_type->name));
 
                 if (null === $class_storage) {
                     return self::$fallback;

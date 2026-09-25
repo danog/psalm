@@ -6,6 +6,7 @@ namespace Psalm\Type;
 
 use Override;
 use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\TypeCombiner;
 use Psalm\Internal\TypeVisitor\FromDocblockSetter;
 use Psalm\Type;
@@ -390,7 +391,7 @@ final class MutableUnion implements TypeNode
                     $this->put(new TFalse);
                 } elseif ($this->has('iterable')) {
                     if ($old_type_part instanceof TNamedObject
-                        && $old_type_part->value === 'Traversable'
+                        && Interner::lookup($old_type_part->name) === 'Traversable'
                         && !$this->has('array')
                     ) {
                         $this->removeType('iterable');

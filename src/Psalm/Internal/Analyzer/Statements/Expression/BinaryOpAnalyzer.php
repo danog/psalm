@@ -16,6 +16,7 @@ use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Codebase\VariableUseGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
+use Psalm\Internal\Interner;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Issue\DocblockTypeContradiction;
 use Psalm\Issue\ImpureMethodCall;
@@ -474,7 +475,7 @@ final class BinaryOpAnalyzer
                     try {
                         $storage = $codebase->methods->getStorage(
                             new MethodIdentifier(
-                                $atomic_type->value,
+                                Interner::lookup($atomic_type->name),
                                 '__tostring',
                             ),
                         );
@@ -491,7 +492,7 @@ final class BinaryOpAnalyzer
                         $storage->allowed_mutations,
                         $context,
                         'possibly-mutating method '
-                                    . $atomic_type->value . '::__toString',
+                                    . Interner::lookup($atomic_type->name) . '::__toString',
                         ImpureMethodCall::class,
                         $stmt,
                         null,
@@ -506,7 +507,7 @@ final class BinaryOpAnalyzer
                     try {
                         $storage = $codebase->methods->getStorage(
                             new MethodIdentifier(
-                                $atomic_type->value,
+                                Interner::lookup($atomic_type->name),
                                 '__tostring',
                             ),
                         );
@@ -524,7 +525,7 @@ final class BinaryOpAnalyzer
                         $storage->allowed_mutations,
                         $context,
                         'possibly-mutating method '
-                                    . $atomic_type->value . '::__toString',
+                                    . Interner::lookup($atomic_type->name) . '::__toString',
                         ImpureMethodCall::class,
                         $stmt,
                         null,

@@ -44,6 +44,7 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
     private string $file;
     private string $src;
     private bool $in_trait = false;
+    private ?string $parentClass = null;
     /** @var SplObjectStorage<Node, Node> */
     private SplObjectStorage $parent;
     /** @var list<array{int, int, string}> */
@@ -64,7 +65,9 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
     {
         $file = $event->getStatementsSource()->getFilePath();
         $root = dirname(__DIR__, 2);
-        if (!str_starts_with($file, $root . '/src/') && !str_starts_with($file, $root . '/tests/')) {
+        if (!str_starts_with($file, $root . '/src/') && !str_starts_with($file, $root . '/tests/')
+            && !str_starts_with($file, $root . '/examples/')
+        ) {
             return null;
         }
         try {
@@ -74,6 +77,12 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
             $h->file = $file;
             $h->src = (string) file_get_contents($file);
             $h->in_trait = preg_match('/^\s*(?:final\s+|abstract\s+)?trait\s/m', $h->src) === 1;
+            require_once __DIR__ . '/SymNames.php';
+            $storage = $event->getFunctionlikeStorage();
+            if ($storage instanceof \Psalm\Storage\MethodStorage && $storage->defining_fqcln !== null) {
+                $cs = $h->codebase->classlike_storage_provider->find(Interner::intern($storage->defining_fqcln));
+                $h->parentClass = $cs?->parent_class;
+            }
             $h->parent = new SplObjectStorage();
             $stmt = $event->getStmt();
             $body = $stmt instanceof Expr\ArrowFunction ? [$stmt->expr] : ($stmt->getStmts() ?? []);
@@ -123,32 +132,62 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
         if ($cands === []) {
             return null;
         }
+        // `$this` in a trait whose every user drops the property alike: whatever Psalm narrowed `$this` to here
+        if ($this->in_trait && $fetch->var instanceof Expr\Variable && $fetch->var->name === 'this'
+            && $this->traitUsersCovered($prop)
+        ) {
+            return [$prop, $cands[0][2]];
+        }
         $t = $this->types->getType($fetch->var);
         if ($t === null) {
             return null;
         }
         $match = null;
-        foreach ($t->getAtomicTypes() as $a) {
+        $kept = [];
+        $dropped = [];
+        // a template parameter stands for its bound
+        $atomics = [];
+        $queue = array_values($t->getAtomicTypes());
+        while ($queue !== []) {
+            $a = array_shift($queue);
+            if ($a instanceof \Psalm\Type\Atomic\TTemplateParam) {
+                foreach ($a->as->getAtomicTypes() as $b) {
+                    $queue[] = $b;
+                }
+                continue;
+            }
+            $atomics[] = $a;
+        }
+        foreach ($atomics as $a) {
             if ($a instanceof \Psalm\Type\Atomic\TNull) {
                 continue;
             }
             if (!$a instanceof TNamedObject) {
-                return null;
+                return null; // not an object of a known class
             }
+            $cls = $a->value;
             $found = null;
             foreach ($cands as $c) {
-                if (strcasecmp($a->value, $c[0]) === 0
-                    || $this->codebase->classExtendsOrImplements(Interner::intern($a->value), Interner::intern($c[0]))
+                if (strcasecmp($cls, $c[0]) === 0
+                    || $this->codebase->classExtendsOrImplements(Interner::intern($cls), Interner::intern($c[0]))
                 ) {
-                    $found = $c;
+                    $found = [$c[1], $c[2]];
                 }
             }
-            if ($found === null || ($match !== null && $match !== $found)) {
+            if ($found === null) {
+                $kept[] = $cls;
+                continue;
+            }
+            if ($match !== null && $match !== $found) {
                 return null;
             }
             $match = $found;
+            $dropped[] = $cls;
         }
-        return $match === null ? null : [$match[1], $match[2]];
+        if ($match !== null && $kept !== []) {
+            return ['mixed', $match[1], array_values(array_unique($kept))];
+        }
+        return $match;
     }
 
     private function text(Node $n): string
@@ -161,10 +200,72 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
         $this->edits[] = [$f->name->getStartFilePos(), $f->name->getEndFilePos() + 1, $to];
     }
 
+    /** Constructor calls passing a dropped promoted parameter: the argument becomes its id. */
+    private function ctorArgs(Expr\New_|Expr\StaticCall $call): void
+    {
+        if ($call instanceof Expr\StaticCall) {
+            if (!$call->name instanceof Identifier || strtolower($call->name->name) !== '__construct'
+                || !$call->class instanceof Name || strtolower($call->class->toString()) !== 'parent'
+            ) {
+                return;
+            }
+            $class = $this->parentClass;
+        } else {
+            if (!$call->class instanceof Name) {
+                return;
+            }
+            $class = (string) ($call->class->attrs()->resolvedName ?? $call->class->toString());
+        }
+        if ($class === null) {
+            return;
+        }
+        try {
+            $mid = $this->codebase->methods->getDeclaringMethodId(new \Psalm\Internal\MethodIdentifier($class, '__construct'));
+            if ($mid === null) {
+                return;
+            }
+            $ms = $this->codebase->methods->getStorage($mid);
+        } catch (Throwable) {
+            return;
+        }
+        $declaring = $ms->defining_fqcln ?? $mid->fq_class_name;
+        foreach (self::fields() as [$fclass, $prop, $id]) {
+            if (strcasecmp($declaring, $fclass) !== 0) {
+                continue;
+            }
+            foreach ($ms->params as $i => $param) {
+                if ($param->name !== $prop || !$param->promoted_property) {
+                    continue;
+                }
+                foreach ($call->getArgs() as $j => $a) {
+                    if (($a->name !== null && $a->name->name === $prop) || ($a->name === null && $j === $i)) {
+                        if ($a->name !== null) {
+                            $this->edits[] = [$a->name->getStartFilePos(), $a->name->getEndFilePos() + 1, $id];
+                        }
+                        $v = $a->value;
+                        if ($v instanceof \PhpParser\Node\Scalar\String_) {
+                            [$text, $new] = SymNames::forLiteral($v->value);
+                            if ($new !== null) {
+                                self::out(['kind' => 'sym', 'name' => $new[0], 'value' => $new[1], 'literal' => $new[2]]);
+                            }
+                            $this->edits[] = [$v->getStartFilePos(), $v->getEndFilePos() + 1, $text];
+                        } else {
+                            $this->edits[] = [$v->getStartFilePos(), $v->getStartFilePos(), 'Interner::intern('];
+                            $this->edits[] = [$v->getEndFilePos() + 1, $v->getEndFilePos() + 1, ')'];
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private function walk(): void
     {
         $done = new SplObjectStorage();
         foreach ($this->parent as $n) {
+            if ($n instanceof Expr\New_ || $n instanceof Expr\StaticCall) {
+                $this->ctorArgs($n);
+            }
             if (!$n instanceof Expr || isset($done[$n])) {
                 continue;
             }
@@ -172,10 +273,16 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
             if ($pair === null) {
                 continue;
             }
+            if ($pair[0] === 'mixed') {
+                $this->mixedRead($n, $pair[1], $pair[2]);
+                continue;
+            }
             [, $id] = $pair;
             $p = $this->parent[$n];
             // a trait body is analyzed once per using class: `$this` is a different class in each
-            if ($this->in_trait && $n->var instanceof Expr\Variable && $n->var->name === 'this') {
+            if ($this->in_trait && $n->var instanceof Expr\Variable && $n->var->name === 'this'
+                && !$this->traitUsersCovered($n->name instanceof Identifier ? $n->name->name : '')
+            ) {
                 self::out(['kind' => 'manual', 'site' => $this->file . ':' . $n->getStartLine(), 'why' => '$this in a trait']);
                 continue;
             }
@@ -227,10 +334,90 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
                 self::out(['kind' => 'manual', 'site' => $this->file . ':' . $n->getStartLine(), 'why' => 'nullsafe read']);
                 continue;
             }
-            $this->edits[] = [$n->getStartFilePos(), $n->getStartFilePos(), 'Interner::lookup('];
-            $this->renameProp($n, $id);
-            $this->edits[] = [$n->getEndFilePos() + 1, $n->getEndFilePos() + 1, ')'];
+            if ($p instanceof Expr\BinaryOp\Coalesce && $p->left === $n) {
+                // `$x->s ?? E` (a null or unset receiver falls through to E)
+                $recv = $this->text($n->var);
+                $this->edits[] = [$p->getStartFilePos(), $p->getEndFilePos() + 1,
+                    '(isset(' . $recv . '->' . $id . ') ? Interner::lookup(' . $recv . '->' . $id . ') : ' . $this->text($p->right) . ')'];
+                $done[$p->right] = true;
+                continue;
+            }
+            $this->replaceRead($n, 'Interner::lookup(' . $this->text($n->var) . '->' . $id . ')');
         }
+    }
+
+    /** Replaces a read with an expression; inside an interpolated string the expression is concatenated in. */
+    private function replaceRead(Expr $n, string $expr, bool $maybe_not_string = false): void
+    {
+        $p = $this->parent[$n];
+        if ($p instanceof \PhpParser\Node\Scalar\InterpolatedString) {
+            $s = $n->getStartFilePos();
+            $e = $n->getEndFilePos() + 1;
+            if ($this->src[$s - 1] === '{' && $this->src[$e] === '}') {
+                $s--;
+                $e++;
+            }
+            if ($this->src[$p->getStartFilePos()] !== '"') {
+                self::out(['kind' => 'manual', 'site' => $this->file . ':' . $n->getStartLine(), 'why' => 'heredoc interpolation']);
+                return;
+            }
+            $q = '"';
+            $this->edits[] = [$s, $e, $q . ' . ' . ($maybe_not_string ? '(string) ' : '') . $expr . ' . ' . $q];
+            return;
+        }
+        $this->edits[] = [$n->getStartFilePos(), $n->getEndFilePos() + 1, $expr];
+    }
+
+    /** Whether every class using this file's trait drops the property the same way (its `$this` reads may move). */
+    private function traitUsersCovered(string $prop): bool
+    {
+        if (!preg_match('/^namespace\s+([^;]+);/m', $this->src, $ns) || !preg_match('/^\s*(?:final\s+|abstract\s+)?trait\s+(\w+)/m', $this->src, $tm)) {
+            return false;
+        }
+        $trait_lc = strtolower($ns[1] . '\\' . $tm[1]);
+        $pairs = [];
+        foreach ($this->codebase->classlike_storage_provider->getAll() as $st) {
+            if (!isset($st->used_traits[$trait_lc])) {
+                continue;
+            }
+            $found = null;
+            foreach (self::fields() as [$c, $p, $id]) {
+                if ($p === $prop && (strcasecmp($st->name, $c) === 0
+                    || $this->codebase->classExtendsOrImplements($st->id, Interner::intern($c)))
+                ) {
+                    $found = $id;
+                }
+            }
+            if ($found === null) {
+                return false;
+            }
+            $pairs[$found] = true;
+        }
+        return count($pairs) === 1;
+    }
+
+    /**
+     * A read of the property on a union of classes that drop it and classes that keep it: a conditional on the
+     * receiver's class (only for a side-effect-free receiver).
+     *
+     * @param list<string> $dropped the classes keeping the property
+     */
+    private function mixedRead(Expr\PropertyFetch|Expr\NullsafePropertyFetch $n, string $id, array $dropped): void
+    {
+        $p = $this->parent[$n];
+        $pure = static function (Expr $e) use (&$pure): bool {
+            return $e instanceof Expr\Variable
+                || (($e instanceof Expr\PropertyFetch) && $e->name instanceof Identifier && $pure($e->var));
+        };
+        if ($n instanceof Expr\NullsafePropertyFetch || !$pure($n->var)
+            || ($p instanceof Expr\Assign && $p->var === $n) || $p instanceof Expr\AssignOp || $p instanceof Expr\Isset_
+        ) {
+            self::out(['kind' => 'manual', 'site' => $this->file . ':' . $n->getStartLine(), 'why' => 'mixed receiver']);
+            return;
+        }
+        $recv = $this->text($n->var);
+        $conds = implode(' || ', array_map(static fn(string $c): string => $recv . ' instanceof \\' . $c, $dropped));
+        $this->replaceRead($n, '(' . $conds . ' ? ' . $this->text($n) . ' : Interner::lookup(' . $recv . '->' . $id . '))', true);
     }
 
     private function assignsId(Expr\PropertyFetch|Expr\NullsafePropertyFetch $f, string $id): bool

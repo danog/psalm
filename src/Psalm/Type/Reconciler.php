@@ -874,7 +874,7 @@ class Reconciler
                         } elseif ($existing_key_type_part instanceof TMixed
                             || $existing_key_type_part instanceof TObject
                             || ($existing_key_type_part instanceof TNamedObject
-                                && strtolower($existing_key_type_part->value) === 'stdclass')
+                                && strtolower(Interner::lookup($existing_key_type_part->name)) === 'stdclass')
                         ) {
                             $class_property_type = Type::getMixed();
                         } elseif ($existing_key_type_part instanceof TNamedObject) {
@@ -883,7 +883,7 @@ class Reconciler
                             } else {
                                 if (str_ends_with($property_name, '()')) {
                                     $method_id = new MethodIdentifier(
-                                        $existing_key_type_part->value,
+                                        Interner::lookup($existing_key_type_part->name),
                                         strtolower(substr($property_name, 0, -2)),
                                     );
 
@@ -920,7 +920,7 @@ class Reconciler
                                 } else {
                                     $class_property_type = self::getPropertyType(
                                         $codebase,
-                                        $existing_key_type_part->value,
+                                        Interner::lookup($existing_key_type_part->name),
                                         $property_name,
                                     );
 

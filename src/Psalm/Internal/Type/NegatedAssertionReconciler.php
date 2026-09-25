@@ -150,12 +150,12 @@ final class NegatedAssertionReconciler extends Reconciler
 
         if (!$is_equality
             && $assertion_type instanceof TNamedObject
-            && ($assertion_type->value === 'DateTime' || $assertion_type->value === 'DateTimeImmutable')
+            && (Interner::lookup($assertion_type->name) === 'DateTime' || Interner::lookup($assertion_type->name) === 'DateTimeImmutable')
             && isset($existing_var_atomic_types['DateTimeInterface'])
         ) {
             $existing_var_type->removeType('DateTimeInterface');
 
-            if ($assertion_type->value === 'DateTime') {
+            if (Interner::lookup($assertion_type->name) === 'DateTime') {
                 $existing_var_type->addType(new TNamedObject('DateTimeImmutable'));
             } else {
                 $existing_var_type->addType(new TNamedObject('DateTime'));
@@ -167,7 +167,7 @@ final class NegatedAssertionReconciler extends Reconciler
         if (!$is_equality && $assertion_type instanceof TNamedObject) {
             foreach ($existing_var_type->getAtomicTypes() as $type) {
                 $key = $type->getKey();
-                if ($type instanceof TEnumCase && $type->value === $assertion_type->value) {
+                if ($type instanceof TEnumCase && $type->name === $assertion_type->name) {
                     $existing_var_type->removeType($key);
                 }
             }
@@ -176,7 +176,7 @@ final class NegatedAssertionReconciler extends Reconciler
         $codebase = $statements_analyzer->getCodebase();
 
         if ($assertion_type instanceof TNamedObject
-            && strtolower($assertion_type->value) === 'traversable'
+            && strtolower(Interner::lookup($assertion_type->name)) === 'traversable'
             && isset($existing_var_atomic_types['iterable'])
         ) {
             /** @var TIterable */
@@ -435,13 +435,13 @@ final class NegatedAssertionReconciler extends Reconciler
                 $scalar_var_type = $assertion_type;
             }
         } else {
-            $fq_enum_name = $assertion_type->value;
+            $fq_enum_name = Interner::lookup($assertion_type->name);
             $case_name = $assertion_type->case_name;
 
             foreach ($existing_var_type->getAtomicTypes() as $atomic_type) {
                 $atomic_key = $atomic_type->getKey();
                 if ($atomic_type::class === TNamedObject::class
-                    && $atomic_type->value === $fq_enum_name
+                    && Interner::lookup($atomic_type->name) === $fq_enum_name
                 ) {
                     $codebase = $statements_analyzer->getCodebase();
 
@@ -463,7 +463,7 @@ final class NegatedAssertionReconciler extends Reconciler
                         }
                     }
                 } elseif ($atomic_type instanceof TEnumCase
-                    && $atomic_type->value === $fq_enum_name
+                    && Interner::lookup($atomic_type->name) === $fq_enum_name
                     && $atomic_type->case_name !== $case_name
                 ) {
                     $did_match_literal_type = true;

@@ -6,6 +6,7 @@ namespace Psalm\Storage;
 
 use Psalm\CodeLocation;
 use Psalm\Internal\Analyzer\ClassLikeAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Scanner\UnresolvedConstantComponent;
 use Psalm\Type\Atomic\TEnumCase;
 use Psalm\Type\Atomic\TLiteralFloat;
@@ -73,7 +74,7 @@ final class ClassConstantStorage
             if ($type instanceof TLiteralString || $type instanceof TLiteralInt || $type instanceof TLiteralFloat
                 || $type instanceof TNamedObject || $type instanceof TEnumCase
             ) {
-                $value = " = {$type->value};";
+                $value = " = " . (string) ($type instanceof \Psalm\Type\Atomic\TLiteralFloat || $type instanceof \Psalm\Type\Atomic\TLiteralInt || $type instanceof \Psalm\Type\Atomic\TLiteralString ? $type->value : Interner::lookup($type->name)) . ";";
             }
         }
 

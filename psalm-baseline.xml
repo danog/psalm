@@ -2144,13 +2144,25 @@
     <ImpureByReferenceAssignment>
       <code><![CDATA[$container_type_params_covariant]]></code>
     </ImpureByReferenceAssignment>
+    <InvalidArgument>
+      <code><![CDATA[array_values($classlike_storage->template_extended_params[Interner::lookup($base_type->as_type->name)])]]></code>
+      <code><![CDATA[array_values($classlike_storage->template_extended_params[Interner::lookup($base_type->name)])]]></code>
+    </InvalidArgument>
+    <PossiblyNullArgument>
+      <code><![CDATA[$classlike_storage->template_extended_params[Interner::lookup($base_type->as_type->name)]]]></code>
+      <code><![CDATA[$classlike_storage->template_extended_params[Interner::lookup($base_type->name)]]]></code>
+    </PossiblyNullArgument>
+    <PossiblyNullArrayAccess>
+      <code><![CDATA[$classlike_storage->template_extended_params[Interner::lookup($base_type->as_type->name)]]]></code>
+      <code><![CDATA[$classlike_storage->template_extended_params[Interner::lookup($base_type->name)]]]></code>
+    </PossiblyNullArrayAccess>
     <RiskyTruthyFalsyComparison>
       <code><![CDATA[$bracket_pos = strpos($input_key, '<')]]></code>
       <code><![CDATA[$bracket_pos = strpos($key, '<')]]></code>
       <code><![CDATA[$input_template_types]]></code>
       <code><![CDATA[empty($class_storage->template_extended_params[$container_class])]]></code>
-      <code><![CDATA[empty($classlike_storage->template_extended_params[$base_type->as_type->value])]]></code>
-      <code><![CDATA[empty($classlike_storage->template_extended_params[$base_type->value])]]></code>
+      <code><![CDATA[empty($classlike_storage->template_extended_params[Interner::lookup($base_type->as_type->name)])]]></code>
+      <code><![CDATA[empty($classlike_storage->template_extended_params[Interner::lookup($base_type->name)])]]></code>
       <code><![CDATA[empty($template_result->lower_bounds[$atomic_type->offset_param_name])]]></code>
       <code><![CDATA[strpos($key, '&')]]></code>
     </RiskyTruthyFalsyComparison>
@@ -2728,7 +2740,7 @@
                 $add_lower_bound,
                 !($container_type_params_covariant[$offset] ?? true)
                     && $this instanceof TGenericObject
-                    ? $this->value
+                    ? Interner::lookup($this->name)
                     : null,
                 $depth + 1,
             )]]></code>

@@ -80,7 +80,7 @@ final class ExistingAtomicMethodCallAnalyzer extends CallAnalyzer
     ): Union {
         $config = $codebase->config;
 
-        $fq_class_name = $lhs_type_part->value;
+        $fq_class_name = Interner::lookup($lhs_type_part->name);
 
         if ($fq_class_name === 'static') {
             $fq_class_name = (string) $context->self;

@@ -594,11 +594,11 @@ final class Methods
                     if ($atomic_type instanceof TNamedObject
                         && $this->methodExists(
                             $codebase,
-                            new MethodIdentifier($atomic_type->value, '__invoke'),
+                            new MethodIdentifier(Interner::lookup($atomic_type->name), '__invoke'),
                         )
                     ) {
                         $invokable_storage = $this->getStorage(
-                            new MethodIdentifier($atomic_type->value, '__invoke'),
+                            new MethodIdentifier(Interner::lookup($atomic_type->name), '__invoke'),
                         );
 
                         return new Union([new TClosure(

@@ -963,7 +963,7 @@ final class NewAnalyzer extends CallAnalyzer
                         if (!$as_storage->preserve_constructor_signature) {
                             IssueBuffer::maybeAdd(
                                 new UnsafeInstantiation(
-                                    'Cannot safely instantiate class ' . $lhs_type_part->as_type->value
+                                    'Cannot safely instantiate class ' . Interner::lookup($lhs_type_part->as_type->name)
                                     . ' with "new $class_name" as'
                                     . ' its constructor might change in child classes',
                                     new CodeLocation($statements_analyzer->getSource(), $stmt),
@@ -977,7 +977,7 @@ final class NewAnalyzer extends CallAnalyzer
                 if ($lhs_type_part->as_type) {
                     $codebase->methodExists(
                         new MethodIdentifier(
-                            $lhs_type_part->as_type->value,
+                            Interner::lookup($lhs_type_part->as_type->name),
                             '__construct',
                         ),
                         $context->calling_method_id,
@@ -1012,7 +1012,7 @@ final class NewAnalyzer extends CallAnalyzer
                             if (!$as_storage->preserve_constructor_signature) {
                                 IssueBuffer::maybeAdd(
                                     new UnsafeInstantiation(
-                                        'Cannot safely instantiate class ' . $lhs_type_part->as_type->value
+                                        'Cannot safely instantiate class ' . Interner::lookup($lhs_type_part->as_type->name)
                                         . ' with "new $class_name" as'
                                         . ' its constructor might change in child classes',
                                         new CodeLocation($statements_analyzer->getSource(), $stmt),
@@ -1030,7 +1030,7 @@ final class NewAnalyzer extends CallAnalyzer
                             foreach ($lhs_type_part->as_type->getAtomicTypes() as $typeof_type_atomic) {
                                 if ($typeof_type_atomic instanceof TNamedObject) {
                                     $generated_type = new TNamedObject(
-                                        $typeof_type_atomic->value,
+                                        Interner::lookup($typeof_type_atomic->name),
                                     );
                                 }
                             }

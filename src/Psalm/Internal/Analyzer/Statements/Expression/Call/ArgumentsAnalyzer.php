@@ -1404,7 +1404,7 @@ final class ArgumentsAnalyzer
             } elseif ($var_id && isset($context->vars_in_scope[$var_id])) {
                 foreach ($context->vars_in_scope[$var_id]->getAtomicTypes() as $atomic_type) {
                     if ($atomic_type instanceof TNamedObject) {
-                        $fq_class_name = $atomic_type->value;
+                        $fq_class_name = Interner::lookup($atomic_type->name);
 
                         self::handleByRefReadonlyArg(
                             $statements_analyzer,

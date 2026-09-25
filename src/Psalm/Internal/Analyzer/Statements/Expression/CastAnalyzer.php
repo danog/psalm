@@ -440,7 +440,7 @@ final class CastAnalyzer
                     }
 
                     foreach (self::PSEUDO_CASTABLE_CLASSES as $pseudo_castable_class) {
-                        if (strtolower($intersection_type->value) === strtolower($pseudo_castable_class)
+                        if (strtolower(Interner::lookup($intersection_type->name)) === strtolower($pseudo_castable_class)
                             || $codebase->classExtends(
                                 $intersection_type->name,
                                 Interner::intern($pseudo_castable_class),
@@ -639,7 +639,7 @@ final class CastAnalyzer
                     }
 
                     foreach (self::PSEUDO_CASTABLE_CLASSES as $pseudo_castable_class) {
-                        if (strtolower($intersection_type->value) === strtolower($pseudo_castable_class)
+                        if (strtolower(Interner::lookup($intersection_type->name)) === strtolower($pseudo_castable_class)
                             || $codebase->classExtends(
                                 $intersection_type->name,
                                 Interner::intern($pseudo_castable_class),
@@ -828,7 +828,7 @@ final class CastAnalyzer
                 foreach ($intersection_types as $intersection_type) {
                     if ($intersection_type instanceof TNamedObject) {
                         $intersection_method_id = new MethodIdentifier(
-                            $intersection_type->value,
+                            Interner::lookup($intersection_type->name),
                             '__tostring',
                         );
 
@@ -852,7 +852,7 @@ final class CastAnalyzer
                                 [],
                                 $intersection_method_id,
                                 $declaring_method_id,
-                                $intersection_type->value . '::__toString',
+                                Interner::lookup($intersection_type->name) . '::__toString',
                                 $context,
                             );
 

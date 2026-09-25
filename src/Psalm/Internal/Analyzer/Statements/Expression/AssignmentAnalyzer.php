@@ -35,6 +35,7 @@ use Psalm\Internal\Codebase\TaintFlowGraph;
 use Psalm\Internal\Codebase\VariableUseGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\FileManipulation\FileManipulationBuffer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\ReferenceConstraint;
 use Psalm\Internal\Scanner\VarDocblockComment;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
@@ -1653,7 +1654,7 @@ final class AssignmentAnalyzer
                     foreach ($stmt_var_type->getAtomicTypes() as $type) {
                         if ($type instanceof TNamedObject) {
                             $codebase->analyzer->addMixedMemberName(
-                                strtolower($type->value) . '::$',
+                                strtolower(Interner::lookup($type->name)) . '::$',
                                 $context->calling_method_id ?: $statements_analyzer->getFileName(),
                             );
                         }

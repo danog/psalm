@@ -208,7 +208,7 @@ final class HighOrderFunctionArgHandler
                 }
 
                 $method_id = new MethodIdentifier(
-                    $lhs_type->value,
+                    Interner::lookup($lhs_type->name),
                     strtolower((string)$input_arg_expr->name),
                 );
 

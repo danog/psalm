@@ -958,7 +958,7 @@ final class InstancePropertyAssignmentAnalyzer
         if ($lhs_type_part instanceof TObject ||
             (
             in_array(
-                strtolower($lhs_type_part->value),
+                strtolower(Interner::lookup($lhs_type_part->name)),
                 Config::getInstance()->getUniversalObjectCrates() + [
                     'dateinterval',
                     'domdocument',
@@ -970,7 +970,7 @@ final class InstancePropertyAssignmentAnalyzer
         ) {
             if ($var_id) {
                 if ($lhs_type_part instanceof TNamedObject &&
-                    strtolower($lhs_type_part->value) === 'stdclass'
+                    strtolower(Interner::lookup($lhs_type_part->name)) === 'stdclass'
                 ) {
                     $context->vars_in_scope[$var_id] = $assignment_value_type;
                 } else {
@@ -981,7 +981,7 @@ final class InstancePropertyAssignmentAnalyzer
             return null;
         }
 
-        if (ExpressionAnalyzer::isMock($lhs_type_part->value)) {
+        if (ExpressionAnalyzer::isMock(Interner::lookup($lhs_type_part->name))) {
             if ($var_id) {
                 $context->vars_in_scope[$var_id] = Type::getMixed();
             }
@@ -991,7 +991,7 @@ final class InstancePropertyAssignmentAnalyzer
 
         $intersection_types = $lhs_type_part->getIntersectionTypes() ?: [];
 
-        $fq_class_name = $lhs_type_part->value;
+        $fq_class_name = Interner::lookup($lhs_type_part->name);
 
         $override_property_visibility = false;
 
@@ -1002,7 +1002,7 @@ final class InstancePropertyAssignmentAnalyzer
             if ($codebase->interfaceExists($lhs_type_part->name, null, $context)) {
                 $interface_exists = true;
                 $interface_storage = $codebase->classlike_storage_provider->get(
-                    Interner::intern(strtolower($lhs_type_part->value)),
+                    Interner::intern(strtolower(Interner::lookup($lhs_type_part->name))),
                 );
 
                 $override_property_visibility = $interface_storage->override_property_visibility;
@@ -1011,7 +1011,7 @@ final class InstancePropertyAssignmentAnalyzer
                     if ($intersection_type instanceof TNamedObject
                         && $codebase->classExists($intersection_type->name, null, $context)
                     ) {
-                        $fq_class_name = $intersection_type->value;
+                        $fq_class_name = Interner::lookup($intersection_type->name);
                         $class_exists = true;
                         break;
                     }
@@ -1029,7 +1029,7 @@ final class InstancePropertyAssignmentAnalyzer
                         new NoInterfaceProperties(
                             'Interfaces cannot have properties',
                             new CodeLocation($statements_analyzer->getSource(), $stmt),
-                            $lhs_type_part->value,
+                            Interner::lookup($lhs_type_part->name),
                         ),
                         $statements_analyzer->getSuppressedIssues(),
                     )) {
@@ -1050,9 +1050,9 @@ final class InstancePropertyAssignmentAnalyzer
             if (!$class_exists && !$interface_exists) {
                 IssueBuffer::maybeAdd(
                     new UndefinedClass(
-                        'Cannot set properties of undefined class ' . $lhs_type_part->value,
+                        'Cannot set properties of undefined class ' . Interner::lookup($lhs_type_part->name),
                         new CodeLocation($statements_analyzer->getSource(), $stmt),
-                        $lhs_type_part->value,
+                        Interner::lookup($lhs_type_part->name),
                     ),
                     $statements_analyzer->getSuppressedIssues(),
                 );

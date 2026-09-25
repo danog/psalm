@@ -145,7 +145,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
 
         $result->has_valid_method_call_type = true;
 
-        $fq_class_name = $lhs_type_part->value;
+        $fq_class_name = Interner::lookup($lhs_type_part->name);
 
         $is_mock = ExpressionAnalyzer::isMock($fq_class_name);
 
@@ -774,7 +774,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
 
                         if ($lhs_type_part_new instanceof TNamedObject) {
                             $new_method_id = new MethodIdentifier(
-                                $lhs_type_part_new->value,
+                                Interner::lookup($lhs_type_part_new->name),
                                 $method_name_lc,
                             );
 
@@ -846,7 +846,7 @@ final class AtomicMethodCallAnalyzer extends CallAnalyzer
             }
 
             $new_method_id = new MethodIdentifier(
-                $mixin->value,
+                Interner::lookup($mixin->name),
                 $method_name_lc,
             );
 

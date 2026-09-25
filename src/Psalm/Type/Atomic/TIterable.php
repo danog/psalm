@@ -7,6 +7,7 @@ namespace Psalm\Type\Atomic;
 use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Sym;
 use Psalm\Type;
@@ -52,7 +53,7 @@ final class TIterable extends Atomic
         ?string $this_class,
         bool $use_phpdoc_format,
     ): string {
-        return $this->value;
+        return Interner::lookup($this->name);
     }
 
     /** @param array<lowercase-string, string> $aliased_classes */
@@ -70,8 +71,6 @@ final class TIterable extends Atomic
      * @var array{Union, Union}
      */
     public array $type_params;
-
-    public string $value = 'iterable';
 
     /**
      * The interned `iterable`, so code that treats an iterable like a generic object named `iterable`
@@ -130,7 +129,7 @@ final class TIterable extends Atomic
             $extra_types = '&' . implode('&', $this->extra_types);
         }
 
-        return $this->value . '<' . substr($s, 0, -2) . '>' . $extra_types;
+        return Interner::lookup($this->name) . '<' . substr($s, 0, -2) . '>' . $extra_types;
     }
 
     /**

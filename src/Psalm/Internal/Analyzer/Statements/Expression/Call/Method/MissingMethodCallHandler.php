@@ -441,7 +441,7 @@ final class MissingMethodCallHandler
 
         $ancestors = $static_class_storage->class_implements;
         foreach ($static_class_storage->namedMixins as $namedObject) {
-            $type = $namedObject->value;
+            $type = Interner::lookup($namedObject->name);
             if ($type) {
                 $ancestors[$type] = true;
             }

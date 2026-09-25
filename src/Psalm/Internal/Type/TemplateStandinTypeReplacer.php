@@ -8,6 +8,7 @@ use InvalidArgumentException;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Codebase\Methods;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\Comparator\CallableTypeComparator;
 use Psalm\Internal\Type\Comparator\KeyedArrayComparator;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
@@ -522,12 +523,12 @@ final class TemplateStandinTypeReplacer
                     $classlike_storage =
                         $codebase->classlike_storage_provider->get($atomic_input_type->name);
 
-                    if (!empty($classlike_storage->template_extended_params[$base_type->as_type->value])) {
+                    if (!empty($classlike_storage->template_extended_params[Interner::lookup($base_type->as_type->name)])) {
                         $atomic_input_type = new TClassString(
-                            $base_type->as_type->value,
+                            Interner::lookup($base_type->as_type->name),
                             new TGenericObject(
-                                $base_type->as_type->value,
-                                array_values($classlike_storage->template_extended_params[$base_type->as_type->value]),
+                                Interner::lookup($base_type->as_type->name),
+                                array_values($classlike_storage->template_extended_params[Interner::lookup($base_type->as_type->name)]),
                             ),
                         );
 
@@ -558,7 +559,7 @@ final class TemplateStandinTypeReplacer
                     || $base_type instanceof TIterable)
             ) {
                 if ($base_type instanceof TIterable) {
-                    if ($atomic_input_type->value === 'Traversable') {
+                    if (Interner::lookup($atomic_input_type->name) === 'Traversable') {
                         $matching_atomic_types[$atomic_input_type->getId()] = $atomic_input_type;
                         continue;
                     }
@@ -574,16 +575,16 @@ final class TemplateStandinTypeReplacer
                         $codebase->classlike_storage_provider->get($atomic_input_type->name);
 
                     if ($atomic_input_type instanceof TGenericObject
-                        && isset($classlike_storage->template_extended_params[$base_type->value])
+                        && isset($classlike_storage->template_extended_params[Interner::lookup($base_type->name)])
                     ) {
                         $matching_atomic_types[$atomic_input_type->getId()] = $atomic_input_type;
                         continue;
                     }
 
-                    if (!empty($classlike_storage->template_extended_params[$base_type->value])) {
+                    if (!empty($classlike_storage->template_extended_params[Interner::lookup($base_type->name)])) {
                         $atomic_input_type = new TGenericObject(
-                            $base_type->value,
-                            array_values($classlike_storage->template_extended_params[$base_type->value]),
+                            Interner::lookup($base_type->name),
+                            array_values($classlike_storage->template_extended_params[Interner::lookup($base_type->name)]),
                         );
 
                         $matching_atomic_types[$atomic_input_type->getId()] = $atomic_input_type;
@@ -591,7 +592,7 @@ final class TemplateStandinTypeReplacer
                     }
 
                     if (in_array('Traversable', $classlike_storage->class_implements)
-                        && $base_type->value === 'Iterator'
+                        && Interner::lookup($base_type->name) === 'Iterator'
                     ) {
                         $matching_atomic_types[$atomic_input_type->getId()] = $atomic_input_type;
                         continue;
@@ -1149,7 +1150,7 @@ final class TemplateStandinTypeReplacer
             foreach ($template_type->getAtomicTypes() as $template_atomic_type) {
                 if ($template_atomic_type instanceof TNamedObject) {
                     $atomic_types[] = new TClassString(
-                        $template_atomic_type->value,
+                        Interner::lookup($template_atomic_type->name),
                         $template_atomic_type,
                     );
                 } elseif ($template_atomic_type instanceof TObject) {
@@ -1285,9 +1286,9 @@ final class TemplateStandinTypeReplacer
         } elseif ($codebase->classlike_storage_provider->has($input_type_part->name)) {
             $class_storage = $codebase->classlike_storage_provider->get($input_type_part->name);
 
-            $container_class = $container_type_part->value;
+            $container_class = Interner::lookup($container_type_part->name);
 
-            if (strtolower($input_type_part->value) === strtolower($container_type_part->value)) {
+            if (strtolower(Interner::lookup($input_type_part->name)) === strtolower(Interner::lookup($container_type_part->name))) {
                 $input_type_params = $class_storage->getClassTemplateTypes();
             } elseif (!empty($class_storage->template_extended_params[$container_class])) {
                 $input_type_params = array_values($class_storage->template_extended_params[$container_class]);
@@ -1306,7 +1307,7 @@ final class TemplateStandinTypeReplacer
             ? $codebase->classlike_storage_provider->get($container_type_part->name)->template_covariants
             : null;
 
-        if ($input_type_part->value !== $container_type_part->value
+        if ($input_type_part->name !== $container_type_part->name
             && $input_class_storage
         ) {
             $input_template_types = $input_class_storage->template_types;
@@ -1322,7 +1323,7 @@ final class TemplateStandinTypeReplacer
                         break;
                     }
 
-                    $replacement_templates[$template_name][$input_type_part->value] = $input_type_params[$i];
+                    $replacement_templates[$template_name][Interner::lookup($input_type_part->name)] = $input_type_params[$i];
 
                     $i++;
                 }
@@ -1330,9 +1331,9 @@ final class TemplateStandinTypeReplacer
 
             $template_extends = $input_class_storage->template_extended_params;
 
-            $container_type_part_value = $container_type_part->value === 'iterable'
+            $container_type_part_value = Interner::lookup($container_type_part->name) === 'iterable'
                 ? 'Traversable'
-                : $container_type_part->value;
+                : Interner::lookup($container_type_part->name);
 
             if (isset($template_extends[$container_type_part_value])) {
                 $params = $template_extends[$container_type_part_value];

@@ -993,14 +993,14 @@ abstract class Type
         if ($type_1_atomic instanceof TNamedObject
             && $type_2_atomic instanceof TNamedObject
         ) {
-            if (($type_1_atomic->value === $type_2_atomic->value
+            if (($type_1_atomic->name === $type_2_atomic->name
                 && $type_1_atomic::class === TNamedObject::class
                 && $type_2_atomic::class !== TNamedObject::class)
             ) {
                 $intersection_atomic = $type_2_atomic;
                 $wider_type = $type_1_atomic;
                 $intersection_performed = true;
-            } elseif (($type_1_atomic->value === $type_2_atomic->value
+            } elseif (($type_1_atomic->name === $type_2_atomic->name
                 && $type_2_atomic::class === TNamedObject::class
                 && $type_1_atomic::class !== TNamedObject::class)
             ) {

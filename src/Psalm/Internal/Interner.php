@@ -39,7 +39,7 @@ final class Interner
     private static bool $marked = false;
 
     /**
-     * @psalm-mutation-free
+     * @psalm-pure
      * @psalm-suppress ImpureStaticProperty, ImpureMethodCall the table only grows; an id never changes meaning
      */
     public static function intern(string $string): int
@@ -82,7 +82,7 @@ final class Interner
     }
 
     /**
-     * @psalm-mutation-free
+     * @psalm-pure
      * @psalm-suppress ImpureStaticProperty, ImpureMethodCall the table only grows; an id never changes meaning
      */
     public static function lookup(int $id): string
@@ -100,8 +100,10 @@ final class Interner
      * property and constant maps by the id of the canonical lowercase name).
      *
      * @return lowercase-string
-     * @psalm-mutation-free
+     *
      * @psalm-suppress LessSpecificReturnStatement the id was interned from a lowercase string
+     *
+     * @psalm-pure
      */
     public static function lookupLc(int $id): string
     {

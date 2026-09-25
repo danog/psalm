@@ -105,7 +105,7 @@ final class TemplateInferredTypeReplacer
                             $class_template_type = new TClassString();
                         } elseif ($template_type_part instanceof TNamedObject) {
                             $class_template_type = new TClassString(
-                                $template_type_part->value,
+                                Interner::lookup($template_type_part->name),
                                 $template_type_part,
                             );
                         } elseif ($template_type_part instanceof TTemplateParam) {

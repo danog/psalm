@@ -3,6 +3,7 @@
 namespace Psalm\Internal\Stubs\Generator;
 
 use Psalm\Codebase;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Provider\ClassLikeStorageProvider;
 use Psalm\Internal\Provider\FileStorageProvider;
 use Psalm\Storage\FunctionLikeStorage;
@@ -340,7 +341,7 @@ final class StubsGenerator
             }
 
             if ($atomic_type instanceof TNamedObject) {
-                $name_node = new VirtualFullyQualified($atomic_type->value);
+                $name_node = new VirtualFullyQualified(Interner::lookup($atomic_type->name));
 
                 if ($nullable) {
                     return new VirtualNullableType($name_node);
@@ -410,7 +411,7 @@ final class StubsGenerator
             }
 
             if ($atomic_type instanceof TEnumCase) {
-                return new VirtualClassConstFetch(new VirtualName('\\' . $atomic_type->value), new VirtualIdentifier($atomic_type->case_name));
+                return new VirtualClassConstFetch(new VirtualName('\\' . Interner::lookup($atomic_type->name)), new VirtualIdentifier($atomic_type->case_name));
             }
         }
 

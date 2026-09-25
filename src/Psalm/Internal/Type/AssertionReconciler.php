@@ -9,6 +9,7 @@ use Psalm\Codebase;
 use Psalm\Internal\Analyzer\Statements\Expression\Fetch\VariableFetchAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\Comparator\AtomicTypeComparator;
 use Psalm\Internal\Type\Comparator\TypeComparisonResult;
 use Psalm\Internal\Type\Comparator\UnionTypeComparator;
@@ -888,7 +889,7 @@ final class AssertionReconciler extends Reconciler
         ) {
             // this is a hack - it's not actually rigorous, as the params may be different
             return new TGenericObject(
-                $type_2_atomic->value,
+                Interner::lookup($type_2_atomic->name),
                 $type_1_atomic->type_params,
             );
         } elseif ($type_2_atomic instanceof TNamedObject
@@ -989,7 +990,7 @@ final class AssertionReconciler extends Reconciler
                 $suppressed_issues,
             );
         } else {
-            $fq_enum_name = $assertion_type->value;
+            $fq_enum_name = Interner::lookup($assertion_type->name);
             $case_name = $assertion_type->case_name;
 
             if ($existing_var_type->hasMixed()) {
@@ -1006,7 +1007,7 @@ final class AssertionReconciler extends Reconciler
             $existing_var_type = $existing_var_type->getBuilder();
             foreach ($existing_var_atomic_types as $atomic_key => $atomic_type) {
                 if ($atomic_type::class === TNamedObject::class
-                    && $atomic_type->value === $fq_enum_name
+                    && Interner::lookup($atomic_type->name) === $fq_enum_name
                 ) {
                     $can_be_equal = true;
                     $redundant = false;
@@ -1587,7 +1588,7 @@ final class AssertionReconciler extends Reconciler
 
             if ($allow_string_comparison) {
                 $types[] = new TClassString(
-                    $assertion_type->value,
+                    Interner::lookup($assertion_type->name),
                     $assertion_type,
                 );
             }
@@ -1641,7 +1642,7 @@ final class AssertionReconciler extends Reconciler
                     }
                 }
 
-                $new_type = Type::getClassString($assertion_type->value);
+                $new_type = Type::getClassString(Interner::lookup($assertion_type->name));
 
                 if ((
                         $new_type_has_interface_string

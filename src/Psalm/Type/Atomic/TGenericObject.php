@@ -7,6 +7,7 @@ namespace Psalm\Type\Atomic;
 use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
@@ -81,7 +82,7 @@ final class TGenericObject extends TNamedObject
             $extra_types = '&' . implode('&', $this->extra_types);
         }
 
-        return $this->value . '<' . substr($s, 0, -2) . '>' . $extra_types;
+        return Interner::lookup($this->name) . '<' . substr($s, 0, -2) . '>' . $extra_types;
     }
 
     /**
@@ -134,7 +135,7 @@ final class TGenericObject extends TNamedObject
     #[Override]
     public function getAssertionString(): string
     {
-        return $this->value;
+        return Interner::lookup($this->name);
     }
 
     #[Override]
@@ -257,7 +258,7 @@ final class TGenericObject extends TNamedObject
             return $this;
         }
         return new static(
-            $this->value,
+            Interner::lookup($this->name),
             $types ?? $this->type_params,
             $this->remapped_params,
             $this->is_static,
@@ -283,7 +284,7 @@ final class TGenericObject extends TNamedObject
             return $this;
         }
         return new static(
-            $this->value,
+            Interner::lookup($this->name),
             $type_params ?? $this->type_params,
             true,
             $this->is_static,

@@ -278,7 +278,7 @@ final class TypeExpander
 
             if ($new_as_type instanceof TNamedObject && $new_as_type !== $return_type->as_type) {
                 $return_type = $return_type->setAs(
-                    $new_as_type->value,
+                    Interner::lookup($new_as_type->name),
                     $new_as_type,
                 );
             }
@@ -677,10 +677,10 @@ final class TypeExpander
             // has no storage under its own name: the spelled path resolves it)
             && ($container_class_storage = $codebase->classlike_storage_provider->find($return_type->name)
                 ?? ($codebase->classlike_storage_provider->has(
-                    Interner::intern($codebase->classlikes->getUnAliasedName($return_type->value)),
+                    Interner::intern($codebase->classlikes->getUnAliasedName(Interner::lookup($return_type->name))),
                 )
                     ? $codebase->classlike_storage_provider->get(
-                        Interner::intern($codebase->classlikes->getUnAliasedName($return_type->value)),
+                        Interner::intern($codebase->classlikes->getUnAliasedName(Interner::lookup($return_type->name))),
                     )
                     : null)) !== null
         ) {
@@ -691,7 +691,7 @@ final class TypeExpander
                 )
             ) {
                 $return_type = new TGenericObject(
-                    $return_type->value,
+                    Interner::lookup($return_type->name),
                     array_values(
                         array_map(
                             static fn($type_map) => reset($type_map),
@@ -705,7 +705,7 @@ final class TypeExpander
             }
         }
 
-        $return_type_lc = strtolower($return_type->value);
+        $return_type_lc = strtolower(Interner::lookup($return_type->name));
 
         if ($static_class_type && ($return_type_lc === 'static' || $return_type_lc === '$this')) {
             $is_static = $return_type->is_static;
@@ -725,7 +725,7 @@ final class TypeExpander
                     && $static_class_type instanceof TGenericObject
                 ) {
                     $return_type = $return_type->setValueIsStatic(
-                        $static_class_type->value,
+                        Interner::lookup($static_class_type->name),
                         $is_static,
                         $is_static_resolved,
                     );
@@ -771,7 +771,7 @@ final class TypeExpander
             && is_string($static_class_type)
             && $final
             && (
-                $return_type->value === $self_class
+                Interner::lookup($return_type->name) === $self_class
                 || ($self_class !== null &&
                     ($codebase->classExtends($return_type->name, Interner::intern($self_class))
                         || $codebase->classExtends(Interner::intern($self_class), $return_type->name)
@@ -789,7 +789,7 @@ final class TypeExpander
             $return_type = $return_type->setValue($parent_class);
         } elseif (!$codebase->classlike_storage_provider->has($return_type->name)) {
             // a name with a storage is already unaliased (getUnAliasedName keeps the spelling of a known name)
-            $new_value = $codebase->classlikes->getUnAliasedName($return_type->value);
+            $new_value = $codebase->classlikes->getUnAliasedName(Interner::lookup($return_type->name));
             $return_type = $return_type->setValue($new_value);
         }
 

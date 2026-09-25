@@ -7,6 +7,8 @@ namespace Psalm\Type\Atomic;
 use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
+use Psalm\Internal\Sym;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Type\Atomic;
 use Psalm\Type\Union;
@@ -47,7 +49,7 @@ class TArray extends Atomic
         ?string $this_class,
         bool $use_phpdoc_format,
     ): string {
-        return $this->value;
+        return Interner::lookup($this->name);
     }
 
     /** @param array<lowercase-string, string> $aliased_classes */
@@ -66,7 +68,7 @@ class TArray extends Atomic
      */
     public array $type_params;
 
-    public string $value = 'array';
+    public int $name = Sym::C_ARRAY;
 
     /**
      * Constructs a new instance of a generic type

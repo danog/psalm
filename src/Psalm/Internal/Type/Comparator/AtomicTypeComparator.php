@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Internal\Type\Comparator;
 
 use Psalm\Codebase;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Sym;
 use Psalm\Internal\MethodIdentifier;
 use Psalm\Type\Atomic;
@@ -231,7 +232,7 @@ final class AtomicTypeComparator
         }
 
         if ($input_type_part instanceof TNamedObject &&
-            $input_type_part->value === 'Closure' &&
+            Interner::lookup($input_type_part->name) === 'Closure' &&
             $container_type_part instanceof TCallable
         ) {
             return true;
@@ -255,7 +256,7 @@ final class AtomicTypeComparator
             if (($input_type_part instanceof TObjectWithProperties
                     && $input_type_part->is_stringable_object_only)
                 || ($input_type_part instanceof TNamedObject
-                    && $codebase->methodExists(new MethodIdentifier($input_type_part->value, '__tostring')))
+                    && $codebase->methodExists(new MethodIdentifier(Interner::lookup($input_type_part->name), '__tostring')))
             ) {
                 return true;
             }
@@ -263,7 +264,7 @@ final class AtomicTypeComparator
         }
 
         if ($container_type_part instanceof TNamedObject
-            && $container_type_part->value === 'Stringable'
+            && Interner::lookup($container_type_part->name) === 'Stringable'
             && $codebase->analysis_php_version_id >= 8_00_00
             && $input_type_part instanceof TObjectWithProperties
             && $input_type_part->is_stringable_object_only
@@ -314,14 +315,14 @@ final class AtomicTypeComparator
 
         if ($container_type_part::class === TNamedObject::class
             && $input_type_part instanceof TEnumCase
-            && $input_type_part->value === $container_type_part->value
+            && $input_type_part->name === $container_type_part->name
         ) {
             return true;
         }
 
         if ($input_type_part::class === TNamedObject::class
             && $container_type_part instanceof TEnumCase
-            && $input_type_part->value === $container_type_part->value
+            && $input_type_part->name === $container_type_part->name
         ) {
             if ($atomic_comparison_result) {
                 $atomic_comparison_result->type_coerced = true;
@@ -333,7 +334,7 @@ final class AtomicTypeComparator
         if ($container_type_part instanceof TEnumCase
             && $input_type_part instanceof TEnumCase
         ) {
-            return $container_type_part->value === $input_type_part->value
+            return $container_type_part->name === $input_type_part->name
                 && $container_type_part->case_name === $input_type_part->case_name;
         }
 
@@ -564,9 +565,9 @@ final class AtomicTypeComparator
         }
 
         if ($input_type_part instanceof TNamedObject
-            && $input_type_part->value === 'static'
+            && Interner::lookup($input_type_part->name) === 'static'
             && $container_type_part instanceof TNamedObject
-            && strtolower($container_type_part->value) === 'self'
+            && strtolower(Interner::lookup($container_type_part->name)) === 'self'
         ) {
             return true;
         }
@@ -634,7 +635,7 @@ final class AtomicTypeComparator
                 // check whether the object has a __toString method
                 if ($codebase->classOrInterfaceExists($input_type_part->name)) {
                     if ($codebase->analysis_php_version_id >= 8_00_00
-                        && ($input_type_part->value === 'Stringable'
+                        && (Interner::lookup($input_type_part->name) === 'Stringable'
                             || ($codebase->classlikes->classExists($input_type_part->name)
                                 && $codebase->classlikes->classImplements($input_type_part->name, Sym::STRINGABLE))
                             || $codebase->classlikes->interfaceExtends($input_type_part->name, Sym::STRINGABLE))
@@ -648,7 +649,7 @@ final class AtomicTypeComparator
 
                     if ($codebase->methodExists(
                         new MethodIdentifier(
-                            $input_type_part->value,
+                            Interner::lookup($input_type_part->name),
                             '__tostring',
                         ),
                     )) {
@@ -661,7 +662,7 @@ final class AtomicTypeComparator
                 }
 
                 // PHP 5.6 doesn't support this natively, so this introduces a bug *just* when checking PHP 5.6 code
-                if ($input_type_part->value === 'ReflectionType') {
+                if (Interner::lookup($input_type_part->name) === 'ReflectionType') {
                     if ($atomic_comparison_result) {
                         $atomic_comparison_result->to_string_cast = true;
                     }
@@ -688,7 +689,7 @@ final class AtomicTypeComparator
                 || (
                     $input_type_part instanceof TNamedObject &&
                     $codebase->classOrInterfaceExists($input_type_part->name) &&
-                    $codebase->methodExists(new MethodIdentifier($input_type_part->value, '__invoke'))
+                    $codebase->methodExists(new MethodIdentifier(Interner::lookup($input_type_part->name), '__invoke'))
                 )
             )
         ) {
@@ -704,7 +705,7 @@ final class AtomicTypeComparator
             && $input_type_part instanceof TNamedObject
         ) {
             if ($container_type_part instanceof TObjectWithProperties
-                && $input_type_part->value !== 'stdClass'
+                && Interner::lookup($input_type_part->name) !== 'stdClass'
             ) {
                 return KeyedArrayComparator::isContainedByObjectWithProperties(
                     $codebase,

@@ -1059,7 +1059,7 @@ final class StatementsAnalyzer extends SourceAnalyzer
                 continue;
             }
 
-            $class_storage = $codebase->classlikes->getStorageFor($atomic_type->value);
+            $class_storage = $codebase->classlikes->getStorageFor(Interner::lookup($atomic_type->name));
             while ($class_storage !== null) {
                 $destructor = $class_storage->methods[Sym::DESTRUCT] ?? null;
                 if ($destructor !== null) {

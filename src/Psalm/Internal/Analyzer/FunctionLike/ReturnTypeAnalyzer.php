@@ -772,7 +772,7 @@ final class ReturnTypeAnalyzer
         if (!$storage->signature_return_type || $storage->signature_return_type === $storage->return_type) {
             foreach ($storage->return_type->getAtomicTypes() as $type) {
                 if ($type instanceof TNamedObject
-                    && 'parent' === $type->value
+                    && 'parent' === Interner::lookup($type->name)
                     && null === $parent_class
                 ) {
                     if (IssueBuffer::accepts(

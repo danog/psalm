@@ -253,7 +253,7 @@ final class ObjectComparator
             if ($intersection_container_type instanceof TNamedObject && $intersection_container_type->is_static) {
                 // this is extra check is redundant since we're comparing to a template as type
                 $intersection_container_type = new TNamedObject(
-                    $intersection_container_type->value,
+                    Interner::lookup($intersection_container_type->name),
                     false,
                     $intersection_container_type->definite_class,
                     $intersection_container_type->extra_types,
@@ -307,7 +307,7 @@ final class ObjectComparator
 
             $intersection_input_type_lower = strtolower(
                 $codebase->classlikes->getUnAliasedName(
-                    $intersection_input_type->value,
+                    Interner::lookup($intersection_input_type->name),
                 ),
             );
         }
@@ -317,7 +317,7 @@ final class ObjectComparator
             assert($intersection_container_type instanceof TNamedObject);
             $intersection_container_type_lower = strtolower(
                 $codebase->classlikes->getUnAliasedName(
-                    $intersection_container_type->value,
+                    Interner::lookup($intersection_container_type->name),
                 ),
             );
         }

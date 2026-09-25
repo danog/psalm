@@ -14,6 +14,7 @@ use Psalm\Internal\Analyzer\Statements\Expression\ExpressionIdentifier;
 use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Analyzer\TraitAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\TypeVariableTracker;
 use Psalm\Issue\ImpurePropertyAssignment;
 use Psalm\Issue\ImpurePropertyFetch;
@@ -214,7 +215,7 @@ final class InstancePropertyFetchAnalyzer
                 foreach ($stmt_var_type->getAtomicTypes() as $type) {
                     if ($type instanceof TNamedObject) {
                         $codebase->analyzer->addMixedMemberName(
-                            strtolower($type->value) . '::$',
+                            strtolower(Interner::lookup($type->name)) . '::$',
                             $context->calling_method_id ?: $statements_analyzer->getFileName(),
                         );
                     }
@@ -369,7 +370,7 @@ final class InstancePropertyFetchAnalyzer
                         continue;
                     }
 
-                    $property_id = $lhs_type_part->value . '::$' . $stmt->name->name;
+                    $property_id = Interner::lookup($lhs_type_part->name) . '::$' . $stmt->name->name;
                 }
             }
 
@@ -417,7 +418,7 @@ final class InstancePropertyFetchAnalyzer
                         continue;
                     }
 
-                    $property_id = $lhs_type_part->value . '::$' . $stmt->name->name;
+                    $property_id = Interner::lookup($lhs_type_part->name) . '::$' . $stmt->name->name;
 
 
                     $class_storage = $codebase->classlike_storage_provider->get($lhs_type_part->name);

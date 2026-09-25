@@ -606,12 +606,12 @@ final class ForeachAnalyzer
                     $stmt,
                 );
             } elseif ($iterator_atomic_type instanceof TNamedObject) {
-                if ($iterator_atomic_type->value !== 'Traversable' &&
-                    $iterator_atomic_type->value !== $statements_analyzer->getClassName()
+                if (Interner::lookup($iterator_atomic_type->name) !== 'Traversable' &&
+                    Interner::lookup($iterator_atomic_type->name) !== $statements_analyzer->getClassName()
                 ) {
                     if (ClassLikeAnalyzer::checkFullyQualifiedClassLikeName(
                         $statements_analyzer,
-                        $iterator_atomic_type->value,
+                        Interner::lookup($iterator_atomic_type->name),
                         new CodeLocation($statements_analyzer->getSource(), $expr),
                         $context,
                         $statements_analyzer->getSuppressedIssues(),
@@ -638,7 +638,7 @@ final class ForeachAnalyzer
                         $invalid_iterator_types,
                     );
                 } else {
-                    $raw_object_types[] = $iterator_atomic_type->value;
+                    $raw_object_types[] = Interner::lookup($iterator_atomic_type->name);
                 }
 
                 $statements_analyzer->signalMutation(
@@ -728,7 +728,7 @@ final class ForeachAnalyzer
             }
 
             if ($iterator_atomic_type instanceof TIterable
-                || (strtolower($iterator_atomic_type->value) === 'traversable'
+                || (strtolower(Interner::lookup($iterator_atomic_type->name)) === 'traversable'
                     || $codebase->classImplements(
                         $iterator_atomic_type->name,
                         Sym::TRAVERSABLE,
@@ -741,14 +741,14 @@ final class ForeachAnalyzer
                         )
                     ))
             ) {
-                if (strtolower($iterator_atomic_type->value) === 'iteratoraggregate'
+                if (strtolower(Interner::lookup($iterator_atomic_type->name)) === 'iteratoraggregate'
                     || $codebase->classImplements(
-                        Interner::intern($iterator_atomic_type->value),
+                        $iterator_atomic_type->name,
                         Sym::ITERATOR_AGGREGATE,
                     )
                     || ($codebase->interfaceExists($iterator_atomic_type->name, null, $context)
                         && $codebase->interfaceExtends(
-                            Interner::intern($iterator_atomic_type->value),
+                            $iterator_atomic_type->name,
                             Sym::ITERATOR_AGGREGATE,
                         )
                     )
@@ -850,7 +850,7 @@ final class ForeachAnalyzer
 
                                 if ($array_atomic_type instanceof TIterable
                                     || ($array_atomic_type instanceof TNamedObject
-                                        && ($array_atomic_type->value === 'Traversable'
+                                        && (Interner::lookup($array_atomic_type->name) === 'Traversable'
                                             || ($codebase->classOrInterfaceExists(
                                                 $array_atomic_type->name,
                                                 null,
@@ -879,7 +879,7 @@ final class ForeachAnalyzer
                         }
                     }
                 } elseif ($iterator_atomic_type instanceof TGenericObject
-                    && strtolower($iterator_atomic_type->value) === 'generator'
+                    && strtolower(Interner::lookup($iterator_atomic_type->name)) === 'generator'
                 ) {
                     $type_params = $iterator_atomic_type->type_params;
                     if (isset($type_params[2])
@@ -928,13 +928,13 @@ final class ForeachAnalyzer
                         $key_type = Type::combineUnionTypes($key_type, $iterator_key_type);
                     }
                 } elseif ($codebase->classImplements(
-                    Interner::intern($iterator_atomic_type->value),
+                    $iterator_atomic_type->name,
                     Sym::ITERATOR,
                 ) ||
                     (
                         $codebase->interfaceExists($iterator_atomic_type->name, null, $context)
                         && $codebase->interfaceExtends(
-                            Interner::intern($iterator_atomic_type->value),
+                            $iterator_atomic_type->name,
                             Sym::ITERATOR,
                         )
                     )
@@ -989,7 +989,7 @@ final class ForeachAnalyzer
     ): void {
         if ($iterator_atomic_type instanceof TIterable
             || ($iterator_atomic_type instanceof TGenericObject
-                && strtolower($iterator_atomic_type->value) === 'traversable')
+                && strtolower(Interner::lookup($iterator_atomic_type->name)) === 'traversable')
         ) {
             assert(isset($iterator_atomic_type->type_params[1]));
             $value_type = Type::combineUnionTypes($value_type, $iterator_atomic_type->type_params[1]);
@@ -1028,7 +1028,7 @@ final class ForeachAnalyzer
                     : array_values(
                         array_map(
                             /** @param array<string, Union> $arr */
-                            static fn(array $arr): Union => $arr[$iterator_atomic_type->value] ?? Type::getMixed(),
+                            static fn(array $arr): Union => $arr[Interner::lookup($iterator_atomic_type->name)] ?? Type::getMixed(),
                             $generic_storage->template_types,
                         ),
                     );

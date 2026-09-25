@@ -929,7 +929,7 @@ final class ClassAnalyzer extends ClassLikeAnalyzer
                         $type_params[] = array_values($type_map)[0];
                     }
 
-                    $this_object_type = new TGenericObject($this_object_type->value, $type_params);
+                    $this_object_type = new TGenericObject(Interner::lookup($this_object_type->name), $type_params);
                 }
 
                 $fleshed_out_type = AtomicPropertyFetchAnalyzer::localizePropertyType(

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Psalm\Internal\TypeVisitor;
 
 use Override;
+use Psalm\Internal\Interner;
 use Psalm\Type\Atomic\TClassConstant;
 use Psalm\Type\Atomic\TClassString;
 use Psalm\Type\Atomic\TLiteralClassString;
@@ -54,7 +55,7 @@ final class ClasslikeReplacer extends MutableTypeVisitor
                 );
             }
         } elseif ($type instanceof TNamedObject || $type instanceof TLiteralClassString) {
-            if (strtolower($type->value) === $this->old) {
+            if (strtolower(($type instanceof \Psalm\Type\Atomic\TLiteralClassString ? $type->value : Interner::lookup($type->name))) === $this->old) {
                 $type = $type->setValue($this->new);
             }
         }

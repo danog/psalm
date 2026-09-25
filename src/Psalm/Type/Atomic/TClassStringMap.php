@@ -7,6 +7,7 @@ namespace Psalm\Type\Atomic;
 use Override;
 use Psalm\Codebase;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
+use Psalm\Internal\Interner;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
 use Psalm\Internal\Type\TemplateStandinTypeReplacer;
@@ -270,7 +271,7 @@ final class TClassStringMap extends Atomic
         return new Union([
             new TTemplateParamClass(
                 $this->param_name,
-                $this->as_type->value ?? 'object',
+                (isset($this->as_type->name) ? Interner::lookup($this->as_type->name) : 'object'),
                 $this->as_type,
                 'class-string-map',
             ),

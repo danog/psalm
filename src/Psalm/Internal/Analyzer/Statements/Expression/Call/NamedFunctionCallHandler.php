@@ -721,7 +721,7 @@ final class NamedFunctionCallHandler
 
                 foreach ($var_type->getAtomicTypes() as $class_type) {
                     if ($class_type instanceof TNamedObject) {
-                        $class_string_types[] = new TClassString($class_type->value, $class_type);
+                        $class_string_types[] = new TClassString(Interner::lookup($class_type->name), $class_type);
                     } elseif ($class_type instanceof TTemplateParam
                         && $class_type->as->isSingle()
                     ) {
@@ -737,7 +737,7 @@ final class NamedFunctionCallHandler
                         } elseif ($as_atomic_type instanceof TNamedObject) {
                             $class_string_types[] = new TTemplateParamClass(
                                 $class_type->param_name,
-                                $as_atomic_type->value,
+                                Interner::lookup($as_atomic_type->name),
                                 $as_atomic_type,
                                 $class_type->defining_class,
                             );

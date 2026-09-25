@@ -445,7 +445,7 @@ final class ClassConstAnalyzer
             foreach ($lhs_type->getAtomicTypes() as $lhs_atomic_type) {
                 if ($lhs_atomic_type instanceof TNamedObject) {
                     $class_string_types[] = new TClassString(
-                        $lhs_atomic_type->value,
+                        Interner::lookup($lhs_atomic_type->name),
                         $lhs_atomic_type,
                     );
                 } elseif ($lhs_atomic_type instanceof TTemplateParam
@@ -462,7 +462,7 @@ final class ClassConstAnalyzer
                     } elseif ($as_atomic_type instanceof TNamedObject) {
                         $class_string_types[] = new TTemplateParamClass(
                             $lhs_atomic_type->param_name,
-                            $as_atomic_type->value,
+                            Interner::lookup($as_atomic_type->name),
                             $as_atomic_type,
                             $lhs_atomic_type->defining_class,
                         );
@@ -489,7 +489,7 @@ final class ClassConstAnalyzer
             if ($lhs_type->isSingle()) {
                 $atomic_type = $lhs_type->getSingleAtomic();
                 if ($atomic_type instanceof TNamedObject) {
-                    $fq_class_name = $atomic_type->value;
+                    $fq_class_name = Interner::lookup($atomic_type->name);
                     $lhs_type_definite_class = $atomic_type->definite_class;
                 } elseif ($atomic_type instanceof TLiteralClassString) {
                     $fq_class_name = $atomic_type->value;
