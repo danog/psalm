@@ -1,0 +1,25 @@
+# Slot paths that hold names although their names do not say so (convert.php --seeds); a line starting with `/`
+# is a regex over slot paths. Seeds from the earlier conversion (oracle.php) are added beside these.
+F:psalm\storage\classlikestorage::$name
+F:psalm\type\atomic\tnamedobject::$value
+F:psalm\internal\methodidentifier::$fq_class_name
+F:psalm\internal\methodidentifier::$method_name
+F:psalm\storage\classlikestorage::$parent_classes#v
+F:psalm\storage\classlikestorage::$class_implements#v
+F:psalm\storage\classlikestorage::$direct_class_interfaces#v
+F:psalm\storage\classlikestorage::$parent_interfaces#v
+F:psalm\storage\classlikestorage::$direct_interface_parents#v
+F:psalm\storage\classlikestorage::$used_traits#v
+F:psalm\storage\classlikestorage::$declaring_property_ids#k
+F:psalm\storage\classlikestorage::$declaring_property_ids#v
+F:psalm\storage\classlikestorage::$appearing_property_ids#k
+F:psalm\storage\classlikestorage::$properties#k
+F:psalm\storage\functionlikestorage::$cased_name
+F:psalm\storage\methodstorage::$defining_fqcln
+F:psalm\type\atomic\ttemplateparam::$defining_class
+F:psalm\type\atomic\ttemplateparamclass::$defining_class
+F:psalm\type\atomic\tclassstring::$as
+F:psalm\type\atomic\tliteralclassstring::$value
+F:psalm\type\atomic\tclassconstant::$fq_classlike_name
+F:psalm\type\atomic\tclassconstant::$const_name
+F:psalm\storage\propertystorage::$name

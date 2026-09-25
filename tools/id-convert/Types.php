@@ -132,4 +132,41 @@ final class Types
         }
         return $t;
     }
+    /** Whether every non-null atom is a lowercase string. */
+    public static function lc(?Union $t): bool
+    {
+        $any = false;
+        foreach ($t?->getAtomicTypes() ?? [] as $a) {
+            if ($a instanceof TNull) {
+                continue;
+            }
+            if (!$a instanceof Atomic\TLowercaseString && !$a instanceof Atomic\TNonEmptyLowercaseString) {
+                return false;
+            }
+            $any = true;
+        }
+        return $any;
+    }
+
+    /** Whether a template parameter shapes the type (a slot typed by a template keeps its declared type). */
+    public static function templated(?Union $t, int $depth = 0): bool
+    {
+        if ($t === null || $depth > 4) {
+            return false;
+        }
+        foreach ($t->getAtomicTypes() as $a) {
+            if ($a instanceof Atomic\TTemplateParam || $a instanceof Atomic\TTemplateParamClass
+                || $a instanceof Atomic\TTemplateKeyOf || $a instanceof Atomic\TTemplateValueOf
+                || $a instanceof Atomic\TTemplatePropertiesOf || $a instanceof Atomic\TTemplateIndexedAccess
+            ) {
+                return true;
+            }
+        }
+        foreach (['#k', '#v'] as $s) {
+            if (self::templated(self::step($t, $s), $depth + 1)) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
