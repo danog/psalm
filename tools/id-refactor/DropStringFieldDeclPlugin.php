@@ -134,7 +134,7 @@ final class DropStringFieldDeclPlugin implements PluginEntryPointInterface, Afte
     {
         $edits = [];
         if ($type !== null) {
-            $edits[] = [$type->getStartFilePos(), $type->getEndFilePos() + 1, 'int'];
+            $edits[] = [$type->getStartFilePos(), $type->getEndFilePos() + 1, $type instanceof \PhpParser\Node\NullableType ? '?int' : 'int'];
         }
         $edits[] = [$name->getStartFilePos(), $name->getEndFilePos() + 1, '$' . $id];
         if ($default instanceof \PhpParser\Node\Scalar\String_) {
@@ -143,6 +143,8 @@ final class DropStringFieldDeclPlugin implements PluginEntryPointInterface, Afte
                 $emit(['kind' => 'sym', 'name' => $new[0], 'value' => $new[1], 'literal' => $new[2]]);
             }
             $edits[] = [$default->getStartFilePos(), $default->getEndFilePos() + 1, $text];
+        } elseif ($default instanceof \PhpParser\Node\Expr\ConstFetch && strtolower($default->name->toString()) === 'null') {
+            // null stays null
         } elseif ($default !== null) {
             $emit(['kind' => 'manual', 'site' => $file . ':' . $default->getStartLine(), 'why' => 'non-literal default']);
         }

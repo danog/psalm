@@ -375,19 +375,22 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
                     continue;
                 }
             }
-            if ($n instanceof Expr\NullsafePropertyFetch) {
+            // a nullsafe read of a nullable pair: null propagates through lookupOrNull
+            if ($n instanceof Expr\NullsafePropertyFetch && $fn !== 'lookupOrNull') {
                 self::out(['kind' => 'manual', 'site' => $this->file . ':' . $n->getStartLine(), 'why' => 'nullsafe read']);
                 continue;
             }
+            $arrow = $n instanceof Expr\NullsafePropertyFetch ? '?->' : '->';
             if ($p instanceof Expr\BinaryOp\Coalesce && $p->left === $n) {
                 // `$x->s ?? E` (a null or unset receiver falls through to E)
                 $recv = $this->text($n->var);
-                $this->edits[] = [$p->getStartFilePos(), $p->getEndFilePos() + 1,
-                    '(isset(' . $recv . '->' . $id . ') ? Interner::' . $fn . '(' . $recv . '->' . $id . ') : ' . $this->text($p->right) . ')'];
+                $this->edits[] = [$p->getStartFilePos(), $p->getEndFilePos() + 1, $fn === 'lookupOrNull'
+                    ? '(Interner::lookupOrNull(' . $recv . $arrow . $id . ') ?? ' . $this->text($p->right) . ')'
+                    : '(isset(' . $recv . $arrow . $id . ') ? Interner::' . $fn . '(' . $recv . $arrow . $id . ') : ' . $this->text($p->right) . ')'];
                 $done[$p->right] = true;
                 continue;
             }
-            $this->replaceRead($n, 'Interner::' . $fn . '(' . $this->text($n->var) . '->' . $id . ')');
+            $this->replaceRead($n, 'Interner::' . $fn . '(' . $this->text($n->var) . $arrow . $id . ')');
         }
     }
 
