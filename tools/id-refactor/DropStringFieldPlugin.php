@@ -402,6 +402,24 @@ final class DropStringFieldPlugin implements PluginEntryPointInterface, AfterFun
                     continue;
                 }
             }
+            // a nullable pair: `R === null` / `R !== null` test the id (null exactly when the string was), a truthy
+            // test reads `id !== null && (bool) lookup(id)` (the same truth, and Psalm narrows the id)
+            if ($fn === 'lookupOrNull' && ($p instanceof Expr\BinaryOp\Identical || $p instanceof Expr\BinaryOp\NotIdentical)) {
+                $other = $p->left === $n ? $p->right : $p->left;
+                if ($other instanceof Expr\ConstFetch && strtolower($other->name->toString()) === 'null') {
+                    $this->renameProp($n, $id);
+                    continue;
+                }
+            }
+            if ($fn === 'lookupOrNull' && !$n instanceof Expr\NullsafePropertyFetch && (
+                ($p instanceof Stmt\If_ && $p->cond === $n) || ($p instanceof Stmt\ElseIf_ && $p->cond === $n)
+                || $p instanceof Expr\BooleanNot || $p instanceof Expr\BinaryOp\BooleanAnd || $p instanceof Expr\BinaryOp\BooleanOr
+                || ($p instanceof Expr\Ternary && $p->cond === $n) || ($p instanceof Stmt\While_ && $p->cond === $n)
+            )) {
+                $r = $this->text($n->var) . '->' . $id;
+                $this->edits[] = [$n->getStartFilePos(), $n->getEndFilePos() + 1, '(' . $r . ' !== null && (bool) Interner::lookup(' . $r . '))'];
+                continue;
+            }
             // a nullsafe read of a nullable pair: null propagates through lookupOrNull
             if ($n instanceof Expr\NullsafePropertyFetch && $fn !== 'lookupOrNull') {
                 self::out(['kind' => 'manual', 'site' => $this->file . ':' . $n->getStartLine(), 'why' => 'nullsafe read']);
