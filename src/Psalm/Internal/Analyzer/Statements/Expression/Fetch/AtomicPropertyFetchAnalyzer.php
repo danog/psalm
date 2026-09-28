@@ -47,8 +47,8 @@ use Psalm\Node\Scalar\VirtualString;
 use Psalm\Node\VirtualArg;
 use Psalm\Node\VirtualIdentifier;
 use Psalm\Plugin\EventHandler\Event\AddRemoveTaintsEvent;
+use Psalm\Storage\Capabilities;
 use Psalm\Storage\ClassLikeStorage;
-use Psalm\Storage\Mutations;
 use Psalm\Type;
 use Psalm\Type\Atomic;
 use Psalm\Type\Atomic\TEnumCase;
@@ -266,7 +266,7 @@ final class AtomicPropertyFetchAnalyzer
 
         if (!$naive_property_exists) {
             if ($class_storage->namedMixins) {
-                foreach ($class_storage->namedMixins as $mixin) {
+                foreach ($class_storage->getNamedMixinsForLookup() as $mixin) {
                     $new_property_id = $mixin->value . '::$' . $prop_name;
 
                     try {
@@ -414,6 +414,21 @@ final class AtomicPropertyFetchAnalyzer
             ) === false) {
                 return;
             }
+
+            // unsetting a property is a write, so the set visibility applies
+            if ($context->inside_unset
+                && ClassLikeAnalyzer::checkPropertyVisibility(
+                    $property_id,
+                    $context,
+                    $statements_analyzer,
+                    new CodeLocation($statements_analyzer->getSource(), $stmt),
+                    $statements_analyzer->getSuppressedIssues(),
+                    true,
+                    true,
+                ) === false
+            ) {
+                return;
+            }
         }
 
         // FIXME: the following line look superfluous, but removing it makes
@@ -511,8 +526,8 @@ final class AtomicPropertyFetchAnalyzer
             if ($context->inside_unset) {
                 $statements_analyzer->signalMutation(
                     $stmt_var_id === '$this'
-                        ? Mutations::LEVEL_INTERNAL_READ_WRITE
-                        : Mutations::LEVEL_EXTERNAL,
+                        ? Capabilities::WRITE_THIS_PROPS
+                        : Capabilities::WRITE_PROPS,
                     $context,
                     'unsetting a property on a mutable object',
                     ImpurePropertyAssignment::class,
@@ -520,7 +535,7 @@ final class AtomicPropertyFetchAnalyzer
                 );
             } else {
                 $statements_analyzer->signalMutation(
-                    Mutations::LEVEL_INTERNAL_READ,
+                    Capabilities::READ_PROPS,
                     $context,
                     'accessing a property on a mutable object',
                     ImpurePropertyFetch::class,
@@ -1081,7 +1096,7 @@ final class AtomicPropertyFetchAnalyzer
     ): void {
         if ($context->inside_isset || $context->collect_initializations) {
             $statements_analyzer->signalMutation(
-                Mutations::LEVEL_INTERNAL_READ, // Strange but matches previous code
+                Capabilities::READ_PROPS, // Strange but matches previous code
                 $context,
                 'accessing a property on a mutable object',
                 ImpurePropertyFetch::class,
