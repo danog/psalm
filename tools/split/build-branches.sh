@@ -30,9 +30,11 @@ trap 'rm -f "$TMPIDX"' EXIT
 # tree of <parent commit> with <paths> replaced by <source commit>'s
 overlay() {
     local parent=$1 src=$2; shift 2
-    GIT_INDEX_FILE=$TMPIDX git read-tree "$parent"
-    GIT_INDEX_FILE=$TMPIDX git rm -r -q --cached --ignore-unmatch -- "$@" > /dev/null
-    git ls-tree -r "$src" -- "$@" | GIT_INDEX_FILE=$TMPIDX git update-index --index-info
+    GIT_INDEX_FILE=$TMPIDX git read-tree --empty
+    # the parent's entries outside the paths, then the source's entries inside them
+    { awk -F'\t' 'FILENAME == ARGV[1] { drop[$0] = 1; next } !($2 in drop)' \
+          <(git ls-tree -r --name-only "$parent" -- "$@") <(git ls-tree -r "$parent")
+      git ls-tree -r "$src" -- "$@"; } | GIT_INDEX_FILE=$TMPIDX git update-index --index-info
     GIT_INDEX_FILE=$TMPIDX git write-tree
 }
 
@@ -90,11 +92,13 @@ git branch -f split/interner-ids "$I"
 # the merges: trees assembled from the class branches' paths
 t=$(overlay "$P" "$RUNTIME" "${RUNTIME_PATHS[@]}")
 t2=$(overlay "$(commit "$t" tmp "$P")" "$TOOLING" "${TOOLING_PATHS[@]}")
-S=$(commit "$t2" "The fork without the id work: runtime + tooling + pzoom-perf$TRAILER" "$P" "$RUNTIME" "$TOOLING")
+S=$(commit "$t2" "The fork without the id work: runtime + tooling + pzoom-perf
+$TRAILER" "$P" "$RUNTIME" "$TOOLING")
 git branch -f split/stripped "$S"
 
 t=$(overlay "$S" "$I" "${SOURCE_PATHS[@]}" "${IDS_EXTRA_PATHS[@]}")
-F=$(commit "$t" "The whole fork: stripped + interner-ids$TRAILER" "$S" "$I")
+F=$(commit "$t" "The whole fork: stripped + interner-ids
+$TRAILER" "$S" "$I")
 git branch -f split/fork "$F"
 
 for b in runtime tooling compat pzoom-perf interner-ids stripped fork; do
