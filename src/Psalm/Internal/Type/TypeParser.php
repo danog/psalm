@@ -124,6 +124,8 @@ final class TypeParser
      * @param  list<array{0: string, 1: int, 2?: string}> $type_tokens
      * @param  array<string, array<string, Union>> $template_type_map
      * @param  array<string, TypeAlias> $type_aliases
+     * @param  bool $allow_purity_wildcard whether the type may contain the `_` purity: only a
+     *         parameter's type, where it stands for a purity template bound by the caller
      */
     public static function parseTokens(
         array $type_tokens,
@@ -131,6 +133,7 @@ final class TypeParser
         array $template_type_map = [],
         array $type_aliases = [],
         bool $from_docblock = false,
+        bool $allow_purity_wildcard = false,
     ): Union {
         if (count($type_tokens) === 1) {
             $only_token = $type_tokens[0];
@@ -174,6 +177,16 @@ final class TypeParser
 
         if (!($parsed_type instanceof Union)) {
             $parsed_type = new Union([$parsed_type], ['from_docblock' => $from_docblock]);
+        }
+
+        if (!$allow_purity_wildcard) {
+            foreach ($type_tokens as $type_token) {
+                if ($type_token[0] === PurityWildcard::NAME && PurityWildcard::contains($parsed_type)) {
+                    throw new TypeParseTreeException(
+                        'The purity `_` can only be used in the type of a parameter',
+                    );
+                }
+            }
         }
 
         return $parsed_type;
@@ -644,6 +657,13 @@ final class TypeParser
         $purity_params = [];
 
         foreach ($purity_trees as $purity_tree) {
+            // `Traversable[_]<K, V>`: see getCallablePurity()
+            if ($purity_tree instanceof Value && $purity_tree->value === PurityWildcard::NAME) {
+                $purity_params[] = PurityWildcard::placeholder($from_docblock);
+
+                continue;
+            }
+
             $purity_type = self::getTypeFromTree(
                 $purity_tree,
                 $codebase,
@@ -1448,6 +1468,7 @@ final class TypeParser
      * string pseudo-types or has no known single-atomic equivalent.
      *
      * @param non-empty-array<array-key, Atomic> $intersection_types
+     * @psalm-pure
      */
     private static function collapseStringPseudoTypeIntersection(
         array $intersection_types,
@@ -1484,6 +1505,8 @@ final class TypeParser
      * (e.g. `non-falsy-string & lowercase-string`, which has no single-token
      * equivalent). Widening such cases to `non-empty-lowercase-string` would
      * silently drop the non-falsy constraint.
+     *
+     * @psalm-pure
      */
     private static function intersectStringPseudoTypePair(
         TString $a,
