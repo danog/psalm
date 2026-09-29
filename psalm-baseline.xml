@@ -1084,8 +1084,6 @@
       <code><![CDATA[$found_generic_params]]></code>
       <code><![CDATA[$found_generic_params]]></code>
       <code><![CDATA[$found_generic_params]]></code>
-      <code><![CDATA[$found_generic_params]]></code>
-      <code><![CDATA[$found_generic_params]]></code>
       <code><![CDATA[$intersection_method_id]]></code>
       <code><![CDATA[$intersection_method_id]]></code>
     </RiskyTruthyFalsyComparison>
@@ -2526,9 +2524,6 @@
     </PossiblyUndefinedIntArrayOffset>
   </file>
   <file src="src/Psalm/Internal/Type/Comparator/CallableTypeComparator.php">
-    <LessSpecificReturnStatement>
-      <code><![CDATA[$callable]]></code>
-    </LessSpecificReturnStatement>
     <MoreSpecificReturnType>
       <code><![CDATA[TCallable|TClosure|null]]></code>
     </MoreSpecificReturnType>
@@ -3228,15 +3223,6 @@
                 $classlikes,
                 $case_value,
             )]]></code>
-    </ImpureMethodCall>
-  </file>
-  <file src="src/Psalm/Storage/FunctionLikeParameter.php">
-    <ImpureMethodCall>
-      <code><![CDATA[traverse]]></code>
-      <code><![CDATA[traverse]]></code>
-      <code><![CDATA[traverse]]></code>
-      <code><![CDATA[traverse]]></code>
-      <code><![CDATA[traverse]]></code>
     </ImpureMethodCall>
   </file>
   <file src="src/Psalm/Storage/FunctionLikeStorage.php">
