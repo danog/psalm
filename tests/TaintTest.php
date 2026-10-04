@@ -280,6 +280,17 @@ final class TaintTest extends TestCase
     public function providerValidCodeParse(): array
     {
         return [
+            'firstClassCallableOfAStaticMethod' => [
+                'code' => '<?php // --taint-analysis
+                    final class Formatter {
+                        public static function format(string $value): string {
+                            return trim($value);
+                        }
+                    }
+
+                    $format = Formatter::format(...);
+                    echo $format("safe");',
+            ],
             'dontTaintTheOverridesOfSiblingsThroughACallOfTheParentMethod' => [
                 'code' => '<?php // --taint-analysis
                     abstract class Mapper {
