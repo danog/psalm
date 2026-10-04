@@ -1954,7 +1954,8 @@ final class TaintFlowResolution
 
     /**
      * The class of an open assignment of type $family: what decides whether a fetch ignores it (see
-     * shouldIgnoreFetch()). That's its key, prefixed with ':', or '' if no fetch ignores it.
+     * shouldIgnoreFetch()). That's its key, prefixed with ':' (see DataFlowGraph::keysMayBeEqual()), or '' if
+     * no fetch ignores it.
      *
      * @psalm-mutation-free
      */
@@ -1984,7 +1985,7 @@ final class TaintFlowResolution
      */
     private static function classPassesFetch(string $class, string $fetched_key): bool
     {
-        return $class === '' || $class === ':' . $fetched_key;
+        return $class === '' || DataFlowGraph::keysMayBeEqual(substr($class, 1), $fetched_key);
     }
 
     /**
