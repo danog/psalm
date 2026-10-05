@@ -392,6 +392,16 @@ final class TaintTest extends TestCase
     public function providerValidCodeParse(): array
     {
         return [
+            'taintFreeUnusedReturnOfSpecializedCall' => [
+                'code' => '<?php
+                    /** @psalm-pure */
+                    function identity(string $value): string {
+                        return $value;
+                    }
+
+                    identity((string) $_GET["value"]);
+                    echo identity("safe");',
+            ],
             'dontTaintTheOtherKeysOfAnElementABuiltinReturns' => [
                 'code' => '<?php // --taint-analysis
                     $files = ["tmp_name" => ["name" => (string) $_GET["name"]]];
@@ -2200,6 +2210,49 @@ final class TaintTest extends TestCase
     public function providerInvalidCodeParse(): array
     {
         return [
+            'taintPropertySetInSpecializedCallAndReadInAnother' => [
+                'code' => '<?php
+                    final class Holder {
+                        private string $value = "";
+
+                        /** @psalm-taint-specialize */
+                        public function set(string $value): void {
+                            $this->value = $value;
+                        }
+
+                        /** @psalm-taint-specialize */
+                        public function get(): string {
+                            return $this->value;
+                        }
+                    }
+
+                    $holder = new Holder();
+                    $holder->set((string) $_GET["value"]);
+                    echo $holder->get();',
+                'error_message' => 'TaintedHtml',
+            ],
+            'taintArrayPropertySetInSpecializedCallAndReadInAnother' => [
+                'code' => '<?php
+                    final class Holder {
+                        /** @var array<string, string> */
+                        private array $data = [];
+
+                        /** @psalm-taint-specialize */
+                        public function set(string $key, string $value): void {
+                            $this->data[$key] = $value;
+                        }
+
+                        /** @psalm-taint-specialize */
+                        public function get(string $key): string {
+                            return $this->data[$key] ?? "";
+                        }
+                    }
+
+                    $holder = new Holder();
+                    $holder->set("a", (string) $_GET["value"]);
+                    echo $holder->get("a");',
+                'error_message' => 'TaintedHtml',
+            ],
             'taintTheKeysOfAFlippedArrayWithItsValues' => [
                 'code' => '<?php // --taint-analysis
                     $flipped = array_flip(["key" => (string) $_GET["value"]]);
@@ -5889,9 +5942,9 @@ final class TaintTest extends TestCase
             // TODO: Stubs do not support this type of inference even with $this->message = $message.
             // Most uses of getMessage() would be with caught exceptions, so this is not representative of real code.
             'taintException' => [
-                '<?php
-                    $x = new Exception($_GET["x"]);
-                    echo $x->getMessage();',
+                'code' => '<?php
+                    $e = new Exception();
+                    echo $e;',
                 'error_message' => 'TaintedHtml',
             ],
             */
