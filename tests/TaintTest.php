@@ -392,6 +392,182 @@ final class TaintTest extends TestCase
     public function providerValidCodeParse(): array
     {
         return [
+            'nosqlSinkNotTaintedBySourceReturningString' => [
+                'code' => '<?php
+                    /** @psalm-taint-sink nosql $filter */
+                    function query($filter): void {}
+
+                    final class Request {
+                        /** @psalm-taint-source input */
+                        public function getString(string $name): string {
+                            return "";
+                        }
+
+                        /** @psalm-taint-source input */
+                        public static function getStaticString(string $name): ?string {
+                            return null;
+                        }
+                    }
+
+                    // a source declared to return a string can never return a NoSQL query
+                    query(["username" => (new Request())->getString("username")]);
+                    query(["username" => Request::getStaticString("username")]);',
+            ],
+            'nosqlSinkNotTaintedByFunctionReturningString' => [
+                'code' => '<?php
+                    /** @psalm-taint-sink nosql $filter */
+                    function query($filter): void {}
+
+                    function first(array $values): ?string {
+                        /** @var string|null */
+                        return $values[0] ?? null;
+                    }
+
+                    // PHP enforces the native return type: the result is never an array
+                    query(["name" => first((array) $_GET["names"])]);',
+            ],
+            'nosqlSinkNotTaintedByFlowIntoStringReturn' => [
+                'code' => '<?php
+                    /** @psalm-taint-sink nosql $filter */
+                    function query($filter): void {}
+
+                    /** @psalm-flow ($value) -> return */
+                    function describe(mixed $value): string {
+                        return "";
+                    }
+
+                    // what flows into a string return is still a string
+                    query(["name" => describe($_GET["name"])]);',
+            ],
+            'nullableTemplateArgumentKeepsItsTaints' => [
+                'code' => '<?php
+                    /**
+                     * @template T as ?string
+                     * @param T $value
+                     */
+                    function forward(?string $value): void {
+                        consume($value);
+                    }
+
+                    function consume(?string $value): void {}
+
+                    forward($_GET["name"] ?? null);',
+            ],
+            'htmlSinkNotTaintedByNumberConvertedToString' => [
+                'code' => '<?php
+                    /** @param list<array{rating: float, count: int, author: string}> $reviews */
+                    function render(array $reviews): string {
+                        $xml = "";
+                        foreach ($reviews as $review) {
+                            // what a number converts to can only carry the taints a number can
+                            $xml .= "<rating>{$review["rating"]}</rating>";
+                            $xml .= "<count>" . $review["count"] . "</count>";
+                            $xml .= (string) $review["rating"];
+                        }
+                        return $xml;
+                    }
+
+                    echo render($_GET["reviews"]);',
+            ],
+            'htmlSinkNotTaintedBySourceReturningInt' => [
+                'code' => '<?php
+                    final class Request {
+                        /** @psalm-taint-source input */
+                        public function getInt(string $name): int {
+                            return 0;
+                        }
+                    }
+
+                    // an int can only carry the taints a number can
+                    echo "<b>" . (new Request())->getInt("id") . "</b>";',
+            ],
+            'dontTaintValidatedValueStoredInProperty' => [
+                'code' => '<?php
+                    final class Organization {
+                        public string $city = "";
+                    }
+
+                    /** @psalm-assert-if-true literal-string $city */
+                    function isKnownCity(string $city): bool {
+                        return in_array($city, ["moscow", "spb"], true);
+                    }
+
+                    $organization = new Organization();
+                    $city = (string) $_GET["city"];
+                    if (isKnownCity($city)) {
+                        $organization->city = $city;
+                    }
+                    echo $organization->city;',
+            ],
+            'dontTaintAQueryWithAStringItem' => [
+                'code' => '<?php // --taint-analysis
+                    /** @psalm-taint-sink nosql $query */
+                    function find(array $query): void {}
+
+                    function findOthersInCity(object $id): void {
+                        $city = $_GET["city"];
+                        if (is_string($city)) {
+                            find(["city" => $city, "_id" => [\'$ne\' => $id]]);
+                        }
+                    }',
+            ],
+            'dontTaintValidatedValueOrItsReplacement' => [
+                'code' => '<?php
+                    /** @psalm-assert-if-true literal-string $city */
+                    function isKnownCity(string $city): bool {
+                        return in_array($city, ["moscow", "spb"], true);
+                    }
+
+                    function getDefaultCity(): string {
+                        return (string) getenv("DEFAULT_CITY");
+                    }
+
+                    $city = (string) $_GET["city"];
+                    if (!isKnownCity($city)) {
+                        $city = getDefaultCity();
+                    }
+                    echo $city;',
+            ],
+            'dontTaintValidatedValueAddedToArray' => [
+                'code' => '<?php
+                    /** @psalm-assert-if-true literal-string $city */
+                    function isKnownCity(string $city): bool {
+                        return in_array($city, ["moscow", "spb"], true);
+                    }
+
+                    $city = (string) $_GET["city"];
+                    if (!isKnownCity($city)) {
+                        throw new RuntimeException("Unknown city");
+                    }
+
+                    /** @var list<string> $cities */
+                    $cities = [];
+                    $cities[] = $city;
+                    echo implode(",", $cities);',
+            ],
+            'dontTaintLiteralStringType' => [
+                'code' => '<?php
+                    /** @var "asc"|"desc" $direction */
+                    $direction = $_GET["direction"];
+                    echo $direction;',
+            ],
+            'dontTaintListOfInts' => [
+                'code' => '<?php
+                    /** @var list<int> $ids */
+                    $ids = $_GET["ids"];
+                    echo implode(",", $ids);',
+            ],
+            'dontTaintReturnedArrayShapeOfFloats' => [
+                'code' => '<?php
+                    /** @return array{lat: float, lon: float} */
+                    function getCoordinates(): array {
+                        /** @var array{lat: float, lon: float} */
+                        $coordinates = $_GET["coordinates"];
+                        return $coordinates;
+                    }
+
+                    echo implode(",", getCoordinates());',
+            ],
             'keysOfAnArrayDontHoldTheValuesAssignedUnderAVariableKey' => [
                 'code' => '<?php
                     /** @return array<string, array{url: string}> */
@@ -2227,6 +2403,60 @@ final class TaintTest extends TestCase
     public function providerInvalidCodeParse(): array
     {
         return [
+            'taintAQueryWithAnArrayItem' => [
+                'code' => '<?php // --taint-analysis
+                    /** @psalm-taint-sink nosql $query */
+                    function find(array $query): void {}
+
+                    find(["city" => $_GET["city"]]);',
+                'error_message' => 'TaintedNosql',
+            ],
+            'taintedHtmlFromSourceReturningString' => [
+                'code' => '<?php
+                    final class Request {
+                        /** @psalm-taint-source input */
+                        public function getString(string $name): string {
+                            return "";
+                        }
+                    }
+
+                    // only the taints a string cannot hold are left out
+                    echo (new Request())->getString("name");',
+                'error_message' => 'TaintedHtml',
+            ],
+            'taintedHtmlFromFunctionReturningString' => [
+                'code' => '<?php
+                    function first(array $values): string {
+                        /** @var string */
+                        return $values[0];
+                    }
+
+                    echo first((array) $_GET["names"]);',
+                'error_message' => 'TaintedHtml',
+            ],
+            'taintedNosqlFromFunctionReturningArray' => [
+                'code' => '<?php
+                    /** @psalm-taint-sink nosql $filter */
+                    function query($filter): void {}
+
+                    function filterOf(array $values): array {
+                        /** @var array */
+                        return $values["filter"];
+                    }
+
+                    query(["filter" => filterOf((array) $_GET["q"])]);',
+                'error_message' => 'TaintedNosql',
+            ],
+            'taintArrayWithStringKeys' => [
+                'code' => '<?php
+                    /** @var array<string, int> $counts */
+                    $counts = $_GET["counts"];
+                    echo implode(",", array_keys($counts));
+                    foreach ($counts as $key => $count) {
+                        echo $key;
+                    }',
+                'error_message' => 'TaintedHtml',
+            ],
             'keysOfAnArrayOfArraysHoldTheKeysOfTheInnerArrayOnceFetched' => [
                 'code' => '<?php
                     $outer = [];

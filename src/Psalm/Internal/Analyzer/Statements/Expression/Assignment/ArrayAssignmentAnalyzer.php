@@ -18,6 +18,7 @@ use Psalm\Internal\Analyzer\Statements\ExpressionAnalyzer;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
 use Psalm\Internal\Codebase\CombinedFlowGraph;
 use Psalm\Internal\Codebase\TaintFlowGraph;
+use Psalm\Internal\Codebase\VariableUseGraph;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\Type\TemplateInferredTypeReplacer;
 use Psalm\Internal\Type\TemplateResult;
@@ -553,6 +554,9 @@ final class ArrayAssignmentAnalyzer
                 }
             }
 
+            // what the assigned value cannot hold, given its type
+            $removed_taints = $graph instanceof VariableUseGraph ? 0 : $child_stmt_type->getTaintsToRemove();
+
             $value_graph = $graph;
 
             $taint_graph = $graph instanceof CombinedFlowGraph ? $graph->taint_flow_graph : $graph;
@@ -561,7 +565,7 @@ final class ArrayAssignmentAnalyzer
                 // the elements of the array, under the same keys: the array, as far as its taints go
                 foreach ($stmt_type->parent_nodes as $parent_node) {
                     foreach ($element_copy_source as $source_node) {
-                        $taint_graph->addPath($source_node, $parent_node, '=');
+                        $taint_graph->addPath($source_node, $parent_node, '=', 0, $removed_taints);
                     }
                 }
 
@@ -572,6 +576,7 @@ final class ArrayAssignmentAnalyzer
             if ($value_graph === null) {
                 return;
             }
+
             $param_key = $key_values ? null : ArrayFetchAnalyzer::getParamKey($statements_analyzer, $expr->dim);
 
             foreach ($stmt_type->parent_nodes as $parent_node) {
@@ -582,6 +587,8 @@ final class ArrayAssignmentAnalyzer
                                 $child_parent_node,
                                 $parent_node,
                                 'arrayvalue-assignment-\'' . $key_value->value . '\'',
+                                0,
+                                $removed_taints,
                             );
                         }
                     } else {
@@ -596,6 +603,8 @@ final class ArrayAssignmentAnalyzer
                                 $child_parent_node,
                                 $parent_node,
                                 'arrayvalue-assignment@' . $foreach_marker,
+                                0,
+                                $removed_taints,
                             );
 
                             if ($value_graph instanceof CombinedFlowGraph) {
@@ -611,6 +620,8 @@ final class ArrayAssignmentAnalyzer
                                 $parent_node,
                                 'arrayvalue-assignment'
                                     . ($key_path_suffix ?? ($param_key !== null ? '-@' . $param_key : '')),
+                                0,
+                                $removed_taints,
                             );
                         }
                     }

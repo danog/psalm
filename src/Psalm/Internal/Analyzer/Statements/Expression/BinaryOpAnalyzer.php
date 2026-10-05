@@ -174,25 +174,29 @@ final class BinaryOpAnalyzer
                 }
 
                 if ($stmt_left_type && $stmt_left_type->parent_nodes) {
+                    // what an operand converts to can't hold the taints its type can't (e.g. a number)
+                    $left_removed_taints = $removed_taints | $stmt_left_type->getTaintsToRemove();
                     foreach ($stmt_left_type->parent_nodes as $parent_node) {
                         $graph->addPath(
                             $parent_node,
                             $new_parent_node,
                             'concat',
                             $added_taints,
-                            $removed_taints,
+                            $left_removed_taints,
                         );
                     }
                 }
 
                 if ($stmt_right_type && $stmt_right_type->parent_nodes) {
+                    // what an operand converts to can't hold the taints its type can't (e.g. a number)
+                    $right_removed_taints = $removed_taints | $stmt_right_type->getTaintsToRemove();
                     foreach ($stmt_right_type->parent_nodes as $parent_node) {
                         $graph->addPath(
                             $parent_node,
                             $new_parent_node,
                             'concat',
                             $added_taints,
-                            $removed_taints,
+                            $right_removed_taints,
                         );
                     }
                 }
