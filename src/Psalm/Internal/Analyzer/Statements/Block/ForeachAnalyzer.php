@@ -704,9 +704,7 @@ final class ForeachAnalyzer
                     null,
                     $value_type,
                     $key_type,
-                    null,
-                    null,
-                    $foreach_marker,
+                    foreach_marker: $foreach_marker,
                 );
 
                 $has_valid_iterator = true;
@@ -733,9 +731,7 @@ final class ForeachAnalyzer
                     null,
                     $value_type,
                     $key_type,
-                    null,
-                    null,
-                    $foreach_marker,
+                    foreach_marker: $foreach_marker,
                 );
 
                 $statements_analyzer->signalMutation(
@@ -803,9 +799,7 @@ final class ForeachAnalyzer
                     null,
                     $value_type,
                     $key_type,
-                    null,
-                    null,
-                    $foreach_marker,
+                    foreach_marker: $foreach_marker,
                 );
 
                 $has_valid_iterator = true;
