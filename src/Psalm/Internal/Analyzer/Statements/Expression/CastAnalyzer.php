@@ -945,8 +945,6 @@ final class CastAnalyzer
             $stmt,
             $parent_nodes,
             'string',
-            // the string a number converts to is still only digits: it can't hold more than the number
-            $stmt_type->getTaintsToRemove(),
         );
     }
 
@@ -1145,8 +1143,7 @@ final class CastAnalyzer
      * Route the parent nodes of a scalar cast through a pass-through node that strips the
      * taints which cannot survive the target scalar type (see Union::getTaintsToRemove()):
      * casting to int/float removes every non-numeric taint, casting to bool every
-     * non-bool taint, and casting to string the array/object-only taints (e.g. nosql), along with
-     * the taints the value cast can't hold ($input_removed_taints).
+     * non-bool taint, and casting to string the array/object-only taints (e.g. nosql).
      *
      * The pass-through node is added to the active data-flow graph so variable-use tracking
      * stays intact in every mode; the removed_taints on the edge is ignored by the
@@ -1160,13 +1157,12 @@ final class CastAnalyzer
         PhpParser\Node\Expr $stmt,
         array $parent_nodes,
         string $cast_type,
-        int $input_removed_taints = 0,
     ): Union {
         if (!$graph = $statements_analyzer->data_flow_graph) {
             return $result_type;
         }
 
-        $removed_taints = $result_type->getTaintsToRemove() | $input_removed_taints;
+        $removed_taints = $result_type->getTaintsToRemove();
 
         if ($removed_taints !== 0 && $parent_nodes) {
             $cast_node = DataFlowNode::getForAssignment(

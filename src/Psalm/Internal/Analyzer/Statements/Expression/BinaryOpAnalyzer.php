@@ -546,16 +546,13 @@ final class BinaryOpAnalyzer
                 $operand_type,
             );
 
-            // what an operand converts to can't hold the taints its type can't (e.g. a number)
-            $removed_operand_taints = $operand_removed_taints[$index] | $operand_type->getTaintsToRemove();
-
             foreach ($operand_parent_nodes as $parent_node) {
                 $graph->addPath(
                     $parent_node,
                     $new_parent_node,
                     'concat',
                     $added_taints,
-                    $removed_operand_taints,
+                    $operand_removed_taints[$index],
                 );
             }
         }

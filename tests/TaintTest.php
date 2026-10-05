@@ -845,22 +845,6 @@ final class TaintTest extends TestCase
 
                     forward($_GET["name"] ?? null);',
             ],
-            'htmlSinkNotTaintedByNumberConvertedToString' => [
-                'code' => '<?php
-                    /** @param list<array{rating: float, count: int, author: string}> $reviews */
-                    function render(array $reviews): string {
-                        $xml = "";
-                        foreach ($reviews as $review) {
-                            // what a number converts to can only carry the taints a number can
-                            $xml .= "<rating>{$review["rating"]}</rating>";
-                            $xml .= "<count>" . $review["count"] . "</count>";
-                            $xml .= (string) $review["rating"];
-                        }
-                        return $xml;
-                    }
-
-                    echo render($_GET["reviews"]);',
-            ],
             'htmlSinkNotTaintedBySourceReturningInt' => [
                 'code' => '<?php
                     final class Request {
