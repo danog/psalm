@@ -156,6 +156,12 @@ final class TaintFlowResolution
     private const DEPTH_MASK = (1 << self::DEPTH_BITS) - 1;
 
     /**
+     * How many fetches under a parameter key (see resolveParamKey()) a flow outside of any specialized call
+     * waits to know the key of at most, until it leaves through the call sites
+     */
+    private const MAX_PARAM_GUARDS = 4;
+
+    /**
      * The taints a state of a body walk keeps of the call when it starts: all
      */
     private const ALL_TAINTS = -1;
@@ -228,6 +234,14 @@ final class TaintFlowResolution
     private array $path_type_effects = [];
 
     /**
+     * Path type whose key is a parameter of the function-like it is in (see resolveParamKey()) => [the
+     * unspecialized node of the argument passed to it, the path type without key]
+     *
+     * @var array<int, array{string, string}>
+     */
+    private array $path_type_params = [];
+
+    /**
      * Open assignments => key (see internOpenAssignments())
      *
      * @var array<string, int>
@@ -256,6 +270,31 @@ final class TaintFlowResolution
      * @var list<int>
      */
     private array $open_assignment_slots = [];
+
+    /**
+     * Open assignments key => the fetches under a parameter key the flows took outside of any specialized call,
+     * as the class of the open assignment each fetched (see getClass()) by the unspecialized argument node of the
+     * parameter, until they leave through a call site (see resolveParamKey())
+     *
+     * @var list<array<string, string>>
+     */
+    private array $open_assignment_guards = [];
+
+    /**
+     * Open assignments key => the specialization key of the unspecialized call whose body the flows entered
+     * through its arguments, or '' (see bindCall())
+     *
+     * @var list<string>
+     */
+    private array $open_assignment_calls = [];
+
+    /**
+     * Specialization key of an unspecialized call whose body a flow entered (see bindCall()) => the file, start
+     * and end of the declaration of the function-like called
+     *
+     * @var array<string, array{string, int, int}>
+     */
+    private array $call_ranges = [];
 
     /**
      * Slot id => [the marker of the foreach loop, the open assignment of the element the value fetch of the
@@ -408,6 +447,30 @@ final class TaintFlowResolution
     private array $entry_facts = [];
 
     /**
+     * Entry => what it knows of the array keys the calls entering it pass to parameters, if it is a filter of
+     * another (see dependOnParam()): unspecialized argument node of the parameter => key, '' if not a literal
+     *
+     * @var list<array<string, string>>
+     */
+    private array $entry_param_facts = [];
+
+    /**
+     * Entry => unspecialized argument node of a parameter => key => the filter of the entry for the calls
+     * passing that key to the parameter (see dependOnParam())
+     *
+     * @var array<int, array<string, array<string, int>>>
+     */
+    private array $entry_param_filters = [];
+
+    /**
+     * Entry => unspecialized argument node of a parameter => the states of its walk that depend on the key
+     * the calls entering it pass to it => true: they go on in each of those filters
+     *
+     * @var array<int, array<string, array<int, true>>>
+     */
+    private array $entry_param_dependents = [];
+
+    /**
      * Entry => expression type . ' ' . depth . ' ' . fetched key => the filter of the entry for the calls
      * whose open assignment there a fetch of that key doesn't ignore (see getFilter())
      *
@@ -475,39 +538,22 @@ final class TaintFlowResolution
      * @var list<int>
      */
     private array $entry_bases = [];
+    /**
+     * Entry => whether its walk is told apart in filters for the calls with each class of an open assignment
+     * it observes (see getAssignmentClass()): unless it is a filter, but for the calls passing a key to a
+     * parameter (see dependOnParam())
+     *
+     * @var list<bool>
+     */
+    private array $entry_tracks_classes = [];
 
     /**
-     * Specialization key => the key standing for the function-like called there: two keys stand for the same
-     * one when a node is specialized for both (see getCallee())
+     * Context . ' ' . exit node id . ' ' . open assignments => the taints kept and added of the flows that left
+     * an exit outside of any specialized call through all its call sites (see leaveThroughAllCallSites())
      *
-     * @var array<string, string>
+     * @var array<string, array{int, int}>
      */
-    private array $callees = [];
-
-    /**
-     * Specialized call entry => the function-likes (see getCallee()) of the calls entering it and of those
-     * enclosing them => true: an exit of another function-like can't lead back to a call site (see
-     * addEntryExit())
-     *
-     * @var array<int, array<string, true>>
-     */
-    private array $entry_callees = [];
-
-    /**
-     * Specialized call entry => the specialized call entries with calls made in its walk => true
-     *
-     * @var array<int, array<int, true>>
-     */
-    private array $entry_dependents = [];
-
-    /**
-     * Specialized call entry => function-like => the exits of that function-like its walk reached (see
-     * addEntryExit()): exit node id . ' ' . open assignments => [exit node id, open assignments, state, caller
-     * link, kept, added]
-     *
-     * @var array<int, array<string, array<string, array{string, int, int, int, int, int}>>>
-     */
-    private array $unmatched_exits = [];
+    private array $shared_exits = [];
 
     /**
      * Entry => the taints of the flows entering it (see getUnionTaints())
@@ -588,6 +634,9 @@ final class TaintFlowResolution
      * @param array<string, array<string, string>> $specializations
      * @param array<string, true> $specialized_calls
      * @param array<string, true> $despecialized_calls
+     * @param array<string, true> $read_only_calls
+     * @param array<string, array<string, string>> $param_keys
+     * @param array<string, array{string, string, int, int}> $call_arguments
      * @psalm-capabilities read-props
      */
     public function __construct(
@@ -599,6 +648,9 @@ final class TaintFlowResolution
         private array $specializations,
         private readonly array $specialized_calls,
         private readonly array $despecialized_calls,
+        private readonly array $read_only_calls,
+        private readonly array $param_keys,
+        private readonly array $call_arguments,
         private readonly Config $config,
         private readonly ProjectAnalyzer $project_analyzer,
         private readonly Codebase $codebase,
@@ -736,7 +788,6 @@ final class TaintFlowResolution
 
         $this->computeObservableDepths($reverse);
         $this->computeTaintAddingReachable($reverse);
-        $this->computeCallees();
     }
 
     /**
@@ -950,50 +1001,6 @@ final class TaintFlowResolution
     }
 
     /**
-     * Groups the specialization keys by the function-like called (see getCallee()): the specializations of
-     * the nodes of a function-like (its parameters, its return, ...) share the keys of its calls.
-     *
-     * @psalm-external-mutation-free
-     */
-    private function computeCallees(): void
-    {
-        foreach ($this->specializations as $specializations) {
-            $first = null;
-
-            foreach ($specializations as $specialization_key => $_) {
-                $callee = $this->getCallee($specialization_key);
-
-                if ($first === null) {
-                    $first = $callee;
-                } elseif ($callee !== $first) {
-                    $this->callees[$callee] = $first;
-                }
-            }
-        }
-    }
-
-    /**
-     * The key standing for the function-like called at the call site of specialization key $key
-     *
-     * @psalm-external-mutation-free
-     */
-    private function getCallee(string $key): string
-    {
-        $callee = $key;
-
-        while (isset($this->callees[$callee]) && $this->callees[$callee] !== $callee) {
-            $callee = $this->callees[$callee];
-        }
-
-        // shorten the path for the next time
-        if ($callee !== $key) {
-            $this->callees[$key] = $callee;
-        }
-
-        return $callee;
-    }
-
-    /**
      * @psalm-external-mutation-free
      */
     private function getPathTypeId(string $path_type): int
@@ -1006,6 +1013,12 @@ final class TaintFlowResolution
         $this->path_type_ids[$path_type] = $id;
         $this->path_types[] = $path_type;
         $this->path_type_effects[] = self::getPathTypeEffects($path_type);
+
+        foreach (['arrayvalue-fetch', 'arrayvalue-assignment'] as $base) {
+            if (str_starts_with($path_type, $base . '-@')) {
+                $this->path_type_params[$id] = [substr($path_type, strlen($base) + 2), $base];
+            }
+        }
 
         return $id;
     }
@@ -1076,15 +1089,31 @@ final class TaintFlowResolution
     /**
      * @param array<int, list<int>> $made
      * @param array<int, int> $closed
+     * @param array<string, string> $guards
      * @psalm-external-mutation-free
      */
-    private function internOpenAssignments(array $made, array $closed, int $slot = self::NO_SLOT): int
-    {
+    private function internOpenAssignments(
+        array $made,
+        array $closed,
+        int $slot = self::NO_SLOT,
+        array $guards = [],
+        string $call = '',
+    ): int {
         $key = (string) $slot . '|';
 
         foreach (self::FAMILIES as $family => $_) {
             $key .= implode(',', $made[$family] ?? []) . '|' . ($closed[$family] ?? self::NO_CALL) . '|';
         }
+
+        if ($guards) {
+            ksort($guards, SORT_STRING);
+
+            foreach ($guards as $param => $class) {
+                $key .= $param . "\0" . $class . "\0";
+            }
+        }
+
+        $key .= '|' . $call;
 
         if (isset($this->open_assignment_ids[$key])) {
             return $this->open_assignment_ids[$key];
@@ -1094,6 +1123,8 @@ final class TaintFlowResolution
         $this->open_assignment_ids[$key] = $id;
         $this->open_assignments[] = [$made, $closed];
         $this->open_assignment_slots[] = $slot;
+        $this->open_assignment_guards[] = $guards;
+        $this->open_assignment_calls[] = $call;
 
         return $id;
     }
@@ -1278,7 +1309,13 @@ final class TaintFlowResolution
             self::capMadeOpenAssignments($made, $closed, $added_family);
         }
 
-        return $this->internOpenAssignments($made, $closed, $slot);
+        return $this->internOpenAssignments(
+            $made,
+            $closed,
+            $slot,
+            $this->open_assignment_guards[$open_assignments],
+            $this->open_assignment_calls[$open_assignments],
+        );
     }
 
     /**
@@ -1339,7 +1376,13 @@ final class TaintFlowResolution
 
         [$made, $closed] = $this->open_assignments[$open_assignments];
 
-        return $this->internOpenAssignments($made, $closed, $scoped_slot);
+        return $this->internOpenAssignments(
+            $made,
+            $closed,
+            $scoped_slot,
+            $this->open_assignment_guards[$open_assignments],
+            $this->open_assignment_calls[$open_assignments],
+        );
     }
 
     /**
@@ -1431,7 +1474,14 @@ final class TaintFlowResolution
                 : self::NO_SLOT;
         }
 
-        $result = $this->internOpenAssignments($made, $closed, $slot);
+        $result = $this->internOpenAssignments(
+            $made,
+            $closed,
+            $slot,
+            $this->open_assignment_guards[$open_assignments] + $this->open_assignment_guards[$call_open_assignments],
+            // back at the call site, in the body the call is made in
+            $this->open_assignment_calls[$call_open_assignments],
+        );
         $this->open_assignment_compositions[$call_open_assignments][$open_assignments] = $result;
 
         return $result;
@@ -1490,7 +1540,13 @@ final class TaintFlowResolution
             }
         }
 
-        $result = $this->internOpenAssignments($made, $closed, $this->open_assignment_slots[$open_assignments]);
+        $result = $this->internOpenAssignments(
+            $made,
+            $closed,
+            $this->open_assignment_slots[$open_assignments],
+            $this->open_assignment_guards[$open_assignments],
+            $this->open_assignment_calls[$open_assignments],
+        );
         $this->open_assignment_truncations[$open_assignments][$depths] = $result;
 
         return $result;
@@ -1517,6 +1573,10 @@ final class TaintFlowResolution
     ): void {
         if ($kept === 0 && $added === 0 && !isset($this->taint_adding_reachable[$node_id])) {
             return;
+        }
+
+        if ($this->open_assignment_calls[$open_assignments] !== '') {
+            $open_assignments = $this->scopeCall($open_assignments, $node_id);
         }
 
         $open_assignments = $this->truncateOpenAssignments($open_assignments, $node_id);
@@ -1655,10 +1715,16 @@ final class TaintFlowResolution
 
         foreach ($this->specializations[$id] as $specialization_key => $specialized_id) {
             if ($outside_of_calls || isset($this->despecialized_calls[$specialization_key])) {
+                $open_assignments = $this->passParamGuards($this->state_open_assignments[$state], $specialization_key);
+
+                if ($open_assignments === self::IGNORED) {
+                    continue;
+                }
+
                 $this->reach(
                     $specialized_id,
                     $context,
-                    $this->state_open_assignments[$state],
+                    $open_assignments,
                     $this->state_kept[$state],
                     $this->state_added[$state],
                     $state,
@@ -1699,6 +1765,19 @@ final class TaintFlowResolution
         $kept = $this->state_kept[$state];
         $added = $this->state_added[$state];
 
+        if ($this->open_assignment_guards[$open_assignments] && isset($this->specializations[$from_id])) {
+            // leaving the function-like of a fetch under a parameter other than through a specialized call site
+            // (see passParamGuards())
+            [$made, $closed] = $this->open_assignments[$open_assignments];
+            $open_assignments = $this->internOpenAssignments(
+                $made,
+                $closed,
+                $this->open_assignment_slots[$open_assignments],
+                [],
+                $this->open_assignment_calls[$open_assignments],
+            );
+        }
+
         foreach ($this->forward_edges[$from_id] as $to_id => $path) {
             $removed_taints = $path->removed_taints;
 
@@ -1733,11 +1812,42 @@ final class TaintFlowResolution
         string $to_id,
         int $path_type,
     ): void {
+        $guarded_param = null;
+
+        if (isset($this->path_type_params[$path_type])) {
+            [$param, $base] = $this->path_type_params[$path_type];
+            $bound_key = $this->param_keys[$param][$this->open_assignment_calls[$open_assignments]] ?? null;
+
+            if ($bound_key !== null && !str_starts_with($bound_key, '@')) {
+                // the flow entered the body through the arguments of an unspecialized call passing it
+                $key = $bound_key;
+            } elseif ($this->isOutsideOfCalls($context)) {
+                $key = '';
+                $guarded_param = $base === 'arrayvalue-fetch' && isset($this->param_keys[$param]) ? $param : null;
+            } else {
+                $key = $this->resolveParamKey($context, $param, $predecessor);
+
+                if ($key === null) {
+                    return;
+                }
+            }
+
+            $path_type = $this->getPathTypeId($key === '' ? $base : $base . '-' . $key);
+        }
+
         $next_open_assignments = $this->open_assignment_transitions[$open_assignments][$path_type]
             ?? $this->getNextOpenAssignments($open_assignments, $path_type);
 
         if ($next_open_assignments === self::IGNORED) {
             return;
+        }
+
+        if ($guarded_param !== null && $next_open_assignments >= 0) {
+            $next_open_assignments = $this->addParamGuard($open_assignments, $next_open_assignments, $guarded_param);
+        }
+
+        if (isset($this->call_arguments[$from_id]) && $next_open_assignments >= 0) {
+            $next_open_assignments = $this->bindCall($next_open_assignments, $from_id);
         }
 
         if ($next_open_assignments === self::OBSERVES_CALL) {
@@ -1758,7 +1868,9 @@ final class TaintFlowResolution
             $next_open_assignments = $this->applyPathType($open_assignments, $path_type);
         }
 
-        if (isset($this->sinks[$to_id]) && $this->getNode($from_id)?->code_location !== null) {
+        if (isset($this->sinks[$to_id])
+            && ($this->getNode($from_id)?->code_location !== null || $this->sinks[$to_id]->code_location !== null)
+        ) {
             $sink_taints = $this->sinks[$to_id]->taints;
 
             if ((($kept | $added) & $sink_taints) !== 0) {
@@ -1886,8 +1998,8 @@ final class TaintFlowResolution
 
     /**
      * The open assignments the walk of the convergence of node $id for the flows of state $caller starts with:
-     * those of its innermost open assignment of each expression type, so that the flows with different ones
-     * don't share it.
+     * those of its innermost open assignment of each expression type, and the keys of the fetches under
+     * parameters it waits to know (see addParamGuard()), so that the flows with different ones don't share it.
      *
      * The flows converging at a node often differ by little more: e.g. the values of the properties of an
      * object, each assigned to its own array key, converge at the array of all of them. A fetch past the
@@ -1918,6 +2030,7 @@ final class TaintFlowResolution
                 $known,
                 $known_count,
                 $slot >= 0 && $this->slots[$slot][1] >= 0 ? $slot : self::NO_SLOT,
+                $this->open_assignment_guards[$this->state_open_assignments[$caller]],
             ),
             $id,
         );
@@ -1975,15 +2088,25 @@ final class TaintFlowResolution
     /**
      * @param self::ENTRY_* $kind
      * @param array<int, array{?string, array<string, true>}> $facts
+     * @param array<string, string> $param_facts
      * @psalm-external-mutation-free
      */
-    private function addEntry(string $id, int $kind, array $facts, ?int $base = null): int
-    {
+    private function addEntry(
+        string $id,
+        int $kind,
+        array $facts,
+        ?int $base = null,
+        array $param_facts = [],
+        ?bool $tracks_classes = null,
+    ): int {
         $entry = count($this->entry_nodes);
         $this->entry_bases[] = $base ?? $entry;
+        $this->entry_tracks_classes[] = $tracks_classes ?? $base === null;
         $this->entry_nodes[] = $id;
         $this->entry_kinds[] = $kind;
         $this->entry_facts[] = $facts;
+        $this->entry_param_facts[] = $param_facts;
+
         $this->entry_filters[$entry] = [];
         $this->entry_class_filters[$entry] = [];
         $this->entry_class_dependents[$entry] = [];
@@ -2001,18 +2124,6 @@ final class TaintFlowResolution
     private function addEntryCaller(int $entry, int $caller, ?string $specialization_key): void
     {
         $this->entry_callers[$entry][$caller] = $specialization_key;
-
-        if ($this->entry_kinds[$entry] !== self::ENTRY_CONVERGENCE) {
-            $caller_context = $this->state_contexts[$caller];
-            $callees = $specialization_key === null ? [] : [$this->getCallee($specialization_key) => true];
-
-            if (!$this->isOutsideOfCalls($caller_context)) {
-                $this->entry_dependents[$caller_context][$entry] = true;
-                $callees += $this->entry_callees[$caller_context] ?? [];
-            }
-
-            $this->addEntryCallees($entry, $callees);
-        }
 
         $caller_context = $this->state_contexts[$caller];
 
@@ -2056,42 +2167,9 @@ final class TaintFlowResolution
         foreach ($this->entry_class_filters[$entry] as $position => $_) {
             $this->addClassFilterCaller($entry, $position, $caller, $specialization_key);
         }
-    }
 
-    /**
-     * The calls entering specialized call entry $entry, or enclosing them, are calls to the function-likes
-     * $callees (see getCallee()): continues the exits of those its walk reached (see addEntryExit()), and
-     * tells the entries of the calls made in its walk.
-     *
-     * @param array<string, true> $callees
-     * @psalm-capabilities read-props|write-this-props|write-refs
-     */
-    private function addEntryCallees(int $entry, array $callees): void
-    {
-        $new_callees = [];
-
-        foreach ($callees as $callee => $_) {
-            if (!isset($this->entry_callees[$entry][$callee])) {
-                $this->entry_callees[$entry][$callee] = true;
-                $new_callees[$callee] = true;
-            }
-        }
-
-        if (!$new_callees) {
-            return;
-        }
-
-        foreach ($new_callees as $callee => $_) {
-            $exits = $this->unmatched_exits[$entry][$callee] ?? [];
-            unset($this->unmatched_exits[$entry][$callee]);
-
-            foreach ($exits as [$exit_id, $open_assignments, $state, $link, $kept, $added]) {
-                $this->addEntryExit($entry, $exit_id, $open_assignments, $state, $link, $kept, $added);
-            }
-        }
-
-        foreach ($this->entry_dependents[$entry] ?? [] as $dependent => $_) {
-            $this->addEntryCallees($dependent, $new_callees);
+        foreach ($this->entry_param_filters[$entry] ?? [] as $param => $_) {
+            $this->addParamFilterCaller($entry, $param, $caller, $specialization_key);
         }
     }
 
@@ -2126,6 +2204,7 @@ final class TaintFlowResolution
             $this->entry_kinds[$entry],
             $facts,
             $this->entry_bases[$entry],
+            $this->entry_param_facts[$entry],
         );
         $this->entry_filters[$entry][$filter_key] = $filter;
         $this->filter_fetches[$filter] = [$family, $depth, $fetched_key];
@@ -2185,7 +2264,7 @@ final class TaintFlowResolution
             return true;
         }
 
-        if ($this->entry_bases[$context] !== $context) {
+        if (!$this->entry_tracks_classes[$context]) {
             // see getAssignmentClass()
             return true;
         }
@@ -2246,10 +2325,11 @@ final class TaintFlowResolution
             return $class;
         }
 
-        if ($this->entry_bases[$context] !== $context) {
+        if (!$this->entry_tracks_classes[$context]) {
             // Already in a filter, for the calls agreeing on another open assignment: a filter of it for each
             // class there too would make one for every combination of classes of the open assignments a walk
-            // observes. So no fetch ignores it, as above.
+            // observes. So no fetch ignores it, as above. (Not one for the calls passing a key to a parameter:
+            // each passes one, so those multiply the filters by the calls at most.)
             return '';
         }
 
@@ -2306,7 +2386,8 @@ final class TaintFlowResolution
             return $fetched_key === '';
         }
 
-        return $class === '' || DataFlowGraph::keysMayBeEqual(substr($class, 1), $fetched_key);
+        // a fetch of the keys ('') takes nothing assigned as a value, under any key
+        return $fetched_key !== '' && ($class === '' || DataFlowGraph::keysMayBeEqual(substr($class, 1), $fetched_key));
     }
 
     /**
@@ -2365,6 +2446,7 @@ final class TaintFlowResolution
                 $this->entry_kinds[$entry],
                 $facts,
                 $this->entry_bases[$entry],
+                $this->entry_param_facts[$entry],
             );
             $this->entry_class_filters[$entry][$position][$class] = $filter;
 
@@ -2394,6 +2476,254 @@ final class TaintFlowResolution
     }
 
     /**
+     * The key of a fetch or assignment under the parameter of unspecialized argument node $param, in the walk of
+     * specialized call entry $entry from state $state: the literal one the calls entering it pass, '' if they
+     * don't pass one, or null if that depends on the call -- then the flows of $state go on in the filters of
+     * $entry for each key (see dependOnParam()).
+     *
+     * The analysis gives an array fetch or assignment the key of the parameter it is if it wasn't assigned (see
+     * ArrayFetchAnalyzer::getParamKey()), in the body of a function-like each call of which is specialized or
+     * not. Each specialized call passes its own key: its walk, entered through it, fetches or assigns that key.
+     * In the walk of a call of another function-like, it is not the one entered: an exit of the function-like
+     * of the parameter can't lead back to a call site of it there (see addEntryExit()), so the key doesn't
+     * matter, and no call passes one. Outside of any specialized call, a fetch waits until the flow leaves
+     * through a call site to know its key (see addParamGuard()).
+     */
+    private function resolveParamKey(int $entry, string $param, int $state): ?string
+    {
+        if (isset($this->entry_param_facts[$entry][$param])) {
+            return $this->entry_param_facts[$entry][$param];
+        }
+
+        if (!isset($this->param_keys[$param])) {
+            // no specialized call passes it a literal key
+            return '';
+        }
+
+        $this->dependOnParam($entry, $param, $state);
+
+        return null;
+    }
+
+    /**
+     * What the flows of state $state, in the walk of $entry, do depends on the key the calls entering $entry
+     * pass to the parameter of unspecialized argument node $param. They go on in each filter of $entry for the
+     * calls passing a given key there, as they would in $entry, but knowing it.
+     */
+    private function dependOnParam(int $entry, string $param, int $state): void
+    {
+        $this->entry_param_dependents[$entry][$param][$state] = true;
+
+        if (isset($this->entry_param_filters[$entry][$param])) {
+            // again if the state got more taints since
+            foreach ($this->entry_param_filters[$entry][$param] as $filter) {
+                $this->copyToFilter($state, $filter);
+            }
+
+            return;
+        }
+
+        $this->entry_param_filters[$entry][$param] = [];
+
+        foreach ($this->entry_callers[$entry] as $caller => $specialization_key) {
+            $this->addParamFilterCaller($entry, $param, $caller, $specialization_key);
+        }
+    }
+
+    /**
+     * Makes the call of state $caller one entering the filter of $entry for the calls passing its key to the
+     * parameter of unspecialized argument node $param (see dependOnParam()).
+     */
+    private function addParamFilterCaller(int $entry, string $param, int $caller, ?string $specialization_key): void
+    {
+        $key = $specialization_key === null ? '' : $this->param_keys[$param][$specialization_key] ?? '';
+
+        if (str_starts_with($key, '@')) {
+            // the call passes on a parameter of the function-like it is made in: the key the call of the context
+            // of $caller passes to it
+            $caller_context = $this->state_contexts[$caller];
+            $key = $this->isOutsideOfCalls($caller_context)
+                ? ''
+                : $this->resolveParamKey($caller_context, substr($key, 1), $caller);
+
+            if ($key === null) {
+                // the call goes on in the filters of its context (see dependOnParam())
+                return;
+            }
+        }
+
+        if (!isset($this->entry_param_filters[$entry][$param][$key])) {
+            $param_facts = $this->entry_param_facts[$entry];
+            $param_facts[$param] = $key;
+
+            $filter = $this->addEntry(
+                $this->entry_nodes[$entry],
+                $this->entry_kinds[$entry],
+                $this->entry_facts[$entry],
+                $this->entry_bases[$entry],
+                $param_facts,
+                $this->entry_tracks_classes[$entry],
+            );
+            $this->entry_param_filters[$entry][$param][$key] = $filter;
+
+            foreach ($this->entry_param_dependents[$entry][$param] ?? [] as $state => $_) {
+                $this->copyToFilter($state, $filter);
+            }
+        }
+
+        $this->addEntryCaller($this->entry_param_filters[$entry][$param][$key], $caller, $specialization_key);
+    }
+
+    /**
+     * The open assignments $next_open_assignments of a flow with open assignments $open_assignments past a fetch
+     * under the parameter of unspecialized argument node $param, outside of any specialized call: the key it
+     * fetches is the one of the call site the flow leaves through (see passParamGuards()). Where it fetched the
+     * value assigned under a known key, the flow waits to know it, to go on only through the calls passing that
+     * key.
+     *
+     * @psalm-external-mutation-free
+     */
+    private function addParamGuard(int $open_assignments, int $next_open_assignments, string $param): int
+    {
+        $array_assignments = $this->open_assignments[$open_assignments][0][self::ARRAY_FAMILY] ?? [];
+
+        // not one of the call put back (see applyPathType())
+        if (!$array_assignments || $array_assignments[count($array_assignments) - 1] < 0) {
+            return $next_open_assignments;
+        }
+
+        $class = $this->getClass($array_assignments[count($array_assignments) - 1], self::ARRAY_FAMILY);
+        [$made, $closed] = $this->open_assignments[$next_open_assignments];
+        $guards = $this->open_assignment_guards[$next_open_assignments];
+
+        if (!str_starts_with($class, ':')
+            || (!isset($guards[$param]) && count($guards) >= self::MAX_PARAM_GUARDS)
+        ) {
+            return $next_open_assignments;
+        }
+
+        // of another fetch under the parameter if any, one the flow left the function-like after (see walkEdges())
+        $guards[$param] = $class;
+
+        return $this->internOpenAssignments(
+            $made,
+            $closed,
+            $this->open_assignment_slots[$next_open_assignments],
+            $guards,
+            $this->open_assignment_calls[$next_open_assignments],
+        );
+    }
+
+    /**
+     * The open assignments of a flow with open assignments $open_assignments leaving through the call site of
+     * specialization key $specialization_key outside of any specialized call, or IGNORED if it fetched another
+     * key than that call passes under a parameter (see addParamGuard()). Past the call site, the flow only waits
+     * to know the keys the call passes on from the parameters of the function-like making it: it left the
+     * function-like whose parameters they were, or one it calls.
+     *
+     * The value fetched in a call can't go out through another call site of a specialized function-like: its
+     * calls don't share anything. Nor of a despecialized one that only reads. Another one may keep it for another
+     * call to return.
+     *
+     * @psalm-external-mutation-free
+     */
+    private function passParamGuards(int $open_assignments, string $specialization_key): int
+    {
+        $guards = $this->open_assignment_guards[$open_assignments];
+
+        if (!$guards) {
+            return $open_assignments;
+        }
+
+        [$made, $closed] = $this->open_assignments[$open_assignments];
+
+        $passed_on = [];
+
+        if (!isset($this->despecialized_calls[$specialization_key])
+            || isset($this->read_only_calls[$specialization_key])
+        ) {
+            foreach ($guards as $param => $class) {
+                $key = $this->param_keys[$param][$specialization_key] ?? null;
+
+                if ($key === null) {
+                    continue;
+                }
+
+                if (str_starts_with($key, '@')) {
+                    // a parameter of the function-like making the call, whose key the flow waits to know now
+                    $passed_on[substr($key, 1)] = $class;
+                } elseif (!self::classPassesFetch($class, $key)) {
+                    return self::IGNORED;
+                }
+            }
+        }
+
+        return $this->internOpenAssignments(
+            $made,
+            $closed,
+            $this->open_assignment_slots[$open_assignments],
+            $passed_on,
+            $this->open_assignment_calls[$open_assignments],
+        );
+    }
+
+    /**
+     * The open assignments $open_assignments of a flow entering the body of an unspecialized call through its
+     * argument node $argument_id (see TaintFlowGraph::$call_arguments): the flow knows the array keys the call
+     * passes to the parameters (see takeEdge()), as long as it stays in the body (see scopeCall()). Not those of a
+     * call the body makes to its own function-like: the body would know them past that call.
+     *
+     * @psalm-external-mutation-free
+     */
+    private function bindCall(int $open_assignments, string $argument_id): int
+    {
+        [$made, $closed] = $this->open_assignments[$open_assignments];
+        $call = $this->open_assignment_calls[$open_assignments];
+        [$new_call, $file_path, $start, $end] = $this->call_arguments[$argument_id];
+
+        $previous = $this->call_ranges[$call] ?? null;
+        $this->call_ranges[$new_call] = [$file_path, $start, $end];
+
+        return $this->internOpenAssignments(
+            $made,
+            $closed,
+            $this->open_assignment_slots[$open_assignments],
+            $this->open_assignment_guards[$open_assignments],
+            $previous === [$file_path, $start, $end] ? '' : $new_call,
+        );
+    }
+
+    /**
+     * The open assignments $open_assignments of a flow reaching node $node_id: without the unspecialized call it
+     * entered the body of (see bindCall()) if the node is out of that body. That's where the keys the call passes
+     * may be those of another call: in a node without a location (a property, ...), or one of another
+     * function-like (the call sites the call returns to, ...).
+     *
+     * @psalm-external-mutation-free
+     */
+    private function scopeCall(int $open_assignments, string $node_id): int
+    {
+        [$made, $closed] = $this->open_assignments[$open_assignments];
+        [$file_path, $start, $end] = $this->call_ranges[$this->open_assignment_calls[$open_assignments]];
+        $location = $this->getNode($node_id)?->code_location;
+
+        if ($location !== null
+            && $location->file_path === $file_path
+            && $location->raw_file_start >= $start
+            && $location->raw_file_end <= $end
+        ) {
+            return $open_assignments;
+        }
+
+        return $this->internOpenAssignments(
+            $made,
+            $closed,
+            $this->open_assignment_slots[$open_assignments],
+            $this->open_assignment_guards[$open_assignments],
+        );
+    }
+
+    /**
      * The body walk of $entry reached $exit_id, an unspecialized node whose specializations lead back to
      * call sites, from state $state (seen through the calls of $link, see buildTrace()). Continues it at the
      * call site of each call entering $entry.
@@ -2409,33 +2739,6 @@ final class TaintFlowResolution
         int $kept,
         int $added,
     ): void {
-        if ($this->entry_kinds[$entry] !== self::ENTRY_CONVERGENCE) {
-            $callee = $this->getCallee((string) array_key_first($this->specializations[$exit_id]));
-
-            if (!isset($this->entry_callees[$entry][$callee])) {
-                // Not an exit of the function-like of a call entering the entry or enclosing it (it was reached
-                // through e.g. a property): it can't lead back to a call site, unless one comes later.
-                $exit_key = $exit_id . ' ' . $open_assignments;
-                $unmatched = $this->unmatched_exits[$entry][$callee][$exit_key] ?? null;
-
-                if ($unmatched !== null && ($kept & ~$unmatched[4]) === 0 && ($added & ~$unmatched[5]) === 0) {
-                    return;
-                }
-
-                // the first flow's trace, with all the taints
-                $this->unmatched_exits[$entry][$callee][$exit_key] = [
-                    $exit_id,
-                    $open_assignments,
-                    $unmatched[2] ?? $state,
-                    $unmatched[3] ?? $link,
-                    $kept | ($unmatched[4] ?? 0),
-                    $added | ($unmatched[5] ?? 0),
-                ];
-
-                return;
-            }
-        }
-
         $exit_key = $exit_id . ' ' . $open_assignments;
         $exit = $this->entry_exits[$entry][$exit_key] ?? [$exit_id, $open_assignments, 0, 0, []];
         $new_kept = $kept & ~$exit[2];
@@ -2471,9 +2774,12 @@ final class TaintFlowResolution
 
     /**
      * Continues an exit reached by the body walk of an entry in the context of one call entering it: at that
-     * call's specialization of the exit node if it has one, else -- the flow leaves through an enclosing
-     * call, e.g. after passing through a static property -- as an exit of the entry the call is made from.
-     * Outside of any specialized call the flow cannot be matched to a call site and ends.
+     * call's specialization of the exit node if it has one. If it has one the call site doesn't use (left out of
+     * the specializations for having no outgoing edge, see TaintFlowGraph::connectSinksAndSources()), the flow
+     * ends. Else the exit is one of another function-like, reached through
+     * something the calls share (a property, a static property, ...): the flow leaves through an enclosing call
+     * of that function-like if any, as an exit of the entry the call is made from, and outside of any
+     * specialized call through all of its call sites, as a flow reaching it there would (see walk()).
      *
      * A convergence of flows in specialized calls is left like its node would be left in the context of the
      * call (see walk()): as an exit of the entry it is in.
@@ -2510,7 +2816,23 @@ final class TaintFlowResolution
                 -1,
                 $caller,
             );
-        } elseif (!$this->isOutsideOfCalls($context)) {
+        } elseif ($specialization_key !== null
+            && isset($this->nodes[$exit_id . TaintFlowGraph::SPECIALIZATION_SEPARATOR . $specialization_key])
+        ) {
+            return;
+        } elseif ($this->isOutsideOfCalls($context)) {
+            if ($specialization_key !== null) {
+                $this->leaveThroughAllCallSites(
+                    $exit_id,
+                    $context,
+                    $caller_open_assignments,
+                    $caller_kept,
+                    $caller_added,
+                    $state,
+                    $this->getLink($caller, $link),
+                );
+            }
+        } else {
             $exit = $this->entry_exits[$context][$exit_id . ' ' . $caller_open_assignments] ?? null;
 
             // the link is made only for a flow that gets recorded
@@ -2527,6 +2849,38 @@ final class TaintFlowResolution
                 $caller_kept,
                 $caller_added,
             );
+        }
+    }
+
+    /**
+     * Continues the flows reaching exit $exit_id in context $context, outside of any specialized call, with open
+     * assignments $open_assignments, from state $state (seen through the calls of $link), at all the call sites
+     * of its specialized calls: those of despecialized calls were all left from the exit already (see walk()).
+     *
+     * @psalm-external-mutation-free
+     */
+    private function leaveThroughAllCallSites(
+        string $exit_id,
+        int $context,
+        int $open_assignments,
+        int $kept,
+        int $added,
+        int $state,
+        int $link,
+    ): void {
+        $exit_key = $context . ' ' . $exit_id . ' ' . $open_assignments;
+        $previous = $this->shared_exits[$exit_key] ?? null;
+
+        if ($previous !== null && ($kept & ~$previous[0]) === 0 && ($added & ~$previous[1]) === 0) {
+            return;
+        }
+
+        $this->shared_exits[$exit_key] = [($previous[0] ?? 0) | $kept, ($previous[1] ?? 0) | $added];
+
+        foreach ($this->specializations[$exit_id] as $specialization_key => $specialized_id) {
+            if (!isset($this->despecialized_calls[$specialization_key])) {
+                $this->reach($specialized_id, $context, $open_assignments, $kept, $added, $state, $link, -1);
+            }
         }
     }
 

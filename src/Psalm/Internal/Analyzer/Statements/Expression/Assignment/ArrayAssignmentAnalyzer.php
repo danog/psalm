@@ -572,6 +572,7 @@ final class ArrayAssignmentAnalyzer
             if ($value_graph === null) {
                 return;
             }
+            $param_key = $key_values ? null : ArrayFetchAnalyzer::getParamKey($statements_analyzer, $expr->dim);
 
             foreach ($stmt_type->parent_nodes as $parent_node) {
                 foreach ($child_stmt_type->parent_nodes as $child_parent_node) {
@@ -608,7 +609,8 @@ final class ArrayAssignmentAnalyzer
                             $value_graph->addPath(
                                 $child_parent_node,
                                 $parent_node,
-                                'arrayvalue-assignment' . ($key_path_suffix ?? ''),
+                                'arrayvalue-assignment'
+                                    . ($key_path_suffix ?? ($param_key !== null ? '-@' . $param_key : '')),
                             );
                         }
                     }
