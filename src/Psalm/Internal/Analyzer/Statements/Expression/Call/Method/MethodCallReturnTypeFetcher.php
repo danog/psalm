@@ -302,7 +302,14 @@ final class MethodCallReturnTypeFetcher
             );
         }
 
-        return $return_type_candidate;
+        return ContainerTaintAnalyzer::taint(
+            $statements_analyzer,
+            $stmt,
+            $context,
+            $method_id,
+            $args,
+            $return_type_candidate,
+        );
     }
 
     /**
