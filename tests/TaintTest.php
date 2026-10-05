@@ -1669,6 +1669,23 @@ final class TaintTest extends TestCase
     public function providerInvalidCodeParse(): array
     {
         return [
+            'variableDefinedByNarrowingInABranchKeepsItsTaints' => [
+                'code' => '<?php
+                    function render(array $names): string {
+                        foreach ($names as $name) {
+                            $first = $name;
+                            break;
+                        }
+                        if (empty($first)) {
+                            $first = "none";
+                        }
+
+                        return $first;
+                    }
+
+                    echo render($_GET["names"]);',
+                'error_message' => 'TaintedHtml',
+            ],
             'taintTheKeysOfAFlippedArrayWithItsValues' => [
                 'code' => '<?php // --taint-analysis
                     $flipped = array_flip(["key" => (string) $_GET["value"]]);
