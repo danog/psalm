@@ -97,6 +97,12 @@ final class ArgumentAnalyzer
     // e.g. header_register_callback will not throw an error immediately like user-land functions
     // however error log "Could not call the sapi_header_callback" if it's not public
     // this is NOT a complete list, but just what was easily available and to be extended
+    /**
+     * Set on the arguments of a call naming the class of its method (parent::, self::, A::), which runs that method
+     * and no override of it: their taints don't go to the overrides
+     */
+    public const NON_VIRTUAL_CALL_ATTRIBUTE = 'nonVirtualCallArgument';
+
     private const PHP_NATIVE_NON_PUBLIC_CB = [
         ...ArgumentsAnalyzer::ARRAY_FILTERLIKE,
         'array_diff_uassoc',
@@ -1888,6 +1894,9 @@ final class ArgumentAnalyzer
                 $specialization_location,
             );
 
+        // the node the argument goes into: the parameter, or the node dispatching the call to the overrides
+        $entry_node = $method_node;
+
         if (!$specialize_taint
             && $taint_flow_graph
             && $method_id
@@ -1898,7 +1907,28 @@ final class ArgumentAnalyzer
 
             $class_storage = $codebase->classlike_storage_provider->get($fq_classlike_name);
 
-            foreach ($class_storage->dependent_classlikes as $dependent_classlike_lc => $_) {
+            // A call of a method on the class declaring it may run an override of a class extending it: the
+            // call goes to them, as well as to the parameter of the declared method. But that parameter is also
+            // where the calls on the other classes inheriting the method go, which can't run those overrides:
+            // what a call dispatches to the overrides goes through a node of its own, not the parameter.
+            // a call naming its class (parent::, self::, A::) runs that method only (see StaticCallAnalyzer)
+            $dependent_classlikes = $expr->getAttribute(self::NON_VIRTUAL_CALL_ATTRIBUTE) === true
+                ? []
+                : $class_storage->dependent_classlikes;
+
+            $declaring_method_id = $dependent_classlikes === []
+                ? null
+                : $codebase->methods->getDeclaringMethodId($method_id);
+            if ($declaring_method_id !== null && (string) $declaring_method_id === (string) $method_id) {
+                $entry_node = DataFlowNode::getForAssignment(
+                    'dispatch of ' . $cased_method_id . '#' . ($argument_offset + 1),
+                    $arg_location,
+                );
+                $graph->addNode($entry_node);
+                $graph->addPath($entry_node, $method_node, 'arg', $added_taints, $removed_taints);
+            }
+
+            foreach ($dependent_classlikes as $dependent_classlike_lc => $_) {
                 $dependent_classlike_storage = $codebase->classlike_storage_provider->get(
                     $dependent_classlike_lc,
                 );
@@ -1921,7 +1951,7 @@ final class ArgumentAnalyzer
 
                 $taint_flow_graph->addNode($new_sink);
                 $taint_flow_graph->addPath(
-                    $method_node,
+                    $entry_node,
                     $new_sink,
                     'arg',
                     $added_taints,
@@ -1979,7 +2009,7 @@ final class ArgumentAnalyzer
 
         $graph->addPath(
             $argument_value_node,
-            $method_node,
+            $entry_node,
             'arg',
             $added_taints,
             $removed_taints,
