@@ -1213,6 +1213,10 @@ final class TaintFlowGraph extends DataFlowGraph
                 continue;
             }
 
+            if (self::isOverwritten($path_type, $open_assignments)) {
+                continue;
+            }
+
             if ($sink !== null && $generated_source->code_location) {
                 $matching_taints = $sink->taints & $new_taints;
 
