@@ -392,6 +392,25 @@ final class TaintTest extends TestCase
     public function providerValidCodeParse(): array
     {
         return [
+            'taintFreeAssignmentUnderOneOfLiteralKeys' => [
+                'code' => '<?php
+                    function show(string $key): void {
+                        $array = [];
+
+                        if ($key === "a" || $key === "b") {
+                            $array[$key] = (string) $_GET["value"];
+                        }
+
+                        echo (string) ($array["c"] ?? "");
+                    }',
+            ],
+            'taintFreeAssignmentUnderLiteralKeyVariable' => [
+                'code' => '<?php
+                    $key = "a";
+                    $array = [];
+                    $array[$key] = (string) $_GET["value"];
+                    echo (string) ($array["b"] ?? "");',
+            ],
             'taintFreeSpecializedCallWhoseReturnTheTaintedCallSiteDoesNotUse' => [
                 'code' => '<?php
                     final class Storage {
@@ -2785,6 +2804,19 @@ final class TaintTest extends TestCase
     public function providerInvalidCodeParse(): array
     {
         return [
+            'taintAssignmentUnderOneOfLiteralKeys' => [
+                'code' => '<?php
+                    function show(string $key): void {
+                        $array = [];
+
+                        if ($key === "a" || $key === "b") {
+                            $array[$key] = (string) $_GET["value"];
+                        }
+
+                        echo (string) ($array["b"] ?? "");
+                    }',
+                'error_message' => 'TaintedHtml',
+            ],
             'taintedArgReturnedByClosureCalledThroughVariable' => [
                 'code' => '<?php
                     $f = function (string $s): string {
