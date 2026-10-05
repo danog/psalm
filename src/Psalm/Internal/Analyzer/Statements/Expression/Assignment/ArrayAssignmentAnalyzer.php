@@ -431,7 +431,13 @@ final class ArrayAssignmentAnalyzer
             foreach ($stmt_type->parent_nodes as $parent_node) {
                 foreach ($child_stmt_type->parent_nodes as $child_parent_node) {
                     if (count($key_values) > 1) {
-                        self::taintAssignmentUnderKeys($graph, $child_parent_node, $parent_node, $key_values);
+                        self::taintAssignmentUnderKeys(
+                            $graph,
+                            $child_parent_node,
+                            $parent_node,
+                            $key_values,
+                            $var_location,
+                        );
                     } elseif ($key_values) {
                         $graph->addPath(
                             $child_parent_node,
@@ -451,9 +457,10 @@ final class ArrayAssignmentAnalyzer
     }
 
     /**
-     * Adds the paths of the assignment of $value to array $array under a key that is one of $key_values: one for
-     * each, in the taint flow graph, the others than the first through a node of their own (a path between two
-     * nodes has one type). The variable use graph only knows the key is one of them: an unkeyed assignment there.
+     * Adds the paths of the assignment of $value to array $array at $location under a key that is one of
+     * $key_values: one for each, in the taint flow graph, the others than the first through a node of their own (a
+     * path between two nodes has one type). The variable use graph only knows the key is one of them: an unkeyed
+     * assignment there.
      *
      * @param non-empty-list<TLiteralInt|TLiteralString> $key_values
      */
@@ -462,6 +469,7 @@ final class ArrayAssignmentAnalyzer
         DataFlowNode $value,
         DataFlowNode $array,
         array $key_values,
+        CodeLocation $location,
     ): void {
         if ($graph instanceof CombinedFlowGraph) {
             $graph->variable_use_graph->addPath($value, $array, 'arrayvalue-assignment');
@@ -481,10 +489,10 @@ final class ArrayAssignmentAnalyzer
                 continue;
             }
 
-            $variant = DataFlowNode::getForPathVariant($value->id, $value, $path_type);
-            $graph->addNode($variant);
-            $graph->addPath($value, $variant, $path_type);
-            $graph->addPath($variant, $array, '=');
+            $key_node = DataFlowNode::getForAssignment($array->label . ' ' . $path_type, $location);
+            $graph->addNode($key_node);
+            $graph->addPath($value, $key_node, $path_type);
+            $graph->addPath($key_node, $array, '=');
         }
     }
 
