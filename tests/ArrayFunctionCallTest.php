@@ -386,6 +386,79 @@ final class ArrayFunctionCallTest extends TestCase
                     '$b===' => 'array{test: 0}',
                 ],
             ],
+            'arrayReplaceRecursiveGenericArrays' => [
+                'code' => '<?php
+                    /**
+                     * @param array<string, int> $a
+                     * @param array<string, string> $b
+                     */
+                    function f(array $a, array $b): void {
+                        $r = array_replace_recursive($a, $b);
+                    }
+                    $r = array_replace_recursive(["a" => 1], ["b" => "x"]);',
+                'assertions' => [
+                    '$r===' => "array{a: 1, b: 'x'}",
+                ],
+            ],
+            'arrayReplaceRecursiveMergesNestedArrays' => [
+                'code' => '<?php
+                    $r = array_replace_recursive(["x" => ["a" => 1]], ["x" => ["b" => "y"]]);',
+                'assertions' => [
+                    '$r===' => "array{x: array{a: 1, b: 'y'}}",
+                ],
+            ],
+            'arrayReplaceRecursiveLists' => [
+                'code' => '<?php
+                    $r = array_replace_recursive([1, 2], [3]);',
+                'assertions' => [
+                    '$r===' => 'list{3, 2}',
+                ],
+            ],
+            'arrayReplaceRecursiveKeepsTheTypesOfAGenericMerge' => [
+                'code' => '<?php
+                    /**
+                     * @param array<string, int|array<string, int>> $a
+                     * @param array<string, string|array<string, string>> $b
+                     * @return array<string, int|string|array<string, int|string>>
+                     */
+                    function f(array $a, array $b): array {
+                        return array_replace_recursive($a, $b);
+                    }',
+            ],
+            'arrayReplaceRecursiveOfAShapeWithAGenericArray' => [
+                'code' => '<?php
+                    /** @param array<string, array<string, int>> $b */
+                    function f(array $b): void {
+                        $r = array_replace_recursive(["x" => ["a" => "s"]], $b);
+                        /** @psalm-check-type-exact $r = non-empty-array<string, array<string, \'s\'|int>> */
+                    }',
+            ],
+            'arrayReplaceRecursiveKeepsListsMergedByTheirIndexes' => [
+                'code' => '<?php
+                    /**
+                     * @param array<string, list<int>> $a
+                     * @param array<string, list<int>> $b
+                     * @return array<string, list<int>>
+                     */
+                    function f(array $a, array $b): array {
+                        return array_replace_recursive($a, $b);
+                    }',
+            ],
+            'arrayReplaceRecursiveOfTemplatedArrays' => [
+                'code' => '<?php
+                    /**
+                     * @template TKey as array-key
+                     * @template TValue
+                     * @template TKey2 as array-key
+                     * @template TValue2
+                     * @param array<TKey, TValue> $a
+                     * @param array<TKey2, TValue2> $b
+                     * @return array<TKey|TKey2, TValue|TValue2|array<array-key, mixed>>
+                     */
+                    function f(array $a, array $b): array {
+                        return array_replace_recursive($a, $b);
+                    }',
+            ],
             'arrayReplaceIntArrays' => [
                 'code' => '<?php
                     $d = array_replace(["a", "b", "c", "d"], [1, 2, 3]);',
