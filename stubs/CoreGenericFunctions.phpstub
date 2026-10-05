@@ -1038,7 +1038,7 @@ function rawurlencode(string $string) : string {}
  * @psalm-taint-escape html
  * @psalm-taint-escape has_quotes
  * @psalm-taint-escape header
- * @psalm-flow ($data) -> return
+ * @psalm-flow ($data, $numeric_prefix, $arg_separator) -> return
  */
 function http_build_query(array|object $data, string $numeric_prefix = "", ?string $arg_separator = null, int $encoding_type = PHP_QUERY_RFC1738) : string {}
 
@@ -1053,7 +1053,9 @@ function escapeshellarg(string $arg) : string {}
 /**
  * @psalm-pure
  *
- * @psalm-taint-escape shell
+ * It escapes what would run other commands, but not the spaces and dashes that add options to the command: what it
+ * returns can still inject arguments into it, unlike escapeshellarg().
+ *
  * @psalm-flow ($command) -> return
  */
 function escapeshellcmd(string $command) : string {}
