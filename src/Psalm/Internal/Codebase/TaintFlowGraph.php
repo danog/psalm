@@ -517,11 +517,14 @@ final class TaintFlowGraph extends DataFlowGraph
 
         $this->despecializeImpureCalls($codebase);
 
-        // Remove all specializations without an outgoing edge
+        // Remove all specializations without an outgoing edge: an exit of a call leads nowhere there
+        $unused_specializations = [];
+
         foreach ($this->specializations as $k => &$map) {
             foreach ($map as $kk => $specialized_id) {
                 if (!isset($this->forward_edges[$specialized_id])) {
                     unset($map[$kk]);
+                    $unused_specializations[$k][$kk] = true;
                 }
             }
             if (!$map) {
@@ -538,6 +541,7 @@ final class TaintFlowGraph extends DataFlowGraph
             $this->specializations,
             $this->specialized_calls,
             $this->despecialized_calls,
+            $unused_specializations,
             Config::getInstance(),
             $project_analyzer,
             $codebase,

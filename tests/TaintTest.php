@@ -280,6 +280,16 @@ final class TaintTest extends TestCase
     public function providerValidCodeParse(): array
     {
         return [
+            'taintFreeUnusedReturnOfSpecializedCall' => [
+                'code' => '<?php
+                    /** @psalm-pure */
+                    function identity(string $value): string {
+                        return $value;
+                    }
+
+                    identity((string) $_GET["value"]);
+                    echo identity("safe");',
+            ],
             'fetchOfOneKeyWhereConvergingKeyedArraysConvergeAgain' => [
                 // Differently keyed arrays converge at $row, and its flows converge again at $r with others: the
                 // fetch still ignores those of other keys.
@@ -1503,6 +1513,49 @@ final class TaintTest extends TestCase
     public function providerInvalidCodeParse(): array
     {
         return [
+            'taintPropertySetInSpecializedCallAndReadInAnother' => [
+                'code' => '<?php
+                    final class Holder {
+                        private string $value = "";
+
+                        /** @psalm-taint-specialize */
+                        public function set(string $value): void {
+                            $this->value = $value;
+                        }
+
+                        /** @psalm-taint-specialize */
+                        public function get(): string {
+                            return $this->value;
+                        }
+                    }
+
+                    $holder = new Holder();
+                    $holder->set((string) $_GET["value"]);
+                    echo $holder->get();',
+                'error_message' => 'TaintedHtml',
+            ],
+            'taintArrayPropertySetInSpecializedCallAndReadInAnother' => [
+                'code' => '<?php
+                    final class Holder {
+                        /** @var array<string, string> */
+                        private array $data = [];
+
+                        /** @psalm-taint-specialize */
+                        public function set(string $key, string $value): void {
+                            $this->data[$key] = $value;
+                        }
+
+                        /** @psalm-taint-specialize */
+                        public function get(string $key): string {
+                            return $this->data[$key] ?? "";
+                        }
+                    }
+
+                    $holder = new Holder();
+                    $holder->set("a", (string) $_GET["value"]);
+                    echo $holder->get("a");',
+                'error_message' => 'TaintedHtml',
+            ],
             'taintArrayValueWrappedDeeperInALoop' => [
                 'code' => '<?php // --taint-analysis
                     $value = (string) $_GET["value"];
