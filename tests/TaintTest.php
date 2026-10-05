@@ -2707,6 +2707,32 @@ final class TaintTest extends TestCase
     public function providerInvalidCodeParse(): array
     {
         return [
+            'taintExceptionMessage' => [
+                'code' => '<?php
+                    $x = new Exception($_GET["x"]);
+                    echo $x->getMessage();',
+                'error_message' => 'TaintedHtml',
+            ],
+            'taintCaughtExceptionMessage' => [
+                'code' => '<?php
+                    function foo(): void {}
+                    try {
+                        foo();
+                    } catch (Throwable $e) {
+                        echo $e->getMessage();
+                    }',
+                'error_message' => 'TaintedHtml',
+            ],
+            'taintCaughtExceptionDump' => [
+                'code' => '<?php
+                    function foo(): void {}
+                    try {
+                        foo();
+                    } catch (RuntimeException $e) {
+                        echo print_r($e, true);
+                    }',
+                'error_message' => 'TaintedHtml',
+            ],
             'taintThePropertyOfASubclassWithWhatAParentMethodSets' => [
                 'code' => '<?php // --taint-analysis
                     class Model {
