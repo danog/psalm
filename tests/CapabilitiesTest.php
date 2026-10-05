@@ -2304,6 +2304,56 @@ final class CapabilitiesTest extends TestCase
         $this->analyzeFile('somefile.php', new Context());
     }
 
+    public function testWriteGlobalsCallForgetsSuperGlobalRefinements(): void
+    {
+        $this->expectException(CodeException::class);
+        $this->expectExceptionMessage('InvalidReturnStatement');
+        Config::getInstance()->remember_property_assignments_after_call = false;
+
+        $this->addFile(
+            'somefile.php',
+            '<?php
+                /** @psalm-capabilities read-globals, write-globals */
+                function touchGlobals(): void { $_GET["x"] = "a"; }
+
+                function forget(): int {
+                    $_GET["x"] = 1;
+                    touchGlobals();
+                    return $_GET["x"];
+                }',
+        );
+
+        $this->analyzeFile('somefile.php', new Context());
+    }
+
+    public function testWriteGlobalsMethodCallForgetsStaticPropertyRefinements(): void
+    {
+        $this->expectException(CodeException::class);
+        $this->expectExceptionMessage('NullableReturnStatement');
+        Config::getInstance()->remember_property_assignments_after_call = false;
+
+        $this->addFile(
+            'somefile.php',
+            '<?php
+                final class A { public static ?int $x = null; }
+
+                final class G {
+                    /** @psalm-capabilities write-globals */
+                    public function touch(): void { A::$x = null; }
+                }
+
+                function forget(G $g): int {
+                    if (A::$x === null) {
+                        return 0;
+                    }
+                    $g->touch();
+                    return A::$x;
+                }',
+        );
+
+        $this->analyzeFile('somefile.php', new Context());
+    }
+
     public function testCapabilityNamesDenoteOneCapabilityEach(): void
     {
         $this->assertSame(Capabilities::WRITE_PROPS, Capabilities::fromList('write-props'));

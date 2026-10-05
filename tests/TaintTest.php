@@ -2678,6 +2678,43 @@ final class TaintTest extends TestCase
                     $name();',
                 'error_message' => 'TaintedCallable',
             ],
+            'taintCallingAnOffsetOverwrittenThroughAnUnknownKey' => [
+                'code' => '<?php
+                    /** @param array<string, string> $a */
+                    function f(array $a, string $k): void {
+                        $a["x"] = function (): void {};
+                        $a[$k] = (string) $_GET["v"];
+                        $a["x"]();
+                    }',
+                'error_message' => 'TaintedCallable',
+            ],
+            'taintCallingAnUnknownOffsetOverwrittenThroughALiteralKey' => [
+                'code' => '<?php
+                    /** @param array<string, string> $a */
+                    function f(array $a, string $k): void {
+                        $a[$k] = function (): void {};
+                        $a["x"] = (string) $_GET["v"];
+                        $a[$k]();
+                    }',
+                'error_message' => 'TaintedCallable',
+            ],
+            'taintCallingANestedOffsetOverwrittenThroughAnUnknownKey' => [
+                'code' => '<?php
+                    /** @param array<string, array<string, string>> $a */
+                    function f(array $a, string $k): void {
+                        $a["x"]["y"] = function (): void {};
+                        $a["x"][$k] = (string) $_GET["v"];
+                        $a["x"]["y"]();
+                    }',
+                'error_message' => 'TaintedCallable',
+            ],
+            'taintCallingASuperGlobalOffsetOverwrittenThroughAnUnknownKey' => [
+                'code' => '<?php
+                    $_GET["x"] = function (): void {};
+                    $_GET[(string) $_POST["k"]] = $_POST["v"];
+                    $_GET["x"]();',
+                'error_message' => 'TaintedCallable',
+            ],
             'taintThroughArrayMapImplicitFunctionCall' => [
                 'code' => '<?php
                     $a = ["test" => $_GET["name"]];
