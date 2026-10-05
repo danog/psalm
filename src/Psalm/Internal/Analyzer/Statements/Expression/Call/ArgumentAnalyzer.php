@@ -1823,7 +1823,7 @@ final class ArgumentAnalyzer
         }
         $taint_flow_graph = $statements_analyzer->getTaintFlowGraphWithSuppressed();
 
-        $removed_taints = $taint_flow_graph ? $input_type->getTaintsToRemove() : 0;
+        $type_removed_taints = $taint_flow_graph ? $input_type->getTaintsToRemove() : 0;
 
         // the array key the parameter is in this call, if it is one (see TaintFlowGraph::addParamKey())
         if ($input_type->isSingleStringLiteral()) {
@@ -1838,7 +1838,10 @@ final class ArgumentAnalyzer
         $event = new AddRemoveTaintsEvent($expr, $context, $statements_analyzer, $codebase);
 
         $added_taints = $codebase->config->eventDispatcher->dispatchAddTaints($event);
-        $removed_taints |= $codebase->config->eventDispatcher->dispatchRemoveTaints($event);
+        // what this argument's type can't hold is removed on its own edges only: the edges from the parameter node to
+        // the parameters of the declaring and dependent methods are shared by every call of an unspecialized method
+        $shared_removed_taints = $codebase->config->eventDispatcher->dispatchRemoveTaints($event);
+        $removed_taints = $type_removed_taints | $shared_removed_taints;
 
         if ($function_param->type && $function_param->type->isString() && !$input_type->isString()) {
             $input_type = CastAnalyzer::castStringAttempt(
@@ -1922,7 +1925,7 @@ final class ArgumentAnalyzer
                     $new_sink,
                     'arg',
                     $added_taints,
-                    $removed_taints,
+                    $shared_removed_taints,
                 );
             }
         }
@@ -1952,7 +1955,7 @@ final class ArgumentAnalyzer
                     $new_sink,
                     'arg',
                     $added_taints,
-                    $removed_taints,
+                    $shared_removed_taints,
                 );
 
                 if ($param_key !== null) {
