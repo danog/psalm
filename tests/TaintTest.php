@@ -392,6 +392,21 @@ final class TaintTest extends TestCase
     public function providerValidCodeParse(): array
     {
         return [
+            'variableAssignedInEveryBranchHoldsOnlyItsLastValues' => [
+                'code' => '<?php
+                    function render(string $input, bool $html): string {
+                        if ($html) {
+                            $text = trim($input);
+                            $text = htmlspecialchars($text, ENT_QUOTES);
+                        } else {
+                            $text = "none";
+                        }
+
+                        return $text;
+                    }
+
+                    echo render($_GET["x"], true);',
+            ],
             'dontTaintTheOtherKeysOfAnElementABuiltinReturns' => [
                 'code' => '<?php // --taint-analysis
                     $files = ["tmp_name" => ["name" => (string) $_GET["name"]]];
