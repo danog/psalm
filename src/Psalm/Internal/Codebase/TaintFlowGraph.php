@@ -46,7 +46,6 @@ use Psalm\Type\Union;
 
 use function array_unshift;
 use function end;
-use function in_array;
 use function ksort;
 use function str_starts_with;
 use function strpos;
@@ -156,16 +155,12 @@ final class TaintFlowGraph extends DataFlowGraph
         }
 
         // a builtin has no body: the taints flow through each of its calls as its declaration says, whether it is
-        // pure or not (`reset()` moves the pointer of the array it returns an element of)
-        if ($storage->location === null
-            ? $storage->cased_name !== null && InternalCallMapHandler::inCallMap(
-                $storage instanceof MethodStorage && $storage->defining_fqcln !== null
-                    ? $storage->defining_fqcln . '::' . $storage->cased_name
-                    : $storage->cased_name,
-            )
-            : in_array($storage->location->file_path, $codebase->config->internal_stubs, true)
-        ) {
-            return true;
+        // pure or not (`reset()` moves the pointer of the array it returns an element of), unless its calls return
+        // what was given to the others
+        if ($storage->builtin) {
+            return $storage instanceof MethodStorage
+                || $storage->cased_name === null
+                || !InternalCallMapHandler::keepsStateBetweenCalls($storage->cased_name);
         }
 
         if ($graph === null
