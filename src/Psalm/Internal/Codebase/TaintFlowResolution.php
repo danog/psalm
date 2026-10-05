@@ -1158,9 +1158,12 @@ final class TaintFlowResolution
         [$made, $closed] = $this->open_assignments[$open_assignments];
         $array_assignments = $made[self::ARRAY_FAMILY] ?? [];
 
-        if ($array_assignments
-            && $this->path_types[$array_assignments[count($array_assignments) - 1]] === 'arraykey-assignment'
-            && $this->path_types[$path_type] === 'arrayvalue-fetch'
+        $innermost_array_assignment = $array_assignments ? $array_assignments[count($array_assignments) - 1] : -1;
+
+        if ($innermost_array_assignment >= 0
+            && $this->path_types[$innermost_array_assignment] === 'arraykey-assignment'
+            && ($this->path_types[$path_type] === 'arrayvalue-fetch'
+                || str_starts_with($this->path_types[$path_type], 'arrayvalue-fetch@'))
         ) {
             // The value of an item under an unknown key doesn't take what was assigned to its key either. Only
             // where the flow knows that's the innermost one: an unknown key is fetched too often for the walks
