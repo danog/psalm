@@ -90,6 +90,7 @@ use Psalm\Type\MutableUnion;
 use Psalm\Type\Union;
 use UnexpectedValueException;
 
+use function array_key_first;
 use function array_keys;
 use function array_map;
 use function array_pop;
@@ -191,6 +192,7 @@ final class ArrayFetchAnalyzer
                 $stmt_type,
                 $used_key_type,
                 $context,
+                self::getParamKey($statements_analyzer, $stmt->dim),
             );
 
             // what is written through a reference to the item doesn't flow through the array
@@ -361,6 +363,7 @@ final class ArrayFetchAnalyzer
             $stmt_type,
             $used_key_type,
             $context,
+            self::getParamKey($statements_analyzer, $stmt->dim),
         );
 
         $statements_analyzer->node_data->setType($stmt, $stmt_type);
@@ -381,7 +384,29 @@ final class ArrayFetchAnalyzer
     }
 
     /**
+     * The node of the argument passed to the parameter that the array key $dim is, if it is one of the function-like
+     * analyzed, as passed: then the key of a fetch or assignment in the taint flow graph is the one each call passes
+     * (see TaintFlowResolution::resolveParamKey()).
+     */
+    public static function getParamKey(StatementsAnalyzer $statements_analyzer, ?PhpParser\Node\Expr $dim): ?string
+    {
+        if (!$dim instanceof PhpParser\Node\Expr\Variable || $statements_analyzer->taint_flow_graph === null) {
+            return null;
+        }
+
+        $source = $statements_analyzer->getSource();
+        $parent_nodes = $statements_analyzer->node_data->getType($dim)?->parent_nodes ?? [];
+
+        // not if the parameter was assigned since, whether or not it was before
+        return $source instanceof FunctionLikeAnalyzer && count($parent_nodes) === 1
+            ? $source->getParamKeyNodeId(array_key_first($parent_nodes))
+            : null;
+    }
+
+    /**
      * Used to create a path between a variable $foo and $foo["a"]
+     *
+     * @param ?string $param_key the parameter the key is (see getParamKey())
      */
     public static function taintArrayFetch(
         StatementsAnalyzer $statements_analyzer,
@@ -390,6 +415,7 @@ final class ArrayFetchAnalyzer
         Union &$stmt_type,
         Union &$offset_type,
         ?Context $context = null,
+        ?string $param_key = null,
     ): void {
         if ($statements_analyzer->data_flow_graph
             && ($stmt_var_type = $statements_analyzer->node_data->getType($var))
@@ -443,11 +469,15 @@ final class ArrayFetchAnalyzer
                 $graph->addNode($array_key_node);
             }
 
+            $key = $dim_value !== null
+                ? '-\'' . $dim_value . '\''
+                : ($param_key !== null ? '-@' . $param_key : '');
+
             foreach ($stmt_var_type->parent_nodes as $parent_node) {
                 $graph->addPath(
                     $parent_node,
                     $new_parent_node,
-                    'arrayvalue-fetch' . ($dim_value !== null ? '-\'' . $dim_value . '\'' : ''),
+                    'arrayvalue-fetch' . $key,
                     $added_taints,
                     $removed_taints,
                 );
@@ -456,7 +486,7 @@ final class ArrayFetchAnalyzer
                     $graph->addPath(
                         $new_parent_node,
                         $parent_node,
-                        'arrayvalue-assignment' . ($dim_value !== null ? '-\'' . $dim_value . '\'' : ''),
+                        'arrayvalue-assignment' . $key,
                         $added_taints,
                         $removed_taints,
                     );
