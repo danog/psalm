@@ -138,6 +138,7 @@ interface Throwable
 {
     /**
      * @psalm-mutation-free
+     * @psalm-taint-source input
      */
     public function getMessage() : string;
 
@@ -218,6 +219,7 @@ class Exception implements Throwable
 
     /**
      * @psalm-mutation-free
+     * @psalm-taint-source input
      */
     public final function getMessage() : string {}
 
@@ -298,6 +300,7 @@ class Error implements Throwable
 
     /**
      * @psalm-mutation-free
+     * @psalm-taint-source input
      */
     public final function getMessage() : string {}
 

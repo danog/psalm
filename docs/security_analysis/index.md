@@ -49,6 +49,7 @@ Psalm defines the following default taint sources:
  - reading from the input stream: `fopen()`, `file_get_contents()` and `file()` called with a literal `php://input` or `php://stdin` path, and the stream reading functions (`fgets()`, `fread()`, `stream_get_contents()`, ...) applied to such a handle;
  - the predefined `STDIN` constant (the `php://stdin` stream).
  - reading from the network: `socket_read()`, the data `socket_recv()`, `socket_recvfrom()` and `socket_recvmsg()` write to their by-reference parameter, `stream_socket_recvfrom()`, `curl_exec()` and `curl_multi_getcontent()`, and the streams opened with `fsockopen()`, `pfsockopen()`, `stream_socket_client()`, `stream_socket_accept()` and `socket_export_stream()` (so reading from them with `fgets()`, `fread()`, ... is a source too).
+ - exceptions, since the analysis does not follow them from where they are thrown to where they are caught: their message (`getMessage()`), their trace (`getTraceAsString()`) and their string form, and the variable of a `catch` block, so dumping a caught exception (`print_r()`, `var_export()`) is a source too.
 
 You can also [define your own taint sources](custom_taint_sources.md).
 
