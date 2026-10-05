@@ -11,6 +11,7 @@ use Psalm\CodeLocation;
 use Psalm\Codebase;
 use Psalm\Config;
 use Psalm\Context;
+use Psalm\Internal\Analyzer\InheritedMethodTaints;
 use Psalm\Internal\Analyzer\Statements\Expression\Call\FunctionCallReturnTypeFetcher;
 use Psalm\Internal\Analyzer\Statements\Expression\ExpressionIdentifier;
 use Psalm\Internal\Analyzer\StatementsAnalyzer;
@@ -343,9 +344,21 @@ final class MethodCallReturnTypeFetcher
                 );
 
                 if ($method_storage->location) {
-                    $this_parent_node = DataFlowNode::getForAssignment(
-                        '$this in ' . $method_id,
-                        $method_storage->location,
+                    // the body of an inherited method analyzed for the class of the object (see InheritedMethodTaints)
+                    $body_suffix = $is_declaring
+                        ? null
+                        : InheritedMethodTaints::getBodySuffix(
+                            $statements_analyzer,
+                            $method_id->fq_class_name,
+                            $declaring_method_id,
+                        );
+                    $this_parent_node = InheritedMethodTaints::withMethodSuffix(
+                        $declaring_method_id,
+                        $body_suffix,
+                        static fn(): DataFlowNode => DataFlowNode::getForAssignment(
+                            '$this in ' . ($body_suffix === null ? $method_id : $declaring_method_id),
+                            $method_storage->location,
+                        ),
                     );
 
                     foreach ($parent_nodes as $parent_node) {
@@ -429,12 +442,20 @@ final class MethodCallReturnTypeFetcher
                     if (!$is_declaring) {
                         $cased_declaring_method_id = $codebase->methods->getCasedMethodId($declaring_method_id);
 
-                        $declaring_method_call_node = DataFlowNode::getForMethodReturn(
-                            $cased_declaring_method_id,
-                            $method_storage,
-                            null,
-                            0,
-                            $method_call_node->specialization_key,
+                        $declaring_method_call_node = InheritedMethodTaints::withMethodSuffix(
+                            $declaring_method_id,
+                            InheritedMethodTaints::getBodySuffix(
+                                $statements_analyzer,
+                                $method_id->fq_class_name,
+                                $declaring_method_id,
+                            ),
+                            static fn(): DataFlowNode => DataFlowNode::getForMethodReturn(
+                                $cased_declaring_method_id,
+                                $method_storage,
+                                null,
+                                0,
+                                $method_call_node->specialization_key,
+                            ),
                         );
 
                         $taint_flow_graph->addNode($declaring_method_call_node);
@@ -465,10 +486,18 @@ final class MethodCallReturnTypeFetcher
                 if (!$is_declaring) {
                     $cased_declaring_method_id = $codebase->methods->getCasedMethodId($declaring_method_id);
 
-                    $declaring_method_call_node = DataFlowNode::getForMethodReturn(
-                        $cased_declaring_method_id,
-                        $method_storage,
-                        $node_location,
+                    $declaring_method_call_node = InheritedMethodTaints::withMethodSuffix(
+                        $declaring_method_id,
+                        InheritedMethodTaints::getBodySuffix(
+                            $statements_analyzer,
+                            $method_id->fq_class_name,
+                            $declaring_method_id,
+                        ),
+                        static fn(): DataFlowNode => DataFlowNode::getForMethodReturn(
+                            $cased_declaring_method_id,
+                            $method_storage,
+                            $node_location,
+                        ),
                     );
 
                     $taint_flow_graph->addNode($declaring_method_call_node);
@@ -499,10 +528,18 @@ final class MethodCallReturnTypeFetcher
             if (!$is_declaring) {
                 $cased_declaring_method_id = $codebase->methods->getCasedMethodId($declaring_method_id);
 
-                $declaring_method_call_node = DataFlowNode::getForMethodReturn(
-                    $cased_declaring_method_id,
-                    $method_storage,
-                    null,
+                $declaring_method_call_node = InheritedMethodTaints::withMethodSuffix(
+                    $declaring_method_id,
+                    InheritedMethodTaints::getBodySuffix(
+                        $statements_analyzer,
+                        $method_id->fq_class_name,
+                        $declaring_method_id,
+                    ),
+                    static fn(): DataFlowNode => DataFlowNode::getForMethodReturn(
+                        $cased_declaring_method_id,
+                        $method_storage,
+                        null,
+                    ),
                 );
 
                 $graph->addNode($declaring_method_call_node);
