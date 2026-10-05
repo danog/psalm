@@ -392,6 +392,15 @@ final class TaintTest extends TestCase
     public function providerValidCodeParse(): array
     {
         return [
+            'dontTaintServerEntriesOfTheServer' => [
+                'code' => '<?php
+                    include ($_SERVER["DOCUMENT_ROOT"] ?? "") . "/config.php";
+                    echo $_SERVER["SERVER_PROTOCOL"] ?? "";',
+            ],
+            'dontTaintUploadedFileTemporaryName' => [
+                'code' => '<?php
+                    move_uploaded_file($_FILES["upload"]["tmp_name"], "/tmp/upload");',
+            ],
             'dontTaintSpecializedInstancePropertyOfChildClass' => [
                 'code' => '<?php
                     /** @psalm-taint-specialize */
@@ -2455,6 +2464,40 @@ final class TaintTest extends TestCase
     public function providerInvalidCodeParse(): array
     {
         return [
+            'taintServerRequestHeader' => [
+                'code' => '<?php
+                    echo $_SERVER["HTTP_USER_AGENT"] ?? "";',
+                'error_message' => 'TaintedHtml',
+            ],
+            'taintServerPhpSelf' => [
+                'code' => '<?php
+                    echo $_SERVER["PHP_SELF"] ?? "";',
+                'error_message' => 'TaintedHtml',
+            ],
+            'taintServerDynamicKey' => [
+                'code' => '<?php
+                    /** @var string $key */
+                    $key = $GLOBALS["key"];
+                    echo (string) ($_SERVER[$key] ?? "");',
+                'error_message' => 'TaintedHtml',
+            ],
+            'taintUploadedFileName' => [
+                'code' => '<?php
+                    echo $_FILES["upload"]["name"];',
+                'error_message' => 'TaintedHtml',
+            ],
+            'taintUploadedFileNameThroughVariable' => [
+                'code' => '<?php
+                    foreach ($_FILES as $file) {
+                        echo $file["name"];
+                    }',
+                'error_message' => 'TaintedHtml',
+            ],
+            'taintUploadedFileType' => [
+                'code' => '<?php
+                    echo $_FILES["upload"]["type"];',
+                'error_message' => 'TaintedHtml',
+            ],
             'taintSpecializedInstancePropertySetByChildClass' => [
                 'code' => '<?php
                     /** @psalm-taint-specialize */
