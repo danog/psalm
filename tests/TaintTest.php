@@ -392,6 +392,21 @@ final class TaintTest extends TestCase
     public function providerValidCodeParse(): array
     {
         return [
+            'variableAssignedInEveryBranchHoldsOnlyItsLastValues' => [
+                'code' => '<?php
+                    function render(string $input, bool $html): string {
+                        if ($html) {
+                            $text = trim($input);
+                            $text = htmlspecialchars($text, ENT_QUOTES);
+                        } else {
+                            $text = "none";
+                        }
+
+                        return $text;
+                    }
+
+                    echo render($_GET["x"], true);',
+            ],
             'dontTaintAPrivatePropertyWithWhatIsSetToTheOneOfAParentClass' => [
                 'code' => '<?php // --taint-analysis
                     class Model {
@@ -2707,6 +2722,23 @@ final class TaintTest extends TestCase
     public function providerInvalidCodeParse(): array
     {
         return [
+            'variableDefinedByNarrowingInABranchKeepsItsTaints' => [
+                'code' => '<?php
+                    function render(array $names): string {
+                        foreach ($names as $name) {
+                            $first = $name;
+                            break;
+                        }
+                        if (empty($first)) {
+                            $first = "none";
+                        }
+
+                        return $first;
+                    }
+
+                    echo render($_GET["names"]);',
+                'error_message' => 'TaintedHtml',
+            ],
             'taintExceptionMessage' => [
                 'code' => '<?php
                     $x = new Exception($_GET["x"]);
