@@ -123,9 +123,11 @@ final class TaintFlowResolution
 
     /**
      * How many states a node must have for the flows reaching it in more states to be walked from it once,
-     * relative to them (see enterConvergence())
+     * relative to them (see enterConvergence()). Each convergence a flow goes through takes away one of the
+     * CONVERGENCE_LEVELS it finds the open assignments it made before them through: fewer convergences, of
+     * flows reaching a node in more states, keep more of those, at little cost.
      */
-    private const CONVERGING_STATES = 8;
+    private const CONVERGING_STATES = 12;
 
     /**
      * The kinds of entries: specialized call entries, and convergences (see enterConvergence())
@@ -135,9 +137,11 @@ final class TaintFlowResolution
 
     /**
      * Through how many convergences a flow entering an entry finds the class of an open assignment of it made
-     * before them, that a fetch in the walk of the entry observes (see getAssignmentClass())
+     * before them, that a fetch in the walk of the entry observes (see getAssignmentClass()). Values go
+     * through many convergences on large code bases (properties, parameters of functions called with many
+     * different arrays, ...): past those, no fetch ignores the open assignment.
      */
-    private const CONVERGENCE_LEVELS = 3;
+    private const CONVERGENCE_LEVELS = 12;
 
     /**
      * How many convergences of a node know the innermost open assignments of the flows entering them at most
@@ -862,6 +866,11 @@ final class TaintFlowResolution
             $observed_family = $closed_family;
         }
 
+        if ($this->path_types[$path_type] === 'arrayvalue-fetch') {
+            // it ignores an innermost array key (see getNextOpenAssignments())
+            $observed_family = self::ARRAY_FAMILY;
+        }
+
         if ($observed_family === -1 && $closed_family === -1 && $added_family === -1) {
             return $depths;
         }
@@ -1147,8 +1156,17 @@ final class TaintFlowResolution
 
         [$observed_family, $observed_key] = $this->path_type_effects[$path_type];
         [$made, $closed] = $this->open_assignments[$open_assignments];
+        $array_assignments = $made[self::ARRAY_FAMILY] ?? [];
 
-        if ($observed_family === -1) {
+        if ($array_assignments
+            && $this->path_types[$array_assignments[count($array_assignments) - 1]] === 'arraykey-assignment'
+            && $this->path_types[$path_type] === 'arrayvalue-fetch'
+        ) {
+            // The value of an item under an unknown key doesn't take what was assigned to its key either. Only
+            // where the flow knows that's the innermost one: an unknown key is fetched too often for the walks
+            // to be told apart by it in filters (see getFilter()).
+            $next = self::IGNORED;
+        } elseif ($observed_family === -1) {
             $next = $this->applyPathType($open_assignments, $path_type);
         } elseif ($made[$observed_family] && $made[$observed_family][count($made[$observed_family]) - 1] < 0) {
             // one of the call put back
