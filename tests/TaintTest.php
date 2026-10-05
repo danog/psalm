@@ -909,6 +909,12 @@ final class TaintTest extends TestCase
                     $closure = fn(): string => (string) $_GET["value"];
                     $closure();',
             ],
+            'dontReportOutputOfPrintRAndVarExportReturningIt' => [
+                'code' => '<?php
+                    $exported = var_export($_GET["x"], true);
+                    $printed = print_r($_GET["x"], true);
+                    $named = print_r(value: $_GET["x"], return: true);',
+            ],
             'dontTaintSpecializedCallsForAnonymousInstance' => [
                 'code' => '<?php
 
@@ -2714,6 +2720,21 @@ final class TaintTest extends TestCase
                     $_GET[(string) $_POST["k"]] = $_POST["v"];
                     $_GET["x"]();',
                 'error_message' => 'TaintedCallable',
+            ],
+            'taintPrintRReturningItsOutput' => [
+                'code' => '<?php
+                    echo print_r($_GET["x"], true);',
+                'error_message' => 'TaintedHtml',
+            ],
+            'taintVarExportReturningItsOutput' => [
+                'code' => '<?php
+                    echo var_export($_GET["x"], true);',
+                'error_message' => 'TaintedHtml',
+            ],
+            'taintPrintROutput' => [
+                'code' => '<?php
+                    print_r($_GET["x"]);',
+                'error_message' => 'TaintedHtml',
             ],
             'taintThroughArrayMapImplicitFunctionCall' => [
                 'code' => '<?php
