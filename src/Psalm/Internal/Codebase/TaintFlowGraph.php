@@ -658,16 +658,14 @@ final class TaintFlowGraph extends DataFlowGraph
         Config $config,
         Codebase $codebase,
     ): void {
-        if ($predecessor->code_location === null) {
-            return;
-        }
-
         if ($sink->code_location
             && $config->reportIssueInFile('TaintedInput', $sink->code_location->file_path)
         ) {
             $issue_location = $sink->code_location;
-        } else {
+        } elseif ($predecessor->code_location !== null) {
             $issue_location = $predecessor->code_location;
+        } else {
+            return;
         }
 
         $issue_trace = $this->getIssueTrace($predecessor);
