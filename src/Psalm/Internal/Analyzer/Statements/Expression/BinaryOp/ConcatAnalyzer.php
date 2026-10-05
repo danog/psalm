@@ -44,12 +44,16 @@ use Psalm\Type\Atomic\TNumericString;
 use Psalm\Type\Atomic\TString;
 use Psalm\Type\Atomic\TTemplateParam;
 use Psalm\Type\Atomic\TTypeVariable;
+use Psalm\Type\TaintKind;
 use Psalm\Type\Union;
 use UnexpectedValueException;
 
 use function count;
+use function in_array;
+use function preg_match;
 use function reset;
 use function strlen;
+use function strtolower;
 
 /**
  * @internal
@@ -57,6 +61,116 @@ use function strlen;
 final class ConcatAnalyzer
 {
     private const MAX_LITERALS = 64;
+
+    /**
+     * The taints a value can't have once appended to $prefix, if $prefix is the start of a URL fixing its origin: a
+     * scheme or `//`, a host and the `/`, `?` or `#` ending it. What follows such a prefix can only change the path,
+     * the query or the fragment of the URL, never the server it is sent to (`ssrf` taint). With a network scheme it
+     * can't make the URL a local file either (`file` taint), unlike with `file://`, `php://`... or no scheme.
+     *
+     * @psalm-pure
+     */
+    public static function getTaintsRemovedAfterUrlOrigin(string $prefix): int
+    {
+        if (preg_match('~^(?:([a-z][a-z\d+.\-]*):)?//[^/?#]+[/?#]~i', $prefix, $matches) !== 1) {
+            return 0;
+        }
+
+        $scheme = strtolower($matches[1] ?? '');
+
+        return in_array($scheme, ['http', 'https', 'ftp', 'ftps'], true)
+            ? TaintKind::INPUT_SSRF | TaintKind::INPUT_FILE
+            : TaintKind::INPUT_SSRF;
+    }
+
+    /**
+     * The taints a value can't have once appended to any of $prefixes (see getTaintsRemovedAfterUrlOrigin()): only
+     * those every one of them removes
+     *
+     * @param list<string> $prefixes
+     * @psalm-pure
+     */
+    public static function getTaintsRemovedAfterUrlOrigins(array $prefixes): int
+    {
+        $removed_taints = null;
+
+        foreach ($prefixes as $prefix) {
+            $removed_taints = $removed_taints === null
+                ? self::getTaintsRemovedAfterUrlOrigin($prefix)
+                : $removed_taints & self::getTaintsRemovedAfterUrlOrigin($prefix);
+        }
+
+        return $removed_taints ?? 0;
+    }
+
+    /**
+     * The literal strings $expr can start with, as far as they are known: none if it can start with anything
+     *
+     * @return list<string>
+     */
+    public static function getLiteralPrefixes(StatementsAnalyzer $statements_analyzer, PhpParser\Node\Expr $expr): array
+    {
+        $type = $statements_analyzer->node_data->getType($expr);
+        $literals = $type ? self::getLiteralStrings($type) : null;
+
+        if ($literals !== null) {
+            return $literals;
+        }
+
+        if ($expr instanceof PhpParser\Node\Expr\BinaryOp\Concat) {
+            $left_prefixes = self::getLiteralPrefixes($statements_analyzer, $expr->left);
+
+            $left_type = $statements_analyzer->node_data->getType($expr->left);
+
+            // all of the left side is known: what the right side starts with follows it
+            if ($left_prefixes !== [] && $left_type && self::getLiteralStrings($left_type) !== null) {
+                $right_prefixes = self::getLiteralPrefixes($statements_analyzer, $expr->right) ?: [''];
+
+                if (count($left_prefixes) * count($right_prefixes) <= self::MAX_LITERALS) {
+                    $prefixes = [];
+
+                    foreach ($left_prefixes as $left_prefix) {
+                        foreach ($right_prefixes as $right_prefix) {
+                            $prefixes[] = $left_prefix . $right_prefix;
+                        }
+                    }
+
+                    return $prefixes;
+                }
+            }
+
+            return $left_prefixes;
+        }
+
+        if ($expr instanceof PhpParser\Node\Scalar\InterpolatedString) {
+            $first_part = $expr->parts[0] ?? null;
+
+            return $first_part instanceof PhpParser\Node\InterpolatedStringPart ? [$first_part->value] : [];
+        }
+
+        return [];
+    }
+
+    /**
+     * The values of a type of string literals, null if it can be any other value
+     *
+     * @return non-empty-list<string>|null
+     * @psalm-mutation-free
+     */
+    private static function getLiteralStrings(Union $type): ?array
+    {
+        $values = [];
+
+        foreach ($type->getAtomicTypes() as $atomic) {
+            if (!$atomic instanceof TLiteralString) {
+                return null;
+            }
+
+            $values[] = $atomic->value;
+        }
+
+        return $values;
+    }
 
     public static function analyze(
         StatementsAnalyzer $statements_analyzer,

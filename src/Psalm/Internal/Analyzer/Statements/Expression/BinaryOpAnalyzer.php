@@ -187,9 +187,15 @@ final class BinaryOpAnalyzer
                     }
                 }
 
+                // after the start of a URL fixing its server (the left operand's, and the right operand's own
+                // literal start when the left operand is a literal), the right operand can't choose it
+                $right_removed_taints = $removed_taints | ConcatAnalyzer::getTaintsRemovedAfterUrlOrigins(
+                    ConcatAnalyzer::getLiteralPrefixes($statements_analyzer, $stmt),
+                );
+
                 if ($stmt_right_type && $stmt_right_type->parent_nodes) {
                     // what an operand converts to can't hold the taints its type can't (e.g. a number)
-                    $right_removed_taints = $removed_taints | $stmt_right_type->getTaintsToRemove();
+                    $right_removed_taints |= $stmt_right_type->getTaintsToRemove();
                     foreach ($stmt_right_type->parent_nodes as $parent_node) {
                         $graph->addPath(
                             $parent_node,

@@ -392,6 +392,25 @@ final class TaintTest extends TestCase
     public function providerValidCodeParse(): array
     {
         return [
+            'dontTaintSsrfAfterAnyOfTheStartsOfAUrlFixingItsServer' => [
+                'code' => '<?php // --taint-analysis
+                    $origin = match ((string) $_GET["host"]) {
+                        "example.com" => "https://example.com/",
+                        default => "https://example.org/",
+                    };
+                    file_get_contents($origin . (string) $_GET["path"]);',
+            ],
+            'dontTaintSsrfAfterTheStartOfAUrlFixingItsServer' => [
+                'code' => '<?php // --taint-analysis
+                    $value = (string) $_GET["value"];
+                    file_get_contents("https://api.example.com/search?q=" . $value);
+                    file_get_contents("https://api.example.com/items/{$value}/details");
+                    file_get_contents(sprintf("https://api.example.com/items/%s", $value));
+                    file_get_contents("https://api.example.com/" . $value . "/" . $value);
+                    $origin = "https://api.example.com";
+                    file_get_contents($origin . "/" . $value);
+                    file_get_contents("https://api.example.com" . "/{$value}");',
+            ],
             'dontTaintAnotherKeyOfWhatAGeneratorYields' => [
                 'code' => '<?php // --taint-analysis
                     /** @return Generator<int, array{a: string, b: string}> */
@@ -2486,6 +2505,32 @@ final class TaintTest extends TestCase
     public function providerInvalidCodeParse(): array
     {
         return [
+            'taintFileAfterTheStartOfAUrlWithoutScheme' => [
+                'code' => '<?php // --taint-analysis
+                    file_get_contents("//api.example.com/" . (string) $_GET["value"]);',
+                'error_message' => 'TaintedFile',
+            ],
+            'taintSsrfAfterOneOfTheStartsOfAUrlNotEndingItsHost' => [
+                'code' => '<?php
+                    $origin = rand(0, 1) ? "https://example.com/" : "https://example.org";
+                    file_get_contents($origin . (string) $_GET["path"]);',
+                'error_message' => 'TaintedSSRF',
+            ],
+            'taintSsrfAfterAUrlStartNotEndingItsHost' => [
+                'code' => '<?php // --taint-analysis
+                    file_get_contents("https://api.example.com" . (string) $_GET["value"]);',
+                'error_message' => 'TaintedSSRF',
+            ],
+            'taintSsrfInTheHostOfAFormattedUrl' => [
+                'code' => '<?php // --taint-analysis
+                    file_get_contents(sprintf("https://%s/items", (string) $_GET["value"]));',
+                'error_message' => 'TaintedSSRF',
+            ],
+            'taintHtmlAfterTheStartOfAUrl' => [
+                'code' => '<?php // --taint-analysis
+                    echo "https://example.com/" . (string) $_GET["value"];',
+                'error_message' => 'TaintedHtml',
+            ],
             'taintWhatAGeneratorYields' => [
                 'code' => '<?php // --taint-analysis
                     /** @return Generator<int, string> */
