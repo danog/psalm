@@ -394,6 +394,22 @@ final class TaintTest extends TestCase
     public function providerValidCodeParse(): array
     {
         return [
+            'keyOfAnArrayGivenToAValueSink' => [
+                // Only the values of the array are a sink: its keys (the names of the templates here) aren't.
+                'code' => '<?php
+                    final class Loader {
+                        /** @psalm-taint-sink eval $templates[*] */
+                        public function __construct(private array $templates) {}
+                    }
+
+                    /** @psalm-taint-sink html $values[*] */
+                    function showValues(array $values): void {}
+
+                    $name = (string) ($_GET["name"] ?? "");
+                    new Loader([$name => "template"]);
+                    showValues([$name => "value"]);
+                    showValues(["a" => "value"]);',
+            ],
             'keysOfArraysPassedToASpecializedFunctionFromManyCalls' => [
                 // more calls than a node can hold states before widening: the copies of the call of render() in
                 // the filters of the walk of tag() for each key keep the open assignments of the calls
@@ -3300,6 +3316,34 @@ final class TaintTest extends TestCase
     public function providerInvalidCodeParse(): array
     {
         return [
+            'taintValueOfAnArrayGivenToAValueSink' => [
+                'code' => '<?php // --taint-analysis
+                    final class Loader {
+                        /** @psalm-taint-sink eval $templates[*] */
+                        public function __construct(private array $templates) {}
+                    }
+
+                    new Loader(["main" => (string) ($_GET["template"] ?? "")]);',
+                'error_message' => 'TaintedEval',
+            ],
+            'taintArrayGivenToAValueSink' => [
+                'code' => '<?php // --taint-analysis
+                    /** @psalm-taint-sink html $values[*] */
+                    function showValues(array $values): void {}
+
+                    showValues($_GET);',
+                'error_message' => 'TaintedHtml',
+            ],
+            'taintValueOfAnArrayGivenToAValueSinkAfterAKey' => [
+                'code' => '<?php // --taint-analysis
+                    /** @psalm-taint-sink html $values[*] */
+                    function showValues(array $values): void {}
+
+                    $input = (string) ($_GET["input"] ?? "");
+                    showValues([$input => "value"]);
+                    showValues(["value" => $input]);',
+                'error_message' => 'TaintedHtml',
+            ],
             'keyOfAnArrayPassedToASpecializedFunctionFromOneOfManyCalls' => [
                 'code' => '<?php
                     /** @psalm-taint-specialize */
