@@ -280,6 +280,24 @@ final class TaintTest extends TestCase
     public function providerValidCodeParse(): array
     {
         return [
+            'keyFetchTwoCallsDownIgnoresTheValuesOfAKeyFetchedOneCallDown' => [
+                'code' => '<?php // --taint-analysis
+                    /** @psalm-taint-specialize */
+                    function keys(array $attr): string {
+                        $out = "";
+                        foreach ($attr as $k => $_) {
+                            $out .= $k;
+                        }
+                        return $out;
+                    }
+
+                    /** @psalm-taint-specialize */
+                    function render(array $data): string {
+                        return keys($data["attr"]);
+                    }
+
+                    echo render(["attr" => ["href" => (string) $_GET["p"]]]);',
+            ],
             'fetchOfOneKeyWhereConvergingKeyedArraysConvergeAgain' => [
                 // Differently keyed arrays converge at $row, and its flows converge again at $r with others: the
                 // fetch still ignores those of other keys.
@@ -1503,6 +1521,25 @@ final class TaintTest extends TestCase
     public function providerInvalidCodeParse(): array
     {
         return [
+            'keyFetchTwoCallsDownTakesTheKeysOfAKeyFetchedOneCallDown' => [
+                'code' => '<?php // --taint-analysis
+                    /** @psalm-taint-specialize */
+                    function keys(array $attr): string {
+                        $out = "";
+                        foreach ($attr as $k => $_) {
+                            $out .= $k;
+                        }
+                        return $out;
+                    }
+
+                    /** @psalm-taint-specialize */
+                    function render(array $data): string {
+                        return keys($data["attr"]);
+                    }
+
+                    echo render(["attr" => [(string) $_GET["p"] => 1]]);',
+                'error_message' => 'TaintedHtml',
+            ],
             'taintArrayValueWrappedDeeperInALoop' => [
                 'code' => '<?php // --taint-analysis
                     $value = (string) $_GET["value"];
