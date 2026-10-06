@@ -438,6 +438,89 @@ final class TaintTest extends TestCase
                         echo $attr["data"]["page"];
                     }',
             ],
+            'keysOfArraysOfManyObjectsASpecializedMethodPassesOn' => [
+                // more objects than a node can hold states before widening: the copies of the calls in the filters
+                // of the walk of render() for each key keep the open assignments of the calls
+                'code' => '<?php
+                    final class Attributes {
+                        /** @psalm-taint-specialize */
+                        public static function prepare(mixed $attr): array|string {
+                            if (is_array($attr)) {
+                                $prepared = [];
+                                foreach ($attr as $key => $value) {
+                                    $prepared[$key] = self::prepare($value);
+                                }
+                                return $prepared;
+                            }
+                            return (string) $attr;
+                        }
+
+                        /** @psalm-taint-specialize */
+                        public static function render(array|string $attr): string {
+                            $html = [];
+                            foreach ($attr as $name => $value) {
+                                $html[] = $name . "=\"" . htmlspecialchars((string) $value) . "\"";
+                            }
+                            return implode(" ", $html);
+                        }
+                    }
+
+                    /** @psalm-taint-specialize */
+                    final class Tag {
+                        private array $attr;
+
+                        public function __construct(array $attr) {
+                            $this->attr = $attr;
+                        }
+
+                        public function render(): string {
+                            $attr = Attributes::prepare($this->attr);
+                            return "<a " . Attributes::render($attr) . ">";
+                        }
+                    }
+' . implode('', array_map(
+                    static fn(int $i): string => '$t = new Tag(["k' . $i . '" => (string) $_GET["q"]]);' . "\n" . 'echo $t->render();' . "\n",
+                    range(1, 1100),
+                )),
+            ],
+            'keysOfWhatARecursiveSpecializedCallTransformsPassedToAnotherCall' => [
+                'code' => '<?php
+                    final class Attributes {
+                        /** @psalm-taint-specialize */
+                        public static function prepare(mixed $attr): array|string {
+                            if (is_array($attr)) {
+                                $prepared = [];
+                                foreach ($attr as $key => $value) {
+                                    $prepared[$key] = self::prepare($value);
+                                }
+                                return $prepared;
+                            }
+                            return (string) $attr;
+                        }
+
+                        /** @psalm-taint-specialize */
+                        public static function render(array|string $attr): string {
+                            $html = [];
+                            foreach ($attr as $name => $value) {
+                                $html[] = $name . "=\"" . htmlspecialchars((string) $value) . "\"";
+                            }
+                            return implode(" ", $html);
+                        }
+                    }
+
+                    /** @psalm-taint-specialize */
+                    function decorate(array $attr): string {
+                        return "<a " . Attributes::render($attr) . ">";
+                    }
+
+                    /** @psalm-taint-specialize */
+                    function anchor(array $opts): string {
+                        $attr = Attributes::prepare($opts);
+                        return is_array($attr) ? decorate($attr) : "";
+                    }
+
+                    echo anchor(["data-q" => (string) $_GET["q"]]);',
+            ],
             'fetchOfAnotherKeyOfAnElementARecursiveSpecializedCallTransforms' => [
                 'code' => '<?php
                     final class Attributes {
@@ -3239,6 +3322,91 @@ final class TaintTest extends TestCase
                     if (is_array($attr) && is_array($attr["data"]) && is_string($attr["data"]["q"])) {
                         echo $attr["data"]["q"];
                     }',
+                'error_message' => 'TaintedHtml',
+            ],
+            'keyOfAnArrayOfOneOfManyObjectsASpecializedMethodPassesOn' => [
+                'code' => '<?php
+                    final class Attributes {
+                        /** @psalm-taint-specialize */
+                        public static function prepare(mixed $attr): array|string {
+                            if (is_array($attr)) {
+                                $prepared = [];
+                                foreach ($attr as $key => $value) {
+                                    $prepared[$key] = self::prepare($value);
+                                }
+                                return $prepared;
+                            }
+                            return (string) $attr;
+                        }
+
+                        /** @psalm-taint-specialize */
+                        public static function render(array|string $attr): string {
+                            $html = [];
+                            foreach ($attr as $name => $value) {
+                                $html[] = $name . "=\"" . htmlspecialchars((string) $value) . "\"";
+                            }
+                            return implode(" ", $html);
+                        }
+                    }
+
+                    /** @psalm-taint-specialize */
+                    final class Tag {
+                        private array $attr;
+
+                        public function __construct(array $attr) {
+                            $this->attr = $attr;
+                        }
+
+                        public function render(): string {
+                            $attr = Attributes::prepare($this->attr);
+                            return "<a " . Attributes::render($attr) . ">";
+                        }
+                    }
+' . implode('', array_map(
+                    static fn(int $i): string => '$t = new Tag(["k' . $i . '" => (string) $_GET["q"]]);' . "\n" . 'echo $t->render();' . "\n",
+                    range(1, 1100),
+                )) . '
+                    $t = new Tag([(string) $_GET["q"] => "x"]);
+                    echo $t->render();',
+                'error_message' => 'TaintedHtml',
+            ],
+            'keyOfWhatARecursiveSpecializedCallTransformsPassedToAnotherCall' => [
+                'code' => '<?php
+                    final class Attributes {
+                        /** @psalm-taint-specialize */
+                        public static function prepare(mixed $attr): array|string {
+                            if (is_array($attr)) {
+                                $prepared = [];
+                                foreach ($attr as $key => $value) {
+                                    $prepared[$key] = self::prepare($value);
+                                }
+                                return $prepared;
+                            }
+                            return (string) $attr;
+                        }
+
+                        /** @psalm-taint-specialize */
+                        public static function render(array|string $attr): string {
+                            $html = [];
+                            foreach ($attr as $name => $value) {
+                                $html[] = $name . "=\"" . htmlspecialchars((string) $value) . "\"";
+                            }
+                            return implode(" ", $html);
+                        }
+                    }
+
+                    /** @psalm-taint-specialize */
+                    function decorate(array $attr): string {
+                        return "<a " . Attributes::render($attr) . ">";
+                    }
+
+                    /** @psalm-taint-specialize */
+                    function anchor(array $opts): string {
+                        $attr = Attributes::prepare($opts);
+                        return is_array($attr) ? decorate($attr) : "";
+                    }
+
+                    echo anchor([(string) $_GET["q"] => "x"]);',
                 'error_message' => 'TaintedHtml',
             ],
             'fetchOfTheKeyOfAnElementARecursiveSpecializedCallTransforms' => [
