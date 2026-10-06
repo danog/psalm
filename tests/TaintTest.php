@@ -2824,6 +2824,94 @@ final class TaintTest extends TestCase
 
                     echo (string) getKey(withKey([], "a", $_GET["value"]), "b");',
             ],
+            'dontTaintThePropertiesOfASubclassWithWhatAnInheritedMethodSetsOnAnotherSubclass' => [
+                'code' => '<?php // --taint-analysis
+                    abstract class Provider {
+                        /** @var array<string, string> */
+                        protected array $options = [];
+
+                        /** @param array<string, string> $options */
+                        public function __construct(array $options) {
+                            $this->setOptions($options);
+                        }
+
+                        /** @param array<string, string> $options */
+                        public function setOptions(array $options): void {
+                            foreach ($options as $key => $value) {
+                                $this->setOption($key, $value);
+                            }
+                        }
+
+                        public function setOption(string $key, string $value): void {
+                            $this->options[$key] = $value;
+                        }
+                    }
+
+                    final class Comments extends Provider {}
+
+                    final class Activity extends Provider {
+                        public function printIds(): void {
+                            echo $this->options["ids"] ?? "";
+                        }
+                    }
+
+                    new Comments(["comment" => (string) $_GET["comment"]]);
+                    (new Activity([]))->printIds();',
+            ],
+            'dontPassWhatAnInheritedBodyGivesSelfCallsToTheOverridesOfSubclasses' => [
+                'code' => '<?php // --taint-analysis
+                    class Base {
+                        public function show(string $text): void {}
+
+                        public function run(string $text): void {
+                            self::show($text);
+                        }
+                    }
+
+                    class Child extends Base {}
+
+                    final class GrandChild extends Child {
+                        public function show(string $text): void {
+                            echo $text;
+                        }
+                    }
+
+                    // self:: runs Base::show, whatever the class of the object
+                    (new Child())->run((string) $_GET["text"]);',
+            ],
+            'dontTaintThePropertiesOfASubclassWithWhatAParentConstructorSetsOnAnotherSubclass' => [
+                'code' => '<?php // --taint-analysis
+                    class Field {
+                        /** @var array<string, string> */
+                        protected array $opts;
+
+                        /** @param array<string, string> $opts */
+                        public function __construct(array $opts) {
+                            $this->opts = $opts;
+                        }
+                    }
+
+                    final class Checkbox extends Field {
+                        /** @param array<string, string> $opts */
+                        public function __construct(array $opts) {
+                            parent::__construct($opts);
+                        }
+                    }
+
+                    final class Button extends Field {
+                        /** @param array<string, string> $opts */
+                        public function __construct(array $opts) {
+                            parent::__construct($opts);
+                        }
+
+                        public function render(): void {
+                            echo $this->opts["label"] ?? "";
+                        }
+                    }
+
+                    new Checkbox(["label" => (string) $_GET["label"]]);
+                    (new Button([]))->render();',
+            ],
         ];
     }
 
@@ -7853,6 +7941,102 @@ final class TaintTest extends TestCase
                     }
                     B::test($foo);',
                 'error_message' => 'TaintedCallable',
+            ],
+            'taintThePropertiesOfAnObjectWithWhatAnInheritedMethodSetsOnIt' => [
+                'code' => '<?php // --taint-analysis
+                    abstract class Provider {
+                        /** @var array<string, string> */
+                        protected array $options = [];
+
+                        /** @param array<string, string> $options */
+                        public function __construct(array $options) {
+                            $this->setOptions($options);
+                        }
+
+                        /** @param array<string, string> $options */
+                        public function setOptions(array $options): void {
+                            foreach ($options as $key => $value) {
+                                $this->setOption($key, $value);
+                            }
+                        }
+
+                        public function setOption(string $key, string $value): void {
+                            $this->options[$key] = $value;
+                        }
+                    }
+
+                    final class Activity extends Provider {
+                        public function printIds(): void {
+                            echo $this->options["ids"] ?? "";
+                        }
+                    }
+
+                    (new Activity(["ids" => (string) $_GET["ids"]]))->printIds();',
+                'error_message' => 'TaintedHtml',
+            ],
+            'taintThePropertiesOfAnObjectWithWhatAParentConstructorSetsOnIt' => [
+                'code' => '<?php // --taint-analysis
+                    class Field {
+                        /** @var array<string, string> */
+                        protected array $opts;
+
+                        /** @param array<string, string> $opts */
+                        public function __construct(array $opts) {
+                            $this->opts = $opts;
+                        }
+                    }
+
+                    final class Button extends Field {
+                        /** @param array<string, string> $opts */
+                        public function __construct(array $opts) {
+                            parent::__construct($opts);
+                        }
+
+                        public function render(): void {
+                            echo $this->opts["label"] ?? "";
+                        }
+                    }
+
+                    (new Button(["label" => (string) $_GET["label"]]))->render();',
+                'error_message' => 'TaintedHtml',
+            ],
+            'taintWhatAnInheritedMethodReturnsOfItsObject' => [
+                'code' => '<?php // --taint-analysis
+                    class Model {
+                        protected string $name = "";
+
+                        public function setName(string $name): void {
+                            $this->name = $name;
+                        }
+
+                        public function getName(): string {
+                            return $this->name;
+                        }
+                    }
+
+                    final class Admin extends Model {}
+
+                    $admin = new Admin();
+                    $admin->setName((string) $_GET["name"]);
+                    echo $admin->getName();',
+                'error_message' => 'TaintedHtml',
+            ],
+            'taintServerRequestMethod' => [
+                'code' => '<?php
+                    echo $_SERVER["REQUEST_METHOD"] ?? "";',
+                'error_message' => 'TaintedHtml',
+            ],
+            'taintServerRedirectedRequestHeader' => [
+                'code' => '<?php
+                    echo $_SERVER["REDIRECT_REDIRECT_HTTP_USER_AGENT"] ?? "";',
+                'error_message' => 'TaintedHtml',
+            ],
+            'taintServerArgvFromQueryString' => [
+                'code' => '<?php
+                    foreach ($_SERVER["argv"] ?? [] as $arg) {
+                        echo $arg;
+                    }',
+                'error_message' => 'TaintedHtml',
             ],
         ];
     }
