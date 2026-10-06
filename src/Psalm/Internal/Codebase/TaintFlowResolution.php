@@ -163,14 +163,6 @@ final class TaintFlowResolution
     private const MAX_CONVERGENCE_KEYS = 32;
 
     /**
-     * How many open assignments of the calls entering it a filter (see getFilter() and dependOnClass()) knows at
-     * most before it no longer splits into filters of its own for the class of another one: the filters of a
-     * filter tell apart the flows the fetches of nested data observe (an array stored in a property of an object
-     * then read back, a key fetch of what was fetched from it), but there is one for each combination of classes
-     */
-    private const MAX_FILTER_FACTS = 4;
-
-    /**
      * The bits of a packed observable depth (see computeObservableDepths()) for each expression type
      */
     private const DEPTH_BITS = 8;
@@ -2345,9 +2337,7 @@ final class TaintFlowResolution
             return true;
         }
 
-        if (!$this->entry_tracks_classes[$context]
-            && count($this->entry_facts[$context]) >= self::MAX_FILTER_FACTS
-        ) {
+        if (!$this->entry_tracks_classes[$context]) {
             // see getAssignmentClass()
             return true;
         }
@@ -2408,13 +2398,11 @@ final class TaintFlowResolution
             return $class;
         }
 
-        if (!$this->entry_tracks_classes[$context]
-            && count($this->entry_facts[$context]) >= self::MAX_FILTER_FACTS
-        ) {
-            // Already in a filter for the calls agreeing on MAX_FILTER_FACTS other open assignments: a filter of
-            // it for each class there too would make one for every combination of classes of the open
-            // assignments a walk observes. So no fetch ignores it, as above. (Not one for the calls passing a key
-            // to a parameter: each passes one, so those multiply the filters by the calls at most.)
+        if (!$this->entry_tracks_classes[$context]) {
+            // Already in a filter, for the calls agreeing on another open assignment: a filter of it for each
+            // class there too would make one for every combination of classes of the open assignments a walk
+            // observes. So no fetch ignores it, as above. (Not one for the calls passing a key to a parameter:
+            // each passes one, so those multiply the filters by the calls at most.)
             return '';
         }
 

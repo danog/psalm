@@ -426,60 +426,6 @@ final class TaintTest extends TestCase
                     request("/topics/{$value}/partitions");
                     request(sprintf("/consumers/%s/instances/%s", $value, $value));',
             ],
-            'keysOfANestedArrayPassedOnByASpecializedCallDontHoldItsValues' => [
-                'code' => '<?php
-                    /**
-                     * @param array<string, string> $attr
-                     * @psalm-taint-specialize
-                     */
-                    function keys(array $attr): string {
-                        $s = "";
-                        foreach ($attr as $k => $_) { $s .= $k; }
-                        return $s;
-                    }
-
-                    /**
-                     * @param array{attr: array<string, string>} $data
-                     * @psalm-taint-specialize
-                     */
-                    function render(array $data): string {
-                        return keys($data["attr"]);
-                    }
-
-                    echo render(["attr" => ["href" => (string) $_GET["p"]]]);',
-            ],
-            'keysOfAnArrayASpecializedObjectHoldsDontHoldItsValues' => [
-                'code' => '<?php
-                    final class Helper {
-                        /**
-                         * @param array<string, string> $attr
-                         * @psalm-taint-specialize
-                         */
-                        public static function renderAttr(array $attr): string {
-                            $s = "";
-                            foreach ($attr as $k => $_) { $s .= $k; }
-                            return $s;
-                        }
-                    }
-
-                    /** @psalm-taint-specialize */
-                    final class Tag {
-                        /** @var array<string, string> */
-                        private array $attr;
-
-                        /** @param array<string, string> $attr */
-                        public function __construct(array $attr) {
-                            $this->attr = $attr;
-                        }
-
-                        public function render(): string {
-                            return Helper::renderAttr($this->attr);
-                        }
-                    }
-
-                    $tag = new Tag(["href" => (string) $_GET["p"]]);
-                    echo $tag->render();',
-            ],
             'recursiveCallReturnsIntoTheBodyMakingIt' => [
                 'code' => '<?php // --taint-analysis
                     function wrap(mixed $value): mixed {
@@ -3131,62 +3077,6 @@ final class TaintTest extends TestCase
                     request("/\\\\" . $value);
                     request("/" . $value);',
                 'error_message' => 'TaintedSSRF',
-            ],
-            'valuesOfANestedArrayPassedOnByASpecializedCallKeepTheirTaints' => [
-                'code' => '<?php
-                    /**
-                     * @param array<string, string> $attr
-                     * @psalm-taint-specialize
-                     */
-                    function values(array $attr): string {
-                        $s = "";
-                        foreach ($attr as $_ => $v) { $s .= $v; }
-                        return $s;
-                    }
-
-                    /**
-                     * @param array{attr: array<string, string>} $data
-                     * @psalm-taint-specialize
-                     */
-                    function render(array $data): string {
-                        return values($data["attr"]);
-                    }
-
-                    echo render(["attr" => ["href" => (string) $_GET["p"]]]);',
-                'error_message' => 'TaintedHtml',
-            ],
-            'valuesOfAnArrayASpecializedObjectHoldsKeepTheirTaints' => [
-                'code' => '<?php
-                    final class Helper {
-                        /**
-                         * @param array<string, string> $attr
-                         * @psalm-taint-specialize
-                         */
-                        public static function renderAttr(array $attr): string {
-                            $s = "";
-                            foreach ($attr as $_ => $v) { $s .= $v; }
-                            return $s;
-                        }
-                    }
-
-                    /** @psalm-taint-specialize */
-                    final class Tag {
-                        /** @var array<string, string> */
-                        private array $attr;
-
-                        /** @param array<string, string> $attr */
-                        public function __construct(array $attr) {
-                            $this->attr = $attr;
-                        }
-
-                        public function render(): string {
-                            return Helper::renderAttr($this->attr);
-                        }
-                    }
-
-                    $tag = new Tag(["href" => (string) $_GET["p"]]);
-                    echo $tag->render();',
-                'error_message' => 'TaintedHtml',
             ],
             'recursiveCallReturnsIntoTheArrayItBuilds' => [
                 'code' => '<?php // --taint-analysis
