@@ -522,13 +522,14 @@ final class BinaryOpAnalyzer
             $graph->addSource($taint_source);
         }
 
+        $literal_prefixes = ConcatAnalyzer::getConcatLiteralPrefixes($statements_analyzer, $stmt->left, $stmt->right);
+        $statements_analyzer->node_data->setLiteralPrefixes($stmt, $literal_prefixes);
+
         // after the start of a URL fixing its server (the left operand's, and the right operand's own literal start
         // when the left operand is a literal), the right operand can't choose it
         $operand_removed_taints = [
             $removed_taints,
-            $removed_taints | ConcatAnalyzer::getTaintsRemovedAfterUrlOrigins(
-                ConcatAnalyzer::getLiteralPrefixes($statements_analyzer, $stmt),
-            ),
+            $removed_taints | ConcatAnalyzer::getTaintsRemovedAfterUrlOrigins($literal_prefixes),
         ];
 
         // an object operand is concatenated as what its __toString returns

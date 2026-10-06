@@ -10,6 +10,7 @@ use Psalm\Internal\Analyzer\ProjectAnalyzer;
 use Psalm\Internal\DataFlow\DataFlowNode;
 use Psalm\Internal\DataFlow\Path;
 use Psalm\Progress\Progress;
+use Psalm\Type\TaintKind;
 
 use function array_key_exists;
 use function array_key_first;
@@ -3268,6 +3269,14 @@ final class TaintFlowResolution
 
         $this->reported_pointers[$sink_id][$pointer_key] = $looked_at | $taints;
 
+        // a value choosing the server of a URL can also inject any URL syntax in it, such as the `..` segments of
+        // its path: each is reported as the most general issue alone
+        if (($taints & TaintKind::INPUT_SSRF) !== 0) {
+            $taints &= ~(TaintKind::INPUT_URL_COMPONENT | TaintKind::INPUT_URL_PATH);
+        } elseif (($taints & TaintKind::INPUT_URL_COMPONENT) !== 0) {
+            $taints &= ~TaintKind::INPUT_URL_PATH;
+        }
+
         $sink = $this->sinks[$sink_id];
         $predecessor_id = $this->state_nodes[$state];
 
@@ -3295,7 +3304,11 @@ final class TaintFlowResolution
                 continue;
             }
 
-            $this->reported_flows[$sink_id][$predecessor_id][$origin] = $reported | $taint;
+            $this->reported_flows[$sink_id][$predecessor_id][$origin] = $reported | $taint | match ($taint) {
+                TaintKind::INPUT_SSRF => TaintKind::INPUT_URL_COMPONENT | TaintKind::INPUT_URL_PATH,
+                TaintKind::INPUT_URL_COMPONENT => TaintKind::INPUT_URL_PATH,
+                default => 0,
+            };
 
             $predecessor = null;
 

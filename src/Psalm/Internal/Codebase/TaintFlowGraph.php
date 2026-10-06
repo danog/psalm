@@ -31,6 +31,8 @@ use Psalm\Issue\TaintedSql;
 use Psalm\Issue\TaintedSystemSecret;
 use Psalm\Issue\TaintedTextWithQuotes;
 use Psalm\Issue\TaintedUnserialize;
+use Psalm\Issue\TaintedUrlComponent;
+use Psalm\Issue\TaintedUrlPath;
 use Psalm\Issue\TaintedUserSecret;
 use Psalm\Issue\TaintedXpath;
 use Psalm\IssueBuffer;
@@ -775,6 +777,18 @@ final class TaintFlowGraph extends DataFlowGraph
                 ),
                 TaintKind::INPUT_SSRF => new TaintedSSRF(
                     'Detected tainted network request',
+                    $issue_location,
+                    $issue_trace,
+                    $path,
+                ),
+                TaintKind::INPUT_URL_COMPONENT => new TaintedUrlComponent(
+                    'Detected tainted URL component',
+                    $issue_location,
+                    $issue_trace,
+                    $path,
+                ),
+                TaintKind::INPUT_URL_PATH => new TaintedUrlPath(
+                    'Detected tainted URL path segment',
                     $issue_location,
                     $issue_trace,
                     $path,
