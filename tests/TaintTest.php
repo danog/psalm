@@ -458,6 +458,29 @@ final class TaintTest extends TestCase
                     $tainted = Phone::format((string) $_GET["phone"]);
                     echo Phone::format("12");',
             ],
+            'keyFetchInACallOfACallMadeWhereTheFlowsObservedTwoOpenAssignmentsIgnoresValues' => [
+                'code' => '<?php
+                    /** @psalm-taint-specialize */
+                    function render(array $attr): string {
+                        $html = [];
+                        foreach ($attr as $name => $value) {
+                            $html[] = $name . "=\"" . htmlspecialchars((string) $value, ENT_QUOTES) . "\"";
+                        }
+                        return implode(" ", $html);
+                    }
+
+                    /** @psalm-taint-specialize */
+                    function decorate(array $attr): string {
+                        return "<a " . render($attr) . ">";
+                    }
+
+                    /** @psalm-taint-specialize */
+                    function anchor(array $opts): string {
+                        return decorate($opts["wrap"]["attr"]);
+                    }
+
+                    echo anchor(["wrap" => ["attr" => ["data-q" => (string) $_GET["q"]]]]);',
+            ],
             'keyFetchInACallMadeWhereTheFlowsObservedTwoOpenAssignmentsIgnoresValues' => [
                 // prepare() asks for the class of an open assignment of the calls entering tag() deeper than its
                 // flows have: past that, they are in a filter knowing two of them, which tells apart the calls
@@ -3232,6 +3255,30 @@ final class TaintTest extends TestCase
 
                     store();
                     echo Settings::get("a");',
+                'error_message' => 'TaintedHtml',
+            ],
+            'keyFetchInACallOfACallMadeWhereTheFlowsObservedTwoOpenAssignmentsTakesKeys' => [
+                'code' => '<?php
+                    /** @psalm-taint-specialize */
+                    function render(array $attr): string {
+                        $html = [];
+                        foreach ($attr as $name => $value) {
+                            $html[] = $name . "=\"" . htmlspecialchars((string) $value, ENT_QUOTES) . "\"";
+                        }
+                        return implode(" ", $html);
+                    }
+
+                    /** @psalm-taint-specialize */
+                    function decorate(array $attr): string {
+                        return "<a " . render($attr) . ">";
+                    }
+
+                    /** @psalm-taint-specialize */
+                    function anchor(array $opts): string {
+                        return decorate($opts["wrap"]["attr"]);
+                    }
+
+                    echo anchor(["wrap" => ["attr" => [(string) $_GET["q"] => "x"]]]);',
                 'error_message' => 'TaintedHtml',
             ],
             'keyFetchInACallMadeWhereTheFlowsObservedTwoOpenAssignmentsTakesKeys' => [
