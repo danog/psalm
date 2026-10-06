@@ -92,6 +92,7 @@ use Psalm\Type\MutableUnion;
 use Psalm\Type\Union;
 use UnexpectedValueException;
 
+use function array_key_first;
 use function array_keys;
 use function array_map;
 use function array_pop;
@@ -193,7 +194,7 @@ final class ArrayFetchAnalyzer
                 $stmt_type,
                 $used_key_type,
                 $context,
-                self::getKeyPrefixPathSuffix($statements_analyzer, $stmt->dim),
+                self::getKeyPathSuffix($statements_analyzer, $stmt->dim),
             );
 
             // what is written through a reference to the item doesn't flow through the array
@@ -364,7 +365,7 @@ final class ArrayFetchAnalyzer
             $stmt_type,
             $used_key_type,
             $context,
-            self::getKeyPrefixPathSuffix($statements_analyzer, $stmt->dim),
+            self::getKeyPathSuffix($statements_analyzer, $stmt->dim),
         );
 
         $statements_analyzer->node_data->setType($stmt, $stmt_type);
@@ -382,6 +383,31 @@ final class ArrayFetchAnalyzer
         }
 
         return true;
+    }
+
+    /**
+     * The node of the argument passed to the parameter that the array key $dim is, if it is one of the function-like
+     * analyzed, as passed: then the key of a fetch or assignment in the taint flow graph is the one each call passes
+     * (see TaintFlowResolution::resolveParamKey()).
+     */
+    public static function getParamKey(StatementsAnalyzer $statements_analyzer, ?PhpParser\Node\Expr $dim): ?string
+    {
+        if ($dim instanceof PhpParser\Node\Expr\Cast\String_) {
+            // the same key, if the parameter is one (see TaintFlowGraph::addParamKey())
+            $dim = $dim->expr;
+        }
+
+        if (!$dim instanceof PhpParser\Node\Expr\Variable || $statements_analyzer->taint_flow_graph === null) {
+            return null;
+        }
+
+        $source = $statements_analyzer->getSource();
+        $parent_nodes = $statements_analyzer->node_data->getType($dim)?->parent_nodes ?? [];
+
+        // not if the parameter was assigned since, whether or not it was before
+        return $source instanceof FunctionLikeAnalyzer && count($parent_nodes) === 1
+            ? $source->getParamKeyNodeId(array_key_first($parent_nodes))
+            : null;
     }
 
     /**
@@ -518,6 +544,18 @@ final class ArrayFetchAnalyzer
                 $offset_type = $offset_type->setParentNodes([$array_key_node->id => $array_key_node]);
             }
         }
+    }
+
+    /**
+     * How the paths of the fetches and assignments of the array key $dim encode it if it isn't known exactly: by
+     * its start (see getKeyPrefixPathSuffix()), or as the parameter it is (see getParamKey())
+     */
+    private static function getKeyPathSuffix(StatementsAnalyzer $statements_analyzer, ?PhpParser\Node\Expr $dim): ?string
+    {
+        $param_key = self::getParamKey($statements_analyzer, $dim);
+
+        return self::getKeyPrefixPathSuffix($statements_analyzer, $dim)
+            ?? ($param_key !== null ? '-@' . $param_key : null);
     }
 
     /**
