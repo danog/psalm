@@ -178,7 +178,7 @@ final class BinaryOpAnalyzer
                         $graph->addPath(
                             $parent_node,
                             $new_parent_node,
-                            'concat',
+                            'concat' . CastAnalyzer::getArrayConversionSuffix($stmt_left_type),
                             $added_taints,
                             $removed_taints,
                         );
@@ -190,7 +190,7 @@ final class BinaryOpAnalyzer
                         $graph->addPath(
                             $parent_node,
                             $new_parent_node,
-                            'concat',
+                            'concat' . CastAnalyzer::getArrayConversionSuffix($stmt_right_type),
                             $added_taints,
                             $removed_taints,
                         );
