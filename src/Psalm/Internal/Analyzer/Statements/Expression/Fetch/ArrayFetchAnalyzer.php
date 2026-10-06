@@ -577,38 +577,22 @@ final class ArrayFetchAnalyzer
                 && $key_path_suffix === ''
                 && $taint_graph instanceof TaintFlowGraph;
 
-            // a key that is one of a few literals fetches what is under one of them (see getFetchedKeyValues())
-            $key_values = $key_path_suffix === '' && !$marks_elements && $taint_graph instanceof TaintFlowGraph
-                ? self::getFetchedKeyValues($offset_type)
-                : [];
+            // a key that is one of a few literals fetches what is under one of them (see getFetchedKeys())
+            $fetched_keys = $key_path_suffix === '' && !$marks_elements && $taint_graph instanceof TaintFlowGraph
+                ? self::getFetchedKeys($offset_type)
+                : null;
 
             foreach ($stmt_var_type->parent_nodes as $parent_node) {
-                if ($key_values !== [] && $taint_graph instanceof TaintFlowGraph) {
-                    foreach ($key_values as $index => $key_value) {
-                        $path_type = 'arrayvalue-fetch-\'' . $key_value . '\'';
+                if ($fetched_keys !== null && $taint_graph instanceof TaintFlowGraph) {
+                    $taint_graph->addPath(
+                        $parent_node,
+                        $new_parent_node,
+                        'arrayvalue-fetch-' . $fetched_keys,
+                        $added_taints,
+                        $removed_taints,
+                    );
 
-                        if ($index === 0) {
-                            $taint_graph->addPath(
-                                $parent_node,
-                                $new_parent_node,
-                                $path_type,
-                                $added_taints,
-                                $removed_taints,
-                            );
-
-                            continue;
-                        }
-
-                        // a path between two nodes has one type: the others go through a node of their own
-                        $key_node = DataFlowNode::getForAssignment(
-                            $new_parent_node->label . ' ' . $path_type,
-                            $var_location,
-                        );
-                        $taint_graph->addNode($key_node);
-                        $taint_graph->addPath($parent_node, $key_node, $path_type, $added_taints, $removed_taints);
-                        $taint_graph->addPath($key_node, $new_parent_node, '=');
-                    }
-
+                    // the variable use graph only knows the key is one of them: an unkeyed fetch there
                     if ($graph instanceof CombinedFlowGraph) {
                         $graph->variable_use_graph->addPath(
                             $parent_node,
@@ -678,32 +662,31 @@ final class ArrayFetchAnalyzer
     }
 
     /**
-     * The values of a key of a fetch that is one of a few literals (two to eight, as for assignments, see
-     * ArrayAssignmentAnalyzer::MAX_KEY_VALUES): what it fetches is what is under one of them. Empty if the key is
-     * known exactly (the path has its key), or isn't one of a few literals.
+     * The key of the path of a fetch whose key is one of a few literals (two to eight, as for assignments, see
+     * ArrayAssignmentAnalyzer::MAX_KEY_VALUES): each quoted, separated by '|' (see DataFlowGraph::keysMayBeEqual()).
+     * What it fetches is what is under one of them. Null if the key isn't one of a few literals.
      *
-     * @return list<string|int>
      * @psalm-mutation-free
      */
-    private static function getFetchedKeyValues(Union $offset_type): array
+    private static function getFetchedKeys(Union $offset_type): ?string
     {
         $string_literals = $offset_type->getLiteralStrings();
         $int_literals = $offset_type->getLiteralInts();
         $count = count($string_literals) + count($int_literals);
 
         if ($count < 2 || $count > 8 || $count !== count($offset_type->getAtomicTypes())) {
-            return [];
+            return null;
         }
 
-        $key_values = [];
+        $keys = [];
         foreach ($string_literals as $string_literal) {
-            $key_values[] = $string_literal->value;
+            $keys[] = '\'' . $string_literal->value . '\'';
         }
         foreach ($int_literals as $int_literal) {
-            $key_values[] = $int_literal->value;
+            $keys[] = '\'' . $int_literal->value . '\'';
         }
 
-        return $key_values;
+        return implode('|', $keys);
     }
 
     /**

@@ -12,6 +12,8 @@ use function array_key_last;
 use function array_keys;
 use function array_sum;
 use function count;
+use function explode;
+use function str_contains;
 use function str_ends_with;
 use function str_starts_with;
 use function strlen;
@@ -112,12 +114,23 @@ abstract class DataFlowGraph
      * the same.
      *
      * An array key known exactly is quoted ('k'), and one whose start only is known is quoted and followed by
-     * a star ('k'*: any key starting with k). A property name is bare. An array key fetch fetches the key ''.
+     * a star ('k'*: any key starting with k). A property name is bare. An array key fetch fetches the key ''. A
+     * fetch whose key is one of a few literals has them all, quoted and separated by '|' ('a'|'b').
      *
      * @psalm-pure
      */
     public static function keysMayBeEqual(string $assigned_key, string $fetched_key): bool
     {
+        if (str_starts_with($fetched_key, "'") && str_contains($fetched_key, "'|'")) {
+            foreach (explode("'|'", substr($fetched_key, 1, -1)) as $key) {
+                if (self::keysMayBeEqual($assigned_key, "'" . $key . "'")) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         $assigned_prefix = self::getKeyPrefix($assigned_key);
         $fetched_prefix = self::getKeyPrefix($fetched_key);
 
