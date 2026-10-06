@@ -480,6 +480,36 @@ final class TaintTest extends TestCase
                     new Checkbox(["label" => (string) $_GET["label"]]);
                     (new Button([]))->render();',
             ],
+            'dontTaintThePropertiesOfASubclassWithWhatAnAncestorConstructorCalledByNameSetsOnAnotherSubclass' => [
+                'code' => '<?php // --taint-analysis
+                    class Field {
+                        /** @var array<string, string> */
+                        protected array $opts;
+
+                        /** @param array<string, string> $opts */
+                        public function __construct(array $opts) {
+                            $this->opts = $opts;
+                        }
+                    }
+
+                    class Select extends Field {}
+
+                    final class MultiSelect extends Select {
+                        /** @param array<string, string> $opts */
+                        public function __construct(array $opts) {
+                            Field::__construct($opts);
+                        }
+                    }
+
+                    final class Button extends Field {
+                        public function render(): void {
+                            echo $this->opts["label"] ?? "";
+                        }
+                    }
+
+                    new MultiSelect(["label" => (string) $_GET["label"]]);
+                    (new Button([]))->render();',
+            ],
             'dontTaintAPrivatePropertyWithWhatIsSetToTheOneOfAParentClass' => [
                 'code' => '<?php // --taint-analysis
                     class Model {
@@ -2013,6 +2043,34 @@ final class TaintTest extends TestCase
                     }
 
                     (new Button(["label" => (string) $_GET["label"]]))->render();',
+                'error_message' => 'TaintedHtml',
+            ],
+            'taintThePropertiesOfAnObjectWithWhatAnAncestorConstructorCalledByNameSetsOnIt' => [
+                'code' => '<?php // --taint-analysis
+                    class Field {
+                        /** @var array<string, string> */
+                        protected array $opts;
+
+                        /** @param array<string, string> $opts */
+                        public function __construct(array $opts) {
+                            $this->opts = $opts;
+                        }
+                    }
+
+                    class Select extends Field {}
+
+                    final class MultiSelect extends Select {
+                        /** @param array<string, string> $opts */
+                        public function __construct(array $opts) {
+                            Field::__construct($opts);
+                        }
+
+                        public function render(): void {
+                            echo $this->opts["label"] ?? "";
+                        }
+                    }
+
+                    (new MultiSelect(["label" => (string) $_GET["label"]]))->render();',
                 'error_message' => 'TaintedHtml',
             ],
             'taintWhatAnInheritedMethodReturnsOfItsObject' => [
