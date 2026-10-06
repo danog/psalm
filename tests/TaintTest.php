@@ -5175,6 +5175,7 @@ final class TaintTest extends TestCase
                     function show(string $key): void {
                         echo (string) getKey(withKey([], $key, $_GET["value"]), "b");
                     }',
+                'error_message' => 'TaintedHtml',
             ],
             'concatenationOfAStringMadeOfTheElementsOfAnArray' => [
                 'code' => '<?php
