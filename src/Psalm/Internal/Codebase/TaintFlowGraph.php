@@ -48,10 +48,6 @@ use Psalm\Type\Union;
 
 use function array_unshift;
 use function end;
-use function ksort;
-use function str_starts_with;
-use function strpos;
-use function substr;
 use function min;
 use function strcmp;
 use function strtolower;
