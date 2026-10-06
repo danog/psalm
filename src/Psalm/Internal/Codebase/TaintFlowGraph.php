@@ -56,6 +56,12 @@ use function strtolower;
 final class TaintFlowGraph extends DataFlowGraph
 {
     /**
+     * The suffix of the type of an edge converting to a scalar a value that may be an array (see
+     * CastAnalyzer::getArrayConversionSuffix() and TaintFlowResolution::getNextOpenAssignments()).
+     */
+    public const ARRAY_CONVERSION_SUFFIX = '-of-array';
+
+    /**
      * The separator DataFlowNode uses to build a specialized node id from its
      * unspecialized base id and specialization key (see DataFlowNode::make()).
      */

@@ -23,6 +23,7 @@ use function implode;
 use function ksort;
 use function max;
 use function min;
+use function str_ends_with;
 use function str_starts_with;
 use function strlen;
 use function strpos;
@@ -70,12 +71,28 @@ final class TaintFlowResolution
      */
     private const FAMILIES = ['arrayvalue', 'property'];
     private const ARRAY_FAMILY = 0;
+    private const PROPERTY_FAMILY = 1;
 
     /**
      * The class (see getClass()) of an open assignment of an array key: a fetch of an array value ignores
      * it, a fetch of an array key doesn't.
      */
     private const KEY_CLASS = 'key';
+
+    /**
+     * The class (see getClass()) of an open assignment under an unknown key: only a conversion (see
+     * CONVERSION_KEY) ignores it. Apart from '', the class of none, or of one the flows don't know (see
+     * getAssignmentClass()), which no fetch ignores.
+     */
+    private const UNKNOWN_KEY_CLASS = '*';
+
+    /**
+     * The key a scalar conversion (a cast, a concatenation) of a value that may be an array observes (see
+     * getPathTypeEffects()): only the class of none, or of an open assignment the flows don't know, passes it
+     * (see classPassesFetch()). A converted array is "Array", or 0/1, never what it holds, but a value with
+     * no open array assignment (what may be an array may also be a string) can be the taint itself.
+     */
+    private const CONVERSION_KEY = '#';
 
     /**
      * How many of its innermost open assignments of each expression type a flow outside of any context keeps
@@ -129,6 +146,17 @@ final class TaintFlowResolution
      * flows reaching a node in more states, keep more of those, at little cost.
      */
     private const CONVERGING_STATES = 12;
+
+    /**
+     * How many states a node must have for the flows reaching it in more to be widened (see
+     * widenOpenAssignments()). The flows reaching a node in a body walk differ by their open assignments, whose
+     * number can grow with the product of the keys and depths of the arrays they went through: recursive functions
+     * putting what they return for an element back under its key, components passing arrays of options on through
+     * many levels, ... Convergence (see enterConvergence()) doesn't help in a body walk the flows of a single call
+     * reach, since it leaves through all the call sites. A node that holds that many states lets the flows reaching
+     * it in more forget what they would only use to tell apart deeper fetches.
+     */
+    private const WIDENING_STATES = 1024;
 
     /**
      * The kinds of entries: specialized call entries, and convergences (see enterConvergence())
@@ -327,6 +355,13 @@ final class TaintFlowResolution
      * @var array<int, array<int, int>>
      */
     private array $open_assignment_truncations = [];
+
+    /**
+     * Open assignments key => the open assignments widened (see widenOpenAssignments())
+     *
+     * @var array<int, int>
+     */
+    private array $open_assignment_widenings = [];
 
     /*
      * The states, as parallel lists indexed by state id
@@ -1118,6 +1153,11 @@ final class TaintFlowResolution
             return [-1, '!' . substr($path_type, 21), -1, -1, null, false];
         }
 
+        if (str_ends_with($path_type, TaintFlowGraph::ARRAY_CONVERSION_SUFFIX)) {
+            // a conversion of a value that may be the array the innermost open array assignment put the taint in
+            return [self::ARRAY_FAMILY, self::CONVERSION_KEY, -1, -1, null, false];
+        }
+
         $observed_family = -1;
         $observed_key = null;
         $closed_family = -1;
@@ -1282,7 +1322,11 @@ final class TaintFlowResolution
             // where the flow knows that's the innermost one: an unknown key is fetched too often for the walks
             // to be told apart by it in filters (see getFilter()).
             $next = self::IGNORED;
-        } elseif ($observed_family === -1) {
+        } elseif ($observed_family === -1
+            || ($observed_key === self::CONVERSION_KEY && ($made[self::PROPERTY_FAMILY] ?? []))
+        ) {
+            // (a conversion of what may also be an object the taint is in a property of keeps it: its
+            // __toString() may give it)
             $next = $this->applyPathType($open_assignments, $path_type);
         } elseif ($made[$observed_family] && $made[$observed_family][count($made[$observed_family]) - 1] < 0) {
             // one of the call put back
@@ -1557,6 +1601,40 @@ final class TaintFlowResolution
     }
 
     /**
+     * The open assignments $open_assignments of a flow reaching a node with WIDENING_STATES states: only their
+     * innermost open assignment of each expression type, and none of those of the call entering their context
+     * known. A fetch only ignores an open assignment the flow knows, so forgetting some only lets the flow go
+     * on through more fetches.
+     *
+     * @psalm-external-mutation-free
+     */
+    private function widenOpenAssignments(int $open_assignments): int
+    {
+        if (isset($this->open_assignment_widenings[$open_assignments])) {
+            return $this->open_assignment_widenings[$open_assignments];
+        }
+
+        [$made, $closed, $guards] = $this->open_assignments[$open_assignments];
+
+        foreach (self::FAMILIES as $family => $_) {
+            $made[$family] ??= [];
+            $closed[$family] ??= self::NO_CALL;
+            self::capOpenAssignments($made, $closed, $family, 1);
+
+            if ($closed[$family] !== self::NO_CALL) {
+                $closed[$family] = self::FORGOTTEN;
+            }
+        }
+
+        return $this->open_assignment_widenings[$open_assignments] = $this->internOpenAssignments(
+            $made,
+            $closed,
+            $this->open_assignment_slots[$open_assignments],
+            $guards,
+        );
+    }
+
+    /**
      * The open assignments of $open_assignments a fetch reachable from $node_id can observe (see
      * computeObservableDepths())
      *
@@ -1627,6 +1705,10 @@ final class TaintFlowResolution
 
         if ($slot >= 0 || $slot === self::INHERITED_SLOT) {
             $open_assignments = $this->scopeSlot($open_assignments, $slot, $node_id);
+        }
+
+        if (isset($this->state_ids[$node_id]) && count($this->state_ids[$node_id]) >= self::WIDENING_STATES) {
+            $open_assignments = $this->widenOpenAssignments($open_assignments);
         }
 
         $key = (($context + 1) << 32) | $open_assignments;
@@ -2441,7 +2523,7 @@ final class TaintFlowResolution
     /**
      * The class of an open assignment of type $family: what decides whether a fetch ignores it (see
      * shouldIgnoreFetch()). That's its key, prefixed with ':' (see DataFlowGraph::keysMayBeEqual()), KEY_CLASS
-     * for an array key, or '' if no fetch ignores it.
+     * for an array key, or UNKNOWN_KEY_CLASS for an unknown key.
      *
      * @psalm-mutation-free
      */
@@ -2457,7 +2539,7 @@ final class TaintFlowResolution
         return $assignment_type !== $expression_type . '-assignment'
             && str_starts_with($assignment_type, $expression_type . '-assignment-')
             ? ':' . substr($assignment_type, strlen($expression_type) + 12)
-            : '';
+            : self::UNKNOWN_KEY_CLASS;
     }
 
     /**
@@ -2475,6 +2557,10 @@ final class TaintFlowResolution
      */
     private static function classPassesFetch(string $class, string $fetched_key): bool
     {
+        if ($fetched_key === self::CONVERSION_KEY) {
+            return $class === '';
+        }
+
         if (str_starts_with($fetched_key, '!')) {
             // the replacement of the value under a key (see getPathTypeEffects()): only what was assigned under
             // that key goes
@@ -2487,7 +2573,10 @@ final class TaintFlowResolution
         }
 
         // a fetch of the keys ('') takes nothing assigned as a value, under any key
-        return $fetched_key !== '' && ($class === '' || DataFlowGraph::keysMayBeEqual(substr($class, 1), $fetched_key));
+        return $class === ''
+            || ($fetched_key !== ''
+                && ($class === self::UNKNOWN_KEY_CLASS
+                    || DataFlowGraph::keysMayBeEqual(substr($class, 1), $fetched_key)));
     }
 
     /**
