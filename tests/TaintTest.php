@@ -417,6 +417,39 @@ final class TaintTest extends TestCase
                     $tainted = Phone::format((string) $_GET["phone"]);
                     echo Phone::format("12");',
             ],
+            'keyFetchInACallMadeWhereTheFlowsObservedTwoOpenAssignmentsIgnoresValues' => [
+                // prepare() asks for the class of an open assignment of the calls entering tag() deeper than its
+                // flows have: past that, they are in a filter knowing two of them, which tells apart the calls
+                // passing the key fetch in render() from the others, like a filter knowing one.
+                'code' => '<?php // --taint-analysis
+                    /** @psalm-taint-specialize */
+                    function prepare(array $attr): array {
+                        foreach ($attr as $value) {
+                            if (is_array($value)) {
+                                foreach ($value as $key => $_) {
+                                    $attr["keys"] = $key;
+                                }
+                            }
+                        }
+                        return $attr;
+                    }
+
+                    /** @psalm-taint-specialize */
+                    function render(array $attr): string {
+                        $html = "";
+                        foreach ($attr as $name => $_) {
+                            $html .= $name . " ";
+                        }
+                        return $html;
+                    }
+
+                    /** @psalm-taint-specialize */
+                    function tag(array $holder): string {
+                        return render(prepare($holder["attr"]));
+                    }
+
+                    echo tag(["attr" => ["href" => (string) $_GET["p"]]]);',
+            ],
             'keyFetchTwoCallsDownIgnoresTheValuesOfAKeyFetchedOneCallDown' => [
                 'code' => '<?php // --taint-analysis
                     /** @psalm-taint-specialize */
@@ -3091,6 +3124,37 @@ final class TaintTest extends TestCase
 
                     store();
                     echo Settings::get("a");',
+                'error_message' => 'TaintedHtml',
+            ],
+            'keyFetchInACallMadeWhereTheFlowsObservedTwoOpenAssignmentsTakesKeys' => [
+                'code' => '<?php // --taint-analysis
+                    /** @psalm-taint-specialize */
+                    function prepare(array $attr): array {
+                        foreach ($attr as $value) {
+                            if (is_array($value)) {
+                                foreach ($value as $key => $_) {
+                                    $attr["keys"] = $key;
+                                }
+                            }
+                        }
+                        return $attr;
+                    }
+
+                    /** @psalm-taint-specialize */
+                    function render(array $attr): string {
+                        $html = "";
+                        foreach ($attr as $name => $_) {
+                            $html .= $name . " ";
+                        }
+                        return $html;
+                    }
+
+                    /** @psalm-taint-specialize */
+                    function tag(array $holder): string {
+                        return render(prepare($holder["attr"]));
+                    }
+
+                    echo tag(["attr" => [(string) $_GET["p"] => "x"]]);',
                 'error_message' => 'TaintedHtml',
             ],
             'keyFetchTwoCallsDownTakesTheKeysOfAKeyFetchedOneCallDown' => [
