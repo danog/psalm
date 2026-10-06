@@ -493,6 +493,23 @@ final class TaintTest extends TestCase
                     // the inner call returns its value into the array, under "value"
                     echo $wrapped["label"];',
             ],
+            'keysOfAnArrayDontHoldTheValuesAssignedUnderAVariableKey' => [
+                'code' => '<?php
+                    /** @return array<string, array{url: string}> */
+                    function getData(string $town): array {
+                        $result = [];
+                        foreach (["a", "b"] as $key) {
+                            $result[$key] = ["url" => "/" . $town];
+                        }
+                        return $result;
+                    }
+
+                    $keys = "";
+                    foreach (getData($_GET["town"]) as $category => $_) {
+                        $keys .= $category;
+                    }
+                    echo $keys;',
+            ],
             'fetchOfOneKeyWhereConvergingKeyedArraysConvergeAgain' => [
                 // Differently keyed arrays converge at $row, and its flows converge again at $r with others: the
                 // fetch still ignores those of other keys.
@@ -2410,6 +2427,17 @@ final class TaintTest extends TestCase
 
                     function show(string $key): void {
                         echo (string) getKey(withKey([], $key, $_GET["value"]), "b");
+                    }',
+                'error_message' => 'TaintedHtml',
+            ],
+            'keysOfAnArrayOfArraysHoldTheKeysOfTheInnerArrayOnceFetched' => [
+                'code' => '<?php
+                    $outer = [];
+                    $outer[] = [$_GET["key"] => 1];
+                    foreach ($outer as $inner) {
+                        foreach ($inner as $key => $_) {
+                            echo $key;
+                        }
                     }',
                 'error_message' => 'TaintedHtml',
             ],
