@@ -1504,6 +1504,24 @@ final class TaintTest extends TestCase
                     show([], 1);
                 ',
             ],
+            'castOrConcatenationOfAnArrayHoldsNoneOfItsElements' => [
+                'code' => '<?php
+                    function toString(mixed $value): string {
+                        if (is_array($value)) {
+                            return "array";
+                        }
+
+                        return (string) $value;
+                    }
+
+                    function prefix(mixed $value): string {
+                        return is_array($value) ? "b" : "a{$value}";
+                    }
+
+                    // converted, an array is "Array": the elements are not in what a conversion of it gives
+                    echo toString(["key" => $_GET["a"]]);
+                    echo prefix(["key" => $_GET["b"]]);',
+            ],
             'fetchOfOneKeyWhereConvergingKeyedArraysConvergeAgain' => [
                 // Differently keyed arrays converge at $row, and its flows converge again at $r with others: the
                 // fetch still ignores those of other keys.
@@ -5106,6 +5124,29 @@ final class TaintTest extends TestCase
                     function show(string $key): void {
                         echo (string) getKey(withKey([], $key, $_GET["value"]), "b");
                     }',
+            ],
+            'concatenationOfAStringMadeOfTheElementsOfAnArray' => [
+                'code' => '<?php
+                    $values = [$_GET["a"]];
+                    echo "<b>" . implode(",", $values);',
+                'error_message' => 'TaintedHtml',
+            ],
+            'concatenationOfAnElementFetchedFromAnArray' => [
+                'code' => '<?php
+                    $values = ["key" => $_GET["a"]];
+                    echo "<b>" . $values["key"];',
+                'error_message' => 'TaintedHtml',
+            ],
+            'castOfAValueWhoseTypeMayBeAnArrayAfterItsElementIsFetched' => [
+                'code' => '<?php
+                    /** @param array<string, mixed> $values */
+                    function show(array $values): void {
+                        foreach ($values as $value) {
+                            echo "<b>" . (string) $value;
+                        }
+                    }
+
+                    show(["key" => $_GET["a"]]);',
                 'error_message' => 'TaintedHtml',
             ],
             'taintArrayValueWrappedDeeperInALoop' => [

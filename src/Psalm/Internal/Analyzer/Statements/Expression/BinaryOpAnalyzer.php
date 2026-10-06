@@ -551,7 +551,8 @@ final class BinaryOpAnalyzer
                 $graph->addPath(
                     $parent_node,
                     $new_parent_node,
-                    'concat',
+                    // concatenated, an array is "Array": it takes no taint the flow put in an element of it
+                    'concat' . CastAnalyzer::getArrayConversionSuffix($operand_type),
                     $added_taints,
                     $operand_removed_taints[$index],
                 );
