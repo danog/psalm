@@ -392,6 +392,18 @@ final class TaintTest extends TestCase
     public function providerValidCodeParse(): array
     {
         return [
+            'objectIdConvertedToAStringHoldsNoInput' => [
+                'code' => '<?php // --taint-analysis
+                    function show(mixed $value): string {
+                        if ($value instanceof MongoDB\BSON\ObjectId) {
+                            // its 24 hexadecimal digits
+                            return (string) $value;
+                        }
+                        return "";
+                    }
+
+                    echo show($_GET["id"]);',
+            ],
             'specializeTheCallsOfAFunctionThatOnlyReadsSharedState' => [
                 'code' => '<?php // --taint-analysis
                     final class Phone {
