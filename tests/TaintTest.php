@@ -1545,6 +1545,43 @@ final class TaintTest extends TestCase
                     show(["key" => $_GET["a"]]);',
                 'error_message' => 'TaintedHtml',
             ],
+            'castOfAMixedValueThatIsItselfTheTaintInsideASpecializedFunction' => [
+                // a value that may be an array may also be the tainted string itself: only a taint that sits in
+                // an element of it is not in its conversion
+                'code' => '<?php
+                    function toString(mixed $value): string {
+                        return (string) $value;
+                    }
+
+                    /** @psalm-taint-specialize */
+                    function show(mixed $value): string {
+                        return toString($value);
+                    }
+
+                    echo show($_GET["a"]);',
+                'error_message' => 'TaintedHtml',
+            ],
+            'concatenationOfATemplatedValueFetchedFromAnArrayInsideASpecializedFunction' => [
+                'code' => '<?php
+                    /**
+                     * @template T
+                     * @param T $value
+                     */
+                    function prefix($value): string {
+                        return "a{$value}";
+                    }
+
+                    /**
+                     * @psalm-taint-specialize
+                     * @param array<string, string|list<string>> $values
+                     */
+                    function show(array $values, string $key): string {
+                        return prefix($values[$key]);
+                    }
+
+                    echo show(["key" => $_GET["a"]], "key");',
+                'error_message' => 'TaintedHtml',
+            ],
             'taintArrayValueWrappedDeeperInALoop' => [
                 'code' => '<?php // --taint-analysis
                     $value = (string) $_GET["value"];
