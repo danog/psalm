@@ -577,8 +577,48 @@ final class ArrayFetchAnalyzer
                 && $key_path_suffix === ''
                 && $taint_graph instanceof TaintFlowGraph;
 
+            // a key that is one of a few literals fetches what is under one of them (see getFetchedKeyValues())
+            $key_values = $key_path_suffix === '' && !$marks_elements && $taint_graph instanceof TaintFlowGraph
+                ? self::getFetchedKeyValues($offset_type)
+                : [];
+
             foreach ($stmt_var_type->parent_nodes as $parent_node) {
-                if ($marks_elements && $taint_graph instanceof TaintFlowGraph) {
+                if ($key_values !== [] && $taint_graph instanceof TaintFlowGraph) {
+                    foreach ($key_values as $index => $key_value) {
+                        $path_type = 'arrayvalue-fetch-\'' . $key_value . '\'';
+
+                        if ($index === 0) {
+                            $taint_graph->addPath(
+                                $parent_node,
+                                $new_parent_node,
+                                $path_type,
+                                $added_taints,
+                                $removed_taints,
+                            );
+
+                            continue;
+                        }
+
+                        // a path between two nodes has one type: the others go through a node of their own
+                        $key_node = DataFlowNode::getForAssignment(
+                            $new_parent_node->label . ' ' . $path_type,
+                            $var_location,
+                        );
+                        $taint_graph->addNode($key_node);
+                        $taint_graph->addPath($parent_node, $key_node, $path_type, $added_taints, $removed_taints);
+                        $taint_graph->addPath($key_node, $new_parent_node, '=');
+                    }
+
+                    if ($graph instanceof CombinedFlowGraph) {
+                        $graph->variable_use_graph->addPath(
+                            $parent_node,
+                            $new_parent_node,
+                            'arrayvalue-fetch',
+                            $added_taints,
+                            $removed_taints,
+                        );
+                    }
+                } elseif ($marks_elements && $taint_graph instanceof TaintFlowGraph) {
                     $taint_graph->addPath(
                         $parent_node,
                         $new_parent_node,
@@ -635,6 +675,35 @@ final class ArrayFetchAnalyzer
         }
 
         self::taintSuperGlobalFetch($statements_analyzer, $var, $offset_type, $stmt_type);
+    }
+
+    /**
+     * The values of a key of a fetch that is one of a few literals (two to eight, as for assignments, see
+     * ArrayAssignmentAnalyzer::MAX_KEY_VALUES): what it fetches is what is under one of them. Empty if the key is
+     * known exactly (the path has its key), or isn't one of a few literals.
+     *
+     * @return list<string|int>
+     * @psalm-mutation-free
+     */
+    private static function getFetchedKeyValues(Union $offset_type): array
+    {
+        $string_literals = $offset_type->getLiteralStrings();
+        $int_literals = $offset_type->getLiteralInts();
+        $count = count($string_literals) + count($int_literals);
+
+        if ($count < 2 || $count > 8 || $count !== count($offset_type->getAtomicTypes())) {
+            return [];
+        }
+
+        $key_values = [];
+        foreach ($string_literals as $string_literal) {
+            $key_values[] = $string_literal->value;
+        }
+        foreach ($int_literals as $int_literal) {
+            $key_values[] = $int_literal->value;
+        }
+
+        return $key_values;
     }
 
     /**

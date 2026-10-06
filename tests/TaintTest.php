@@ -515,6 +515,17 @@ final class TaintTest extends TestCase
                     new Comments(["comment" => (string) $_GET["comment"]]);
                     (new Activity())->printIds();',
             ],
+            'fetchUnderAKeyThatIsOneOfAFewLiteralsTakesNothingUnderOtherKeys' => [
+                'code' => '<?php
+                    function show(array $options): void {
+                        $trimmed = [];
+                        foreach (["mode", "ids"] as $key) {
+                            $trimmed[$key] = trim((string) $options[$key]);
+                        }
+                        echo $trimmed["ids"];
+                    }
+                    show(["comment" => $_GET["comment"], "mode" => "a", "ids" => "b"]);',
+            ],
             'taintFreeAssignmentUnderOneOfLiteralKeys' => [
                 'code' => '<?php
                     function show(string $key): void {
@@ -3219,6 +3230,16 @@ final class TaintTest extends TestCase
                     }
 
                     echo keep(["value" => $_GET["x"]]);',
+                'error_message' => 'TaintedHtml',
+            ],
+            'fetchUnderAKeyThatIsOneOfAFewLiteralsTakesWhatIsUnderEach' => [
+                'code' => '<?php
+                    function show(array $options): void {
+                        foreach (["mode", "ids"] as $key) {
+                            echo (string) $options[$key];
+                        }
+                    }
+                    show(["ids" => $_GET["ids"], "other" => "a"]);',
                 'error_message' => 'TaintedHtml',
             ],
             'taintAssignmentUnderOneOfLiteralKeys' => [
