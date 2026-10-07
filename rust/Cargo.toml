@@ -53,3 +53,10 @@ panic = "unwind"
 [profile.bench-inc]
 inherits = "bench"
 incremental = true
+
+# Whole-program optimization of the measurement binary: one codegen unit and fat LTO. Much slower and more
+# memory-hungry to build than `bench`; for final measurements only.
+[profile.bench-fat]
+inherits = "bench"
+codegen-units = 1
+lto = "fat"
