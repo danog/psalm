@@ -47,3 +47,9 @@ codegen-units = 16
 lto = "thin"
 debug = 1
 panic = "unwind"
+
+# Iteration build of the measurement binary: `bench` plus incremental compilation, so a re-transpile that changes a few
+# modules of the generated crate only recompiles the affected codegen units. Published numbers come from `bench`.
+[profile.bench-inc]
+inherits = "bench"
+incremental = true
