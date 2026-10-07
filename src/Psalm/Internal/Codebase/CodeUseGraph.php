@@ -112,6 +112,14 @@ final class CodeUseGraph
     private array $forward_edges = [];
 
     /**
+     * References already recorded by addReferenceFrom(), by calling method or function id: a cache to skip
+     * repeats, dropped whenever edges are removed.
+     *
+     * @var array<string, array<string, array<string, true>>>
+     */
+    private array $scoped_references = [];
+
+    /**
      * Backward edges: target node id => source node id => edge type
      *
      * @var array<string, array<string, string>>
@@ -480,6 +488,14 @@ final class CodeUseGraph
         string $type = self::EDGE_USE,
         ?string $file_path = null,
     ): void {
+        // most references repeat one the same function-like already made: skip building the node ids and the
+        // graph lookups for them (the cache is dropped whenever edges are removed)
+        $scope_id = $calling_method_id ?? $calling_function_id;
+        $collects_location = $location !== null && $this->collect_locations;
+        if ($scope_id !== null && !$collects_location && isset($this->scoped_references[$scope_id][$target_node][$type])) {
+            return;
+        }
+
         $file_path = $location?->file_path ?? $file_path;
 
         if ($calling_method_id !== null) {
@@ -501,11 +517,16 @@ final class CodeUseGraph
             $this->file_nodes = null;
         }
 
-        if ($location !== null && $this->collect_locations) {
+        if ($collects_location) {
             $location_hash = $location->getHash();
             $this->locations[$target_node][$location_hash] = $location;
             $this->source_locations[$source_node][$target_node][$location_hash] = true;
             $this->location_sources[$target_node][$location_hash][$source_node] = true;
+        }
+
+        // only once nothing is left for a repeat to do (the source's file is known)
+        if ($scope_id !== null && isset($this->node_files[$source_node])) {
+            $this->scoped_references[$scope_id][$target_node][$type] = true;
         }
     }
 
@@ -562,6 +583,7 @@ final class CodeUseGraph
      */
     public function clear(): void
     {
+        $this->scoped_references = [];
         $this->forward_edges = [];
         $this->backward_edges = [];
         $this->node_files = [];
@@ -895,6 +917,7 @@ final class CodeUseGraph
      */
     public function removeReferencesFrom(string $node_id): void
     {
+        $this->scoped_references = [];
         foreach ($this->source_locations[$node_id] ?? [] as $target_node => $location_hashes) {
             foreach ($location_hashes as $location_hash => $_) {
                 unset($this->location_sources[$target_node][$location_hash][$node_id]);
@@ -941,6 +964,7 @@ final class CodeUseGraph
      */
     public function removeEdgesOfTypes(array $types): void
     {
+        $this->scoped_references = [];
         foreach ($this->forward_edges as $source_node => $targets) {
             foreach ($targets as $target_node => $type) {
                 if (!isset($types[$type])) {
@@ -975,6 +999,7 @@ final class CodeUseGraph
      */
     public function removeReferencesFromFile(string $file_path, array $keep_nodes = []): void
     {
+        $this->scoped_references = [];
         $this->removeReferencesFrom(self::fileNode($file_path));
 
         if ($this->file_nodes === null) {
